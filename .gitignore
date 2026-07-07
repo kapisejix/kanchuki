@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Expo
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+
+# Prisma
+packages/db/generated/
+
+# MediaPipe model assets (downloaded, not source — see scripts/measurement_extractor.py)
+scripts/models/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Turbo
+.turbo/
+
+# Test coverage
+coverage/
