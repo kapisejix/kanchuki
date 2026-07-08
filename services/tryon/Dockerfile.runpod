@@ -28,12 +28,10 @@ WORKDIR /app
 
 # Download CatVTON source (Docker ADD handles redirects; tar extracts manually)
 # Note: ADD only auto-extracts .tar.gz from LOCAL sources, not URLs
-# Repo: Zheng-Chong/CatVTON (case-sensitive)
+# Repo: Zheng-Chong/CatVTON (case-sensitive!)
 ADD https://github.com/Zheng-Chong/CatVTON/archive/refs/heads/main.tar.gz /tmp/catvton.tar.gz
-RUN mkdir -p /app/CatVTON && \
-    tar xzf /tmp/catvton.tar.gz -C /app/ && \
-    mv /app/CatVTON-* /app/CatVTON && \
-    rm /tmp/catvton.tar.gz
+RUN mkdir -p /app/CatVTON && tar xzf /tmp/catvton.tar.gz \
+    --strip-components=1 -C /app/CatVTON && rm /tmp/catvton.tar.gz
 
 # Install CatVTON deps first (cached if requirements unchanged)
 RUN pip install --no-cache-dir -r /app/CatVTON/requirements.txt
