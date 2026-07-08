@@ -243,8 +243,15 @@ The CI workflow (`.github/workflows/ci.yml`) runs on every push/PR:
 2. Railway detects the push
 3. Builds only the changed services (via `watchPatterns` in `railway.json`)
 4. Runs `pnpm build --filter=@kanchuki/api` (or `web`)
-5. Starts with `node apps/api/dist/index.js` (API) or `node apps/web/.next/standalone/server.js` (web)
+5. Starts with `node apps/api/dist/index.js` (API) or `pnpm --filter @kanchuki/web start` (web)
 6. Health check passes → traffic routed to new version
+
+> **Note:** Next.js `output: 'standalone'` is intentionally disabled. The
+> standalone mode causes a "Cannot read properties of null (reading 'useContext')"
+> error during static generation with pnpm monorepos (Next.js 14.2.x known issue).
+> Railway's Nixpacks builder keeps the full `node_modules` in the deployment
+> image, so `pnpm --filter @kanchuki/web start` (which runs `next start`) works
+> correctly.
 
 ### Manual Deploy Trigger
 
@@ -285,7 +292,7 @@ CatVTON replaces the paid FASHN API with a self-hosted GPU server.
 2. Go to **Serverless → Endpoints → New Endpoint**
 3. Fill in:
    - **Name:** `kanchuki-tryon`
-   - **Docker Image:** `your-dockerhub/kanchuki-tryon:latest` (build from `services/tryon/Dockerfile`)
+   - **Docker Image:** `ghcr.io/kapisejix/kanchuki-tryon:latest` (auto-built via CI)
    - **Container Disk:** 50GB (model is ~10GB)
    - **GPU Type:** L4 (24GB) — good balance of speed & cost ($0.44/hr)
    - **Max Workers:** 2
@@ -294,6 +301,10 @@ CatVTON replaces the paid FASHN API with a self-hosted GPU server.
 4. **Deploy** → wait for **Active** status (~5 min)
 5. Copy the endpoint URL: `https://{runpod-id}-8000.proxy.runpod.net`
 6. Set as `CATVTON_API_URL` env var in your API service
+
+> The Docker image is built automatically by the CI workflow
+> (`.github/workflows/docker-tryon.yml`) when `services/tryon/` changes.
+> To trigger a manual build: GitHub → Actions → "Build & Push CatVTON" → "Run workflow".
 
 ### Option B: Docker (own GPU server)
 
