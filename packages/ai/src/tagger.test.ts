@@ -58,7 +58,7 @@ describe('tagProductImages', () => {
     const result = await tagProductImages([{ buffer: Buffer.from('front'), mediaType: 'image/jpeg' }])
 
     expect(mockCreate).toHaveBeenCalledTimes(1)
-    const call = mockCreate.mock.calls[0][0]
+    const call = mockCreate.mock.calls[0]![0]
     const content = call.messages[0].content
     expect(content).toHaveLength(2) // 1 image + 1 text
     expect(content[0].type).toBe('image')
@@ -86,7 +86,7 @@ describe('tagProductImages', () => {
       { buffer: Buffer.from('back'), mediaType: 'image/png' },
     ])
 
-    const call = mockCreate.mock.calls[0][0]
+    const call = mockCreate.mock.calls[0]![0]
     const content = call.messages[0].content
     expect(content).toHaveLength(3) // 2 images + 1 text
     expect(content[0].source.media_type).toBe('image/jpeg')
@@ -158,7 +158,7 @@ describe('tagProductImageUrl(s)', () => {
     ])
 
     expect(globalThis.fetch).toHaveBeenCalledTimes(2)
-    const content = mockCreate.mock.calls[0][0].messages[0].content
+    const content = mockCreate.mock.calls[0]![0].messages[0].content
     expect(content).toHaveLength(3)
   })
 
