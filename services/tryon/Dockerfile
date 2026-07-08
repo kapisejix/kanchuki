@@ -27,10 +27,12 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 WORKDIR /app
 
-# Clone CatVTON source repo (provides the custom pipeline class)
-# The model weights are loaded from HuggingFace at runtime
-RUN git clone https://github.com/zhengchong/CatVTON.git /app/CatVTON \
-    && cd /app/CatVTON && git checkout 999bdbe0825f385c7d23dca9636a0fb3d7890f5c
+# Download CatVTON source as tarball (GitHub CI blocks anonymous git clone)
+# Pinned commit: 999bdbe0825f385c7d23dca9636a0fb3d7890f5c
+# Model weights are loaded from HuggingFace at runtime
+RUN wget -qO- https://github.com/zhengchong/CatVTON/archive/999bdbe0825f385c7d23dca9636a0fb3d7890f5c.tar.gz \
+    | tar xz -C /app/ \
+    && mv /app/CatVTON-999bdbe0825f385c7d23dca9636a0fb3d7890f5c /app/CatVTON
 
 # Install CatVTON deps
 RUN pip install --no-cache-dir -r /app/CatVTON/requirements.txt
