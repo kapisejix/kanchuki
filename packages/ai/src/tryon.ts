@@ -35,19 +35,41 @@ export function tryonResultR2Key(jobId: string): string {
 
 // ─── CatVTON (self-hosted, primary) ────────────────────────────
 
+/** True if the URL points to a RunPod serverless endpoint */
+function isRunPodUrl(url: string): boolean {
+  return url.includes('api.runpod.ai') || url.includes('api.runpod.io')
+}
+
 /**
  * Trigger a try-on via self-hosted CatVTON microservice.
- * Returns immediately with the completed result (sync, ~35s).
+ * Supports two deployment modes:
+ * 1. Self-hosted FastAPI server — sends to /try-on (sync)
+ * 2. RunPod serverless — sends to /runsync with { input: { ... } } wrapper
+ * Returns immediately with the completed result (sync, ~35-45s).
  */
 async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
-  const res = await fetch(`${CATVTON_API_URL}/try-on`, {
+  const isRunPod = isRunPodUrl(CATVTON_API_URL)
+  const endpoint = isRunPod
+    ? `${CATVTON_API_URL}/runsync`
+    : `${CATVTON_API_URL}/try-on`
+
+  const body = isRunPod
+    ? {
+        input: {
+          person_image_url: request.customerPhotoUrl,
+          garment_image_url: request.productPhotoUrl,
+        },
+      }
+    : {
+        person_image_url: request.customerPhotoUrl,
+        garment_image_url: request.productPhotoUrl,
+      }
+
+  const res = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(120_000),  // 2 min timeout
-    body: JSON.stringify({
-      person_image_url: request.customerPhotoUrl,
-      garment_image_url: request.productPhotoUrl,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
@@ -55,22 +77,39 @@ async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
     throw new Error(`CatVTON error (${res.status}): ${errorBody}`)
   }
 
-  const body = (await res.json()) as {
-    status: string
-    result_url: string
-    error?: string
+  const raw = (await res.json()) as Record<string, unknown>
+
+  // Parse RunPod serverless response format
+  if (isRunPod) {
+    // RunPod runsync returns: { "output": { "result_url": "...", ... } } or { "error": "..." }
+    if (raw.error) {
+      throw new Error(`CatVTON inference failed: ${String(raw.error)}`)
+    }
+    const output = raw.output as Record<string, unknown> | undefined
+    const resultUrl = output?.result_url as string | undefined
+    if (!resultUrl) {
+      throw new Error('CatVTON inference returned no result_url')
+    }
+    return {
+      jobId: `catvton-${Date.now()}`,
+      status: 'completed',
+      outputUrls: [resultUrl],
+      errorMessage: null,
+      engine: 'catvton',
+    }
   }
 
-  if (body.status === 'failed') {
-    throw new Error(`CatVTON inference failed: ${body.error ?? 'unknown error'}`)
+  // Parse self-hosted FastAPI response format
+  const body_ = raw as { status: string; result_url: string; error?: string }
+  if (body_.status === 'failed') {
+    throw new Error(`CatVTON inference failed: ${body_.error ?? 'unknown error'}`)
   }
 
-  // CatVTON is synchronous — result is ready immediately
   return {
     jobId: `catvton-${Date.now()}`,
     status: 'completed',
-    outputUrls: [body.result_url],
-    errorMessage: body.error ?? null,
+    outputUrls: [body_.result_url],
+    errorMessage: body_.error ?? null,
     engine: 'catvton',
   }
 }
