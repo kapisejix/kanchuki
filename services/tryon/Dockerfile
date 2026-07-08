@@ -26,15 +26,11 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 WORKDIR /app
 
-# Download CatVTON source as tarball (GitHub CI blocks anonymous git clone)
+# Download CatVTON source (Docker ADD handles redirects + auto-extracts .tar.gz)
 # Pinned commit: 999bdbe0825f385c7d23dca9636a0fb3d7890f5c
-# Using curl -L to follow GitHub's redirect to CDN
 # Model weights are loaded from HuggingFace at runtime
-RUN curl -sL https://github.com/zhengchong/CatVTON/archive/999bdbe0825f385c7d23dca9636a0fb3d7890f5c.tar.gz \
-    -o /tmp/catvton.tar.gz && \
-    tar xzf /tmp/catvton.tar.gz -C /app/ && \
-    mv /app/CatVTON-999bdbe0825f385c7d23dca9636a0fb3d7890f5c /app/CatVTON && \
-    rm /tmp/catvton.tar.gz
+ADD https://github.com/zhengchong/CatVTON/archive/999bdbe0825f385c7d23dca9636a0fb3d7890f5c.tar.gz /app/
+RUN mv /app/CatVTON-999bdbe0825f385c7d23dca9636a0fb3d7890f5c /app/CatVTON
 
 # Install CatVTON deps
 RUN pip install --no-cache-dir -r /app/CatVTON/requirements.txt
