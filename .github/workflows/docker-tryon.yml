@@ -32,6 +32,6 @@ jobs:
           push: true
           tags: ghcr.io/kapisejix/kanchuki-tryon:latest
           platforms: linux/amd64
-          # Cache from previously built image to speed up rebuilds
-          cache-from: type=registry,ref=ghcr.io/kapisejix/kanchuki-tryon:cache
-          cache-to: type=registry,ref=ghcr.io/kapisejix/kanchuki-tryon:cache,mode=max
+          # Cache disabled for first build — enable after first successful push
+          # cache-from: type=registry,ref=ghcr.io/kapisejix/kanchuki-tryon:latest
+          # cache-to: type=inline
