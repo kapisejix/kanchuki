@@ -1,0 +1,33 @@
+{
+  "name": "kanchuki",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@9.0.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "db:generate": "turbo db:generate",
+    "db:migrate": "pnpm --filter @kanchuki/db migrate:dev",
+    "db:studio": "pnpm --filter @kanchuki/db studio",
+    "db:push": "pnpm --filter @kanchuki/db db:push"
+  },
+  "devDependencies": {
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0",
+    "@types/node": "^20.0.0",
+    "prettier": "^3.3.0",
+    "@biomejs/biome": "^1.8.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "ioredis": "5.10.1"
+    }
+  }
+}

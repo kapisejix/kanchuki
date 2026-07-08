@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Kanchuki",
+    "slug": "kanchuki",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "kanchuki",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#7C3AED"
+    },
+    "android": {
+      "package": "app.kanchuki.retailer",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES"
+      ],
+      "minSdkVersion": 28
+    },
+    "ios": {
+      "bundleIdentifier": "app.kanchuki.retailer",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take photos of your products to add them to your catalog with AI assistance.",
+        "NSPhotoLibraryUsageDescription": "Select product photos from your gallery to add to your catalog."
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      ["expo-image-picker", { "photosPermission": "Select product photos for your catalog." }]
+    ],
+    "experiments": { "typedRoutes": true }
+  }
+}

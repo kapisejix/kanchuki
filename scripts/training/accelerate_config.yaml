@@ -1,0 +1,24 @@
+# Accelerate configuration for CatVTON-FLUX LoRA training
+# For 1-2 GPU training (RTX 3090/4090 or A100/H100)
+#
+# Usage:
+#   accelerate launch --config_file accelerate_config.yaml train_lora.py
+#
+# For multi-GPU, change num_processes to match your GPUs.
+
+compute_environment: LOCAL_MACHINE
+debug: false
+distributed_type: "NO"  # Change to "MULTI_GPU" for multi-GPU training
+downcast_bf16: "no"
+gpu_ids: all
+machine_rank: 0
+main_training_function: main
+mixed_precision: bf16
+num_machines: 1
+num_processes: 1  # Change to number of GPUs available
+rdzv_backend: static
+same_network: true
+tpu_env: []
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false

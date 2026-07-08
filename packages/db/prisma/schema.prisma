@@ -1,0 +1,580 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [pgvector(map: "vector")]
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────
+
+enum ProductStatus {
+  AVAILABLE
+  SOLD
+  RESERVED
+  NOT_SURE
+}
+
+enum SubscriptionPlan {
+  STARTER
+  GROWTH
+  PRO
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+}
+
+enum CollectionStatus {
+  ACTIVE
+  EXPIRED
+  ARCHIVED
+}
+
+enum EnquiryStatus {
+  NEW
+  SEEN
+  REPLIED
+  CLOSED
+}
+
+enum TryOnStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MeasurementSource {
+  PHOTO  // derived from front+back photo via MediaPipe Pose
+  MANUAL // entered directly via inch-tape
+}
+
+// ─── RETAILERS ───────────────────────────────────────────────────
+
+model Retailer {
+  id           String  @id @default(cuid())
+  auth_user_id String  @unique // Supabase auth.users.id
+  phone        String  @unique
+  shop_name    String
+  owner_name   String?
+  city         String
+  state        String?
+  gstin        String?
+
+  categories String[] // ["suits", "sarees", "kurtis"]
+
+  // Subscription
+  plan            SubscriptionPlan   @default(STARTER)
+  plan_status     SubscriptionStatus @default(TRIAL)
+  trial_ends_at   DateTime?
+  plan_expires_at DateTime?
+
+  // Usage limits (snapshot from plan, avoids join on every request)
+  max_products   Int @default(500)
+  max_customers  Int @default(200)
+  try_on_credits Int @default(0)
+
+  // Razorpay
+  razorpay_customer_id     String?
+  razorpay_subscription_id String?
+
+  // Onboarding
+  onboarding_completed Boolean @default(false)
+  onboarding_step      Int     @default(0)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  // Relations
+  products       Product[]
+  customers      Customer[]
+  collections    Collection[]
+  staff          Staff[]
+  store_sections StoreSection[]
+  subscriptions  Subscription[]
+
+  @@index([phone])
+  @@index([city])
+  @@map("retailers")
+}
+
+// ─── STORE STRUCTURE ─────────────────────────────────────────────
+
+model StoreSection {
+  id          String  @id @default(cuid())
+  retailer_id String
+  name        String
+  type        String  @default("rack") // rack | shelf | section | floor | box
+  parent_id   String?
+  sort_order  Int     @default(0)
+
+  retailer Retailer       @relation(fields: [retailer_id], references: [id])
+  parent   StoreSection?  @relation("SectionTree", fields: [parent_id], references: [id])
+  children StoreSection[] @relation("SectionTree")
+  products Product[]
+
+  @@index([retailer_id])
+  @@map("store_sections")
+}
+
+// ─── PRODUCTS ────────────────────────────────────────────────────
+
+model Product {
+  id          String        @id @default(cuid())
+  retailer_id String
+  name        String?
+  price_min   Int? // stored as paise (₹1500 = 150000)
+  price_max   Int?
+  mrp         Int?
+  status      ProductStatus @default(AVAILABLE)
+
+  // AI-generated (editable)
+  category         String?
+  product_type     String?
+  primary_color    String?
+  secondary_colors String[]
+  fabric_estimate  String?
+  pattern          String?
+  embellishments   String[]
+  neck_style       String?
+  sleeve_type      String?
+  occasions        String[]
+  search_tags      String[]
+
+  // Flexible extra metadata
+  metadata       Json?
+  notes          String?
+
+  // Physical location
+  section_id     String?
+  location_notes String?
+
+  // Tagging state
+  ai_tagged      Boolean @default(false)
+  ai_tag_error   String?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  retailer         Retailer           @relation(fields: [retailer_id], references: [id])
+  section          StoreSection?      @relation(fields: [section_id], references: [id])
+  photos           ProductPhoto[]
+  variants         ProductVariant[]
+  embedding        ProductEmbedding?
+  collection_items CollectionProduct[]
+  interactions     CustomerInteraction[]
+
+  @@index([retailer_id])
+  @@index([retailer_id, status])
+  @@index([retailer_id, category])
+  @@index([retailer_id, deleted_at])
+  @@map("products")
+}
+
+model ProductPhoto {
+  id          String  @id @default(cuid())
+  product_id  String
+  retailer_id String
+
+  url        String
+  r2_key     String
+  is_primary Boolean @default(false)
+  width      Int?
+  height     Int?
+  size_bytes Int?
+
+  ai_tagged           Boolean @default(false)
+  ai_raw_response     Json?
+
+  sort_order Int      @default(0)
+  created_at DateTime @default(now())
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_photos")
+}
+
+model ProductVariant {
+  id          String @id @default(cuid())
+  product_id  String
+  retailer_id String
+
+  color             String
+  photo_url         String?
+  ai_preview_url    String?
+  is_ai_preview     Boolean       @default(false)
+  status            ProductStatus @default(AVAILABLE)
+  price_override    Int?
+
+  created_at DateTime @default(now())
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_variants")
+}
+
+model ProductEmbedding {
+  id          String @id @default(cuid())
+  product_id  String @unique
+  retailer_id String
+
+  // pgvector — 1536-dim for OpenAI text-embedding-3-small
+  embedding   Unsupported("vector(1536)")?
+
+  input_hash    String // SHA-256 of product text fields
+  model_version String @default("text-embedding-3-small")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id])
+  @@map("product_embeddings")
+}
+
+// ─── CUSTOMERS ───────────────────────────────────────────────────
+
+model Customer {
+  id          String @id @default(cuid())
+  retailer_id String
+
+  name       String
+  phone      String
+  phone_hash String?
+
+  // Explicit preferences (retailer-entered)
+  pref_colors    String[]
+  pref_styles    String[]
+  pref_fabrics   String[]
+  pref_occasions String[]
+  budget_min     Int? // paise
+  budget_max     Int? // paise
+
+  notes String?
+
+  last_visit_at   DateTime?
+  total_purchases Int       @default(0)
+  total_spent     Int       @default(0) // paise
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  retailer         Retailer               @relation(fields: [retailer_id], references: [id])
+  fashion_dna      CustomerFashionDNA?
+  interactions     CustomerInteraction[]
+  collections_sent Collection[]           @relation("CustomerCollections")
+  measurements     CustomerMeasurement[]
+
+  @@unique([retailer_id, phone])
+  @@index([retailer_id])
+  @@index([retailer_id, phone_hash])
+  @@map("customers")
+}
+
+// ─── CUSTOMER MEASUREMENTS (Phase 1 — VTO fit input) ────────────
+
+model CustomerMeasurement {
+  id          String            @id @default(cuid())
+  customer_id String
+  retailer_id String
+
+  source MeasurementSource
+
+  height_cm Float
+  bust_cm   Float?
+  waist_cm  Float?
+  hip_cm    Float?
+
+  // Lower body (pant/salwar fit)
+  pant_waist_cm Float?
+  pant_hip_cm   Float?
+  inseam_cm     Float?
+
+  // Photo path only — originals deleted right after landmark extraction
+  front_photo_r2_key  String?
+  back_photo_r2_key   String?
+  photo_deleted_at    DateTime?
+  pose_landmarks_json Json?
+  confidence_score    Float?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  customer    Customer   @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  try_on_jobs TryOnJob[]
+
+  @@index([customer_id])
+  @@index([retailer_id])
+  @@map("customer_measurements")
+}
+
+model CustomerFashionDNA {
+  id          String @id @default(cuid())
+  customer_id String @unique
+  retailer_id String
+
+  // pgvector — learned preference vector
+  preference_vector Unsupported("vector(1536)")?
+
+  color_affinities    Json @default("{}")
+  style_affinities    Json @default("{}")
+  fabric_affinities   Json @default("{}")
+  occasion_affinities Json @default("{}")
+  budget_range        Json @default("{}")
+
+  interaction_count Int   @default(0)
+  confidence_score  Float @default(0.0)
+  last_updated_at   DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id])
+  @@map("customer_fashion_dna")
+}
+
+model CustomerInteraction {
+  id            String  @id @default(cuid())
+  customer_id   String
+  retailer_id   String
+  product_id    String?
+  collection_id String?
+
+  type     String // view | favorite | enquiry | purchase | try_on
+  metadata Json?
+
+  created_at DateTime @default(now())
+
+  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  product  Product? @relation(fields: [product_id], references: [id])
+
+  @@index([customer_id])
+  @@index([retailer_id, created_at])
+  @@map("customer_interactions")
+}
+
+// ─── COLLECTIONS ─────────────────────────────────────────────────
+
+model Collection {
+  id          String           @id @default(cuid())
+  retailer_id String
+  customer_id String?
+  
+  title       String
+  description String?
+  slug        String           @unique
+  status      CollectionStatus @default(ACTIVE)
+  expires_at  DateTime?
+
+  // Cached analytics
+  view_count         Int @default(0)
+  unique_viewer_count Int @default(0)
+  enquiry_count      Int @default(0)
+  favorite_count     Int @default(0)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  retailer  Retailer            @relation(fields: [retailer_id], references: [id])
+  customer  Customer?           @relation("CustomerCollections", fields: [customer_id], references: [id])
+  products  CollectionProduct[]
+  views     CollectionView[]
+  enquiries CollectionEnquiry[]
+
+  @@index([retailer_id])
+  @@index([slug])
+  @@index([retailer_id, status])
+  @@map("collections")
+}
+
+model CollectionProduct {
+  id            String @id @default(cuid())
+  collection_id String
+  product_id    String
+  sort_order    Int    @default(0)
+
+  collection Collection @relation(fields: [collection_id], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [product_id], references: [id])
+
+  @@unique([collection_id, product_id])
+  @@index([collection_id])
+  @@map("collection_products")
+}
+
+model CollectionView {
+  id            String @id @default(cuid())
+  collection_id String
+  retailer_id   String
+
+  viewer_token String?
+  ip_hash      String?
+  user_agent   String?
+
+  created_at DateTime @default(now())
+
+  collection Collection @relation(fields: [collection_id], references: [id], onDelete: Cascade)
+
+  @@index([collection_id])
+  @@index([collection_id, viewer_token])
+  @@map("collection_views")
+}
+
+model CollectionEnquiry {
+  id            String        @id @default(cuid())
+  collection_id String
+  retailer_id   String
+
+  product_id     String?
+  message        String?
+  customer_name  String?
+  customer_phone String?
+  status         EnquiryStatus @default(NEW)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  collection Collection @relation(fields: [collection_id], references: [id], onDelete: Cascade)
+
+  @@index([collection_id])
+  @@index([retailer_id, status])
+  @@map("collection_enquiries")
+}
+
+// ─── STAFF ───────────────────────────────────────────────────────
+
+model Staff {
+  id          String  @id @default(cuid())
+  retailer_id String
+  auth_user_id String? @unique
+
+  name      String
+  phone     String
+  role      String  @default("salesperson") // owner | manager | salesperson
+  is_active Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@index([retailer_id])
+  @@map("staff")
+}
+
+// ─── SUBSCRIPTIONS ───────────────────────────────────────────────
+
+model Subscription {
+  id          String             @id @default(cuid())
+  retailer_id String
+  plan        SubscriptionPlan
+  status      SubscriptionStatus
+  billing_period String          @default("monthly")
+  amount_inr  Int                // paise
+
+  razorpay_subscription_id String? @unique
+  razorpay_plan_id         String?
+
+  current_period_start DateTime
+  current_period_end   DateTime
+  cancelled_at         DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer              @relation(fields: [retailer_id], references: [id])
+  payments SubscriptionPayment[]
+
+  @@index([retailer_id])
+  @@map("subscriptions")
+}
+
+model SubscriptionPayment {
+  id              String @id @default(cuid())
+  subscription_id String
+  retailer_id     String
+
+  amount_inr           Int
+  currency             String @default("INR")
+  status               String // success | failed | refunded
+  razorpay_payment_id  String? @unique
+  razorpay_order_id    String?
+
+  amount_excluding_gst Int?
+  gst_amount           Int?
+  gst_invoice_number   String?
+
+  paid_at    DateTime?
+  created_at DateTime  @default(now())
+
+  subscription Subscription @relation(fields: [subscription_id], references: [id])
+
+  @@index([retailer_id])
+  @@map("subscription_payments")
+}
+
+// ─── VIRTUAL TRY-ON (Phase 1 ready) ─────────────────────────────
+
+model TryOnJob {
+  id          String @id @default(cuid())
+  retailer_id String
+
+  product_id              String
+  measurement_id          String? // measurement snapshot used to scale/fit garment
+  customer_photo_r2_key   String
+  result_r2_key           String?
+  result_url              String?
+
+  status        TryOnStatus @default(QUEUED)
+  error_message String?
+
+  api_provider String
+  api_job_id   String?
+  api_cost_usd Float?
+
+  queued_at    DateTime  @default(now())
+  started_at   DateTime?
+  completed_at DateTime?
+
+  customer_photo_deleted_at DateTime?
+  result_expires_at         DateTime?
+
+  measurement CustomerMeasurement? @relation(fields: [measurement_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([status])
+  @@map("try_on_jobs")
+}
+
+// ─── AUDIT LOG ───────────────────────────────────────────────────
+
+model AuditLog {
+  id String @id @default(cuid())
+
+  actor_id   String?
+  actor_type String?
+  action     String
+  resource_type String
+  resource_id   String?
+  metadata      Json?
+  ip_address    String?
+
+  created_at DateTime @default(now())
+
+  @@index([actor_id])
+  @@index([resource_type, resource_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "exactOptionalPropertyTypes": false,
+    "paths": {
+      "@kanchuki/shared": ["../../packages/shared/src/index.ts"],
+      "@kanchuki/shared/*": ["../../packages/shared/src/*"],
+      "@kanchuki/ai": ["../../packages/ai/src/index.ts"],
+      "@kanchuki/ai/*": ["../../packages/ai/src/*"],
+      "@kanchuki/db": ["../../packages/db/src/index.ts"],
+      "@kanchuki/db/*": ["../../packages/db/src/*"]
+    }
+  },
+  "include": ["src/**/*"]
+}
