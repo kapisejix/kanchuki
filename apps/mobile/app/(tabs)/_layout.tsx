@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router'
-import { Home, Grid3X3, Users, Link2, MoreHorizontal } from 'lucide-react-native'
+import { Home, Grid3X3, Users, Link2, BarChart3 } from 'lucide-react-native'
 
 const PRIMARY = '#7C3AED'
 const MUTED = '#9CA3AF'
@@ -53,10 +53,10 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="more"
+        name="analytics"
         options={{
-          title: 'More',
-          tabBarIcon: ({ color, size }) => <MoreHorizontal color={color} size={size} />,
+          title: 'Analytics',
+          tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={size} />,
         }}
       />
     </Tabs>

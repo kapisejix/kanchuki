@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { X, Heart, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { X, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera } from 'lucide-react'
 import type { PublicProduct, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 
@@ -12,6 +12,7 @@ interface Props {
   collectionTitle: string
   isFavorited: boolean
   onFavorite: (id: string) => void
+  onTryOn: () => void
   onClose: () => void
 }
 
@@ -21,6 +22,7 @@ export function ProductDetailSheet({
   collectionTitle,
   isFavorited,
   onFavorite,
+  onTryOn,
   onClose,
 }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0)
@@ -181,6 +183,18 @@ export function ProductDetailSheet({
               ))}
             </div>
           )}
+        </div>
+
+        {/* Try-On CTA */}
+        <div className="px-4 pt-2">
+          <button
+            onClick={onTryOn}
+            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold
+                       py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+          >
+            <Camera size={18} />
+            Try This On
+          </button>
         </div>
 
         {/* Enquire CTA */}

@@ -4,7 +4,9 @@ import { QUEUES } from '@kanchuki/shared'
 import { handleTagProduct } from './tag-product.js'
 import { handleGenerateEmbedding } from './generate-embedding.js'
 import { handleExtractMeasurement } from './extract-measurement.js'
+import { handleProcessTryOn } from './process-tryon.js'
 import type { MeasurementJobData } from './extract-measurement.js'
+import type { TryOnJobData } from './process-tryon.js'
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -29,6 +31,7 @@ function getRedis(): Redis {
 let taggingQueue: Queue | null = null
 let embeddingQueue: Queue | null = null
 let measurementQueue: Queue | null = null
+let tryOnQueue: Queue | null = null
 
 function getTaggingQueue(): Queue {
   taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() })
@@ -43,6 +46,11 @@ function getEmbeddingQueue(): Queue {
 function getMeasurementQueue(): Queue {
   measurementQueue ??= new Queue(QUEUES.MEASUREMENT_EXTRACTION, { connection: getRedis() })
   return measurementQueue
+}
+
+function getTryOnQueue(): Queue {
+  tryOnQueue ??= new Queue(QUEUES.TRY_ON, { connection: getRedis() })
+  return tryOnQueue
 }
 
 // ─── Job Producers ────────────────────────────────────────────────
@@ -87,6 +95,15 @@ export async function addMeasurementJob(data: MeasurementJobData): Promise<void>
   })
 }
 
+export async function addTryOnJob(data: TryOnJobData): Promise<void> {
+  await getTryOnQueue().add('process-tryon', data, {
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 5000 },
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 20 },
+  })
+}
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -122,6 +139,16 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   )
 
+  // Virtual try-on worker (concurrency 2 — FASHN API rate limits)
+  const tryOnWorker = new Worker(
+    QUEUES.TRY_ON,
+    async (job) => {
+      const data = job.data as TryOnJobData
+      await handleProcessTryOn(data)
+    },
+    { connection: redis, concurrency: 2 },
+  )
+
   taggingWorker.on('failed', (job, err) => {
     console.error(`[jobs] tag-product failed ${job?.id}:`, err.message)
   })
@@ -134,5 +161,9 @@ export async function startWorkers(): Promise<void> {
     console.error(`[jobs] extract-measurement failed ${job?.id}:`, err.message)
   })
 
-  console.log('[jobs] Workers started: ai-tagging, embeddings, measurement-extraction')
+  tryOnWorker.on('failed', (job, err) => {
+    console.error(`[jobs] process-tryon failed ${job?.id}:`, err.message)
+  })
+
+  console.log('[jobs] Workers started: ai-tagging, embeddings, measurement-extraction, try-on')
 }

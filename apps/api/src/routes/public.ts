@@ -6,6 +6,29 @@ import { buildEnquiryMessage } from '@kanchuki/shared'
 import { notFound, validationError } from '../plugins/error-handler.js'
 
 export const publicRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /public/stats ─────────────────────────────────────────
+  // Landing page stats — real counts from the platform, no auth needed.
+  server.get('/stats', async () => {
+    const now = new Date()
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const [productCount, collectionCount, retailerCount, monthEnquiries] = await Promise.all([
+      prisma.product.count({ where: { deleted_at: null } }),
+      prisma.collection.count({ where: { deleted_at: null } }),
+      prisma.retailer.count({ where: { deleted_at: null } }),
+      prisma.collectionEnquiry.count({ where: { created_at: { gte: monthStart } } }),
+    ])
+
+    return {
+      data: {
+        total_products: productCount,
+        total_collections: collectionCount,
+        total_retailers: retailerCount,
+        enquiries_this_month: monthEnquiries,
+      },
+    }
+  })
+
   // ─── GET /public/collections/:slug ─────────────────────────────
   // Customer-facing: no auth required. Returns shop info + products.
   server.get('/collections/:slug', async (request) => {

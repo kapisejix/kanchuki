@@ -35,8 +35,37 @@ Stray row: `001_pgvector_indexes` appears twice in `_prisma_migrations`, one wit
 
 **Security — flagged, not fixed:** RLS disabled on `try_on_jobs`, `audit_logs`, `_prisma_migrations`. Anon/authenticated roles can read/write every row in these. Needs explicit policies before enabling (enabling RLS with no policies blocks all access) — user decision, not auto-applied.
 
-**Blocked / next:**
-- **Real-photo test dropped.** Prior session tested with 2 demo photos in `scripts/test-fixtures/` + height 105cm — that directory no longer exists on disk (was session-scratch, not committed, wiped on restart). Re-upload photos to re-run `extract_measurements()` against real images.
-- `scripts/models/pose_landmarker_lite.task` is gitignored (binary model asset) — confirm it's present locally before running non-demo mode; re-download if missing on a fresh machine.
+---
 
-**Reminder:** commit + update this file every session end, not just when something breaks.
+## 2026-07-08 (sprint — try-on, bulk import, onboarding polish)
+
+**Done (VTO feature):**
+- Virtual Try-On fully built across all layers:
+  - `packages/ai/src/tryon.ts` — FASHN API service (trigger, poll, save result)
+  - `apps/api/src/routes/tryon.ts` — API routes (initiate, upload-url, jobs, remote)
+  - `apps/api/src/jobs/process-tryon.ts` — BullMQ job handler
+  - `apps/mobile/app/tryon/in-store.tsx` — In-store try-on screen for shopkeeper
+  - `apps/web/src/app/c/[slug]/components/TryOnModal.tsx` — Customer try-on modal
+  - `apps/web/src/app/c/[slug]/components/CollectionView.tsx` — Try On button on product cards
+  - `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx` — Try This On button in detail sheet
+  - `apps/web/src/app/api/try-on/remote/route.ts` + `[id]/route.ts` — API proxies
+
+**Done (Other features):**
+- Bulk photo import (`apps/mobile/app/product/bulk.tsx`) — gallery multi-select, per-photo progress
+- Onboarding flow polished — welcome branding, step indicator, animated transitions, confetti
+- Analytics dashboard for retailers — daily trends, category breakdown, plan usage
+- Public landing page stats bar — dynamic, auto-updates with real data
+- CI/CD pipeline for Railway deployment — railway.json configs, DEPLOY.md guide
+- Database seed script — 3 retailers, 30 products, 10 customers, 8 collections
+- Error handling + offline resilience — request cache, dedup, timeouts
+
+**VTO Strategy Change:**
+- Decided to replace paid FASHN API ($0.075/try-on) with **self-hosted CatVTON** ($0.005/try-on)
+- CatVTON Python microservice not yet built — this is the next task
+- Decision documented in PLAN.md, TECH-STACK.md
+
+**Next:**
+- Build CatVTON Python microservice (`services/tryon/`)
+- Update `packages/ai/src/tryon.ts` to support self-hosted CatVTON
+- Fine-tune CatVTON for Indian ethnic wear after deployment (Step 2)
+- Deploy to production (Railway API + CatVTON on RunPod)

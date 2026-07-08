@@ -2,11 +2,12 @@
 
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
-import { Heart, MessageCircle, Filter, Share2, ShoppingBag } from 'lucide-react'
+import { Heart, MessageCircle, Filter, Share2, ShoppingBag, Sparkles } from 'lucide-react'
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import { ProductDetailSheet } from './ProductDetailSheet'
 import { FilterBar } from './FilterBar'
+import { TryOnModal } from './TryOnModal'
 
 interface Props {
   collection: PublicCollection
@@ -19,6 +20,7 @@ export function CollectionView({ collection, slug }: Props) {
   const [filterColor, setFilterColor] = useState<string | null>(null)
   const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null)
 
   const toggleFavorite = useCallback(
     (productId: string) => {
@@ -139,6 +141,7 @@ export function CollectionView({ collection, slug }: Props) {
                 isFavorited={favorites.has(product.id)}
                 onFavorite={toggleFavorite}
                 onTap={() => setSelectedProduct(product)}
+                collectionSlug={slug}
               />
             ))}
           </div>
@@ -175,7 +178,19 @@ export function CollectionView({ collection, slug }: Props) {
           collectionTitle={collection.title}
           isFavorited={favorites.has(selectedProduct.id)}
           onFavorite={toggleFavorite}
+          onTryOn={() => setTryOnProduct(selectedProduct)}
           onClose={() => setSelectedProduct(null)}
+        />
+      )}
+
+      {/* ── Try-On Modal ── */}
+      {tryOnProduct && (
+        <TryOnModal
+          productName={tryOnProduct.category ?? 'Product'}
+          productPhotoUrl={tryOnProduct.primary_photo_url}
+          collectionSlug={slug}
+          productId={tryOnProduct.id}
+          onClose={() => setTryOnProduct(null)}
         />
       )}
 
@@ -192,9 +207,12 @@ interface CardProps {
   isFavorited: boolean
   onFavorite: (id: string) => void
   onTap: () => void
+  collectionSlug?: string
 }
 
-function ProductCard({ product, isFavorited, onFavorite, onTap }: CardProps) {
+function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }: CardProps) {
+  const [showTryOn, setShowTryOn] = useState(false)
+
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
       {/* Photo */}
@@ -225,6 +243,29 @@ function ProductCard({ product, isFavorited, onFavorite, onTap }: CardProps) {
           />
         </button>
       </button>
+
+      {/* Try-On button */}
+      <div className="px-2.5 pt-1.5">
+        <button
+          onClick={(e) => { e.stopPropagation(); setShowTryOn(true) }}
+          className="w-full bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-medium
+                     py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
+        >
+          <Sparkles size={14} />
+          Try On
+        </button>
+      </div>
+
+      {/* Try-On Modal */}
+      {showTryOn && collectionSlug && (
+        <TryOnModal
+          productName={product.category ?? 'Product'}
+          productPhotoUrl={product.primary_photo_url ?? ''}
+          collectionSlug={collectionSlug}
+          productId={product.id}
+          onClose={() => setShowTryOn(false)}
+        />
+      )}
 
       {/* Info */}
       <div className="p-2.5">

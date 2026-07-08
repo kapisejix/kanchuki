@@ -142,17 +142,27 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - Auto-suggest collection: AI picks best 12 products for specific customer
 - "Customers who might like this product" — reverse matching
 
-### Month 7–8: Virtual Try-On
+### Month 7–8: Virtual Try-On (Self-Hosted)
 
-**Tech Choice:**
-- Primary: FASHN API (fashion-specific, better ethnic wear quality)
-- Fallback: Replicate IDM-VTON
+**Tech Choice (Revised — Cost Optimization):**
+- **Primary: CatVTON (self-hosted)** — open-source, runs on <8GB VRAM, ~35s per image, $0.005/try-on
+- Fallback: FASHN API (if self-hosted quality insufficient for specific garment types)
+- **Strategy:** Deploy CatVTON first (3-5 days), fine-tune for Indian ethnic wear later (1-2 weeks)
 - Quality gate: 80% acceptance rate on 50-sample ethnic wear test panel
+
+**Why CatVTON over FASHN:**
+| Factor | FASHN API | CatVTON (self-hosted) |
+|--------|-----------|----------------------|
+| Cost per try-on | $0.075 (~₹6) | **$0.005 (~₹0.4)** |
+| GPU needed | None (API) | 8GB VRAM (RTX 3060) |
+| Latency | ~10s | ~35s |
+| Indian wear quality | Good | Decent (improves with fine-tuning) |
+| Monthly cost (1000 try-ons) | $75 | **$5** |
 
 **VTO Flow (Phase 1 — In-Store):**
 1. Retailer selects product(s) customer wants to try
 2. Customer takes selfie on retailer's tablet
-3. AI generates try-on (15–30 seconds)
+3. AI generates try-on (~35 seconds)
 4. Result shown on tablet/external display (TV mode)
 5. Customer can save/share result image
 
@@ -160,13 +170,27 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 1. Customer receives collection link
 2. Selects product, sees "Try This On" button
 3. Uploads their photo (with consent modal)
-4. AI generates result (queued job, < 2 min)
+4. AI generates result (queued job, < 1 min)
 5. Result delivered via page + WhatsApp notification to retailer who forwards it
 
 **Cost control:**
 - Try-on credits system (bundled in plans)
 - Real-time credit count shown to retailer
 - Low-credit warning at 20% remaining
+
+**Step 1 — Deploy CatVTON (3-5 days):**
+1. Create Python/FastAPI microservice wrapping CatVTON model
+2. Containerize with Docker
+3. Deploy to RunPod/Jarvis Labs with L4 GPU ($0.44/hr, serverless billing)
+4. Update `packages/ai/src/tryon.ts` to call self-hosted endpoint instead of FASHN
+5. Test end-to-end with sample products
+
+**Step 2 — Fine-tune for Indian wear (1-2 weeks, after deployment):**
+1. Collect 200-500 Indian garment photos from real product uploads
+2. Create proper segmentation masks (SAM-based)
+3. Run LoRA fine-tuning on CatVTON
+4. Swap model weights in microservice — no app code changes needed
+5. Retest with sarees, lehengas, unstitched suits
 
 ---
 
@@ -253,8 +277,10 @@ graph TD
 | Collection link live | M3 | Customer opens link on mobile, enquires |
 | MVP beta | M4 | 10 pilot retailers, real feedback |
 | MVP public | M4 | 50 paying retailers |
-| Fashion DNA live | M6 | 1000+ customer behavior events, matching visible |
-| VTO in-store | M8 | 80% try-on quality on ethnic wear test panel |
+| CatVTON self-hosted deployed | M5 | Try-on working on 10 test products |
+| CatVTON fine-tuned for Indian wear | M6 | 80% quality on saree/lehenga test set |
+| Fashion DNA live | M7 | 1000+ customer behavior events, matching visible |
+| VTO in-store live | M8 | Full VTO flow with fine-tuned model |
 | Wholesaler beta | M10 | 5 wholesalers sharing catalogs with retailers |
 | WhatsApp automation | M14 | 100 retailers using automated sends |
 | GST compliance | M16 | GST invoice generated for every sale |

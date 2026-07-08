@@ -275,18 +275,45 @@ r2://kanchuki-prod/
 
 ---
 
-### 11. Virtual Try-On: FASHN API (Phase 1)
+### 11. Virtual Try-On: CatVTON (Self-Hosted)
 
-**Choice:** FASHN API (primary), Replicate IDM-VTON (fallback)  
-**Why FASHN:**
-- Fashion-specific model, better garment fidelity
-- REST API, easy integration
-- Per-image billing (aligns with our credit system)
+**Choice (Revised June 2026 — Cost Optimization):**  
+- **Primary: CatVTON (self-hosted Python microservice)**  
+- Fallback: FASHN API (if self-hosted quality insufficient for specific garments)  
 
-**Cost:** ~$0.05–0.15 per try-on (₹4–12)  
-**Quality gate:** Must pass 80% acceptance on 50-image Indian ethnic wear test set before enabling for all retailers
+**Why CatVTON over FASHN:**
+- **17x cheaper:** $0.005/try-on vs $0.075/try-on
+- Open-source (CC BY-NC-SA 4.0 — verify commercial terms)
+- Single-UNet architecture: simpler, fewer failure points, runs on <8GB VRAM
+- 1024×768 output resolution, ~35 seconds per try-on
+- Can be fine-tuned for Indian ethnic wear via LoRA
+- No API dependency — full control over uptime, latency, cost
 
-**Fallback:** Replicate IDM-VTON (cheaper, slightly lower quality)
+**Deployment:**
+- Python/FastAPI microservice in `services/tryon/`
+- Containerized with Docker
+- Runs on RunPod/Jarvis Labs L4 GPU ($0.44/hr, serverless billing)
+- ~90 try-ons per GPU-hour → **$0.005 per try-on**
+
+**GPU Requirements:**
+| GPU | VRAM | Cost/hr | Try-ons/hr | Cost/try-on |
+|-----|------|---------|-----------|-------------|
+| RTX 3060 (used) | 12GB | — (one-time ₹15K) | ~100 | ~₹0 (free after purchase) |
+| NVIDIA L4 (cloud) | 24GB | $0.44 | ~90 | ~$0.005 |
+| NVIDIA T4 (cloud) | 16GB | $0.20 | ~45 | ~$0.004 |
+
+**Path to better Indian ethnic wear quality:**
+1. Deploy CatVTON as-is (works well for kurtis, suits, gowns)
+2. Collect 200-500 Indian garment photos from real product uploads
+3. Run LoRA fine-tuning for sarees, lehengas, unstitched suits
+4. Swap model weights — no app code changes needed
+
+**Cost comparison:**
+| Method | Cost per try-on | Monthly (1000 try-ons) |
+|--------|----------------|----------------------|
+| FASHN API | $0.075 (₹6) | $75 (₹6,000) |
+| **CatVTON self-hosted** | **$0.005 (₹0.4)** | **$5 (₹400)** |
+| Replicate IDM-VTON | ~$0.02 (₹1.6) | $20 (₹1,600) |
 
 ---
 

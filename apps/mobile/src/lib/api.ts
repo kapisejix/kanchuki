@@ -1,4 +1,5 @@
 import { getItem, setItem, deleteItem } from './storage'
+import { cachedJsonRequest, clearRequestCache } from './request-cache'
 
 const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -14,6 +15,8 @@ export function clearToken(): Promise<void> {
   return deleteItem('auth_token')
 }
 
+export { clearRequestCache }
+
 class ApiError extends Error {
   constructor(
     public readonly code: string,
@@ -27,7 +30,7 @@ class ApiError extends Error {
 
 async function request<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { timeoutMs?: number; getCacheTtlMs?: number } = {},
 ): Promise<T> {
   const token = await getToken()
   const headers: Record<string, string> = {
@@ -36,20 +39,63 @@ async function request<T>(
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers })
+  const method = (options.method ?? 'GET').toUpperCase()
 
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as {
-      error?: { code?: string; message?: string }
+  try {
+    const data = await cachedJsonRequest<T>(`${API_URL}${path}`, {
+      ...options,
+      headers,
+      timeoutMs: options.timeoutMs ?? 10_000,
+      // Cache GET responses for 15s by default — stale-while-revalidate
+      // pattern via react-query handles the rest
+      getCacheTtlMs: method === 'GET' ? (options.getCacheTtlMs ?? 15_000) : 0,
+    })
+    return data
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError('TIMEOUT', 'Request timed out. Check your connection.', 408)
     }
-    throw new ApiError(
-      body.error?.code ?? 'UNKNOWN',
-      body.error?.message ?? 'Request failed',
-      response.status,
-    )
+    if (err instanceof ApiError) throw err
+    // Handle errors from request-cache.ts (RequestError has .code/.status)
+    const cacheErr = err as { code?: string; status?: number }
+    if (cacheErr.code && cacheErr.status) {
+      throw new ApiError(cacheErr.code, err instanceof Error ? err.message : 'Request failed', cacheErr.status)
+    }
+    // Re-wrap raw fetch errors as ApiError
+    const status = cacheErr.status ?? 0
+    throw new ApiError('NETWORK_ERROR', err instanceof Error ? err.message : 'Network error', status)
   }
+}
 
-  return response.json() as Promise<T>
+// ─── Analytics ───────────────────────────────────────────────────
+
+export const analyticsApi = {
+  getAnalytics: () =>
+    request<{
+      data: {
+        daily_trends: { date: string; views: number; enquiries: number }[]
+        category_breakdown: { category: string; count: number }[]
+        status_breakdown: { status: string; count: number }[]
+        recent_collections: {
+          id: string
+          title: string
+          slug: string
+          status: string
+          view_count: number
+          enquiry_count: number
+          favorite_count: number
+          product_count: number
+          created_at: string
+        }[]
+        plan: {
+          plan: string
+          plan_status: string
+          max_products: number
+          max_customers: number
+          try_on_credits: number
+        } | null
+      }
+    }>('/v1/retailers/me/analytics', { getCacheTtlMs: 60_000 }),
 }
 
 // ─── Auth ─────────────────────────────────────────────────────────
@@ -62,23 +108,26 @@ export const authApi = {
     }),
 
   verifyOtp: (phone: string, otp: string) =>
-    request<{ access_token: string; refresh_token: string; retailer_id: string; is_new: boolean }>('/v1/auth/otp/verify', {
-      method: 'POST',
-      body: JSON.stringify({ phone, otp }),
-    }),
+    request<{ access_token: string; refresh_token: string; retailer_id: string; is_new: boolean }>(
+      '/v1/auth/otp/verify',
+      {
+        method: 'POST',
+        body: JSON.stringify({ phone, otp }),
+      },
+    ),
 }
 
 // ─── Retailer ─────────────────────────────────────────────────────
 
 export const retailerApi = {
-  getMe: () => request<{ data: unknown }>('/v1/retailers/me'),
-  getStats: () => request<{ data: unknown }>('/v1/retailers/me/stats'),
+  getMe: () => request<{ data: unknown }>('/v1/retailers/me', { getCacheTtlMs: 60_000 }),
+  getStats: () => request<{ data: unknown }>('/v1/retailers/me/stats', { getCacheTtlMs: 30_000 }),
   update: (data: Record<string, unknown>) =>
     request<{ data: unknown }>('/v1/retailers/me', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  getSections: () => request<{ data: unknown[] }>('/v1/retailers/me/sections'),
+  getSections: () => request<{ data: unknown[] }>('/v1/retailers/me/sections', { getCacheTtlMs: 120_000 }),
 }
 
 // ─── Products ─────────────────────────────────────────────────────
@@ -110,10 +159,13 @@ export const productApi = {
     if (params?.category) qs.set('category', params.category)
     if (params?.cursor) qs.set('cursor', params.cursor)
     if (params?.limit) qs.set('limit', String(params.limit))
-    return request<{ data: unknown[]; pagination: unknown }>(`/v1/products?${qs}`)
+    return request<{ data: unknown[]; pagination: unknown }>(`/v1/products?${qs}`, {
+      getCacheTtlMs: 10_000,
+    })
   },
 
-  get: (id: string) => request<{ data: unknown }>(`/v1/products/${id}`),
+  get: (id: string) =>
+    request<{ data: unknown }>(`/v1/products/${id}`, { getCacheTtlMs: 30_000 }),
 
   update: (id: string, data: Record<string, unknown>) =>
     request<{ data: unknown }>(`/v1/products/${id}`, {
@@ -127,13 +179,13 @@ export const productApi = {
       body: JSON.stringify({ status }),
     }),
 
-  delete: (id: string) =>
-    request<void>(`/v1/products/${id}`, { method: 'DELETE' }),
+  delete: (id: string) => request<void>(`/v1/products/${id}`, { method: 'DELETE' }),
 
   search: (query: string, filters?: Record<string, unknown>, limit = 12) =>
     request<{ data: unknown[]; query_interpretation: unknown }>('/v1/search', {
       method: 'POST',
       body: JSON.stringify({ query, filters, limit }),
+      timeoutMs: 15_000, // AI search may take longer
     }),
 
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
@@ -165,6 +217,59 @@ export async function uploadImageToR2(
   if (!upload.ok) throw new ApiError('UPLOAD_FAILED', 'Image upload failed', upload.status)
 }
 
+// ─── Try-On ──────────────────────────────────────────────────────
+
+export const tryOnApi = {
+  getUploadUrl: (contentType: string, sizeBytes: number) =>
+    request<{
+      data: {
+        upload_url: string
+        r2_key: string
+        public_url: string
+        job_id: string
+        expires_in: number
+      }
+    }>('/v1/try-on/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({ content_type: contentType, size_bytes: sizeBytes }),
+    }),
+
+  initiate: (
+    productId: string,
+    customerPhotoR2Key: string,
+    measurementId?: string,
+  ) =>
+    request<{ data: { id: string; status: string } }>('/v1/try-on/initiate', {
+      method: 'POST',
+      body: JSON.stringify({
+        product_id: productId,
+        customer_photo_r2_key: customerPhotoR2Key,
+        ...(measurementId ? { measurement_id: measurementId } : {}),
+      }),
+    }),
+
+  getJob: (id: string) =>
+    request<{
+      data: {
+        id: string
+        product_id: string
+        status: string
+        result_url: string | null
+        error_message: string | null
+        created_at: string
+        started_at: string | null
+        completed_at: string | null
+      }
+    }>(`/v1/try-on/jobs/${id}`, { getCacheTtlMs: 3000 }),
+
+  listJobs: (cursor?: string) => {
+    const qs = cursor ? `?cursor=${cursor}` : ''
+    return request<{ data: unknown[]; pagination: unknown }>(`/v1/try-on/jobs${qs}`, {
+      getCacheTtlMs: 10_000,
+    })
+  },
+}
+
 // ─── Customers ────────────────────────────────────────────────────
 
 export const customerApi = {
@@ -172,10 +277,13 @@ export const customerApi = {
     const qs = new URLSearchParams()
     if (search) qs.set('search', search)
     if (cursor) qs.set('cursor', cursor)
-    return request<{ data: unknown[]; pagination: unknown }>(`/v1/customers?${qs}`)
+    return request<{ data: unknown[]; pagination: unknown }>(`/v1/customers?${qs}`, {
+      getCacheTtlMs: 15_000,
+    })
   },
 
-  get: (id: string) => request<{ data: unknown }>(`/v1/customers/${id}`),
+  get: (id: string) =>
+    request<{ data: unknown }>(`/v1/customers/${id}`, { getCacheTtlMs: 30_000 }),
 
   create: (data: Record<string, unknown>) =>
     request<{ data: unknown }>('/v1/customers', {
@@ -191,7 +299,8 @@ export const customerApi = {
 
   delete: (id: string) => request<void>(`/v1/customers/${id}`, { method: 'DELETE' }),
 
-  getMeasurements: (id: string) => request<{ data: unknown[] }>(`/v1/customers/${id}/measurements`),
+  getMeasurements: (id: string) =>
+    request<{ data: unknown[] }>(`/v1/customers/${id}/measurements`, { getCacheTtlMs: 60_000 }),
 
   initPhotoMeasurement: (id: string, heightCm: number) =>
     request<{
@@ -227,7 +336,7 @@ export const billingApi = {
           try_on_credits: number
         }
       }[]
-    }>('/v1/billing/plans'),
+    }>('/v1/billing/plans', { getCacheTtlMs: 300_000 }), // plans rarely change
 
   getSubscription: () =>
     request<{
@@ -238,7 +347,7 @@ export const billingApi = {
         plan_expires_at: string | null
         subscription: unknown
       }
-    }>('/v1/billing/subscription'),
+    }>('/v1/billing/subscription', { getCacheTtlMs: 30_000 }),
 
   subscribe: (plan: string, billingPeriod: 'monthly' | 'annual') =>
     request<{ data: { razorpay_subscription_id: string; checkout_url: string } }>(
@@ -253,7 +362,8 @@ export const billingApi = {
 // ─── Collections ──────────────────────────────────────────────────
 
 export const collectionApi = {
-  list: () => request<{ data: unknown[] }>('/v1/collections'),
+  list: () =>
+    request<{ data: unknown[] }>('/v1/collections', { getCacheTtlMs: 15_000 }),
 
   create: (data: Record<string, unknown>) =>
     request<{ data: { slug: string; url: string } & Record<string, unknown> }>(
@@ -261,5 +371,6 @@ export const collectionApi = {
       { method: 'POST', body: JSON.stringify(data) },
     ),
 
-  get: (id: string) => request<{ data: unknown }>(`/v1/collections/${id}`),
+  get: (id: string) =>
+    request<{ data: unknown }>(`/v1/collections/${id}`, { getCacheTtlMs: 30_000 }),
 }

@@ -300,18 +300,41 @@ Only platform combining:
 
 ---
 
-#### F-102: AI Virtual Try-On
+#### F-102: AI Virtual Try-On (Self-Hosted)
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
-**Tech:** FASHN API (primary) / Replicate IDM-VTON (fallback)  
-**Cost:** ₹5–15 per try-on (API call)  
+**Tech:** CatVTON (self-hosted Python microservice, primary) / FASHN API (fallback)  
+**Cost:** ~₹0.4 per try-on (self-hosted, 17x cheaper than FASHN API)  
+**GPU Requirement:** 8GB+ VRAM (RTX 3060 or better)  
+**Latency:** ~35 seconds per try-on (fast mode)  
 **Quality threshold:** 80% of try-ons rated "acceptable" by sample retailer panel
 
+**Deployment Strategy (Two-Step):**
+
+**Step 1 — Deploy CatVTON as-is (Week 1):**
+- Python/FastAPI microservice wrapping CatVTON
+- Containerized, deployed on RunPod L4 GPU ($0.44/hr, serverless)
+- Works well for kurtis, suits, gowns, readymade garments
+- ~$0.005 per try-on vs $0.075 with FASHN
+
+**Step 2 — Fine-tune for Indian ethnic wear (Week 2-3):**
+- Collect 200-500 Indian garment photos from real uploads
+- Create segmentation masks (SAM-based)
+- Run LoRA fine-tuning for sarees, lehengas, unstitched suits
+- Swap model weights — no application code changes needed
+
+**Cost Comparison:**
+| Method | Cost per try-on | Monthly (1000 try-ons) | Setup |
+|--------|----------------|----------------------|-------|
+| FASHN API | ₹6 | ₹6,000 | None |
+| **CatVTON (self-hosted)** | **₹0.4** | **₹400** | 3-5 days |
+| Replicate IDM-VTON | ₹1.6 | ₹1,600 | None |
+
 **Specific challenges for Indian ethnic wear:**
-- Saree draping (6-yard drape simulation)
-- Dupatta placement
-- Unstitched suit layering
-- Heavy embroidery texture rendering
+- Saree draping (6-yard drape simulation) — requires fine-tuning
+- Dupatta placement — requires fine-tuning
+- Unstitched suit layering — requires fine-tuning
+- Heavy embroidery texture rendering — CatVTON handles well natively
 
 ---
 

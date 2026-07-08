@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  ci:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -21,7 +21,31 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
       - run: pnpm typecheck
+      - run: pnpm lint
       - run: pnpm test
-      - run: pnpm build
+
+  build:
+    runs-on: ubuntu-latest
+    # Only run if quality passes — saves build minutes on quick failures
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Build all deployable packages — verifies production build compiles
+      - name: Build API
+        run: pnpm build --filter=@kanchuki/api
+
+      - name: Build Web
+        run: pnpm build --filter=@kanchuki/web
