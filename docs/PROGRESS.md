@@ -4,6 +4,42 @@ One file, update at end of each work session: what's done, what's next, what's b
 
 ---
 
+## 2026-07-08 (Railway deploy + CatVTON RunPod first test)
+
+**Git/GitHub:**
+- `main` branch was stuck on stub "Initial commit" (repo effectively looked empty on GitHub default branch) while all real work sat on `master`. Merged `master` → `main` (`--allow-unrelated-histories`), pushed both. GitHub now shows real project on default branch.
+- Committed pending `docs/DEPLOY.md` fix (RunPod `CATVTON_API_URL` format) + `.gitignore` entry for local `test_*.jpg` scratch files.
+- **Leaked secret:** user pasted a live `GHCR_PAT` GitHub token in plaintext chat — flagged for rotation, **not confirmed rotated yet**. Check before next session if this still matters.
+
+**Railway project created — 3 services, root dir `.` for all (monorepo needs full tree):**
+- `supportive-love` = API (`NIXPACKS_TURBO_APP_NAME=@kanchuki/api`)
+- `magnificent-liberation` = Web (`NIXPACKS_TURBO_APP_NAME=@kanchuki/web`)
+- `lovely-joy` = dead empty service (had orphaned `DATABASE_URL` var, isolated from other services) — **should be deleted**, not confirmed done.
+- Railway's own Postgres plugin was created then abandoned — decision made to use **existing Supabase Postgres** instead (schema/RLS/seed data already live there per earlier session), not a fresh Railway DB. Real `.env` DB creds already point to Supabase pooler (`aws-1-ap-south-1.pooler.supabase.com:6543`).
+- Full env var lists for both services were handed to user (grepped from actual `process.env[...]` code reads, not docs — docs had dead vars like `JWT_SECRET`, `DATABASE_URL_POOLER`, `NEXT_PUBLIC_SITE_URL`, `SENTRY_DSN` that no code actually reads). User said vars added, not independently verified.
+- **Still open:** Config File Path not yet set per-service (root dir = `.` means Railway won't auto-find `apps/api/railway.json` / `apps/web/railway.json` without this explicit setting) — real blocker for first deploy, flagged, not fixed.
+- **Still open:** `WEB_URL` (API) and `NEXT_PUBLIC_API_URL` (Web) need real Railway-assigned URLs — chicken-egg, needs first deploy of each to get the URL, then a second pass to cross-wire.
+
+**CatVTON/RunPod:**
+- Docker image already built + pushed successfully by CI (`ghcr.io/kapisejix/kanchuki-tryon:latest`), confirmed via `gh run list`.
+- **Bug found + fixed:** `packages/ai/src/tryon.ts` `triggerCatVTON()` sent zero `Authorization` header to RunPod's `/runsync` — RunPod requires `Bearer <RUNPOD_API_KEY>` on every call, would have 401'd. Added `RUNPOD_API_KEY` env var + header. Typechecks clean. **Not yet committed.**
+- **Bug found, NOT yet fixed:** same function assumes `/runsync` always returns a synchronously-completed result. In practice (confirmed live) RunPod returns `{"status":"IN_QUEUE", "id": "..."}` on cold start and the real result only shows up via polling `GET /v2/{endpoint}/status/{id}`. `triggerCatVTON` needs a poll loop added for the `IN_QUEUE`/`IN_PROGRESS` case before this works end-to-end in prod. **This is the next code fix to make.**
+- RunPod endpoint created (id `pnvchif9f4bcom`, GPU L4, Queue mode — not Load Balancer, matches `handler_runpod.py`'s queue-worker contract). First deploy hit `IMAGE_AUTH_ERROR` because the GHCR package wasn't linked to the repo (built via PAT, lives under user account packages tab, not repo sidebar) and defaulted private — fixed by manually setting package visibility to Public at `github.com/kapisejix?tab=packages`.
+- **Currently stuck (unresolved at session end):** worker stuck in `initializing` state for 15+ min per `/health` polling (`workers.initializing: 2, ready: 0`), image pull logs repeating "pending". Cold-start image is large (CUDA 12.4 + PyTorch + CatVTON deps, no baked-in model weights — those download from HuggingFace at container startup via `handler_runpod.py::load_model()`), so slow first pull is plausible but not confirmed distinguishable from actually-stuck. Suggested to user: check if log timestamps are advancing, consider bumping Container Disk from 49GB to 75GB and redeploying if genuinely frozen.
+- Test harness built: `packages/ai/scratch-test-tryon.mjs` (untracked, delete when done) — uploads `test_person.jpg`/`test_garment.jpg` (already in repo root, gitignored) to R2 under `scratch-test/` prefix, calls CatVTON `/runsync`, saves result to `tryon-result.jpg`. Run via `node --env-file=.env packages/ai/scratch-test-tryon.mjs` from repo root. One job already queued from this session (`sync-fc7ec240-...`) — may complete on its own once worker comes up; check `/status/{id}` before resubmitting to avoid a duplicate GPU charge.
+- Local `.env` now has real `CATVTON_API_URL` (`https://api.runpod.ai/v2/pnvchif9f4bcom`) and `RUNPOD_API_KEY` set — **not yet copied to Railway's `supportive-love` service vars.**
+
+**Resume here next session:**
+1. Check RunPod worker status (`/health` or dashboard) — did it finish initializing?
+2. If ready: poll `/status/sync-fc7ec240-b179-40fc-b914-bdcd6663b83c-e2` (or rerun `scratch-test-tryon.mjs`) to get an actual result image and confirm the model output quality.
+3. Fix the polling bug in `packages/ai/src/tryon.ts::triggerCatVTON` (RunPod async completion), commit both fixes (auth header + polling).
+4. Copy `CATVTON_API_URL` + `RUNPOD_API_KEY` into Railway `supportive-love` vars.
+5. Set Config File Path on both Railway services, resolve `WEB_URL`/`NEXT_PUBLIC_API_URL` chicken-egg, do first real deploy.
+6. Confirm `GHCR_PAT` rotated and `lovely-joy` Railway service deleted (both flagged, unconfirmed).
+7. Delete `packages/ai/scratch-test-tryon.mjs` once no longer needed.
+
+---
+
 ## 2026-07-08 (later — mobile boot blockers fixed)
 
 **Done:**
