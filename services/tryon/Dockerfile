@@ -28,11 +28,11 @@ WORKDIR /app
 
 # Download CatVTON source (Docker ADD handles redirects; tar extracts manually)
 # Note: ADD only auto-extracts .tar.gz from LOCAL sources, not URLs
-# Pinned commit: 999bdbe0825f385c7d23dca9636a0fb3d7890f5c
-# Model weights are loaded from HuggingFace at runtime
-ADD https://github.com/zhengchong/CatVTON/archive/999bdbe0825f385c7d23dca9636a0fb3d7890f5c.tar.gz /tmp/catvton.tar.gz
-RUN tar xzf /tmp/catvton.tar.gz -C /app/ && \
-    mv /app/CatVTON-999bdbe0825f385c7d23dca9636a0fb3d7890f5c /app/CatVTON && \
+# Repo: Zheng-Chong/CatVTON (case-sensitive)
+ADD https://github.com/Zheng-Chong/CatVTON/archive/refs/heads/main.tar.gz /tmp/catvton.tar.gz
+RUN mkdir -p /app/CatVTON && \
+    tar xzf /tmp/catvton.tar.gz -C /app/ && \
+    mv /app/CatVTON-* /app/CatVTON && \
     rm /tmp/catvton.tar.gz
 
 # Install CatVTON deps
