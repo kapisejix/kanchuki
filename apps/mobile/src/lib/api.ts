@@ -1,18 +1,17 @@
-import { MMKV } from 'react-native-mmkv'
+import { getItem, setItem, deleteItem } from './storage'
 
-const storage = new MMKV()
 const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
-function getToken(): string | null {
-  return storage.getString('auth_token') ?? null
+export function getToken(): Promise<string | null> {
+  return getItem('auth_token')
 }
 
-export function setToken(token: string): void {
-  storage.set('auth_token', token)
+export function setToken(token: string): Promise<void> {
+  return setItem('auth_token', token)
 }
 
-export function clearToken(): void {
-  storage.delete('auth_token')
+export function clearToken(): Promise<void> {
+  return deleteItem('auth_token')
 }
 
 class ApiError extends Error {
@@ -30,7 +29,7 @@ async function request<T>(
   path: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token = getToken()
+  const token = await getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> | undefined),

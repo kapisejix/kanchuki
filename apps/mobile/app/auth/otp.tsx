@@ -10,10 +10,8 @@ import {
   Alert,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { MMKV } from 'react-native-mmkv'
 import { authApi, setToken } from '../../src/lib/api'
-
-const storage = new MMKV()
+import { setItem } from '../../src/lib/storage'
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>()
@@ -37,9 +35,9 @@ export default function OtpScreen() {
     setLoading(true)
     try {
       const result = await authApi.verifyOtp(phone, code)
-      setToken(result.access_token)
-      storage.set('refresh_token', result.refresh_token)
-      storage.set('retailer_id', result.retailer_id)
+      await setToken(result.access_token)
+      await setItem('refresh_token', result.refresh_token)
+      await setItem('retailer_id', result.retailer_id)
 
       // New retailer → onboarding, existing → home
       router.replace(result.is_new ? '/onboarding' : '/(tabs)')

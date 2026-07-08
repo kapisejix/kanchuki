@@ -1,11 +1,11 @@
+import '../global.css'
 import { useEffect } from 'react'
 import { Stack, router } from 'expo-router'
-import { MMKV } from 'react-native-mmkv'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { getToken } from '../src/lib/api'
 
-const storage = new MMKV()
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 60_000, retry: 2 },
@@ -14,10 +14,9 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   useEffect(() => {
-    const token = storage.getString('auth_token')
-    if (!token) {
-      router.replace('/auth/phone')
-    }
+    void getToken().then((token) => {
+      if (!token) router.replace('/auth/phone')
+    })
   }, [])
 
   return (
@@ -30,7 +29,6 @@ export default function RootLayout() {
             <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
             <Stack.Screen name="product/[id]" />
             <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="collection/new" options={{ presentation: 'modal' }} />
           </Stack>
         </QueryClientProvider>
       </SafeAreaProvider>

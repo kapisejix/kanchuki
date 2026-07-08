@@ -44,3 +44,6 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# Claude Code local settings
+.claude/
