@@ -47,3 +47,6 @@ coverage/
 
 # Claude Code local settings
 .claude/
+
+# Local test images
+test_*.jpg

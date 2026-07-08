@@ -300,7 +300,7 @@ CatVTON replaces the paid FASHN API with a self-hosted GPU server.
    - **Endpoint Timeout:** 120s (CatVTON takes ~35s per request)
 4. **Deploy** → wait for **Active** status (~5 min)
 5. Copy the endpoint URL: `https://{runpod-id}-8000.proxy.runpod.net`
-6. Set as `CATVTON_API_URL` env var in your API service
+6. Set as `CATVTON_API_URL` env var in your API service: `https://api.runpod.ai/v2/{endpoint_id}`
 
 > The Docker image is built automatically by the CI workflow
 > (`.github/workflows/docker-tryon.yml`) when `services/tryon/` changes.
