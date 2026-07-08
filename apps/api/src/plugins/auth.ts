@@ -23,6 +23,10 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     // Skip auth for public routes
     if (request.routeOptions.url?.startsWith('/v1/public')) return
     if (request.routeOptions.url === '/health') return
+    // Razorpay webhook authenticates via HMAC signature, not JWT
+    if (request.routeOptions.url === '/v1/billing/webhook') return
+    // Admin routes authenticate via x-admin-key header (checked in admin.ts)
+    if (request.routeOptions.url?.startsWith('/v1/admin')) return
 
     const authHeader = request.headers.authorization
     if (!authHeader?.startsWith('Bearer ')) {

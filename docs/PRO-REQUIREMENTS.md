@@ -227,6 +227,30 @@ Only platform combining:
 
 ---
 
+#### F-006A: Product Status Propagation to Collection Links (Sold / Reserved)
+**Priority:** P0  
+**Description:** Collection links are live pages, not snapshots. Product status changes made by the retailer propagate automatically to every shared collection link.
+
+**Important distinction:** The Kanchuki MVP does NOT use Meta's native WhatsApp Business catalog (the in-app product list under a business profile). "WhatsApp catalog" in this document means a **collection link** — a web page hosted by Kanchuki, shared as a URL inside a WhatsApp chat. Meta Cloud API catalog integration is a Phase 2 roadmap item (Month 13–14). Until then, collection links ARE the catalog, and they stay live-editable from product status.
+
+**How sold item management works:**
+
+1. **Single source of truth = product status in DB.** The Product model has `status`: `AVAILABLE / SOLD / RESERVED / NOT_SURE`. The shopkeeper opens the product in the retailer app (`product/[id].tsx`) and taps status → SOLD.
+2. **Collection links reflect the change automatically.** The collection page (`apps/web/src/app/c/[slug]/page.tsx`) renders products from the DB. The same product can sit in many collection links — mark SOLD once, every shared link updates. No need to edit or resend links.
+3. **Display rule — show a "Sold Out" badge, do not hide.** Hiding items makes a shared link look broken/empty to a customer who saw it earlier. A badge shows scarcity ("moves fast, enquire early"). A sold item must render as a greyed card with a "Sold Out" ribbon, and the enquiry button disabled. If the current `CollectionView` component does not yet do this, the change is small: the filter bar keeps the item, and the card renders the badge when `status === 'SOLD'`.
+4. **ISR caching caveat.** Collection pages use Next.js SSG/ISR — a page may serve a cached version for the revalidation window. A status change appears after revalidation (typically ≤ 60s depending on config), not instantly. Acceptable for MVP.
+5. **RESERVED status.** When a customer says "hold it for me", the shopkeeper marks the product RESERVED. The link shows a "Reserved" badge so other customers see it is pending.
+
+**Out of scope for MVP:** Pushing updates into Meta's native WhatsApp Business catalog. That requires Meta Cloud API + catalog sync — Phase 2 (Month 13–14).
+
+**Acceptance Criteria:**
+- Marking a product SOLD updates all collection links containing it within the ISR revalidation window (≤ 60s)
+- Sold products remain visible in collection links with a greyed card + "Sold Out" ribbon; enquiry disabled
+- Reserved products show a "Reserved" badge
+- No manual link editing or resending required after a status change
+
+---
+
 #### F-007: Retailer Onboarding & Setup
 **Priority:** P0  
 **Description:** First-time setup assistant to get retailer from install → first 10 products uploaded in < 30 minutes.

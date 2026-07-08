@@ -13,6 +13,8 @@ import { collectionRoutes } from './routes/collections.js'
 import { publicRoutes } from './routes/public.js'
 import { authRoutes } from './routes/auth.js'
 import { searchRoutes } from './routes/search.js'
+import { billingRoutes } from './routes/billing.js'
+import { adminRoutes } from './routes/admin.js'
 import { startWorkers } from './jobs/index.js'
 
 const server = Fastify({
@@ -78,6 +80,8 @@ await server.register(productRoutes, { prefix: '/v1/products' })
 await server.register(customerRoutes, { prefix: '/v1/customers' })
 await server.register(collectionRoutes, { prefix: '/v1/collections' })
 await server.register(searchRoutes, { prefix: '/v1/search' })
+await server.register(billingRoutes, { prefix: '/v1/billing' })
+await server.register(adminRoutes, { prefix: '/v1/admin' })
 
 // ─── Health Check ─────────────────────────────────────────────────
 

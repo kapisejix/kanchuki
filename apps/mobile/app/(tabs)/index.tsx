@@ -51,11 +51,14 @@ export default function HomeScreen() {
           {me?.shop_name ?? 'Your Store'}
         </Text>
         {me?.plan_status === 'TRIAL' && (
-          <View className="mt-2 bg-amber-50 px-3 py-1.5 rounded-lg inline-flex self-start">
+          <TouchableOpacity
+            onPress={() => router.push('/billing')}
+            className="mt-2 bg-amber-50 px-3 py-1.5 rounded-lg inline-flex self-start"
+          >
             <Text className="text-amber-700 text-xs font-medium">
-              14-day free trial active
+              14-day free trial active · Tap to subscribe
             </Text>
-          </View>
+          </TouchableOpacity>
         )}
       </View>
 

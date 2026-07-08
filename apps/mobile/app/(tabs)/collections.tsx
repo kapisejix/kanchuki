@@ -51,7 +51,7 @@ export default function CollectionsScreen() {
           contentContainerStyle={{ padding: 12, gap: 10 }}
           renderItem={({ item }) => (
             <TouchableOpacity
-              onPress={() => router.push(`/collection/${item.id}`)}
+              onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
               className="bg-white rounded-2xl p-4 border border-gray-100"
             >
               {/* Title + status */}
