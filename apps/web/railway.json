@@ -12,7 +12,7 @@
     ]
   },
   "deploy": {
-    "startCommand": "node apps/web/.next/standalone/server.js",
+    "startCommand": "pnpm --filter @kanchuki/web start",
     "healthcheckPath": "/",
     "healthcheckTimeout": 30
   }

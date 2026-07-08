@@ -5,10 +5,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Standalone output for Railway — bundles dependencies into .next/standalone/
-  output: 'standalone',
-  // Monorepo support — trace dependencies from repo root
-  outputFileTracingRoot: path.join(__dirname, '../../'),
+  // Railway deploys with Nixpacks which handles monorepo deps.
+  // Standalone output disabled due to Next.js 14.2.x + pnpm monorepo
+  // bug: "Cannot read properties of null (reading 'useContext')" during
+  // file tracing. Railway's Nixpacks builder keeps full node_modules.
+
+  // Transpile workspace packages — web only imports shared directly
+  transpilePackages: ['@kanchuki/shared'],
 
   images: {
     remotePatterns: [
