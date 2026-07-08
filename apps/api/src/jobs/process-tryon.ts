@@ -77,9 +77,8 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
     if (finalResult.status === 'completed' && finalResult.outputUrls.length > 0) {
       // Save result to R2
       const resultPublicUrl = await saveTryOnResultToR2(
-        triggerResult.jobId,
-        finalResult.outputUrls[0]!,
         try_on_job_id,
+        finalResult.outputUrls[0]!,
       )
 
       // Calculate cost (fast mode = 1 credit = $0.075)

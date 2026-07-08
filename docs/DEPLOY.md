@@ -15,6 +15,7 @@
 | Cloudflare R2 bucket | Image storage | [cloudflare.com](https://cloudflare.com) |
 | Upstash Redis | Queue + Cache | [upstash.com](https://upstash.com) |
 | Razorpay account | Subscriptions | [razorpay.com](https://razorpay.com) |
+| GPU cloud (RunPod/Vast) | Self-hosted CatVTON try-on (~$0.005/try-on) | [runpod.io](https://runpod.io) |
 
 ---
 
@@ -131,6 +132,15 @@ R2_PUBLIC_URL="https://pub-xxx.r2.dev"
 # AI APIs
 ANTHROPIC_API_KEY="..."
 OPENAI_API_KEY="..."
+
+# Virtual Try-On (CatVTON self-hosted — primary, ~$0.005/try-on)
+# Deploy separately: see services/tryon/README.md for GPU cloud setup
+# Omit CATVTON_API_URL to fall back to FASHN API
+CATVTON_API_URL="http://your-tryon-server:8000"
+
+# FASHN API (cloud fallback, ~$0.075/try-on)
+# Get key: https://fashn.ai/api-keys
+FASHN_API_KEY="..."
 
 # Razorpay
 RAZORPAY_KEY_ID="rzp_live_xxx"
@@ -262,6 +272,62 @@ npx railway up --service @kanchuki/web
 
 ---
 
+---
+
+## Optional: Deploy CatVTON Try-On Service
+
+CatVTON replaces the paid FASHN API with a self-hosted GPU server.
+~$0.005/try-on vs $0.075/try-on with FASHN (17x cheaper).
+
+### Option A: RunPod (Serverless, recommended)
+
+1. Create a [RunPod account](https://runpod.io) and add funds ($10 minimum)
+2. Go to **Serverless → Endpoints → New Endpoint**
+3. Fill in:
+   - **Name:** `kanchuki-tryon`
+   - **Docker Image:** `your-dockerhub/kanchuki-tryon:latest` (build from `services/tryon/Dockerfile`)
+   - **Container Disk:** 50GB (model is ~10GB)
+   - **GPU Type:** L4 (24GB) — good balance of speed & cost ($0.44/hr)
+   - **Max Workers:** 2
+   - **Idle Timeout:** 60s
+   - **Endpoint Timeout:** 120s (CatVTON takes ~35s per request)
+4. **Deploy** → wait for **Active** status (~5 min)
+5. Copy the endpoint URL: `https://{runpod-id}-8000.proxy.runpod.net`
+6. Set as `CATVTON_API_URL` env var in your API service
+
+### Option B: Docker (own GPU server)
+
+```bash
+# Build the Docker image
+cd services/tryon
+docker build -t kanchuki-tryon -f Dockerfile .
+
+# Run with GPU
+cd ../..
+R2_ENDPOINT=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... \
+  R2_BUCKET_NAME=... R2_PUBLIC_URL=... \
+  docker compose -f services/tryon/docker-compose.yml up -d
+```
+
+Test the deployment:
+```bash
+curl http://localhost:8000/health
+# → { "status": "ok", "model_loaded": true, "gpu_available": true }
+
+# Warm the model (avoids cold-start on first real request)
+curl -X POST http://localhost:8000/warmup
+```
+
+### Cost Comparison
+
+| Volume | CatVTON (self-hosted) | FASHN (cloud API) | Savings |
+|--------|----------------------|-------------------|---------|
+| 100 try-ons/mo | ~$1.50 | $7.50 | **80%** |
+| 500 try-ons/mo | ~$7.30 | $37.50 | **81%** |
+| 2000 try-ons/mo | ~$29 | $150 | **81%** |
+
+---
+
 ## Production Checklist
 
 - [ ] Custom domain configured (api.kanchuki.app + kanchuki.app)
@@ -274,3 +340,4 @@ npx railway up --service @kanchuki/web
 - [ ] Logging enabled (Axiom or Railway logs)
 - [ ] Rate limiting configured (`@fastify/rate-limit` already wired)
 - [ ] CI passing on main branch
+- [ ] CatVTON deployed (L4 GPU on RunPod) or FASHN_API_KEY set as fallback

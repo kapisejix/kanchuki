@@ -1,0 +1,49 @@
+# ──────────────────────────────────────────────────────────────
+# CatVTON Try-On Service — Local Development
+# Usage:
+#   docker compose -f services/tryon/docker-compose.yml up
+#
+# The model is ~3GB and takes 2-5 min to download on first run.
+# Ensure Docker has GPU access: https://docs.docker.com/config/containers/resource_constraints/#gpu
+# ──────────────────────────────────────────────────────────────
+
+version: "3.9"
+
+services:
+  tryon:
+    build:
+      context: ../../
+      dockerfile: services/tryon/Dockerfile
+    image: kanchuki-tryon:latest
+    container_name: kanchuki-tryon
+    ports:
+      - "8000:8000"
+    environment:
+      - CATVTON_MODEL_CKPT=zhengchong/CatVTON
+      - CATVTON_BASE_CKPT=runwayml/stable-diffusion-inpainting
+      - CATVTON_DEVICE=cuda
+      - CATVTON_DTYPE=float16
+      - INFERENCE_STEPS=30
+      - GUIDANCE_SCALE=2.5
+      - IMAGE_HEIGHT=512
+      - IMAGE_WIDTH=384
+      - R2_ENDPOINT=${R2_ENDPOINT:-}
+      - R2_ACCESS_KEY_ID=${R2_ACCESS_KEY_ID:-}
+      - R2_SECRET_ACCESS_KEY=${R2_SECRET_ACCESS_KEY:-}
+      - R2_BUCKET_NAME=${R2_BUCKET_NAME:-}
+      - R2_PUBLIC_URL=${R2_PUBLIC_URL:-}
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]
+              capabilities: [gpu]
+    restart: unless-stopped
+    # The model is large (~3GB) — give it time to download
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/health').raise_for_status()"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 300s  # 5 min for model download

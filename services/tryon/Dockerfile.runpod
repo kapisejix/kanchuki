@@ -1,0 +1,51 @@
+# ──────────────────────────────────────────────────────────────
+# CatVTON RunPod Serverless Deployment
+# Build:  docker build -t YOUR_USER/kanchuki-tryon:latest \
+#             -f services/tryon/Dockerfile.runpod .
+# Push:   docker push YOUR_USER/kanchuki-tryon:latest
+# ──────────────────────────────────────────────────────────────
+
+FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV PYTHONUNBUFFERED=1
+
+# Install system deps
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-dev \
+    python3-pip \
+    git \
+    wget \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set Python 3.11 as default
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+WORKDIR /app
+
+# Clone CatVTON source repo (provides the custom pipeline class)
+RUN git clone https://github.com/zhengchong/CatVTON.git /app/CatVTON \
+    && cd /app/CatVTON && git checkout 999bdbe0825f385c7d23dca9636a0fb3d7890f5c
+
+# Install CatVTON deps first (cached if requirements unchanged)
+RUN pip install --no-cache-dir -r /app/CatVTON/requirements.txt
+
+# Install PyTorch with CUDA 12.4
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu124
+
+# Install our service deps
+COPY services/tryon/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
+
+# Install RunPod SDK
+RUN pip install --no-cache-dir runpod
+
+# Copy the RunPod handler
+COPY services/tryon/handler_runpod.py /app/handler.py
+
+# Warmup happens inside handler on startup
+CMD ["python", "-u", "/app/handler.py"]
