@@ -7,6 +7,7 @@ import { R2_PATHS } from '@kanchuki/shared'
 // FASHN is $0.075/try-on but requires zero infrastructure.
 
 const CATVTON_API_URL = process.env['CATVTON_API_URL'] ?? ''           // e.g. http://localhost:8000
+const RUNPOD_API_KEY = process.env['RUNPOD_API_KEY'] ?? ''             // required when CATVTON_API_URL is a RunPod endpoint
 const FASHN_API_BASE = 'https://api.fashn.ai/v1'
 const FASHN_API_KEY = process.env['FASHN_API_KEY'] ?? ''
 const R2_TRYON_PREFIX = 'tryon-results'
@@ -67,7 +68,10 @@ async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
 
   const res = await fetch(endpoint, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(isRunPod ? { Authorization: `Bearer ${RUNPOD_API_KEY}` } : {}),
+    },
     signal: AbortSignal.timeout(120_000),  // 2 min timeout
     body: JSON.stringify(body),
   })
