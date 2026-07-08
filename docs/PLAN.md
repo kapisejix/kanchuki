@@ -26,23 +26,23 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Month 1: Foundation
 
 **Week 1–2: Infrastructure Setup**
-- [ ] PostgreSQL 16 + pgvector on Railway/Supabase
-- [ ] Redis for cache + job queue
-- [ ] Cloudflare R2 bucket for images
-- [ ] Supabase Auth (phone OTP)
-- [ ] Node.js + Fastify API scaffold
-- [ ] Next.js 14 customer web scaffold
-- [ ] React Native (Expo) retailer app scaffold
-- [ ] CI/CD pipeline (GitHub Actions → Railway)
-- [ ] Environment config (.env structure, secrets management)
-- [ ] Basic logging (Axiom or Pino)
+- [x] PostgreSQL 16 + pgvector on Railway/Supabase
+- [x] Redis for cache + job queue (BullMQ + ioredis wired in API)
+- [x] Cloudflare R2 bucket for images (presigned upload/download in @kanchuki/ai)
+- [x] Supabase Auth (phone OTP)
+- [x] Node.js + Fastify API scaffold
+- [x] Next.js 14 customer web scaffold
+- [x] React Native (Expo) retailer app scaffold
+- [ ] CI/CD pipeline — CI done (`.github/workflows/ci.yml`: lint/typecheck/test/build); CD to Railway pending
+- [x] Environment config (.env structure, secrets management)
+- [x] Basic logging (Pino)
 
 **Week 3–4: Auth + Onboarding**
-- [ ] Phone OTP login for retailers (Supabase Auth)
-- [ ] Retailer registration: shop name, city, category, GSTIN
-- [ ] Store structure setup (racks/shelves — customizable)
-- [ ] Onboarding flow (guided 6-step setup)
-- [ ] Basic retailer dashboard shell
+- [x] Phone OTP login for retailers (Supabase Auth)
+- [x] Retailer registration: shop name, city, category, GSTIN
+- [x] Store structure setup (racks/shelves — customizable)
+- [x] Onboarding flow (guided 6-step setup)
+- [x] Basic retailer dashboard shell
 
 **Deliverable:** Retailer can create account and set up store structure
 
@@ -51,12 +51,12 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Month 2: Product Catalog
 
 **Week 5–6: Photo Upload + AI Tagging**
-- [ ] Camera + gallery upload in React Native
-- [ ] Image compression (client-side, < 500KB)
-- [ ] Upload to Cloudflare R2 via presigned URL
-- [ ] Claude Vision API call for auto-tagging
-- [ ] AI tag review + edit UI
-- [ ] Product save to PostgreSQL
+- [x] Camera + gallery upload in React Native
+- [x] Image compression (client-side, < 500KB)
+- [x] Upload to Cloudflare R2 via presigned URL
+- [x] Claude Vision API call for auto-tagging
+- [x] AI tag review + edit UI
+- [x] Product save to PostgreSQL
 
 **AI Tagging Prompt Design:**
 - Extract: category, type, primary_color, secondary_colors[], fabric_estimate, pattern, embellishments[], neck_style, sleeve_type, occasion[], price_range_visible, design_notes, search_tags[]
@@ -64,11 +64,11 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - Return structured JSON
 
 **Week 7–8: Catalog Features**
-- [ ] Product list view (grid + list toggle)
-- [ ] Product detail view
-- [ ] Store location assignment (Floor → Section → Rack → Shelf)
-- [ ] Product status (Available / Sold / Reserved)
-- [ ] Basic search by tag (client-side filter for MVP)
+- [x] Product list view (grid + list toggle)
+- [x] Product detail view
+- [x] Store location assignment (Floor → Section → Rack → Shelf)
+- [x] Product status (Available / Sold / Reserved)
+- [x] Basic search by tag (client-side filter for MVP)
 - [ ] Bulk photo import (multiple images)
 
 **Deliverable:** Retailer can build full digital catalog with AI assistance
@@ -78,19 +78,19 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Month 3: Customer CRM + Collection Links
 
 **Week 9–10: Customer Module**
-- [ ] Add customer (name, phone, preferences)
-- [ ] Customer list + search
-- [ ] Customer profile with preference tags
-- [ ] Purchase history (manual entry)
+- [x] Add customer (name, phone, preferences)
+- [x] Customer list + search
+- [x] Customer profile with preference tags
+- [x] Purchase history (manual entry)
 
 **Week 11–12: WhatsApp Collection Links**
-- [ ] Product selection UI (checkboxes on catalog)
-- [ ] Collection creation: title, description, expiry
-- [ ] Collection page (Next.js SSG/ISR) — unique URL per collection
-- [ ] Collection view: product grid, filter, sort
-- [ ] Favorite (heart) button — stored in localStorage, no login needed
-- [ ] Enquiry button → pre-filled WhatsApp deep link to retailer
-- [ ] Retailer view: collection analytics (views, enquiries)
+- [x] Product selection UI (checkboxes on catalog)
+- [x] Collection creation: title, description, expiry
+- [x] Collection page (Next.js SSG/ISR) — unique URL per collection
+- [x] Collection view: product grid, filter, sort
+- [x] Favorite (heart) button — stored in localStorage, no login needed
+- [x] Enquiry button → pre-filled WhatsApp deep link to retailer
+- [x] Retailer view: collection analytics (views, enquiries)
 
 **Deliverable:** Retailer can share product collections via WhatsApp link
 
@@ -99,11 +99,11 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Month 4: AI Search + Polish + Launch
 
 **Week 13–14: In-Store AI Search**
-- [ ] Generate pgvector embeddings on product save (background job)
-- [ ] Semantic search endpoint (cosine similarity on product embeddings)
-- [ ] Natural language query → structured + semantic hybrid search
-- [ ] Results ranked by relevance + price filter
-- [ ] Hindi transliteration support (basic — map common words)
+- [x] Generate pgvector embeddings on product save (background job)
+- [x] Semantic search endpoint (cosine similarity on product embeddings)
+- [x] Natural language query → structured + semantic hybrid search
+- [x] Results ranked by relevance + price filter
+- [x] Hindi transliteration support (basic — map common words)
 
 **Week 15–16: Polish + MVP Launch**
 - [ ] Performance optimization (load time < 3s on 3G)

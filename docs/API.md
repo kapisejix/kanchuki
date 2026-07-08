@@ -95,17 +95,20 @@ GET  /retailers/me          # Current retailer profile
 PUT  /retailers/me          # Update shop name, city, GSTIN, etc.
 GET  /retailers/me/stats    # Dashboard stats
 GET  /retailers/me/plan     # Subscription plan info + limits + credits
+PATCH /retailers/me/onboarding  # Update onboarding progress flags
 ```
 
 ---
 
 ### Store Structure
 
+Sections live under the retailer resource:
+
 ```
-GET  /store/sections        # All racks/shelves
-POST /store/sections        # Create section
-PUT  /store/sections/:id    # Update section name/type
-DELETE /store/sections/:id  # Delete (only if no products assigned)
+GET  /retailers/me/sections        # All racks/shelves
+POST /retailers/me/sections        # Create section
+PUT  /retailers/me/sections/:id    # Update section name/type
+DELETE /retailers/me/sections/:id  # Delete (only if no products assigned)
 ```
 
 ---
@@ -116,15 +119,13 @@ DELETE /store/sections/:id  # Delete (only if no products assigned)
 ```
 POST /products/upload-url   # Get presigned R2 upload URL
 Body: { filename: "photo.jpg", content_type: "image/jpeg", size_bytes: 245000 }
-Response: { upload_url: "...", r2_key: "retailers/xxx/products/yyy/abc.jpg" }
-
-POST /products/tag          # Trigger AI tagging after upload
-Body: { r2_key: "..." }
-Response: { job_id: "...", status: "queued" }
-
-GET  /products/tag/:job_id  # Poll tagging status
-Response: { status: "completed", tags: { category: "...", colors: [...] } }
+Response: { upload_url: "...", r2_key: "retailers/xxx/products/yyy/abc.jpg",
+            public_url: "...", product_id: "...", expires_in: 300 }
 ```
+
+There is no separate tagging endpoint. `POST /products` queues an AI tagging
+job (BullMQ) automatically after create. The client polls `GET /products/:id`
+until `ai_tagged: true` (tag fields populated) or `ai_tag_error` is set.
 
 #### CRUD
 ```
@@ -164,7 +165,7 @@ Body: { "status": "SOLD" }
 
 #### Search
 ```
-POST /products/search
+POST /search
 Body:
 {
   "query": "light pink cotton suit under 2500",   // natural language
@@ -261,6 +262,9 @@ Body: {
   "customer_phone": "9876543210", // optional
   "message": "Interested in pink suit"
 }
+
+POST /public/collections/:slug/favorite  # Toggle favorite on a product (anonymous)
+Body: { "product_id": "clxxx", "viewer_token": "anon_session_id" }
 ```
 
 ---
