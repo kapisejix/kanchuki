@@ -42,8 +42,7 @@
 ├─────────────────────────────────────────────────────────────┤
 │  AI Tagging              │  Claude Vision (claude-3-5-sonnet) │
 │  Embeddings              │  OpenAI text-embedding-3-small     │
-│  VTO Engine              │  FASHN API (Phase 1)               │
-│  VTO Fallback            │  Replicate IDM-VTON (Phase 1)      │
+│  VTO Engine              │  CatVTON (self-hosted)             │
 │  WhatsApp                │  Meta Cloud API (Phase 2)          │
 ├─────────────────────────────────────────────────────────────┤
 │  Hosting (API + Web)     │  Railway                           │
@@ -278,11 +277,10 @@ r2://kanchuki-prod/
 ### 11. Virtual Try-On: CatVTON (Self-Hosted)
 
 **Choice (Revised June 2026 — Cost Optimization):**  
-- **Primary: CatVTON (self-hosted Python microservice)**  
-- Fallback: FASHN API (if self-hosted quality insufficient for specific garments)  
+**CatVTON (self-hosted Python microservice)**  
 
-**Why CatVTON over FASHN:**
-- **17x cheaper:** $0.005/try-on vs $0.075/try-on
+**Why CatVTON:**
+- **~$0.005/try-on** on an L4 GPU ($0.44/hr)
 - Open-source (CC BY-NC-SA 4.0 — verify commercial terms)
 - Single-UNet architecture: simpler, fewer failure points, runs on <8GB VRAM
 - 1024×768 output resolution, ~35 seconds per try-on
@@ -311,8 +309,7 @@ r2://kanchuki-prod/
 **Cost comparison:**
 | Method | Cost per try-on | Monthly (1000 try-ons) |
 |--------|----------------|----------------------|
-| FASHN API | $0.075 (₹6) | $75 (₹6,000) |
-| **CatVTON self-hosted** | **$0.005 (₹0.4)** | **$5 (₹400)** |
+| **CatVTON self-hosted** | **$0.005/ try-on** | **$5 (₹400) for 1000 try-ons** |
 | Replicate IDM-VTON | ~$0.02 (₹1.6) | $20 (₹1,600) |
 
 ---

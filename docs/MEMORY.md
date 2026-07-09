@@ -369,7 +369,7 @@ CREATE TABLE ai_usage_log (
   id          TEXT PRIMARY KEY,
   retailer_id TEXT,
   operation   TEXT,   -- "product_tag", "embed_product", "tryon", "customer_dna"
-  model       TEXT,   -- "claude-3-5-sonnet", "text-embedding-3-small", "fashn"
+  model       TEXT,   -- "claude-3-5-sonnet", "text-embedding-3-small", "catvton"
   input_tokens INT,
   output_tokens INT,
   cost_usd    FLOAT,

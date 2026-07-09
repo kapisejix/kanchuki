@@ -53,19 +53,20 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
       },
     })
 
-    // Trigger FASHN API
+    // Trigger CatVTON try-on engine
     const triggerResult = await triggerTryOn({
       customerPhotoUrl,
       productPhotoUrl,
     })
 
-    // Update with FASHN job ID
+    // Update with job ID
     await prisma.tryOnJob.update({
       where: { id: try_on_job_id },
       data: { api_job_id: triggerResult.jobId },
     })
 
-    // Poll for completion
+    // CatVTON is synchronous — result already available from triggerTryOn
+    // Poll loop kept for forward-compatibility with async engines
     let finalResult = triggerResult
     for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
       await delay(POLL_INTERVAL_MS)
@@ -81,8 +82,8 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
         finalResult.outputUrls[0]!,
       )
 
-      // Calculate cost (fast mode = 1 credit = $0.075)
-      const costUsd = 0.075
+      // Calculate cost per try-on (CatVTON: ~$0.005 on L4 GPU)
+      const costUsd = 0.005
 
       // Update job as completed
       await prisma.tryOnJob.update({

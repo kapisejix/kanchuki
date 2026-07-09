@@ -1,7 +1,7 @@
 # CatVTON Virtual Try-On Service
 
 Self-hosted AI virtual try-on using [CatVTON](https://huggingface.co/zhengchong/CatVTON).
-~$0.005 per try-on (17x cheaper than FASHN API).
+~$0.005 per try-on on an L4 GPU (~$0.44/hr).
 
 ## Quick Start
 
@@ -98,4 +98,4 @@ Cloud GPU options (hourly):
 |----------------|----------------|-----------------|
 | $1.50 (L4 ~3.4hr) | $7.30 (L4 ~17hr) | $29 (L4 ~68hr) |
 
-Compare to FASHN: $7.50 / $37.50 / $150.
+CatVTON self-hosted: ~$1.50/mo (100 try-ons), ~$7.30/mo (500), ~$29/mo (2000).

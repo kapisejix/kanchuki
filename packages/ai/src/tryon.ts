@@ -1,15 +1,11 @@
-import { downloadBuffer, uploadBuffer, publicUrl, getUploadPresignedUrl } from './r2.js'
-import { R2_PATHS } from '@kanchuki/shared'
+import { downloadBuffer, uploadBuffer, publicUrl } from './r2.js'
 
 // ─── Configuration ─────────────────────────────────────────────
-// Priority: self-hosted CatVTON (primary) → FASHN API (fallback)
-// CatVTON is ~$0.005/try-on (17x cheaper) but needs a GPU server.
-// FASHN is $0.075/try-on but requires zero infrastructure.
+// CatVTON self-hosted: ~$0.005/try-on, requires a GPU server.
+// Deploy via services/tryon/Dockerfile or services/tryon/Dockerfile.runpod.
 
 const CATVTON_API_URL = process.env['CATVTON_API_URL'] ?? ''           // e.g. http://localhost:8000
 const RUNPOD_API_KEY = process.env['RUNPOD_API_KEY'] ?? ''             // required when CATVTON_API_URL is a RunPod endpoint
-const FASHN_API_BASE = 'https://api.fashn.ai/v1'
-const FASHN_API_KEY = process.env['FASHN_API_KEY'] ?? ''
 const R2_TRYON_PREFIX = 'tryon-results'
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -25,7 +21,7 @@ export interface TryOnResult {
   outputUrls: string[]
   errorMessage: string | null
   /** Which engine produced this result */
-  engine: 'catvton' | 'fashn'
+  engine: 'catvton'
 }
 
 // ─── R2 paths ─────────────────────────────────────────────────
@@ -34,7 +30,7 @@ export function tryonResultR2Key(jobId: string): string {
   return `${R2_TRYON_PREFIX}/${jobId}/result.jpg`
 }
 
-// ─── CatVTON (self-hosted, primary) ────────────────────────────
+// ─── CatVTON (self-hosted) ─────────────────────────────────────
 
 /** True if the URL points to a RunPod serverless endpoint */
 function isRunPodUrl(url: string): boolean {
@@ -118,69 +114,6 @@ async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
   }
 }
 
-// ─── FASHN API (cloud fallback) ────────────────────────────────
-
-async function triggerFASHN(request: TryOnRequest): Promise<TryOnResult> {
-  const res = await fetch(`${FASHN_API_BASE}/run`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${FASHN_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model_name: 'tryon-max',
-      inputs: {
-        product_image: request.productPhotoUrl,
-        model_image: request.customerPhotoUrl,
-      },
-      generation_mode: 'fast',
-      output_format: 'jpeg',
-      resolution: '1k',
-    }),
-  })
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => '')
-    throw new Error(`FASHN API error (${res.status}): ${errorBody}`)
-  }
-
-  const body = (await res.json()) as { id: string }
-  return {
-    jobId: body.id,
-    status: 'queued',
-    outputUrls: [],
-    errorMessage: null,
-    engine: 'fashn',
-  }
-}
-
-async function pollFASHN(jobId: string): Promise<TryOnResult> {
-  const res = await fetch(`${FASHN_API_BASE}/status/${jobId}`, {
-    headers: {
-      'Authorization': `Bearer ${FASHN_API_KEY}`,
-    },
-  })
-
-  if (!res.ok) {
-    const errorBody = await res.text().catch(() => '')
-    throw new Error(`FASHN status error (${res.status}): ${errorBody}`)
-  }
-
-  const body = (await res.json()) as {
-    status: string
-    output?: string[]
-    error?: string
-  }
-
-  return {
-    jobId,
-    status: body.status as TryOnResult['status'],
-    outputUrls: body.output ?? [],
-    errorMessage: body.error ?? null,
-    engine: 'fashn',
-  }
-}
-
 // ─── Download helper ──────────────────────────────────────────
 
 async function downloadBufferFromUrl(url: string): Promise<Buffer> {
@@ -193,63 +126,39 @@ async function downloadBufferFromUrl(url: string): Promise<Buffer> {
 // ─── Public API ────────────────────────────────────────────────
 
 /**
- * Trigger a virtual try-on.
- *
- * Strategy:
- * 1. Try self-hosted CatVTON (sync, instant result)
- * 2. If CatVTON is not configured or fails, fall back to FASHN API (async, needs polling)
- * 3. If FASHN is not configured either, throw
+ * Trigger a virtual try-on via CatVTON self-hosted engine.
+ * Throws if CATVTON_API_URL is not configured.
  */
 export async function triggerTryOn(request: TryOnRequest): Promise<TryOnResult> {
-  // Primary: CatVTON (self-hosted, ~$0.005/try-on)
-  if (CATVTON_API_URL) {
-    try {
-      console.log('[TryOn] Using CatVTON engine')
-      return await triggerCatVTON(request)
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
-      console.warn(`[TryOn] CatVTON failed, falling back to FASHN: ${message}`)
-      // Fall through to FASHN fallback
-    }
+  if (!CATVTON_API_URL) {
+    throw new Error(
+      'No try-on engine configured. Set CATVTON_API_URL to your self-hosted CatVTON endpoint ' +
+      '(e.g. http://localhost:8000 for local or https://api.runpod.ai/v2/{endpoint_id} for RunPod).',
+    )
   }
 
-  // Fallback: FASHN API (cloud, ~$0.075/try-on)
-  if (FASHN_API_KEY) {
-    console.log('[TryOn] Using FASHN API engine')
-    return await triggerFASHN(request)
-  }
-
-  throw new Error(
-    'No try-on engine available. Set CATVTON_API_URL for self-hosted CatVTON, ' +
-    'or FASHN_API_KEY for FASHN cloud API.',
-  )
+  console.log('[TryOn] Using CatVTON engine')
+  return await triggerCatVTON(request)
 }
 
 /**
  * Poll a try-on job status.
- * CatVTON results are synchronous so this only polls FASHN (async) jobs.
- * If the job was from CatVTON, it's already completed.
+ * CatVTON results are synchronous so no polling is needed — the result
+ * is already available from triggerTryOn().
  */
 export async function pollTryOn(jobId: string): Promise<TryOnResult> {
-  // If it's a CatVTON job, it was completed synchronously — no polling needed
-  if (jobId.startsWith('catvton-')) {
-    return {
-      jobId,
-      status: 'completed',
-      outputUrls: [],  // Caller should already have the result from triggerTryOn
-      errorMessage: null,
-      engine: 'catvton',
-    }
+  return {
+    jobId,
+    status: 'completed',
+    outputUrls: [],
+    errorMessage: null,
+    engine: 'catvton',
   }
-
-  // FASHN jobs need polling
-  return await pollFASHN(jobId)
 }
 
 /**
- * Save try-on result from FASHN to R2 for persistence.
- * CatVTON results are already uploaded to R2 by the Python service,
- * so this only applies to FASHN fallback results.
+ * Save try-on result image to R2 for persistence.
+ * Downloads the result from the output URL and uploads it to R2.
  */
 export async function saveTryOnResultToR2(
   jobId: string,

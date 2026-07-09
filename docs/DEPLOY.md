@@ -135,12 +135,7 @@ OPENAI_API_KEY="..."
 
 # Virtual Try-On (CatVTON self-hosted — primary, ~$0.005/try-on)
 # Deploy separately: see services/tryon/README.md for GPU cloud setup
-# Omit CATVTON_API_URL to fall back to FASHN API
 CATVTON_API_URL="http://your-tryon-server:8000"
-
-# FASHN API (cloud fallback, ~$0.075/try-on)
-# Get key: https://fashn.ai/api-keys
-FASHN_API_KEY="..."
 
 # Razorpay
 RAZORPAY_KEY_ID="rzp_live_xxx"
@@ -283,8 +278,7 @@ npx railway up --service @kanchuki/web
 
 ## Optional: Deploy CatVTON Try-On Service
 
-CatVTON replaces the paid FASHN API with a self-hosted GPU server.
-~$0.005/try-on vs $0.075/try-on with FASHN (17x cheaper).
+CatVTON self-hosted GPU server for virtual try-on (~$0.005/try-on).
 
 ### Option A: RunPod (Serverless, recommended)
 
@@ -331,11 +325,11 @@ curl -X POST http://localhost:8000/warmup
 
 ### Cost Comparison
 
-| Volume | CatVTON (self-hosted) | FASHN (cloud API) | Savings |
-|--------|----------------------|-------------------|---------|
-| 100 try-ons/mo | ~$1.50 | $7.50 | **80%** |
-| 500 try-ons/mo | ~$7.30 | $37.50 | **81%** |
-| 2000 try-ons/mo | ~$29 | $150 | **81%** |
+| Volume | CatVTON (self-hosted) |
+|--------|----------------------|
+| 100 try-ons/mo | ~$1.50 |
+| 500 try-ons/mo | ~$7.30 |
+| 2000 try-ons/mo | ~$29 |
 
 ---
 
@@ -351,4 +345,4 @@ curl -X POST http://localhost:8000/warmup
 - [ ] Logging enabled (Axiom or Railway logs)
 - [ ] Rate limiting configured (`@fastify/rate-limit` already wired)
 - [ ] CI passing on main branch
-- [ ] CatVTON deployed (L4 GPU on RunPod) or FASHN_API_KEY set as fallback
+- [ ] CatVTON deployed (L4 GPU on RunPod)

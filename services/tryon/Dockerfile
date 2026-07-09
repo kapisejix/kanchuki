@@ -26,10 +26,11 @@ RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 
 WORKDIR /app
 
-# Download CatVTON source (Docker ADD handles redirects; tar extracts manually)
-# Note: ADD only auto-extracts .tar.gz from LOCAL sources, not URLs
+# Download CatVTON source pinned at specific commit for reproducible builds
 # Repo: Zheng-Chong/CatVTON (case-sensitive!)
-ADD https://github.com/Zheng-Chong/CatVTON/archive/refs/heads/main.tar.gz /tmp/catvton.tar.gz
+# Commit: 999bdbe81e6008a3f5749af7c1e0b0fa3d21b48e — 2025-02-02: "chore: Update preprocess_agnostic_mask.py"
+# To update: get latest SHA from https://github.com/Zheng-Chong/CatVTON/commits/main/
+ADD https://github.com/Zheng-Chong/CatVTON/archive/999bdbe81e6008a3f5749af7c1e0b0fa3d21b48e.tar.gz /tmp/catvton.tar.gz
 RUN mkdir -p /app/CatVTON && tar xzf /tmp/catvton.tar.gz \
     --strip-components=1 -C /app/CatVTON && rm /tmp/catvton.tar.gz
 

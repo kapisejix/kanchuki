@@ -139,7 +139,7 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   )
 
-  // Virtual try-on worker (concurrency 2 — FASHN API rate limits)
+  // Virtual try-on worker (concurrency 2 — CatVTON GPU constraints)
   const tryOnWorker = new Worker(
     QUEUES.TRY_ON,
     async (job) => {

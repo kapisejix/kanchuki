@@ -115,7 +115,7 @@ CREATE POLICY "retailers_own_data" ON products
 Customer uploads photo
   → Stored in R2 at try_on_jobs/{job_id}/input.jpg (PRIVATE bucket)
   → TryOnJob record created: customer_photo_r2_key set
-  → AI processes (FASHN/Replicate API call)
+  → AI processes (CatVTON API call)
   → Result stored at try_on_jobs/{job_id}/result.jpg (PRIVATE bucket, 24h expiry)
   → Input photo DELETED: customer_photo_r2_key nulled, customer_photo_deleted_at set
   → TryOnJob.result_url: signed URL valid 24h only
@@ -289,7 +289,7 @@ RAZORPAY_KEY_SECRET=...      # NEVER commit actual value
 R2_ACCOUNT_ID=...
 R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...     # NEVER commit actual value
-FASHN_API_KEY=...             # Phase 1
+CATVTON_API_URL=...           # CatVTON self-hosted endpoint
 META_APP_SECRET=...           # Phase 2
 META_VERIFY_TOKEN=...         # Phase 2
 ```
@@ -354,7 +354,7 @@ Customers can:
 
 - Anthropic (Claude API): DPA in place, data not used for training
 - OpenAI (Embeddings): DPA in place, data not used for training
-- FASHN/Replicate (VTO): DPA required before Phase 1 launch
+- CatVTON (VTO): self-hosted, no third-party data sharing
 
 ---
 

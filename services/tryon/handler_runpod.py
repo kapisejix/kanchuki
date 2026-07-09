@@ -2,7 +2,7 @@
 CatVTON RunPod Serverless Handler
 ===================================
 Deploys the CatVTON model as a RunPod serverless worker.
-~$0.005 per try-on (17x cheaper than FASHN API).
+~$0.005 per try-on on an L4 GPU (~$0.44/hr).
 
 Deployment instructions:
     docker build -t YOUR_DOCKERHUB_USER/kanchuki-tryon:latest \\

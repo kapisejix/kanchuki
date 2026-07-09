@@ -61,7 +61,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         measurement_id: measurement_id ?? null,
         customer_photo_r2_key,
         status: 'QUEUED',
-        api_provider: 'fashn',
+        api_provider: 'catvton',
         queued_at: new Date(),
       },
     })
@@ -231,7 +231,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
       data: { try_on_credits: { decrement: 1 } },
     })
 
-    // Create TryOnJob with the customer photo URL (passed directly to FASHN)
+    // Create TryOnJob record with customer photo URL (base64 data URL for remote flow)
     const jobId = createId()
     const tryOnJob = await prisma.tryOnJob.create({
       data: {
@@ -240,7 +240,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         product_id,
         customer_photo_r2_key: customer_photo_url, // store URL directly for remote flow
         status: 'QUEUED',
-        api_provider: 'fashn',
+        api_provider: 'catvton',
         queued_at: new Date(),
       },
     })

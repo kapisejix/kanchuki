@@ -303,10 +303,10 @@ Only platform combining:
 #### F-102: AI Virtual Try-On (Self-Hosted)
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
-**Tech:** CatVTON (self-hosted Python microservice, primary) / FASHN API (fallback)  
-**Cost:** ~₹0.4 per try-on (self-hosted, 17x cheaper than FASHN API)  
+**Tech:** CatVTON (self-hosted Python microservice)  
+**Cost:** ~₹0.4 per try-on (self-hosted on L4 GPU)  
 **GPU Requirement:** 8GB+ VRAM (RTX 3060 or better)  
-**Latency:** ~35 seconds per try-on (fast mode)  
+**Latency:** ~35 seconds per try-on  
 **Quality threshold:** 80% of try-ons rated "acceptable" by sample retailer panel
 
 **Deployment Strategy (Two-Step):**
@@ -315,7 +315,7 @@ Only platform combining:
 - Python/FastAPI microservice wrapping CatVTON
 - Containerized, deployed on RunPod L4 GPU ($0.44/hr, serverless)
 - Works well for kurtis, suits, gowns, readymade garments
-- ~$0.005 per try-on vs $0.075 with FASHN
+- ~$0.005 per try-on
 
 **Step 2 — Fine-tune for Indian ethnic wear (Week 2-3):**
 - Collect 200-500 Indian garment photos from real uploads
@@ -323,12 +323,10 @@ Only platform combining:
 - Run LoRA fine-tuning for sarees, lehengas, unstitched suits
 - Swap model weights — no application code changes needed
 
-**Cost Comparison:**
-| Method | Cost per try-on | Monthly (1000 try-ons) | Setup |
-|--------|----------------|----------------------|-------|
-| FASHN API | ₹6 | ₹6,000 | None |
-| **CatVTON (self-hosted)** | **₹0.4** | **₹400** | 3-5 days |
-| Replicate IDM-VTON | ₹1.6 | ₹1,600 | None |
+**Cost:**
+| Method | Cost per try-on | Monthly (1000 try-ons) |
+|--------|----------------|----------------------|
+| **CatVTON (self-hosted)** | **₹0.4** | **₹400** |
 
 **Specific challenges for Indian ethnic wear:**
 - Saree draping (6-yard drape simulation) — requires fine-tuning
@@ -495,7 +493,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - **Razorpay** — subscription billing
 
 ### Required (Phase 1)
-- **FASHN API** — AI virtual try-on (primary)
+- **CatVTON** — AI virtual try-on (self-hosted)
 - **Replicate (IDM-VTON)** — VTO fallback
 - **pgvector** — semantic similarity search for Fashion DNA
 

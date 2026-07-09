@@ -77,7 +77,7 @@ Stray row: `001_pgvector_indexes` appears twice in `_prisma_migrations`, one wit
 
 **Done (VTO feature):**
 - Virtual Try-On fully built across all layers:
-  - `packages/ai/src/tryon.ts` — FASHN API service (trigger, poll, save result)
+  - `packages/ai/src/tryon.ts` — CatVTON try-on engine (trigger, save result)
   - `apps/api/src/routes/tryon.ts` — API routes (initiate, upload-url, jobs, remote)
   - `apps/api/src/jobs/process-tryon.ts` — BullMQ job handler
   - `apps/mobile/app/tryon/in-store.tsx` — In-store try-on screen for shopkeeper
@@ -95,10 +95,9 @@ Stray row: `001_pgvector_indexes` appears twice in `_prisma_migrations`, one wit
 - Database seed script — 3 retailers, 30 products, 10 customers, 8 collections
 - Error handling + offline resilience — request cache, dedup, timeouts
 
-**VTO Strategy Change:**
-- Decided to replace paid FASHN API ($0.075/try-on) with **self-hosted CatVTON** ($0.005/try-on)
-- CatVTON Python microservice not yet built — this is the next task
-- Decision documented in PLAN.md, TECH-STACK.md
+**VTO Strategy:**
+- Using **self-hosted CatVTON** ($0.005/try-on) as the sole try-on engine
+- CatVTON Python microservice fully built: see `services/tryon/app.py` (FastAPI) and `services/tryon/handler_runpod.py` (RunPod)
 
 ---
 
@@ -116,7 +115,6 @@ Stray row: `001_pgvector_indexes` appears twice in `_prisma_migrations`, one wit
 - CatVTON Python microservice (`services/tryon/`) is fully built — see commit `83f0eb6`. Includes `app.py` (FastAPI server), `Dockerfile` + `Dockerfile.runpod`, `handler_runpod.py` (RunPod serverless), training pipeline (`scripts/training/train_lora.py`), dataset collection scripts, mask generator, and dataset preparation.
 - CatVTON training pipeline (LoRA fine-tuning for Indian ethnic wear) fully implemented — ready for GPU deployment.
 - Phase 0 polishes: Razorpay subscriptions, admin panel, landing page, CI/CD, seed data — committed in `3c1ad13`, `4438acd`.
-- The `packages/ai/src/tryon.ts` already supports dual-engine: CatVTON (primary, self-hosted) with FASHN API fallback.
 
 **Notable changes:**
 - `output: 'standalone'` removed from `next.config.mjs` — this is needed for Railway deployment (documented in DEPLOY.md). Should be restored once the build system is stable, or use env var `NEXT_PRIVATE_STANDALONE=true`.

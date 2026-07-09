@@ -144,20 +144,19 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ### Month 7–8: Virtual Try-On (Self-Hosted)
 
-**Tech Choice (Revised — Cost Optimization):**
-- **Primary: CatVTON (self-hosted)** — open-source, runs on <8GB VRAM, ~35s per image, $0.005/try-on
-- Fallback: FASHN API (if self-hosted quality insufficient for specific garment types)
+**Tech Choice:**
+- **CatVTON (self-hosted)** — open-source, runs on <8GB VRAM, ~35s per image, $0.005/try-on
 - **Strategy:** Deploy CatVTON first (3-5 days), fine-tune for Indian ethnic wear later (1-2 weeks)
 - Quality gate: 80% acceptance rate on 50-sample ethnic wear test panel
 
-**Why CatVTON over FASHN:**
-| Factor | FASHN API | CatVTON (self-hosted) |
-|--------|-----------|----------------------|
-| Cost per try-on | $0.075 (~₹6) | **$0.005 (~₹0.4)** |
-| GPU needed | None (API) | 8GB VRAM (RTX 3060) |
-| Latency | ~10s | ~35s |
-| Indian wear quality | Good | Decent (improves with fine-tuning) |
-| Monthly cost (1000 try-ons) | $75 | **$5** |
+**CatVTON specs:**
+| Metric | Value |
+|--------|-------|
+| Cost per try-on | $0.005 (~₹0.4) |
+| GPU needed | 8GB+ VRAM (RTX 3060) |
+| Latency | ~35s |
+| Indian wear quality | Good (improves with fine-tuning) |
+| Monthly cost (1000 try-ons) | ~$5 |
 
 **VTO Flow (Phase 1 — In-Store):**
 1. Retailer selects product(s) customer wants to try
@@ -182,8 +181,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 1. Create Python/FastAPI microservice wrapping CatVTON model
 2. Containerize with Docker
 3. Deploy to RunPod/Jarvis Labs with L4 GPU ($0.44/hr, serverless billing)
-4. Update `packages/ai/src/tryon.ts` to call self-hosted endpoint instead of FASHN
-5. Test end-to-end with sample products
+4. Test end-to-end with sample products
 
 **Step 2 — Fine-tune for Indian wear (1-2 weeks, after deployment):**
 1. Collect 200-500 Indian garment photos from real product uploads
@@ -310,7 +308,7 @@ graph TD
 
 | Risk | Mitigation |
 |------|-----------|
-| VTO quality unacceptable | Test on 50 ethnic wear samples before shipping; have FASHN + Replicate fallback |
+| VTO quality unacceptable | Test on 50 ethnic wear samples before shipping; fine-tune CatVTON with LoRA for Indian garments |
 | Retailer upload behavior drops off | Gamify (streak, leaderboard), offer human onboarding support for first 50 products |
 | WhatsApp API account ban | Build SMS fallback (MSG91) from Day 1; never spam |
 | AI tagging cost spike | Cache embeddings; batch process; use Claude Haiku for bulk |

@@ -2,7 +2,7 @@
 Virtual Try-On API — CatVTON Self-Hosted Server
 ================================================
 FastAPI server that loads the CatVTON model and provides a try-on endpoint.
-~$0.005 per try-on (17x cheaper than FASHN API).
+~$0.005 per try-on on an L4 GPU (~$0.44/hr).
 
 Usage:
     pip install -r requirements.txt
