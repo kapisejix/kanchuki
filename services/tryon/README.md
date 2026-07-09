@@ -68,7 +68,7 @@ Cloud GPU options (hourly):
 |----------|---------|-------------|
 | `PORT` | `8000` | Server port |
 | `CATVTON_MODEL_CKPT` | `zhengchong/CatVTON` | HuggingFace model ID |
-| `CATVTON_BASE_CKPT` | `runwayml/stable-diffusion-inpainting` | Base SD inpainting model |
+| `CATVTON_BASE_CKPT` | `stable-diffusion-v1-5/stable-diffusion-inpainting` | Base SD inpainting model |
 | `CATVTON_DEVICE` | `cuda` | Device: cuda / cpu |
 | `CATVTON_DTYPE` | `float16` | Model precision |
 | `INFERENCE_STEPS` | `30` | More = better quality, slower |

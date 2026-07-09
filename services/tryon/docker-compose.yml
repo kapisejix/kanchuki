@@ -20,7 +20,7 @@ services:
       - "8000:8000"
     environment:
       - CATVTON_MODEL_CKPT=zhengchong/CatVTON
-      - CATVTON_BASE_CKPT=runwayml/stable-diffusion-inpainting
+      - CATVTON_BASE_CKPT=stable-diffusion-v1-5/stable-diffusion-inpainting
       - CATVTON_DEVICE=cuda
       - CATVTON_DTYPE=float16
       - INFERENCE_STEPS=30
