@@ -148,3 +148,112 @@ Stray row: `001_pgvector_indexes` appears twice in `_prisma_migrations`, one wit
 - Pilot with 10 retailers (Phase 0 launch gate)
 - Add real app icons/assets for store submission (mobile)
 - Enable RLS on try_on_jobs and audit_logs with proper policies
+
+---
+
+## 2026-07-09 — CatVTON RunPod Worker Diagnosis
+
+### The Architecture (How Try-On Works)
+
+The try-on flow has 4 layers:
+
+```
+Mobile App  ──→  API Server (Node.js)  ──→  RunPod GPU Worker  ──→  HuggingFace
+(Expo/RN)        (apps/api/)               (CatVTON container)      (Model weights)
+```
+
+1. **Mobile App** → uploads customer + product photos to Cloudflare R2
+2. **API Server** → gets the image URLs, calls RunPod's API endpoint
+3. **RunPod Worker** → runs CatVTON AI model (Python + PyTorch) on an NVIDIA L4 GPU
+4. **HuggingFace** → serves the model weights (~4GB) that CatVTON needs
+
+### Root Cause: What's Actually Wrong
+
+**Problem 1: Model weights not baked into Docker image (THE MAIN ISSUE)**
+
+The Docker image (`Dockerfile.runpod`) is built by GitHub Actions CI. It contains:
+- ✅ Python 3.11 + CUDA 12.4 + PyTorch
+- ✅ CatVTON source code (the pipeline code)
+- ✅ All Python dependencies (diffusers, transformers, etc.)
+- ❌ **NOT the actual model weights**
+
+The model weights (`zhengchong/CatVTON` + `stable-diffusion-v1-5/stable-diffusion-inpainting`, ~4GB total) download from HuggingFace EVERY TIME a container starts on RunPod. This happens in `handler_runpod.py` line 83:
+
+```python
+pipe = CatVTONPipeline(
+    attn_ckpt="zhengchong/CatVTON",                         # ~100MB
+    base_ckpt="stable-diffusion-v1-5/stable-diffusion-inpainting",  # ~4GB
+)
+```
+
+On first cold start, this download takes **5-10 minutes** and requires:
+- Internet access to HuggingFace (works)
+- Enough container disk space (50GB should be enough but tight)
+- No timeout interruptions
+
+**Problem 2: The old model was deleted from HuggingFace**
+
+Originally the code used `runwayml/stable-diffusion-inpainting` which was **removed** (returns 404). We fixed this to `stable-diffusion-v1-5/stable-diffusion-inpainting` (the official maintained replacement). This is now in the latest Docker image (CI build #25 succeeded).
+
+**Problem 3: RunPod pods keep exiting**
+
+The current state: all pods start and then exit. The health endpoint shows "1 ready" but that's a configuration target, not actual running workers. All 5 pods that tried to start eventually exited. This means the model download is either:
+
+- **Taking too long** (HuggingFace download speed varies, 4GB can take 5-10 min)
+- **Failing silently** (disk space, timeout, network issue)
+- **RunPod killing the pod** before the download completes (execution timeout)
+
+### Answers to Your Questions
+
+**Q: "Is the 4GB download happening on my laptop?"**
+**A: No.** Absolutely not. The entire download happens INSIDE the RunPod GPU container. Nothing touches your laptop. The Docker image is built by GitHub Actions CI, and the model weights are downloaded by the container when it starts on RunPod's servers.
+
+**Q: "Do I need to upload anything to a development server?"**
+**A: No.** The model weights are downloaded directly by the RunPod container from HuggingFace's servers. You don't need to download, upload, or host anything. The only files we upload to Cloudflare R2 are test person/garment photos (already done).
+
+**Q: "Can't we just use the API from HuggingFace?"**
+**A: No — HuggingFace doesn't offer a "virtual try-on API."** HuggingFace hosts model files for download. But there's no hosted API endpoint that does try-on for you. You HAVE to run the model yourself on a GPU.
+
+However, there ARE alternative try-on APIs:
+- **FASHN API** → $0.075/try-on (we removed this for cost)
+- **Kolors API** → Chinese company, virtual try-on
+- **RunPod templates** → Pre-built Stable Diffusion templates, faster cold start
+
+### The Solution: Bake Model Weights Into Docker Image
+
+The fix is to download the model weights ONCE during the CI Docker build instead of at runtime. This makes the image ~4GB larger but:
+
+| Before (current) | After (fixed) |
+|-----------------|---------------|
+| Image: ~5GB | Image: ~9GB |
+| Cold start: 5-10 min (download weights) | Cold start: ~30s (no download) |
+| Depends on HuggingFace network | Self-contained |
+| Can fail on transient HF errors | Always works |
+| Every redeploy = new download | Weights baked in permanently |
+
+**How to implement:**
+
+In `Dockerfile.runpod`, add a step that pre-downloads the model weights during the Docker build:
+
+```dockerfile
+# Pre-download model weights during build (so they're baked into the image)
+RUN python -c "
+from huggingface_hub import snapshot_download
+snapshot_download('zhengchong/CatVTON')
+snapshot_download('stable-diffusion-v1-5/stable-diffusion-inpainting')
+"
+```
+
+The HuggingFace `diffusers` library automatically caches downloaded models to `~/.cache/huggingface/`. If the weights are already there when the container starts, `load_model()` completes instantly instead of waiting 5-10 minutes.
+
+### Summary
+
+| Issue | Status | Fix |
+|-------|--------|-----|
+| Old model `runwayml/...` deleted (404) | ✅ Fixed | Changed to `stable-diffusion-v1-5/stable-diffusion-inpainting` |
+| Import path `src.model` was wrong | ✅ Fixed | Changed to `model.pipeline` |
+| CI build cancelled (runner delay) | ✅ Fixed | Retriggered, build #25 succeeded |
+| **Model weights not baked in image** | ❌ **Unfixed** | Add HuggingFace download to Dockerfile |
+| Worker not processing jobs | 🔄 Blocked on above | Workers exit while waiting for 4GB download |
+
+**Next step:** Add model pre-download to `Dockerfile.runpod`, rebuild, redeploy on RunPod. This is the final fix — after this, try-on should work.
