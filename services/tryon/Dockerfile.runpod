@@ -40,7 +40,9 @@ RUN pip install --no-cache-dir -r /app/CatVTON/requirements.txt
 # Install PyTorch with CUDA 12.4 — CatVTON's requirements.txt pins torch==2.1.2
 # (CPU-era, NumPy-1.x ABI). Without --upgrade, pip sees torch "already satisfied"
 # from that install and skips this one, silently keeping the broken 2.1.2 build.
-RUN pip install --no-cache-dir --upgrade torch==2.4.0 torchvision==0.19.0 \
+# torch>=2.6 required: newer transformers refuses torch.load on non-safetensors
+# checkpoints (CVE-2025-32434) below that version.
+RUN pip install --no-cache-dir --upgrade torch==2.6.0 torchvision==0.21.0 \
     --index-url https://download.pytorch.org/whl/cu124
 
 # Install our service deps
