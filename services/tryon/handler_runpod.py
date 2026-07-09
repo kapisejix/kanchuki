@@ -31,7 +31,7 @@ import numpy as np
 # ─── Configuration ─────────────────────────────────────────────
 
 MODEL_CKPT = os.environ.get("CATVTON_MODEL_CKPT", "zhengchong/CatVTON")
-BASE_CKPT = os.environ.get("CATVTON_BASE_CKPT", "runwayml/stable-diffusion-inpainting")
+BASE_CKPT = os.environ.get("CATVTON_BASE_CKPT", "stable-diffusion-v1-5/stable-diffusion-inpainting")
 DEVICE = os.environ.get("CATVTON_DEVICE", "cuda")
 DTYPE = os.environ.get("CATVTON_DTYPE", "float16")
 INFERENCE_STEPS = int(os.environ.get("INFERENCE_STEPS", "30"))
