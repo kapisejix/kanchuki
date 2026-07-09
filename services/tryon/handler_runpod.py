@@ -59,7 +59,7 @@ def load_model():
     import torch
 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "CatVTON"))
-    from src.model.pipeline import CatVTONPipeline  # type: ignore[import-untyped]
+    from model.pipeline import CatVTONPipeline  # type: ignore[import-untyped]
 
     weight_dtype = torch.float16 if DTYPE == "float16" else torch.float32
     device = DEVICE if torch.cuda.is_available() else "cpu"
