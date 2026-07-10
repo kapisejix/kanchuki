@@ -286,7 +286,7 @@ CatVTON self-hosted GPU server for virtual try-on (~$0.005/try-on).
 2. Go to **Serverless → Endpoints → New Endpoint**
 3. Fill in:
    - **Name:** `kanchuki-tryon`
-   - **Docker Image:** `ghcr.io/kapisejix/kanchuki-tryon:latest` (auto-built via CI)
+   - **Docker Image:** `ghcr.io/kapisejix/kanchuki-tryon:<git-sha>` — CI pushes both `:latest` and `:<git-sha>`. Pin the template to the SHA tag and update it on every deploy; RunPod caches `:latest` on workers and won't re-pull it on its own.
    - **Container Disk:** 50GB (model is ~10GB)
    - **GPU Type:** L4 (24GB) — good balance of speed & cost ($0.44/hr)
    - **Max Workers:** 2

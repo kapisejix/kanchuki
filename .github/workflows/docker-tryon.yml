@@ -30,7 +30,9 @@ jobs:
           context: .
           file: services/tryon/Dockerfile.runpod
           push: true
-          tags: ghcr.io/kapisejix/kanchuki-tryon:latest
+          tags: |
+            ghcr.io/kapisejix/kanchuki-tryon:latest
+            ghcr.io/kapisejix/kanchuki-tryon:${{ github.sha }}
           platforms: linux/amd64
           # Cache disabled for first build — enable after first successful push
           # cache-from: type=registry,ref=ghcr.io/kapisejix/kanchuki-tryon:latest
