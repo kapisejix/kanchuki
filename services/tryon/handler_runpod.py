@@ -49,13 +49,14 @@ R2_PUBLIC_URL = os.environ.get("R2_PUBLIC_URL", "")
 
 # Global pipeline — loaded once at container start
 pipe = None
+automasker = None  # None = fall back to heuristic mask (see generate_mask)
 
 
 # ─── Model Loading ────────────────────────────────────────────
 
 def load_model():
     """Load CatVTON pipeline once at startup."""
-    global pipe
+    global pipe, automasker
     import torch
 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "CatVTON"))
@@ -76,6 +77,23 @@ def load_model():
     )
     print("[CatVTON] Model loaded successfully")
 
+    try:
+        from huggingface_hub import snapshot_download
+        from model.cloth_masker import AutoMasker  # type: ignore[import-untyped]
+
+        repo_path = snapshot_download(MODEL_CKPT)
+        automasker = AutoMasker(
+            densepose_ckpt=os.path.join(repo_path, "DensePose"),
+            schp_ckpt=os.path.join(repo_path, "SCHP"),
+            device=device,
+        )
+        print("[CatVTON] AutoMasker loaded successfully")
+    except Exception as e:
+        # detectron2/densepose build is finicky (source-compiled CUDA ops) —
+        # degrade to the heuristic mask rather than fail the whole worker.
+        print(f"[CatVTON] AutoMasker unavailable ({e}), falling back to heuristic mask")
+        automasker = None
+
 
 # ─── Image Helpers ────────────────────────────────────────────
 
@@ -90,7 +108,13 @@ def download_image(url: str) -> PILImage.Image:
 
 
 def generate_mask(person_pil: PILImage.Image, cloth_type: str = "upper") -> PILImage.Image:
-    """Generate a cloth-agnostic mask via the heuristic (rectangle-over-silhouette) approach."""
+    """AutoMasker (DensePose+SCHP) if loaded, else the heuristic rectangle-over-silhouette mask."""
+    if automasker is not None:
+        try:
+            return automasker(person_pil, mask_type=cloth_type)["mask"]
+        except Exception as e:
+            print(f"[CatVTON] AutoMasker inference failed ({e}), falling back to heuristic mask")
+
     from mask_utils import generate_heuristic_mask
     return generate_heuristic_mask(person_pil, cloth_type)
 

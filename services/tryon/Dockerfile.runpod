@@ -5,7 +5,9 @@
 # Push:   docker push YOUR_USER/kanchuki-tryon:latest
 # ──────────────────────────────────────────────────────────────
 
-FROM nvidia/cuda:12.4.1-runtime-ubuntu22.04
+# devel (not runtime) — AutoMasker's detectron2/densepose ops have no
+# prebuilt wheel for torch 2.6, must compile from source, needs nvcc.
+FROM nvidia/cuda:12.4.1-devel-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
@@ -16,6 +18,9 @@ RUN apt-get update && apt-get install -y \
     python3.11-dev \
     python3-pip \
     wget \
+    git \
+    build-essential \
+    ninja-build \
     libgl1-mesa-glx \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
@@ -44,6 +49,14 @@ RUN pip install --no-cache-dir -r /app/CatVTON/requirements.txt
 # checkpoints (CVE-2025-32434) below that version.
 RUN pip install --no-cache-dir --upgrade torch==2.6.0 torchvision==0.21.0 \
     --index-url https://download.pytorch.org/whl/cu124
+
+# AutoMasker deps: detectron2 + its DensePose extension. No prebuilt wheel
+# matches torch 2.6, so build from source (needs the devel image's nvcc,
+# build-essential, ninja above) — this step is the slow part of the build.
+RUN TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9;9.0" pip install --no-cache-dir \
+    'git+https://github.com/facebookresearch/detectron2.git'
+RUN TORCH_CUDA_ARCH_LIST="7.5;8.0;8.6;8.9;9.0" pip install --no-cache-dir \
+    'git+https://github.com/facebookresearch/detectron2.git#subdirectory=projects/DensePose'
 
 # Install our service deps
 COPY services/tryon/requirements.txt /app/requirements.txt
