@@ -23,7 +23,12 @@ torchvision>=0.16.0
 
 # Diffusers for CatVTON pipeline
 diffusers>=0.27.0
-transformers>=4.36.0
+# Exact-pinned: unpinned >=4.36.0 resolved to transformers 5.13.0 at build time,
+# a major version bump (Jan 2026) with breaking internal API changes
+# (AttributeError: no attribute 'all_tied_weights_keys' during safety_checker
+# load). 4.57.6 is the last stable 4.x release and still has the torch>=2.6
+# CVE-2025-32434 check CatVTON's torch bump depends on.
+transformers==4.57.6
 accelerate>=0.25.0
 safetensors>=0.4.0
 
