@@ -257,3 +257,129 @@ The HuggingFace `diffusers` library automatically caches downloaded models to `~
 | Worker not processing jobs | 🔄 Blocked on above | Workers exit while waiting for 4GB download |
 
 **Next step:** Add model pre-download to `Dockerfile.runpod`, rebuild, redeploy on RunPod. This is the final fix — after this, try-on should work.
+
+---
+
+## 2026-07-09 (later) — Two more crash-loop causes, then a stale-image caching bug
+
+Continuation of the same-day RunPod diagnosis above. Weight bake-in (Problem 1
+above) got fixed and committed (`f687c8c`), but the worker kept crash-looping
+through two more distinct root causes, then hit a fourth non-code problem.
+
+**Root cause #2 (fixed, commit `15a6a15`):** `CatVTON/requirements.txt` pins
+`torch==2.1.2` (CPU-era, NumPy-1.x ABI) and installs first in the Dockerfile.
+The Dockerfile's own `pip install torch torchvision` had no `--upgrade`, so
+pip saw torch "already satisfied" and no-op'd — old 2.1.2 stayed installed.
+NumPy 2.4.6 pulled by later deps broke 2.1.2's NumPy interop
+(`RuntimeError: Numpy is not available`), and transformers separately
+required torch>=2.4. Fixed with `pip install --upgrade torch==2.4.0
+torchvision==0.19.0 --index-url .../cu124`. Confirmed via live pod
+tracebacks pulled from the RunPod dashboard.
+
+**Root cause #3 (fixed, commit `035668d`):** even after 2.4.0, workers still
+crash-looped. Fresh pod logs showed a different traceback:
+`transformers/utils/import_utils.py:1440 check_torch_load_is_safe()` →
+`ValueError: ... require users to upgrade torch to at least v2.6 ...
+(CVE-2025-32434)`. `transformers` now hard-blocks `torch.load` on
+non-safetensors checkpoints below torch 2.6 — hit when
+`CatVTONPipeline.__init__` (`CatVTON/model/pipeline.py:43`) loads
+`StableDiffusionSafetyChecker.from_pretrained(base_ckpt, subfolder="safety_checker")`.
+Fixed by bumping `Dockerfile.runpod` to `torch==2.6.0 torchvision==0.21.0`.
+CI build `29033896416` succeeded, new digest
+`sha256:9a9710c7a218a0ca33260287d800822efebc7339c4fec34539eec67e5a0780d3`
+pushed 16:54:03 UTC.
+
+**Problem #4 — turned out to be a false alarm (timestamp mixup, corrected
+same session):** initially looked like RunPod was serving a stale cached
+image — pasted pod logs (21:55–22:16 IST) showed the old digest
+`fa15a0351095...` (2.4.0) still crashing with the `check_torch_load_is_safe`
+/ torch>=2.6 error. But checking timestamps properly: the 2.6.0 fix's image
+(digest `9a9710c7...`) finished pushing at 16:54:03 UTC = **22:24:03 IST** —
+i.e. AFTER those pasted logs, not before. So this was the same
+"don't-judge-a-fix-by-logs-captured-before-it-existed" mistake already
+flagged twice in this project's session history, caught and corrected this
+time before acting on it. **Not a caching bug. No fix needed for this.**
+
+**Status at session end:** three real crash-loop root causes diagnosed and
+fixed in code (weight bake-in, torch 2.1.2→2.4.0, torch 2.4.0→2.6.0 — all
+committed and pushed), but end-to-end success on RunPod with the 2.6.0 fix
+is still **completely unconfirmed** — no pod log has yet been captured
+that ran AFTER 22:24:03 IST on 2026-07-09. That is the single next thing to
+check: fire a fresh test job now, wait for a pod, confirm its digest is
+`9a9710c7...` and its logs show `[CatVTON] Model loaded successfully` /
+`[CatVTON] Warmup complete` with no torch/CVE traceback.
+
+---
+
+## 2026-07-10 — Root cause #5 (stale `:latest` caching), root cause #6
+(transformers unpinned floor → broken 5.x), still unconfirmed end-to-end
+
+Fresh pod logs (captured well after the 22:24:03 IST torch 2.6.0 push)
+showed the *same* torch<2.6/CVE-2025-32434 crash as before. This time the
+timestamp gap was 9+ hours, not a same-session mixup — genuinely a new bug.
+
+**Root cause #5 (fixed, commit `688ce1b`):** RunPod was serving a stale
+cached `:latest` image on worker nodes. CI (`docker-tryon.yml`) only ever
+pushed `ghcr.io/kapisejix/kanchuki-tryon:latest` — no immutable tag — and
+RunPod workers don't reliably re-pull a mutable tag. Confirmed via GHCR: the
+CI build for the 2.6.0 fix (run `29033896416`) completed and pushed fine at
+16:54 UTC, but a pod log pulled 9+ hrs later (2026-07-10 01:58 UTC, via
+RunPod's own log-explainer chat) still showed torch 2.4.0. Fix: CI now also
+pushes `ghcr.io/kapisejix/kanchuki-tryon:<git-sha>`
+(`.github/workflows/docker-tryon.yml`); RunPod template `kanchuki-catvton-sl`
+(id `v76b819nle`, endpoint `pnvchif9f4bcom`) must be re-pinned to the new SHA
+tag via `saveTemplate` GraphQL mutation after every deploy — documented in
+`docs/DEPLOY.md`. Confirmed working: pods for the SHA-tagged image did
+correctly stop showing the old torch 2.4.0 error after this fix.
+
+Also found `workersMax` on the endpoint had been left at **0** (fully
+scaled down, no worker could ever start) — bumped to 2 via `saveEndpoint`
+mutation before any test job could run.
+
+**Root cause #6 (fixed, commit `d921584`):** with #5 fixed, pods now pulled
+the right image and torch 2.6.0 was confirmed active in fresh logs (no more
+CVE block, model weights loaded fine). New crash, different cause:
+
+```
+File ".../transformers/modeling_utils.py", line 4776, in _move_missing_keys_from_meta_to_device
+    for key in missing_keys - self.all_tied_weights_keys.keys():
+AttributeError: 'StableDiffusionSafetyChecker' object has no attribute 'all_tied_weights_keys'. Did you mean: '_tied_weights_keys'?
+```
+
+Root cause: `services/tryon/requirements.txt` had `transformers>=4.36.0` —
+floor only, no ceiling. At build time this resolved to `transformers==5.13.0`
+(a major-version bump released 2026-01-26, PyPI's `info.version` confirmed
+via API), which has breaking internal API changes vs. the 4.x-era CatVTON/
+diffusers pipeline code. Exact same anti-pattern as root cause #2/#3 (torch's
+unpinned `pip install torch torchvision` skipping upgrade) — an unpinned
+floor silently drifted to a breaking major release between builds. Fixed by
+exact-pinning `transformers==4.57.6` (last stable 4.x release, still has the
+torch>=2.6 CVE-2025-32434 check that root cause #3's fix depends on).
+
+**Status at session end:** three fixes shipped this session (SHA-tag caching
+fix, workersMax=0 blocker, transformers pin) on top of the three from
+2026-07-09. First test job after the transformers pin (job
+`sync-030a940e...`, pod `ztsv2je2iue9jp`, image `d921584...`) spun up at
+03:38:09 UTC, then EXITED — job never left `IN_QUEUE`, never reached
+`COMPLETED`. **No pod log has been pulled for this specific attempt yet** —
+RunPod's GraphQL API does not expose container stdout, only the dashboard
+Logs tab does (same limitation hit all session). End-to-end success is
+still **completely unconfirmed**.
+
+**Next step:** pull dashboard logs for pod `ztsv2je2iue9jp` (or whichever
+pod is current) and check: does it crash again (new bug — read the
+traceback), or does it actually reach `[CatVTON] Model loaded successfully`
+and just needs a longer sync-wait / `runsync` polling loop instead of relying
+on the 90s HTTP sync window (`scratch-test-tryon.mjs` currently treats a
+90s-timeout `IN_QUEUE` response as failure, but the job may still complete
+async — poll `/status/{jobId}` in a loop instead of one-shot).
+
+Test job helper: `packages/ai/scratch-test-tryon.mjs` (run via
+`node --env-file=.env packages/ai/scratch-test-tryon.mjs` — needs `.env` at
+repo root with R2 + RunPod creds, plus `test_person.jpg`/`test_garment.jpg`
+at repo root).
+
+RunPod template update recipe (GraphQL `saveTemplate` mutation, `env: []`
+is a required field even when empty): endpoint `pnvchif9f4bcom`, template id
+`v76b819nle`. `check-runpod.sh` (untracked, has API token inline) queries
+endpoint/pod state.
