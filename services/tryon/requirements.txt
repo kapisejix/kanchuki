@@ -41,7 +41,12 @@ boto3>=1.34.0          # Required for S3-compatible R2 upload
 botocore>=1.34.0
 
 # ---- Optional: Mask generation ----
-rembg>=0.1.0           # Background removal for person mask (CPU fallback available)
+# rembg's onnxruntime backend is an extra, not a core dep, since rembg>=2.x —
+# bare `rembg` installs with no inference backend and crashes at import
+# (ModuleNotFoundError: onnxruntime). CPU backend chosen over onnxruntime-gpu
+# to avoid yet another CUDA-version pin fight (see torch/transformers/xformers
+# skew already hit in this image) — mask gen is lightweight, CPU is fine.
+rembg[cpu]>=0.1.0
 opencv-python>=4.8.0   # Alternative mask generation
 
 # ---- Optional: Monitoring ----

@@ -99,7 +99,10 @@ def generate_mask(person_pil: PILImage.Image) -> PILImage.Image:
         else:
             mask = person_pil.convert("L").point(lambda x: 255)
         return mask
-    except ImportError:
+    except (ImportError, SystemExit, Exception):
+        # rembg's bg.py calls sys.exit(1) (not ImportError) when its onnx
+        # backend is missing/broken — catch SystemExit too or it kills the
+        # whole worker instead of falling back.
         print("[CatVTON] rembg not available, using default mask")
         return PILImage.fromarray(
             np.ones((person_pil.height, person_pil.width), dtype=np.uint8) * 255
