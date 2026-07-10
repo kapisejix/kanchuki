@@ -31,7 +31,7 @@ export function FilterBar({
             onClick={() => onColorChange(null)}
             className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
               filterColor === null
-                ? 'bg-violet-600 text-white border-violet-600'
+                ? 'bg-cyan-600 text-white border-cyan-600'
                 : 'bg-white text-gray-600 border-gray-200'
             }`}
           >
@@ -43,7 +43,7 @@ export function FilterBar({
               onClick={() => onColorChange(filterColor === color ? null : color)}
               className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
                 filterColor === color
-                  ? 'bg-violet-600 text-white border-violet-600'
+                  ? 'bg-cyan-600 text-white border-cyan-600'
                   : 'bg-white text-gray-600 border-gray-200'
               }`}
             >
@@ -65,7 +65,7 @@ export function FilterBar({
             onClick={() => onOccasionChange(null)}
             className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
               filterOccasion === null
-                ? 'bg-violet-600 text-white border-violet-600'
+                ? 'bg-cyan-600 text-white border-cyan-600'
                 : 'bg-white text-gray-600 border-gray-200'
             }`}
           >
@@ -77,7 +77,7 @@ export function FilterBar({
               onClick={() => onOccasionChange(filterOccasion === occasion ? null : occasion)}
               className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
                 filterOccasion === occasion
-                  ? 'bg-violet-600 text-white border-violet-600'
+                  ? 'bg-cyan-600 text-white border-cyan-600'
                   : 'bg-white text-gray-600 border-gray-200'
               }`}
             >

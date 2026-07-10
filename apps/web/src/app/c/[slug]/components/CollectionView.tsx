@@ -127,7 +127,7 @@ export function CollectionView({ collection, slug }: Props) {
             <p className="text-sm">No products match the filter</p>
             <button
               onClick={() => { setFilterColor(null); setFilterOccasion(null) }}
-              className="mt-2 text-violet-600 text-sm underline"
+              className="mt-2 text-cyan-600 text-sm underline"
             >
               Clear filters
             </button>
@@ -248,7 +248,7 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }
       <div className="px-2.5 pt-1.5">
         <button
           onClick={(e) => { e.stopPropagation(); setShowTryOn(true) }}
-          className="w-full bg-violet-50 hover:bg-violet-100 text-violet-700 text-xs font-medium
+          className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-medium
                      py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
         >
           <Sparkles size={14} />

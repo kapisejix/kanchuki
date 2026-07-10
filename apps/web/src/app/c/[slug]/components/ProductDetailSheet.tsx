@@ -176,7 +176,7 @@ export function ProductDetailSheet({
               {product.search_tags.slice(0, 8).map((tag) => (
                 <span
                   key={tag}
-                  className="text-xs bg-violet-50 text-violet-700 px-2 py-1 rounded-full"
+                  className="text-xs bg-cyan-50 text-cyan-700 px-2 py-1 rounded-full"
                 >
                   {tag}
                 </span>
@@ -189,7 +189,7 @@ export function ProductDetailSheet({
         <div className="px-4 pt-2">
           <button
             onClick={onTryOn}
-            className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold
+            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold
                        py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
           >
             <Camera size={18} />

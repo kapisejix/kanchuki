@@ -24,7 +24,7 @@ export default function DownloadPage() {
       {/* Nav */}
       <nav className="max-w-6xl mx-auto px-6 py-5 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 bg-violet-600 rounded-xl flex items-center justify-center group-hover:bg-violet-700 transition-colors">
+          <div className="w-8 h-8 bg-cyan-600 rounded-xl flex items-center justify-center group-hover:bg-cyan-700 transition-colors">
             <span className="text-white font-bold text-sm">K</span>
           </div>
           <span className="font-bold text-gray-900 text-lg">Kanchuki</span>
@@ -93,8 +93,8 @@ export default function DownloadPage() {
             },
           ].map((f) => (
             <div key={f.title} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-              <div className="w-10 h-10 bg-violet-100 rounded-xl flex items-center justify-center mb-4">
-                <f.icon size={20} className="text-violet-600" />
+              <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center mb-4">
+                <f.icon size={20} className="text-cyan-600" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-1">{f.title}</h3>
               <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
@@ -103,7 +103,7 @@ export default function DownloadPage() {
         </div>
 
         {/* Waitlist signup */}
-        <div className="bg-gradient-to-br from-violet-50 to-white rounded-3xl p-8 sm:p-10 border border-violet-100 max-w-lg mx-auto">
+        <div className="bg-gradient-to-br from-cyan-50 to-white rounded-3xl p-8 sm:p-10 border border-cyan-100 max-w-lg mx-auto">
           {submitted ? (
             <div className="text-center">
               <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -130,12 +130,12 @@ export default function DownloadPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
                   required
-                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
+                  className="flex-1 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
                 />
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="bg-violet-600 hover:bg-violet-700 text-white font-semibold px-6 py-3 rounded-xl transition-all disabled:opacity-50 whitespace-nowrap"
+                  className="bg-cyan-600 hover:bg-cyan-700 text-white font-semibold px-6 py-3 rounded-xl transition-all disabled:opacity-50 whitespace-nowrap"
                 >
                   {submitting ? 'Signing up...' : 'Notify Me'}
                 </button>
@@ -152,7 +152,7 @@ export default function DownloadPage() {
       <footer className="border-t border-gray-100 py-8">
         <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 bg-violet-600 rounded-lg flex items-center justify-center">
+            <div className="w-6 h-6 bg-cyan-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">K</span>
             </div>
             <span className="text-gray-700 font-semibold text-sm">Kanchuki</span>

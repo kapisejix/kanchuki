@@ -11,9 +11,10 @@ import {
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { X, Check, Plus, Trash2, MapPin } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { X, Check, Plus, Trash2, MapPin, Sparkles } from 'lucide-react-native'
 import { productApi } from '../../src/lib/api'
-import { OCCASION_TYPES, formatPriceRange } from '@kanchuki/shared'
+import { OCCASION_TYPES, PRODUCT_CATEGORIES, FABRIC_TYPES, PATTERN_TYPES, formatPriceRange } from '@kanchuki/shared'
 
 type Photo = { id: string; url: string; is_primary: boolean }
 type Variant = { id: string; color: string; photo_url: string | null }
@@ -45,12 +46,20 @@ const STATUS_OPTIONS: Array<{ value: Product['status']; label: string }> = [
 ]
 
 export default function ProductDetailScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', id],
     queryFn: () => productApi.get(id),
+    // Poll while AI tagging is still running so the spinner clears itself
+    // instead of requiring the user to leave and re-enter the screen.
+    refetchInterval: (query) => {
+      const p = (query.state.data as { data: Product } | undefined)?.data
+      if (!p || (!p.ai_tagged && !p.ai_tag_error)) return 3_000
+      return false
+    },
   })
   const product = (data as { data: Product } | undefined)?.data
 
@@ -61,12 +70,22 @@ export default function ProductDetailScreen() {
   const [saving, setSaving] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
 
+  // Editable AI fields
+  const [editedCategory, setEditedCategory] = useState<string | null>(null)
+  const [editedColor, setEditedColor] = useState('')
+  const [editedFabric, setEditedFabric] = useState<string | null>(null)
+  const [editedPattern, setEditedPattern] = useState<string | null>(null)
+
   useEffect(() => {
     if (!product) return
     setPrice(product.price_min ? String(product.price_min / 100) : '')
     setLocation(product.location_notes ?? '')
     setNotes(product.notes ?? '')
     setSelectedOccasions(product.occasions ?? [])
+    setEditedCategory(product.category)
+    setEditedColor(product.primary_color ?? '')
+    setEditedFabric(product.fabric_estimate)
+    setEditedPattern(product.pattern)
   }, [product])
 
   const invalidate = () => {
@@ -81,6 +100,10 @@ export default function ProductDetailScreen() {
       await productApi.update(product.id, {
         price_min: priceInPaise,
         price_max: priceInPaise,
+        category: editedCategory ?? undefined,
+        primary_color: editedColor || undefined,
+        fabric_estimate: editedFabric ?? undefined,
+        pattern: editedPattern ?? undefined,
         location_notes: location || undefined,
         notes: notes || undefined,
         occasions: selectedOccasions,
@@ -126,16 +149,19 @@ export default function ProductDetailScreen() {
 
   if (isLoading || !product) {
     return (
-      <View className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator color="#7C3AED" />
+      <View className="flex-1 bg-cyan-50 items-center justify-center">
+        <ActivityIndicator color="#0891B2" />
       </View>
     )
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView className="flex-1 bg-cyan-50">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-12 pb-4 bg-white border-b border-gray-100">
+      <View
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <X size={22} color="#374151" />
         </TouchableOpacity>
@@ -143,7 +169,7 @@ export default function ProductDetailScreen() {
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={saving}
-          className="bg-violet-600 px-4 py-2 rounded-xl"
+          className="bg-cyan-600 px-4 py-2 rounded-xl"
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
@@ -166,9 +192,9 @@ export default function ProductDetailScreen() {
       </ScrollView>
 
       {!product.ai_tagged && !product.ai_tag_error && (
-        <View className="mx-4 mt-3 bg-violet-50 border border-violet-100 rounded-xl px-3 py-2 flex-row items-center gap-2">
-          <ActivityIndicator size="small" color="#7C3AED" />
-          <Text className="text-violet-700 text-xs">AI tagging in progress...</Text>
+        <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2 flex-row items-center gap-2">
+          <ActivityIndicator size="small" color="#0891B2" />
+          <Text className="text-cyan-700 text-xs">AI tagging in progress...</Text>
         </View>
       )}
       {product.ai_tag_error && (
@@ -178,11 +204,26 @@ export default function ProductDetailScreen() {
       )}
 
       <View className="px-4 py-4 gap-4">
-        {/* AI-read attributes (read-only) */}
+        {/* Try-On */}
+        <TouchableOpacity
+          onPress={() =>
+            router.push({ pathname: '/tryon/in-store', params: { productId: product.id } })
+          }
+          className="flex-row items-center justify-center gap-2 bg-cyan-600 py-3.5 rounded-2xl"
+          activeOpacity={0.8}
+        >
+          <Sparkles size={18} color="white" />
+          <Text className="text-white font-bold">Try-On with Customer Photo</Text>
+        </TouchableOpacity>
+
+        {/* AI-read attributes (read-only summary) */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-            Details
-          </Text>
+          <View className="flex-row items-center gap-2 mb-2">
+            <Sparkles size={14} color="#0891B2" />
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              AI Summary
+            </Text>
+          </View>
           <Text className="text-base font-bold text-gray-900">
             {product.category ?? 'Uncategorized'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
@@ -190,9 +231,106 @@ export default function ProductDetailScreen() {
           <Text className="text-sm text-gray-500 mt-0.5">
             {[product.fabric_estimate, product.pattern].filter(Boolean).join(' · ') || 'AI details pending'}
           </Text>
-          <Text className="text-lg font-bold text-violet-600 mt-2">
+          {product.ai_tag_error && (
+            <Text className="text-xs text-amber-600 mt-1">
+              AI failed — edit fields below manually
+            </Text>
+          )}
+          <Text className="text-lg font-bold text-cyan-600 mt-2">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
+        </View>
+
+        {/* Category (editable) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Category *
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {PRODUCT_CATEGORIES.map((cat) => {
+              const selected = editedCategory === cat
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setEditedCategory(selected ? null : cat)}
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </View>
+
+        {/* Color (editable) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            Color
+          </Text>
+          <TextInput
+            value={editedColor}
+            onChangeText={setEditedColor}
+            placeholder="e.g. Bottle Green, Navy Blue, Rani Pink"
+            className="text-sm text-gray-900"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        {/* Fabric (editable) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Fabric
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {FABRIC_TYPES.map((fab) => {
+              const selected = editedFabric === fab
+              return (
+                <TouchableOpacity
+                  key={fab}
+                  onPress={() => setEditedFabric(selected ? null : fab)}
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    {fab}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </View>
+
+        {/* Pattern (editable) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Pattern
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {PATTERN_TYPES.map((pat) => {
+              const selected = editedPattern === pat
+              return (
+                <TouchableOpacity
+                  key={pat}
+                  onPress={() => setEditedPattern(selected ? null : pat)}
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    {pat}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         </View>
 
         {/* Color variants */}
@@ -218,10 +356,10 @@ export default function ProductDetailScreen() {
               ))}
               <TouchableOpacity
                 onPress={() => router.push(`/product/${product.id}/add-color`)}
-                className="w-16 h-20 rounded-xl border-2 border-dashed border-violet-300 items-center justify-center"
+                className="w-16 h-20 rounded-xl border-2 border-dashed border-cyan-300 items-center justify-center"
               >
-                <Plus size={18} color="#7C3AED" />
-                <Text className="text-violet-600 text-[10px] mt-1 text-center">Add{'\n'}Color</Text>
+                <Plus size={18} color="#0891B2" />
+                <Text className="text-cyan-600 text-[10px] mt-1 text-center">Add{'\n'}Color</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -241,7 +379,7 @@ export default function ProductDetailScreen() {
                   disabled={statusUpdating}
                   onPress={() => void handleStatusChange(opt.value)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-violet-600 border-violet-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
@@ -303,7 +441,7 @@ export default function ProductDetailScreen() {
                     )
                   }
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-violet-600 border-violet-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}

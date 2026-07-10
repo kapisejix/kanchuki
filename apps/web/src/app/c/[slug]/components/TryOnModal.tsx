@@ -162,8 +162,8 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
         {/* ── Intro Step ── */}
         {step === 'intro' && (
           <div className="px-6 pb-8 pt-2">
-            <div className="w-16 h-16 bg-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Camera size={28} className="text-violet-600" />
+            <div className="w-16 h-16 bg-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Camera size={28} className="text-cyan-600" />
             </div>
             <h2 className="text-lg font-bold text-gray-900 text-center">Try This On</h2>
             <p className="text-sm text-gray-500 text-center mt-1 px-4">
@@ -200,7 +200,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold
+                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold
                            py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors"
               >
                 <Upload size={18} />
@@ -221,7 +221,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
           <div className="px-6 pb-8 pt-4 text-center">
             <div className="flex justify-center mb-4">
               {customerPhoto && (
-                <div className="w-32 h-40 rounded-2xl overflow-hidden border-2 border-violet-300">
+                <div className="w-32 h-40 rounded-2xl overflow-hidden border-2 border-cyan-300">
                   <Image
                     src={customerPhoto}
                     alt="Your photo"
@@ -232,7 +232,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
                 </div>
               )}
             </div>
-            <Loader2 size={24} className="animate-spin text-violet-600 mx-auto mb-3" />
+            <Loader2 size={24} className="animate-spin text-cyan-600 mx-auto mb-3" />
             <p className="text-sm text-gray-700 font-medium">Preparing your photo...</p>
           </div>
         )}
@@ -264,13 +264,13 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
                 </div>
               )}
             </div>
-            <div className="w-12 h-12 bg-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-              <Loader2 size={24} className="animate-spin text-violet-600" />
+            <div className="w-12 h-12 bg-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+              <Loader2 size={24} className="animate-spin text-cyan-600" />
             </div>
             <p className="text-sm text-gray-700 font-medium">AI is generating your try-on...</p>
             <p className="text-xs text-gray-400 mt-1">This takes about 10-20 seconds</p>
             <div className="mt-4 w-48 h-1.5 bg-gray-100 rounded-full mx-auto overflow-hidden">
-              <div className="h-full bg-violet-600 rounded-full animate-pulse" style={{ width: '60%' }} />
+              <div className="h-full bg-cyan-600 rounded-full animate-pulse" style={{ width: '60%' }} />
             </div>
           </div>
         )}
@@ -302,8 +302,8 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
                 </div>
               </div>
               <div className="flex-1">
-                <p className="text-[10px] text-violet-600 font-medium mb-1 uppercase tracking-wide">Try-On ✨</p>
-                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 ring-2 ring-violet-300">
+                <p className="text-[10px] text-cyan-600 font-medium mb-1 uppercase tracking-wide">Try-On ✨</p>
+                <div className="aspect-[3/4] rounded-xl overflow-hidden bg-gray-100 ring-2 ring-cyan-300">
                   {resultUrl && (
                     <Image
                       src={resultUrl}
@@ -321,7 +321,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
             <div className="mt-5 space-y-3">
               <button
                 onClick={handleSaveImage}
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold
+                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold
                            py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
               >
                 <Download size={18} />
@@ -354,7 +354,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
             <div className="mt-6 space-y-3">
               <button
                 onClick={handleRetry}
-                className="w-full bg-violet-600 hover:bg-violet-700 text-white font-semibold
+                className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold
                            py-3.5 rounded-2xl transition-colors"
               >
                 Try Again

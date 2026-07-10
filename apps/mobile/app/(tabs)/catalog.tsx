@@ -45,63 +45,68 @@ const ProductCard = memo(function ProductCard({
   onMarkSold: () => void
 }) {
   return (
+    // Android: elevation + overflow:hidden on the SAME node can stop children
+    // (the Image) from compositing. Elevation lives here; rounding/clipping
+    // moves to the inner wrapper below.
     <TouchableOpacity
       onPress={onPress}
-      className="flex-1 bg-white rounded-2xl overflow-hidden border border-gray-100"
+      className="flex-1 bg-white rounded-2xl border border-gray-100"
       style={{ elevation: 1 }}
     >
-      {/* Photo */}
-      <View className="aspect-[3/4] w-full bg-gray-100">
-        {product.primary_photo_url ? (
-          <Image
-            source={{ uri: product.primary_photo_url }}
-            className="w-full h-full"
-            contentFit="cover"
-            placeholder={{ blurhash: BLURHASH }}
-            transition={200}
-            cachePolicy="memory-disk"
-          />
-        ) : (
-          <View className="w-full h-full items-center justify-center">
-            <Text className="text-gray-300 text-3xl">📦</Text>
-          </View>
-        )}
-        {/* Status badge */}
-        {product.status !== 'AVAILABLE' && (
-          <View className="absolute top-2 left-2 bg-red-500 px-2 py-0.5 rounded-full">
-            <Text className="text-white text-xs font-semibold">{product.status}</Text>
-          </View>
-        )}
-        {/* AI tag indicator */}
-        {!product.ai_tagged && (
-          <View className="absolute top-2 right-2 bg-amber-400 w-2 h-2 rounded-full" />
-        )}
-      </View>
+      <View className="rounded-2xl overflow-hidden">
+        {/* Photo */}
+        <View className="aspect-[3/4] w-full bg-gray-100">
+          {product.primary_photo_url ? (
+            <Image
+              source={{ uri: product.primary_photo_url }}
+              className="w-full h-full"
+              contentFit="cover"
+              placeholder={{ blurhash: BLURHASH }}
+              transition={200}
+              cachePolicy="memory-disk"
+            />
+          ) : (
+            <View className="w-full h-full items-center justify-center">
+              <Text className="text-gray-300 text-3xl">📦</Text>
+            </View>
+          )}
+          {/* Status badge */}
+          {product.status !== 'AVAILABLE' && (
+            <View className="absolute top-2 left-2 bg-red-500 px-2 py-0.5 rounded-full">
+              <Text className="text-white text-xs font-semibold">{product.status}</Text>
+            </View>
+          )}
+          {/* AI tag indicator */}
+          {!product.ai_tagged && (
+            <View className="absolute top-2 right-2 bg-amber-400 w-2 h-2 rounded-full" />
+          )}
+        </View>
 
-      {/* Info */}
-      <View className="p-2.5">
-        <Text className="text-xs text-gray-500 truncate">
-          {product.category ?? 'Product'}
-          {product.primary_color ? ` · ${product.primary_color}` : ''}
-        </Text>
-        <Text className="text-sm font-bold text-gray-900 mt-0.5">
-          {formatPriceRange(product.price_min, product.price_max)}
-        </Text>
-        {product.section && (
-          <View className="flex-row items-center gap-1 mt-1">
-            <MapPin size={10} color="#9CA3AF" />
-            <Text className="text-xs text-gray-400">{product.section.name}</Text>
-          </View>
-        )}
+        {/* Info */}
+        <View className="p-2.5">
+          <Text className="text-xs text-gray-500 truncate">
+            {product.category ?? 'Product'}
+            {product.primary_color ? ` · ${product.primary_color}` : ''}
+          </Text>
+          <Text className="text-sm font-bold text-gray-900 mt-0.5">
+            {formatPriceRange(product.price_min, product.price_max)}
+          </Text>
+          {product.section && (
+            <View className="flex-row items-center gap-1 mt-1">
+              <MapPin size={10} color="#9CA3AF" />
+              <Text className="text-xs text-gray-400">{product.section.name}</Text>
+            </View>
+          )}
 
-        {product.status === 'AVAILABLE' && (
-          <TouchableOpacity
-            onPress={onMarkSold}
-            className="mt-2 bg-gray-100 py-1.5 rounded-lg items-center"
-          >
-            <Text className="text-xs text-gray-600 font-medium">Mark Sold</Text>
-          </TouchableOpacity>
-        )}
+          {product.status === 'AVAILABLE' && (
+            <TouchableOpacity
+              onPress={onMarkSold}
+              className="mt-2 bg-gray-100 py-1.5 rounded-lg items-center"
+            >
+              <Text className="text-xs text-gray-600 font-medium">Mark Sold</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   )
@@ -177,7 +182,7 @@ export default function CatalogScreen() {
         {!isSearching && (
           <TouchableOpacity
             onPress={() => router.push('/product/add')}
-            className="mt-3 bg-violet-600 px-5 py-2.5 rounded-xl"
+            className="mt-3 bg-cyan-600 px-5 py-2.5 rounded-xl"
           >
             <Text className="text-white text-sm font-semibold">Add First Product</Text>
           </TouchableOpacity>
@@ -188,7 +193,7 @@ export default function CatalogScreen() {
   )
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-cyan-50">
       {/* Search Bar */}
       <View className="bg-white px-4 py-3 border-b border-gray-100">
         <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2">
@@ -203,12 +208,12 @@ export default function CatalogScreen() {
           />
           {isSearching && searchQuery.length > 0 && (
             <TouchableOpacity onPress={clearSearch}>
-              <Text className="text-violet-600 text-xs font-medium">Clear</Text>
+              <Text className="text-cyan-600 text-xs font-medium">Clear</Text>
             </TouchableOpacity>
           )}
         </View>
         {isSearching && (
-          <Text className="text-xs text-violet-600 mt-1.5 px-1">
+          <Text className="text-xs text-cyan-600 mt-1.5 px-1">
             AI search — try natural language
           </Text>
         )}
@@ -216,7 +221,7 @@ export default function CatalogScreen() {
 
       {/* Product Grid */}
       {listLoading && products.length === 0 ? (
-        <ActivityIndicator className="mt-16" color="#7C3AED" />
+        <ActivityIndicator className="mt-16" color="#0891B2" />
       ) : (
         <FlatList
           data={products}
@@ -238,7 +243,7 @@ export default function CatalogScreen() {
       <View className="absolute bottom-6 right-4 items-end gap-2">
         <TouchableOpacity
           onPress={() => router.push('/product/add')}
-          className="w-14 h-14 bg-violet-600 rounded-full items-center justify-center shadow-lg"
+          className="w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
           style={{ elevation: 6 }}
           activeOpacity={0.8}
         >

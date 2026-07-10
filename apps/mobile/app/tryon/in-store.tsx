@@ -6,12 +6,14 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   X,
@@ -21,7 +23,7 @@ import {
   Share2,
   RefreshCw,
 } from 'lucide-react-native'
-import { productApi, tryOnApi, uploadImageToR2 } from '../../src/lib/api'
+import { productApi, tryOnApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
 
@@ -36,6 +38,7 @@ type Product = {
 }
 
 export default function InStoreTryOnScreen() {
+  const insets = useSafeAreaInsets()
   const { productId: preselectedProductId } = useLocalSearchParams<{ productId?: string }>()
   const [step, setStep] = useState<Step>(preselectedProductId ? 'capture' : 'select')
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null)
@@ -44,6 +47,7 @@ export default function InStoreTryOnScreen() {
   const [tryOnJobId, setTryOnJobId] = useState<string | null>(null)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [processingPhoto, setProcessingPhoto] = useState(false)
 
   const cameraRef = useRef<CameraView>(null)
   const queryClient = useQueryClient()
@@ -68,7 +72,7 @@ export default function InStoreTryOnScreen() {
 
   const handlePickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.85,
     })
     if (result.canceled || !result.assets[0]) return
@@ -76,13 +80,34 @@ export default function InStoreTryOnScreen() {
   }
 
   const processPhoto = async (uri: string) => {
-    const compressed = await ImageManipulator.manipulateAsync(
-      uri,
-      [{ resize: { width: 1200 } }],
-      { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-    )
-    setCustomerPhotoUri(compressed.uri)
-    setStep('preview')
+    setProcessingPhoto(true)
+    try {
+      // A cloud-only gallery photo (iCloud "Optimize Storage", unsynced
+      // Google Photos) can leave manipulateAsync hanging with no error —
+      // race it against a timeout so the screen never looks frozen.
+      const compressed = await Promise.race([
+        ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 1200 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        ),
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('TIMEOUT')), 15_000),
+        ),
+      ])
+      setCustomerPhotoUri(compressed.uri)
+      setStep('preview')
+    } catch (err) {
+      const timedOut = err instanceof Error && err.message === 'TIMEOUT'
+      Alert.alert(
+        'Could not use this photo',
+        timedOut
+          ? 'This looks like a cloud-only photo. Download it to your device first, then try again.'
+          : 'Please pick a different photo and try again.',
+      )
+    } finally {
+      setProcessingPhoto(false)
+    }
   }
 
   // ── Run try-on ──────────────────────────────────────────────
@@ -94,8 +119,7 @@ export default function InStoreTryOnScreen() {
 
     try {
       // Get presigned URL for customer photo
-      const response = await fetch(customerPhotoUri)
-      const blob = await response.blob()
+      const blob = await readLocalImage(customerPhotoUri)
       const uploadResult = await tryOnApi.getUploadUrl('image/jpeg', blob.size)
       const { upload_url, r2_key } = uploadResult.data
 
@@ -147,7 +171,7 @@ export default function InStoreTryOnScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-violet-600 px-6 py-3 rounded-xl"
+          className="bg-cyan-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -156,9 +180,12 @@ export default function InStoreTryOnScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-cyan-50">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-12 pb-4 bg-white border-b border-gray-100">
+      <View
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <X size={22} color="#374151" />
         </TouchableOpacity>
@@ -178,7 +205,7 @@ export default function InStoreTryOnScreen() {
         <>
           {preselectedProductId ? (
             <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color="#7C3AED" />
+              <ActivityIndicator color="#0891B2" />
             </View>
           ) : (
             <ScrollView className="flex-1 px-4 pt-4">
@@ -186,7 +213,7 @@ export default function InStoreTryOnScreen() {
                 Select a product for the customer to try on
               </Text>
               {productsLoading ? (
-                <ActivityIndicator className="mt-8" color="#7C3AED" />
+                <ActivityIndicator className="mt-8" color="#0891B2" />
               ) : (
                 <View className="flex-row flex-wrap gap-3">
                   {products.map((p) => (
@@ -233,48 +260,58 @@ export default function InStoreTryOnScreen() {
       {/* Step: Capture customer photo */}
       {step === 'capture' && (
         <View className="flex-1 bg-black">
-          <CameraView ref={cameraRef} className="flex-1" facing="back">
-            <TouchableOpacity
-              onPress={() => setStep('select')}
-              className="absolute top-12 left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
-            >
-              <X size={20} color="white" />
-            </TouchableOpacity>
+          <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-            <View className="absolute top-12 left-0 right-0 items-center">
-              <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
-                Customer Photo · Full body
-              </Text>
+          <TouchableOpacity
+            onPress={() => setStep('select')}
+            className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
+            style={{ top: insets.top + 8 }}
+          >
+            <X size={20} color="white" />
+          </TouchableOpacity>
+
+          <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
+            <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
+              Customer Photo · Full body
+            </Text>
+          </View>
+
+          {/* Frame guide */}
+          <View className="flex-1 items-center justify-center">
+            <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
+            <Text className="text-white/60 text-sm mt-4">Full body, front facing, good lighting</Text>
+          </View>
+
+          {/* Controls */}
+          <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
+            <View className="flex-row items-center gap-10">
+              <TouchableOpacity
+                onPress={() => void handlePickFromGallery()}
+                disabled={processingPhoto}
+                className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
+              >
+                <ImagePlus size={24} color="white" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => void handleCapture()}
+                disabled={processingPhoto}
+                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+              >
+                <View className="w-14 h-14 bg-white rounded-full" />
+              </TouchableOpacity>
+
+              <View className="w-14" />
             </View>
+            <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
+          </View>
 
-            {/* Frame guide */}
-            <View className="flex-1 items-center justify-center">
-              <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
-              <Text className="text-white/60 text-sm mt-4">Full body, front facing, good lighting</Text>
+          {processingPhoto && (
+            <View className="absolute inset-0 bg-black/60 items-center justify-center gap-3">
+              <ActivityIndicator size="large" color="white" />
+              <Text className="text-white text-sm">Processing photo...</Text>
             </View>
-
-            {/* Controls */}
-            <View className="pb-12 items-center gap-6">
-              <View className="flex-row items-center gap-10">
-                <TouchableOpacity
-                  onPress={() => void handlePickFromGallery()}
-                  className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
-                >
-                  <ImagePlus size={24} color="white" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => void handleCapture()}
-                  className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-                >
-                  <View className="w-14 h-14 bg-white rounded-full" />
-                </TouchableOpacity>
-
-                <View className="w-14" />
-              </View>
-              <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
-            </View>
-          </CameraView>
+          )}
         </View>
       )}
 
@@ -319,7 +356,7 @@ export default function InStoreTryOnScreen() {
           <View className="mt-6 gap-3">
             <TouchableOpacity
               onPress={() => void handleRunTryOn()}
-              className="bg-violet-600 py-4 rounded-2xl items-center"
+              className="bg-cyan-600 py-4 rounded-2xl items-center"
               activeOpacity={0.8}
             >
               <Text className="text-white font-bold">✨ Try This On!</Text>
@@ -337,7 +374,7 @@ export default function InStoreTryOnScreen() {
       {/* Step: Uploading */}
       {step === 'uploading' && (
         <View className="flex-1 items-center justify-center gap-4">
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color="#0891B2" />
           <Text className="text-gray-900 font-semibold">Uploading customer photo...</Text>
         </View>
       )}
@@ -345,14 +382,14 @@ export default function InStoreTryOnScreen() {
       {/* Step: Processing */}
       {step === 'processing' && (
         <View className="flex-1 items-center justify-center gap-4 px-8">
-          <View className="w-20 h-20 bg-violet-100 rounded-3xl items-center justify-center">
-            <RefreshCw size={36} color="#7C3AED" />
+          <View className="w-20 h-20 bg-cyan-100 rounded-3xl items-center justify-center">
+            <RefreshCw size={36} color="#0891B2" />
           </View>
           <Text className="text-gray-900 text-lg font-bold text-center">AI is working its magic...</Text>
           <Text className="text-gray-500 text-sm text-center">
             Generating a try-on preview. This takes about 10-20 seconds.
           </Text>
-          <ActivityIndicator size="small" color="#7C3AED" />
+          <ActivityIndicator size="small" color="#0891B2" />
         </View>
       )}
 
@@ -375,8 +412,8 @@ export default function InStoreTryOnScreen() {
             )}
             {resultUrl && (
               <View className="flex-1">
-                <Text className="text-xs text-violet-600 font-medium mb-2">Try-On ✨</Text>
-                <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border-2 border-violet-300">
+                <Text className="text-xs text-cyan-600 font-medium mb-2">Try-On ✨</Text>
+                <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border-2 border-cyan-300">
                   <Image
                     source={{ uri: resultUrl }}
                     className="w-full h-full"
@@ -393,7 +430,7 @@ export default function InStoreTryOnScreen() {
                 // Share the result
                 router.back()
               }}
-              className="bg-violet-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
+              className="bg-cyan-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
               activeOpacity={0.8}
             >
               <Share2 size={18} color="white" />

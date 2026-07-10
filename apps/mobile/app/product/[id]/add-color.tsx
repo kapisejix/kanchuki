@@ -1,16 +1,18 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus } from 'lucide-react-native'
-import { productApi, uploadImageToR2 } from '../../../src/lib/api'
+import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 
 type Step = 'camera' | 'preview' | 'saving'
 
 export default function AddColorVariantScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const [step, setStep] = useState<Step>('camera')
   const [permission, requestPermission] = useCameraPermissions()
@@ -27,7 +29,7 @@ export default function AddColorVariantScreen() {
 
   const handlePickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.85,
     })
     if (result.canceled || !result.assets[0]) return
@@ -48,8 +50,7 @@ export default function AddColorVariantScreen() {
     if (!photoUri || !color.trim()) return
     setStep('saving')
     try {
-      const response = await fetch(photoUri)
-      const blob = await response.blob()
+      const blob = await readLocalImage(photoUri)
       const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
       const info = uploadResult.data
       await uploadImageToR2(photoUri, info.upload_url, 'image/jpeg')
@@ -77,7 +78,7 @@ export default function AddColorVariantScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-violet-600 px-6 py-3 rounded-xl"
+          className="bg-cyan-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -88,46 +89,47 @@ export default function AddColorVariantScreen() {
   if (step === 'camera') {
     return (
       <View className="flex-1 bg-black">
-        <CameraView ref={cameraRef} className="flex-1" facing="back">
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="absolute top-12 left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
-          >
-            <X size={20} color="white" />
-          </TouchableOpacity>
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-          <View className="absolute top-12 left-0 right-0 items-center">
-            <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
-              Photograph the same design, this color
-            </Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
+          style={{ top: insets.top + 8 }}
+        >
+          <X size={20} color="white" />
+        </TouchableOpacity>
+
+        <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
+          <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
+            Photograph the same design, this color
+          </Text>
+        </View>
+
+        <View className="flex-1 items-center justify-center">
+          <View className="w-72 h-80 border-2 border-white/40 rounded-3xl" />
+          <Text className="text-white/60 text-sm mt-4">Real photo, not a color filter</Text>
+        </View>
+
+        <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
+          <View className="flex-row items-center gap-10">
+            <TouchableOpacity
+              onPress={() => void handlePickFromGallery()}
+              className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
+            >
+              <ImagePlus size={24} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => void handleCapture()}
+              className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+            >
+              <View className="w-14 h-14 bg-white rounded-full" />
+            </TouchableOpacity>
+
+            <View className="w-14" />
           </View>
-
-          <View className="flex-1 items-center justify-center">
-            <View className="w-72 h-80 border-2 border-white/40 rounded-3xl" />
-            <Text className="text-white/60 text-sm mt-4">Real photo, not a color filter</Text>
-          </View>
-
-          <View className="pb-12 items-center gap-6">
-            <View className="flex-row items-center gap-10">
-              <TouchableOpacity
-                onPress={() => void handlePickFromGallery()}
-                className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
-              >
-                <ImagePlus size={24} color="white" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => void handleCapture()}
-                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-              >
-                <View className="w-14 h-14 bg-white rounded-full" />
-              </TouchableOpacity>
-
-              <View className="w-14" />
-            </View>
-            <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
-          </View>
-        </CameraView>
+          <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
+        </View>
       </View>
     )
   }
@@ -137,7 +139,7 @@ export default function AddColorVariantScreen() {
     <View className="flex-1 bg-black">
       {photoUri && <Image source={{ uri: photoUri }} className="flex-1" contentFit="contain" />}
 
-      <View className="absolute top-12 left-4">
+      <View className="absolute left-4" style={{ top: insets.top + 8 }}>
         <TouchableOpacity
           onPress={() => setStep('camera')}
           className="w-10 h-10 bg-black/50 rounded-full items-center justify-center"
@@ -146,7 +148,10 @@ export default function AddColorVariantScreen() {
         </TouchableOpacity>
       </View>
 
-      <View className="absolute bottom-0 left-0 right-0 bg-black/80 px-6 pt-4 pb-10 gap-3">
+      <View
+        className="absolute bottom-0 left-0 right-0 bg-black/80 px-6 pt-4 gap-3"
+        style={{ paddingBottom: 40 + insets.bottom }}
+      >
         <Text className="text-white text-xs font-semibold uppercase tracking-wide">Color name</Text>
         <TextInput
           value={color}
@@ -159,7 +164,7 @@ export default function AddColorVariantScreen() {
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={!color.trim() || step === 'saving'}
-          className={`py-4 rounded-2xl items-center ${color.trim() ? 'bg-violet-600' : 'bg-white/10'}`}
+          className={`py-4 rounded-2xl items-center ${color.trim() ? 'bg-cyan-600' : 'bg-white/10'}`}
         >
           {step === 'saving' ? (
             <ActivityIndicator size="small" color="white" />

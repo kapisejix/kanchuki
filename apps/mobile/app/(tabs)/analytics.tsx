@@ -54,7 +54,7 @@ function formatDate(dateStr: string): string {
   return days[d.getDay()]
 }
 
-const COLORS = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899']
+const COLORS = ['#0891B2', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899']
 
 // ── Stat Card ──────────────────────────────────────────────────────
 
@@ -246,7 +246,7 @@ function PlanUsageBar({
       </View>
       <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
         <View
-          className={`h-full rounded-full ${isNearLimit ? 'bg-amber-500' : 'bg-violet-500'}`}
+          className={`h-full rounded-full ${isNearLimit ? 'bg-amber-500' : 'bg-cyan-500'}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </View>
@@ -268,8 +268,8 @@ export default function AnalyticsScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator color="#7C3AED" />
+      <View className="flex-1 bg-cyan-50 items-center justify-center">
+        <ActivityIndicator color="#0891B2" />
       </View>
     )
   }
@@ -281,7 +281,7 @@ export default function AnalyticsScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-cyan-50"
       refreshControl={
         <RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />
       }
@@ -298,10 +298,10 @@ export default function AnalyticsScreen() {
         {/* Overview Stats */}
         <View className="flex-row flex-wrap gap-3">
           <StatCard
-            icon={<Eye size={18} color="#7C3AED" />}
+            icon={<Eye size={18} color="#0891B2" />}
             label="Total Views (7d)"
             value={totalViews.toLocaleString('en-IN')}
-            color="#7C3AED"
+            color="#0891B2"
             subtitle="Across all collections"
           />
           <StatCard
@@ -338,7 +338,7 @@ export default function AnalyticsScreen() {
             <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Daily Views
             </Text>
-            <TrendingUp size={16} color="#7C3AED" />
+            <TrendingUp size={16} color="#0891B2" />
           </View>
           <MiniBarChart
             data={trends.map((d) => ({
@@ -346,7 +346,7 @@ export default function AnalyticsScreen() {
               value: d.views,
             }))}
             maxValue={maxViews}
-            color="#7C3AED"
+            color="#0891B2"
           />
           {totalViews === 0 && (
             <Text className="text-xs text-gray-400 text-center mt-3">
@@ -429,9 +429,9 @@ export default function AnalyticsScreen() {
             />
             <TouchableOpacity
               onPress={() => router.push('/billing')}
-              className="mt-2 bg-violet-50 border border-violet-100 py-2.5 rounded-xl items-center"
+              className="mt-2 bg-cyan-50 border border-cyan-100 py-2.5 rounded-xl items-center"
             >
-              <Text className="text-violet-700 text-sm font-semibold">
+              <Text className="text-cyan-700 text-sm font-semibold">
                 Manage Plan
               </Text>
             </TouchableOpacity>

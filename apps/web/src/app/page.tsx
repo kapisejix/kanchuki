@@ -128,8 +128,8 @@ const FEATURES = [
     icon: Camera,
     title: 'AI Catalog Builder',
     desc: 'Snap a photo. AI tags category, color, fabric, and occasion automatically. Your entire shop digitized in hours, not weeks.',
-    color: 'text-violet-600',
-    bg: 'bg-violet-50',
+    color: 'text-cyan-600',
+    bg: 'bg-cyan-50',
   },
   {
     icon: Share2,
@@ -243,7 +243,7 @@ function SectionHeader({
       className={`max-w-2xl ${align === 'center' ? 'mx-auto text-center' : ''} mb-12 sm:mb-16`}
     >
       {tag && (
-        <span className="inline-block text-xs font-semibold tracking-widest uppercase text-violet-600 mb-3">
+        <span className="inline-block text-xs font-semibold tracking-widest uppercase text-cyan-600 mb-3">
           {tag}
         </span>
       )}
@@ -306,7 +306,7 @@ function Navbar() {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="w-9 h-9 bg-violet-600 rounded-xl flex items-center justify-center group-hover:bg-violet-700 transition-colors">
+          <div className="w-9 h-9 bg-cyan-600 rounded-xl flex items-center justify-center group-hover:bg-cyan-700 transition-colors">
             <span className="text-white font-bold text-base">K</span>
           </div>
           <span className="font-bold text-gray-900 text-lg">Kanchuki</span>
@@ -335,7 +335,7 @@ function Navbar() {
           </a>
           <a
             href="#cta"
-            className="bg-violet-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-violet-700 transition-all shadow-sm hover:shadow-md active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+            className="bg-cyan-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-cyan-700 transition-all shadow-sm hover:shadow-md active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
           >
             Get Started Free
           </a>
@@ -366,7 +366,7 @@ function Navbar() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="block text-sm text-gray-700 hover:text-violet-600 font-medium py-2 transition-colors"
+                  className="block text-sm text-gray-700 hover:text-cyan-600 font-medium py-2 transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -375,7 +375,7 @@ function Navbar() {
               <a
                 href="#cta"
                 onClick={() => setMobileOpen(false)}
-                className="block text-center bg-violet-600 text-white font-semibold px-5 py-3 rounded-xl hover:bg-violet-700 transition-all"
+                className="block text-center bg-cyan-600 text-white font-semibold px-5 py-3 rounded-xl hover:bg-cyan-700 transition-all"
               >
                 Get Started Free
               </a>
@@ -393,8 +393,8 @@ function Hero() {
   return (
     <section className="relative min-h-[90vh] flex items-center pt-24 sm:pt-28 pb-16 sm:pb-20 overflow-hidden">
       {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-violet-50/80 via-white to-white pointer-events-none" />
-      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-violet-100/60 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-gradient-to-b from-cyan-50/80 via-white to-white pointer-events-none" />
+      <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-gradient-to-bl from-cyan-100/60 to-transparent rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-gradient-to-tr from-amber-50/60 to-transparent rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
@@ -403,7 +403,7 @@ function Hero() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2 bg-violet-50 text-violet-700 text-sm font-medium px-4 py-2 rounded-full mb-6 sm:mb-8 border border-violet-100"
+          className="inline-flex items-center gap-2 bg-cyan-50 text-cyan-700 text-sm font-medium px-4 py-2 rounded-full mb-6 sm:mb-8 border border-cyan-100"
         >
           <span>🇮🇳</span>
           <span>Built for Indian ethnic wear retailers</span>
@@ -417,7 +417,7 @@ function Hero() {
           className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 tracking-tight leading-[1.1] text-balance max-w-4xl mx-auto"
         >
           Your store on WhatsApp.{' '}
-          <span className="bg-gradient-to-r from-violet-600 to-violet-500 bg-clip-text text-transparent">
+          <span className="bg-gradient-to-r from-cyan-600 to-cyan-500 bg-clip-text text-transparent">
             Powered by AI.
           </span>
         </motion.h1>
@@ -427,7 +427,7 @@ function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-4 text-lg sm:text-xl text-violet-600/80 font-medium"
+          className="mt-4 text-lg sm:text-xl text-cyan-600/80 font-medium"
         >
           आपकी दुकान, AI की ताकत
         </motion.p>
@@ -452,14 +452,14 @@ function Hero() {
         >
           <a
             href="#cta"
-            className="inline-flex items-center justify-center gap-2 bg-violet-600 hover:bg-violet-700 text-white font-bold text-base sm:text-lg px-8 py-4 rounded-2xl transition-all shadow-lg shadow-violet-200 hover:shadow-xl hover:shadow-violet-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-700 text-white font-bold text-base sm:text-lg px-8 py-4 rounded-2xl transition-all shadow-lg shadow-cyan-200 hover:shadow-xl hover:shadow-cyan-200 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
           >
             Start Free Trial
             <ArrowRight size={20} />
           </a>
           <a
             href="#how-it-works"
-            className="inline-flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 font-semibold text-base sm:text-lg px-8 py-4 rounded-2xl hover:border-violet-300 hover:text-violet-700 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
+            className="inline-flex items-center justify-center gap-2 border-2 border-gray-200 text-gray-700 font-semibold text-base sm:text-lg px-8 py-4 rounded-2xl hover:border-cyan-300 hover:text-cyan-700 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
           >
             See How It Works
             <ChevronRight size={20} />
@@ -553,7 +553,7 @@ function StatsBar() {
             >
               <stat.icon
                 size={24}
-                className="mx-auto mb-2 text-violet-500"
+                className="mx-auto mb-2 text-cyan-500"
               />
               <div className="text-2xl sm:text-3xl font-bold text-gray-900">
                 {stat.value}
@@ -642,7 +642,7 @@ function HowItWorks() {
           className="grid sm:grid-cols-3 gap-8 sm:gap-12 relative"
         >
           {/* Connector line — desktop only */}
-          <div className="hidden sm:block absolute top-16 left-[calc(16.66%+2rem)] right-[calc(16.66%+2rem)] h-0.5 bg-gradient-to-r from-violet-200 via-violet-400 to-violet-200" />
+          <div className="hidden sm:block absolute top-16 left-[calc(16.66%+2rem)] right-[calc(16.66%+2rem)] h-0.5 bg-gradient-to-r from-cyan-200 via-cyan-400 to-cyan-200" />
 
           {HOW_IT_WORKS.map((item, i) => (
             <motion.div
@@ -650,10 +650,10 @@ function HowItWorks() {
               variants={fadeUp}
               className="relative text-center"
             >
-              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 bg-white rounded-2xl border-2 border-violet-100 flex items-center justify-center shadow-sm">
-                <item.icon size={28} className="text-violet-600" />
+              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 bg-white rounded-2xl border-2 border-cyan-100 flex items-center justify-center shadow-sm">
+                <item.icon size={28} className="text-cyan-600" />
               </div>
-              <div className="text-xs font-bold text-violet-600 mb-2 tracking-widest">
+              <div className="text-xs font-bold text-cyan-600 mb-2 tracking-widest">
                 STEP {item.step}
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-3">{item.title}</h3>
@@ -730,10 +730,10 @@ function ComparisonMatrix() {
                 </tr>
               ))}
               {/* Kanchuki row — highlighted */}
-              <tr className="bg-violet-50/80">
-                <td className="px-5 py-4 font-bold text-violet-800">Kanchuki</td>
+              <tr className="bg-cyan-50/80">
+                <td className="px-5 py-4 font-bold text-cyan-800">Kanchuki</td>
                 {[true, true, true, true].map((_, i) => (
-                  <td key={i} className="px-4 py-4 text-center text-lg font-bold text-violet-700">
+                  <td key={i} className="px-4 py-4 text-center text-lg font-bold text-cyan-700">
                     ✅
                   </td>
                 ))}
@@ -848,7 +848,7 @@ function PricingSection() {
           <button
             onClick={() => setPeriod(period === 'monthly' ? 'annual' : 'monthly')}
             className={`relative w-12 h-6 rounded-full transition-colors ${
-              period === 'annual' ? 'bg-violet-600' : 'bg-gray-200'
+              period === 'annual' ? 'bg-cyan-600' : 'bg-gray-200'
             }`}
             aria-label="Toggle billing period"
           >
@@ -886,12 +886,12 @@ function PricingSection() {
                 variants={fadeUp}
                 className={`relative rounded-3xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${
                   plan.highlight
-                    ? 'border-violet-600 bg-violet-600 text-white shadow-lg shadow-violet-200 scale-[1.02] sm:scale-105'
+                    ? 'border-cyan-600 bg-cyan-600 text-white shadow-lg shadow-cyan-200 scale-[1.02] sm:scale-105'
                     : 'border-gray-200 bg-white hover:border-gray-300'
                 }`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-violet-700 text-xs font-bold px-4 py-1 rounded-full shadow-sm border border-violet-100">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-cyan-700 text-xs font-bold px-4 py-1 rounded-full shadow-sm border border-cyan-100">
                     MOST POPULAR
                   </div>
                 )}
@@ -947,8 +947,8 @@ function PricingSection() {
                   href="#cta"
                   className={`block text-center py-3.5 rounded-xl font-semibold transition-all active:scale-[0.98] ${
                     plan.highlight
-                      ? 'bg-white text-violet-700 hover:bg-violet-50 shadow-sm'
-                      : 'bg-violet-600 text-white hover:bg-violet-700 shadow-sm hover:shadow-md'
+                      ? 'bg-white text-cyan-700 hover:bg-cyan-50 shadow-sm'
+                      : 'bg-cyan-600 text-white hover:bg-cyan-700 shadow-sm hover:shadow-md'
                   }`}
                 >
                   {plan.cta}
@@ -995,12 +995,12 @@ function FaqSection() {
               key={i}
               variants={fadeUp}
               className={`bg-white rounded-2xl border transition-all duration-300 ${
-                openIndex === i ? 'border-violet-200 shadow-sm' : 'border-gray-100 hover:border-gray-200'
+                openIndex === i ? 'border-cyan-200 shadow-sm' : 'border-gray-100 hover:border-gray-200'
               }`}
             >
               <button
                 onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 rounded-2xl"
+                className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 rounded-2xl"
                 aria-expanded={openIndex === i}
                 aria-controls={`faq-panel-${i}`}
               >
@@ -1119,7 +1119,7 @@ function FooterSection() {
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           {/* Logo */}
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-violet-600 rounded-lg flex items-center justify-center">
+            <div className="w-7 h-7 bg-cyan-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">K</span>
             </div>
             <span className="text-gray-300 font-semibold">Kanchuki</span>

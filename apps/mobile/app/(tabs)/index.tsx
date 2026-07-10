@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Search } from 'lucide-react-native'
+import { Camera, Users, Link2, Search, Eye, MessageCircle, Package } from 'lucide-react-native'
 import { retailerApi } from '../../src/lib/api'
 
 type RankedProduct = {
@@ -41,21 +41,30 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-gray-50"
+      className="flex-1 bg-cyan-50"
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
     >
-      {/* Greeting */}
-      <View className="bg-white px-4 pt-4 pb-5 border-b border-gray-100">
-        <Text className="text-gray-500 text-sm">Welcome back 👋</Text>
-        <Text className="text-2xl font-bold text-gray-900 mt-0.5">
-          {me?.shop_name ?? 'Your Store'}
-        </Text>
+      {/* Greeting hero */}
+      <View className="bg-cyan-600 px-4 pt-4 pb-8 rounded-b-3xl">
+        <View className="flex-row items-center gap-3">
+          <View className="w-12 h-12 rounded-2xl bg-white/15 items-center justify-center">
+            <Text className="text-white font-bold text-lg">
+              {(me?.shop_name ?? 'S').charAt(0).toUpperCase()}
+            </Text>
+          </View>
+          <View>
+            <Text className="text-cyan-100 text-sm">Welcome back 👋</Text>
+            <Text className="text-white text-2xl font-bold mt-0.5">
+              {me?.shop_name ?? 'Your Store'}
+            </Text>
+          </View>
+        </View>
         {me?.plan_status === 'TRIAL' && (
           <TouchableOpacity
             onPress={() => router.push('/billing')}
-            className="mt-2 bg-amber-50 px-3 py-1.5 rounded-lg inline-flex self-start"
+            className="mt-4 bg-white/15 px-3 py-1.5 rounded-lg self-start"
           >
-            <Text className="text-amber-700 text-xs font-medium">
+            <Text className="text-white text-xs font-medium">
               14-day free trial active · Tap to subscribe
             </Text>
           </TouchableOpacity>
@@ -63,32 +72,40 @@ export default function HomeScreen() {
       </View>
 
       {/* Quick Stats */}
-      <View className="px-4 py-4">
+      <View className="px-4 pt-4 pb-2 -mt-4">
         <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
           This Month
         </Text>
         <View className="flex-row gap-3">
           <StatCard
+            icon={<Eye size={16} color="#0891B2" />}
             label="Views"
             value={stats?.views_this_month ?? 0}
-            color="#7C3AED"
+            color="#0891B2"
+            onPress={() => router.push('/analytics')}
           />
           <StatCard
+            icon={<MessageCircle size={16} color="#22C55E" />}
             label="Enquiries"
             value={stats?.enquiries_this_month ?? 0}
-            color="#10B981"
+            color="#22C55E"
+            onPress={() => router.push('/analytics')}
           />
         </View>
         <View className="flex-row gap-3 mt-3">
           <StatCard
+            icon={<Package size={16} color="#F59E0B" />}
             label="Products"
             value={stats?.total_products_available ?? 0}
             color="#F59E0B"
+            onPress={() => router.push('/catalog')}
           />
           <StatCard
+            icon={<Users size={16} color="#3B82F6" />}
             label="Customers"
             value={stats?.total_customers ?? 0}
             color="#3B82F6"
+            onPress={() => router.push('/customers')}
           />
         </View>
       </View>
@@ -109,7 +126,7 @@ export default function HomeScreen() {
                 <Text className="text-sm text-gray-700">
                   {r.product.category ?? 'Product'} · {r.product.primary_color ?? '—'}
                 </Text>
-                <Text className="text-xs font-semibold text-violet-600">{r.count} views</Text>
+                <Text className="text-xs font-semibold text-cyan-600">{r.count} views</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -121,16 +138,16 @@ export default function HomeScreen() {
         <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
           Quick Actions
         </Text>
-        <View className="grid grid-cols-2 gap-3">
+        <View className="flex-row flex-wrap gap-3">
           <QuickAction
-            icon={<Camera size={22} color="#7C3AED" />}
+            icon={<Camera size={22} color="#0891B2" />}
             label="Add Product"
             sublabel="Photo + AI tagging"
             onPress={() => router.push('/product/add')}
-            accent="#F5F3FF"
+            accent="#ECFEFF"
           />
           <QuickAction
-            icon={<Search size={22} color="#10B981" />}
+            icon={<Search size={22} color="#22C55E" />}
             label="Search Products"
             sublabel="Natural language"
             onPress={() => router.push('/catalog?search=1')}
@@ -159,14 +176,36 @@ export default function HomeScreen() {
   )
 }
 
-function StatCard({ label, value, color }: { label: string; value: number; color: string }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  color,
+  onPress,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: number
+  color: string
+  onPress: () => void
+}) {
   return (
-    <View className="flex-1 bg-white rounded-2xl p-4 border border-gray-100">
+    <TouchableOpacity
+      onPress={onPress}
+      activeOpacity={0.7}
+      className="flex-1 bg-white rounded-2xl p-4 border border-gray-100"
+    >
+      <View
+        className="w-7 h-7 rounded-lg items-center justify-center mb-2"
+        style={{ backgroundColor: `${color}1A` }}
+      >
+        {icon}
+      </View>
       <Text className="text-2xl font-bold" style={{ color }}>
         {value.toLocaleString('en-IN')}
       </Text>
       <Text className="text-xs text-gray-500 mt-0.5">{label}</Text>
-    </View>
+    </TouchableOpacity>
   )
 }
 
@@ -186,7 +225,8 @@ function QuickAction({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="bg-white rounded-2xl p-4 border border-gray-100 active:scale-95"
+      activeOpacity={0.7}
+      className="w-[47%] bg-white rounded-2xl p-4 border border-gray-100"
     >
       <View
         className="w-10 h-10 rounded-xl items-center justify-center mb-3"

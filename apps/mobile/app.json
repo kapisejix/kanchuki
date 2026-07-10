@@ -7,7 +7,7 @@
     "scheme": "kanchuki",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#7C3AED"
+      "backgroundColor": "#0891B2"
     },
     "android": {
       "package": "app.kanchuki.retailer",
@@ -15,8 +15,7 @@
         "android.permission.CAMERA",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES"
-      ],
-      "minSdkVersion": 28
+      ]
     },
     "ios": {
       "bundleIdentifier": "app.kanchuki.retailer",
@@ -29,8 +28,16 @@
     "plugins": [
       "expo-router",
       "expo-camera",
-      ["expo-image-picker", { "photosPermission": "Select product photos for your catalog." }]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Select product photos for your catalog."
+        }
+      ],
+      "expo-secure-store"
     ],
-    "experiments": { "typedRoutes": true }
+    "experiments": {
+      "typedRoutes": true
+    }
   }
 }

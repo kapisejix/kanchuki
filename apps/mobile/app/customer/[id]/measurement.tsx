@@ -1,11 +1,12 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, Ruler, Check } from 'lucide-react-native'
 import { customerApi, uploadImageToR2 } from '../../../src/lib/api'
 
@@ -13,6 +14,7 @@ type Slot = 'front' | 'back'
 type Step = 'height' | 'camera' | 'preview' | 'uploading' | 'done'
 
 export default function MeasurementCaptureScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('height')
@@ -35,7 +37,7 @@ export default function MeasurementCaptureScreen() {
 
   const handlePickFromGallery = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       quality: 0.85,
     })
     if (result.canceled || !result.assets[0]) return
@@ -98,14 +100,14 @@ export default function MeasurementCaptureScreen() {
 
   if (step === 'height') {
     return (
-      <View className="flex-1 bg-gray-50 px-6 pt-16">
+      <View className="flex-1 bg-cyan-50 px-6" style={{ paddingTop: insets.top + 24 }}>
         <TouchableOpacity onPress={() => router.back()} className="mb-6">
           <X size={22} color="#374151" />
         </TouchableOpacity>
 
         <View className="items-center mb-8">
-          <View className="w-16 h-16 bg-violet-100 rounded-full items-center justify-center mb-3">
-            <Ruler size={28} color="#7C3AED" />
+          <View className="w-16 h-16 bg-cyan-100 rounded-full items-center justify-center mb-3">
+            <Ruler size={28} color="#0891B2" />
           </View>
           <Text className="text-xl font-bold text-gray-900">Body Measurement</Text>
           <Text className="text-sm text-gray-500 text-center mt-1 px-4">
@@ -130,7 +132,7 @@ export default function MeasurementCaptureScreen() {
 
         <TouchableOpacity
           onPress={startCapture}
-          className="bg-violet-600 py-4 rounded-2xl items-center"
+          className="bg-cyan-600 py-4 rounded-2xl items-center"
         >
           <Text className="text-white font-semibold">Continue to Front Photo →</Text>
         </TouchableOpacity>
@@ -148,7 +150,7 @@ export default function MeasurementCaptureScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-violet-600 px-6 py-3 rounded-xl"
+          className="bg-cyan-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -162,46 +164,47 @@ export default function MeasurementCaptureScreen() {
     const label = slot === 'front' ? 'Front · full body' : 'Back · full body'
     return (
       <View className="flex-1 bg-black">
-        <CameraView ref={cameraRef} className="flex-1" facing="back">
-          <TouchableOpacity
-            onPress={() => (slot === 'back' ? setStep('preview') : router.back())}
-            className="absolute top-12 left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
-          >
-            <X size={20} color="white" />
-          </TouchableOpacity>
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-          <View className="absolute top-12 left-0 right-0 items-center">
-            <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
-              {label} · {slot === 'front' ? '1' : '2'} of 2
-            </Text>
+        <TouchableOpacity
+          onPress={() => (slot === 'back' ? setStep('preview') : router.back())}
+          className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
+          style={{ top: insets.top + 8 }}
+        >
+          <X size={20} color="white" />
+        </TouchableOpacity>
+
+        <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
+          <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
+            {label} · {slot === 'front' ? '1' : '2'} of 2
+          </Text>
+        </View>
+
+        <View className="flex-1 items-center justify-center">
+          <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
+          <Text className="text-white/60 text-sm mt-4">Stand straight, full body in frame</Text>
+        </View>
+
+        <View className="pb-12 items-center gap-6">
+          <View className="flex-row items-center gap-10">
+            <TouchableOpacity
+              onPress={() => void handlePickFromGallery()}
+              className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
+            >
+              <ImagePlus size={24} color="white" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => void handleCapture()}
+              className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
+            >
+              <View className="w-14 h-14 bg-white rounded-full" />
+            </TouchableOpacity>
+
+            <View className="w-14" />
           </View>
-
-          <View className="flex-1 items-center justify-center">
-            <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
-            <Text className="text-white/60 text-sm mt-4">Stand straight, full body in frame</Text>
-          </View>
-
-          <View className="pb-12 items-center gap-6">
-            <View className="flex-row items-center gap-10">
-              <TouchableOpacity
-                onPress={() => void handlePickFromGallery()}
-                className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
-              >
-                <ImagePlus size={24} color="white" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => void handleCapture()}
-                className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
-              >
-                <View className="w-14 h-14 bg-white rounded-full" />
-              </TouchableOpacity>
-
-              <View className="w-14" />
-            </View>
-            <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
-          </View>
-        </CameraView>
+          <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
+        </View>
       </View>
     )
   }
@@ -214,11 +217,17 @@ export default function MeasurementCaptureScreen() {
       <View className="flex-1 bg-black">
         {uri && <Image source={{ uri }} className="flex-1" contentFit="contain" />}
         {error && (
-          <View className="absolute top-12 left-4 right-4 bg-red-500/90 rounded-xl p-3">
+          <View
+            className="absolute left-4 right-4 bg-red-500/90 rounded-xl p-3"
+            style={{ top: insets.top + 8 }}
+          >
             <Text className="text-white text-sm">{error}</Text>
           </View>
         )}
-        <View className="absolute bottom-12 left-0 right-0 flex-row gap-4 px-6">
+        <View
+          className="absolute left-0 right-0 flex-row gap-4 px-6"
+          style={{ bottom: 48 + insets.bottom }}
+        >
           <TouchableOpacity
             onPress={() => setStep('camera')}
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
@@ -227,7 +236,7 @@ export default function MeasurementCaptureScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={useThisPhoto}
-            className="flex-1 bg-violet-600 py-4 rounded-2xl items-center"
+            className="flex-1 bg-cyan-600 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">
               {slot === 'front' ? 'Use Photo → Back' : 'Use Photo ✓'}
@@ -243,7 +252,7 @@ export default function MeasurementCaptureScreen() {
   if (step === 'uploading') {
     return (
       <View className="flex-1 bg-gray-900 items-center justify-center gap-5">
-        <ActivityIndicator size="large" color="#7C3AED" />
+        <ActivityIndicator size="large" color="#0891B2" />
         <Text className="text-white text-base font-semibold">Uploading photos...</Text>
         <Text className="text-gray-400 text-sm">Queuing AI measurement extraction</Text>
       </View>
@@ -253,7 +262,7 @@ export default function MeasurementCaptureScreen() {
   // ── Done step ─────────────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-gray-50 items-center justify-center px-8">
+    <View className="flex-1 bg-cyan-50 items-center justify-center px-8">
       <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-4">
         <Check size={28} color="#16A34A" />
       </View>
@@ -264,7 +273,7 @@ export default function MeasurementCaptureScreen() {
       </Text>
       <TouchableOpacity
         onPress={() => router.back()}
-        className="mt-6 bg-violet-600 px-6 py-3 rounded-xl"
+        className="mt-6 bg-cyan-600 px-6 py-3 rounded-xl"
       >
         <Text className="text-white font-semibold">Back to Customer</Text>
       </TouchableOpacity>

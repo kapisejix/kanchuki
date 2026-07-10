@@ -2,10 +2,12 @@ import { useState } from 'react'
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 
 export default function AddCustomerScreen() {
+  const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -30,8 +32,11 @@ export default function AddCustomerScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
-      <View className="flex-row items-center justify-between px-4 pt-12 pb-4 bg-white border-b border-gray-100">
+    <ScrollView className="flex-1 bg-cyan-50">
+      <View
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <X size={22} color="#374151" />
         </TouchableOpacity>
@@ -39,7 +44,7 @@ export default function AddCustomerScreen() {
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={saving}
-          className="bg-violet-600 px-4 py-2 rounded-xl"
+          className="bg-cyan-600 px-4 py-2 rounded-xl"
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />

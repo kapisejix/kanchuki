@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, Ruler, Clock } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
@@ -50,6 +51,7 @@ type Measurement = {
 }
 
 export default function CustomerDetailScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
 
@@ -140,16 +142,19 @@ export default function CustomerDetailScreen() {
 
   if (isLoading || !customer) {
     return (
-      <View className="flex-1 bg-gray-50 items-center justify-center">
-        <ActivityIndicator color="#7C3AED" />
+      <View className="flex-1 bg-cyan-50 items-center justify-center">
+        <ActivityIndicator color="#0891B2" />
       </View>
     )
   }
 
   return (
-    <ScrollView className="flex-1 bg-gray-50">
+    <ScrollView className="flex-1 bg-cyan-50">
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-12 pb-4 bg-white border-b border-gray-100">
+      <View
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <TouchableOpacity onPress={() => router.back()}>
           <X size={22} color="#374151" />
         </TouchableOpacity>
@@ -157,7 +162,7 @@ export default function CustomerDetailScreen() {
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={saving}
-          className="bg-violet-600 px-4 py-2 rounded-xl"
+          className="bg-cyan-600 px-4 py-2 rounded-xl"
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
@@ -170,8 +175,8 @@ export default function CustomerDetailScreen() {
       <View className="px-4 py-4 gap-4">
         {/* Identity */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center gap-3">
-          <View className="w-14 h-14 rounded-full bg-violet-100 items-center justify-center">
-            <Text className="text-violet-700 font-bold text-xl">
+          <View className="w-14 h-14 rounded-full bg-cyan-100 items-center justify-center">
+            <Text className="text-cyan-700 font-bold text-xl">
               {name.charAt(0).toUpperCase() || '?'}
             </Text>
           </View>
@@ -209,7 +214,7 @@ export default function CustomerDetailScreen() {
               <TouchableOpacity
                 key={c}
                 onPress={() => setPrefColors((prev) => prev.filter((x) => x !== c))}
-                className="bg-violet-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
+                className="bg-cyan-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
               >
                 <Text className="text-white text-xs font-medium">{c}</Text>
                 <X size={10} color="white" />
@@ -223,7 +228,7 @@ export default function CustomerDetailScreen() {
               onSubmitEditing={addColor}
               placeholder="e.g. Maroon"
               placeholderTextColor="#9CA3AF"
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+              className="flex-1 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
             />
             <TouchableOpacity onPress={addColor} className="bg-gray-100 px-3 rounded-xl items-center justify-center">
               <Plus size={16} color="#374151" />
@@ -244,7 +249,7 @@ export default function CustomerDetailScreen() {
                   key={s}
                   onPress={() => toggle(prefStyles, setPrefStyles, s)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-violet-600 border-violet-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
@@ -268,7 +273,7 @@ export default function CustomerDetailScreen() {
                   key={f}
                   onPress={() => toggle(prefFabrics, setPrefFabrics, f)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-violet-600 border-violet-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
@@ -292,7 +297,7 @@ export default function CustomerDetailScreen() {
                   key={o}
                   onPress={() => toggle(prefOccasions, setPrefOccasions, o)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-violet-600 border-violet-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
@@ -315,7 +320,7 @@ export default function CustomerDetailScreen() {
               placeholder="Min"
               keyboardType="numeric"
               placeholderTextColor="#9CA3AF"
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+              className="flex-1 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
             />
             <TextInput
               value={budgetMax}
@@ -323,7 +328,7 @@ export default function CustomerDetailScreen() {
               placeholder="Max"
               keyboardType="numeric"
               placeholderTextColor="#9CA3AF"
-              className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+              className="flex-1 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
             />
           </View>
         </View>
@@ -336,10 +341,10 @@ export default function CustomerDetailScreen() {
             </Text>
             <TouchableOpacity
               onPress={() => router.push(`/customer/${customer.id}/measurement`)}
-              className="flex-row items-center gap-1 bg-violet-50 px-2.5 py-1 rounded-full"
+              className="flex-row items-center gap-1 bg-cyan-50 px-2.5 py-1 rounded-full"
             >
-              <Ruler size={12} color="#7C3AED" />
-              <Text className="text-violet-700 text-xs font-semibold">Add Measurement</Text>
+              <Ruler size={12} color="#0891B2" />
+              <Text className="text-cyan-700 text-xs font-semibold">Add Measurement</Text>
             </TouchableOpacity>
           </View>
 
@@ -348,7 +353,7 @@ export default function CustomerDetailScreen() {
           ) : (
             <View className="gap-2">
               {measurements.map((m) => (
-                <View key={m.id} className="bg-gray-50 rounded-xl px-3 py-2">
+                <View key={m.id} className="bg-cyan-50 rounded-xl px-3 py-2">
                   <View className="flex-row items-center justify-between">
                     <Text className="text-xs font-semibold text-gray-700">
                       {m.source === 'PHOTO' ? 'Photo capture' : 'Manual entry'}

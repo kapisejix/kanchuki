@@ -34,10 +34,10 @@ export default function OtpScreen() {
     if (code.length !== 6 || !phone) return
     setLoading(true)
     try {
-      const result = await authApi.verifyOtp(phone, code)
+      const { data: result } = await authApi.verifyOtp(phone, code)
       await setToken(result.access_token)
       await setItem('refresh_token', result.refresh_token)
-      await setItem('retailer_id', result.retailer_id)
+      await setItem('retailer_id', result.retailer.id)
 
       // New retailer → onboarding, existing → home
       router.replace(result.is_new ? '/onboarding' : '/(tabs)')
@@ -94,10 +94,10 @@ export default function OtpScreen() {
                   onPress={() => inputRef.current?.focus()}
                   className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
                     otp.length === i
-                      ? 'border-violet-600 bg-violet-50'
+                      ? 'border-cyan-600 bg-cyan-50'
                       : otp.length > i
-                      ? 'border-violet-300 bg-violet-50'
-                      : 'border-gray-200 bg-gray-50'
+                      ? 'border-cyan-300 bg-cyan-50'
+                      : 'border-gray-200 bg-cyan-50'
                   }`}
                 >
                   <Text className="text-2xl font-bold text-gray-900">
@@ -131,7 +131,7 @@ export default function OtpScreen() {
               </Text>
             ) : (
               <TouchableOpacity onPress={() => void handleResend()} disabled={resending}>
-                <Text className="text-violet-600 text-sm font-semibold">
+                <Text className="text-cyan-600 text-sm font-semibold">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
               </TouchableOpacity>
@@ -144,7 +144,7 @@ export default function OtpScreen() {
           onPress={() => void handleVerify(otp)}
           disabled={otp.length !== 6 || loading}
           className={`py-4 rounded-2xl items-center justify-center ${
-            otp.length === 6 && !loading ? 'bg-violet-600' : 'bg-gray-200'
+            otp.length === 6 && !loading ? 'bg-cyan-600' : 'bg-gray-200'
           }`}
         >
           {loading

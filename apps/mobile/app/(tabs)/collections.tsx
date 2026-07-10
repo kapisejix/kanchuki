@@ -136,7 +136,7 @@ export default function CollectionsScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/collection/new')}
-          className="mt-4 bg-violet-600 px-5 py-2.5 rounded-xl"
+          className="mt-4 bg-cyan-600 px-5 py-2.5 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Create Collection</Text>
         </TouchableOpacity>
@@ -146,9 +146,9 @@ export default function CollectionsScreen() {
   )
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-cyan-50">
       {isLoading && collections.length === 0 ? (
-        <ActivityIndicator className="mt-16" color="#7C3AED" />
+        <ActivityIndicator className="mt-16" color="#0891B2" />
       ) : (
         <FlatList
           data={collections}
@@ -167,7 +167,7 @@ export default function CollectionsScreen() {
       {/* FAB */}
       <TouchableOpacity
         onPress={() => router.push('/collection/new')}
-        className="absolute bottom-6 right-4 w-14 h-14 bg-violet-600 rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-6 right-4 w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
       >
         <Plus size={24} color="white" />

@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 :root {
-  --color-primary: #7C3AED;
-  --color-primary-light: #ede9fe;
+  --color-primary: #0891B2;
+  --color-primary-light: #cffafe;
   --color-amber: #F59E0B;
   --color-surface: #FAFAFA;
   --color-bg: #F3F4F6;
@@ -32,7 +32,7 @@ body {
   height: 4px;
 }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #c4b5fd; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: #67e8f9; border-radius: 3px; }
 
 @layer utilities {
   .text-balance {

@@ -13,6 +13,7 @@ import {
   Platform,
 } from 'react-native'
 import { router } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { retailerApi } from '../src/lib/api'
 import { PRODUCT_CATEGORIES, INDIAN_STATES } from '@kanchuki/shared'
 
@@ -157,15 +158,15 @@ function StepIndicator({
             <View
               className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
                 isActive
-                  ? 'bg-violet-600 border-violet-600'
+                  ? 'bg-cyan-600 border-cyan-600'
                   : isPast
-                  ? 'bg-violet-100 border-violet-300'
-                  : 'bg-gray-50 border-gray-200'
+                  ? 'bg-cyan-100 border-cyan-300'
+                  : 'bg-cyan-50 border-gray-200'
               } ${isPast ? '' : ''}`}
             >
               <Text
                 className={`text-xs ${
-                  isActive ? 'text-white' : isPast ? 'text-violet-600' : 'text-gray-300'
+                  isActive ? 'text-white' : isPast ? 'text-cyan-600' : 'text-gray-300'
                 }`}
               >
                 {isPast ? '✓' : s}
@@ -173,7 +174,7 @@ function StepIndicator({
             </View>
             <Text
               className={`text-[10px] ${
-                isActive ? 'text-violet-600 font-semibold' : 'text-gray-400'
+                isActive ? 'text-cyan-600 font-semibold' : 'text-gray-400'
               }`}
             >
               {STEP_META[s].label}
@@ -187,6 +188,7 @@ function StepIndicator({
 
 // ─── Main Screen ──────────────────────────────────────────────────
 export default function OnboardingScreen() {
+  const insets = useSafeAreaInsets()
   const [step, setStep] = useState<Step>(1)
   const [saving, setSaving] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -333,7 +335,7 @@ export default function OnboardingScreen() {
           <View className="pt-4">
             {/* Brand header */}
             <View className="flex-row items-center gap-3 mb-6">
-              <View className="w-12 h-12 bg-violet-600 rounded-2xl items-center justify-center">
+              <View className="w-12 h-12 bg-cyan-600 rounded-2xl items-center justify-center">
                 <Text className="text-white text-xl font-bold">K</Text>
               </View>
               <View>
@@ -373,9 +375,9 @@ export default function OnboardingScreen() {
               />
             </View>
 
-            <View className="mt-6 bg-violet-50 rounded-2xl p-4">
-              <Text className="text-violet-700 text-sm font-medium">✨ What happens next?</Text>
-              <Text className="text-violet-600 text-sm mt-1 leading-5">
+            <View className="mt-6 bg-cyan-50 rounded-2xl p-4">
+              <Text className="text-cyan-700 text-sm font-medium">✨ What happens next?</Text>
+              <Text className="text-cyan-600 text-sm mt-1 leading-5">
                 Add your shop details, then take a photo of any product — AI will automatically
                 tag it with category, color, fabric & occasion.
               </Text>
@@ -433,11 +435,11 @@ export default function OnboardingScreen() {
                           setState(s)
                           setStatePickerOpen(false)
                         }}
-                        className={`px-4 py-3 ${state === s ? 'bg-violet-50' : ''}`}
+                        className={`px-4 py-3 ${state === s ? 'bg-cyan-50' : ''}`}
                         activeOpacity={0.6}
                       >
                         <Text
-                          className={`text-sm ${state === s ? 'text-violet-700 font-semibold' : 'text-gray-700'}`}
+                          className={`text-sm ${state === s ? 'text-cyan-700 font-semibold' : 'text-gray-700'}`}
                         >
                           {s}
                         </Text>
@@ -467,8 +469,8 @@ export default function OnboardingScreen() {
                     onPress={() => toggleCategory(cat)}
                     className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 ${
                       selected
-                        ? 'bg-violet-600 border-violet-600'
-                        : 'bg-white border-gray-200 active:border-violet-300'
+                        ? 'bg-cyan-600 border-cyan-600'
+                        : 'bg-white border-gray-200 active:border-cyan-300'
                     }`}
                     activeOpacity={0.7}
                   >
@@ -530,7 +532,7 @@ export default function OnboardingScreen() {
               className="mt-4 py-3"
               activeOpacity={0.6}
             >
-              <Text className="text-violet-600 text-sm font-semibold text-center">
+              <Text className="text-cyan-600 text-sm font-semibold text-center">
                 Skip for now →
               </Text>
             </TouchableOpacity>
@@ -545,9 +547,9 @@ export default function OnboardingScreen() {
               Tell us how your shop is arranged — makes finding products fast
             </Text>
 
-            <View className="mt-6 bg-violet-50 rounded-2xl p-4 border border-violet-100">
-              <Text className="text-violet-800 text-sm font-medium mb-2">📦 Example layouts:</Text>
-              <Text className="text-violet-700 text-sm leading-6">
+            <View className="mt-6 bg-cyan-50 rounded-2xl p-4 border border-cyan-100">
+              <Text className="text-cyan-800 text-sm font-medium mb-2">📦 Example layouts:</Text>
+              <Text className="text-cyan-700 text-sm leading-6">
                 • Floor → Section A → Rack 1 → Shelf 3{'\n'}
                 • Rack A, Rack B, Rack C...{'\n'}
                 • By category: Suit Rack, Saree Rack, Kurti Rack
@@ -566,7 +568,7 @@ export default function OnboardingScreen() {
                         goToStep(6 as Step) // For now all options proceed
                       }
                     }}
-                    className="flex-row items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl active:border-violet-300"
+                    className="flex-row items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl active:border-cyan-300"
                     activeOpacity={0.7}
                   >
                     <Text className="text-lg">
@@ -591,7 +593,7 @@ export default function OnboardingScreen() {
         return (
           <View className="pt-2 items-center">
             {/* Big celebration emoji */}
-            <View className="w-24 h-24 bg-violet-100 rounded-3xl items-center justify-center mb-6">
+            <View className="w-24 h-24 bg-cyan-100 rounded-3xl items-center justify-center mb-6">
               <Text className="text-5xl">🎉</Text>
             </View>
 
@@ -605,15 +607,15 @@ export default function OnboardingScreen() {
             <View className="mt-6 w-full gap-3">
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)')}
-                className="flex-row items-center gap-3 bg-violet-600 rounded-2xl p-4 active:opacity-90"
+                className="flex-row items-center gap-3 bg-cyan-600 rounded-2xl p-4 active:opacity-90"
                 activeOpacity={0.9}
               >
-                <View className="w-10 h-10 rounded-xl bg-violet-500 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-cyan-500 items-center justify-center">
                   <Text className="text-xl">📷</Text>
                 </View>
                 <View className="flex-1">
                   <Text className="text-white text-sm font-bold">Add your first product</Text>
-                  <Text className="text-violet-200 text-xs mt-0.5">
+                  <Text className="text-cyan-200 text-xs mt-0.5">
                     AI tags it automatically — takes 8 seconds
                   </Text>
                 </View>
@@ -622,10 +624,10 @@ export default function OnboardingScreen() {
 
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)')}
-                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4 active:border-violet-300"
+                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4 active:border-cyan-300"
                 activeOpacity={0.8}
               >
-                <View className="w-10 h-10 rounded-xl bg-violet-50 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-cyan-50 items-center justify-center">
                   <Text className="text-xl">👥</Text>
                 </View>
                 <View className="flex-1">
@@ -639,10 +641,10 @@ export default function OnboardingScreen() {
 
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)')}
-                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4 active:border-violet-300"
+                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4 active:border-cyan-300"
                 activeOpacity={0.8}
               >
-                <View className="w-10 h-10 rounded-xl bg-violet-50 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-cyan-50 items-center justify-center">
                   <Text className="text-xl">🔗</Text>
                 </View>
                 <View className="flex-1">
@@ -671,7 +673,7 @@ export default function OnboardingScreen() {
         {/* Progress bar */}
         <View className="h-1 bg-gray-100 mx-6 rounded-full overflow-hidden">
           <View
-            className="h-full bg-violet-600 rounded-full"
+            className="h-full bg-cyan-600 rounded-full"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </View>
@@ -702,12 +704,15 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Bottom navigation */}
-      <View className="bg-white border-t border-gray-100 px-6 py-4">
+      <View
+        className="bg-white border-t border-gray-100 px-6 pt-4"
+        style={{ paddingBottom: 16 + insets.bottom }}
+      >
         <View className="flex-row items-center gap-3">
           {step > 1 && (
             <TouchableOpacity
               onPress={() => goToStep((step - 1) as Step)}
-              className="w-12 h-12 rounded-2xl border-2 border-gray-200 items-center justify-center active:bg-gray-50"
+              className="w-12 h-12 rounded-2xl border-2 border-gray-200 items-center justify-center active:bg-cyan-50"
               activeOpacity={0.7}
             >
               <Text className="text-gray-600 text-lg">←</Text>
@@ -717,7 +722,7 @@ export default function OnboardingScreen() {
             onPress={() => void handleNext()}
             disabled={!canProceed() || saving || showConfetti}
             className={`flex-1 py-4 rounded-2xl items-center justify-center ${
-              canProceed() && !saving ? 'bg-violet-600 active:bg-violet-700' : 'bg-gray-200'
+              canProceed() && !saving ? 'bg-cyan-600 active:bg-cyan-700' : 'bg-gray-200'
             }`}
             activeOpacity={0.8}
           >

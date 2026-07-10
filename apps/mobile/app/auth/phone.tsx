@@ -41,7 +41,7 @@ export default function PhoneScreen() {
         {/* Top */}
         <View>
           {/* Logo */}
-          <View className="w-16 h-16 bg-violet-600 rounded-2xl items-center justify-center mb-8">
+          <View className="w-16 h-16 bg-cyan-600 rounded-2xl items-center justify-center mb-8">
             <Text className="text-white text-2xl font-bold">K</Text>
           </View>
 
@@ -55,7 +55,7 @@ export default function PhoneScreen() {
             <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
               Mobile Number
             </Text>
-            <View className="flex-row items-center border-2 border-gray-200 rounded-2xl px-4 py-4 gap-3 focus:border-violet-500">
+            <View className="flex-row items-center border-2 border-gray-200 rounded-2xl px-4 py-4 gap-3 focus:border-cyan-500">
               <Text className="text-base font-semibold text-gray-600">+91</Text>
               <View className="w-px h-5 bg-gray-300" />
               <TextInput
@@ -83,7 +83,7 @@ export default function PhoneScreen() {
             onPress={() => void handleSend()}
             disabled={!isValid || loading}
             className={`py-4 rounded-2xl items-center justify-center flex-row gap-2 ${
-              isValid && !loading ? 'bg-violet-600' : 'bg-gray-200'
+              isValid && !loading ? 'bg-cyan-600' : 'bg-gray-200'
             }`}
             activeOpacity={0.8}
           >

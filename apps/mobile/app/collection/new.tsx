@@ -13,6 +13,7 @@ import {
 import { Stack, router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
 
@@ -33,6 +34,7 @@ export default function NewCollectionScreen() {
   const [expiresDays, setExpiresDays] = useState<number>(30)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
 
   const { data, isLoading } = useQuery({
     queryKey: ['products', 'list', 'available'],
@@ -71,8 +73,8 @@ export default function NewCollectionScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'New Collection' }} />
-      <View className="flex-1 bg-gray-50">
+      <Stack.Screen options={{ title: 'New Collection', headerShown: true }} />
+      <View className="flex-1 bg-cyan-50">
         <View className="bg-white px-4 py-3 border-b border-gray-100 gap-3">
           <TextInput
             value={title}
@@ -89,7 +91,7 @@ export default function NewCollectionScreen() {
                 onPress={() => setExpiresDays(d)}
                 className={`px-3 py-1.5 rounded-full border ${
                   expiresDays === d
-                    ? 'bg-violet-600 border-violet-600'
+                    ? 'bg-cyan-600 border-cyan-600'
                     : 'bg-white border-gray-200'
                 }`}
               >
@@ -106,7 +108,7 @@ export default function NewCollectionScreen() {
         </View>
 
         {isLoading ? (
-          <ActivityIndicator className="mt-16" color="#7C3AED" />
+          <ActivityIndicator className="mt-16" color="#0891B2" />
         ) : (
           <FlatList
             data={products}
@@ -120,7 +122,7 @@ export default function NewCollectionScreen() {
                 <TouchableOpacity
                   onPress={() => toggle(item.id)}
                   className={`flex-1 bg-white rounded-2xl overflow-hidden border-2 ${
-                    isSelected ? 'border-violet-600' : 'border-gray-100'
+                    isSelected ? 'border-cyan-600' : 'border-gray-100'
                   }`}
                 >
                   {item.primary_photo_url ? (
@@ -133,7 +135,7 @@ export default function NewCollectionScreen() {
                     <View className="w-full h-36 bg-gray-100" />
                   )}
                   {isSelected && (
-                    <View className="absolute top-2 right-2 w-6 h-6 bg-violet-600 rounded-full items-center justify-center">
+                    <View className="absolute top-2 right-2 w-6 h-6 bg-cyan-600 rounded-full items-center justify-center">
                       <Check size={14} color="white" />
                     </View>
                   )}
@@ -156,12 +158,15 @@ export default function NewCollectionScreen() {
           />
         )}
 
-        <View className="bg-white px-4 py-3 border-t border-gray-100">
+        <View
+          className="bg-white px-4 pt-3 border-t border-gray-100"
+          style={{ paddingBottom: 12 + insets.bottom }}
+        >
           <TouchableOpacity
             disabled={!canCreate}
             onPress={() => create.mutate()}
             className={`py-3.5 rounded-xl items-center ${
-              canCreate ? 'bg-violet-600' : 'bg-gray-200'
+              canCreate ? 'bg-cyan-600' : 'bg-gray-200'
             }`}
           >
             <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-gray-400'}`}>
@@ -170,6 +175,15 @@ export default function NewCollectionScreen() {
                 : `Create & Share (${selected.size} selected)`}
             </Text>
           </TouchableOpacity>
+          {!canCreate && !create.isPending && (
+            <Text className="text-xs text-gray-400 text-center mt-2">
+              {title.trim().length === 0
+                ? 'Enter a title above to continue'
+                : selected.size === 0
+                  ? 'Select at least 1 product'
+                  : ''}
+            </Text>
+          )}
         </View>
       </View>
     </>

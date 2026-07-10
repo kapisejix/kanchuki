@@ -1,3 +1,5 @@
+import { router } from 'expo-router'
+import { File } from 'expo-file-system'
 import { getItem, setItem, deleteItem } from './storage'
 import { cachedJsonRequest, clearRequestCache } from './request-cache'
 
@@ -28,9 +30,42 @@ class ApiError extends Error {
   }
 }
 
+// Single-flight refresh — concurrent 401s share one refresh call instead of
+// each racing to burn the same refresh_token.
+let refreshPromise: Promise<string | null> | null = null
+
+async function refreshAccessToken(): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshToken = await getItem('refresh_token')
+      if (!refreshToken) return null
+      try {
+        const res = await fetch(`${API_URL}/v1/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        })
+        if (!res.ok) return null
+        const { data } = (await res.json()) as {
+          data: { access_token: string; refresh_token: string }
+        }
+        await setToken(data.access_token)
+        await setItem('refresh_token', data.refresh_token)
+        return data.access_token
+      } catch {
+        return null
+      }
+    })()
+  }
+  const token = await refreshPromise
+  refreshPromise = null
+  return token
+}
+
 async function request<T>(
   path: string,
   options: RequestInit & { timeoutMs?: number; getCacheTtlMs?: number } = {},
+  isRetry = false,
 ): Promise<T> {
   const token = await getToken()
   const headers: Record<string, string> = {
@@ -55,15 +90,27 @@ async function request<T>(
     if (err instanceof Error && err.name === 'AbortError') {
       throw new ApiError('TIMEOUT', 'Request timed out. Check your connection.', 408)
     }
-    if (err instanceof ApiError) throw err
     // Handle errors from request-cache.ts (RequestError has .code/.status)
     const cacheErr = err as { code?: string; status?: number }
-    if (cacheErr.code && cacheErr.status) {
-      throw new ApiError(cacheErr.code, err instanceof Error ? err.message : 'Request failed', cacheErr.status)
+    const code = err instanceof ApiError ? err.code : cacheErr.code
+    const status = err instanceof ApiError ? err.status : cacheErr.status
+
+    // Expired access token — refresh once and retry the original request
+    if (status === 401 && code === 'UNAUTHORIZED' && !isRetry) {
+      const newToken = await refreshAccessToken()
+      if (newToken) return request<T>(path, options, true)
+      await clearToken()
+      await deleteItem('refresh_token')
+      clearRequestCache()
+      router.replace('/auth/phone')
+    }
+
+    if (err instanceof ApiError) throw err
+    if (code && status) {
+      throw new ApiError(code, err instanceof Error ? err.message : 'Request failed', status)
     }
     // Re-wrap raw fetch errors as ApiError
-    const status = cacheErr.status ?? 0
-    throw new ApiError('NETWORK_ERROR', err instanceof Error ? err.message : 'Network error', status)
+    throw new ApiError('NETWORK_ERROR', err instanceof Error ? err.message : 'Network error', status ?? 0)
   }
 }
 
@@ -108,13 +155,17 @@ export const authApi = {
     }),
 
   verifyOtp: (phone: string, otp: string) =>
-    request<{ access_token: string; refresh_token: string; retailer_id: string; is_new: boolean }>(
-      '/v1/auth/otp/verify',
-      {
-        method: 'POST',
-        body: JSON.stringify({ phone, otp }),
-      },
-    ),
+    request<{
+      data: {
+        access_token: string
+        refresh_token: string
+        retailer: { id: string }
+        is_new: boolean
+      }
+    }>('/v1/auth/otp/verify', {
+      method: 'POST',
+      body: JSON.stringify({ phone, otp }),
+    }),
 }
 
 // ─── Retailer ─────────────────────────────────────────────────────
@@ -165,7 +216,9 @@ export const productApi = {
   },
 
   get: (id: string) =>
-    request<{ data: unknown }>(`/v1/products/${id}`, { getCacheTtlMs: 30_000 }),
+    // Short TTL — this screen polls while AI tagging is in progress, so a
+    // long-lived cache would mask the update and leave the spinner stuck.
+    request<{ data: unknown }>(`/v1/products/${id}`, { getCacheTtlMs: 3_000 }),
 
   update: (id: string, data: Record<string, unknown>) =>
     request<{ data: unknown }>(`/v1/products/${id}`, {
@@ -200,19 +253,57 @@ export const productApi = {
 
 // ─── Upload helper (direct to R2) ─────────────────────────────────
 
+// Reads a local/picker image URI into a Blob using expo-file-system.
+// React Native's fetch() does NOT support file:// or content:// URIs, which
+// is what ImagePicker returns. expo-file-system.File handles these natively.
+//
+// IMPORTANT: We return the File directly because React Native's Blob constructor
+// does NOT support ArrayBuffer as a BlobPart. Attempting new Blob([arrayBuffer])
+// throws: "Creating blobs from 'ArrayBuffer' and 'ArrayBufferView' are not supported".
+// File implements the Blob interface so it works as the body of a PUT fetch().
+export async function readLocalImage(uri: string, _timeoutMs = 15_000): Promise<Blob> {
+  try {
+    const file = new File(uri)
+    if (!file.exists) {
+      throw new Error('File does not exist at the specified path')
+    }
+    return file
+  } catch (err) {
+    throw new ApiError(
+      'READ_FAILED',
+      err instanceof Error ? err.message : 'Could not read the selected photo. Please try a different photo.',
+      500,
+    )
+  }
+}
+
 export async function uploadImageToR2(
   localUri: string,
   uploadUrl: string,
   contentType: string,
+  timeoutMs = 30_000,
 ): Promise<void> {
-  const response = await fetch(localUri)
-  const blob = await response.blob()
+  const blob = await readLocalImage(localUri)
 
-  const upload = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': contentType },
-    body: blob,
-  })
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  let upload: Response
+  try {
+    upload = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: blob,
+      signal: controller.signal,
+    })
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new ApiError('TIMEOUT', 'Image upload timed out. Check your connection.', 408)
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
 
   if (!upload.ok) throw new ApiError('UPLOAD_FAILED', 'Image upload failed', upload.status)
 }

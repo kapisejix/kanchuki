@@ -94,6 +94,13 @@ export async function cachedFetch(
         } catch { /* non-JSON response — don't cache */ }
       }
 
+      // Mutations invalidate the whole GET cache — otherwise a refetch
+      // triggered right after a POST/PUT/PATCH/DELETE can still be served
+      // stale data from this cache even though react-query thinks it refetched.
+      if (method !== 'GET' && response.ok) {
+        cache.clear()
+      }
+
       return response
     } finally {
       clearTimeout(timer)

@@ -50,3 +50,14 @@ coverage/
 
 # Local test images
 test_*.jpg
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Windows junk
+nul
+NUL
+
+# RunPod check
+check-runpod.sh

@@ -33,8 +33,8 @@ const CustomerCard = memo(function CustomerCard({
       className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center gap-3"
     >
       {/* Avatar */}
-      <View className="w-12 h-12 rounded-full bg-violet-100 items-center justify-center flex-shrink-0">
-        <Text className="text-violet-700 font-bold text-lg">
+      <View className="w-12 h-12 rounded-full bg-cyan-100 items-center justify-center flex-shrink-0">
+        <Text className="text-cyan-700 font-bold text-lg">
           {item.name.charAt(0).toUpperCase()}
         </Text>
       </View>
@@ -49,8 +49,8 @@ const CustomerCard = memo(function CustomerCard({
         {item.pref_colors.length > 0 && (
           <View className="flex-row flex-wrap gap-1 mt-1.5">
             {item.pref_colors.slice(0, 3).map((color) => (
-              <View key={color} className="bg-violet-50 px-2 py-0.5 rounded-full">
-                <Text className="text-violet-700 text-xs">{color}</Text>
+              <View key={color} className="bg-cyan-50 px-2 py-0.5 rounded-full">
+                <Text className="text-cyan-700 text-xs">{color}</Text>
               </View>
             ))}
             {item.budget_max && (
@@ -98,7 +98,7 @@ export default function CustomersScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/customer/add')}
-          className="mt-3 bg-violet-600 px-5 py-2.5 rounded-xl"
+          className="mt-3 bg-cyan-600 px-5 py-2.5 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Add First Customer</Text>
         </TouchableOpacity>
@@ -108,7 +108,7 @@ export default function CustomersScreen() {
   )
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-cyan-50">
       {/* Search */}
       <View className="bg-white px-4 py-3 border-b border-gray-100">
         <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2">
@@ -124,7 +124,7 @@ export default function CustomersScreen() {
       </View>
 
       {isLoading && customers.length === 0 ? (
-        <ActivityIndicator className="mt-16" color="#7C3AED" />
+        <ActivityIndicator className="mt-16" color="#0891B2" />
       ) : (
         <FlatList
           data={customers}
@@ -143,7 +143,7 @@ export default function CustomersScreen() {
       {/* FAB */}
       <TouchableOpacity
         onPress={() => router.push('/customer/add')}
-        className="absolute bottom-6 right-4 w-14 h-14 bg-violet-600 rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-6 right-4 w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
       >
         <Plus size={24} color="white" />

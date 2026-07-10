@@ -47,8 +47,8 @@ export default function CollectionDetailScreen() {
 
   if (isLoading || !collection) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator color="#7C3AED" />
+      <View className="flex-1 items-center justify-center bg-cyan-50">
+        <ActivityIndicator color="#0891B2" />
       </View>
     )
   }
@@ -61,11 +61,11 @@ export default function CollectionDetailScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: collection.title }} />
-      <ScrollView className="flex-1 bg-gray-50">
+      <Stack.Screen options={{ title: collection.title, headerShown: true }} />
+      <ScrollView className="flex-1 bg-cyan-50">
         {/* Stats */}
         <View className="flex-row flex-wrap px-4 pt-4 gap-3">
-          <Stat icon={<Eye size={16} color="#7C3AED" />} label="Views" value={collection.view_count} />
+          <Stat icon={<Eye size={16} color="#0891B2" />} label="Views" value={collection.view_count} />
           <Stat icon={<Users size={16} color="#3B82F6" />} label="Visitors" value={collection.unique_viewer_count} />
           <Stat icon={<Heart size={16} color="#EF4444" />} label="Favorites" value={collection.favorite_count} />
           <Stat icon={<MessageCircle size={16} color="#10B981" />} label="Enquiries" value={collection.enquiry_count} />

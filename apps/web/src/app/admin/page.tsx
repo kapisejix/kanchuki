@@ -95,7 +95,7 @@ export default function AdminPage() {
           {error && <p className="text-red-600 text-sm mb-3">{error}</p>}
           <button
             type="submit"
-            className="w-full bg-violet-600 text-white font-semibold py-2.5 rounded-xl hover:bg-violet-700"
+            className="w-full bg-cyan-600 text-white font-semibold py-2.5 rounded-xl hover:bg-cyan-700"
           >
             Sign in
           </button>
@@ -129,7 +129,7 @@ export default function AdminPage() {
           placeholder="Search shop, city, phone…"
           className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white"
         />
-        <button type="submit" className="bg-violet-600 text-white text-sm font-semibold px-4 rounded-xl">
+        <button type="submit" className="bg-cyan-600 text-white text-sm font-semibold px-4 rounded-xl">
           Search
         </button>
       </form>

@@ -38,7 +38,7 @@ export default function BillingScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
+      <View className="flex-1 items-center justify-center bg-cyan-50">
         <ActivityIndicator />
       </View>
     )
@@ -46,8 +46,8 @@ export default function BillingScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Choose Plan' }} />
-      <ScrollView className="flex-1 bg-gray-50 px-4 pt-4">
+      <Stack.Screen options={{ title: 'Choose Plan', headerShown: true }} />
+      <ScrollView className="flex-1 bg-cyan-50 px-4 pt-4">
         {current?.plan_status === 'TRIAL' && current.trial_ends_at && (
           <View className="bg-amber-50 rounded-xl p-3 mb-4">
             <Text className="text-amber-700 text-sm">
@@ -79,7 +79,7 @@ export default function BillingScreen() {
             <View key={p.plan} className="bg-white rounded-2xl p-4 mb-3 border border-gray-100">
               <View className="flex-row items-baseline justify-between">
                 <Text className="text-lg font-bold text-gray-900">{p.plan}</Text>
-                <Text className="text-xl font-bold text-violet-600">
+                <Text className="text-xl font-bold text-cyan-600">
                   ₹{(pricePaise / 100).toLocaleString('en-IN')}
                   <Text className="text-xs text-gray-400 font-normal">
                     /{period === 'monthly' ? 'mo' : 'yr'}
@@ -98,7 +98,7 @@ export default function BillingScreen() {
                 disabled={isCurrent || subscribe.isPending}
                 onPress={() => subscribe.mutate({ plan: p.plan })}
                 className={`mt-4 py-3 rounded-xl items-center ${
-                  isCurrent ? 'bg-gray-100' : 'bg-violet-600'
+                  isCurrent ? 'bg-gray-100' : 'bg-cyan-600'
                 }`}
               >
                 <Text className={`font-semibold ${isCurrent ? 'text-gray-400' : 'text-white'}`}>
