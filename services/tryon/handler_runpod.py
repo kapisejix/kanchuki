@@ -89,24 +89,10 @@ def download_image(url: str) -> PILImage.Image:
     return img
 
 
-def generate_mask(person_pil: PILImage.Image) -> PILImage.Image:
-    """Generate a person mask using rembg (fallback to full white mask)."""
-    try:
-        from rembg import remove as rembg_remove
-        output = rembg_remove(person_pil)
-        if output.mode == "RGBA":
-            mask = output.split()[-1]
-        else:
-            mask = person_pil.convert("L").point(lambda x: 255)
-        return mask
-    except (ImportError, SystemExit, Exception):
-        # rembg's bg.py calls sys.exit(1) (not ImportError) when its onnx
-        # backend is missing/broken — catch SystemExit too or it kills the
-        # whole worker instead of falling back.
-        print("[CatVTON] rembg not available, using default mask")
-        return PILImage.fromarray(
-            np.ones((person_pil.height, person_pil.width), dtype=np.uint8) * 255
-        )
+def generate_mask(person_pil: PILImage.Image, cloth_type: str = "upper") -> PILImage.Image:
+    """Generate a cloth-agnostic mask via the heuristic (rectangle-over-silhouette) approach."""
+    from mask_utils import generate_heuristic_mask
+    return generate_heuristic_mask(person_pil, cloth_type)
 
 
 # ─── Inference ────────────────────────────────────────────────
@@ -211,6 +197,7 @@ def handler(job):
     person_url = job_input.get("person_image_url")
     garment_url = job_input.get("garment_image_url")
     mask_url = job_input.get("mask_image_url")
+    cloth_type = job_input.get("cloth_type", "upper")
 
     if not person_url or not garment_url:
         return {"error": "person_image_url and garment_image_url are required"}
@@ -224,7 +211,7 @@ def handler(job):
         if mask_url:
             mask_pil = download_image(mask_url)
         else:
-            mask_pil = generate_mask(person_pil)
+            mask_pil = generate_mask(person_pil, cloth_type)
 
         result_pil = run_inference(person_pil, garment_pil, mask_pil)
 

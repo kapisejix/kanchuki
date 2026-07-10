@@ -58,6 +58,7 @@ class TryOnRequest(BaseModel):
     person_image_url: str
     garment_image_url: str
     mask_image_url: Optional[str] = None  # Auto-generated if not provided
+    cloth_type: str = "upper"  # upper / lower / overall — used by heuristic mask
 
 class TryOnResponse(BaseModel):
     status: str
@@ -122,35 +123,10 @@ def download_image(url: str) -> "PIL.Image.Image":
 
 # ─── Mask Generation ──────────────────────────────────────────
 
-def generate_mask(person_pil: "PIL.Image.Image") -> "PIL.Image.Image":
-    """
-    Generate agnostic mask for the person image.
-    Uses a simple background removal + person segmentation approach.
-    For production, use a proper segmentation model (SAM, rembg, etc.).
-    """
-    try:
-        import numpy as np
-        from rembg import remove as rembg_remove
-
-        # Use rembg for background removal to create a person mask
-        output = rembg_remove(person_pil)
-        # Convert to binary mask
-        if output.mode == "RGBA":
-            mask = output.split()[-1]  # Alpha channel
-        else:
-            # Fallback: create a white mask (full body try-on)
-            mask = person_pil.convert("L").point(lambda x: 255)
-
-        return mask
-    except ImportError:
-        # If rembg is not available, create a default mask
-        print("[CatVTON] rembg not available, using default mask")
-        from PIL import Image as PILImage
-        import numpy as np
-        mask = PILImage.fromarray(
-            np.ones((person_pil.height, person_pil.width), dtype=np.uint8) * 255
-        )
-        return mask
+def generate_mask(person_pil: "PIL.Image.Image", cloth_type: str = "upper") -> "PIL.Image.Image":
+    """Generate a cloth-agnostic mask via the heuristic (rectangle-over-silhouette) approach."""
+    from mask_utils import generate_heuristic_mask
+    return generate_heuristic_mask(person_pil, cloth_type)
 
 # ─── Inference ────────────────────────────────────────────────
 
@@ -318,7 +294,7 @@ async def try_on(request: TryOnRequest):
         if request.mask_image_url:
             mask_pil = download_image(request.mask_image_url)
         else:
-            mask_pil = generate_mask(person_pil)
+            mask_pil = generate_mask(person_pil, request.cloth_type)
 
         # Run inference
         result_pil = run_inference(person_pil, garment_pil, mask_pil)
