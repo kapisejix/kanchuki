@@ -98,6 +98,7 @@ serena: where is the `products` table queried?
 - `skill://cost-aware-llm-pipeline` — Model routing, cost optimization, caching
 - `skill://agent-architecture-audit` — Audit AI integration quality
 - `skill://observability-and-instrumentation` — AI cost monitoring, latency tracking
+- `skill://performance-optimization` — VTO input-quality pipeline (bg-removal preprocessing before `triggerCatVTON`, per `docs/PRO-REQUIREMENTS.md` F-102 / ADR-006)
 
 #### Vector Search
 - `skill://postgres-patterns` — pgvector indexing, IVFFlat tuning
@@ -259,6 +260,7 @@ Existing ADRs (create these in `docs/adrs/`):
 - `ADR-003-pgvector-over-pinecone.md` — Why PostgreSQL + pgvector over dedicated vector DB
 - `ADR-004-cloudflare-r2-over-s3.md` — Why R2 (no egress fees)
 - `ADR-005-claude-for-indian-fashion-tagging.md` — Why Claude over GPT-4V
+- `ADR-006-defer-3d-parametric-vto.md` — Why CatVTON (2D) stays, SMPL/STAR 3D pipeline deferred
 
 ---
 

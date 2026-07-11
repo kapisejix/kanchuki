@@ -52,8 +52,13 @@ enum TryOnStatus {
 }
 
 enum MeasurementSource {
-  PHOTO  // derived from front+back photo via MediaPipe Pose
+  PHOTO // derived from front+back photo via MediaPipe Pose
   MANUAL // entered directly via inch-tape
+}
+
+enum SizeChartCategory {
+  UPPER // Kurtas, Tops, Anarkalis, Dresses — bust/waist/hip
+  LOWER // Pants, Palazzos, Skirts — waist/hip/length
 }
 
 // ─── RETAILERS ───────────────────────────────────────────────────
@@ -100,7 +105,8 @@ model Retailer {
   staff          Staff[]
   store_sections StoreSection[]
   subscriptions  Subscription[]
-  try_on_usage  TryOnUsageLog[]
+  try_on_usage   TryOnUsageLog[]
+  size_charts    SizeChart[]
 
   @@index([phone])
   @@index([city])
@@ -151,23 +157,23 @@ model Product {
   search_tags      String[]
 
   // Flexible extra metadata
-  metadata       Json?
-  notes          String?
+  metadata Json?
+  notes    String?
 
   // Physical location
   section_id     String?
   location_notes String?
 
   // Tagging state
-  ai_tagged      Boolean @default(false)
-  ai_tag_error   String?
+  ai_tagged    Boolean @default(false)
+  ai_tag_error String?
 
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
-  retailer         Retailer           @relation(fields: [retailer_id], references: [id])
-  section          StoreSection?      @relation(fields: [section_id], references: [id])
+  retailer         Retailer              @relation(fields: [retailer_id], references: [id])
+  section          StoreSection?         @relation(fields: [section_id], references: [id])
   photos           ProductPhoto[]
   variants         ProductVariant[]
   embedding        ProductEmbedding?
@@ -182,7 +188,7 @@ model Product {
 }
 
 model ProductPhoto {
-  id          String  @id @default(cuid())
+  id          String @id @default(cuid())
   product_id  String
   retailer_id String
 
@@ -193,8 +199,8 @@ model ProductPhoto {
   height     Int?
   size_bytes Int?
 
-  ai_tagged           Boolean @default(false)
-  ai_raw_response     Json?
+  ai_tagged       Boolean @default(false)
+  ai_raw_response Json?
 
   sort_order Int      @default(0)
   created_at DateTime @default(now())
@@ -210,12 +216,12 @@ model ProductVariant {
   product_id  String
   retailer_id String
 
-  color             String
-  photo_url         String?
-  ai_preview_url    String?
-  is_ai_preview     Boolean       @default(false)
-  status            ProductStatus @default(AVAILABLE)
-  price_override    Int?
+  color          String
+  photo_url      String?
+  ai_preview_url String?
+  is_ai_preview  Boolean       @default(false)
+  status         ProductStatus @default(AVAILABLE)
+  price_override Int?
 
   created_at DateTime @default(now())
 
@@ -231,7 +237,7 @@ model ProductEmbedding {
   retailer_id String
 
   // pgvector — 1536-dim for OpenAI text-embedding-3-small
-  embedding   Unsupported("vector(1536)")?
+  embedding Unsupported("vector(1536)")?
 
   input_hash    String // SHA-256 of product text fields
   model_version String @default("text-embedding-3-small")
@@ -273,10 +279,10 @@ model Customer {
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
-  retailer         Retailer               @relation(fields: [retailer_id], references: [id])
+  retailer         Retailer              @relation(fields: [retailer_id], references: [id])
   fashion_dna      CustomerFashionDNA?
   interactions     CustomerInteraction[]
-  collections_sent Collection[]           @relation("CustomerCollections")
+  collections_sent Collection[]          @relation("CustomerCollections")
   measurements     CustomerMeasurement[]
 
   @@unique([retailer_id, phone])
@@ -288,7 +294,7 @@ model Customer {
 // ─── CUSTOMER MEASUREMENTS (Phase 1 — VTO fit input) ────────────
 
 model CustomerMeasurement {
-  id          String            @id @default(cuid())
+  id          String @id @default(cuid())
   customer_id String
   retailer_id String
 
@@ -336,8 +342,8 @@ model CustomerFashionDNA {
   occasion_affinities Json @default("{}")
   budget_range        Json @default("{}")
 
-  interaction_count Int   @default(0)
-  confidence_score  Float @default(0.0)
+  interaction_count Int      @default(0)
+  confidence_score  Float    @default(0.0)
   last_updated_at   DateTime @default(now())
 
   customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
@@ -369,10 +375,10 @@ model CustomerInteraction {
 // ─── COLLECTIONS ─────────────────────────────────────────────────
 
 model Collection {
-  id          String           @id @default(cuid())
+  id          String  @id @default(cuid())
   retailer_id String
   customer_id String?
-  
+
   title       String
   description String?
   slug        String           @unique
@@ -380,10 +386,10 @@ model Collection {
   expires_at  DateTime?
 
   // Cached analytics
-  view_count         Int @default(0)
+  view_count          Int @default(0)
   unique_viewer_count Int @default(0)
-  enquiry_count      Int @default(0)
-  favorite_count     Int @default(0)
+  enquiry_count       Int @default(0)
+  favorite_count      Int @default(0)
 
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
@@ -434,7 +440,7 @@ model CollectionView {
 }
 
 model CollectionEnquiry {
-  id            String        @id @default(cuid())
+  id            String @id @default(cuid())
   collection_id String
   retailer_id   String
 
@@ -457,8 +463,8 @@ model CollectionEnquiry {
 // ─── STAFF ───────────────────────────────────────────────────────
 
 model Staff {
-  id          String  @id @default(cuid())
-  retailer_id String
+  id           String  @id @default(cuid())
+  retailer_id  String
   auth_user_id String? @unique
 
   name      String
@@ -478,12 +484,12 @@ model Staff {
 // ─── SUBSCRIPTIONS ───────────────────────────────────────────────
 
 model Subscription {
-  id          String             @id @default(cuid())
-  retailer_id String
-  plan        SubscriptionPlan
-  status      SubscriptionStatus
-  billing_period String          @default("monthly")
-  amount_inr  Int                // paise
+  id             String             @id @default(cuid())
+  retailer_id    String
+  plan           SubscriptionPlan
+  status         SubscriptionStatus
+  billing_period String             @default("monthly")
+  amount_inr     Int // paise
 
   razorpay_subscription_id String? @unique
   razorpay_plan_id         String?
@@ -507,11 +513,11 @@ model SubscriptionPayment {
   subscription_id String
   retailer_id     String
 
-  amount_inr           Int
-  currency             String @default("INR")
-  status               String // success | failed | refunded
-  razorpay_payment_id  String? @unique
-  razorpay_order_id    String?
+  amount_inr          Int
+  currency            String  @default("INR")
+  status              String // success | failed | refunded
+  razorpay_payment_id String? @unique
+  razorpay_order_id   String?
 
   amount_excluding_gst Int?
   gst_amount           Int?
@@ -532,11 +538,11 @@ model TryOnJob {
   id          String @id @default(cuid())
   retailer_id String
 
-  product_id              String
-  measurement_id          String? // measurement snapshot used to scale/fit garment
-  customer_photo_r2_key   String
-  result_r2_key           String?
-  result_url              String?
+  product_id            String
+  measurement_id        String? // measurement snapshot used to scale/fit garment
+  customer_photo_r2_key String
+  result_r2_key         String?
+  result_url            String?
 
   status        TryOnStatus @default(QUEUED)
   error_message String?
@@ -564,21 +570,21 @@ model TryOnJob {
 // This is the single source of truth for try-on cost tracking.
 
 enum TryOnSource {
-  IN_STORE  // Shopkeeper-initiated from the mobile app
-  REMOTE    // Customer-initiated from the web collection page
+  IN_STORE // Shopkeeper-initiated from the mobile app
+  REMOTE // Customer-initiated from the web collection page
 }
 
 model TryOnUsageLog {
-  id          String     @id @default(cuid())
-  retailer_id String
+  id            String @id @default(cuid())
+  retailer_id   String
   try_on_job_id String
-  product_id  String
+  product_id    String
 
-  cost_usd Float          // Estimated GPU cost (CatVTON ~$0.005)
-  source   TryOnSource    // How the try-on was triggered
+  cost_usd Float // Estimated GPU cost (CatVTON ~$0.005)
+  source   TryOnSource // How the try-on was triggered
 
-  created_at    DateTime  @default(now())
-  completed_at  DateTime?
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
 
   retailer Retailer @relation(fields: [retailer_id], references: [id])
 
@@ -588,14 +594,56 @@ model TryOnUsageLog {
   @@map("try_on_usage_logs")
 }
 
+// ─── SIZE CHARTS (F-102c — size recommendation, no GPU cost) ────
+
+model SizeChart {
+  id          String            @id @default(cuid())
+  retailer_id String
+  category    SizeChartCategory
+  name        String            @default("Default")
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer       @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  rows     SizeChartRow[]
+
+  @@unique([retailer_id, category])
+  @@index([retailer_id])
+  @@map("size_charts")
+}
+
+model SizeChartRow {
+  id            String @id @default(cuid())
+  size_chart_id String
+
+  size_label String // S, M, L, XL, XXL, 3XL ... 10XL
+  sort_order Int // S=1, M=2, ... — lets lookup walk to the nearest size
+
+  bust_min_cm   Float?
+  bust_max_cm   Float?
+  waist_min_cm  Float?
+  waist_max_cm  Float?
+  hip_min_cm    Float?
+  hip_max_cm    Float?
+  length_min_cm Float? // inseam/length, LOWER category only
+  length_max_cm Float?
+
+  size_chart SizeChart @relation(fields: [size_chart_id], references: [id], onDelete: Cascade)
+
+  @@unique([size_chart_id, size_label])
+  @@index([size_chart_id])
+  @@map("size_chart_rows")
+}
+
 // ─── AUDIT LOG ───────────────────────────────────────────────────
 
 model AuditLog {
   id String @id @default(cuid())
 
-  actor_id   String?
-  actor_type String?
-  action     String
+  actor_id      String?
+  actor_type    String?
+  action        String
   resource_type String
   resource_id   String?
   metadata      Json?

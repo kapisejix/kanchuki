@@ -1,5 +1,6 @@
 import { router } from 'expo-router'
 import { File } from 'expo-file-system'
+import * as LegacyFileSystem from 'expo-file-system/legacy'
 import { getItem, setItem, deleteItem } from './storage'
 import { cachedJsonRequest, clearRequestCache } from './request-cache'
 
@@ -294,35 +295,46 @@ export async function readLocalImage(uri: string, _timeoutMs = 15_000): Promise<
   }
 }
 
+// PUTs the local file straight through native upload machinery (NSURLSession /
+// OkHttp), not RN's fetch(). expo-file-system's `File` only *implements* the
+// Blob interface — it isn't a real `instanceof Blob` wired into RN's native
+// Blob registry, so fetch(..., { body: file }) can resolve 200 while silently
+// sending truncated/empty bytes. R2 still stores the declared Content-Type
+// regardless of body validity, so the corruption only surfaces later as
+// "cannot identify image file" when something tries to decode the object.
 export async function uploadImageToR2(
   localUri: string,
   uploadUrl: string,
   contentType: string,
   timeoutMs = 30_000,
 ): Promise<void> {
-  const blob = await readLocalImage(localUri)
-
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
-
-  let upload: Response
+  let result: LegacyFileSystem.FileSystemUploadResult
   try {
-    upload = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: blob,
-      signal: controller.signal,
-    })
+    result = await Promise.race([
+      LegacyFileSystem.uploadAsync(uploadUrl, localUri, {
+        httpMethod: 'PUT',
+        uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
+        headers: { 'Content-Type': contentType },
+      }),
+      new Promise<never>((_, reject) =>
+        setTimeout(
+          () => reject(new ApiError('TIMEOUT', 'Image upload timed out. Check your connection.', 408)),
+          timeoutMs,
+        ),
+      ),
+    ])
   } catch (err) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      throw new ApiError('TIMEOUT', 'Image upload timed out. Check your connection.', 408)
-    }
-    throw err
-  } finally {
-    clearTimeout(timer)
+    if (err instanceof ApiError) throw err
+    throw new ApiError(
+      'UPLOAD_FAILED',
+      err instanceof Error ? err.message : 'Image upload failed',
+      500,
+    )
   }
 
-  if (!upload.ok) throw new ApiError('UPLOAD_FAILED', 'Image upload failed', upload.status)
+  if (result.status < 200 || result.status >= 300) {
+    throw new ApiError('UPLOAD_FAILED', 'Image upload failed', result.status)
+  }
 }
 
 // ─── Try-On ──────────────────────────────────────────────────────

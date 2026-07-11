@@ -1,4 +1,6 @@
-import { downloadBuffer, uploadBuffer, publicUrl } from './r2.js'
+import { createHash } from 'node:crypto'
+import { removeBackground } from '@imgly/background-removal-node'
+import { objectExists, uploadBuffer, publicUrl } from './r2.js'
 
 // ─── Configuration ─────────────────────────────────────────────
 // CatVTON self-hosted: ~$0.005/try-on, requires a GPU server.
@@ -7,6 +9,7 @@ import { downloadBuffer, uploadBuffer, publicUrl } from './r2.js'
 const CATVTON_API_URL = process.env['CATVTON_API_URL'] ?? ''           // e.g. http://localhost:8000
 const RUNPOD_API_KEY = process.env['RUNPOD_API_KEY'] ?? ''             // required when CATVTON_API_URL is a RunPod endpoint
 const R2_TRYON_PREFIX = 'tryon-results'
+const R2_PREPROCESSED_PREFIX = 'tryon-preprocessed'
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -37,6 +40,32 @@ function isRunPodUrl(url: string): boolean {
   return url.includes('api.runpod.ai') || url.includes('api.runpod.io')
 }
 
+function preprocessedR2Key(sourceUrl: string): string {
+  const hash = createHash('sha256').update(sourceUrl).digest('hex').slice(0, 32)
+  return `${R2_PREPROCESSED_PREFIX}/${hash}.png`
+}
+
+/**
+ * Strip the background from a raw retailer product photo before it goes to
+ * CatVTON. Raw uploads are rarely bg-clean (see PRO-REQUIREMENTS.md F-102) —
+ * this is the input-quality gate root-caused as the main driver of low-match
+ * try-on results. Output is cached in R2 by content hash of the source URL,
+ * so re-try-oning the same product doesn't reprocess every call.
+ */
+async function removeBackgroundAndCache(productPhotoUrl: string): Promise<string> {
+  const key = preprocessedR2Key(productPhotoUrl)
+  // ponytail: cache is presence-only (key = hash of source URL), no TTL/
+  // invalidation — fine since the same product photo always maps to the
+  // same output. Add invalidation if retailers start replacing photos in
+  // place at the same URL.
+  if (await objectExists(key)) return publicUrl(key)
+
+  const blob = await removeBackground(productPhotoUrl)
+  const buffer = Buffer.from(await blob.arrayBuffer())
+  await uploadBuffer(key, buffer, 'image/png')
+  return publicUrl(key)
+}
+
 /**
  * Trigger a try-on via self-hosted CatVTON microservice.
  * Supports two deployment modes:
@@ -45,6 +74,8 @@ function isRunPodUrl(url: string): boolean {
  * Returns immediately with the completed result (sync, ~35-45s).
  */
 async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
+  const garmentImageUrl = await removeBackgroundAndCache(request.productPhotoUrl)
+
   const isRunPod = isRunPodUrl(CATVTON_API_URL)
   const endpoint = isRunPod
     ? `${CATVTON_API_URL}/runsync`
@@ -54,12 +85,12 @@ async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
     ? {
         input: {
           person_image_url: request.customerPhotoUrl,
-          garment_image_url: request.productPhotoUrl,
+          garment_image_url: garmentImageUrl,
         },
       }
     : {
         person_image_url: request.customerPhotoUrl,
-        garment_image_url: request.productPhotoUrl,
+        garment_image_url: garmentImageUrl,
       }
 
   const res = await fetch(endpoint, {
@@ -139,21 +170,6 @@ export async function triggerTryOn(request: TryOnRequest): Promise<TryOnResult> 
 
   console.log('[TryOn] Using CatVTON engine')
   return await triggerCatVTON(request)
-}
-
-/**
- * Poll a try-on job status.
- * CatVTON results are synchronous so no polling is needed — the result
- * is already available from triggerTryOn().
- */
-export async function pollTryOn(jobId: string): Promise<TryOnResult> {
-  return {
-    jobId,
-    status: 'completed',
-    outputUrls: [],
-    errorMessage: null,
-    engine: 'catvton',
-  }
 }
 
 /**

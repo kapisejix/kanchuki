@@ -18,6 +18,7 @@
     "openai": "^4.52.0",
     "@aws-sdk/client-s3": "^3.620.0",
     "@aws-sdk/s3-request-presigner": "^3.620.0",
+    "@imgly/background-removal-node": "^1.4.5",
     "@kanchuki/shared": "workspace:*"
   },
   "devDependencies": {

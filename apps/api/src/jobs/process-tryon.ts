@@ -1,5 +1,5 @@
 import { prisma } from '@kanchuki/db'
-import { triggerTryOn, pollTryOn, saveTryOnResultToR2, deleteObject, uploadBuffer, tryonResultR2Key, publicUrl } from '@kanchuki/ai'
+import { triggerTryOn, saveTryOnResultToR2, deleteObject, uploadBuffer, tryonResultR2Key, publicUrl } from '@kanchuki/ai'
 
 export interface TryOnJobData {
   try_on_job_id: string
@@ -8,13 +8,6 @@ export interface TryOnJobData {
   customer_photo_r2_key: string  // R2 key or URL for remote flow
   measurement_id?: string | null
   is_remote?: boolean  // If true, customer_photo_r2_key is a URL, not an R2 key
-}
-
-const POLL_INTERVAL_MS = 2000
-const MAX_POLL_ATTEMPTS = 30  // 60 seconds max wait
-
-async function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
@@ -85,14 +78,7 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
     })
 
     // CatVTON is synchronous — result already available from triggerTryOn
-    // Poll loop kept for forward-compatibility with async engines
-    let finalResult = triggerResult
-    for (let attempt = 0; attempt < MAX_POLL_ATTEMPTS; attempt++) {
-      await delay(POLL_INTERVAL_MS)
-      finalResult = await pollTryOn(triggerResult.jobId)
-
-      if (finalResult.status === 'completed' || finalResult.status === 'failed') break
-    }
+    const finalResult = triggerResult
 
     if (finalResult.status === 'completed' && finalResult.outputUrls.length > 0) {
       // Save result to R2

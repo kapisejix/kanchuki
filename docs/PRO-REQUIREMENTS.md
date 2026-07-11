@@ -334,6 +334,28 @@ Only platform combining:
 - Unstitched suit layering — requires fine-tuning
 - Heavy embroidery texture rendering — CatVTON handles well natively
 
+**Product Photo Requirements (input-quality gate — root cause of most low-match results):**
+- Background: plain/removed (rembg or remove.bg preprocessing step before CatVTON call — raw retailer photos are NOT bg-clean by default, must add as pipeline step in `triggerCatVTON`)
+- Capture: ghost-mannequin or flat-lay, front view, garment only, no props/wrinkles/watermark
+- Lighting: even, diffused, no hard shadow
+- Resolution: min 768×1024
+- Category mapping: CatVTON accepts one of `upper` / `lower` / `overall` per call — no native multi-garment compositing
+  - Kameez + Salwar (2-piece): two sequential calls (upper, then lower on the first result), OR single `overall` photo if garment shot as a set
+  - Dupatta: excluded from CatVTON pass (draping physics unsupported) — either static PNG overlay post-render or omit for MVP
+
+**Customer photo requirements:** front-facing, full body, plain background, standing straight, arms slightly away from torso, fitted/plain clothing (baggy clothes confuse the silhouette mask), even lighting.
+
+---
+
+#### F-102c: Size Recommendation (Retailer Size Chart Match)
+**Description:** Recommend a size (S–10XL) to the customer by matching their `CustomerMeasurement` record (F-102b) against the retailer's own ready-garment size chart, distinct from and complementary to F-102 visual try-on.
+
+**Input:** Retailer-uploaded size chart per garment type (e.g. Kurtas/Tops/Anarkalis/Dresses: bust/waist/hip by size; Pants/Palazzos/Skirts: waist/hip/length by size) — same shape as sample chart supplied for this feature.
+
+**Logic:** Simple range lookup — customer bust/waist/hip → nearest matching chart row → recommended size, no AI/GPU cost.
+
+**Explicitly NOT in scope:** Rendering the try-on visual at the customer's actual body proportions. CatVTON is image-conditioned only (no numeric measurement input) — feeding height/weight into it has no effect on output. A measurement-driven 3D render (SMPL/STAR body model + pose-conditioned diffusion, e.g. IDM-VTON/OOTDiffusion) could do this but is deferred — see `docs/adrs/ADR-006-defer-3d-parametric-vto.md`.
+
 ---
 
 #### F-102b: Body Measurement Capture (feeds F-102 VTO fit)

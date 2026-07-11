@@ -190,6 +190,13 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 4. Swap model weights in microservice — no app code changes needed
 5. Retest with sarees, lehengas, unstitched suits
 
+**Step 0 — Product/customer photo quality gate (do before Step 1 retest, cheap fix, likely root cause of early "no match" results):**
+- Add bg-removal preprocessing (rembg/remove.bg) before every `triggerCatVTON` call
+- Enforce ghost-mannequin/flat-lay product photo capture + plain-bg customer photo (see `docs/PRO-REQUIREMENTS.md` F-102)
+- Multi-piece ethnic sets (kameez+salwar+dupatta): sequential upper/lower calls, dupatta excluded from CatVTON pass for MVP
+
+**Deferred (not Phase 1 scope):** Measurement-driven body-shape rendering (SMPL/STAR 3D body model + pose-conditioned diffusion, e.g. IDM-VTON/OOTDiffusion) — evaluated, ~6-15x GPU cost vs CatVTON (₹0.4 → ₹2.5-6.5/try-on) for only ~10-20% photorealism gain on benchmarks that don't even cover ethnic wear. Revisit post-MVP if margin allows. Decision + numbers: `docs/adrs/ADR-006-defer-3d-parametric-vto.md`. Height/weight/measurements still used for size recommendation (F-102c, simple chart lookup, no GPU) — different feature, ships independently.
+
 ---
 
 ## Phase 2: B2B Supply Network (Month 9–12)

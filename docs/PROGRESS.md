@@ -383,3 +383,101 @@ RunPod template update recipe (GraphQL `saveTemplate` mutation, `env: []`
 is a required field even when empty): endpoint `pnvchif9f4bcom`, template id
 `v76b819nle`. `check-runpod.sh` (untracked, has API token inline) queries
 endpoint/pod state.
+
+---
+
+## 2026-07-11 — Product-photo quality gate spec'd, 3D parametric VTO evaluated + deferred
+
+User reported CatVTON try-on results "not even 1% close" between product and
+customer image. Root-caused to input quality, not the model itself — no
+code changed this session, all findings written into docs for the next
+implementation pass.
+
+**Findings + docs updated:**
+- `docs/PRO-REQUIREMENTS.md` F-102 — added explicit product-photo requirements
+  (bg-removal preprocessing needed before `triggerCatVTON`, ghost-mannequin/
+  flat-lay capture, plain background, min 768×1024) and customer-photo
+  requirements (front-facing, plain bg, fitted clothing). Root cause of the
+  "1%" complaint is very likely raw uncleaned retailer photos + wrong
+  garment-category mapping, not an engine limitation.
+- `docs/PRO-REQUIREMENTS.md` F-102c (new) — size recommendation via simple
+  size-chart lookup (S–10XL, bust/waist/hip/length), matched against the
+  existing `CustomerMeasurement` record from F-102b. Zero GPU cost, separate
+  from visual try-on.
+- Multi-piece ethnic garments (kameez+salwar+dupatta): CatVTON only accepts
+  one `upper`/`lower`/`overall` category per call, no native multi-garment
+  compositing. Plan: two sequential calls for kameez+salwar, dupatta excluded
+  from CatVTON pass for MVP (draping physics unsupported).
+- Evaluated whether height/weight/measurements could drive the try-on
+  *render* itself (not just size lookup) via a 3D parametric body pipeline
+  (SMPL/STAR body model + pose-conditioned diffusion, e.g. IDM-VTON/
+  OOTDiffusion instead of CatVTON). **Decision: defer, not in Phase 1 scope**
+  — full reasoning + cost/accuracy numbers in new
+  `docs/adrs/ADR-006-defer-3d-parametric-vto.md`. Summary: ~6-15x GPU cost
+  ($0.03-0.08/try-on vs CatVTON's $0.005) for only ~10-20% photorealism gain
+  on benchmarks that don't even cover Indian ethnic wear — domain gap, not
+  architecture, is the real accuracy bottleneck.
+- `docs/PLAN.md` Phase 1 VTO section — added "Step 0" (photo quality gate,
+  do before the Step 1 fine-tune retest) and a note pointing to ADR-006 for
+  the deferred 3D work.
+
+**Not done this session (no code touched):** bg-removal preprocessing step
+is spec'd but not implemented in `packages/ai/src/tryon.ts::triggerCatVTON`.
+Size-chart lookup (F-102c) has no schema/endpoint yet — needs a
+`SizeChart`/`SizeChartRow` table + retailer upload UI + lookup function
+before it can ship. Both are the next real code work, ahead of/instead of
+resuming the still-unconfirmed RunPod end-to-end test (see prior entries).
+
+**Resume here next session:**
+1. RunPod end-to-end confirmation still open (see 2026-07-10 entry — pod
+   `ztsv2je2iue9jp` or successor, dashboard logs not yet pulled).
+2. Implement bg-removal preprocessing in `triggerCatVTON` (rembg, before
+   upload to CatVTON) — cheap, likely fixes most of the reported quality gap.
+3. Decide + implement size-chart schema for F-102c if retailer size charts
+   are ready to onboard.
+
+---
+
+## 2026-07-11 (later) — bg-removal preprocessing shipped, size-chart schema added
+
+**Done (bg-removal, F-102 input-quality gate):**
+- `packages/ai/src/tryon.ts::triggerCatVTON` now runs the product/garment
+  photo through `@imgly/background-removal-node` (JS/ONNX, no Python
+  dependency needed from the Node API/worker process) before sending it to
+  CatVTON as `garment_image_url`. Chose this over calling into the existing
+  Python `rembg` dependency in `services/tryon/` because that service only
+  runs inside the RunPod GPU container — the Node API process that calls
+  `triggerTryOn` has no path to it without a new network hop.
+- Output is cached in R2 under `tryon-preprocessed/<sha256(sourceUrl)>.png` —
+  added `objectExists()` (`HeadObjectCommand`) to `packages/ai/src/r2.ts` so
+  repeat try-ons of the same product skip reprocessing. Cache is presence-only,
+  no invalidation (fine while product photo URLs are immutable per-upload).
+- New dep `@imgly/background-removal-node@^1.4.5` added to
+  `packages/ai/package.json`, installed, typechecks clean
+  (`db`/`ai`/`api` all pass).
+- **Not done:** no live test against a real retailer photo yet (needs
+  `CATVTON_API_URL` configured + a real run) — same "unconfirmed end-to-end"
+  gap as the RunPod work above, now with one more step in the pipeline to
+  verify.
+
+**Done (F-102c size-chart schema):**
+- Added to `packages/db/prisma/schema.prisma`: `SizeChartCategory` enum
+  (`UPPER` = Kurtas/Tops/Anarkalis/Dresses — bust/waist/hip;
+  `LOWER` = Pants/Palazzos/Skirts — waist/hip/length, matching the two chart
+  shapes in PRO-REQUIREMENTS.md F-102c exactly), `SizeChart` model
+  (one per retailer per category, `@@unique([retailer_id, category])`), and
+  `SizeChartRow` (`size_label` + `sort_order` for S→10XL walk, nullable
+  min/max cm columns for bust/waist/hip/length — unused axes stay null per
+  category, same pattern as `Product`'s optional AI-tag fields).
+- Hand-written migration `packages/db/prisma/migrations/005_size_charts/migration.sql`
+  (repo convention — migrations here are SQL files, not `prisma migrate dev`
+  output) — schema validated (`prisma validate`) and client regenerated
+  (`prisma generate`), **not applied to the live Supabase DB** (no
+  `apply_migration` run — same caution as every prior session on this
+  project: schema changes get reviewed before touching prod).
+- **Not done:** no lookup function (nearest-size-by-measurement), no retailer
+  upload UI/endpoint, no seed data. User asked for the schema specifically —
+  scope stopped there. Next pass needs a lookup service (probably
+  `packages/ai` or a new `apps/api/src/routes/size-chart.ts`) that takes a
+  `CustomerMeasurement` + category and walks `SizeChartRow`s in `sort_order`
+  to find the containing (or nearest) range.
