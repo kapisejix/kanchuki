@@ -183,10 +183,20 @@ export default function InStoreTryOnScreen() {
       // Get presigned URL for customer photo
       const blob = await readLocalImage(customerPhotoUri)
       const uploadResult = await tryOnApi.getUploadUrl('image/jpeg', blob.size)
-      const { upload_url, r2_key } = uploadResult.data
+      const { upload_url, r2_key, public_url } = uploadResult.data
 
       // Upload customer photo to R2
       await uploadImageToR2(customerPhotoUri, upload_url, 'image/jpeg')
+
+      // Sanity check the object landed — RN's fetch() often doesn't expose
+      // Content-Length on HEAD responses through the CDN, so only fail on an
+      // unambiguous signal (non-2xx, or an explicit 0-byte object). A missing
+      // header is inconclusive, not a failure.
+      const verifyResp = await fetch(public_url, { method: 'HEAD' })
+      const contentLength = verifyResp.headers.get('content-length')
+      if (!verifyResp.ok || contentLength === '0') {
+        throw new Error('Photo upload was incomplete. Please try again.')
+      }
 
       // Initiate try-on
       const initiateResult = await tryOnApi.initiate(selectedProduct.id, r2_key)

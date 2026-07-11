@@ -88,7 +88,11 @@ async function request<T>(
     return data
   } catch (err) {
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new ApiError('TIMEOUT', 'Request timed out. Check your connection.', 408)
+      throw new ApiError(
+        'TIMEOUT',
+        `Request timed out (${path}). Check that the API server is running at ${API_URL} and try again.`,
+        408,
+      )
     }
     // Handle errors from request-cache.ts (RequestError has .code/.status)
     const cacheErr = err as { code?: string; status?: number }
@@ -148,12 +152,22 @@ export const analyticsApi = {
 // ─── Auth ─────────────────────────────────────────────────────────
 
 export const authApi = {
+  /**
+   * Send OTP via Supabase Auth.
+   * Uses a longer timeout (30s) because Supabase's SMS provider (Twilio) can
+   * take 10–25s to deliver, especially on first call to a new phone number.
+   */
   sendOtp: (phone: string) =>
-    request<{ message: string }>('/v1/auth/otp/send', {
+    request<{ data: { message: string; phone: string } }>('/v1/auth/otp/send', {
       method: 'POST',
       body: JSON.stringify({ phone }),
+      timeoutMs: 30_000,
     }),
 
+  /**
+   * Verify OTP and get session tokens.
+   * Same 30s timeout — Supabase token exchange can be slow on cold start.
+   */
   verifyOtp: (phone: string, otp: string) =>
     request<{
       data: {
@@ -165,6 +179,7 @@ export const authApi = {
     }>('/v1/auth/otp/verify', {
       method: 'POST',
       body: JSON.stringify({ phone, otp }),
+      timeoutMs: 30_000,
     }),
 }
 
