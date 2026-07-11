@@ -98,10 +98,29 @@ def load_model():
 # ─── Image Helpers ────────────────────────────────────────────
 
 def download_image(url: str) -> PILImage.Image:
-    """Download image from URL."""
+    """Download image from URL with validation."""
     resp = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
     resp.raise_for_status()
-    img = PILImage.open(io.BytesIO(resp.content))
+
+    # Validate Content-Type — bail early if not an image
+    ct = resp.headers.get("Content-Type", "")
+    if not ct.startswith("image/"):
+        raise ValueError(
+            f"URL returned Content-Type '{ct}' instead of an image. "
+            f"Check that {url} is a publicly accessible image URL."
+        )
+
+    try:
+        img = PILImage.open(io.BytesIO(resp.content))
+        img.verify()  # Force PIL to actually decode the image
+        # Re-open after verify() closes the file
+        img = PILImage.open(io.BytesIO(resp.content))
+    except Exception as pil_err:
+        raise ValueError(
+            f"Image download succeeded but content is not a valid image: {pil_err}. "
+            f"URL: {url}"
+        )
+
     if img.mode != "RGB":
         img = img.convert("RGB")
     return img

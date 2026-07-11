@@ -128,11 +128,42 @@ def download_image(url: str) -> "PIL.Image.Image":
     try:
         resp = requests.get(url, timeout=DOWNLOAD_TIMEOUT)
         resp.raise_for_status()
-        img = PILImage.open(io.BytesIO(resp.content))
+
+        # Validate content type — bail early if not an image
+        ct = resp.headers.get("Content-Type", "")
+        if not ct.startswith("image/"):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"URL returned Content-Type '{ct}' instead of an image. "
+                    f"Check that {url} is a publicly accessible image URL "
+                    f"(the R2 bucket must have public access enabled)."
+                ),
+            )
+
+        try:
+            img = PILImage.open(io.BytesIO(resp.content))
+            img.verify()  # Force PIL to actually decode — lazy open won't catch all corrupt files
+            # Re-open after verify() closes the file
+            img = PILImage.open(io.BytesIO(resp.content))
+        except Exception as pil_err:
+            # Content-Type said image, but PIL can't parse the bytes
+            content_preview = resp.content[:200]
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    f"Image download succeeded but content is not a valid image: {pil_err}. "
+                    f"URL: {url}. "
+                    f"First 200 bytes: {content_preview!r}"
+                ),
+            )
+
         # Convert to RGB if necessary
         if img.mode != "RGB":
             img = img.convert("RGB")
         return img
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=400,
