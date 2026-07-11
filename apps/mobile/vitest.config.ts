@@ -53,7 +53,7 @@ export default defineConfig({
     // from these packages goes through our Vite plugin (not Node's resolver).
     // Regex patterns needed for pnpm's hashed virtual store paths.
     deps: {
-      inline: [/@testing-library\/react-native/, /react-native/],
+      inline: [/@testing-library\/react-native/, 'react-native'],
     },
   },
   resolve: {

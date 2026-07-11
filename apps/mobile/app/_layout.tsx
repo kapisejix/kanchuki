@@ -1,11 +1,14 @@
 import '../global.css'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Stack, router } from 'expo-router'
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
-import { AppState, Platform } from 'react-native'
+import { AppState, Platform, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { getToken } from '../src/lib/api'
+import { ErrorBoundary } from '../src/components/ErrorBoundary'
+import { NetworkBanner } from '../src/components/NetworkBanner'
+import { restoreQueryCache, persistQueryCache } from '../src/lib/offline-persister'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,18 +25,46 @@ const queryClient = new QueryClient({
 })
 
 export default function RootLayout() {
+  const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const appStateRef = useRef(AppState.currentState)
+
+  // ── Rehydrate offline cache on mount ──────────────────────────
+  useEffect(() => {
+    void (async () => {
+      await restoreQueryCache(queryClient)
+    })()
+  }, [])
+
+  // ── Auth redirect ─────────────────────────────────────────────
   useEffect(() => {
     void getToken().then((token) => {
       if (!token) router.replace('/auth/phone')
     })
   }, [])
 
-  // ── Pause/resume queries based on app foreground/background ──
+  // ── Persist cache on background + pause/resume queries ────────
   useEffect(() => {
     if (Platform.OS === 'web') return
-    const sub = AppState.addEventListener('change', (state) => {
-      focusManager.setFocused(state === 'active')
+
+    const sub = AppState.addEventListener('change', (nextState) => {
+      // Pause/resume focus for React Query
+      focusManager.setFocused(nextState === 'active')
+
+      // Save cache when app goes to background/inactive
+      if (
+        appStateRef.current === 'active' &&
+        (nextState === 'background' || nextState === 'inactive')
+      ) {
+        // Debounce: clear any pending save timer
+        if (persistTimerRef.current) clearTimeout(persistTimerRef.current)
+        persistTimerRef.current = setTimeout(() => {
+          void persistQueryCache(queryClient)
+        }, 2000)
+      }
+
+      appStateRef.current = nextState
     })
+
     return () => sub.remove()
   }, [])
 
@@ -41,16 +72,21 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
-          <Stack screenOptions={{ headerShown: false }}>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
-            <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
-            <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="product/[id]" />
-            <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="tryon/in-store" options={{ presentation: 'fullScreenModal' }} />
-          </Stack>
+          <ErrorBoundary>
+            <View className="flex-1">
+              <NetworkBanner />
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
+                <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
+                <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="product/[id]" />
+                <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
+                <Stack.Screen name="tryon/in-store" options={{ presentation: 'fullScreenModal' }} />
+              </Stack>
+            </View>
+          </ErrorBoundary>
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

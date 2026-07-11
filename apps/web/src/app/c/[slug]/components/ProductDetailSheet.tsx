@@ -26,11 +26,14 @@ export function ProductDetailSheet({
   onClose,
 }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0)
+  const isSold = product.status === 'SOLD'
+  const isReserved = product.status === 'RESERVED'
 
   const photos = product.photos.length > 0 ? product.photos : [product.primary_photo_url]
   const currentPhoto = photos[photoIndex] ?? product.primary_photo_url
 
   const handleEnquire = () => {
+    if (isSold) return
     const message = buildEnquiryMessage({
       shopName: retailer.shop_name,
       collectionTitle,
@@ -116,10 +119,19 @@ export function ProductDetailSheet({
 
         {/* Details */}
         <div className="p-4 space-y-3">
+          {/* Status badge */}
+          {product.status !== 'AVAILABLE' && (
+            <div className={`px-3 py-2 rounded-xl text-sm font-semibold ${
+              isSold ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+            }`}>
+              {isSold ? '🛑 This item has been sold' : '⏳ This item is reserved'}
+            </div>
+          )}
+
           {/* Price + favorite */}
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-xl font-bold text-gray-900">
+              <p className={`text-xl font-bold ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                 {formatPriceRange(product.price_min, product.price_max)}
               </p>
               <p className="text-sm text-gray-500">
@@ -127,16 +139,18 @@ export function ProductDetailSheet({
                 {product.occasions[0] ? ` · ${product.occasions[0]}` : ''}
               </p>
             </div>
-            <button
-              onClick={() => onFavorite(product.id)}
-              className="w-10 h-10 rounded-full border-2 border-gray-100 flex items-center justify-center flex-shrink-0"
-              aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
-            >
-              <Heart
-                size={20}
-                className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
-              />
-            </button>
+            {!isSold && (
+              <button
+                onClick={() => onFavorite(product.id)}
+                className="w-10 h-10 rounded-full border-2 border-gray-100 flex items-center justify-center flex-shrink-0"
+                aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
+              >
+                <Heart
+                  size={20}
+                  className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
+                />
+              </button>
+            )}
           </div>
 
           {/* Attribute chips */}
@@ -185,30 +199,47 @@ export function ProductDetailSheet({
           )}
         </div>
 
-        {/* Try-On CTA */}
-        <div className="px-4 pt-2">
-          <button
-            onClick={onTryOn}
-            className="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold
-                       py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors"
-          >
-            <Camera size={18} />
-            Try This On
-          </button>
-        </div>
+        {/* Try-On CTA — disabled for SOLD */}
+        {!isSold && (
+          <div className="px-4 pt-2">
+            <button
+              onClick={onTryOn}
+              className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors ${
+                isReserved
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+              }`}
+              disabled={isReserved}
+            >
+              <Camera size={18} />
+              {isReserved ? 'Try On Unavailable' : 'Try This On'}
+            </button>
+            {isReserved && (
+              <p className="text-center text-xs text-amber-500 mt-1">
+                Reserved items cannot be tried on
+              </p>
+            )}
+          </div>
+        )}
 
-        {/* Enquire CTA */}
-        <div className="px-4 pb-6 pt-2">
+        {/* Enquire CTA — disabled for SOLD */}
+        <div className={`px-4 pb-6 pt-2 ${isSold ? 'pt-4' : ''}`}>
           <button
             onClick={handleEnquire}
-            className="w-full bg-green-500 hover:bg-green-600 text-white font-semibold
-                       py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-base"
+            disabled={isSold}
+            className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-base ${
+              isSold
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600 text-white'
+            }`}
           >
             <MessageCircle size={20} />
-            Enquire on WhatsApp
+            {isSold ? 'Sold Out' : isReserved ? 'Enquire About This Item' : 'Enquire on WhatsApp'}
           </button>
           <p className="text-center text-xs text-gray-400 mt-2">
-            Opens WhatsApp with your enquiry pre-filled
+            {isSold
+              ? 'This item has been sold. Check other items in the collection.'
+              : 'Opens WhatsApp with your enquiry pre-filled'}
           </p>
         </div>
       </div>

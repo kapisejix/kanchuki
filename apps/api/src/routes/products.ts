@@ -7,6 +7,46 @@ import { R2_PATHS } from '@kanchuki/shared'
 import { addTaggingJob, addEmbeddingJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError, forbidden } from '../plugins/error-handler.js'
 
+// ─── On-Demand ISR Revalidation ───────────────────────────────────
+// After a product status change, purge the ISR cache for every collection
+// link page that includes this product, so the badge updates instantly.
+
+const WEB_URL = process.env['WEB_URL'] ?? ''
+const REVALIDATION_SECRET = process.env['REVALIDATION_SECRET'] ?? ''
+
+async function revalidateCollectionsForProduct(productId: string): Promise<void> {
+  if (!WEB_URL || !REVALIDATION_SECRET) return // not configured — skip
+
+  try {
+    // Find all active collections containing this product
+    const collectionProducts = await prisma.collectionProduct.findMany({
+      where: { product_id: productId },
+      include: {
+        collection: {
+          select: { slug: true },
+        },
+      },
+    })
+
+    const slugs = [...new Set(collectionProducts.map((cp) => cp.collection.slug))]
+    if (slugs.length === 0) return
+
+    // Revalidate each collection page (fire-and-forget — batch in parallel)
+    await Promise.allSettled(
+      slugs.map((slug) =>
+        fetch(`${WEB_URL}/api/revalidate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ secret: REVALIDATION_SECRET, collection_slug: slug }),
+          signal: AbortSignal.timeout(5000), // 5s timeout per request
+        }),
+      ),
+    )
+  } catch {
+    // Revalidation is best-effort — never crash the status update
+  }
+}
+
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const
 type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number]
 
@@ -253,6 +293,12 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       data: { status: body.data.status },
       select: { id: true, status: true },
     })
+
+    // Fire-and-forget: revalidate collection link pages that include this product
+    // so status changes (AVAILABLE → SOLD / RESERVED) appear instantly instead of
+    // waiting up to 60s for ISR revalidation.
+    void revalidateCollectionsForProduct(id)
+
     return { data: updated }
   })
 

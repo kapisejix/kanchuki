@@ -5,9 +5,20 @@ import Image from 'next/image'
 import { Heart, MessageCircle, Filter, Share2, ShoppingBag, Sparkles } from 'lucide-react'
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
-import { ProductDetailSheet } from './ProductDetailSheet'
+import dynamic from 'next/dynamic'
 import { FilterBar } from './FilterBar'
-import { TryOnModal } from './TryOnModal'
+
+// Lazy-load sheet and modal — only fetched when user taps a product or try-on.
+// The components include image carousels, forms, and heavy lucide icons that
+// should not block the initial page render.
+const ProductDetailSheet = dynamic(
+  () => import('./ProductDetailSheet').then((m) => m.ProductDetailSheet),
+  { ssr: false },
+)
+const TryOnModal = dynamic(
+  () => import('./TryOnModal').then((m) => m.TryOnModal),
+  { ssr: false },
+)
 
 interface Props {
   collection: PublicCollection
@@ -212,9 +223,12 @@ interface CardProps {
 
 function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }: CardProps) {
   const [showTryOn, setShowTryOn] = useState(false)
+  const isSold = product.status === 'SOLD'
+  const isReserved = product.status === 'RESERVED'
+  const isUnavailable = isSold || isReserved
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-100">
+    <div className={`bg-white rounded-2xl overflow-hidden shadow-sm border ${isSold ? 'border-red-100 opacity-80' : isReserved ? 'border-amber-100' : 'border-gray-100'}`}>
       {/* Photo */}
       <button onClick={onTap} className="relative w-full aspect-[3/4] block">
         {product.primary_photo_url ? (
@@ -223,38 +237,55 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }
             alt={product.name ?? product.category ?? 'Product'}
             fill
             sizes="(max-width: 640px) 45vw, 200px"
-            className="object-cover"
+            className={`object-cover ${isSold ? 'grayscale' : ''}`}
           />
         ) : (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
             <ShoppingBag size={32} className="text-gray-300" />
           </div>
         )}
-        {/* Favorite button */}
-        <button
-          onClick={(e) => { e.stopPropagation(); onFavorite(product.id) }}
-          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm
-                     flex items-center justify-center shadow-sm"
-          aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
-        >
-          <Heart
-            size={16}
-            className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
-          />
-        </button>
+
+        {/* Status badge ribbon */}
+        {isSold && (
+          <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-lg shadow-sm">
+            Sold Out
+          </div>
+        )}
+        {isReserved && (
+          <div className="absolute top-0 left-0 bg-amber-400 text-amber-900 text-[10px] font-bold px-3 py-1 rounded-br-lg shadow-sm">
+            Reserved
+          </div>
+        )}
+
+        {/* Favorite button — hide for SOLD */}
+        {!isSold && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onFavorite(product.id) }}
+            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm
+                       flex items-center justify-center shadow-sm"
+            aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
+          >
+            <Heart
+              size={16}
+              className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
+            />
+          </button>
+        )}
       </button>
 
-      {/* Try-On button */}
-      <div className="px-2.5 pt-1.5">
-        <button
-          onClick={(e) => { e.stopPropagation(); setShowTryOn(true) }}
-          className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-medium
-                     py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
-        >
-          <Sparkles size={14} />
-          Try On
-        </button>
-      </div>
+      {/* Try-On button — hide for SOLD, show as disabled for RESERVED */}
+      {!isUnavailable && (
+        <div className="px-2.5 pt-1.5">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowTryOn(true) }}
+            className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-medium
+                       py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
+          >
+            <Sparkles size={14} />
+            Try On
+          </button>
+        </div>
+      )}
 
       {/* Try-On Modal */}
       {showTryOn && collectionSlug && (
@@ -280,8 +311,14 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }
           <p className="text-xs text-gray-500 truncate">
             {product.category ?? product.occasions[0] ?? 'Product'}
           </p>
+          {isSold && (
+            <span className="text-[10px] text-red-400 font-medium ml-auto">Sold</span>
+          )}
+          {isReserved && (
+            <span className="text-[10px] text-amber-500 font-medium ml-auto">Reserved</span>
+          )}
         </div>
-        <p className="text-sm font-semibold text-gray-900">
+        <p className={`text-sm font-semibold ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
           {formatPriceRange(product.price_min, product.price_max)}
         </p>
         {product.fabric_estimate && (

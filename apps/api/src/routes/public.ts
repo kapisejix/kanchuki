@@ -68,9 +68,10 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Build public shape (no internal IDs that shouldn't be shared)
-    // Filter out deleted / sold products, then map to public shape
+    // Show ALL non-deleted products — SOLD/RESERVED get visual badges on the frontend.
+    // Only fully hide truly deleted items.
     const publicProducts = collection.products
-      .filter((cp) => cp.product !== null && !cp.product.deleted_at && cp.product.status === 'AVAILABLE')
+      .filter((cp) => cp.product !== null && !cp.product.deleted_at)
       .map((cp) => {
         const p = cp.product!
         const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE')

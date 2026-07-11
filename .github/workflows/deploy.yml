@@ -1,0 +1,121 @@
+name: Deploy to Railway
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'apps/api/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'turbo.json'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+# ─── Required GitHub Secrets ──────────────────────────────────────
+#
+#   RAILWAY_TOKEN              — Railway project token
+#                                 (Project Dashboard → Settings → Tokens)
+#   RAILWAY_API_SERVICE_ID     — Service ID from Railway API service
+#                                 (URL: /project/{p}/service/{this_id})
+#   RAILWAY_WEB_SERVICE_ID     — Service ID from Railway Web service
+#
+# Security best practice: enable "Require status checks" branch
+# protection on main so CI must pass before merge. This prevents
+# broken code from reaching main and triggering a deploy.
+
+env:
+  PNPM_VERSION: '9'
+  NODE_VERSION: '20'
+
+jobs:
+  ####################################################################
+  # Detect which services changed
+  ####################################################################
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      api: ${{ steps.filter.outputs.api }}
+      web: ${{ steps.filter.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            api:
+              - 'apps/api/**'
+              - 'packages/db/**'
+              - 'packages/ai/**'
+              - 'packages/shared/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+            web:
+              - 'apps/web/**'
+              - 'packages/shared/**'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+
+  ####################################################################
+  # Deploy API Service
+  ####################################################################
+  deploy-api:
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.api == 'true'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: curl -fsSL https://railway.com/install.sh | sh
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach --service ${{ secrets.RAILWAY_API_SERVICE_ID }}
+
+  ####################################################################
+  # Deploy Web Service
+  ####################################################################
+  deploy-web:
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.web == 'true'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Railway CLI
+        run: curl -fsSL https://railway.com/install.sh | sh
+
+      - name: Deploy to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach --service ${{ secrets.RAILWAY_WEB_SERVICE_ID }}
