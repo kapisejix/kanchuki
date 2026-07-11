@@ -100,6 +100,7 @@ model Retailer {
   staff          Staff[]
   store_sections StoreSection[]
   subscriptions  Subscription[]
+  try_on_usage  TryOnUsageLog[]
 
   @@index([phone])
   @@index([city])
@@ -556,6 +557,35 @@ model TryOnJob {
   @@index([retailer_id])
   @@index([status])
   @@map("try_on_jobs")
+}
+
+// ─── TRY-ON USAGE LOGS ───────────────────────────────────────────
+// Tracks per-retailer GPU usage for billing/quotas.
+// This is the single source of truth for try-on cost tracking.
+
+enum TryOnSource {
+  IN_STORE  // Shopkeeper-initiated from the mobile app
+  REMOTE    // Customer-initiated from the web collection page
+}
+
+model TryOnUsageLog {
+  id          String     @id @default(cuid())
+  retailer_id String
+  try_on_job_id String
+  product_id  String
+
+  cost_usd Float          // Estimated GPU cost (CatVTON ~$0.005)
+  source   TryOnSource    // How the try-on was triggered
+
+  created_at    DateTime  @default(now())
+  completed_at  DateTime?
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([retailer_id, created_at])
+  @@index([created_at])
+  @@map("try_on_usage_logs")
 }
 
 // ─── AUDIT LOG ───────────────────────────────────────────────────

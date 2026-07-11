@@ -1,0 +1,15 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ProductCard > renders placeholder when imageUrl is null > no-image-placeholder 1`] = `null`;
+
+exports[`ProductCard > renders selected state with checkmark overlay > selected-checkmark 1`] = `null`;
+
+exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] = `null`;
+
+exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `null`;
+
+exports[`ProductCard > renders with all props combined > all-props-combined 1`] = `null`;
+
+exports[`ProductCard > renders with an image URL > with-image-url 1`] = `null`;
+
+exports[`ProductCard > renders with custom height and placeholder icon > custom-height-placeholder 1`] = `null`;

@@ -226,3 +226,16 @@ vi.mock('@tanstack/react-query', () => {
     useQueryClient: () => ({ invalidateQueries: noop }),
   }
 })
+
+// ── react-native-css-interop (tailwind runtime — not needed in tests) ─
+// The real package has ESM deps Node.js v22 can't parse.
+
+vi.mock('react-native-css-interop', () => ({}))
+
+// ── @testing-library/react-native (ESM deps Node.js v22 can't parse) ─
+// Uses react-test-renderer for snapshot-compatible render.
+
+vi.mock('@testing-library/react-native', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('./__mocks__/testing-library.js')
+})

@@ -1,5 +1,5 @@
 import { prisma } from '@kanchuki/db'
-import { triggerTryOn, pollTryOn, saveTryOnResultToR2, deleteObject, tryonResultR2Key, publicUrl } from '@kanchuki/ai'
+import { triggerTryOn, pollTryOn, saveTryOnResultToR2, deleteObject, uploadBuffer, tryonResultR2Key, publicUrl } from '@kanchuki/ai'
 
 export interface TryOnJobData {
   try_on_job_id: string
@@ -38,11 +38,30 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
 
     const productPhotoUrl = product.photos[0].url
 
-    // For remote flow, customer_photo_r2_key is already a URL
-    // For in-store flow, it's an R2 key that needs to be converted to a URL
-    const customerPhotoUrl = is_remote
-      ? customer_photo_r2_key
-      : publicUrl(customer_photo_r2_key)
+    // For remote flow: customer_photo_r2_key may be a base64 data URL.
+    // CatVTON's Python requests.get() can't fetch data: URLs, so upload to R2 first.
+    // For in-store flow: it's an R2 key that needs to be converted to a public URL.
+    let customerPhotoUrl: string
+    if (is_remote) {
+      if (customer_photo_r2_key.startsWith('data:')) {
+        // Decode base64 data URL → upload to R2 → use R2 public URL
+        const matches = customer_photo_r2_key.match(/^data:image\/(\w+);base64,(.+)$/)
+        if (!matches) {
+          throw new Error('Invalid customer photo: expected data:image/*;base64,...')
+        }
+        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
+        const b64 = matches[2]!
+        const buffer = Buffer.from(b64, 'base64')
+        const r2Key = tryonResultR2Key(try_on_job_id).replace('result', 'customer-input')
+        await uploadBuffer(r2Key, buffer, `image/${ext}`)
+        customerPhotoUrl = publicUrl(r2Key)
+      } else {
+        // Already a regular HTTP(S) URL
+        customerPhotoUrl = customer_photo_r2_key
+      }
+    } else {
+      customerPhotoUrl = publicUrl(customer_photo_r2_key)
+    }
 
     // Mark as processing
     await prisma.tryOnJob.update({
@@ -97,6 +116,20 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
           result_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24h
           customer_photo_deleted_at: new Date(),
         },
+      })
+
+      // Log usage for billing/quotas
+      await prisma.tryOnUsageLog.create({
+        data: {
+          retailer_id,
+          try_on_job_id,
+          product_id,
+          cost_usd: costUsd,
+          source: is_remote ? 'REMOTE' : 'IN_STORE',
+          completed_at: new Date(),
+        },
+      }).catch(() => {
+        // Non-critical — usage logging is informational, not required
       })
 
       // Delete customer photo from R2 (privacy)

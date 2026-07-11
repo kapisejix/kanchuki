@@ -1,0 +1,9 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CatalogScreen > renders empty state when no products > empty-state 1`] = `null`;
+
+exports[`CatalogScreen > renders loading spinner while fetching > loading-state 1`] = `null`;
+
+exports[`CatalogScreen > renders mixed products: available, sold, untagged > mixed-products 1`] = `null`;
+
+exports[`CatalogScreen > renders product grid with items > product-grid 1`] = `null`;

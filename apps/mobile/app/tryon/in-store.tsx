@@ -384,7 +384,7 @@ export default function InStoreTryOnScreen() {
                 <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden">
                   <Image
                     source={{ uri: selectedProduct.primary_photo_url }}
-                    className="w-full h-full"
+                    style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                   />
                 </View>
@@ -397,7 +397,7 @@ export default function InStoreTryOnScreen() {
                 <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden">
                   <Image
                     source={{ uri: customerPhotoUri }}
-                    className="w-full h-full"
+                    style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                   />
                 </View>
@@ -456,7 +456,7 @@ export default function InStoreTryOnScreen() {
                 <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden">
                   <Image
                     source={{ uri: selectedProduct.primary_photo_url }}
-                    className="w-full h-full"
+                    style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                   />
                 </View>
@@ -468,7 +468,7 @@ export default function InStoreTryOnScreen() {
                 <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border-2 border-cyan-300">
                   <Image
                     source={{ uri: resultUrl }}
-                    className="w-full h-full"
+                    style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                   />
                 </View>
