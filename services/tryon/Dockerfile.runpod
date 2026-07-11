@@ -73,6 +73,7 @@ RUN python -c "from huggingface_hub import snapshot_download; \
 
 # Copy the RunPod handler
 COPY services/tryon/handler_runpod.py /app/handler.py
+COPY services/tryon/mask_utils.py /app/mask_utils.py
 
 # Warmup happens inside handler on startup
 CMD ["python", "-u", "/app/handler.py"]
