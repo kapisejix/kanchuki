@@ -13,7 +13,7 @@ on:
       - '.github/workflows/deploy.yml'
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
-# ─── Required GitHub Secrets ──────────────────────────────────────
+# ─── Required GitHub Secrets (set in repo Settings → Secrets → Actions) ─
 #
 #   RAILWAY_TOKEN              — Railway project token
 #                                 (Project Dashboard → Settings → Tokens)
