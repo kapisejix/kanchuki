@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -23,6 +23,7 @@ import {
   Share2,
   RefreshCw,
 } from 'lucide-react-native'
+import ProductCard from '../../src/components/ProductCard'
 import { productApi, tryOnApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
@@ -61,22 +62,76 @@ export default function InStoreTryOnScreen() {
   const products: Product[] = ((productsData as { data: Product[] } | undefined)?.data ?? [])
     .filter((p) => p.status === 'AVAILABLE')
 
+  // ── Load preselected product ─────────────────────────────────
+
+  const [selectedProductLoading, setSelectedProductLoading] = useState(!!preselectedProductId)
+
+  useEffect(() => {
+    if (!preselectedProductId) return
+
+    setSelectedProductLoading(true)
+
+    // First try to find it in the already-loaded products list
+    const found = products.find((p) => p.id === preselectedProductId)
+    if (found) {
+      setSelectedProduct(found)
+      setSelectedProductLoading(false)
+      return
+    }
+
+    // If not in list, fetch individually
+    productApi
+      .get(preselectedProductId)
+      .then((res) => {
+        const p = (res as { data: Product }).data
+        setSelectedProduct(p)
+        setSelectedProductLoading(false)
+      })
+      .catch(() => {
+        setError('Could not load product. Please try again.')
+        setSelectedProductLoading(false)
+        setStep('select')
+      })
+  }, [preselectedProductId, products]) // eslint-disable-line react-hooks/exhaustive-deps
+  // products in deps so the find() retries after the list loads
+
   // ── Capture customer photo ───────────────────────────────────
 
   const handleCapture = async () => {
     if (!cameraRef.current) return
-    const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
-    if (!photo?.uri) return
-    await processPhoto(photo.uri)
+    try {
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
+      if (!photo?.uri) {
+        Alert.alert('Camera Error', 'Could not capture photo. Try again.')
+        return
+      }
+      await processPhoto(photo.uri)
+    } catch (err) {
+      Alert.alert('Camera Error', err instanceof Error ? err.message : 'Could not capture photo')
+    }
   }
 
   const handlePickFromGallery = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      quality: 0.85,
-    })
-    if (result.canceled || !result.assets[0]) return
-    await processPhoto(result.assets[0].uri)
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Gallery access is needed to select a photo.')
+        return
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.85,
+      })
+      if (result.canceled) return
+      if (!result.assets[0]?.uri) {
+        Alert.alert('Selection Error', 'Could not read the selected photo. Try again.')
+        return
+      }
+      await processPhoto(result.assets[0].uri)
+    } catch (err) {
+      Alert.alert('Gallery Error', err instanceof Error ? err.message : 'Could not open gallery')
+    }
   }
 
   const processPhoto = async (uri: string) => {
@@ -113,7 +168,14 @@ export default function InStoreTryOnScreen() {
   // ── Run try-on ──────────────────────────────────────────────
 
   const handleRunTryOn = async () => {
-    if (!customerPhotoUri || !selectedProduct) return
+    if (!customerPhotoUri) {
+      setError('No customer photo. Please capture or select a photo first.')
+      return
+    }
+    if (!selectedProduct) {
+      setError('No product selected. Please go back and select a product.')
+      return
+    }
     setStep('uploading')
     setError(null)
 
@@ -217,37 +279,27 @@ export default function InStoreTryOnScreen() {
               ) : (
                 <View className="flex-row flex-wrap gap-3">
                   {products.map((p) => (
-                    <TouchableOpacity
+                    <ProductCard
                       key={p.id}
+                      imageUrl={p.primary_photo_url}
                       onPress={() => {
                         setSelectedProduct(p)
                         setStep('capture')
                       }}
-                      className="w-[47%] bg-white rounded-2xl overflow-hidden border border-gray-100"
-                      activeOpacity={0.8}
-                    >
-                      <View className="aspect-[3/4] bg-gray-100">
-                        {p.primary_photo_url ? (
-                          <Image
-                            source={{ uri: p.primary_photo_url }}
-                            className="w-full h-full"
-                            contentFit="cover"
-                          />
-                        ) : (
-                          <View className="w-full h-full items-center justify-center">
-                            <Text className="text-3xl text-gray-300">👕</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View className="p-2">
-                        <Text className="text-xs text-gray-500 truncate">
-                          {p.category ?? 'Product'}
-                        </Text>
-                        <Text className="text-xs text-gray-700" numberOfLines={1}>
-                          {p.primary_color ?? ''}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                      flex={false}
+                      style={{ width: '47%' }}
+                      placeholderIcon="👕"
+                      footer={
+                        <View className="p-2">
+                          <Text className="text-xs text-gray-500 truncate">
+                            {p.category ?? 'Product'}
+                          </Text>
+                          <Text className="text-xs text-gray-700" numberOfLines={1}>
+                            {p.primary_color ?? ''}
+                          </Text>
+                        </View>
+                      }
+                    />
                   ))}
                 </View>
               )}

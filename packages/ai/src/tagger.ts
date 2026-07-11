@@ -143,7 +143,7 @@ export async function tagProductImages(images: TaggableImage[]): Promise<AiTagRe
       : 'Analyze this Indian ethnic fashion product image and extract all product attributes.'
 
   const response = await getClaude().messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     temperature: 0,
     system: SYSTEM_PROMPT,

@@ -5,15 +5,14 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Image,
   Share,
   Alert,
   ActivityIndicator,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import ProductCard from '../../src/components/ProductCard'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
 
@@ -119,35 +118,25 @@ export default function NewCollectionScreen() {
             renderItem={({ item }) => {
               const isSelected = selected.has(item.id)
               return (
-                <TouchableOpacity
+                <ProductCard
+                  imageUrl={item.primary_photo_url}
                   onPress={() => toggle(item.id)}
-                  className={`flex-1 bg-white rounded-2xl overflow-hidden border-2 ${
-                    isSelected ? 'border-cyan-600' : 'border-gray-100'
-                  }`}
-                >
-                  {item.primary_photo_url ? (
-                    <Image
-                      source={{ uri: item.primary_photo_url }}
-                      className="w-full h-36 bg-gray-100"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View className="w-full h-36 bg-gray-100" />
-                  )}
-                  {isSelected && (
-                    <View className="absolute top-2 right-2 w-6 h-6 bg-cyan-600 rounded-full items-center justify-center">
-                      <Check size={14} color="white" />
+                  selected={isSelected}
+                  elevation={isSelected ? 3 : 1}
+                  imageHeight={144}
+                  style={isSelected ? { borderWidth: 2, borderColor: '#0891B2' } : undefined}
+                  placeholderIcon="📷"
+                  footer={
+                    <View className="p-2.5">
+                      <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
+                        {item.category ?? 'Product'} · {item.primary_color ?? '—'}
+                      </Text>
+                      <Text className="text-xs text-gray-500 mt-0.5">
+                        {formatPriceRange(item.price_min, item.price_max)}
+                      </Text>
                     </View>
-                  )}
-                  <View className="p-2.5">
-                    <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
-                      {item.category ?? 'Product'} · {item.primary_color ?? '—'}
-                    </Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">
-                      {formatPriceRange(item.price_min, item.price_max)}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+                  }
+                />
               )
             }}
             ListEmptyComponent={

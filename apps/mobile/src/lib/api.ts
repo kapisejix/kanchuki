@@ -196,12 +196,14 @@ export const productApi = {
     }>('/v1/products/upload-url', {
       method: 'POST',
       body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes }),
+      timeoutMs: 30_000,
     }),
 
   create: (data: Record<string, unknown>) =>
     request<{ data: unknown }>('/v1/products', {
       method: 'POST',
       body: JSON.stringify(data),
+      timeoutMs: 30_000,
     }),
 
   list: (params?: { status?: string; category?: string; cursor?: string; limit?: number }) => {

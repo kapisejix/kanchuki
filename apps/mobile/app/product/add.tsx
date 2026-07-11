@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Animated,
   StyleSheet,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -38,6 +39,21 @@ type UploadInfo = {
   product_id: string
 }
 
+type UploadStage = 'preparing' | 'linking_front' | 'uploading_front' | 'linking_back' | 'uploading_back' | 'finalizing'
+
+type UploadProgress = {
+  stage: UploadStage
+  percent: number
+  message: string
+}
+
+const UPLOAD_STEPS: { stage: UploadStage; label: string; icon: string }[] = [
+  { stage: 'preparing', label: 'Prepare', icon: '📷' },
+  { stage: 'linking_front', label: 'Link', icon: '🔗' },
+  { stage: 'uploading_front', label: 'Upload', icon: '☁️' },
+  { stage: 'finalizing', label: 'Done', icon: '✅' },
+]
+
 export default function AddProductScreen() {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
@@ -54,6 +70,13 @@ export default function AddProductScreen() {
   })
   const [aiTags, setAiTags] = useState<AiTags | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
+    stage: 'preparing',
+    percent: 0,
+    message: 'Getting ready...',
+  })
+  const progressAnim = useRef(new Animated.Value(0)).current
+  const spinnerRotate = useRef(new Animated.Value(0)).current
 
   // Editable fields
   const [price, setPrice] = useState('')
@@ -99,12 +122,57 @@ export default function AddProductScreen() {
     }
   }
 
+  // ── Update progress with smooth animation ───────────────────────
+
+  const updateProgress = useCallback(
+    (pct: number, stage: UploadStage, message: string) => {
+      setUploadProgress({ stage, percent: pct, message })
+      Animated.timing(progressAnim, {
+        toValue: pct,
+        duration: 500,
+        useNativeDriver: false,
+      }).start()
+    },
+    [progressAnim],
+  )
+
+  // ── Animated spinner rotation ───────────────────────────────────
+
+  const spinnerStyle = {
+    transform: [
+      {
+        rotate: spinnerRotate.interpolate({
+          inputRange: [0, 1],
+          outputRange: ['0deg', '360deg'],
+        }),
+      },
+    ],
+  }
+
+  // Start spinner animation on mount
+  const startSpinner = useCallback(() => {
+    spinnerRotate.setValue(0)
+    Animated.loop(
+      Animated.timing(spinnerRotate, {
+        toValue: 1,
+        duration: 1200,
+        useNativeDriver: false,
+      }),
+    ).start()
+  }, [spinnerRotate])
+
   // ── Upload one photo, return its UploadInfo ─────────────────────
 
-  const uploadPhoto = async (uri: string): Promise<UploadInfo> => {
+  const uploadPhoto = async (
+    uri: string,
+    onProgress?: (pct: number, msg: string) => void,
+  ): Promise<UploadInfo> => {
+    onProgress?.(20, 'Reading photo...')
     const blob = await readLocalImage(uri)
+    onProgress?.(35, 'Getting upload link...')
     const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
     const info = uploadResult.data
+    onProgress?.(55, 'Uploading to cloud...')
     await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
     return info
   }
@@ -115,16 +183,46 @@ export default function AddProductScreen() {
     if (!photos.front) return
     setStep('ai_tagging')
     setAiError(null)
+    startSpinner()
 
     try {
-      const frontInfo = await uploadPhoto(photos.front)
-      const backInfo = photos.back ? await uploadPhoto(photos.back) : null
+      // Stage 1: Prepare
+      updateProgress(5, 'preparing', 'Getting ready...')
+
+      // Stage 2: Upload front photo
+      updateProgress(10, 'linking_front', 'Starting upload...')
+      const frontInfo = await uploadPhoto(photos.front, (pct, msg) => {
+        updateProgress(pct, 'linking_front', msg)
+      })
+      updateProgress(55, 'uploading_front', 'Front photo uploaded ✓')
+
+      // Stage 3: Upload back photo (if available)
+      let backInfo = null
+      if (photos.back) {
+        updateProgress(60, 'linking_back', 'Uploading back photo...')
+        backInfo = await uploadPhoto(photos.back, (pct, msg) => {
+          updateProgress(pct, 'linking_back', msg)
+        })
+        updateProgress(78, 'uploading_back', 'Back photo uploaded ✓')
+      }
+
       setUploadInfo({ front: frontInfo, back: backInfo })
 
+      // Stage 4: Finalize
+      updateProgress(90, 'finalizing', 'Almost done...')
+      await new Promise((r) => setTimeout(r, 400))
+
+      updateProgress(100, 'finalizing', 'Done!')
+      await new Promise((r) => setTimeout(r, 300))
+
+      // Stop spinner
+      spinnerRotate.stopAnimation()
+
       // AI tagging happens server-side via BullMQ after product creation
-      setAiTags(null) // will be populated after creation
+      setAiTags(null)
       setStep('edit')
     } catch (err) {
+      spinnerRotate.stopAnimation()
       setAiError(err instanceof Error ? err.message : 'Upload failed')
       setStep('back_choice')
     }
@@ -353,14 +451,167 @@ export default function AddProductScreen() {
   // ── AI Tagging step ───────────────────────────────────────────────
 
   if (step === 'ai_tagging') {
+    // Resolve which step the user is visually on (0-indexed)
+    const hasBackPhoto = photos.back !== null
+    const stepOrder: UploadStage[] = hasBackPhoto
+      ? ['preparing', 'linking_front', 'uploading_front', 'linking_back', 'uploading_back', 'finalizing']
+      : ['preparing', 'linking_front', 'uploading_front', 'finalizing']
+
+    const currentStepIndex = stepOrder.indexOf(uploadProgress.stage)
+    const totalSteps = stepOrder.length
+    const isComplete = uploadProgress.percent === 100
+
+    const animWidth = progressAnim.interpolate({
+      inputRange: [0, 100],
+      outputRange: ['0%', '100%'],
+    })
+
+    // Step state helpers
+    const isCompletedStep = (idx: number) => idx < currentStepIndex
+    const isActiveStep = (idx: number) => idx === currentStepIndex && !isComplete
+
     return (
-      <View className="flex-1 bg-gray-900 items-center justify-center gap-5">
-        {photos.front && (
-          <Image source={{ uri: photos.front }} className="w-48 h-64 rounded-2xl" contentFit="cover" style={{ opacity: 0.5 }} />
+      <View className="flex-1 bg-gray-950 px-6" style={{ paddingTop: insets.top + 24 }}>
+        {/* Close button */}
+        <TouchableOpacity
+          onPress={() => {
+            setAiError('Upload cancelled')
+            setStep('back_choice')
+          }}
+          className="absolute left-4 w-10 h-10 bg-white/10 rounded-full items-center justify-center z-10"
+          style={{ top: insets.top + 8 }}
+        >
+          <X size={20} color="white" />
+        </TouchableOpacity>
+
+        {/* Header */}
+        <Text className="text-white text-xl font-bold text-center mb-1">
+          {isComplete ? 'Upload Complete!' : 'Uploading Product'}
+        </Text>
+        <Text className="text-gray-500 text-sm text-center mb-8">
+          {isComplete
+            ? 'AI will tag it automatically'
+            : 'Please wait while we process your photo'}
+        </Text>
+
+        {/* Photo preview */}
+        <View className="items-center mb-6">
+          <View className="relative">
+            {photos.front && (
+              <Image
+                source={{ uri: photos.front }}
+                className="w-56 h-72 rounded-3xl"
+                contentFit="cover"
+                style={{ opacity: isComplete ? 0.9 : 0.4 }}
+              />
+            )}
+
+            {/* Overlay badge */}
+            {isComplete && (
+              <View className="absolute top-3 right-3 bg-emerald-500 px-3 py-1 rounded-full flex-row items-center gap-1">
+                <Text className="text-white text-xs font-bold">✓ Done</Text>
+              </View>
+            )}
+
+            {/* Scanning ring */}
+            {!isComplete && (
+              <View className="absolute -inset-1.5 rounded-[26px] border-2 border-cyan-500/30">
+                <View className="absolute top-0 left-0 right-0 h-0.5 bg-cyan-400 rounded-full" style={{ opacity: 0.6 }} />
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* Progress bar */}
+        <View className="mb-3">
+          <View className="h-2 bg-gray-800 rounded-full overflow-hidden">
+            <Animated.View
+              className={`h-full rounded-full ${isComplete ? 'bg-emerald-500' : 'bg-cyan-500'}`}
+              style={{ width: animWidth }}
+            />
+          </View>
+          <View className="flex-row justify-between mt-1.5">
+            <Text className="text-gray-500 text-xs">
+              Step {Math.min(currentStepIndex + 1, totalSteps)} of {totalSteps}
+            </Text>
+            <Text className="text-gray-400 text-xs font-mono">
+              {uploadProgress.percent}%
+            </Text>
+          </View>
+        </View>
+
+        {/* Status message with animated spinner */}
+        <View className="flex-row items-center justify-center gap-2.5 mt-1 mb-8">
+          {!isComplete && (
+            <Animated.View
+              className="w-4 h-4 rounded-full border-2 border-cyan-400 border-t-transparent"
+              style={spinnerStyle}
+            />
+          )}
+          <Text className="text-white text-base font-semibold">
+            {uploadProgress.message}
+          </Text>
+        </View>
+
+        {/* Step indicator */}
+        <View className="flex-row items-start justify-center px-4">
+          {UPLOAD_STEPS.map((stepDef, idx) => {
+            // Skip 'uploading_front' and 'linking_back' if no back photo
+            if (!hasBackPhoto && (stepDef.stage === 'linking_back' || stepDef.stage === 'uploading_back')) {
+              return null
+            }
+
+            const completed = isCompletedStep(idx)
+            const active = isActiveStep(idx)
+
+            // Stage emoji map
+            const stageIcons: Record<UploadStage, string> = {
+              preparing: '📷',
+              linking_front: '🔗',
+              uploading_front: '☁️',
+              linking_back: '🔗',
+              uploading_back: '☁️',
+              finalizing: '✅',
+            }
+            const displayIcon = completed || isComplete ? '✅' : active ? (stageIcons[stepDef.stage] ?? '○') : '○'
+
+            return (
+              <View key={stepDef.stage} className="items-center flex-1">
+                {/* Step icon circle */}
+                <View
+                  className={`w-9 h-9 rounded-full items-center justify-center mb-1.5 ${
+                    active
+                      ? 'bg-cyan-600'
+                      : completed || isComplete
+                        ? 'bg-emerald-600'
+                        : 'bg-gray-800'
+                  }`}
+                >
+                  <Text className="text-sm">{displayIcon}</Text>
+                </View>
+                {/* Step label */}
+                <Text
+                  className={`text-[10px] font-medium ${
+                    active
+                      ? 'text-cyan-400'
+                      : completed || isComplete
+                        ? 'text-emerald-400'
+                        : 'text-gray-600'
+                  }`}
+                >
+                  {stepDef.label}
+                </Text>
+              </View>
+            )
+          })}
+        </View>
+
+        {/* Error badge if upload failed earlier */}
+        {aiError && (
+          <View className="mt-6 bg-red-500/20 border border-red-500/30 rounded-xl p-3">
+            <Text className="text-red-400 text-sm text-center">{aiError}</Text>
+          </View>
         )}
-        <ActivityIndicator size="large" color="#0891B2" />
-        <Text className="text-white text-base font-semibold">Uploading product...</Text>
-        <Text className="text-gray-400 text-sm">AI will tag it automatically</Text>
       </View>
     )
   }

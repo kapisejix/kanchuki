@@ -8,9 +8,9 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { router } from 'expo-router'
-import { Image } from 'expo-image'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, MapPin } from 'lucide-react-native'
+import ProductCard from '../../src/components/ProductCard'
 import { productApi } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
 
@@ -30,12 +30,9 @@ type Product = {
 type SearchResult = { data: Product[]; query_interpretation: unknown }
 type ListResult = { data: Product[]; pagination: { cursor: string | null; has_more: boolean } }
 
-// Blurhash placeholder for product images (neutral grey)
-const BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4'
+// ── Memoized Product Card Wrap ──────────────────────────────────────
 
-// ── Memoized Product Card ──────────────────────────────────────────
-
-const ProductCard = memo(function ProductCard({
+const CatalogCard = memo(function CatalogCard({
   product,
   onPress,
   onMarkSold,
@@ -45,70 +42,37 @@ const ProductCard = memo(function ProductCard({
   onMarkSold: () => void
 }) {
   return (
-    // Android: elevation + overflow:hidden on the SAME node can stop children
-    // (the Image) from compositing. Elevation lives here; rounding/clipping
-    // moves to the inner wrapper below.
-    <TouchableOpacity
+    <ProductCard
+      imageUrl={product.primary_photo_url}
       onPress={onPress}
-      className="flex-1 bg-white rounded-2xl border border-gray-100"
-      style={{ elevation: 1 }}
-    >
-      <View className="rounded-2xl overflow-hidden">
-        {/* Photo */}
-        <View className="aspect-[3/4] w-full bg-gray-100">
-          {product.primary_photo_url ? (
-            <Image
-              source={{ uri: product.primary_photo_url }}
-              className="w-full h-full"
-              contentFit="cover"
-              placeholder={{ blurhash: BLURHASH }}
-              transition={200}
-              cachePolicy="memory-disk"
-            />
-          ) : (
-            <View className="w-full h-full items-center justify-center">
-              <Text className="text-gray-300 text-3xl">📦</Text>
-            </View>
-          )}
-          {/* Status badge */}
-          {product.status !== 'AVAILABLE' && (
-            <View className="absolute top-2 left-2 bg-red-500 px-2 py-0.5 rounded-full">
-              <Text className="text-white text-xs font-semibold">{product.status}</Text>
-            </View>
-          )}
-          {/* AI tag indicator */}
-          {!product.ai_tagged && (
-            <View className="absolute top-2 right-2 bg-amber-400 w-2 h-2 rounded-full" />
-          )}
-        </View>
-
-        {/* Info */}
-        <View className="p-2.5">
-          <Text className="text-xs text-gray-500 truncate">
+      statusBadge={product.status !== 'AVAILABLE' ? product.status : null}
+      showAIDot={!product.ai_tagged}
+      footer={
+        <View className="p-2.5 gap-1">
+          <Text className="text-xs text-gray-500 truncate" numberOfLines={1}>
             {product.category ?? 'Product'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
-          <Text className="text-sm font-bold text-gray-900 mt-0.5">
+          <Text className="text-sm font-bold text-gray-900">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
           {product.section && (
-            <View className="flex-row items-center gap-1 mt-1">
+            <View className="flex-row items-center gap-1">
               <MapPin size={10} color="#9CA3AF" />
-              <Text className="text-xs text-gray-400">{product.section.name}</Text>
+              <Text className="text-xs text-gray-400" numberOfLines={1}>{product.section.name}</Text>
             </View>
           )}
-
           {product.status === 'AVAILABLE' && (
             <TouchableOpacity
               onPress={onMarkSold}
-              className="mt-2 bg-gray-100 py-1.5 rounded-lg items-center"
+              className="mt-1.5 bg-gray-100 py-1.5 rounded-lg items-center active:bg-gray-200"
             >
               <Text className="text-xs text-gray-600 font-medium">Mark Sold</Text>
             </TouchableOpacity>
           )}
         </View>
-      </View>
-    </TouchableOpacity>
+      }
+    />
   )
 })
 
@@ -162,7 +126,7 @@ export default function CatalogScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
-      <ProductCard
+      <CatalogCard
         product={item}
         onPress={() => router.push(`/product/${item.id}`)}
         onMarkSold={() => void handleMarkSold(item.id)}
