@@ -109,12 +109,12 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 **Week 15–16: Polish + MVP Launch**
 - [ ] Performance optimization (load time < 3s on 3G)
-- [ ] Error handling + offline resilience
+- [x] Error handling + offline resilience
 - [ ] Onboarding tutorial improvements based on 10-retailer pilot
-- [ ] Analytics dashboard (basic metrics)
+- [x] Analytics dashboard (basic metrics)
 - [ ] Razorpay subscription integration (14-day trial)
 - [ ] Basic admin panel (retailer list, usage stats)
-- [ ] Public landing page (Next.js)
+- [x] Public landing page (Next.js)
 - [ ] Pilot with 10 retailers, collect feedback, fix critical issues
 
 **Deliverable:** MVP live, 50 retailer target
