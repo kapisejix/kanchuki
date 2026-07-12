@@ -721,3 +721,116 @@ If it 502s locally too → Railway/project-side issue, contact Railway
 support. If it works locally → something specific to GitHub Actions
 runners (IP block, egress path) — different investigation needed. User
 said they'll test this later; no further CI runs planned until then.
+
+---
+
+## 2026-07-12 (later still) — Prisma/CVE fixes logged, CatVTON multi-piece theory confirmed, scratch cleanup
+
+**Two commits from earlier same-day work, not yet logged here:**
+- `1b469e4` — `apps/web` Next.js 14.2.5 → 14.2.35, patches CVE-2025-55184 /
+  CVE-2025-67779 (Railway was blocking the web build on these).
+- `186c427` — added a `postinstall` hook to run `db:generate` for
+  `@kanchuki/db`. Nothing ran Prisma's client generator on a fresh install,
+  so Railway's build had an untyped/`any` PrismaClient, cascading into
+  unrelated-looking TS errors across every file importing `@kanchuki/db`.
+
+Neither touches the `railway up` 502 blocker directly (that's transport-
+level, not build content) but both were real build-time blockers Railway
+would've hit next regardless.
+
+**#1 Railway 502 — still blocked, confirmed not scriptable from here:**
+Checked `railway whoami` locally: `Unauthorized`. No `RAILWAY_TOKEN` in
+local `.env`, none in shell env either. CLI login is interactive browser
+OAuth. This matches the prior session's own conclusion — genuinely needs
+the user to either run `railway login` themselves or hand over a project
+token. Not attempted further.
+
+**#2 CatVTON quality bug — multi-piece theory CONFIRMED, root cause found:**
+Ran one real RunPod call via `triggerTryOn()` using `test-real-shirt.jpg`
+(single-piece garment, already tracked in repo) instead of the earlier
+kameez+dupatta `test_garment.jpg`. Result: a coherent, correctly-colored
+try-on (green/white top correctly composited onto the person photo) — a
+complete turnaround from the earlier "blue/purple blob bearing no
+resemblance" result on the multi-piece garment. This confirms: **CatVTON
+itself works correctly; the visual-quality bug is entirely the unhandled
+multi-piece (kameez+salwar+dupatta) case**, exactly as flagged (but never
+implemented) in `PRO-REQUIREMENTS.md` F-102. `triggerCatVTON` sends the
+whole outfit photo as a single `cloth_type: "upper"` (the handler's own
+default — confirmed in `services/tryon/handler_runpod.py` +
+`services/tryon/app.py`, no `cloth_type` param is sent from `tryon.ts` at
+all today), so a 3-piece outfit gets crammed into one "upper" mask.
+
+**Real next code work (not yet started):** implement the multi-piece split
+in `packages/ai/src/tryon.ts::triggerCatVTON` per the F-102 spec — two
+sequential CatVTON calls for kameez (`upper`) + salwar (`lower`), dupatta
+excluded from the CatVTON pass for MVP (draping physics unsupported). Needs
+a `garmentType`/category field threaded from wherever the retailer tags a
+product (or a simple upper/lower split UI) through to `triggerTryOn`.
+
+**#3 cleanup:** deleted the 3 untracked scratch files from this and prior
+sessions (`packages/ai/scratch-test-bgremoval.mjs`,
+`tryon-bgremoval-result.jpg`, `tryon-singlepiece-result.jpg`) — theory is
+now confirmed and documented here, script served its purpose. Working tree
+clean.
+
+**Resume here next session:**
+1. Implement the multi-piece CatVTON split (see above) — this is the real
+   fix for the "not even 1% close" complaint, input-quality/bg-removal work
+   was already a dead end (confirmed 2026-07-12 earlier).
+2. Railway 502 — waiting on user to test `railway up` locally (see #1
+   above), not actionable from an agent session without their credentials.
+
+**Update (same day, checked via `gh run list`):** the 502 is gone —
+resolved itself, no further code change needed. Both push-triggered CI runs
+after the Prisma/CVE fixes (`29182865881` touching web+api, `29183000832`
+api-only) show `deploy-web`/`deploy-api` succeeding: `Uploading...` →
+`Build Logs:` URL printed, no 502. Root cause was never confirmed
+(transient Railway-side issue, per the "no status page incident" note in
+the prior entry) — Phase 0 MVP is now actually deploying via CI. Confirm
+live URLs work in a browser before calling this fully closed.
+
+---
+
+## 2026-07-12 (later still) — CatVTON multi-piece split implemented, two-tier fix
+
+Implemented the multi-piece fix flagged in the prior entry, in two passes.
+
+**Pass 1 (single-photo fallback):** `packages/ai/src/tryon.ts::resolveClothType`
+maps AI-tagged `Product.category` → CatVTON `cloth_type`. Multi-piece-shot-
+as-one-photo categories (`Ladies Suit`, `Readymade Suit`, `Men's Kurta
+Pajama`, `Lehenga`, `Saree`) now send `overall` instead of the always-`upper`
+default; `Dupatta` is rejected before any GPU call (draping unsupported per
+F-102). Wired through `apps/api/src/jobs/process-tryon.ts` (now selects
+`product.category`) into the `cloth_type` field on both the RunPod and
+self-hosted request bodies (previously never sent at all).
+
+**Pass 2 (true two-call chaining, per F-102's original spec):** added
+`ProductPhoto.piece_type` (`'upper' | 'lower' | null`, migration
+`007_product_photo_piece_type` — **schema only, not applied to live Supabase
+yet**, same review-before-apply convention as 005/006). Retailer can now tag
+one photo as the upper piece and one as the lower piece
+(`PATCH /v1/products/:id/photos/:photoId`, new UI in
+`apps/mobile/app/product/[id].tsx`, gated to
+`PIECE_TAGGABLE_CATEGORIES` in `@kanchuki/shared` — deliberately excludes
+Saree, which is one continuous drape with no natural upper/lower split).
+When both piece photos exist, `triggerCatVTON` runs two sequential CatVTON
+calls: upper garment onto the customer photo, then lower garment onto the
+*result* of the first call (not the original photo) — matching F-102's
+"two sequential calls (upper, then lower on the first result)" exactly.
+The intermediate result is persisted to R2 before the second call, because
+RunPod's base64 data-URI result can't be re-fetched by the next call's
+`person_image_url` (its Python side uses `requests.get()`, can't read
+`data:` URIs — same limitation already documented for the customer-photo
+upload path). Falls back to Pass 1 behavior when no piece photos are tagged
+(existing/untagged products keep working exactly as before).
+
+`packages/ai/src/tryon.test.ts` — 5 tests covering `resolveClothType`,
+`isUnsupportedTryOnCategory`, `isPieceTaggableCategory`. Full monorepo
+`turbo build` (shared/db/ai/api/web) and mobile typecheck both clean.
+
+**Not done:** migration 007 not applied live; no paid RunPod test of either
+path (single-photo `overall` fix or the new chaining path) — both are
+code-complete, unconfirmed end-to-end, same pattern as everything else in
+this file. Real next step: apply migration 007, tag a real 2-piece product's
+photos, run one `triggerTryOn()` call through the chained path and visually
+check the result.

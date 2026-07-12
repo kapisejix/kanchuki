@@ -17,11 +17,8 @@ function getRedis(): Redis {
     connection = new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: null, // required by BullMQ
     })
-    // BullMQ jobs must never be evicted under memory pressure — volatile-lru/allkeys-lru
-    // can silently drop queued jobs. Enforce noeviction on connect.
-    connection.config('SET', 'maxmemory-policy', 'noeviction').catch((err) => {
-      console.warn('[jobs] could not enforce noeviction policy on Redis:', (err as Error).message)
-    })
+    // Eviction policy (noeviction) is set on the Redis provider directly —
+    // managed plans reject CONFIG SET from the client.
   }
   return connection
 }

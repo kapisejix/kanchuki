@@ -259,6 +259,12 @@ export const productApi = {
       timeoutMs: 15_000, // AI search may take longer
     }),
 
+  setPhotoPieceType: (productId: string, photoId: string, pieceType: 'upper' | 'lower' | null) =>
+    request<{ data: unknown }>(`/v1/products/${productId}/photos/${photoId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ piece_type: pieceType }),
+    }),
+
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
       method: 'POST',

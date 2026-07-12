@@ -334,6 +334,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         r2_key: z.string().min(1),
         url: z.string().url(),
         is_primary: z.boolean().optional(),
+        piece_type: z.enum(['upper', 'lower']).optional(),
         content_type: z.enum(ALLOWED_MIME_TYPES as unknown as [AllowedMime, ...AllowedMime[]]),
       })
       .safeParse(request.body)
@@ -346,9 +347,33 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         r2_key: body.data.r2_key,
         url: body.data.url,
         is_primary: body.data.is_primary ?? false,
+        piece_type: body.data.piece_type,
       },
     })
     return reply.status(201).send({ data: photo })
+  })
+
+  // ─── PATCH /products/:id/photos/:photoId ──────────────────────────
+  // Tag an already-uploaded photo as the upper/lower piece of a multi-piece
+  // outfit (or clear the tag with piece_type: null) — no re-upload needed.
+  server.patch('/:id/photos/:photoId', async (request) => {
+    const { id, photoId } = request.params as { id: string; photoId: string }
+
+    const photo = await prisma.productPhoto.findFirst({
+      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+    })
+    if (!photo) throw notFound('Product photo')
+
+    const body = z
+      .object({ piece_type: z.enum(['upper', 'lower']).nullable() })
+      .safeParse(request.body)
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+
+    const updated = await prisma.productPhoto.update({
+      where: { id: photoId },
+      data: { piece_type: body.data.piece_type },
+    })
+    return { data: updated }
   })
 
   // ─── POST /products/:id/variants ─────────────────────────────────

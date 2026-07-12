@@ -49,6 +49,18 @@ export const PRODUCT_CATEGORIES = [
   'Other',
 ] as const
 
+// Categories where a retailer can tag separate upper/lower garment photos so
+// try-on chains two CatVTON calls instead of masking a whole-outfit photo as
+// one region (see packages/ai/src/tryon.ts, PRO-REQUIREMENTS.md F-102).
+// Saree is deliberately excluded — it's one continuous drape, not two
+// separate garment pieces, so there's no natural upper/lower photo split.
+export const PIECE_TAGGABLE_CATEGORIES = [
+  'Ladies Suit',
+  'Readymade Suit',
+  "Men's Kurta Pajama",
+  'Lehenga',
+] as const
+
 export const PRODUCT_TYPES = [
   'Unstitched',
   'Semi-Stitched',

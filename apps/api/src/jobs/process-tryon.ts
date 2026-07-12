@@ -18,18 +18,22 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
     const product = await prisma.product.findFirst({
       where: { id: product_id, retailer_id, deleted_at: null },
       select: {
+        category: true,
         photos: {
-          where: { is_primary: true },
-          take: 1,
-          select: { url: true },
+          select: { url: true, is_primary: true, piece_type: true },
         },
       },
     })
-    if (!product || !product.photos[0]?.url) {
+    const primaryPhoto = product?.photos.find((p) => p.is_primary)
+    if (!product || !primaryPhoto?.url) {
       throw new Error('Product not found or has no photo')
     }
 
-    const productPhotoUrl = product.photos[0].url
+    const productPhotoUrl = primaryPhoto.url
+    const pieceGarmentUrls = {
+      upper: product.photos.find((p) => p.piece_type === 'upper')?.url,
+      lower: product.photos.find((p) => p.piece_type === 'lower')?.url,
+    }
 
     // For remote flow: customer_photo_r2_key may be a base64 data URL.
     // CatVTON's Python requests.get() can't fetch data: URLs, so upload to R2 first.
@@ -69,6 +73,8 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
     const triggerResult = await triggerTryOn({
       customerPhotoUrl,
       productPhotoUrl,
+      productCategory: product.category,
+      pieceGarmentUrls,
     })
 
     // Update with job ID

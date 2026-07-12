@@ -14,9 +14,16 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, MapPin, Sparkles } from 'lucide-react-native'
 import { productApi } from '../../src/lib/api'
-import { OCCASION_TYPES, PRODUCT_CATEGORIES, FABRIC_TYPES, PATTERN_TYPES, formatPriceRange } from '@kanchuki/shared'
+import {
+  OCCASION_TYPES,
+  PRODUCT_CATEGORIES,
+  FABRIC_TYPES,
+  PATTERN_TYPES,
+  PIECE_TAGGABLE_CATEGORIES,
+  formatPriceRange,
+} from '@kanchuki/shared'
 
-type Photo = { id: string; url: string; is_primary: boolean }
+type Photo = { id: string; url: string; is_primary: boolean; piece_type: 'upper' | 'lower' | null }
 type Variant = { id: string; color: string; photo_url: string | null }
 type Product = {
   id: string
@@ -131,6 +138,22 @@ export default function ProductDetailScreen() {
     }
   }
 
+  const isPieceTaggable = (category: string | null): boolean =>
+    !!category && (PIECE_TAGGABLE_CATEGORIES as readonly string[]).includes(category)
+
+  const handleSetPieceType = async (photoId: string, pieceType: 'upper' | 'lower') => {
+    if (!product) return
+    // Tapping the already-active piece clears it; only one photo per piece per product.
+    const current = product.photos.find((p) => p.id === photoId)?.piece_type
+    const next = current === pieceType ? null : pieceType
+    try {
+      await productApi.setPhotoPieceType(product.id, photoId, next)
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to tag photo')
+    }
+  }
+
   const handleDelete = () => {
     if (!product) return
     Alert.alert('Delete Product', 'This removes it from your catalog. This cannot be undone.', [
@@ -182,14 +205,43 @@ export default function ProductDetailScreen() {
       {/* Photos */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-white">
         {product.photos.map((photo) => (
-          <Image
-            key={photo.id}
-            source={{ uri: photo.url }}
-            style={{ width: 320, height: 320 }}
-            contentFit="cover"
-          />
+          <View key={photo.id}>
+            <Image
+              source={{ uri: photo.url }}
+              style={{ width: 320, height: 320 }}
+              contentFit="cover"
+            />
+            {isPieceTaggable(product.category) && (
+              <View className="flex-row gap-2 px-3 py-2 bg-white">
+                {(['upper', 'lower'] as const).map((piece) => {
+                  const selected = photo.piece_type === piece
+                  return (
+                    <TouchableOpacity
+                      key={piece}
+                      onPress={() => void handleSetPieceType(photo.id, piece)}
+                      className={`px-3 py-1 rounded-full border flex-row items-center gap-1 ${
+                        selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      {selected && <Check size={12} color="white" />}
+                      <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-gray-600'}`}>
+                        {piece} piece
+                      </Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            )}
+          </View>
         ))}
       </ScrollView>
+      {isPieceTaggable(product.category) && (
+        <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
+          <Text className="text-cyan-700 text-xs">
+            Tag one photo "Upper piece" and one "Lower piece" for a better try-on match on this 2-piece outfit.
+          </Text>
+        </View>
+      )}
 
       {!product.ai_tagged && !product.ai_tag_error && (
         <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2 flex-row items-center gap-2">

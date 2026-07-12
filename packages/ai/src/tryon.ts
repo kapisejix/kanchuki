@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto'
 import { removeBackground } from '@imgly/background-removal-node'
+import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
 import { objectExists, uploadBuffer, publicUrl } from './r2.js'
 
 // ─── Configuration ─────────────────────────────────────────────
@@ -15,8 +16,15 @@ const R2_PREPROCESSED_PREFIX = 'tryon-preprocessed'
 
 export interface TryOnRequest {
   customerPhotoUrl: string   // URL of customer's full-body photo
-  productPhotoUrl: string    // URL of product/garment photo
+  productPhotoUrl: string    // URL of product/garment photo (single-photo fallback)
+  productCategory?: string | null  // AI-tagged category, drives CatVTON cloth_type (see resolveClothType)
+  /** Separate upper/lower piece photos, if the retailer tagged them (ProductPhoto.piece_type).
+   *  When both are present for a PIECE_TAGGABLE_CATEGORIES product, triggers real two-call
+   *  chaining instead of the single-photo "overall" fallback. */
+  pieceGarmentUrls?: { upper?: string; lower?: string }
 }
+
+export type ClothType = 'upper' | 'lower' | 'overall'
 
 export interface TryOnResult {
   jobId: string
@@ -38,6 +46,38 @@ export function tryonResultR2Key(jobId: string): string {
 /** True if the URL points to a RunPod serverless endpoint */
 function isRunPodUrl(url: string): boolean {
   return url.includes('api.runpod.ai') || url.includes('api.runpod.io')
+}
+
+// Categories that are a 2+ piece outfit (kameez+salwar, choli+skirt, kurta+pajama,
+// or a saree's continuous drape) but have only ONE product photo shot as a set —
+// no piece-tagged photo available (see resolveClothType's fallback below vs.
+// isPieceTaggableCategory's real two-call chaining path).
+const MULTIPIECE_AS_OVERALL = new Set([
+  'Ladies Suit', 'Readymade Suit', "Men's Kurta Pajama", 'Lehenga', 'Saree',
+])
+
+// Categories where a retailer can tag separate upper/lower piece photos
+// (ProductPhoto.piece_type) — excludes Saree, which has no natural upper/lower
+// split. Shared with mobile UI gating; see @kanchuki/shared.
+const PIECE_TAGGABLE = new Set<string>(PIECE_TAGGABLE_CATEGORIES)
+
+export function isPieceTaggableCategory(category: string | null | undefined): boolean {
+  return !!category && PIECE_TAGGABLE.has(category)
+}
+
+// Draping physics unsupported for MVP (PRO-REQUIREMENTS.md F-102) — excluded
+// from CatVTON entirely rather than sent through a mask that can't represent it.
+const UNSUPPORTED_CATEGORIES = new Set(['Dupatta'])
+
+export function isUnsupportedTryOnCategory(category: string | null | undefined): boolean {
+  return !!category && UNSUPPORTED_CATEGORIES.has(category)
+}
+
+/** Single-photo fallback cloth_type — used when no piece-tagged photos exist. */
+export function resolveClothType(category: string | null | undefined): ClothType {
+  if (!category) return 'upper'
+  if (MULTIPIECE_AS_OVERALL.has(category)) return 'overall'
+  return 'upper'
 }
 
 function preprocessedR2Key(sourceUrl: string): string {
@@ -67,14 +107,17 @@ async function removeBackgroundAndCache(productPhotoUrl: string): Promise<string
 }
 
 /**
- * Trigger a try-on via self-hosted CatVTON microservice.
- * Supports two deployment modes:
+ * One CatVTON inference call. Supports two deployment modes:
  * 1. Self-hosted FastAPI server — sends to /try-on (sync)
  * 2. RunPod serverless — sends to /runsync with { input: { ... } } wrapper
  * Returns immediately with the completed result (sync, ~35-45s).
  */
-async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
-  const garmentImageUrl = await removeBackgroundAndCache(request.productPhotoUrl)
+async function callCatVTONOnce(
+  personImageUrl: string,
+  garmentPhotoUrl: string,
+  clothType: ClothType,
+): Promise<TryOnResult> {
+  const garmentImageUrl = await removeBackgroundAndCache(garmentPhotoUrl)
 
   const isRunPod = isRunPodUrl(CATVTON_API_URL)
   const endpoint = isRunPod
@@ -84,13 +127,15 @@ async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
   const body = isRunPod
     ? {
         input: {
-          person_image_url: request.customerPhotoUrl,
+          person_image_url: personImageUrl,
           garment_image_url: garmentImageUrl,
+          cloth_type: clothType,
         },
       }
     : {
-        person_image_url: request.customerPhotoUrl,
+        person_image_url: personImageUrl,
         garment_image_url: garmentImageUrl,
+        cloth_type: clothType,
       }
 
   const res = await fetch(endpoint, {
@@ -143,6 +188,37 @@ async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
     errorMessage: body_.error ?? null,
     engine: 'catvton',
   }
+}
+
+/**
+ * Trigger a try-on via self-hosted CatVTON. Two paths:
+ * - Piece-tagged multi-piece outfit (upper + lower photos both present, category
+ *   is PIECE_TAGGABLE): two sequential calls per PRO-REQUIREMENTS.md F-102 —
+ *   upper first, then lower composited onto the upper result (chained, not
+ *   onto the original customer photo). The intermediate result is persisted to
+ *   R2 first: RunPod's base64 data-URI result can't be re-downloaded by the
+ *   next call's person_image_url (its Python side does requests.get(), which
+ *   can't fetch data: URIs), so it needs a real HTTPS URL before chaining.
+ * - Everything else: single call, cloth_type from resolveClothType (whole-photo
+ *   "overall" for multi-piece-shot-as-one-photo categories, "upper" otherwise).
+ */
+async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
+  if (isUnsupportedTryOnCategory(request.productCategory)) {
+    throw new Error(`Try-on not supported for category "${request.productCategory}" (draping unsupported for MVP)`)
+  }
+
+  const { upper: upperPhotoUrl, lower: lowerPhotoUrl } = request.pieceGarmentUrls ?? {}
+  if (upperPhotoUrl && lowerPhotoUrl && isPieceTaggableCategory(request.productCategory)) {
+    const upperResult = await callCatVTONOnce(request.customerPhotoUrl, upperPhotoUrl, 'upper')
+    const intermediateUrl = await saveTryOnResultToR2(
+      `tryon-chain-${Date.now()}`,
+      upperResult.outputUrls[0]!,
+    )
+    return callCatVTONOnce(intermediateUrl, lowerPhotoUrl, 'lower')
+  }
+
+  const clothType = resolveClothType(request.productCategory)
+  return callCatVTONOnce(request.customerPhotoUrl, request.productPhotoUrl, clothType)
 }
 
 // ─── Download helper ──────────────────────────────────────────
