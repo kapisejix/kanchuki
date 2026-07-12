@@ -589,3 +589,37 @@ decodes `data:` URIs correctly — supported since Node 20.6, CI/Railway run
 recent Node 20.x. Raw base64 never reaches the DB; `saveTryOnResultToR2`
 uploads decoded bytes to R2 and stores a real R2 URL in `TryOnJob.result_url`.
 RunPod → app integration is fully confirmed working end-to-end now.
+
+---
+
+## 2026-07-12 (later) — F-102c wired end-to-end, customer web ruled out
+
+Committed prior session's uncommitted size-chart work first (`17c14ad`).
+
+**Design gap found:** `GET /v1/size-charts/recommend` needs `customer_id`
+(→ `CustomerMeasurement`) + retailer JWT. Customer web (`apps/web/c/[slug]`)
+is a fully anonymous WhatsApp-share-link flow — no login, no customer_id
+anywhere (checked `TryOnModal.tsx`, `CollectionView.tsx`, `page.tsx`).
+Endpoint can't be wired there without new plumbing (a self-serve
+manual-measurement widget + new public no-auth endpoint). User chose the
+smaller path instead.
+
+**Done:** wired into the retailer mobile app's customer detail screen
+(`apps/mobile/app/customer/[id].tsx`) — already has retailer JWT +
+`customer_id` + `CustomerMeasurement` all in place. Added `sizeChartApi.recommend()`
+to `apps/mobile/src/lib/api.ts`. Shows UPPER/LOWER recommended size chips next
+to the Measurements card once a measurement exists; 404 (no chart set, or no
+matching row) swallowed to `null` and hidden, not an error state. Typechecks
+clean (mobile + api), 5/5 size-chart tests pass. Committed (`13b2f02`).
+
+**Not done:** customer-web size hint (deferred per above — revisit only if
+anonymous customer identity gets solved some other way, e.g. phone-based
+customer lookup on the share link).
+
+**Still open (carried from prior sessions, untouched this session):**
+- Railway deploy loose ends (Config File Path, `WEB_URL`/`NEXT_PUBLIC_API_URL`
+  chicken-egg, dead `lovely-joy` service, RunPod creds not copied). Phase 0
+  MVP still not live anywhere.
+- `GHCR_PAT` leaked in chat earlier — rotation still unconfirmed.
+- bg-removal preprocessing shipped, still never tested against a real
+  retailer photo end-to-end.
