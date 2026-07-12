@@ -626,11 +626,12 @@ customer lookup on the share link).
   **not set** (only `RAILWAY_TOKEN` is, per `gh secret list`) — CI deploy
   would fail even if triggered. Both service IDs only obtainable by logging
   into the Railway dashboard — needs the user, not scriptable from here.
-- `GHCR_PAT` leaked in chat earlier — rotation still unconfirmed. Checked
-  `gh secret list`: `GHCR_PAT` last updated 2026-07-08, the same day it
-  leaked — not rotated since. New PAT generation is a GitHub web-UI-only
-  action (no API/CLI can mint one, by design) — needs the user to generate
-  it, then `gh secret set GHCR_PAT` can push it.
+- `GHCR_PAT` — **rotated and confirmed 2026-07-12T05:25:08Z.** User
+  generated a new classic PAT (`write:packages`/`read:packages`/
+  `delete:packages`) via GitHub web UI, ran `gh secret set GHCR_PAT`
+  themselves in-terminal (value never pasted into chat, avoiding a repeat
+  of the original leak), old token deleted. Verified via `gh secret list`
+  timestamp only — value never seen by the assistant either. Closed.
 
 ## 2026-07-12 (even later) — bg-removal ran against a real photo, quality bug still open
 
