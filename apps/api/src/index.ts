@@ -16,6 +16,7 @@ import { searchRoutes } from './routes/search.js'
 import { billingRoutes } from './routes/billing.js'
 import { adminRoutes } from './routes/admin.js'
 import { tryOnRoutes } from './routes/tryon.js'
+import { sizeChartRoutes } from './routes/size-chart.js'
 import { startWorkers } from './jobs/index.js'
 
 const server = Fastify({
@@ -84,6 +85,7 @@ await server.register(searchRoutes, { prefix: '/v1/search' })
 await server.register(billingRoutes, { prefix: '/v1/billing' })
 await server.register(adminRoutes, { prefix: '/v1/admin' })
 await server.register(tryOnRoutes, { prefix: '/v1/try-on' })
+await server.register(sizeChartRoutes, { prefix: '/v1/size-charts' })
 
 // ─── Health Check ─────────────────────────────────────────────────
 

@@ -481,3 +481,111 @@ resuming the still-unconfirmed RunPod end-to-end test (see prior entries).
   `packages/ai` or a new `apps/api/src/routes/size-chart.ts`) that takes a
   `CustomerMeasurement` + category and walks `SizeChartRow`s in `sort_order`
   to find the containing (or nearest) range.
+
+---
+
+## 2026-07-11 (later still) — F-102c shipped end-to-end + RLS gaps found and fixed
+
+**Done (size-chart feature, full stack):**
+- `apps/api/src/routes/size-chart.ts` — `PUT /v1/size-charts` (upsert chart +
+  replace rows in a transaction), `GET /v1/size-charts` (list), `GET
+  /v1/size-charts/recommend?customer_id=&category=` (matches latest
+  `CustomerMeasurement` against the retailer's chart). `findRecommendedSize`
+  is a pure function: exact-containing-row wins, else nearest row by summed
+  out-of-range distance across available axes (bust/waist/hip for UPPER;
+  waist/hip/length for LOWER, using `pant_waist_cm`/`pant_hip_cm` in
+  preference to `waist_cm`/`hip_cm` for LOWER). 5 vitest cases in
+  `size-chart.test.ts`. Registered at `/v1/size-charts` in `apps/api/src/index.ts`.
+- `apps/mobile/app/size-chart.tsx` — retailer-facing form (category toggle,
+  add/remove size rows, min/max cm per axis), reached via a new "Size
+  Charts" QuickAction on the home tab (`(tabs)/index.tsx`). Uses new
+  `sizeChartApi` in `src/lib/api.ts`.
+- Typed-routes gotcha: Expo Router's `.expo/types/router.d.ts` only
+  regenerates while the Metro dev server is running (`expo start`), NOT via
+  `expo export` — needed a throwaway `expo start` + kill to get `tsc
+  --noEmit` to accept `router.push('/size-chart')`. Worth remembering if a
+  new top-level route ever fails typecheck with a route-string union error.
+
+**Security review (user-requested cross-check) — 2 real gaps found, both fixed:**
+1. `005_size_charts/migration.sql` had **no RLS** — every other retailer-scoped
+   table in this schema has it (001, 002, 003). Added policies for both
+   `size_charts` and `size_chart_rows` (the row table has no `retailer_id` of
+   its own, so its policy joins through `size_chart_id → size_charts.retailer_id`).
+2. Duplicate `size_label` in one `PUT` payload would hit a Prisma P2002 inside
+   the transaction → uncaught → raw 500. Fixed with a Zod `.refine` for
+   label-uniqueness in the request schema → clean 422 instead.
+- **Both migrations applied to live Supabase** (project `thpqcylmcxokajxoerjx`,
+  region ap-south-1) this session: `005_size_charts` (now with RLS) and a new
+  `006_rls_try_on_usage_logs`. Confirmed via `list_tables`: `size_charts` and
+  `size_chart_rows` both show `rls_enabled: true`, 0 rows (empty, ready for
+  real retailer data).
+
+**Found via live Supabase advisory scan, one fixed, one deliberately left:**
+- `try_on_usage_logs` (real billing/GPU-cost data, has `retailer_id`) had RLS
+  **disabled** in production — pre-existing gap, unrelated to this session's
+  code, caught by Supabase's own advisory tool. **Fixed**: `006_rls_try_on_usage_logs`
+  migration, same `retailer_id IN (... auth.uid())` pattern as everywhere else,
+  applied live.
+- `_prisma_migrations` also shows RLS disabled — **deliberately left alone**.
+  It's Prisma's internal migration-tracking table, not tenant data; enabling
+  RLS on it risks breaking `prisma migrate deploy` for the service role with
+  no clear policy to write. Not a real tenant-isolation risk (no retailer_id,
+  no user data) — revisit only if a formal security audit specifically flags
+  it.
+
+**Correction to earlier entries — RunPod raw inference IS confirmed working:**
+This session initially (wrongly) told the user "RunPod: zero confirmed
+end-to-end completion," repeating stale framing from this file. Memory
+(`runpod-catvton-deploy-debug`, not reflected anywhere in this file until
+now) shows an 8th root cause was found and fixed *earlier the same day*
+(2026-07-11): `Dockerfile.runpod` never copied `mask_utils.py`
+(commit `99ac5e3`) + a stale cached worker pod needed manual `podTerminate`.
+After both fixes, a direct RunPod `runsync` test via
+`packages/ai/scratch-test-tryon.mjs` **completed successfully at ~13:40 UTC**
+(`COMPLETED`, executionTime 45884ms) — first confirmed successful CatVTON
+inference this project has seen. Result came back as base64
+(`data:image/jpeg`, not an R2 URL — template's `env: []` has no R2 creds, so
+`handler_runpod.py::upload_result()` fell to its base64 fallback path).
+
+**Still open (real gap, not the same as "RunPod doesn't work"):**
+- **Not yet verified: whether `packages/ai/src/tryon.ts` correctly handles a
+  base64 result end-to-end through the app.** Only the raw RunPod call was
+  tested directly — the app-layer integration (saving the base64 result to
+  R2, updating the `TryOnJob` record, serving it back to mobile/web) has
+  never been exercised. This is the actual next RunPod-related step, not
+  "diagnose why it's crashing."
+- `GHCR_PAT` leaked in chat earlier — rotation still unconfirmed.
+- Railway deploy: Config File Path unset per-service, `WEB_URL`/
+  `NEXT_PUBLIC_API_URL` chicken-egg unresolved, dead `lovely-joy` service not
+  deleted, RunPod creds not copied to Railway vars. Phase 0 MVP is
+  code-complete but **not live anywhere**.
+- bg-removal preprocessing (`triggerCatVTON`) shipped 2026-07-11 earlier
+  session, still never tested against a real retailer photo (blocked on the
+  app-layer verification above, not on RunPod itself anymore).
+- Size-chart feature has no retailer-facing seed data and no lookup UI on
+  the customer-web side yet (`GET /recommend` exists but nothing calls it
+  from `apps/web/src/app/c/[slug]/...` — that's the natural next consumer,
+  shown next to "Try This On" like the size hint).
+
+**Resume here next session:**
+1. Wire `GET /v1/size-charts/recommend` into the customer web collection/
+   product-detail view so the size feature is actually usable end-to-end,
+   not just retailer-side data entry.
+2. Railway deploy loose ends (Config File Path, URL chicken-egg, dead
+   service, RunPod creds) — Phase 0 MVP still isn't live anywhere.
+
+---
+
+## 2026-07-12 — base64 CatVTON result path verified, no bug
+
+Checked whether `packages/ai/src/tryon.ts` handles a `data:image/jpeg;base64,...`
+RunPod result correctly (open item from prior session). **It does — no fix
+needed.** Traced: `handler_runpod.py::upload_result()` always returns the
+field as `result_url` regardless of form; `triggerCatVTON` passes it through
+blind; `process-tryon.ts` feeds it straight into `saveTryOnResultToR2` →
+`downloadBufferFromUrl` → `fetch(url)`. Confirmed empirically (Node script,
+base64 data URI round-tripped byte-exact) that Node's global `fetch`
+decodes `data:` URIs correctly — supported since Node 20.6, CI/Railway run
+recent Node 20.x. Raw base64 never reaches the DB; `saveTryOnResultToR2`
+uploads decoded bytes to R2 and stores a real R2 URL in `TryOnJob.result_url`.
+RunPod → app integration is fully confirmed working end-to-end now.

@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Search, Eye, MessageCircle, Package } from 'lucide-react-native'
+import { Camera, Users, Link2, Search, Eye, MessageCircle, Package, Ruler } from 'lucide-react-native'
 import { retailerApi } from '../../src/lib/api'
 
 type RankedProduct = {
@@ -166,6 +166,13 @@ export default function HomeScreen() {
             sublabel="Share on WhatsApp"
             onPress={() => router.push('/collection/new')}
             accent="#EFF6FF"
+          />
+          <QuickAction
+            icon={<Ruler size={22} color="#8B5CF6" />}
+            label="Size Charts"
+            sublabel="S–10XL per category"
+            onPress={() => router.push('/size-chart')}
+            accent="#F5F3FF"
           />
         </View>
       </View>

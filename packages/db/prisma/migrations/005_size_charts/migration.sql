@@ -48,3 +48,19 @@ ALTER TABLE "size_charts" ADD CONSTRAINT "size_charts_retailer_id_fkey" FOREIGN 
 
 -- AddForeignKey
 ALTER TABLE "size_chart_rows" ADD CONSTRAINT "size_chart_rows_size_chart_id_fkey" FOREIGN KEY ("size_chart_id") REFERENCES "size_charts"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- RLS (retailer isolation, matches pattern in 001_pgvector_indexes / 002_customer_measurements)
+ALTER TABLE "size_charts" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "size_chart_rows" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "retailer_own_size_charts" ON "size_charts"
+  FOR ALL TO authenticated
+  USING (retailer_id IN (SELECT id FROM retailers WHERE auth_user_id = auth.uid()::text));
+
+CREATE POLICY "retailer_own_size_chart_rows" ON "size_chart_rows"
+  FOR ALL TO authenticated
+  USING (size_chart_id IN (
+    SELECT id FROM size_charts WHERE retailer_id IN (
+      SELECT id FROM retailers WHERE auth_user_id = auth.uid()::text
+    )
+  ));
