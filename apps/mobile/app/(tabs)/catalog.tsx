@@ -203,7 +203,7 @@ export default function CatalogScreen() {
         />
       )}
 
-      {/* FAB — short tap: single product, long press: bulk import */}
+      {/* FAB — quick import menu */}
       <View className="absolute bottom-6 right-4 items-end gap-2">
         <TouchableOpacity
           onPress={() => router.push('/product/add')}
@@ -221,6 +221,15 @@ export default function CatalogScreen() {
         >
           <Text className="text-xs text-gray-500">Bulk</Text>
           <Text className="text-xs">📷</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => router.push('/product/catalog-import')}
+          className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
+          style={{ elevation: 3 }}
+          activeOpacity={0.7}
+        >
+          <Text className="text-xs text-gray-500">Catalog</Text>
+          <Text className="text-xs">📋</Text>
         </TouchableOpacity>
       </View>
     </View>

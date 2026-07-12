@@ -122,19 +122,22 @@ Only platform combining:
 ---
 
 #### F-001b: PDF / Printed-Catalog Bulk Import
-**Status:** Planned — not built. No PDF-parsing code exists anywhere in the repo today (checked `apps/mobile/app/product/bulk.tsx`, `packages/ai/src/tagger.ts` — bulk import is photo-only).
+**Status:** ✅ **Built** (2026-07-13).
 
-**Problem:** Many vendors already have a manufacturer/wholesaler PDF catalog (or a printed catalog they could scan/photograph as pages) listing many designs at once — re-photographing every physical piece by hand is the adoption friction F-001's bulk import doesn't fully solve for this vendor type.
+**Dual-path architecture:**
 
-**Description:** Retailer uploads a PDF catalog (or a set of scanned catalog-page images). System extracts each individual product image + any printed text (design number, price, fabric name if labeled) from the PDF/page, creates one draft `Product` per detected item, and runs each through the existing F-001 AI-tagging pipeline (`tagProductImageUrl`) for the fields not printed on the page.
+1. **Path A — Client-side page rendering (default, works on mobile):** The mobile device renders each PDF page to an image using its built-in PDF viewer (mobile WebKit / browser). Each rendered page is uploaded via `POST /v1/catalog-import/import-pdf?page_images[]=url1&page_images[]=url2...`. The server runs the same `detectCropAndTag()` pipeline (F-001c) on each page image.
 
-**How it would work (not yet designed in detail):**
-1. PDF → per-page raster images (`pdf-lib` or `pdf.js` on the server; no such dependency installed yet).
-2. Per-page item detection — a catalog page is usually a grid of N product photos with captions, not one photo. This needs the same multi-item detection/crop step as F-001c below; a PDF catalog is really "F-001c applied once per page," not a separate detection problem.
-3. Optional OCR pass (e.g. Claude Vision can read printed text directly from a page crop — no separate OCR engine needed, reuse the existing Claude Vision call) for design number/price if printed.
-4. Each cropped item → existing `tagProductImageUrl` for full attribute extraction, same draft-review UX as F-001.
+2. **Path B — Server-side page rendering (requires `canvas` npm package):** The server uses `pdfjs-dist` to parse page metadata (count, dimensions) and render pages to images if the `canvas` package is installed. A metadata-only path is always available when `canvas` is not installed.
 
-**Explicitly not scoped yet:** page-layout variance across manufacturers (grids, single-column, mixed photo+text) makes a single generic parser unreliable — likely needs a "review detected items before import" screen rather than a fully blind auto-import, so a bad page-split doesn't silently create garbage products. Real design pass needed before implementation, not just a library swap.
+**Detection + creation endpoints:**
+- `POST /v1/catalog-import/import-pdf` — Accepts raw PDF URL + optional `page_images[]`. Returns detected items with cropped images and AI tags.
+- `POST /v1/catalog-import/bulk-create-products` — Saves reviewed items as real `Product` records and queues AI tagging.
+
+**Key components:**
+- `packages/ai/src/detector.ts` — `detectItems()`, `cropImage()`, `detectCropAndTag()` using Claude Vision for garment detection + sharp for cropping.
+- `apps/api/src/routes/catalog-import.ts` — API endpoints for upload, detection, PDF metadata, bulk creation.
+- `apps/mobile/app/product/catalog-import.tsx` — Review-detected-items screen with approve/edit/reject per item.
 
 ---
 

@@ -62,3 +62,6 @@ NUL
 # RunPod check
 check-runpod.sh
 tryon-multipiece-result.jpg
+
+# Generated catalog grid test images
+/scripts/demo/catalog-grid*.jpg
