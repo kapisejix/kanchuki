@@ -87,7 +87,7 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach --service ${{ secrets.RAILWAY_API_SERVICE_ID }}
+        run: railway up --detach --environment production --service ${{ secrets.RAILWAY_API_SERVICE_ID }}
 
   ####################################################################
   # Deploy Web Service
@@ -117,4 +117,4 @@ jobs:
       - name: Deploy to Railway
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach --service ${{ secrets.RAILWAY_WEB_SERVICE_ID }}
+        run: railway up --detach --environment production --service ${{ secrets.RAILWAY_WEB_SERVICE_ID }}
