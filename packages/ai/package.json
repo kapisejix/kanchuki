@@ -3,13 +3,31 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
   "exports": {
-    ".": "./src/index.ts",
-    "./tagger": "./src/tagger.ts",
-    "./embedder": "./src/embedder.ts",
-    "./r2": "./src/r2.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./tagger": {
+      "types": "./src/tagger.ts",
+      "import": "./dist/tagger.js",
+      "default": "./dist/tagger.js"
+    },
+    "./embedder": {
+      "types": "./src/embedder.ts",
+      "import": "./dist/embedder.js",
+      "default": "./dist/embedder.js"
+    },
+    "./r2": {
+      "types": "./src/r2.ts",
+      "import": "./dist/r2.js",
+      "default": "./dist/r2.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
