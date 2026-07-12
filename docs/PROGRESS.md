@@ -619,7 +619,51 @@ customer lookup on the share link).
 **Still open (carried from prior sessions, untouched this session):**
 - Railway deploy loose ends (Config File Path, `WEB_URL`/`NEXT_PUBLIC_API_URL`
   chicken-egg, dead `lovely-joy` service, RunPod creds not copied). Phase 0
-  MVP still not live anywhere.
-- `GHCR_PAT` leaked in chat earlier — rotation still unconfirmed.
-- bg-removal preprocessing shipped, still never tested against a real
-  retailer photo end-to-end.
+  MVP still not live anywhere. **Blocker found this session:** `railway`
+  CLI installed locally but not logged in (interactive browser OAuth, can't
+  script headlessly). `.github/workflows/deploy.yml` also references
+  `RAILWAY_API_SERVICE_ID` / `RAILWAY_WEB_SERVICE_ID` secrets that are
+  **not set** (only `RAILWAY_TOKEN` is, per `gh secret list`) — CI deploy
+  would fail even if triggered. Both service IDs only obtainable by logging
+  into the Railway dashboard — needs the user, not scriptable from here.
+- `GHCR_PAT` leaked in chat earlier — rotation still unconfirmed. Checked
+  `gh secret list`: `GHCR_PAT` last updated 2026-07-08, the same day it
+  leaked — not rotated since. New PAT generation is a GitHub web-UI-only
+  action (no API/CLI can mint one, by design) — needs the user to generate
+  it, then `gh secret set GHCR_PAT` can push it.
+
+## 2026-07-12 (even later) — bg-removal ran against a real photo, quality bug still open
+
+Ran `packages/ai/src/tryon.ts::triggerTryOn()` for real (not the raw-RunPod
+scratch script) against `test_person.jpg` (clean, front-facing, plain wall)
+and `test_garment.jpg` (mannequin shot, busy background — pink/gold Banarasi
+suit + dupatta). One paid RunPod GPU call, ~49s, `status: completed`, no
+errors — confirmed via `packages/ai/scratch-test-bgremoval.mjs` (new
+untracked scratch script, same convention as `scratch-test-tryon.mjs`).
+
+**bg-removal preprocessing itself is confirmed working correctly** —
+fetched the cached `tryon-preprocessed/<hash>.png` directly from R2 and
+visually confirmed: background fully stripped, garment colors/pattern
+intact and legible.
+
+**CatVTON's actual output is still garbage** — a blue/purple blob bearing
+no resemblance to the pink/gold garment, overlaid on the person photo. This
+directly contradicts the 2026-07-11 session's theory that raw/uncleaned
+input photos were the main driver of the "not even 1% close" complaint —
+input quality was fine on both images here, bg-removal ran, and the result
+is still unusable. **The bg-removal work is code-complete and does NOT fix
+the underlying visual-quality bug.**
+
+**Most likely real cause (not yet confirmed, no further paid calls run this
+session):** `triggerCatVTON` never sends a garment category (`upper`/
+`lower`/`overall`) to CatVTON — `handler_runpod.py` must be defaulting to
+one, and a full kameez+dupatta drape sent as a single "upper" garment is
+exactly the multi-piece case already flagged as unsupported in
+`PRO-REQUIREMENTS.md` F-102 ("two sequential calls for kameez+salwar,
+dupatta excluded from CatVTON pass for MVP") — but that split was never
+actually implemented in `tryon.ts`, only spec'd.
+
+**Next step:** re-test with a single-piece garment photo (plain kurta, no
+dupatta) before spending more GPU time on multi-piece cases — isolates
+whether the category-mismatch theory is right or whether CatVTON itself is
+misbehaving for this garment style/domain regardless of piece count.
