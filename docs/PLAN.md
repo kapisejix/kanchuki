@@ -69,7 +69,9 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] Store location assignment (Floor → Section → Rack → Shelf)
 - [x] Product status (Available / Sold / Reserved)
 - [x] Basic search by tag (client-side filter for MVP)
-- [ ] Bulk photo import (multiple images)
+- [x] Bulk photo import (multiple images)
+- [ ] Multi-item detection & splitting from one photo (F-001c) — planned, not built
+- [ ] PDF / printed-catalog bulk import (F-001b) — planned, not built; depends on F-001c's detection step
 
 **Deliverable:** Retailer can build full digital catalog with AI assistance
 

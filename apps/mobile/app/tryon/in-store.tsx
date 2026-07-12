@@ -49,6 +49,7 @@ export default function InStoreTryOnScreen() {
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [processingPhoto, setProcessingPhoto] = useState(false)
+  const [consentToTraining, setConsentToTraining] = useState(false)
 
   const cameraRef = useRef<CameraView>(null)
   const queryClient = useQueryClient()
@@ -194,7 +195,12 @@ export default function InStoreTryOnScreen() {
       await uploadImageToR2(customerPhotoUri, upload_url, 'image/jpeg')
 
       // Initiate try-on
-      const initiateResult = await tryOnApi.initiate(selectedProduct.id, r2_key)
+      const initiateResult = await tryOnApi.initiate(
+        selectedProduct.id,
+        r2_key,
+        undefined,
+        consentToTraining,
+      )
       const jobId = initiateResult.data.id
       setTryOnJobId(jobId)
       setStep('processing')
@@ -410,7 +416,27 @@ export default function InStoreTryOnScreen() {
             )}
           </View>
 
-          <View className="mt-6 gap-3">
+          {/* Training-data consent — separate, optional, unchecked by default */}
+          <TouchableOpacity
+            onPress={() => setConsentToTraining((v) => !v)}
+            className="mt-5 flex-row items-start gap-2"
+            activeOpacity={0.7}
+          >
+            <View
+              className={`w-5 h-5 rounded-md border items-center justify-center mt-0.5 ${
+                consentToTraining ? 'bg-cyan-600 border-cyan-600' : 'border-gray-300'
+              }`}
+            >
+              {consentToTraining && <Check size={12} color="white" />}
+            </View>
+            <Text className="flex-1 text-xs text-gray-500 leading-5">
+              Customer agrees to let Kanchuki keep a copy of this photo and outfit
+              to improve future try-on results. Optional — ask the customer before
+              checking this.
+            </Text>
+          </TouchableOpacity>
+
+          <View className="mt-4 gap-3">
             <TouchableOpacity
               onPress={() => void handleRunTryOn()}
               className="bg-cyan-600 py-4 rounded-2xl items-center"
@@ -499,6 +525,7 @@ export default function InStoreTryOnScreen() {
                 setResultUrl(null)
                 setCustomerPhotoUri(null)
                 setError(null)
+                setConsentToTraining(false)
                 setStep(preselectedProductId ? 'capture' : 'select')
               }}
               className="py-3 rounded-2xl items-center border border-gray-200"

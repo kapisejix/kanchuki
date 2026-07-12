@@ -121,6 +121,39 @@ Only platform combining:
 
 ---
 
+#### F-001b: PDF / Printed-Catalog Bulk Import
+**Status:** Planned — not built. No PDF-parsing code exists anywhere in the repo today (checked `apps/mobile/app/product/bulk.tsx`, `packages/ai/src/tagger.ts` — bulk import is photo-only).
+
+**Problem:** Many vendors already have a manufacturer/wholesaler PDF catalog (or a printed catalog they could scan/photograph as pages) listing many designs at once — re-photographing every physical piece by hand is the adoption friction F-001's bulk import doesn't fully solve for this vendor type.
+
+**Description:** Retailer uploads a PDF catalog (or a set of scanned catalog-page images). System extracts each individual product image + any printed text (design number, price, fabric name if labeled) from the PDF/page, creates one draft `Product` per detected item, and runs each through the existing F-001 AI-tagging pipeline (`tagProductImageUrl`) for the fields not printed on the page.
+
+**How it would work (not yet designed in detail):**
+1. PDF → per-page raster images (`pdf-lib` or `pdf.js` on the server; no such dependency installed yet).
+2. Per-page item detection — a catalog page is usually a grid of N product photos with captions, not one photo. This needs the same multi-item detection/crop step as F-001c below; a PDF catalog is really "F-001c applied once per page," not a separate detection problem.
+3. Optional OCR pass (e.g. Claude Vision can read printed text directly from a page crop — no separate OCR engine needed, reuse the existing Claude Vision call) for design number/price if printed.
+4. Each cropped item → existing `tagProductImageUrl` for full attribute extraction, same draft-review UX as F-001.
+
+**Explicitly not scoped yet:** page-layout variance across manufacturers (grids, single-column, mixed photo+text) makes a single generic parser unreliable — likely needs a "review detected items before import" screen rather than a fully blind auto-import, so a bad page-split doesn't silently create garbage products. Real design pass needed before implementation, not just a library swap.
+
+---
+
+#### F-001c: Multi-Item Detection & Splitting from a Single Photo
+**Status:** Planned — not built. `packages/ai/src/tagger.ts` already has an `is_catalog_image` field in its extraction schema ("True if printed catalog/lookbook image") but nothing in the code branches on it today — one photo always produces exactly one `Product`, even when the photo shows several designs (e.g. a photographed catalog sheet, or several suit pieces laid out together in one frame).
+
+**Problem:** A vendor who photographs a printed catalog *page* (several designs per page) or lays out several unpacked pieces in one shot, expecting each design to become its own catalog entry, instead gets one product with a wrong/blended set of AI tags — silently wrong, not an error the retailer would necessarily notice immediately.
+
+**Description:** Detect that an uploaded photo contains multiple distinct garments, crop each one out, and run F-001's existing per-item tagging pipeline (`tagProductImageUrl`) on each crop separately, producing N `Product` drafts instead of one.
+
+**How it would work (not yet designed in detail):**
+1. Object detection to find N garment bounding boxes in one image. Two options, real tradeoff not yet evaluated: (a) a dedicated CV object-detection model (new dependency, new inference step, extra cost/latency), or (b) ask Claude Vision itself to return bounding boxes for each detected garment in one call (reuses the existing Claude Vision integration, no new model to host — worth trying first per the ladder: already-integrated dependency before a new one).
+2. Crop each detected region, run existing `tagProductImageUrl` per crop.
+3. Present all N drafts to the retailer for review/edit before saving — same reasoning as F-001b: don't blind-trust an automatic split, a bad detection (e.g. splitting one design's front+back into two products) is worse than asking the retailer to confirm.
+
+**Relationship to F-001b:** this is the same underlying detection problem — a PDF catalog page IS a "photo with multiple items in it." Building this once, well, covers both F-001b's per-page splitting and the direct-photo case described above. **Build this before F-001b, not after** — F-001b is this feature applied to a rasterized PDF page rather than a camera photo.
+
+---
+
 #### F-002: Product Catalog with Store Location
 **Priority:** P0  
 **Description:** Digital catalog where each product has rack/shelf location for physical retrieval.
@@ -381,6 +414,30 @@ Only platform combining:
 - Measurement photos never retained past landmark extraction (same ephemeral rule as VTO customer photos)
 
 **Note:** Photo-path CV (MediaPipe Pose) runs locally/on-server — no per-call API cost, so it does not affect try-on credit budget (₹5–15/image) unlike FASHN/Replicate VTO calls.
+
+---
+
+#### F-102d: Consented Training-Data Collection + Photo Crop-Tagging
+**Description:** Two related additions to the F-102 try-on pipeline, built together 2026-07-13.
+
+**Part 1 — Crop-tagging for single-photo "set" shots.** Many vendor catalog photos show a 2-piece outfit (kameez+dupatta draped on a mannequin, folded bottom piece on a stand) all in **one** frame — the existing F-102 piece-tagging (`ProductPhoto.piece_type`) is per-whole-photo, so a single combined photo can't be split into upper+lower for the two-call chaining path; it falls back to a single `overall` call, which mis-renders (confirmed root cause, see `docs/adrs/ADR-006-defer-3d-parametric-vto.md` session notes 2026-07-12).
+
+**Fix:** in `apps/mobile/app/product/[id].tsx`, for `PIECE_TAGGABLE_CATEGORIES` products missing an upper or lower tag, a "Crop {piece} piece from a photo" button re-opens the same gallery photo through `expo-image-picker`'s native `allowsEditing` crop screen, uploads the cropped result as a new `ProductPhoto`, and tags it directly. No new dependency — reuses `expo-image-picker`/`expo-image-manipulator`, already installed, both Expo-Go-compatible (a native crop *library* was deliberately avoided — would need a dev build, breaking the Expo Go workflow, per the native-module lesson already logged for MMKV in `docs/PROGRESS.md` 2026-07-08).
+
+**Part 2 — Consented training-data collection.** Separate, unchecked-by-default checkbox (web `TryOnModal`, mobile in-store try-on) that lets a customer additionally allow Kanchuki to keep a copy of that try-on's photos to fine-tune the try-on model later. Fully specified in `docs/SECURITY.md` §3b — key points:
+- New `TryOnJob.consent_to_training` flag + `TrainingPhotoConsent` table (migration `008_training_photo_consent`).
+- `TrainingPhotoConsent` has **no `retailer_id`** and **no retailer-facing RLS policy** — admin/service-role only, architecturally separate from every retailer-visible table, per the user's requirement that this not live "on vendor database/profile." (Same Postgres instance as everything else — Kanchuki is single-database, multi-tenant via RLS, not one database per tenant; isolation here is "zero policies for this table," the same mechanism, not a literal second database.)
+- Stored under R2 prefix `training-data/`, not covered by the existing 24h try-on-result cleanup cron.
+- Implemented in `packages/ai/src/tryon.ts::saveTrainingConsentCopy`, called from `apps/api/src/jobs/process-tryon.ts` only after a successful try-on, only when the flag is set, failure non-fatal to the try-on itself.
+
+**Is this "possible," i.e. does it actually improve the try-on model?** Yes, structurally — every time a different customer tries on the *same product*, this naturally accumulates "same real garment, different real body" pairs, which is exactly the paired-data shape a dual-UNet fine-tune needs (see ADR-006's "Option B" build-like-Google path), and since Kanchuki owns this data outright it sidesteps the VITON-HD/DressCode licensing taint documented there. **Not useful yet at Phase 0 pilot volume** — needs real accumulated scale before it's trainable on, and no training pipeline consumes this table yet (that's future work, not built in this pass).
+
+**Explicitly NOT done in this pass (flagged, real gaps):**
+- No retention/deletion policy for `training-data/` R2 objects or `TrainingPhotoConsent` rows.
+- No customer-facing consent-revocation flow.
+- Consent copy text has not had a legal review pass (India DPDP Act 2023 applies) — same "placeholder, needs legal sign-off" status as the existing F-102 consent modal text.
+- Migration `008_training_photo_consent` is schema-only, **not applied to the live Supabase DB** — same review-before-apply convention as every prior migration in this project.
+- No training pipeline actually consumes `TrainingPhotoConsent` rows yet — this pass only builds the collection mechanism.
 
 ---
 

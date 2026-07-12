@@ -563,11 +563,39 @@ model TryOnJob {
   customer_photo_deleted_at DateTime?
   result_expires_at         DateTime?
 
+  // Customer opted in (explicit checkbox, separate from the required
+  // processing consent) to let Kanchuki keep a copy of this try-on's photos
+  // for model training. Default false — training storage never happens
+  // silently. See TrainingPhotoConsent and docs/SECURITY.md §3b.
+  consent_to_training Boolean @default(false)
+
   measurement CustomerMeasurement? @relation(fields: [measurement_id], references: [id])
 
   @@index([retailer_id])
   @@index([status])
   @@map("try_on_jobs")
+}
+
+// ─── TRAINING DATA (consent-gated, admin-only — NOT retailer-visible) ──
+// Deliberately has no retailer_id and no retailer-facing RLS policy (see
+// migration 008). Populated only when TryOnJob.consent_to_training was true
+// at job-submission time. Distinct from TryOnJob's own photo lifecycle —
+// TryOnJob's customer_photo_r2_key still gets deleted per the existing
+// privacy promise; this is a separate, deliberately-retained copy.
+model TrainingPhotoConsent {
+  id            String @id @default(cuid())
+  try_on_job_id String @unique
+
+  customer_photo_r2_key String
+  garment_photo_r2_key  String
+  result_r2_key         String?
+
+  consent_version String // matches the consent copy text shown at capture time
+  source          TryOnSource
+
+  consented_at DateTime @default(now())
+
+  @@map("training_photo_consents")
 }
 
 // ─── TRY-ON USAGE LOGS ───────────────────────────────────────────

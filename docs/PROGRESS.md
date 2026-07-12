@@ -911,3 +911,103 @@ Committed (`00b39f6`) and pushed to `origin/main`.
 - Customer-web size hint — deferred per 2026-07-12 (earlier) entry, revisit
   only if anonymous customer identity gets solved.
 - `GHCR_PAT` rotation — already confirmed done (see earlier same-day entry).
+
+---
+
+## 2026-07-12 (later still) — ADR-006 revisited: IDM-VTON/OOTDiffusion researched, licensing gap found on the LIVE engine
+
+No code changed. User asked how Google Shopping's try-on works, then asked to
+revisit ADR-006 for IDM-VTON/OOTDiffusion as a CatVTON replacement. Full
+write-up in `docs/adrs/ADR-006-defer-3d-parametric-vto.md` ("Revisit —
+2026-07-12" section). Summary:
+
+**Important, separate from the upgrade question — flagged for user
+decision, not auto-fixed:** CatVTON, the engine already live in production,
+is licensed **CC BY-NC-SA 4.0 (NonCommercial)**. Confirmed via GitHub LICENSE
+file and the Hugging Face model card. Kanchuki is a paid SaaS — this is a
+real, current legal exposure, not a hypothetical one. IDM-VTON and
+OOTDiffusion do not fix this if swapped in (same or stricter NC terms); even
+DCI-VTON's MIT-licensed *code* doesn't help because its weights are trained
+on the VITON-HD dataset, which is itself CC BY-NC 4.0 — the license taint
+comes from training data, not just repo license.
+
+**Decision:** did not swap engines. Not attempting a from-scratch
+TryOnDiffusion clone either (est. multi-month, 6-figure-USD-compute research
+project — out of scope). Recorded two paths to resolve the licensing gap
+(email CatVTON's author for a commercial license; or route paid traffic
+through FASHN's commercially-licensed API, ~$0.075/try-on) — user's call,
+not decided here. Also corrected the original ADR's cost math: recalculated
+against RunPod's actual L4 pricing ($0.69/hr), both CatVTON today and an
+IDM-VTON-class swap sit well inside the ₹5-15/image budget — cost was never
+the real blocker, licensing is.
+
+**Resume here next session:**
+1. User decision needed: which licensing path to pursue for CatVTON (see
+   ADR-006 Revisit section, "Licensing options"). Nothing else in the VTO
+   pipeline should be built further until this is resolved — building more
+   on top of an NC-licensed engine only grows the exposure.
+2. Real 2-piece garment photo test (still open from prior entry, blocked on
+   user supplying matching upper+lower photos of a real outfit).
+
+---
+
+## 2026-07-13 — F-102d shipped: crop-tagging UI + consented training-data collection
+
+Full spec in `docs/PRO-REQUIREMENTS.md` F-102d, consent rules in
+`docs/SECURITY.md` §3b. Two parts, both code-complete, neither live-tested
+yet (typecheck + existing test suites pass; no real device/DB run this
+session).
+
+**Part 1 — crop-tagging (`apps/mobile/app/product/[id].tsx`):** for
+`PIECE_TAGGABLE_CATEGORIES` products missing an upper/lower photo tag, a new
+"Crop {piece} piece from a photo" button opens the same gallery photo through
+`expo-image-picker`'s native `allowsEditing` crop screen, uploads the crop as
+a new `ProductPhoto`, tags it directly via the existing
+`PATCH /products/:id/photos/:photoId`. No new dependency (checked
+`expo-image-manipulator`/`expo-image-picker` were already installed) — this
+was deliberately chosen over a dedicated crop library to avoid the
+Expo-Go-breaking native-module trap already hit once with MMKV (2026-07-08
+entry). Added `productApi.addPhoto` to `apps/mobile/src/lib/api.ts` to attach
+the cropped photo.
+
+**Part 2 — consented training-data collection:**
+- Migration `008_training_photo_consent`: `TryOnJob.consent_to_training`
+  (bool, default false) + new `TrainingPhotoConsent` table — **deliberately
+  no `retailer_id` column and no retailer-facing RLS policy**, per the user's
+  explicit requirement that this data not live on the vendor side. RLS
+  enabled with zero policies (service-role-only), same physical Postgres
+  instance as everything else — clarified in both docs that this is *not* a
+  literal second database, just zero-policy table isolation, the same
+  mechanism that already separates retailers from each other.
+- `packages/ai/src/tryon.ts::saveTrainingConsentCopy` + `r2.ts::copyUrlToR2`
+  — copies customer/garment/result photos to R2 prefix `training-data/`
+  (separate from `tryon-results/`, not touched by the 24h cleanup cron).
+- `apps/api/src/jobs/process-tryon.ts` calls it after a successful try-on,
+  only when `consent_to_training` was set, wrapped so a failure here never
+  fails the customer's actual try-on.
+- Checkbox added to both consent surfaces: web `TryOnModal.tsx` (intro step)
+  and mobile `in-store.tsx` (preview step) — unchecked by default in both,
+  separate from the existing required processing-consent copy.
+- `prisma generate` + `packages/ai` rebuild run so `apps/api` picked up the
+  new exports; full typecheck (db/ai/api/web/mobile) and existing test
+  suites (16 ai, 10 api) all green after the change.
+
+**Not done — real gaps, flagged in F-102d doc:**
+- Migration 008 **not applied to live Supabase** (schema-only, same
+  review-before-apply convention as 005/006/007).
+- No retention/deletion policy for `training-data/` yet, no customer-facing
+  consent-revocation flow, consent copy text not legally reviewed (India
+  DPDP Act 2023 applies) — same "placeholder" status the existing F-102
+  consent text already has.
+- No training pipeline consumes `TrainingPhotoConsent` rows yet — this pass
+  only builds the collection mechanism, not a fine-tune step.
+- Crop-tagging UI not exercised on a real device.
+
+**Resume here next session:**
+1. Still the CatVTON licensing decision from 2026-07-12 (unchanged, highest
+   priority open item).
+2. If training-data collection is to go live: apply migration 008, get a
+   retention policy + legal review on the consent copy before real customer
+   traffic hits the checkbox.
+3. Real device test of the crop-tagging flow against an actual vendor "set"
+   photo.

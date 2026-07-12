@@ -1,5 +1,18 @@
 import { prisma } from '@kanchuki/db'
-import { triggerTryOn, saveTryOnResultToR2, deleteObject, uploadBuffer, tryonResultR2Key, publicUrl } from '@kanchuki/ai'
+import {
+  triggerTryOn,
+  saveTryOnResultToR2,
+  saveTrainingConsentCopy,
+  deleteObject,
+  uploadBuffer,
+  tryonResultR2Key,
+  publicUrl,
+} from '@kanchuki/ai'
+
+// Bump this string whenever the consent copy shown at capture time changes
+// (docs/SECURITY.md §3b) — old TrainingPhotoConsent rows keep their original
+// version so it's always clear what the customer actually agreed to.
+const TRAINING_CONSENT_VERSION = '2026-07-13-v1'
 
 export interface TryOnJobData {
   try_on_job_id: string
@@ -8,10 +21,11 @@ export interface TryOnJobData {
   customer_photo_r2_key: string  // R2 key or URL for remote flow
   measurement_id?: string | null
   is_remote?: boolean  // If true, customer_photo_r2_key is a URL, not an R2 key
+  consent_to_training?: boolean  // F-102d — explicit opt-in, separate from processing consent
 }
 
 export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
-  const { try_on_job_id, retailer_id, product_id, customer_photo_r2_key, is_remote } = data
+  const { try_on_job_id, retailer_id, product_id, customer_photo_r2_key, is_remote, consent_to_training } = data
 
   try {
     // Get product photo URL
@@ -123,6 +137,34 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
       }).catch(() => {
         // Non-critical — usage logging is informational, not required
       })
+
+      // F-102d: customer explicitly opted in — persist a copy of this try-on's
+      // photos to the admin-only training store BEFORE the privacy-delete
+      // below runs. Failure here must never fail the try-on itself; the
+      // customer already has their result regardless of whether training
+      // storage succeeds.
+      if (consent_to_training) {
+        try {
+          const copy = await saveTrainingConsentCopy(
+            try_on_job_id,
+            customerPhotoUrl,
+            productPhotoUrl,
+            resultPublicUrl,
+          )
+          await prisma.trainingPhotoConsent.create({
+            data: {
+              try_on_job_id,
+              customer_photo_r2_key: copy.customerPhotoR2Key,
+              garment_photo_r2_key: copy.garmentPhotoR2Key,
+              result_r2_key: copy.resultR2Key,
+              consent_version: TRAINING_CONSENT_VERSION,
+              source: is_remote ? 'REMOTE' : 'IN_STORE',
+            },
+          })
+        } catch (err) {
+          console.error(`[TryOn] training-consent copy failed for ${try_on_job_id}:`, err)
+        }
+      }
 
       // Delete customer photo from R2 (privacy)
       // Only for in-store flow where it's an R2 key

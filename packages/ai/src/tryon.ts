@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { removeBackground } from '@imgly/background-removal-node'
 import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
-import { objectExists, uploadBuffer, publicUrl } from './r2.js'
+import { objectExists, uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
 
 // ─── Configuration ─────────────────────────────────────────────
 // CatVTON self-hosted: ~$0.005/try-on, requires a GPU server.
@@ -11,6 +11,11 @@ const CATVTON_API_URL = process.env['CATVTON_API_URL'] ?? ''           // e.g. h
 const RUNPOD_API_KEY = process.env['RUNPOD_API_KEY'] ?? ''             // required when CATVTON_API_URL is a RunPod endpoint
 const R2_TRYON_PREFIX = 'tryon-results'
 const R2_PREPROCESSED_PREFIX = 'tryon-preprocessed'
+// Admin-only training-data copies (F-103). Separate bucket prefix from every
+// customer-facing/retailer-facing path above — nothing in this codebase
+// serves URLs under this prefix back to a client, and it is not covered by
+// the tryon-results 24h-expiry cron. See docs/SECURITY.md §3b.
+const R2_TRAINING_PREFIX = 'training-data'
 
 // ─── Types ─────────────────────────────────────────────────────
 
@@ -260,4 +265,31 @@ export async function saveTryOnResultToR2(
   const r2Key = tryonResultR2Key(jobId)
   await uploadBuffer(r2Key, buffer, 'image/jpeg')
   return publicUrl(r2Key)
+}
+
+/**
+ * Persist a training-consent copy of a completed try-on's photos under the
+ * admin-only R2_TRAINING_PREFIX. Only called when the customer explicitly
+ * opted in (TryOnJob.consent_to_training) — see docs/PRO-REQUIREMENTS.md
+ * F-103. Returns the R2 keys for the caller to record in
+ * TrainingPhotoConsent; does not touch the database itself (this package
+ * has no Prisma dependency, matching the rest of tryon.ts).
+ */
+export async function saveTrainingConsentCopy(
+  jobId: string,
+  customerPhotoUrl: string,
+  garmentPhotoUrl: string,
+  resultUrl: string | null,
+): Promise<{ customerPhotoR2Key: string; garmentPhotoR2Key: string; resultR2Key: string | null }> {
+  const customerPhotoR2Key = `${R2_TRAINING_PREFIX}/${jobId}/customer.jpg`
+  const garmentPhotoR2Key = `${R2_TRAINING_PREFIX}/${jobId}/garment.jpg`
+  const resultR2Key = resultUrl ? `${R2_TRAINING_PREFIX}/${jobId}/result.jpg` : null
+
+  await copyUrlToR2(customerPhotoUrl, customerPhotoR2Key, 'image/jpeg')
+  await copyUrlToR2(garmentPhotoUrl, garmentPhotoR2Key, 'image/jpeg')
+  if (resultUrl && resultR2Key) {
+    await copyUrlToR2(resultUrl, resultR2Key, 'image/jpeg')
+  }
+
+  return { customerPhotoR2Key, garmentPhotoR2Key, resultR2Key }
 }

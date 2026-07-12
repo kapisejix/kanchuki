@@ -13,6 +13,7 @@ const InitiateTryOnSchema = z.object({
   product_id: z.string().min(1),
   customer_photo_r2_key: z.string().min(1),
   measurement_id: z.string().optional(),
+  consent_to_training: z.boolean().optional().default(false),
 })
 
 // ─── Routes ──────────────────────────────────────────────────
@@ -36,7 +37,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     const body = InitiateTryOnSchema.safeParse(request.body)
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
 
-    const { product_id, customer_photo_r2_key, measurement_id } = body.data
+    const { product_id, customer_photo_r2_key, measurement_id, consent_to_training } = body.data
 
     // Verify product belongs to this retailer
     const product = await prisma.product.findFirst({
@@ -60,6 +61,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         product_id,
         measurement_id: measurement_id ?? null,
         customer_photo_r2_key,
+        consent_to_training,
         status: 'QUEUED',
         api_provider: 'catvton',
         queued_at: new Date(),
@@ -73,6 +75,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
       product_id,
       customer_photo_r2_key,
       measurement_id: measurement_id ?? null,
+      consent_to_training,
     })
 
     return reply.status(201).send({
@@ -197,11 +200,12 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         product_id: z.string().min(1),
         customer_photo_url: z.string().url(),
         viewer_token: z.string().optional(),
+        consent_to_training: z.boolean().optional().default(false),
       })
       .safeParse(request.body)
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
 
-    const { collection_slug, product_id, customer_photo_url, viewer_token } = body.data
+    const { collection_slug, product_id, customer_photo_url, viewer_token, consent_to_training } = body.data
 
     // Look up the collection to verify it exists and get the retailer
     const collection = await prisma.collection.findFirst({
@@ -239,6 +243,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         retailer_id: collection.retailer_id,
         product_id,
         customer_photo_r2_key: customer_photo_url, // store URL directly for remote flow
+        consent_to_training,
         status: 'QUEUED',
         api_provider: 'catvton',
         queued_at: new Date(),
@@ -252,6 +257,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
       product_id,
       customer_photo_r2_key: customer_photo_url, // pass URL directly for remote
       is_remote: true,
+      consent_to_training,
     })
 
     return reply.status(201).send({

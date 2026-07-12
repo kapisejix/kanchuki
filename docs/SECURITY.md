@@ -136,6 +136,59 @@ By tapping 'Continue', you agree to these terms.
 
 ---
 
+## 3b. Training-Data Consent (F-102d — separate opt-in, off by default)
+
+Everything in §3 above still applies unconditionally — every try-on's input
+photo is deleted after processing regardless of what follows here. This
+section covers a **second, independent, unchecked-by-default** checkbox that
+lets a customer additionally allow Kanchuki to keep a copy of that one
+try-on's photos to improve the try-on model. It must never be implied by, or
+bundled into, the required processing consent in §3.
+
+### Rules
+
+1. **Opt-in, not opt-out.** Checkbox defaults to unchecked on every screen
+   (web `TryOnModal`, mobile `in-store` try-on). No dark patterns — same
+   visual weight as an unchecked checkbox, not a pre-ticked box.
+2. **Retailer never sees this data.** `TrainingPhotoConsent` has no
+   `retailer_id` column and no RLS policy grants the `authenticated`
+   (retailer) role any access — only the backend's service-role key can read
+   or write it (migration `008_training_photo_consent`). This is a
+   deliberate architectural choice, not a "second database": Kanchuki runs
+   one Postgres instance for the whole platform, and tenant isolation is via
+   Row Level Security policies, not separate physical databases per tenant —
+   this table simply has zero retailer-facing policies, same mechanism that
+   already isolates one retailer's data from another's.
+3. **Separate storage from the normal try-on lifecycle.** Consented copies
+   live under R2 prefix `training-data/`, distinct from `tryon-results/` and
+   `tryon-preprocessed/`, and are **not** covered by the 24h-expiry cleanup
+   cron that deletes normal try-on results. They persist until a
+   deletion/retention policy is defined (not yet built — see Open Items).
+4. **Versioned consent.** Every `TrainingPhotoConsent` row records the exact
+   `consent_version` string shown at capture time
+   (`apps/api/src/jobs/process-tryon.ts::TRAINING_CONSENT_VERSION`), so a
+   later change to the consent copy never retroactively changes what an
+   earlier customer is understood to have agreed to.
+5. **Failure is non-fatal.** If the training-copy write fails, the customer's
+   try-on result is unaffected — this consent path runs after the result is
+   already returned to the customer.
+
+### Open items (flagged, not yet built)
+
+- No retention/deletion policy for `training-data/` yet — needs one before
+  real volume accumulates (§3's audit checklist should be extended once this
+  exists).
+- No customer-facing way to revoke consent or request deletion of an
+  already-retained training copy. `customers.deleted_at`-style logic exists
+  for CRM data; this table needs the equivalent for a real launch.
+- India's DPDP Act 2023 treats this as processing personal data requiring
+  clear, specific, informed consent — the copy above was written to be
+  specific about scope, but has **not** had a legal review pass. Treat as
+  a placeholder needing sign-off before this ships to real customers, same
+  status as the original consent text below.
+
+---
+
 ## 4. API Security
 
 ### Rate Limiting

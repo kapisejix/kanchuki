@@ -12,8 +12,10 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Check, Plus, Trash2, MapPin, Sparkles } from 'lucide-react-native'
-import { productApi } from '../../src/lib/api'
+import * as ImagePicker from 'expo-image-picker'
+import * as ImageManipulator from 'expo-image-manipulator'
+import { X, Check, Plus, Trash2, MapPin, Sparkles, Scissors } from 'lucide-react-native'
+import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
   PRODUCT_CATEGORIES,
@@ -154,6 +156,58 @@ export default function ProductDetailScreen() {
     }
   }
 
+  // Many vendor "set" shots (kameez+dupatta draped on a mannequin, with the
+  // folded bottom piece sitting on a stand in the same frame — see
+  // docs/PRO-REQUIREMENTS.md F-102) can't be piece-tagged as-is: tagging is
+  // per-whole-photo, and one photo can't be both pieces. This re-picks the
+  // same image from the gallery with the OS's native crop tool, uploads the
+  // cropped result as a new ProductPhoto, and tags it directly — no new
+  // dependency, expo-image-picker's built-in allowsEditing crop screen
+  // already covers this.
+  const [cropping, setCropping] = useState<'upper' | 'lower' | null>(null)
+
+  const handleCropPiece = async (piece: 'upper' | 'lower') => {
+    if (!product) return
+    setCropping(piece)
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Gallery access is needed to crop a photo.')
+        return
+      }
+
+      const picked = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.85,
+      })
+      if (picked.canceled || !picked.assets[0]?.uri) return
+
+      const manipulated = await ImageManipulator.manipulateAsync(
+        picked.assets[0].uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      )
+
+      const blob = await readLocalImage(manipulated.uri)
+      const filename = `${piece}-piece-${Date.now()}.jpg`
+      const uploadResult = await productApi.getUploadUrl(filename, 'image/jpeg', blob.size)
+      const { upload_url, r2_key, public_url } = uploadResult.data
+      await uploadImageToR2(manipulated.uri, upload_url, 'image/jpeg')
+      await productApi.addPhoto(product.id, {
+        r2_key,
+        url: public_url,
+        content_type: 'image/jpeg',
+        piece_type: piece,
+      })
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to crop photo')
+    } finally {
+      setCropping(null)
+    }
+  }
+
   const handleDelete = () => {
     if (!product) return
     Alert.alert('Delete Product', 'This removes it from your catalog. This cannot be undone.', [
@@ -240,6 +294,34 @@ export default function ProductDetailScreen() {
           <Text className="text-cyan-700 text-xs">
             Tag one photo "Upper piece" and one "Lower piece" for a better try-on match on this 2-piece outfit.
           </Text>
+        </View>
+      )}
+
+      {/* Crop-tagging: for the common case where both pieces are shot in ONE
+          photo (e.g. draped kameez+dupatta with the folded bottom piece on a
+          stand, same frame) — crop the missing piece out of an existing
+          gallery photo instead of needing a fresh, separate photoshoot. */}
+      {isPieceTaggable(product.category) && (
+        <View className="mx-4 mt-2 flex-row gap-2">
+          {(['upper', 'lower'] as const)
+            .filter((piece) => !product.photos.some((p) => p.piece_type === piece))
+            .map((piece) => (
+              <TouchableOpacity
+                key={piece}
+                onPress={() => void handleCropPiece(piece)}
+                disabled={cropping !== null}
+                className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-cyan-300 rounded-xl py-2"
+              >
+                {cropping === piece ? (
+                  <ActivityIndicator size="small" color="#0891B2" />
+                ) : (
+                  <Scissors size={14} color="#0891B2" />
+                )}
+                <Text className="text-cyan-700 text-xs font-medium capitalize">
+                  Crop {piece} piece from a photo
+                </Text>
+              </TouchableOpacity>
+            ))}
         </View>
       )}
 

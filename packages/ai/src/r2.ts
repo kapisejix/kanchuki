@@ -85,3 +85,16 @@ export async function uploadBuffer(
 export function publicUrl(key: string): string {
   return `${PUBLIC_URL}/${key}`
 }
+
+/** Fetch a URL's bytes and store them at an R2 key. Used to persist a
+ *  consented copy of a photo somewhere other than its original location. */
+export async function copyUrlToR2(
+  sourceUrl: string,
+  key: string,
+  contentType: string,
+): Promise<void> {
+  const res = await fetch(sourceUrl)
+  if (!res.ok) throw new Error(`Failed to fetch ${sourceUrl}: ${res.status}`)
+  const buffer = Buffer.from(await res.arrayBuffer())
+  await uploadBuffer(key, buffer, contentType)
+}

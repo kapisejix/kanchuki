@@ -21,6 +21,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
   const [tryOnJobId, setTryOnJobId] = useState<string | null>(null)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [consentToTraining, setConsentToTraining] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // ── Upload customer photo to temp storage ───────────────────────
@@ -62,6 +63,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
           collection_slug: collectionSlug,
           product_id: productId,
           customer_photo_url: photoDataUrl,
+          consent_to_training: consentToTraining,
         }),
       })
 
@@ -109,7 +111,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
       setErrorMessage(err instanceof Error ? err.message : 'Try-on failed')
       setStep('error')
     }
-  }, [collectionSlug, productId, uploadCustomerPhoto])
+  }, [collectionSlug, productId, uploadCustomerPhoto, consentToTraining])
 
   // ── Handle retry ───────────────────────────────────────────────
 
@@ -119,6 +121,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
     setTryOnJobId(null)
     setResultUrl(null)
     setErrorMessage(null)
+    setConsentToTraining(false)
     setStep('intro')
   }, [])
 
@@ -210,9 +213,24 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
 
             {/* Privacy notice */}
             <p className="text-xs text-gray-400 text-center mt-4 px-4 leading-5">
-              Your photo is used only to generate this try-on preview. 
+              Your photo is used only to generate this try-on preview.
               It is not stored permanently and is deleted after processing.
             </p>
+
+            {/* Training-data consent — separate, optional, unchecked by default */}
+            <label className="mt-4 mx-4 flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={consentToTraining}
+                onChange={(e) => setConsentToTraining(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-cyan-600 focus:ring-cyan-500"
+              />
+              <span className="text-xs text-gray-500 leading-5">
+                Also let Kanchuki keep a copy of my photo and this outfit to improve
+                future try-on results. Optional — not shared with this shop, and you
+                can decline without affecting your preview above.
+              </span>
+            </label>
           </div>
         )}
 

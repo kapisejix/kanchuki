@@ -265,6 +265,15 @@ export const productApi = {
       body: JSON.stringify({ piece_type: pieceType }),
     }),
 
+  addPhoto: (
+    productId: string,
+    data: { r2_key: string; url: string; content_type: string; piece_type?: 'upper' | 'lower' },
+  ) =>
+    request<{ data: unknown }>(`/v1/products/${productId}/photos`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
       method: 'POST',
@@ -364,6 +373,7 @@ export const tryOnApi = {
     productId: string,
     customerPhotoR2Key: string,
     measurementId?: string,
+    consentToTraining?: boolean,
   ) =>
     request<{ data: { id: string; status: string } }>('/v1/try-on/initiate', {
       method: 'POST',
@@ -371,6 +381,7 @@ export const tryOnApi = {
         product_id: productId,
         customer_photo_r2_key: customerPhotoR2Key,
         ...(measurementId ? { measurement_id: measurementId } : {}),
+        consent_to_training: !!consentToTraining,
       }),
     }),
 
