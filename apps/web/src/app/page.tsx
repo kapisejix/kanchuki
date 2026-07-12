@@ -24,19 +24,11 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import Link from 'next/link'
+import { PLAN_PRICING } from '@kanchuki/shared'
 
 // ── Types ─────────────────────────────────────────────────────────
 
 type PlanName = 'Starter' | 'Growth' | 'Pro'
-
-interface Plan {
-  name: PlanName
-  monthly: number
-  annual: number
-  features: string[]
-  highlight: boolean
-  cta: string
-}
 
 type Period = 'monthly' | 'annual'
 
@@ -45,54 +37,36 @@ interface FaqItem {
   a: string
 }
 
-// ── Data ───────────────────────────────────────────────────────────
+// ── Plans derived from shared package (single source of truth) ────
 
-const PLANS: Plan[] = [
+const PLANS: {
+  name: PlanName; planKey: 'STARTER' | 'GROWTH' | 'PRO'; features: string[];
+  highlight: boolean; cta: string;
+}[] = [
   {
-    name: 'Starter',
-    monthly: 999,
-    annual: 9999,
+    name: 'Starter', planKey: 'STARTER',
     features: [
-      '500 products',
-      '200 customers',
-      '50 collection links/month',
-      'AI auto-tagging',
-      'Manual WhatsApp share',
+      '500 products', '200 customers', '50 collection links/month',
+      'AI auto-tagging', 'Manual WhatsApp share',
     ],
-    highlight: false,
-    cta: 'Start Free Trial',
+    highlight: false, cta: 'Start Free Trial',
   },
   {
-    name: 'Growth',
-    monthly: 2499,
-    annual: 24999,
+    name: 'Growth', planKey: 'GROWTH',
     features: [
-      '2,000 products',
-      '1,000 customers',
-      'Unlimited collection links',
-      'AI fashion matching',
-      '100 try-on credits/month',
-      'Priority support',
+      '2,000 products', '1,000 customers', 'Unlimited collection links',
+      'AI fashion matching', '100 try-on credits/month', 'Priority support',
     ],
-    highlight: true,
-    cta: 'Start Free Trial',
+    highlight: true, cta: 'Start Free Trial',
   },
   {
-    name: 'Pro',
-    monthly: 4999,
-    annual: 49999,
+    name: 'Pro', planKey: 'PRO',
     features: [
-      'Unlimited products',
-      'Unlimited customers',
-      'Unlimited collection links',
-      'WhatsApp automation',
-      '500 try-on credits/month',
-      'Multi-staff access',
-      'Campaign system',
-      'Dedicated support',
+      'Unlimited products', 'Unlimited customers', 'Unlimited collection links',
+      'WhatsApp automation', '500 try-on credits/month',
+      'Multi-staff access', 'Campaign system', 'Dedicated support',
     ],
-    highlight: false,
-    cta: 'Start Free Trial',
+    highlight: false, cta: 'Start Free Trial',
   },
 ]
 
@@ -819,6 +793,11 @@ function PricingSection() {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
 
+  const pricing = PLAN_PRICING as Record<
+    'STARTER' | 'GROWTH' | 'PRO',
+    { monthly: number; annual: number }
+  >
+
   return (
     <Section id="pricing">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
@@ -877,7 +856,8 @@ function PricingSection() {
           className="grid sm:grid-cols-3 gap-6 lg:gap-8"
         >
           {PLANS.map((plan) => {
-            const price = period === 'monthly' ? plan.monthly : plan.annual
+            const planPricing = pricing[plan.planKey]
+            const price = (period === 'monthly' ? planPricing.monthly : planPricing.annual) / 100
             const periodLabel = period === 'monthly' ? '/mo' : '/yr'
 
             return (
@@ -923,8 +903,8 @@ function PricingSection() {
                   className={`text-sm mb-6 ${plan.highlight ? 'text-white/60' : 'text-gray-400'}`}
                 >
                   {period === 'annual'
-                    ? `₹${(plan.annual / 12).toLocaleString('en-IN')}/mo billed annually`
-                    : `₹${plan.monthly.toLocaleString('en-IN')}/mo billed monthly`}
+                    ? `₹${(planPricing.annual / 12 / 100).toLocaleString('en-IN')}/mo billed annually`
+                    : `₹${(planPricing.monthly / 100).toLocaleString('en-IN')}/mo billed monthly`}
                 </div>
 
                 <ul className="space-y-3 mb-8">

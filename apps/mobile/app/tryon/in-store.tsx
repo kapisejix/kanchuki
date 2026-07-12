@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   Alert,
   StyleSheet,
+  Linking,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -47,6 +48,7 @@ export default function InStoreTryOnScreen() {
   const [customerPhotoUri, setCustomerPhotoUri] = useState<string | null>(null)
   const [tryOnJobId, setTryOnJobId] = useState<string | null>(null)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
+  const [revocationToken, setRevocationToken] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [processingPhoto, setProcessingPhoto] = useState(false)
   const [consentToTraining, setConsentToTraining] = useState(false)
@@ -214,6 +216,7 @@ export default function InStoreTryOnScreen() {
           if (job.status === 'COMPLETED') {
             clearInterval(pollInterval)
             setResultUrl(job.result_url)
+            setRevocationToken(job.revocation_token ?? null)
             setStep('result')
           } else if (job.status === 'FAILED') {
             clearInterval(pollInterval)
@@ -520,9 +523,29 @@ export default function InStoreTryOnScreen() {
               <Text className="text-white font-bold">Share with Customer</Text>
             </TouchableOpacity>
 
+            {revocationToken && (
+              <View className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
+                <Text className="text-xs text-gray-500 leading-4">
+                  Customer consented to training.{" "}
+                  <Text
+                    className="text-cyan-600 underline"
+                    onPress={() => {
+                      const webUrl = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://kanchuki.app'
+                      Linking.openURL(
+                        `${webUrl}/consent/revoke?token=${encodeURIComponent(revocationToken)}`,
+                      )
+                    }}
+                  >
+                    Revoke consent
+                  </Text>
+                </Text>
+              </View>
+            )}
+
             <TouchableOpacity
               onPress={() => {
                 setResultUrl(null)
+                setRevocationToken(null)
                 setCustomerPhotoUri(null)
                 setError(null)
                 setConsentToTraining(false)

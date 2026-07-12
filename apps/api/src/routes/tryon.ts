@@ -144,7 +144,19 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     })
     if (!job) throw notFound('Try-on job')
 
-    return { data: job }
+    // If the job is completed and the customer consented to training, include
+    // the revocation_token so the retailer can show a revocation link to
+    // the customer (they show them the result screen).
+    let revocationToken: string | null = null
+    if (job.status === 'COMPLETED') {
+      const consent = await prisma.trainingPhotoConsent.findUnique({
+        where: { try_on_job_id: id },
+        select: { revocation_token: true },
+      })
+      revocationToken = consent?.revocation_token ?? null
+    }
+
+    return { data: { ...job, revocation_token: revocationToken } }
   })
 
   // ─── GET /try-on/jobs ─────────────────────────────────────────
@@ -287,6 +299,17 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     })
     if (!job) throw notFound('Try-on job')
 
-    return { data: job }
+    // If the job is completed and the customer consented to training, include
+    // the revocation_token so the result UI can show a revocation link.
+    let revocationToken: string | null = null
+    if (job.status === 'COMPLETED') {
+      const consent = await prisma.trainingPhotoConsent.findUnique({
+        where: { try_on_job_id: id },
+        select: { revocation_token: true },
+      })
+      revocationToken = consent?.revocation_token ?? null
+    }
+
+    return { data: { ...job, revocation_token: revocationToken } }
   })
 }

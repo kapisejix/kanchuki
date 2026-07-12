@@ -995,19 +995,75 @@ the cropped photo.
 **Not done — real gaps, flagged in F-102d doc:**
 - Migration 008 **not applied to live Supabase** (schema-only, same
   review-before-apply convention as 005/006/007).
-- No retention/deletion policy for `training-data/` yet, no customer-facing
-  consent-revocation flow, consent copy text not legally reviewed (India
-  DPDP Act 2023 applies) — same "placeholder" status the existing F-102
-  consent text already has.
-- No training pipeline consumes `TrainingPhotoConsent` rows yet — this pass
-  only builds the collection mechanism, not a fine-tune step.
 - Crop-tagging UI not exercised on a real device.
 
+---
+
+## 2026-07-13 — F-102d retention cron shipped, consent-revocation flow full stack (API + web + mobile)
+
+**Done — training-data retention cleanup cron (F-102d completion):**
+- `apps/api/src/jobs/cleanup-training-data.ts` — handler queries
+  `TrainingPhotoConsent` where `consented_at < 180 days ago`, cursor-
+  paginated (batch 50), best-effort deletion of 3 R2 keys per row
+  (customer/garment/result) + DB row. One failure never blocks the rest.
+- `apps/api/src/jobs/cleanup-training-data.test.ts` — 6 vitest cases:
+  empty DB, batch processing, null result key, R2 failure resilience,
+  cursor pagination shape, 180-day date cutoff. All 16 API tests pass.
+- Wired into `apps/api/src/jobs/index.ts` — `cleanupQueue` worker
+  (concurrency 1), repeatable BullMQ job at 2 AM UTC daily with `limit: 1`.
+- **Migration 009 (`revocation_token`) applied to live Supabase** + Prisma
+  client regenerated v5.22.0.
+
+**Done — consent-revocation flow (full stack):**
+
+| Layer | What |
+|-------|------|
+| **DB** | `009_revocation_token/migration.sql`: `revocation_token TEXT` + `gen_random_uuid()` backfill + UNIQUE constraint. `@default(cuid())` on Prisma model. |
+| **API** | `POST /v1/consent/revoke` — validates cuid2 token, deletes 3 R2 objects via `Promise.allSettled`, removes DB row. Per-route rate limit 5/min/IP. `GET /v1/try-on/jobs/:id` and `GET /v1/try-on/remote/:id` both return `revocation_token` on completed jobs. Registered at `/v1/consent` in `index.ts`. |
+| **Web (customer-facing)** | `apps/web/src/app/consent/revoke/page.tsx` — client component, accepts `?token=` from URL or manual input, three states (confirm/done/error), calls `/v1/consent/revoke`. |
+| **Web (TryOnModal)** | Result step shows revocation link when `revocationToken` is present: "You opted in. Revoke consent and delete photos" → opens `/consent/revoke?token=xxx`. |
+| **Mobile (in-store)** | Captures `revocation_token` from poll, shows "Customer consented to training. Revoke consent" link via `Linking.openURL()` to web revocation page (`EXPO_PUBLIC_WEB_URL` / fallback `https://kanchuki.app`). |
+| **Docs** | `docs/SECURITY.md` §3c — token properties (cuid2, ~128-bit entropy, UNIQUE indexed, in-memory only), rate-limit math, 3-R2-object deletion scope, 6-threat-vector analysis. §3b stale Open items updated. |
+
+**Full revocation flow:**
+```
+Customer checks consent checkbox → try-on submitted
+  → Prisma auto-generates revocation_token (cuid2 @default)
+  → Poll response includes revocation_token
+  → Web/mobile shows revocation link
+  → Customer opens /consent/revoke?token=xxx
+  → Clicks "Revoke Consent & Delete Data"
+  → API deletes 3 R2 objects + TrainingPhotoConsent row
+  → Confirmation: "Your data has been deleted"
+```
+
+**Verification:** API typecheck ✅ | Web typecheck ✅ | Mobile typecheck ✅ | API tests 16/16 ✅ | Migration 009 applied ✅ | Code review clean ✅
+
+**PENDING (blocked on user decision):**
+- **🔴 CatVTON licensing** — CC BY-NC-SA 4.0 on the live engine is a real
+  legal exposure for a paid SaaS. Two paths: (a) email CatVTON's author for
+  a commercial license, or (b) route paid traffic through FASHN's
+  commercially-licensed API (~$0.075/try-on). See ADR-006 Revisit section in
+  `docs/adrs/ADR-006-defer-3d-parametric-vto.md`. Until decided, building
+  more on top of the NC-licensed engine only grows the exposure.
+- **🔴 Legal review of consent copy** — the training-data consent checkbox
+  text (web TryOnModal + mobile in-store) has not been reviewed under India's
+  DPDP Act 2023. Do not enable for real customer traffic until cleared.
+
+**Still open (not blocked, needs user action to test/verify):**
+- Real 2-piece garment try-on test (needs retailer-supplied matching
+  upper+lower photos uploaded via the mobile crop-tagging UI, then a real
+  `triggerTryOn()` call through the chained path).
+- Crop-tagging UI not exercised on a real device.
+- Migration 008 (`training_photo_consent`) not applied to live Supabase yet.
+- No training pipeline consumes `TrainingPhotoConsent` rows yet.
+
 **Resume here next session:**
-1. Still the CatVTON licensing decision from 2026-07-12 (unchanged, highest
-   priority open item).
-2. If training-data collection is to go live: apply migration 008, get a
-   retention policy + legal review on the consent copy before real customer
-   traffic hits the checkbox.
-3. Real device test of the crop-tagging flow against an actual vendor "set"
-   photo.
+1. **User decision needed:** CatVTON licensing path (see ADR-006) and legal
+   review timeline for consent copy — these gate further VTO/training work.
+2. Subject to #1: apply migration 008, test crop-tagging + multi-piece
+   chaining on a real 2-piece outfit, ship the training-data collection
+   flow.
+3. Independent of #1: continue with the non-VTO development priorities
+   listed in PLAN.md Phase 0 MVP (analytics, admin panel, pilot tooling,
+   RLS gaps, etc.).

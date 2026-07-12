@@ -5,6 +5,7 @@ import { handleTagProduct } from './tag-product.js'
 import { handleGenerateEmbedding } from './generate-embedding.js'
 import { handleExtractMeasurement } from './extract-measurement.js'
 import { handleProcessTryOn } from './process-tryon.js'
+import { handleCleanupTrainingData } from './cleanup-training-data.js'
 import type { MeasurementJobData } from './extract-measurement.js'
 import type { TryOnJobData } from './process-tryon.js'
 
@@ -29,6 +30,7 @@ let taggingQueue: Queue | null = null
 let embeddingQueue: Queue | null = null
 let measurementQueue: Queue | null = null
 let tryOnQueue: Queue | null = null
+let cleanupQueue: Queue | null = null
 
 function getTaggingQueue(): Queue {
   taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() })
@@ -48,6 +50,11 @@ function getMeasurementQueue(): Queue {
 function getTryOnQueue(): Queue {
   tryOnQueue ??= new Queue(QUEUES.TRY_ON, { connection: getRedis() })
   return tryOnQueue
+}
+
+function getCleanupQueue(): Queue {
+  cleanupQueue ??= new Queue(QUEUES.CLEANUP, { connection: getRedis() })
+  return cleanupQueue
 }
 
 // ─── Job Producers ────────────────────────────────────────────────
@@ -146,6 +153,28 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   )
 
+  // Training-data cleanup worker (concurrency 1 — lightweight, runs daily)
+  const cleanupWorker = new Worker(
+    QUEUES.CLEANUP,
+    async () => {
+      await handleCleanupTrainingData()
+    },
+    { connection: redis, concurrency: 1 },
+  )
+
+  // Schedule the cleanup to run daily at 2:00 AM UTC (add is idempotent —
+  // BullMQ deduplicates by job name + repeat key, so multiple restarts
+  // don't create duplicate schedules).
+  await getCleanupQueue().add(
+    'cleanup-training-data',
+    {},
+    {
+      repeat: { pattern: '0 2 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  )
+
   taggingWorker.on('failed', (job, err) => {
     console.error(`[jobs] tag-product failed ${job?.id}:`, err.message)
   })
@@ -162,5 +191,9 @@ export async function startWorkers(): Promise<void> {
     console.error(`[jobs] process-tryon failed ${job?.id}:`, err.message)
   })
 
-  console.log('[jobs] Workers started: ai-tagging, embeddings, measurement-extraction, try-on')
+  cleanupWorker.on('failed', (job, err) => {
+    console.error(`[jobs] cleanup-training-data failed ${job?.id}:`, err.message)
+  })
+
+  console.log('[jobs] Workers started: ai-tagging, embeddings, measurement-extraction, try-on, cleanup-training-data')
 }

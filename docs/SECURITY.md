@@ -175,17 +175,125 @@ bundled into, the required processing consent in §3.
 
 ### Open items (flagged, not yet built)
 
-- No retention/deletion policy for `training-data/` yet — needs one before
-  real volume accumulates (§3's audit checklist should be extended once this
-  exists).
-- No customer-facing way to revoke consent or request deletion of an
-  already-retained training copy. `customers.deleted_at`-style logic exists
-  for CRM data; this table needs the equivalent for a real launch.
+- Retention/deletion policy for `training-data/` — now implemented (180-day
+  cleanup cron at `apps/api/src/jobs/cleanup-training-data.ts`). See §3c for
+  the companion revocation flow. Earlier sessions' "not built" notes are
+  superseded.
 - India's DPDP Act 2023 treats this as processing personal data requiring
   clear, specific, informed consent — the copy above was written to be
   specific about scope, but has **not** had a legal review pass. Treat as
   a placeholder needing sign-off before this ships to real customers, same
   status as the original consent text below.
+
+---
+
+## 3c. Training-Data Consent Revocation (F-102d — token-based, no login)
+
+Customers who opted in to training-data collection (§3b) receive a
+`revocation_token` — a random, unguessable cuid2 string (~64 chars, generated
+by Prisma `@default(cuid())`) that serves as a bearer credential to prove
+ownership of a specific `TrainingPhotoConsent` record. No customer account,
+password, or retailer involvement is needed.
+
+### Revocation Flow
+
+```
+1. Customer opts in at try-on time (unchecked checkbox → they check it)
+2. Try-on completes → process-tryon.ts saves TrainingPhotoConsent
+   → Prisma auto-generates revocation_token via @default(cuid())
+3. TryOnJob poll response includes revocation_token in response body
+4. Result screen shows: "You opted in. Revoke consent and delete my photos"
+5. Link opens /consent/revoke?token=<token> (web) or system browser (mobile)
+6. Customer sees confirmation page with warning: "This cannot be undone"
+7. On confirm → POST /v1/consent/revoke { token }
+8. API:
+   a. Looks up TrainingPhotoConsent by revocation_token (unique index)
+   b. Deletes 3 R2 objects (customer.jpg, garment.jpg, result.jpg) via
+      Promise.allSettled — best-effort, individual failures logged but
+      do not block the DB row deletion
+   c. Deletes TrainingPhotoConsent DB row
+9. Response: "Consent revoked, data deleted."
+```
+
+### Token Properties
+
+| Property | Value |
+|----------|-------|
+| Generation | `@default(cuid())` in Prisma (delegates to `createId` from `@paralleldrive/cuid2`) |
+| Length | ~24-28 characters, base36 encoded |
+| Entropy | ~128 bits (cuid2 spec) |
+| Storage | `training_photo_consents.revocation_token` — UNIQUE indexed |
+| Lifetime | Permanent — deleted when the row is purged by the 180-day retention cron (§10) |
+| Exposure | Returned to customer via try-on result screen, stored in-memory only on the client |
+
+### Authentication Model
+
+`POST /v1/consent/revoke` is **deliberately unprotected by the authPlugin** —
+customers do not have user accounts or JWTs. Instead, the `revocation_token`
+itself is the sole authentication credential. This is a bearer-token model:
+
+- **Token = proof of ownership.** Possession of a valid token is sufficient
+  to delete that token's associated training data. No additional factors.
+- **No brute-force enumeration.** The token space (cuid2, ~128 bits of
+  entropy) is too large for online guessing within the rate limit
+  (5 requests/min per IP).
+- **No timing side-channels.** The `findUnique` query + `validationError`
+  response for invalid tokens uses the same code path regardless of whether
+  the token exists, preventing response-time oracle attacks.
+- **No valid/invalid token leakage.** The error message for an unknown token
+  is intentionally vague: "Invalid or expired revocation token" — does not
+  reveal whether the token format was valid but not found.
+
+### Rate Limiting
+
+| Scope | Limit | Mechanism |
+|-------|-------|-----------|
+| Per-IP (POST /v1/consent/revoke) | 5 requests per minute | Fastify route-level `config.rateLimit` (`@fastify/rate-limit`) |
+| Per-IP (global) | 200 requests per minute | Fastify plugin-level rate limit (fallback) |
+
+300 attempts per hour × ~128-bit token space makes brute force infeasible.
+
+### What Gets Deleted
+
+When a customer revokes, the following is permanently removed:
+
+| Resource | Location | Deletion Method |
+|----------|----------|----------------|
+| Customer photo | R2 `training-data/{jobId}/customer.jpg` | `deleteObject()` via S3 API |
+| Garment photo | R2 `training-data/{jobId}/garment.jpg` | `deleteObject()` via S3 API |
+| Try-on result | R2 `training-data/{jobId}/result.jpg` (if non-null) | `deleteObject()` via S3 API |
+| Consent record | `training_photo_consents` row | `prisma.delete()` |
+
+**NOT affected by revocation:**
+- The customer's original try-on result (`tryon-results/{jobId}/result.jpg`)
+  — this is covered by the normal 24h-expiry policy (§3), not the training
+  store, and is untouched by revocation.
+- Any `TryOnJob` record — revocation only touches `TrainingPhotoConsent`.
+
+### Threat Model
+
+| Threat | Likelihood | Impact | Mitigation |
+|--------|-----------|--------|------------|
+| Attacker guesses a valid revocation_token | **Very low** — 128-bit token space, rate-limited to 5/min/IP | Attacker deletes a customer's training data (no data exposure, only deletion) | cuid2 entropy + rate limiting + vague error messages |
+| Attacker intercepts a revocation link in transit | **Low** — HTTPS required for all customer-facing pages | Attacker can delete that link's training data | TLS 1.3 on all endpoints; link is single-use in practice (deletion idempotent) |
+| Attacker steals revocation_token from client-side storage | **Low** — token stored in-memory only (React state), never in localStorage/cookies | Attacker can delete that session's training data | In-memory only; no persistent client-side storage of the token |
+| Insider (employee) deletes training data via DB access | **Medium** — service-role key has full access | Any training data can be deleted by an insider | Audit logging in `audit_logs` is planned but not yet implemented for consent operations |
+| Mass token guessing (distributed, many IPs) | **Low** — requires many distinct IPs each hitting the 5/min limit | Could delete a handful of training records per hour | No programmatic way to enumerate valid tokens — each guess is a separate DB lookup with no batch endpoint |
+| Revoked customer claims data was not deleted | **Low** — deletion is synchronous and confirmed | Reputational risk | `prisma.delete()` is strongly consistent; R2 `deleteObject` is read-after-write consistent. Both confirm success before the API responds. |
+
+### Open Items
+
+- **No audit logging.** Successful and failed revocation attempts are not
+  recorded in `audit_logs`. Add before launch for compliance (DPDP Act §25).
+- **No secondary verification.** A bearer token is the sole auth factor.
+  Consider an email/SMS confirmation step for high-value accounts, but this
+  requires storing a customer contact method — which the existing
+  `TrainingPhotoConsent` deliberately does not (it has no customer PII).
+- **No expiration on the revocation link itself.** If a customer copies the
+  URL and never uses it, the token remains valid until the 180-day retention
+  cleanup job (`apps/api/src/jobs/cleanup-training-data.ts`) purges the row.
+  This is acceptable — the worst case is that an old, leaked link could
+  delete stale data.
 
 ---
 

@@ -20,6 +20,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
   const [customerFile, setCustomerFile] = useState<File | null>(null)
   const [tryOnJobId, setTryOnJobId] = useState<string | null>(null)
   const [resultUrl, setResultUrl] = useState<string | null>(null)
+  const [revocationToken, setRevocationToken] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [consentToTraining, setConsentToTraining] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -95,6 +96,7 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
           if (pollData.data.status === 'COMPLETED' && pollData.data.result_url) {
             clearInterval(pollInterval)
             setResultUrl(pollData.data.result_url)
+            setRevocationToken((pollData.data as { revocation_token?: string | null }).revocation_token ?? null)
             setStep('result')
           } else if (pollData.data.status === 'FAILED') {
             clearInterval(pollInterval)
@@ -353,6 +355,22 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
                 Try Another Outfit
               </button>
             </div>
+
+            {revocationToken && (
+              <div className="mt-4 bg-gray-50 border border-gray-100 rounded-xl p-3">
+                <p className="text-[10px] text-gray-500 leading-4">
+                  You opted in to let Kanchuki use this try-on to improve results.{' '}
+                  <a
+                    href={`/consent/revoke?token=${encodeURIComponent(revocationToken)}`}
+                    className="text-cyan-600 hover:text-cyan-700 underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Revoke consent and delete my photos
+                  </a>
+                </p>
+              </div>
+            )}
 
             <p className="text-[10px] text-gray-400 text-center mt-3">
               Try-on preview expires in 24 hours. Your uploaded photo was not stored.

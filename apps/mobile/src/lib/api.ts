@@ -393,6 +393,7 @@ export const tryOnApi = {
         status: string
         result_url: string | null
         error_message: string | null
+        revocation_token: string | null
         created_at: string
         started_at: string | null
         completed_at: string | null

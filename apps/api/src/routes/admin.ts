@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@kanchuki/db'
+import { PLAN_PRICING } from '@kanchuki/shared'
 import { forbidden } from '../plugins/error-handler.js'
 
 function validAdminKey(provided: string | undefined): boolean {
@@ -114,6 +115,78 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       pagination: {
         cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
         has_more: hasMore,
+      },
+    }
+  })
+
+  // ─── POST /admin/billing/setup-plans ────────────────────────────
+  // Auto-creates all 6 Razorpay plans (3 plans × monthly/annual).
+  // Run once after setting RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET.
+  // Creates plans, prints the IDs as env var settings, does NOT modify DB.
+  server.post('/billing/setup-plans', async (request) => {
+    const created: Record<string, { id: string; period: string }> = {}
+
+    for (const planKey of ['STARTER', 'GROWTH', 'PRO'] as const) {
+      for (const period of ['monthly', 'annual'] as const) {
+        const amountPaise = PLAN_PRICING[planKey][period]
+        const name = `${planKey} ${period === 'monthly' ? 'Monthly' : 'Annual'}`
+
+        const res = await fetch('https://api.razorpay.com/v1/plans', {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(
+              `${process.env['RAZORPAY_KEY_ID'] ?? ''}:${process.env['RAZORPAY_KEY_SECRET'] ?? ''}`,
+            ).toString('base64')}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            period: period === 'monthly' ? 'monthly' : 'yearly',
+            interval: 1,
+            item: {
+              name: `Kanchuki ${name}`,
+              description: `Kanchuki ${planKey} plan — ${period} billing`,
+              amount: amountPaise,
+              currency: 'INR',
+            },
+            notes: {
+              plan: planKey,
+              billing_period: period,
+            },
+          }),
+        })
+
+        if (!res.ok) {
+          const body = await res.text()
+          request.log.error({ planKey, period, status: res.status, body }, 'Razorpay plan creation failed')
+          continue
+        }
+
+        const plan = (await res.json()) as { id: string }
+        created[`RAZORPAY_PLAN_${planKey}_${period === 'monthly' ? 'MONTHLY' : 'ANNUAL'}`] = {
+          id: plan.id,
+          period,
+        }
+      }
+    }
+
+    const count = Object.keys(created).length
+    request.log.info({ created }, `Created ${count}/6 Razorpay plans`)
+
+    // Build env var snippet for easy copy-paste into Railway/.
+    let envSnippet = '# Razorpay plan IDs — set these in your environment\n'
+    for (const [key, val] of Object.entries(created)) {
+      envSnippet += `${key}=${val.id}\n`
+    }
+    if (count === 0) {
+      envSnippet = 'No plans created. Check the server logs for Razorpay errors.'
+    }
+
+    return {
+      data: {
+        created: count,
+        total: 6,
+        env_vars: created,
+        env_snippet: envSnippet,
       },
     }
   })

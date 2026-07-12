@@ -159,6 +159,7 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
               result_r2_key: copy.resultR2Key,
               consent_version: TRAINING_CONSENT_VERSION,
               source: is_remote ? 'REMOTE' : 'IN_STORE',
+              // revocation_token uses the Prisma @default(cuid()) — auto-generated
             },
           })
         } catch (err) {

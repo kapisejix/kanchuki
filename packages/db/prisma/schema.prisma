@@ -593,6 +593,12 @@ model TrainingPhotoConsent {
   consent_version String // matches the consent copy text shown at capture time
   source          TryOnSource
 
+  // Random token returned to the customer via the try-on result screen.
+  // The customer presents this token at /consent/revoke to prove ownership
+  // and request deletion of their training-data copy — no login needed.
+  // See docs/PRO-REQUIREMENTS.md F-102d and docs/SECURITY.md §3b.
+  revocation_token String @unique @default(cuid())
+
   consented_at DateTime @default(now())
 
   @@map("training_photo_consents")
