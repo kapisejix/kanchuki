@@ -834,3 +834,77 @@ code-complete, unconfirmed end-to-end, same pattern as everything else in
 this file. Real next step: apply migration 007, tag a real 2-piece product's
 photos, run one `triggerTryOn()` call through the chained path and visually
 check the result.
+
+---
+
+## 2026-07-12 (later still) — migration 007 applied, chaining mechanism confirmed, Railway URLs fixed live
+
+**#1 done:** migration 007 (`product_photos.piece_type`) applied to live
+Supabase via `apply_migration`. Confirmed via `list_tables`.
+
+**#2 done — mechanism confirmed working, visual quality untested fairly:**
+Seed data has no product with 2 photos, so no real matching upper+lower
+pair exists yet. Temporarily tagged product `cmrfvyjmj0002sozgpti8j77p`
+(Ladies Suit) with its existing photo as `piece_type='upper'` and added a
+second row pointing at a *different* Ladies Suit product's photo as
+`piece_type='lower'` (scratch DB rows, both removed after the test).
+Ran the real `triggerTryOn()` chained path (not raw RunPod) via new
+`packages/ai/scratch-test-multipiece.mjs` — rebuilt `packages/ai` first so
+`dist/tryon.js` matched the latest source. Result: **completed in 53s, no
+errors**, two sequential CatVTON calls chained correctly (upper onto
+customer photo, lower onto the first result, intermediate persisted to R2)
+— confirms the F-102 chaining mechanism itself works end-to-end. Visual
+output was a poor match, but that's expected/uninformative here: the two
+source photos aren't actually upper+lower of the same real outfit (no such
+pair exists in seed data), so this run cannot confirm or deny the garment-
+fidelity quality bar. **Real quality confirmation still needs an actual
+photographed 2-piece outfit (retailer uploads matching upper+lower shots
+via the mobile UI) — not done this session.**
+
+**#3 done — Phase 0 MVP confirmed live:** `railway status` (CLI now
+authenticated, unlike the prior session) shows both services Online:
+- API: `https://supportive-love-production-293a.up.railway.app` — `/health`
+  returns `{"status":"ok",...}`.
+- Web: `https://magnificent-liberation-production-5e44.up.railway.app` —
+  returns real Next.js HTML.
+
+**#4 done — dead service confirmed gone:** `railway status` lists only 2
+services (`supportive-love`, `magnificent-liberation`) — `lovely-joy` no
+longer exists, already resolved (by user or earlier cleanup), nothing to do.
+
+**Bonus bug found + fixed — cross-wire URLs were pointing at the wrong
+domain:** `WEB_URL` (on API) and `NEXT_PUBLIC_API_URL` (on Web) were set to
+`https://<service>-production.up.railway.app` (no suffix) — both 404'd.
+Real domains have a random suffix (`-293a`, `-5e44`) appended, presumably
+because the bare name collided with another Railway project globally.
+Fixed both vars via `railway variables --set` to the correct suffixed URLs.
+
+**Second bug found + fixed — `railway variables --set` doesn't actually
+rebake `NEXT_PUBLIC_*` vars:** after setting `NEXT_PUBLIC_API_URL` and
+waiting for the auto-triggered redeploy to finish, the web app's rendered
+HTML (`<link rel="preconnect">` in `layout.tsx`) still showed the *old*
+unsuffixed value — a var-triggered redeploy does not rerun `pnpm build`
+with the new value baked in (likely serving a cached build artifact/image
+layer, not a genuine `next build`). `NEXT_PUBLIC_*` vars are inlined into
+the client bundle at build time, so a runtime-only restart can't pick up
+the change. Fixed by forcing a real rebuild: `railway up -s
+magnificent-liberation -e production -c`. Confirmed after: preconnect link
+now shows the correct `-293a` API URL. **Lesson for next time:** any
+`NEXT_PUBLIC_*` var change on Railway needs `railway up` (full rebuild),
+not just `railway variables --set` (which is sufficient for runtime-only
+vars like `WEB_URL` on the API, but not build-time-inlined ones on Web).
+
+Verified end-to-end after both fixes: API health 200, Web home 200, CORS
+preflight-equivalent check with the real Web origin returns 200 from API.
+
+**Cleanup:** deleted the two scratch DB rows used for the #2 test;
+`packages/ai/scratch-test-multipiece.mjs` left in place (untracked, same
+convention as `scratch-test-tryon.mjs` — delete once no longer needed).
+
+**Still open:**
+- Real 2-piece garment photo test (retailer-tagged, matching real outfit
+  pieces) — the only way to actually confirm/deny the visual-quality bar
+  for the chaining path.
+- Customer-web size hint — deferred per 2026-07-12 (earlier) entry, revisit
+  only if anonymous customer identity gets solved.
+- `GHCR_PAT` rotation — already confirmed done (see earlier same-day entry).
