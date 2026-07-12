@@ -12,7 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, Ruler, Clock } from 'lucide-react-native'
-import { customerApi } from '../../src/lib/api'
+import { customerApi, sizeChartApi } from '../../src/lib/api'
 import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
 
 const STYLE_OPTIONS = ['Casual', 'Party', 'Office', 'Wedding', 'Festive']
@@ -66,6 +66,20 @@ export default function CustomerDetailScreen() {
     queryFn: () => customerApi.getMeasurements(id),
   })
   const measurements = (measurementsData as { data: Measurement[] } | undefined)?.data ?? []
+  const hasMeasurement = measurements.length > 0
+
+  // Recommended size per category — 404 (no chart set, or no matching row)
+  // is an expected outcome here, not a query failure, so swallow to null.
+  const { data: upperSize } = useQuery({
+    queryKey: ['customers', id, 'recommend', 'UPPER'],
+    queryFn: () => sizeChartApi.recommend(id, 'UPPER').then((r) => r.data).catch(() => null),
+    enabled: hasMeasurement,
+  })
+  const { data: lowerSize } = useQuery({
+    queryKey: ['customers', id, 'recommend', 'LOWER'],
+    queryFn: () => sizeChartApi.recommend(id, 'LOWER').then((r) => r.data).catch(() => null),
+    enabled: hasMeasurement,
+  })
 
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
@@ -373,6 +387,23 @@ export default function CustomerDetailScreen() {
                   )}
                 </View>
               ))}
+            </View>
+          )}
+
+          {(upperSize || lowerSize) && (
+            <View className="flex-row gap-2 mt-3">
+              {upperSize && (
+                <View className="bg-emerald-50 rounded-xl px-3 py-2 flex-1">
+                  <Text className="text-[10px] text-emerald-700 font-semibold uppercase">Upper Size</Text>
+                  <Text className="text-sm font-bold text-emerald-800">{upperSize.size_label}</Text>
+                </View>
+              )}
+              {lowerSize && (
+                <View className="bg-emerald-50 rounded-xl px-3 py-2 flex-1">
+                  <Text className="text-[10px] text-emerald-700 font-semibold uppercase">Lower Size</Text>
+                  <Text className="text-sm font-bold text-emerald-800">{lowerSize.size_label}</Text>
+                </View>
+              )}
             </View>
           )}
         </View>

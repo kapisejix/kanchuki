@@ -471,6 +471,11 @@ export const sizeChartApi = {
       method: 'PUT',
       body: JSON.stringify({ category, rows }),
     }),
+
+  recommend: (customerId: string, category: SizeChartCategory) =>
+    request<{ data: { size_label: string; row_id: string } }>(
+      `/v1/size-charts/recommend?customer_id=${customerId}&category=${category}`,
+    ),
 }
 
 // ─── Billing ──────────────────────────────────────────────────────
