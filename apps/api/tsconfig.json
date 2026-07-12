@@ -2,16 +2,17 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
+    "rootDir": "src",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "exactOptionalPropertyTypes": false,
     "paths": {
-      "@kanchuki/shared": ["../../packages/shared/src/index.ts"],
-      "@kanchuki/shared/*": ["../../packages/shared/src/*"],
-      "@kanchuki/ai": ["../../packages/ai/src/index.ts"],
-      "@kanchuki/ai/*": ["../../packages/ai/src/*"],
-      "@kanchuki/db": ["../../packages/db/src/index.ts"],
-      "@kanchuki/db/*": ["../../packages/db/src/*"]
+      "@kanchuki/shared": ["../../packages/shared/dist/index.d.ts"],
+      "@kanchuki/shared/*": ["../../packages/shared/dist/*"],
+      "@kanchuki/ai": ["../../packages/ai/dist/index.d.ts"],
+      "@kanchuki/ai/*": ["../../packages/ai/dist/*"],
+      "@kanchuki/db": ["../../packages/db/dist/index.d.ts"],
+      "@kanchuki/db/*": ["../../packages/db/dist/*"]
     }
   },
   "include": ["src/**/*"]
