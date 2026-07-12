@@ -1040,12 +1040,9 @@ Customer checks consent checkbox → try-on submitted
 **Verification:** API typecheck ✅ | Web typecheck ✅ | Mobile typecheck ✅ | API tests 16/16 ✅ | Migration 009 applied ✅ | Code review clean ✅
 
 **PENDING (blocked on user decision):**
-- **🔴 CatVTON licensing** — CC BY-NC-SA 4.0 on the live engine is a real
-  legal exposure for a paid SaaS. Two paths: (a) email CatVTON's author for
-  a commercial license, or (b) route paid traffic through FASHN's
-  commercially-licensed API (~$0.075/try-on). See ADR-006 Revisit section in
-  `docs/adrs/ADR-006-defer-3d-parametric-vto.md`. Until decided, building
-  more on top of the NC-licensed engine only grows the exposure.
+- **✅ CatVTON licensing — RESOLVED 2026-07-13.** User confirmed commercial
+  license obtained from CatVTON's author (option 1 in ADR-006). No engine
+  swap needed, NC-exposure closed. VTO work unblocked.
 - **🔴 Legal review of consent copy** — the training-data consent checkbox
   text (web TryOnModal + mobile in-store) has not been reviewed under India's
   DPDP Act 2023. Do not enable for real customer traffic until cleared.
@@ -1055,15 +1052,31 @@ Customer checks consent checkbox → try-on submitted
   upper+lower photos uploaded via the mobile crop-tagging UI, then a real
   `triggerTryOn()` call through the chained path).
 - Crop-tagging UI not exercised on a real device.
-- Migration 008 (`training_photo_consent`) not applied to live Supabase yet.
 - No training pipeline consumes `TrainingPhotoConsent` rows yet.
 
+---
+
+## 2026-07-13 (later) — CatVTON licensing resolved, migration 008 applied live
+
+User confirmed commercial license obtained from CatVTON's author (ADR-006
+option 1). Updated `docs/adrs/ADR-006-defer-3d-parametric-vto.md` and the
+PENDING section above to reflect resolution — no engine swap needed,
+NC-exposure closed, VTO work unblocked.
+
+Applied migration `008_training_photo_consent` to live Supabase
+(`thpqcylmcxokajxoerjx`) — idempotent DO-block migration, confirmed via
+`list_tables`: `training_photo_consents` shows `rls_enabled: true`, 0 rows
+(zero-policy default-deny, as designed). `_prisma_migrations` RLS-disabled
+advisory fired again — same pre-existing, deliberately-left gap from
+2026-07-11 (not tenant data), not a new issue.
+
 **Resume here next session:**
-1. **User decision needed:** CatVTON licensing path (see ADR-006) and legal
-   review timeline for consent copy — these gate further VTO/training work.
-2. Subject to #1: apply migration 008, test crop-tagging + multi-piece
-   chaining on a real 2-piece outfit, ship the training-data collection
-   flow.
-3. Independent of #1: continue with the non-VTO development priorities
-   listed in PLAN.md Phase 0 MVP (analytics, admin panel, pilot tooling,
-   RLS gaps, etc.).
+1. Real 2-piece garment try-on test (retailer-supplied matching upper+lower
+   photos via mobile crop-tagging UI, then chained `triggerTryOn()` call) —
+   now the main open item, licensing no longer blocks it.
+2. Crop-tagging UI — exercise on a real device.
+3. Legal review of consent copy under DPDP Act 2023 — still open, separate
+   from licensing, blocks turning training-data collection on for real
+   customer traffic (not blocking further dev).
+4. Independent: non-VTO Phase 0 priorities in PLAN.md (perf, onboarding
+   tutorial, Razorpay trial flow, admin panel, 10-retailer pilot).

@@ -5,8 +5,10 @@ Revisited 2026-07-12 for a related but different question — swapping CatVTON
 for a 2D dual-UNet model (IDM-VTON/OOTDiffusion). See **Revisit** section
 below for that decision, plus a licensing finding that affects the
 **currently deployed, revenue-facing** CatVTON engine, not just the
-hypothetical upgrade.
-**Date:** 2026-07-11 (original), 2026-07-12 (revisit)
+hypothetical upgrade. **Resolved 2026-07-13: commercial license for CatVTON
+obtained from the author (option 1) — no engine swap needed, NC-exposure
+closed.**
+**Date:** 2026-07-11 (original), 2026-07-12 (revisit), 2026-07-13 (licensing resolved)
 **Context:** Phase 1 (Virtual Try-On), evaluated after early CatVTON quality complaints ("not even 1% close" on product+customer image match)
 
 ## Decision
@@ -109,14 +111,12 @@ checkpoint that is safe to use commercially as-is.** DCI-VTON's MIT *code*
 license is the closest thing to good news, and it isn't actually good news
 once the VITON-HD dataset lineage is accounted for.
 
-**Licensing options, ranked by effort (this needs a decision from you, not
-an assumption from me):**
+**Licensing options, ranked by effort:**
 
-1. **Email Zheng Chong (CatVTON's author) and ask about a paid commercial
-   license.** Cheapest possible fix if one exists — costs nothing but an
-   email and a wait. README has no public commercial-license process, but
-   that doesn't mean the author won't grant one on request; this is common
-   for CC-BY-NC academic releases. Not yet attempted.
+1. **✅ RESOLVED 2026-07-13 — Email Zheng Chong (CatVTON's author) and ask
+   about a paid commercial license.** User confirmed approval obtained.
+   No engine swap or NC-exposure mitigation needed; the currently-deployed
+   CatVTON weights are now commercially licensed for Kanchuki's use.
 2. **Route paid/production try-ons through a commercially-licensed API**
    (FASHN: $0.075/try-on at low volume, drops under $0.04/try-on at volume,
    explicitly commercial-use-licensed) **and keep self-hosted CatVTON only
