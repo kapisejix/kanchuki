@@ -897,9 +897,12 @@ vars like `WEB_URL` on the API, but not build-time-inlined ones on Web).
 Verified end-to-end after both fixes: API health 200, Web home 200, CORS
 preflight-equivalent check with the real Web origin returns 200 from API.
 
-**Cleanup:** deleted the two scratch DB rows used for the #2 test;
-`packages/ai/scratch-test-multipiece.mjs` left in place (untracked, same
-convention as `scratch-test-tryon.mjs` — delete once no longer needed).
+**Cleanup:** deleted the two scratch DB rows used for the #2 test.
+`packages/ai/scratch-test-multipiece.mjs` committed to the repo (not
+deleted like prior scratch scripts — kept as the reusable chained-path
+smoke test until a real 2-piece product test replaces it).
+
+Committed (`00b39f6`) and pushed to `origin/main`.
 
 **Still open:**
 - Real 2-piece garment photo test (retailer-tagged, matching real outfit
