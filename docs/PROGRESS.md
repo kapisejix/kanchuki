@@ -668,3 +668,56 @@ actually implemented in `tryon.ts`, only spec'd.
 dupatta) before spending more GPU time on multi-piece cases — isolates
 whether the category-mismatch theory is right or whether CatVTON itself is
 misbehaving for this garment style/domain regardless of piece count.
+
+## 2026-07-12 (later still) — Railway CI deploy: 4 real bugs fixed, 1 blocker remains (502)
+
+User got both a personal and project-scoped Railway API token, plus the two
+missing secrets from the prior session's blocker list. Set via `gh secret
+set`: `RAILWAY_API_SERVICE_ID` (`784d630d-029f-4fd4-b16e-03bdcf5eaab6`),
+`RAILWAY_WEB_SERVICE_ID` (`5c6c202c-9622-41ac-b7a2-8666f7513a73`), and
+`RAILWAY_TOKEN` replaced with the new project token. All 4 secrets confirmed
+present via `gh secret list`.
+
+Triggered `deploy.yml` via `workflow_dispatch` repeatedly to test end-to-end
+— found and fixed 4 real, distinct bugs in the workflow itself, one per
+run, each confirmed by reading the actual failure log (not guessed):
+
+1. **pnpm version conflict** — `pnpm/action-setup@v4` had `version: 9`
+   hardcoded while `package.json` pins `packageManager: pnpm@9.0.0`; the
+   action now treats both being set as a hard error. Fix: dropped the
+   `version:` key (and the now-dead `PNPM_VERSION` env var), let the action
+   read `packageManager`. Commit `5f0ab52`.
+2. **Installer piped to `sh` instead of `bash`** — `curl .../install.sh |
+   sh` hit `Bad Substitution` because Railway's install script uses bash
+   parameter-expansion syntax. Fix: pipe to `bash`. Commit `cf705cc`.
+3. **CLI not on `$GITHUB_PATH`** — installer drops the binary at
+   `~/.railway/bin/railway` but doesn't export it; each workflow step is a
+   fresh shell so the next step got `command not found` (exit 127). Fix:
+   `echo "$HOME/.railway/bin" >> "$GITHUB_PATH"` right after install.
+   Commit `1a33f69`.
+4. **Missing `--environment` flag** — per Railway's own CLI docs, a
+   project token requires `--environment` to be passed explicitly to
+   `railway up`; without it, requests intermittently came back `404` or
+   `502`. Fix: added `--environment production` to both `railway up`
+   calls. Commit `41f44d3`. (Env name `production` taken on user's word,
+   matches Railway's default — not independently verified against the
+   dashboard.)
+
+**Still blocked:** even with all 4 fixes in place, `railway up` now fails
+consistently with `Failed to upload code with status code 502 Bad Gateway`
+on both `deploy-api` and `deploy-web`, every run, no `railway.statuspage.io`
+incident reported for this window — so not a general Railway outage.
+Stopped retrying blind after this (session cost flagged, and CI-side fixes
+are exhausted — this didn't change across 3 consecutive attempts with the
+same config).
+
+**Next step (assigned to user, needs local machine not CI):** run the exact
+same command locally with the project token to isolate CI-runner-network
+vs. project/token-side cause:
+```bash
+railway up --detach --environment production --service 784d630d-029f-4fd4-b16e-03bdcf5eaab6
+```
+If it 502s locally too → Railway/project-side issue, contact Railway
+support. If it works locally → something specific to GitHub Actions
+runners (IP block, egress path) — different investigation needed. User
+said they'll test this later; no further CI runs planned until then.
