@@ -80,7 +80,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Install Railway CLI
-        run: curl -fsSL https://railway.com/install.sh | sh
+        run: curl -fsSL https://railway.com/install.sh | bash
 
       - name: Deploy to Railway
         env:
@@ -108,7 +108,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Install Railway CLI
-        run: curl -fsSL https://railway.com/install.sh | sh
+        run: curl -fsSL https://railway.com/install.sh | bash
 
       - name: Deploy to Railway
         env:
