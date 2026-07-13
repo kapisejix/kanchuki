@@ -177,6 +177,7 @@ export const QUEUES = {
   TRY_ON: 'kanchuki-try-on',
   CLEANUP: 'kanchuki-cleanup',
   MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
+  FASHION_DNA: 'kanchuki-fashion-dna',
 } as const
 
 // ─── Cache TTLs (seconds) ─────────────────────────────────────────

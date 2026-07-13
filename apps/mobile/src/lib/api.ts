@@ -458,6 +458,21 @@ export const customerApi = {
       `/v1/customers/${id}/measurements/${measurementId}/extract`,
       { method: 'POST' },
     ),
+
+  // Phase 1 — AI-matched products based on Fashion DNA
+  getMatches: (id: string, params?: { limit?: number; category?: string; price_max?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.limit) qs.set('limit', String(params.limit))
+    if (params?.category) qs.set('category', params.category)
+    if (params?.price_max) qs.set('price_max', String(params.price_max))
+    return request<{
+      data: {
+        products: Array<Record<string, unknown>>
+        dna_used: boolean
+        dna_confidence: number
+      }
+    }>(`/v1/customers/${id}/matches?${qs}`, { getCacheTtlMs: 60_000 })
+  },
 }
 
 // ─── Size Charts ──────────────────────────────────────────────────
@@ -660,4 +675,12 @@ export const collectionApi = {
 
   get: (id: string) =>
     request<{ data: unknown }>(`/v1/collections/${id}`, { getCacheTtlMs: 30_000 }),
+
+  // Phase 1 — AI auto-suggest collection for a customer
+  autoSuggest: (customerId: string, title?: string) =>
+    request<{ data: Record<string, unknown> }>('/v1/collections/auto-suggest', {
+      method: 'POST',
+      body: JSON.stringify({ customer_id: customerId, title, limit: 12 }),
+      timeoutMs: 15_000,
+    }),
 }

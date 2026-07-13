@@ -6,8 +6,10 @@ import { handleGenerateEmbedding } from './generate-embedding.js'
 import { handleExtractMeasurement } from './extract-measurement.js'
 import { handleProcessTryOn } from './process-tryon.js'
 import { handleCleanupTrainingData } from './cleanup-training-data.js'
+import { handleUpdateFashionDNA } from './update-fashion-dna.js'
 import type { MeasurementJobData } from './extract-measurement.js'
 import type { TryOnJobData } from './process-tryon.js'
+import type { FashionDNAJobData } from './update-fashion-dna.js'
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -31,6 +33,7 @@ let embeddingQueue: Queue | null = null
 let measurementQueue: Queue | null = null
 let tryOnQueue: Queue | null = null
 let cleanupQueue: Queue | null = null
+let fashionDNAQueue: Queue | null = null
 
 function getTaggingQueue(): Queue {
   taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() })
@@ -57,7 +60,21 @@ function getCleanupQueue(): Queue {
   return cleanupQueue
 }
 
+function getFashionDNAQueue(): Queue {
+  fashionDNAQueue ??= new Queue(QUEUES.FASHION_DNA, { connection: getRedis() })
+  return fashionDNAQueue
+}
+
 // ─── Job Producers ────────────────────────────────────────────────
+
+export async function addFashionDNAJob(data: FashionDNAJobData): Promise<void> {
+  await getFashionDNAQueue().add('update-fashion-dna', data, {
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 5000 },
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 100 },
+  })
+}
 
 export interface TaggingJobData {
   product_id: string
@@ -153,6 +170,16 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   )
 
+  // Fashion DNA worker (concurrency 2 — OpenAI embedding calls are the bottleneck)
+  const fashionDNAWorker = new Worker(
+    QUEUES.FASHION_DNA,
+    async (job) => {
+      const data = job.data as FashionDNAJobData
+      await handleUpdateFashionDNA(data)
+    },
+    { connection: redis, concurrency: 2 },
+  )
+
   // Training-data cleanup worker (concurrency 1 — lightweight, runs daily)
   const cleanupWorker = new Worker(
     QUEUES.CLEANUP,
@@ -191,9 +218,13 @@ export async function startWorkers(): Promise<void> {
     console.error(`[jobs] process-tryon failed ${job?.id}:`, err.message)
   })
 
+  fashionDNAWorker.on('failed', (job, err) => {
+    console.error(`[jobs] update-fashion-dna failed ${job?.id}:`, err.message)
+  })
+
   cleanupWorker.on('failed', (job, err) => {
     console.error(`[jobs] cleanup-training-data failed ${job?.id}:`, err.message)
   })
 
-  console.log('[jobs] Workers started: ai-tagging, embeddings, measurement-extraction, try-on, cleanup-training-data')
+  console.log('[jobs] Workers started: ai-tagging, embeddings, measurement-extraction, try-on, fashion-dna, cleanup-training-data')
 }

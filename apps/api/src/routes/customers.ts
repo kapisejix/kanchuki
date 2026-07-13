@@ -5,7 +5,8 @@ import { prisma, Prisma } from '@kanchuki/db'
 import { normalizeIndianPhone, R2_PATHS } from '@kanchuki/shared'
 import { getUploadPresignedUrl } from '@kanchuki/ai'
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js'
-import { addMeasurementJob } from '../jobs/index.js'
+import { addMeasurementJob, addFashionDNAJob } from '../jobs/index.js'
+import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, formatPreferenceVector } from '@kanchuki/ai'
 
 const ManualMeasurementSchema = z.object({
   height_cm: z.number().min(50).max(250),
@@ -218,6 +219,14 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       })
     }
 
+    // Queue Fashion DNA update — interaction activity changes preferences
+    await addFashionDNAJob({
+      customer_id: id,
+      retailer_id: request.retailerId,
+    }).catch(() => {
+      // Non-critical — DNA update is best-effort
+    })
+
     return reply.status(201).send({ data: interaction })
   })
 
@@ -331,5 +340,153 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       take: 10,
     })
     return { data: measurements }
+  })
+
+  // ─── GET /customers/:id/matches ───────────────────────────────────
+  // AI-matched products based on Fashion DNA preference vector.
+  // Returns top 12 products sorted by match_score.
+  // Falls back to explicit preference matching if DNA confidence is low.
+  server.get('/:id/matches', async (request) => {
+    const { id } = request.params as { id: string }
+    const retailerId = request.retailerId
+
+    const query = z
+      .object({
+        limit: z.coerce.number().int().min(1).max(50).default(12),
+        category: z.string().optional(),
+        price_max: z.coerce.number().int().min(0).optional(),
+      })
+      .safeParse(request.query)
+    if (!query.success) throw validationError('Invalid query')
+
+    const { limit, category, price_max } = query.data
+
+    // Also verify customer belongs to this retailer
+    const customer = await prisma.customer.findFirst({
+      where: { id, retailer_id: retailerId, deleted_at: null },
+    })
+    if (!customer) throw notFound('Customer')
+
+    let matchedProductIds: string[] = []
+    let dna_used = false
+    let dna_confidence = 0
+
+    // Step 1: Check if customer has a DNA record with enough confidence
+    // preference_vector is Unsupported("vector(1536)") — use $queryRaw to read it
+    type DNARow = {
+      preference_vector: string | null
+      confidence_score: number | null
+    }
+    const dnaRows = await prisma.$queryRaw<DNARow[]>`
+      SELECT
+        preference_vector::text,
+        confidence_score
+      FROM customer_fashion_dna
+      WHERE customer_id = ${id}
+      LIMIT 1
+    `
+    const dnaRow = dnaRows[0]
+    dna_confidence = dnaRow?.confidence_score ?? 0
+
+    if (dnaRow?.preference_vector && dna_confidence >= MIN_CONFIDENCE_FOR_MATCHING) {
+      // ── Path A: DNA-guided vector similarity search ──────────────
+      dna_used = true
+
+      type RawMatchRow = {
+        id: string
+        match_score: number
+      }
+
+      const conditions = [
+        `p.retailer_id = '${retailerId}'`,
+        `p.deleted_at IS NULL`,
+        `p.status = 'AVAILABLE'`,
+      ]
+      if (price_max != null) conditions.push(`p.price_min <= ${price_max}`)
+      if (category) conditions.push(`p.category = '${category.replace(/'/g, "''")}'`)
+
+      const rows = await prisma.$queryRaw<RawMatchRow[]>`
+        SELECT
+          p.id,
+          (1 - (pe.embedding <=> ${Prisma.raw(`'${dnaRow.preference_vector}'`)})) AS match_score
+        FROM products p
+        JOIN product_embeddings pe ON p.id = pe.product_id
+        WHERE ${Prisma.raw(conditions.join(' AND '))}
+        ORDER BY match_score DESC
+        LIMIT ${limit * 2}
+      `
+
+      matchedProductIds = rows
+        .filter((r) => Number(r.match_score) > MATCH_SIMILARITY_THRESHOLD)
+        .slice(0, limit)
+        .map((r) => r.id)
+    }
+
+    if (matchedProductIds.length === 0) {
+      // ── Path B (fallback): find products matching explicit preferences ──
+      const prefColors = customer.pref_colors ?? []
+      const prefOccasions = customer.pref_occasions ?? []
+      const prefFabrics = customer.pref_fabrics ?? []
+
+      const orConditions: Prisma.ProductWhereInput[] = []
+
+      if (prefColors.length > 0) {
+        orConditions.push({ primary_color: { in: prefColors } })
+        orConditions.push({ secondary_colors: { hasSome: prefColors } })
+      }
+      if (prefOccasions.length > 0) {
+        orConditions.push({ occasions: { hasSome: prefOccasions } })
+      }
+      if (prefFabrics.length > 0) {
+        orConditions.push({ fabric_estimate: { in: prefFabrics } })
+      }
+
+      const fallbackProducts = await prisma.product.findMany({
+        where: {
+          retailer_id: retailerId,
+          deleted_at: null,
+          status: 'AVAILABLE',
+          ...(price_max != null ? { price_min: { lte: price_max } } : {}),
+          ...(category ? { category } : {}),
+          ...(orConditions.length > 0 ? { OR: orConditions } : {}),
+        },
+        take: limit,
+        orderBy: { created_at: 'desc' },
+        select: { id: true },
+      })
+      matchedProductIds = fallbackProducts.map((p) => p.id)
+    }
+
+    // Fetch full product data for matched IDs
+    if (matchedProductIds.length === 0) {
+      return { data: { products: [], dna_used, dna_confidence } }
+    }
+
+    const products = await prisma.product.findMany({
+      where: { id: { in: matchedProductIds }, retailer_id: retailerId },
+      include: {
+        photos: { where: { is_primary: true }, take: 1 },
+        section: { select: { name: true } },
+      },
+      orderBy: { created_at: 'desc' },
+    })
+
+    // Preserve the order from similarity ranking
+    const productMap = new Map(products.map((p) => [p.id, p]))
+    const ordered = matchedProductIds
+      .map((id) => productMap.get(id))
+      .filter((p): p is NonNullable<typeof p> => p != null)
+
+    return {
+      data: {
+        products: ordered.map((p) => ({
+          ...p,
+          primary_photo_url: p.photos[0]?.url ?? null,
+          photos: undefined,
+        })),
+        dna_used,
+        dna_confidence,
+      },
+    }
   })
 }

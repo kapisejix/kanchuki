@@ -7,12 +7,13 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Check, Plus, Trash2, Ruler, Clock } from 'lucide-react-native'
-import { customerApi, sizeChartApi } from '../../src/lib/api'
+import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
+import { customerApi, sizeChartApi, collectionApi } from '../../src/lib/api'
 import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
 
 const STYLE_OPTIONS = ['Casual', 'Party', 'Office', 'Wedding', 'Festive']
@@ -37,6 +38,12 @@ type Customer = {
   total_purchases: number
   total_spent: number
   interactions: Interaction[]
+  fashion_dna: {
+    color_affinities: Record<string, number>
+    style_affinities: Record<string, number>
+    confidence_score: number
+    interaction_count: number
+  } | null
 }
 type Measurement = {
   id: string
@@ -49,11 +56,22 @@ type Measurement = {
   photo_deleted_at: string | null
   created_at: string
 }
+type MatchedProduct = {
+  id: string
+  category: string | null
+  primary_color: string | null
+  price_min: number | null
+  price_max: number | null
+  status: string
+  primary_photo_url: string | null
+  search_tags: string[]
+}
 
 export default function CustomerDetailScreen() {
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
+  const [generatingCollection, setGeneratingCollection] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['customers', id],
@@ -68,8 +86,7 @@ export default function CustomerDetailScreen() {
   const measurements = (measurementsData as { data: Measurement[] } | undefined)?.data ?? []
   const hasMeasurement = measurements.length > 0
 
-  // Recommended size per category — 404 (no chart set, or no matching row)
-  // is an expected outcome here, not a query failure, so swallow to null.
+  // Recommended size per category
   const { data: upperSize } = useQuery({
     queryKey: ['customers', id, 'recommend', 'UPPER'],
     queryFn: () => sizeChartApi.recommend(id, 'UPPER').then((r) => r.data).catch(() => null),
@@ -80,6 +97,17 @@ export default function CustomerDetailScreen() {
     queryFn: () => sizeChartApi.recommend(id, 'LOWER').then((r) => r.data).catch(() => null),
     enabled: hasMeasurement,
   })
+
+  // AI-matched products (Fashion DNA — Phase 1)
+  const { data: matchesData } = useQuery({
+    queryKey: ['customers', id, 'matches'],
+    queryFn: () => customerApi.getMatches(id, { limit: 6 }),
+    enabled: !!customer,
+    staleTime: 60_000,
+  })
+  const matches = (matchesData as { data: { products: MatchedProduct[]; dna_used: boolean } } | undefined)?.data
+  const matchedProducts = matches?.products ?? []
+  const dnaUsed = matches?.dna_used ?? false
 
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
@@ -154,6 +182,31 @@ export default function CustomerDetailScreen() {
     ])
   }
 
+  const handleAutoSuggestCollection = async () => {
+    if (!customer) return
+    setGeneratingCollection(true)
+    try {
+      const result = await collectionApi.autoSuggest(customer.id, `AI Picks for ${customer.name}`)
+      const collectionData = result.data as { url?: string; slug?: string }
+      if (collectionData.url) {
+        Alert.alert(
+          'Collection Created!',
+          `AI collection "${customer.name}'s AI Picks" created with products matched to their preferences.`,
+          [
+            { text: 'OK', style: 'default' },
+          ],
+        )
+        void queryClient.invalidateQueries({ queryKey: ['customers', id, 'matches'] })
+      } else {
+        Alert.alert('Not enough data', "We need more customer preferences and product interactions to suggest a collection. Add their color/style/fabric preferences and record their activity.")
+      }
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to generate collection')
+    } finally {
+      setGeneratingCollection(false)
+    }
+  }
+
   if (isLoading || !customer) {
     return (
       <View className="flex-1 bg-cyan-50 items-center justify-center">
@@ -217,6 +270,82 @@ export default function CustomerDetailScreen() {
             <Text className="text-xs text-gray-400">Total Spent</Text>
           </View>
         </View>
+
+        {/* Fashion DNA — AI Match Section */}
+        {matchedProducts.length > 0 && (
+          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+            <View className="flex-row items-center justify-between mb-3">
+              <View className="flex-row items-center gap-2">
+                <Heart size={16} color="#EC4899" />
+                <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  AI Match
+                </Text>
+                {dnaUsed && (
+                  <View className="bg-fuchsia-100 px-2 py-0.5 rounded-full">
+                    <Text className="text-[10px] text-fuchsia-700 font-semibold">DNA</Text>
+                  </View>
+                )}
+              </View>
+              <TouchableOpacity
+                onPress={() => void handleAutoSuggestCollection()}
+                disabled={generatingCollection}
+                className="flex-row items-center gap-1 bg-fuchsia-600 px-3 py-1.5 rounded-full"
+              >
+                {generatingCollection ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Sparkles size={12} color="white" />
+                    <Text className="text-white text-xs font-semibold">Create Collection</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Top matched products — horizontal scroll */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+              {matchedProducts.map((product) => (
+                <TouchableOpacity
+                  key={product.id}
+                  onPress={() => router.push(`/product/${product.id}`)}
+                  className="mr-2 w-28"
+                >
+                  <View className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                    {product.primary_photo_url ? (
+                      <Image
+                        source={{ uri: product.primary_photo_url }}
+                        className="w-full h-28"
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View className="w-full h-28 bg-cyan-100 items-center justify-center">
+                        <Text className="text-cyan-400 text-xs">No photo</Text>
+                      </View>
+                    )}
+                    <View className="px-2 py-1.5">
+                      <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
+                        {product.category ?? 'Product'}
+                      </Text>
+                      {product.price_min != null && (
+                        <Text className="text-[10px] text-gray-500">
+                          {formatPrice(product.price_min)}
+                        </Text>
+                      )}
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {customer.fashion_dna && (
+              <View className="flex-row items-center gap-2 mt-2">
+                <Text className="text-[10px] text-gray-400">
+                  {customer.fashion_dna.interaction_count} interactions · {(customer.fashion_dna.confidence_score * 100).toFixed(0)}% confidence
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Preferred colors — free text */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
