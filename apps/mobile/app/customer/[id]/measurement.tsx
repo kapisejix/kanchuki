@@ -222,19 +222,27 @@ export default function MeasurementCaptureScreen() {
       <View className="flex-1 bg-black">
         {/* When both photos are ready — show them side-by-side */}
         {bothReady ? (
-          <View className="flex-1 flex-row">
-            <View className="flex-1">
+          <View className="flex-1 flex-row" style={{ minHeight: 0 }}>
+            <View className="flex-1" style={{ minHeight: 0 }}>
               {photos.front && (
-                <Image source={{ uri: photos.front }} className="flex-1" contentFit="contain" />
+                <Image
+                  source={{ uri: photos.front }}
+                  style={{ flex: 1, width: '100%', height: '100%' }}
+                  contentFit="contain"
+                />
               )}
               <View className="absolute top-4 left-4 bg-cyan-600/80 px-2.5 py-1 rounded-full">
                 <Text className="text-white text-xs font-semibold">Front</Text>
               </View>
             </View>
             <View className="w-[1px] bg-white/20" />
-            <View className="flex-1">
+            <View className="flex-1" style={{ minHeight: 0 }}>
               {photos.back && (
-                <Image source={{ uri: photos.back }} className="flex-1" contentFit="contain" />
+                <Image
+                  source={{ uri: photos.back }}
+                  style={{ flex: 1, width: '100%', height: '100%' }}
+                  contentFit="contain"
+                />
               )}
               <View className="absolute top-4 right-4 bg-purple-600/80 px-2.5 py-1 rounded-full">
                 <Text className="text-white text-xs font-semibold">Back</Text>
@@ -243,20 +251,26 @@ export default function MeasurementCaptureScreen() {
           </View>
         ) : (
           /* Single photo — current slot */
-          <>
-            {uri && <Image source={{ uri }} className="flex-1" contentFit="contain" />}
+          <View className="flex-1">
+            {uri && (
+              <Image
+                source={{ uri }}
+                style={{ flex: 1, width: '100%', height: '100%' }}
+                contentFit="contain"
+              />
+            )}
             
             {/* Thumbnail strip showing both photos when available */}
             {otherUri && (
               <View className="absolute bottom-32 left-0 right-0 items-center">
                 <View className="bg-black/60 rounded-xl px-4 py-2.5 flex-row gap-4">
-                  <View className={`w-16 h-22 rounded-lg overflow-hidden border-2 ${slot === 'front' ? 'border-cyan-400' : 'border-transparent'}`}>
+                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'front' ? 'border-cyan-400' : 'border-transparent'}`}>
                     {photos.front && <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
                     <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
                       <Text className="text-white text-[8px] text-center font-medium">Front</Text>
                     </View>
                   </View>
-                  <View className={`w-16 h-22 rounded-lg overflow-hidden border-2 ${slot === 'back' ? 'border-cyan-400' : 'border-transparent'}`}>
+                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'back' ? 'border-cyan-400' : 'border-transparent'}`}>
                     {photos.back && <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
                     <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
                       <Text className="text-white text-[8px] text-center font-medium">Back</Text>
@@ -265,7 +279,7 @@ export default function MeasurementCaptureScreen() {
                 </View>
               </View>
             )}
-          </>
+          </View>
         )}
 
         {error && (
