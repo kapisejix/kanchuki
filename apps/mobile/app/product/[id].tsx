@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Dimensions,
 } from 'react-native'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -14,7 +15,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { X, Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette } from 'lucide-react-native'
+import { X, Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
@@ -46,6 +47,8 @@ type Product = {
   variants: Variant[]
   section: { name: string } | null
 }
+
+const SCREEN_WIDTH = Dimensions.get('window').width
 
 const STATUS_OPTIONS: Array<{ value: Product['status']; label: string }> = [
   { value: 'AVAILABLE', label: 'Available' },
@@ -98,6 +101,56 @@ export default function ProductDetailScreen() {
   const [variantPreviewUrl, setVariantPreviewUrl] = useState<string | null>(null)
   const [variantPreviewColor, setVariantPreviewColor] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+  const carouselRef = useRef<ScrollView>(null)
+  const displayPhotosRef = useRef(0)
+
+  // Get all displayable images (product photos + variant preview appended)
+  const displayPhotos = (() => {
+    const base = product?.photos ?? []
+    if (variantPreviewUrl) {
+      const alreadyInBase = base.some((p) => p.url === variantPreviewUrl)
+      if (!alreadyInBase) {
+        const result: Array<Photo & { is_variant_preview: boolean; variant_color: string | null }> = [
+          ...base.map((p) => ({ ...p, is_variant_preview: false, variant_color: null })),
+          {
+            id: 'variant-preview',
+            url: variantPreviewUrl,
+            is_primary: false,
+            piece_type: null,
+            is_variant_preview: true,
+            variant_color: variantPreviewColor,
+          },
+        ]
+        displayPhotosRef.current = result.length
+        return result
+      }
+    }
+    const result = base.map((p) => ({ ...p, is_variant_preview: false, variant_color: null }))
+    displayPhotosRef.current = result.length
+    return result
+  })()
+
+  const currentPhotoUrl = displayPhotos[selectedPhotoIndex]?.url ?? null
+  const currentPhotoIsVariant = (displayPhotos[selectedPhotoIndex] as { is_variant_preview?: boolean } | undefined)?.is_variant_preview ?? false
+
+  const goToPhoto = useCallback((index: number) => {
+    const count = displayPhotosRef.current
+    const clamped = Math.max(0, Math.min(index, count - 1))
+    carouselRef.current?.scrollTo({ x: clamped * SCREEN_WIDTH, animated: true })
+    setSelectedPhotoIndex(clamped)
+  }, [])
+
+  // When a variant is selected, scroll the carousel to the variant photo
+  // after the state update has rendered the new displayPhotos array.
+  useEffect(() => {
+    if (variantPreviewUrl && product) {
+      const variantIdx = displayPhotos.length - 1
+      if (variantIdx >= (product.photos.length ?? 0)) {
+        carouselRef.current?.scrollTo({ x: variantIdx * SCREEN_WIDTH, animated: true })
+        setSelectedPhotoIndex(variantIdx)
+      }
+    }
+  }, [variantPreviewUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!product) return
@@ -112,30 +165,8 @@ export default function ProductDetailScreen() {
     setSelectedPhotoIndex(0)
     setVariantPreviewUrl(null)
     setVariantPreviewColor(null)
-    setImageErrors(new Set()) // Clear stale image errors on product change
+    setImageErrors(new Set())
   }, [product])
-
-  // Get all displayable images (product photos + variant preview)
-  const displayPhotos = (() => {
-    const base = product?.photos ?? []
-    if (variantPreviewUrl && variantPreviewUrl !== base[selectedPhotoIndex]?.url) {
-      return [
-        ...base.map((p) => ({ ...p, is_variant_preview: false as const })),
-        {
-          id: 'variant-preview',
-          url: variantPreviewUrl,
-          is_primary: false,
-          piece_type: null as const,
-          is_variant_preview: true as const,
-          variant_color: variantPreviewColor,
-        },
-      ]
-    }
-    return base.map((p) => ({ ...p, is_variant_preview: false as const, variant_color: null as string | null }))
-  })()
-
-  const currentPhotoUrl = displayPhotos[selectedPhotoIndex]?.url ?? null
-  const currentPhotoIsVariant = displayPhotos[selectedPhotoIndex]?.is_variant_preview ?? false
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -300,24 +331,70 @@ export default function ProductDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Photo Gallery — main display with selector */}
+      {/* Photo Gallery — swipeable carousel */}
       <View className="bg-white">
-        {/* Main photo with arrows */}
-        <View className="relative">
-          {currentPhotoUrl && !imageErrors.has(currentPhotoUrl) ? (
-            <Image
-              source={{ uri: currentPhotoUrl }}
-              style={{ width: '100%', height: 380 }}
-              contentFit="cover"
-              onError={() => {
-                if (currentPhotoUrl) setImageErrors((prev) => new Set(prev).add(currentPhotoUrl))
+        {/* Swipeable photo carousel */}
+        <View className="relative" style={{ height: 380 }}>
+          {displayPhotos.length > 0 ? (
+            <ScrollView
+              ref={carouselRef}
+              horizontal
+              pagingEnabled
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              scrollEventThrottle={16}
+              onMomentumScrollEnd={(e) => {
+                const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH)
+                setSelectedPhotoIndex(index)
               }}
-            />
+              style={{ flex: 1 }}
+            >
+              {displayPhotos.map((photo) => (
+                <View key={photo.id} style={{ width: SCREEN_WIDTH, height: 380 }}>
+                  {!imageErrors.has(photo.url) ? (
+                    <Image
+                      source={{ uri: photo.url }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
+                    />
+                  ) : (
+                    <View className="w-full h-full bg-gray-100 items-center justify-center">
+                      <Text className="text-gray-300 text-5xl mb-2">👗</Text>
+                      <Text className="text-gray-400 text-xs">Image unavailable</Text>
+                    </View>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
           ) : (
-            <View className="w-full h-[380px] bg-gray-100 items-center justify-center">
+            <View className="w-full h-full bg-gray-100 items-center justify-center">
               <Text className="text-gray-300 text-5xl mb-2">👗</Text>
-              <Text className="text-gray-400 text-xs">Image unavailable</Text>
+              <Text className="text-gray-400 text-xs">No photos</Text>
             </View>
+          )}
+
+          {/* Left arrow */}
+          {displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
+            <TouchableOpacity
+              onPress={() => goToPhoto(selectedPhotoIndex - 1)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
+              style={{ elevation: 3 }}
+            >
+              <ChevronLeft size={20} color="#374151" />
+            </TouchableOpacity>
+          )}
+
+          {/* Right arrow */}
+          {displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
+            <TouchableOpacity
+              onPress={() => goToPhoto(selectedPhotoIndex + 1)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
+              style={{ elevation: 3 }}
+            >
+              <ChevronRight size={20} color="#374151" />
+            </TouchableOpacity>
           )}
 
           {/* Variant badge */}
@@ -328,17 +405,23 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Photo counter */}
+          {/* Dot indicators */}
           {displayPhotos.length > 1 && (
-            <View className="absolute bottom-3 right-3 bg-black/60 px-2.5 py-1 rounded-full">
-              <Text className="text-white text-xs font-medium">
-                {selectedPhotoIndex + 1} / {displayPhotos.length}
-              </Text>
+            <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
+              {displayPhotos.map((_, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => goToPhoto(idx)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    idx === selectedPhotoIndex ? 'bg-white w-3' : 'bg-white/50'
+                  }`}
+                />
+              ))}
             </View>
           )}
         </View>
 
-        {/* Thumbnail strip */}
+        {/* Thumbnail strip — synced with carousel */}
         {displayPhotos.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
             <View className="flex-row gap-2">
@@ -349,9 +432,9 @@ export default function ProductDetailScreen() {
                   <TouchableOpacity
                     key={photo.id}
                     onPress={() => {
-                      setSelectedPhotoIndex(idx)
+                      goToPhoto(idx)
                       // If clicking a non-variant thumbnail, clear variant preview
-                      if (!('is_variant_preview' in photo && photo.is_variant_preview)) {
+                      if (!isVariant) {
                         setVariantPreviewUrl(null)
                         setVariantPreviewColor(null)
                       }
@@ -379,7 +462,8 @@ export default function ProductDetailScreen() {
           </ScrollView>
         )}
 
-        {/* Piece tagging for each photo */}              {displayPhotos.map((photo, displayIdx) => {
+        {/* Piece tagging for each photo */}
+              {displayPhotos.map((photo, displayIdx) => {
           if (selectedPhotoIndex !== displayIdx) return null
           if (photo.id === 'variant-preview' || !isPieceTaggable(product.category)) return null
           return (
@@ -621,15 +705,18 @@ export default function ProductDetailScreen() {
                       onPress={() => {
                         if (variant.photo_url) {
                           if (isActive) {
-                            // Deselect — go back to product photos
+                            // Deselect — go back to product photos at index 0
                             setVariantPreviewUrl(null)
                             setVariantPreviewColor(null)
-                            setSelectedPhotoIndex(0)
+                            goToPhoto(0)
                           } else {
+                            // Set variant preview + scroll carousel to last position
                             setVariantPreviewUrl(variant.photo_url)
                             setVariantPreviewColor(variant.color)
-                            // Auto-switch to the last position where variant preview will appear
-                            setSelectedPhotoIndex(displayPhotos.length)
+                            // After state update, the displayPhotos includes the variant
+                            // as the last item. Scroll to it smoothly.
+                            const variantIndex = displayPhotos.length // will be last position
+                            requestAnimationFrame(() => goToPhoto(variantIndex))
                           }
                         }
                       }}
