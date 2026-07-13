@@ -1,9 +1,23 @@
 import Anthropic from '@anthropic-ai/sdk'
-import sharp from 'sharp'
 import { createHash } from 'node:crypto'
 import type { AiTagResult } from '@kanchuki/shared'
 import { tagProductImageUrl } from './tagger.js'
 import { uploadBuffer, publicUrl } from './r2.js'
+
+// Lazy import: sharp's native dlopen can crash on Windows+pnpm. Deferring the
+// import to first-use avoids the crash when loading modules that merely import
+// this file but never call cropping/image functions (e.g. embedder.ts consumers
+// that only need `embedSearchQuery` — the barrel export from index.ts forces
+// all exports to load, so top-level `import sharp` would crash every API route
+// that touches @kanchuki/ai on Windows).
+let _sharp: any = null
+async function getSharp() {
+  if (!_sharp) {
+    const mod = await import('sharp')
+    _sharp = mod.default ?? mod
+  }
+  return _sharp
+}
 
 let _claude: Anthropic | null = null
 function getClaude(): Anthropic {
@@ -182,7 +196,8 @@ export async function cropImage(
   const safeWidth = Math.min(width, imageWidth - safeLeft)
   const safeHeight = Math.min(height, imageHeight - safeTop)
 
-  return sharp(imageBuffer)
+  const s = await getSharp()
+  return s(imageBuffer)
     .extract({ left: safeLeft, top: safeTop, width: safeWidth, height: safeHeight })
     .jpeg({ quality: 85 })
     .toBuffer()
@@ -192,7 +207,8 @@ export async function cropImage(
  * Get image dimensions using sharp.
  */
 export async function getImageDimensions(imageBuffer: Buffer): Promise<{ width: number; height: number }> {
-  const metadata = await sharp(imageBuffer).metadata()
+  const s = await getSharp()
+  const metadata = await s(imageBuffer).metadata()
   return { width: metadata.width ?? 0, height: metadata.height ?? 0 }
 }
 

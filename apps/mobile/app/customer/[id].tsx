@@ -28,6 +28,7 @@ type Customer = {
   id: string
   name: string
   phone: string
+  email: string | null
   pref_colors: string[]
   pref_styles: string[]
   pref_fabrics: string[]
@@ -110,6 +111,7 @@ export default function CustomerDetailScreen() {
   const dnaUsed = matches?.dna_used ?? false
 
   const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
   const [notes, setNotes] = useState('')
   const [colorInput, setColorInput] = useState('')
   const [prefColors, setPrefColors] = useState<string[]>([])
@@ -123,6 +125,7 @@ export default function CustomerDetailScreen() {
   useEffect(() => {
     if (!customer) return
     setName(customer.name)
+    setEmail(customer.email ?? '')
     setNotes(customer.notes ?? '')
     setPrefColors(customer.pref_colors ?? [])
     setPrefStyles(customer.pref_styles ?? [])
@@ -149,6 +152,7 @@ export default function CustomerDetailScreen() {
     try {
       await customerApi.update(customer.id, {
         name,
+        email: email || undefined,
         notes: notes || undefined,
         pref_colors: prefColors,
         pref_styles: prefStyles,
@@ -256,6 +260,16 @@ export default function CustomerDetailScreen() {
               placeholderTextColor="#9CA3AF"
             />
             <Text className="text-xs text-gray-400 mt-0.5">{customer.phone}</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="email@example.com (optional)"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              className="text-xs text-gray-500 mt-0.5"
+            />
           </View>
         </View>
 

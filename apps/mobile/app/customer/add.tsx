@@ -11,6 +11,7 @@ export default function AddCustomerScreen() {
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
+  const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -20,7 +21,11 @@ export default function AddCustomerScreen() {
     }
     setSaving(true)
     try {
-      const res = await customerApi.create({ name: name.trim(), phone: phone.trim() })
+      const res = await customerApi.create({
+        name: name.trim(),
+        phone: phone.trim(),
+        email: email.trim() || undefined,
+      })
       void queryClient.invalidateQueries({ queryKey: ['customers'] })
       const created = (res as { data: { id: string } }).data
       router.replace(`/customer/${created.id}`)
@@ -75,6 +80,20 @@ export default function AddCustomerScreen() {
             placeholder="10-digit mobile number"
             placeholderTextColor="#9CA3AF"
             keyboardType="phone-pad"
+            className="text-base text-gray-900"
+          />
+        </View>
+
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Email (optional)</Text>
+          <TextInput
+            value={email}
+            onChangeText={setEmail}
+            placeholder="email@example.com"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
             className="text-base text-gray-900"
           />
         </View>

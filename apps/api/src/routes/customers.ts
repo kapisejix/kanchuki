@@ -25,6 +25,7 @@ const PhotoMeasurementInitSchema = z.object({
 const CustomerSchema = z.object({
   name: z.string().min(1).max(200),
   phone: z.string().min(10).max(15),
+  email: z.string().email().max(320).optional(),
   address_line1: z.string().max(200).optional(),
   address_line2: z.string().max(200).optional(),
   city: z.string().max(100).optional(),

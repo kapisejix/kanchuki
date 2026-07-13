@@ -271,6 +271,7 @@ model Customer {
   name       String
   phone      String
   phone_hash String?
+  email      String?
 
   // Full address
   address_line1 String?

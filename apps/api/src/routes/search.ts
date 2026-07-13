@@ -89,7 +89,7 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
         JOIN product_embeddings pe ON p.id = pe.product_id
         WHERE p.retailer_id = ${retailerId}
           AND p.deleted_at IS NULL
-          AND p.status = ANY(${Prisma.raw(
+          AND p.status::text = ANY(${Prisma.raw(
             `ARRAY[${(filters?.status ?? ['AVAILABLE']).map((s) => `'${s}'`).join(',')}]::text[]`,
           )})
           ${priceMax !== null ? Prisma.raw(`AND p.price_min <= ${priceMax}`) : Prisma.empty}

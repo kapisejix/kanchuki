@@ -10,6 +10,7 @@ type Customer = {
   id: string
   name: string
   phone: string
+  email: string | null
   pref_colors: string[]
   pref_styles: string[]
   budget_min: number | null
