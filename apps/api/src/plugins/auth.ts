@@ -1,7 +1,7 @@
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify'
 import fp from 'fastify-plugin'
+import { createHmac, timingSafeEqual } from 'node:crypto'
 import { prisma } from '@kanchuki/db'
-import { supabase } from '../index.js'
 
 // Extend FastifyRequest with retailer context
 declare module 'fastify' {
@@ -9,6 +9,40 @@ declare module 'fastify' {
     retailerId: string
     retailerAuthUserId: string
   }
+}
+
+function base64UrlDecode(input: string): Buffer {
+  return Buffer.from(input.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
+}
+
+// Verifies a Supabase-issued HS256 JWT locally (signature + expiry) instead
+// of calling supabase.auth.getUser(), which round-trips to Supabase's Auth
+// API on every single request. Under bulk operations (many sequential
+// authenticated calls) that per-request network hop was the actual source
+// of client-side request timeouts, not the endpoints themselves.
+function verifySupabaseJwt(token: string): { sub: string } | null {
+  const parts = token.split('.')
+  if (parts.length !== 3) return null
+  const [headerB64, payloadB64, sigB64] = parts as [string, string, string]
+
+  const secret = process.env['SUPABASE_JWT_SECRET']
+  if (!secret) return null
+
+  const expectedSig = createHmac('sha256', secret).update(`${headerB64}.${payloadB64}`).digest()
+  const actualSig = base64UrlDecode(sigB64)
+  if (expectedSig.length !== actualSig.length || !timingSafeEqual(expectedSig, actualSig)) {
+    return null
+  }
+
+  let payload: { sub?: string; exp?: number }
+  try {
+    payload = JSON.parse(base64UrlDecode(payloadB64).toString('utf8'))
+  } catch {
+    return null
+  }
+  if (!payload.sub || !payload.exp || payload.exp * 1000 < Date.now()) return null
+
+  return { sub: payload.sub }
 }
 
 /**
@@ -41,9 +75,9 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     }
 
     const token = authHeader.slice(7)
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const claims = verifySupabaseJwt(token)
 
-    if (error || !user) {
+    if (!claims) {
       return reply.status(401).send({
         error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token', status: 401 },
       })
@@ -51,7 +85,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
 
     // Load retailer from DB
     const retailer = await prisma.retailer.findUnique({
-      where: { auth_user_id: user.id, deleted_at: null },
+      where: { auth_user_id: claims.sub, deleted_at: null },
       select: { id: true, auth_user_id: true, plan_status: true },
     })
 
@@ -66,6 +100,6 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     }
 
     request.retailerId = retailer.id
-    request.retailerAuthUserId = user.id
+    request.retailerAuthUserId = claims.sub
   })
 })
