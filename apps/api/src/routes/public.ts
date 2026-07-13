@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { createHash } from 'crypto'
 import { prisma } from '@kanchuki/db'
 import { buildEnquiryMessage } from '@kanchuki/shared'
+import { getDownloadPresignedUrl } from '@kanchuki/ai'
 import { notFound, validationError } from '../plugins/error-handler.js'
 
 export const publicRoutes: FastifyPluginAsync = async (server) => {
@@ -67,35 +68,55 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
       throw notFound('Collection')
     }
 
+    // Helper: generate a display-ready URL — uses stored public_url when valid,
+    // falls back to presigned GET URL when R2_PUBLIC_URL is not set.
+    async function displayUrl(url: string, r2Key: string | null): Promise<string> {
+      if (url.startsWith('http://') || url.startsWith('https://')) return url
+      if (r2Key) {
+        try { return await getDownloadPresignedUrl(r2Key, 3600) } catch {}
+      }
+      // Presigned URL failed or no r2_key — return original URL as fallback
+      return url
+    }
+
     // Build public shape (no internal IDs that shouldn't be shared)
     // Show ALL non-deleted products — SOLD/RESERVED get visual badges on the frontend.
     // Only fully hide truly deleted items.
-    const publicProducts = collection.products
-      .filter((cp) => cp.product !== null && !cp.product.deleted_at)
-      .map((cp) => {
-        const p = cp.product!
-        const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE')
-        return {
-          id: p.id,
-          name: p.name,
-          price_min: p.price_min,
-          price_max: p.price_max,
-          status: p.status,
-          category: p.category,
-          primary_color: p.primary_color,
-          secondary_colors: p.secondary_colors,
-          fabric_estimate: p.fabric_estimate,
-          occasions: p.occasions,
-          search_tags: p.search_tags,
-          primary_photo_url: p.photos.find((ph) => ph.is_primary)?.url ?? p.photos[0]?.url ?? '',
-          photos: p.photos.map((ph) => ph.url),
-          variants: availableVariants.map((v) => ({
-            color: v.color,
-            photo_url: v.photo_url,
-            status: v.status as string,
-          })),
-        }
-      })
+    const publicProducts = await Promise.all(
+      collection.products
+        .filter((cp) => cp.product !== null && !cp.product.deleted_at)
+        .map(async (cp) => {
+          const p = cp.product!
+          const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE')
+          return {
+            id: p.id,
+            name: p.name,
+            price_min: p.price_min,
+            price_max: p.price_max,
+            status: p.status,
+            category: p.category,
+            primary_color: p.primary_color,
+            secondary_colors: p.secondary_colors,
+            fabric_estimate: p.fabric_estimate,
+            occasions: p.occasions,
+            search_tags: p.search_tags,
+            primary_photo_url: await displayUrl(
+              p.photos.find((ph) => ph.is_primary)?.url ?? p.photos[0]?.url ?? '',
+              (p.photos.find((ph) => ph.is_primary) ?? p.photos[0])?.r2_key ?? null,
+            ),
+            photos: await Promise.all(
+              p.photos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
+            ),
+            variants: await Promise.all(
+              availableVariants.map(async (v) => ({
+                color: v.color,
+                photo_url: await displayUrl(v.photo_url ?? '', v.r2_key),
+                status: v.status as string,
+              })),
+            ),
+          }
+        }),
+    )
 
     return {
       data: {

@@ -82,16 +82,18 @@ export default function MeasurementCaptureScreen() {
       const init = await customerApi.initPhotoMeasurement(id, heightNum)
       const { measurement_id, front_upload_url, back_upload_url } = init.data
 
-      await Promise.all([
-        uploadImageToR2(photos.front, front_upload_url, 'image/jpeg'),
-        uploadImageToR2(photos.back, back_upload_url, 'image/jpeg'),
-      ])
+      // Upload front photo
+      await uploadImageToR2(photos.front, front_upload_url, 'image/jpeg')
+
+      // Upload back photo
+      await uploadImageToR2(photos.back, back_upload_url, 'image/jpeg')
 
       await customerApi.extractMeasurement(id, measurement_id)
       void queryClient.invalidateQueries({ queryKey: ['customers', id, 'measurements'] })
       setStep('done')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      const message = err instanceof Error ? err.message : 'Upload failed'
+      setError(message)
       setStep('preview')
     }
   }
@@ -213,9 +215,59 @@ export default function MeasurementCaptureScreen() {
 
   if (step === 'preview') {
     const uri = photos[slot]
+    const otherSlot = slot === 'front' ? 'back' : 'front'
+    const otherUri = photos[otherSlot]
+    const bothReady = photos.front && photos.back
     return (
       <View className="flex-1 bg-black">
-        {uri && <Image source={{ uri }} className="flex-1" contentFit="contain" />}
+        {/* When both photos are ready — show them side-by-side */}
+        {bothReady ? (
+          <View className="flex-1 flex-row">
+            <View className="flex-1">
+              {photos.front && (
+                <Image source={{ uri: photos.front }} className="flex-1" contentFit="contain" />
+              )}
+              <View className="absolute top-4 left-4 bg-cyan-600/80 px-2.5 py-1 rounded-full">
+                <Text className="text-white text-xs font-semibold">Front</Text>
+              </View>
+            </View>
+            <View className="w-[1px] bg-white/20" />
+            <View className="flex-1">
+              {photos.back && (
+                <Image source={{ uri: photos.back }} className="flex-1" contentFit="contain" />
+              )}
+              <View className="absolute top-4 right-4 bg-purple-600/80 px-2.5 py-1 rounded-full">
+                <Text className="text-white text-xs font-semibold">Back</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          /* Single photo — current slot */
+          <>
+            {uri && <Image source={{ uri }} className="flex-1" contentFit="contain" />}
+            
+            {/* Thumbnail strip showing both photos when available */}
+            {otherUri && (
+              <View className="absolute bottom-32 left-0 right-0 items-center">
+                <View className="bg-black/60 rounded-xl px-4 py-2.5 flex-row gap-4">
+                  <View className={`w-16 h-22 rounded-lg overflow-hidden border-2 ${slot === 'front' ? 'border-cyan-400' : 'border-transparent'}`}>
+                    {photos.front && <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
+                    <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
+                      <Text className="text-white text-[8px] text-center font-medium">Front</Text>
+                    </View>
+                  </View>
+                  <View className={`w-16 h-22 rounded-lg overflow-hidden border-2 ${slot === 'back' ? 'border-cyan-400' : 'border-transparent'}`}>
+                    {photos.back && <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
+                    <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
+                      <Text className="text-white text-[8px] text-center font-medium">Back</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            )}
+          </>
+        )}
+
         {error && (
           <View
             className="absolute left-4 right-4 bg-red-500/90 rounded-xl p-3"
@@ -239,7 +291,7 @@ export default function MeasurementCaptureScreen() {
             className="flex-1 bg-cyan-600 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">
-              {slot === 'front' ? 'Use Photo → Back' : 'Use Photo ✓'}
+              {slot === 'front' ? 'Use Photo → Back' : bothReady ? 'Upload Both Photos ✓' : 'Use Photo ✓'}
             </Text>
           </TouchableOpacity>
         </View>

@@ -102,7 +102,12 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const prefix = isPdf ? 'catalog-pdf' : 'catalog-source'
     const ext = isPdf ? '.pdf' : '.jpg'
     const r2Key = `${prefix}/${retailerId}/${randHex(16)}${ext}`
-    const upload_url = await getUploadPresignedUrl(r2Key, content_type)
+    let upload_url: string
+    try {
+      upload_url = await getUploadPresignedUrl(r2Key, content_type)
+    } catch {
+      throw validationError('Photo storage is not configured. Please contact support to enable catalog imports.')
+    }
     const public_url = publicUrl(r2Key)
 
     return reply.status(200).send({

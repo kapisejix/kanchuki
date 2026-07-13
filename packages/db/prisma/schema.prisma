@@ -229,6 +229,7 @@ model ProductVariant {
 
   color          String
   photo_url      String?
+  r2_key         String? // R2 storage key, used for generating presigned GET URLs
   ai_preview_url String?
   is_ai_preview  Boolean       @default(false)
   status         ProductStatus @default(AVAILABLE)

@@ -1056,6 +1056,30 @@ Customer checks consent checkbox → try-on submitted
 
 ---
 
+## 2026-07-13 — Product E2E Tests
+
+**Instructions saved for next session:**
+- Commit all current changes first
+- Build comprehensive product e2e test script that covers:
+  1. Single product with photo (from /scripts/demo/ images)
+  2. Multiple products in batch
+  3. Product with front AND back photos (front.jpg + back.jpg pair)
+  4. PDF catalog import (woodee-...pdf from /scripts/demo/)
+  5. AI Tagging verification (create product, wait for async tags, verify)
+  6. Catalog import test (grid image detection from catalog-grid.jpg)
+  7. 5 customers with complete dummy details + measurements via API
+  8. Product CRUD e2e (create, get, list, update status, delete)
+- Front/back display: verify both images render in product detail, no color overlap on image card
+- Run all tests and verify they pass
+- Save test script at scripts/product-e2e.ts
+
+**Demo assets available:** /scripts/demo/ — front.jpg + back.jpg (pair),
+sample-suit.jpg, product 02.jpg, product 03.webp, catalog-grid.jpg,
+catalog-grid-mixed.jpg, woodee-*pdf (PDF catalog), shopping*.webp,
+49337_7Main.webp
+
+---
+
 ## 2026-07-13 (later) — CatVTON licensing resolved, migration 008 applied live
 
 User confirmed commercial license obtained from CatVTON's author (ADR-006

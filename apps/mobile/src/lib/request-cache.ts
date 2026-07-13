@@ -128,7 +128,22 @@ export async function cachedJsonRequest<T>(
       response.status,
     )
   }
-  return response.json() as Promise<T>
+
+  // 204 No Content (DELETE, etc.) — return undefined instead of parsing empty body
+  if (response.status === 204) return undefined as T
+
+  // Safely parse JSON body — some endpoints might return 200 with empty body
+  try {
+    return (await response.json()) as T
+  } catch {
+    // Empty or malformed response body — return undefined for void endpoints,
+    // throw for everything else so callers get a meaningful error
+    throw new RequestError(
+      'PARSE_ERROR',
+      `Invalid JSON response from ${url} (status ${response.status})`,
+      response.status,
+    )
+  }
 }
 
 /** Clear the entire request cache (useful after logout or mutation). */

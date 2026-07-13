@@ -102,7 +102,11 @@ server.get('/health', async () => ({ status: 'ok', ts: Date.now() }))
 async function start(): Promise<void> {
   const port = parseInt(process.env['PORT'] ?? '3001')
   try {
-    await startWorkers()
+    // Start BullMQ workers (non-blocking — if Redis is down, workers fail
+    // gracefully and jobs via addTaggingJob/etc. will be caught and logged).
+    startWorkers().catch((err) => {
+      server.log.warn({ err }, 'BullMQ workers failed to start — background jobs disabled')
+    })
     await server.listen({ port, host: '0.0.0.0' })
     server.log.info(`API running on port ${port}`)
   } catch (err) {

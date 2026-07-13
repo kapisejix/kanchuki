@@ -108,7 +108,12 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     const filename = `customer-${createId()}.${ext}`
     const r2Key = R2_PATHS.tryonInput(jobId)
 
-    const uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 600) // 10 min
+    let uploadUrl: string
+    try {
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 600)
+    } catch {
+      throw validationError('Photo storage is not configured. Please contact support to enable try-on photos.')
+    }
 
     return reply.status(200).send({
       data: {

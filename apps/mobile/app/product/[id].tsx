@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   View,
   Text,
@@ -8,13 +8,13 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native'
-import { router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { X, Check, Plus, Trash2, MapPin, Sparkles, Scissors } from 'lucide-react-native'
+import { X, Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
@@ -59,6 +59,13 @@ export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
 
+  // Refresh data when screen comes into focus (e.g. after adding a variant)
+  useFocusEffect(
+    useCallback(() => {
+      void queryClient.invalidateQueries({ queryKey: ['products', id] })
+    }, [id, queryClient]),
+  )
+
   const { data, isLoading } = useQuery({
     queryKey: ['products', id],
     queryFn: () => productApi.get(id),
@@ -85,6 +92,13 @@ export default function ProductDetailScreen() {
   const [editedFabric, setEditedFabric] = useState<string | null>(null)
   const [editedPattern, setEditedPattern] = useState<string | null>(null)
 
+  // Photo gallery state — tracks which photo is selected in the gallery
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
+  // When a color variant is tapped, show its photo URL if available
+  const [variantPreviewUrl, setVariantPreviewUrl] = useState<string | null>(null)
+  const [variantPreviewColor, setVariantPreviewColor] = useState<string | null>(null)
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+
   useEffect(() => {
     if (!product) return
     setPrice(product.price_min ? String(product.price_min / 100) : '')
@@ -95,7 +109,33 @@ export default function ProductDetailScreen() {
     setEditedColor(product.primary_color ?? '')
     setEditedFabric(product.fabric_estimate)
     setEditedPattern(product.pattern)
+    setSelectedPhotoIndex(0)
+    setVariantPreviewUrl(null)
+    setVariantPreviewColor(null)
+    setImageErrors(new Set()) // Clear stale image errors on product change
   }, [product])
+
+  // Get all displayable images (product photos + variant preview)
+  const displayPhotos = (() => {
+    const base = product?.photos ?? []
+    if (variantPreviewUrl && variantPreviewUrl !== base[selectedPhotoIndex]?.url) {
+      return [
+        ...base.map((p) => ({ ...p, is_variant_preview: false as const })),
+        {
+          id: 'variant-preview',
+          url: variantPreviewUrl,
+          is_primary: false,
+          piece_type: null as const,
+          is_variant_preview: true as const,
+          variant_color: variantPreviewColor,
+        },
+      ]
+    }
+    return base.map((p) => ({ ...p, is_variant_preview: false as const, variant_color: null as string | null }))
+  })()
+
+  const currentPhotoUrl = displayPhotos[selectedPhotoIndex]?.url ?? null
+  const currentPhotoIsVariant = displayPhotos[selectedPhotoIndex]?.is_variant_preview ?? false
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -216,9 +256,13 @@ export default function ProductDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await productApi.delete(product.id)
-          invalidate()
-          router.back()
+          try {
+            await productApi.delete(product.id)
+            invalidate()
+            router.back()
+          } catch (err) {
+            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete product')
+          }
         },
       },
     ])
@@ -256,39 +300,111 @@ export default function ProductDetailScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Photos */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} className="bg-white">
-        {product.photos.map((photo) => (
-          <View key={photo.id}>
+      {/* Photo Gallery — main display with selector */}
+      <View className="bg-white">
+        {/* Main photo with arrows */}
+        <View className="relative">
+          {currentPhotoUrl && !imageErrors.has(currentPhotoUrl) ? (
             <Image
-              source={{ uri: photo.url }}
-              style={{ width: 320, height: 320 }}
+              source={{ uri: currentPhotoUrl }}
+              style={{ width: '100%', height: 380 }}
               contentFit="cover"
+              onError={() => {
+                if (currentPhotoUrl) setImageErrors((prev) => new Set(prev).add(currentPhotoUrl))
+              }}
             />
-            {isPieceTaggable(product.category) && (
-              <View className="flex-row gap-2 px-3 py-2 bg-white">
-                {(['upper', 'lower'] as const).map((piece) => {
-                  const selected = photo.piece_type === piece
-                  return (
-                    <TouchableOpacity
-                      key={piece}
-                      onPress={() => void handleSetPieceType(photo.id, piece)}
-                      className={`px-3 py-1 rounded-full border flex-row items-center gap-1 ${
-                        selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      {selected && <Check size={12} color="white" />}
-                      <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-gray-600'}`}>
-                        {piece} piece
-                      </Text>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            )}
-          </View>
-        ))}
-      </ScrollView>
+          ) : (
+            <View className="w-full h-[380px] bg-gray-100 items-center justify-center">
+              <Text className="text-gray-300 text-5xl mb-2">👗</Text>
+              <Text className="text-gray-400 text-xs">Image unavailable</Text>
+            </View>
+          )}
+
+          {/* Variant badge */}
+          {currentPhotoIsVariant && variantPreviewColor && (
+            <View className="absolute top-3 left-3 bg-cyan-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
+              <Palette size={12} color="white" />
+              <Text className="text-white text-xs font-semibold">{variantPreviewColor}</Text>
+            </View>
+          )}
+
+          {/* Photo counter */}
+          {displayPhotos.length > 1 && (
+            <View className="absolute bottom-3 right-3 bg-black/60 px-2.5 py-1 rounded-full">
+              <Text className="text-white text-xs font-medium">
+                {selectedPhotoIndex + 1} / {displayPhotos.length}
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Thumbnail strip */}
+        {displayPhotos.length > 1 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
+            <View className="flex-row gap-2">
+              {displayPhotos.map((photo, idx) => {
+                const isSelected = idx === selectedPhotoIndex
+                const isVariant = 'is_variant_preview' in photo && photo.is_variant_preview
+                return (
+                  <TouchableOpacity
+                    key={photo.id}
+                    onPress={() => {
+                      setSelectedPhotoIndex(idx)
+                      // If clicking a non-variant thumbnail, clear variant preview
+                      if (!('is_variant_preview' in photo && photo.is_variant_preview)) {
+                        setVariantPreviewUrl(null)
+                        setVariantPreviewColor(null)
+                      }
+                    }}
+                    className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${
+                      isSelected ? 'border-cyan-600' : 'border-gray-200'
+                    }`}
+                  >
+                    <Image
+                      source={{ uri: photo.url }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                    {isVariant && (
+                      <View className="absolute bottom-0 left-0 right-0 bg-cyan-600/80 py-0.5">
+                        <Text className="text-white text-[8px] text-center font-medium">
+                          {variantPreviewColor ?? ''}
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          </ScrollView>
+        )}
+
+        {/* Piece tagging for each photo */}              {displayPhotos.map((photo, displayIdx) => {
+          if (selectedPhotoIndex !== displayIdx) return null
+          if (photo.id === 'variant-preview' || !isPieceTaggable(product.category)) return null
+          return (
+            <View key={`piece-tag-${photo.id}`} className="px-3 py-2 bg-white flex-row gap-2">
+              {(['upper', 'lower'] as const).map((piece) => {
+                const selected = photo.piece_type === piece
+                return (
+                  <TouchableOpacity
+                    key={piece}
+                    onPress={() => void handleSetPieceType(photo.id, piece)}
+                    className={`px-3 py-1 rounded-full border flex-row items-center gap-1 ${
+                      selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    {selected && <Check size={12} color="white" />}
+                    <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-gray-600'}`}>
+                      {piece} piece
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          )
+        })}
+      </View>
       {isPieceTaggable(product.category) && (
         <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
           <Text className="text-cyan-700 text-xs">
@@ -333,7 +449,13 @@ export default function ProductDetailScreen() {
       )}
       {product.ai_tag_error && (
         <View className="mx-4 mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-          <Text className="text-amber-700 text-xs">AI tagging failed — fields below are manual.</Text>
+          <Text className="text-amber-700 text-xs font-semibold">AI tagging failed</Text>
+          <Text className="text-amber-600 text-[10px] mt-1 leading-relaxed" numberOfLines={3}>
+            {product.ai_tag_error}
+          </Text>
+          <Text className="text-amber-500 text-[10px] mt-1">
+            You can edit the fields below manually. Tap Save when done.
+          </Text>
         </View>
       )}
 
@@ -467,36 +589,81 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
-        {/* Color variants */}
+        {/* Color variants — tapped variant shows in gallery preview */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Colors · Same Design
-          </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-3">
-              {product.variants.map((variant) => (
-                <View key={variant.id} className="items-center gap-1">
-                  <View className="w-16 h-20 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
-                    {variant.photo_url && (
-                      <Image
-                        source={{ uri: variant.photo_url }}
-                        style={{ width: '100%', height: '100%' }}
-                        contentFit="cover"
-                      />
-                    )}
-                  </View>
-                  <Text className="text-xs text-gray-600">{variant.color}</Text>
-                </View>
-              ))}
-              <TouchableOpacity
-                onPress={() => router.push(`/product/${product.id}/add-color`)}
-                className="w-16 h-20 rounded-xl border-2 border-dashed border-cyan-300 items-center justify-center"
-              >
-                <Plus size={18} color="#0891B2" />
-                <Text className="text-cyan-600 text-[10px] mt-1 text-center">Add{'\n'}Color</Text>
-              </TouchableOpacity>
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Colors · Same Design
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push(`/product/${product.id}/add-color`)}
+              className="bg-cyan-50 px-2.5 py-1 rounded-full flex-row items-center gap-1"
+            >
+              <Plus size={12} color="#0891B2" />
+              <Text className="text-cyan-700 text-xs font-semibold">Add Color</Text>
+            </TouchableOpacity>
+          </View>
+
+          {product.variants.length === 0 ? (
+            <View className="bg-gray-50 rounded-xl px-4 py-3">
+              <Text className="text-xs text-gray-400 text-center">
+                No color variants yet. Add photos of the same design in different colors.
+              </Text>
             </View>
-          </ScrollView>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-3">
+                {product.variants.map((variant) => {
+                  const isActive = variantPreviewUrl === variant.photo_url
+                  return (
+                    <TouchableOpacity
+                      key={variant.id}
+                      onPress={() => {
+                        if (variant.photo_url) {
+                          if (isActive) {
+                            // Deselect — go back to product photos
+                            setVariantPreviewUrl(null)
+                            setVariantPreviewColor(null)
+                            setSelectedPhotoIndex(0)
+                          } else {
+                            setVariantPreviewUrl(variant.photo_url)
+                            setVariantPreviewColor(variant.color)
+                            // Auto-switch to the last position where variant preview will appear
+                            setSelectedPhotoIndex(displayPhotos.length)
+                          }
+                        }
+                      }}
+                      className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
+                    >
+                      <View
+                        className={`w-20 h-24 rounded-xl overflow-hidden bg-gray-100 border-2 ${
+                          isActive ? 'border-cyan-600' : 'border-gray-200'
+                        }`}
+                      >
+                        {variant.photo_url ? (
+                          <Image
+                            source={{ uri: variant.photo_url }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <View className="flex-1 items-center justify-center">
+                            <Text className="text-gray-300 text-lg">?</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="flex-row items-center gap-1">
+                        {isActive && <Check size={10} color="#0891B2" />}
+                        <Text className={`text-xs font-medium ${isActive ? 'text-cyan-700' : 'text-gray-500'}`}>
+                          {variant.color}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </ScrollView>
+          )}
         </View>
 
         {/* Status */}

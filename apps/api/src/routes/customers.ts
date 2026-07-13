@@ -285,10 +285,18 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
     const front_r2_key = R2_PATHS.measurementPhoto(id, measurement.id, 'front')
     const back_r2_key = R2_PATHS.measurementPhoto(id, measurement.id, 'back')
 
-    const [front_upload_url, back_upload_url] = await Promise.all([
-      getUploadPresignedUrl(front_r2_key, 'image/jpeg', 300),
-      getUploadPresignedUrl(back_r2_key, 'image/jpeg', 300),
-    ])
+    let front_upload_url: string
+    let back_upload_url: string
+    try {
+      ;[front_upload_url, back_upload_url] = await Promise.all([
+        getUploadPresignedUrl(front_r2_key, 'image/jpeg', 300),
+        getUploadPresignedUrl(back_r2_key, 'image/jpeg', 300),
+      ])
+    } catch {
+      // Clean up the measurement row if presigned URL generation fails
+      await prisma.customerMeasurement.delete({ where: { id: measurement.id } }).catch(() => {})
+      throw validationError('Photo storage is not configured. Please contact support.')
+    }
 
     await prisma.customerMeasurement.update({
       where: { id: measurement.id },

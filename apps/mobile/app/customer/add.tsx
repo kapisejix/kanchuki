@@ -3,7 +3,7 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityInd
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X } from 'lucide-react-native'
+import { X, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 
 export default function AddCustomerScreen() {
@@ -12,6 +12,9 @@ export default function AddCustomerScreen() {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [addressLine1, setAddressLine1] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
   const [saving, setSaving] = useState(false)
 
   const handleSave = async () => {
@@ -25,6 +28,9 @@ export default function AddCustomerScreen() {
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim() || undefined,
+        address_line1: addressLine1.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
       })
       void queryClient.invalidateQueries({ queryKey: ['customers'] })
       const created = (res as { data: { id: string } }).data
@@ -61,7 +67,7 @@ export default function AddCustomerScreen() {
 
       <View className="px-4 py-4 gap-4">
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Name</Text>
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Name *</Text>
           <TextInput
             value={name}
             onChangeText={setName}
@@ -73,7 +79,7 @@ export default function AddCustomerScreen() {
         </View>
 
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone</Text>
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Phone *</Text>
           <TextInput
             value={phone}
             onChangeText={setPhone}
@@ -96,6 +102,37 @@ export default function AddCustomerScreen() {
             autoCorrect={false}
             className="text-base text-gray-900"
           />
+        </View>
+
+        {/* Address section */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="flex-row items-center gap-1.5 mb-3">
+            <MapPin size={14} color="#6B7280" />
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Address (optional)</Text>
+          </View>
+          <TextInput
+            value={addressLine1}
+            onChangeText={setAddressLine1}
+            placeholder="Shop/Home address"
+            placeholderTextColor="#9CA3AF"
+            className="text-sm text-gray-900 mb-3 bg-gray-50 rounded-xl px-3 py-2"
+          />
+          <View className="flex-row gap-3">
+            <TextInput
+              value={city}
+              onChangeText={setCity}
+              placeholder="City"
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+            />
+            <TextInput
+              value={state}
+              onChangeText={setState}
+              placeholder="State"
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+            />
+          </View>
         </View>
 
         <Text className="text-xs text-gray-400 px-1">

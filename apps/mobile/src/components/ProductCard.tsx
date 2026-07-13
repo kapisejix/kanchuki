@@ -17,7 +17,7 @@
  *   />
  */
 
-import { memo } from 'react'
+import { memo, useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
 
@@ -65,6 +65,11 @@ const ProductCard = memo(function ProductCard({
   cachePolicy = 'memory-disk',
   placeholderIcon = '📦',
 }: ProductCardProps) {
+  const [imageError, setImageError] = useState(false)
+
+  // Reset error state when imageUrl changes (e.g. new photo uploaded)
+  useEffect(() => setImageError(false), [imageUrl])
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -85,7 +90,7 @@ const ProductCard = memo(function ProductCard({
               : { aspectRatio: 3 / 4 }
           }
         >
-          {imageUrl ? (
+          {imageUrl && !imageError ? (
             <Image
               source={{ uri: imageUrl }}
               style={{ width: '100%', height: '100%' }}
@@ -93,10 +98,14 @@ const ProductCard = memo(function ProductCard({
               placeholder={imageHeight ? undefined : { blurhash: BLURHASH }}
               transition={300}
               cachePolicy={cachePolicy}
+              onError={() => setImageError(true)}
             />
           ) : (
             <View className="w-full h-full items-center justify-center bg-gray-50">
-              <Text className="text-gray-300 text-3xl">{placeholderIcon}</Text>
+              <Text className="text-gray-300 text-3xl">{imageError ? '⚠️' : placeholderIcon}</Text>
+              {imageError && (
+                <Text className="text-gray-400 text-[10px] mt-1">Image error</Text>
+              )}
             </View>
           )}
 

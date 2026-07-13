@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma, Prisma } from '@kanchuki/db'
 import { createId } from '@paralleldrive/cuid2'
-import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai'
+import { getUploadPresignedUrl, getDownloadPresignedUrl, publicUrl } from '@kanchuki/ai'
 import { R2_PATHS } from '@kanchuki/shared'
 import { addTaggingJob, addEmbeddingJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError, forbidden } from '../plugins/error-handler.js'
@@ -16,10 +16,9 @@ const WEB_URL = process.env['WEB_URL'] ?? ''
 const REVALIDATION_SECRET = process.env['REVALIDATION_SECRET'] ?? ''
 
 async function revalidateCollectionsForProduct(productId: string): Promise<void> {
-  if (!WEB_URL || !REVALIDATION_SECRET) return // not configured — skip
+  if (!WEB_URL || !REVALIDATION_SECRET) return
 
   try {
-    // Find all active collections containing this product
     const collectionProducts = await prisma.collectionProduct.findMany({
       where: { product_id: productId },
       include: {
@@ -32,19 +31,18 @@ async function revalidateCollectionsForProduct(productId: string): Promise<void>
     const slugs = [...new Set(collectionProducts.map((cp) => cp.collection.slug))]
     if (slugs.length === 0) return
 
-    // Revalidate each collection page (fire-and-forget — batch in parallel)
     await Promise.allSettled(
       slugs.map((slug) =>
         fetch(`${WEB_URL}/api/revalidate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ secret: REVALIDATION_SECRET, collection_slug: slug }),
-          signal: AbortSignal.timeout(5000), // 5s timeout per request
+          signal: AbortSignal.timeout(5000),
         }),
       ),
     )
   } catch {
-    // Revalidation is best-effort — never crash the status update
+    // Revalidation is best-effort
   }
 }
 
@@ -56,7 +54,7 @@ const CreateProductSchema = z.object({
   photo_url: z.string().url(),
   back_photo_r2_key: z.string().min(1).optional(),
   back_photo_url: z.string().url().optional(),
-  price_min: z.number().int().min(0).max(100_000_000).optional(), // paise
+  price_min: z.number().int().min(0).max(100_000_000).optional(),
   price_max: z.number().int().min(0).max(100_000_000).optional(),
   mrp: z.number().int().min(0).max(100_000_000).optional(),
   category: z.string().max(100).optional(),
@@ -91,6 +89,34 @@ const ListProductsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
 })
 
+// ─── Photo URL helper ──────────────────────────────────────────────
+// If the stored public URL does not start with http (R2_PUBLIC_URL may not be set),
+// generate a presigned GET URL instead.  getSignedUrl is fast (no network call,
+// just HMAC signing), so this works on every request without caching.
+
+async function photoUrlToDisplay(photo: { url: string; r2_key: string | null } | null | undefined): Promise<string | null> {
+  if (!photo) return null
+  // Already a valid HTTP(S) URL — use as-is (includes R2 public URLs,
+  // Cloudflare CDN URLs, presigned URLs, externally-hosted photos, etc.)
+  if (photo.url.startsWith('http://') || photo.url.startsWith('https://')) {
+    return photo.url
+  }
+  // URL is a relative path (R2_PUBLIC_URL not set) — try presigned GET URL
+  if (photo.r2_key) {
+    try {
+      return await getDownloadPresignedUrl(photo.r2_key, 3600)
+    } catch {
+      // Presigned URL generation failed (R2 credentials not configured).
+      // Return the original URL as a last-resort fallback — it won't load
+      // in the browser, but it's better than silently showing null and a
+      // blank card with no indication of the problem.
+      return photo.url || null
+    }
+  }
+  // No r2_key and URL is relative — nothing we can do
+  return photo.url || null
+}
+
 export const productRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /products/upload-url ──────────────────────────────────
   server.post('/upload-url', async (request, reply) => {
@@ -98,7 +124,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       .object({
         filename: z.string().min(1).max(255),
         content_type: z.enum(ALLOWED_MIME_TYPES),
-        size_bytes: z.number().int().min(1).max(10_000_000), // max 10MB
+        size_bytes: z.number().int().min(1).max(10_000_000),
       })
       .safeParse(request.body)
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
@@ -111,14 +137,19 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const filename = `${createId()}.${ext}`
     const r2Key = R2_PATHS.productPhoto(request.retailerId, productId, filename)
 
-    const uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300)
+    let uploadUrl: string
+    try {
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300)
+    } catch {
+      throw validationError('Photo storage is not configured. Please contact support to enable photo uploads.')
+    }
 
     return reply.status(200).send({
       data: {
         upload_url: uploadUrl,
         r2_key: r2Key,
         public_url: publicUrl(r2Key),
-        product_id: productId, // pre-reserved for product creation
+        product_id: productId,
         expires_in: 300,
       },
     })
@@ -128,7 +159,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   server.post('/', async (request, reply) => {
     const retailerId = request.retailerId
 
-    // Check plan limits
     const retailer = await prisma.retailer.findUniqueOrThrow({
       where: { id: retailerId },
       select: { max_products: true },
@@ -146,7 +176,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const { photo_r2_key, photo_url, back_photo_r2_key, back_photo_url, metadata, ...rest } =
       body.data
 
-    // Verify section belongs to this retailer
     if (rest.section_id) {
       const section = await prisma.storeSection.findFirst({
         where: { id: rest.section_id, retailer_id: retailerId },
@@ -179,13 +208,23 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       include: { photos: true, section: { select: { name: true } } },
     })
 
-    // Queue AI tagging job (async — don't block response)
-    await addTaggingJob({
+    // Fire-and-forget: if Redis/BullMQ is down the tagging job won't block
+    // product creation. We set ai_tag_error so the UI shows a failure banner
+    // instead of spinning "AI tagging in progress..." forever.
+    addTaggingJob({
       product_id: product.id,
       retailer_id: retailerId,
       photo_url,
       r2_key: photo_r2_key,
       back_photo_url,
+    }).catch(async (err) => {
+      request.log.error({ err, product_id: product.id }, 'Failed to queue tagging job')
+      try {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: { ai_tagged: false, ai_tag_error: 'Background AI tagging unavailable — try again later' },
+        })
+      } catch {}
     })
 
     return reply.status(201).send({ data: product })
@@ -217,12 +256,18 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const hasMore = products.length > limit
     const page = hasMore ? products.slice(0, limit) : products
 
-    return {
-      data: page.map((p) => ({
+    const data = await Promise.all(
+      page.map(async (p) => ({
         ...p,
-        primary_photo_url: p.photos[0]?.url ?? null,
-        photos: undefined, // strip raw photos, use primary_photo_url
+        primary_photo_url: await photoUrlToDisplay(
+          p.photos[0] ? { url: p.photos[0].url, r2_key: (p.photos[0] as { r2_key?: string }).r2_key ?? null } : null,
+        ),
+        photos: undefined,
       })),
+    )
+
+    return {
+      data,
       pagination: {
         cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
         has_more: hasMore,
@@ -244,12 +289,30 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     })
     if (!product) throw notFound('Product')
 
-    return { data: product }
+    // Generate presigned URLs for all photos
+    const photosWithUrls = await Promise.all(
+      (product.photos ?? []).map(async (photo) => ({
+        ...photo,
+        url: (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url,
+      })),
+    )
+
+    // Generate presigned URLs for variant photos using their r2_key
+    const variantsWithUrls = await Promise.all(
+      (product.variants ?? []).map(async (variant) => {
+        if (!variant.photo_url) return variant
+        const displayUrl = await photoUrlToDisplay({
+          url: variant.photo_url,
+          r2_key: variant.r2_key,
+        })
+        return { ...variant, photo_url: displayUrl ?? variant.photo_url }
+      }),
+    )
+
+    return { data: { ...product, photos: photosWithUrls, variants: variantsWithUrls } }
   })
 
   // ─── GET /products/:id/interested-customers ──────────────────────
-  // Reverse Fashion DNA match: which customers are most likely to want
-  // this specific product, ranked by preference-vector similarity.
   server.get('/:id/interested-customers', async (request) => {
     const { id } = request.params as { id: string }
     const retailerId = request.retailerId
@@ -316,11 +379,12 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       include: { photos: true, section: { select: { name: true } } },
     })
 
-    // Re-embed if searchable fields changed
     const embeddingFields = ['category', 'primary_color', 'fabric_estimate', 'occasions', 'search_tags']
     const needsReembed = embeddingFields.some((f) => f in body.data)
     if (needsReembed) {
-      await addEmbeddingJob({ product_id: id, retailer_id: request.retailerId })
+      addEmbeddingJob({ product_id: id, retailer_id: request.retailerId }).catch(() => {
+        // Non-critical — embedding can be regenerated later
+      })
     }
 
     return { data: updated }
@@ -345,9 +409,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       select: { id: true, status: true },
     })
 
-    // Fire-and-forget: revalidate collection link pages that include this product
-    // so status changes (AVAILABLE → SOLD / RESERVED) appear instantly instead of
-    // waiting up to 60s for ISR revalidation.
     void revalidateCollectionsForProduct(id)
 
     return { data: updated }
@@ -405,8 +466,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   })
 
   // ─── PATCH /products/:id/photos/:photoId ──────────────────────────
-  // Tag an already-uploaded photo as the upper/lower piece of a multi-piece
-  // outfit (or clear the tag with piece_type: null) — no re-upload needed.
   server.patch('/:id/photos/:photoId', async (request) => {
     const { id, photoId } = request.params as { id: string; photoId: string }
 
@@ -428,7 +487,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   })
 
   // ─── POST /products/:id/variants ─────────────────────────────────
-  // Same design, different color — a real photo per color, never an AI recolor.
   server.post('/:id/variants', async (request, reply) => {
     const { id } = request.params as { id: string }
 
@@ -455,6 +513,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         retailer_id: request.retailerId,
         color: body.data.color,
         photo_url: body.data.url,
+        r2_key: body.data.r2_key,
         price_override: body.data.price_override,
         is_ai_preview: false,
       },
@@ -475,7 +534,17 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       where: { product_id: id, retailer_id: request.retailerId },
       orderBy: { created_at: 'asc' },
     })
-    return { data: variants }
+
+    // Generate presigned URLs for variant photos
+    const variantsWithUrls = await Promise.all(
+      variants.map(async (variant) => {
+        if (!variant.photo_url) return variant
+        const displayUrl = await photoUrlToDisplay({ url: variant.photo_url, r2_key: variant.r2_key })
+        return { ...variant, photo_url: displayUrl ?? variant.photo_url }
+      }),
+    )
+
+    return { data: variantsWithUrls }
   })
 
   // ─── DELETE /products/:id/variants/:variantId ────────────────────

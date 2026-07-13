@@ -29,6 +29,9 @@ type Customer = {
   name: string
   phone: string
   email: string | null
+  address_line1: string | null
+  city: string | null
+  state: string | null
   pref_colors: string[]
   pref_styles: string[]
   pref_fabrics: string[]
@@ -112,6 +115,9 @@ export default function CustomerDetailScreen() {
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [addressLine1, setAddressLine1] = useState('')
+  const [city, setCity] = useState('')
+  const [state, setState] = useState('')
   const [notes, setNotes] = useState('')
   const [colorInput, setColorInput] = useState('')
   const [prefColors, setPrefColors] = useState<string[]>([])
@@ -126,6 +132,9 @@ export default function CustomerDetailScreen() {
     if (!customer) return
     setName(customer.name)
     setEmail(customer.email ?? '')
+    setAddressLine1(customer.address_line1 ?? '')
+    setCity(customer.city ?? '')
+    setState(customer.state ?? '')
     setNotes(customer.notes ?? '')
     setPrefColors(customer.pref_colors ?? [])
     setPrefStyles(customer.pref_styles ?? [])
@@ -153,6 +162,9 @@ export default function CustomerDetailScreen() {
       await customerApi.update(customer.id, {
         name,
         email: email || undefined,
+        address_line1: addressLine1.trim() || undefined,
+        city: city.trim() || undefined,
+        state: state.trim() || undefined,
         notes: notes || undefined,
         pref_colors: prefColors,
         pref_styles: prefStyles,
@@ -178,9 +190,13 @@ export default function CustomerDetailScreen() {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await customerApi.delete(customer.id)
-          void queryClient.invalidateQueries({ queryKey: ['customers'] })
-          router.back()
+          try {
+            await customerApi.delete(customer.id)
+            void queryClient.invalidateQueries({ queryKey: ['customers'] })
+            router.back()
+          } catch (err) {
+            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete customer')
+          }
         },
       },
     ])
@@ -245,31 +261,60 @@ export default function CustomerDetailScreen() {
 
       <View className="px-4 py-4 gap-4">
         {/* Identity */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center gap-3">
-          <View className="w-14 h-14 rounded-full bg-cyan-100 items-center justify-center">
-            <Text className="text-cyan-700 font-bold text-xl">
-              {name.charAt(0).toUpperCase() || '?'}
-            </Text>
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="flex-row items-center gap-3 mb-3">
+            <View className="w-14 h-14 rounded-full bg-cyan-100 items-center justify-center">
+              <Text className="text-cyan-700 font-bold text-xl">
+                {name.charAt(0).toUpperCase() || '?'}
+              </Text>
+            </View>
+            <View className="flex-1">
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="Customer name"
+                className="text-base font-bold text-gray-900"
+                placeholderTextColor="#9CA3AF"
+              />
+              <Text className="text-xs text-gray-400 mt-0.5">{customer.phone}</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="email@example.com (optional)"
+                placeholderTextColor="#9CA3AF"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                className="text-xs text-gray-500 mt-0.5"
+              />
+            </View>
           </View>
-          <View className="flex-1">
+
+          {/* Address fields */}
+          <View className="border-t border-gray-100 pt-3 gap-3">
             <TextInput
-              value={name}
-              onChangeText={setName}
-              placeholder="Customer name"
-              className="text-base font-bold text-gray-900"
+              value={addressLine1}
+              onChangeText={setAddressLine1}
+              placeholder="Shop/Home address (optional)"
               placeholderTextColor="#9CA3AF"
+              className="text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
             />
-            <Text className="text-xs text-gray-400 mt-0.5">{customer.phone}</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              placeholder="email@example.com (optional)"
-              placeholderTextColor="#9CA3AF"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              className="text-xs text-gray-500 mt-0.5"
-            />
+            <View className="flex-row gap-3">
+              <TextInput
+                value={city}
+                onChangeText={setCity}
+                placeholder="City"
+                placeholderTextColor="#9CA3AF"
+                className="flex-1 text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+              />
+              <TextInput
+                value={state}
+                onChangeText={setState}
+                placeholder="State"
+                placeholderTextColor="#9CA3AF"
+                className="flex-1 text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+              />
+            </View>
           </View>
         </View>
 

@@ -53,6 +53,9 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     })
 
     // Queue embedding generation now that we have tags
+    // If this fails, the error propagates to the outer catch which sets
+    // ai_tagged: false + ai_tag_error, giving the user visible feedback
+    // in the product detail screen. BullMQ retries with exponential backoff.
     await addEmbeddingJob({ product_id, retailer_id })
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err)
