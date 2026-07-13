@@ -49,5 +49,8 @@ botocore>=1.34.0
 rembg[cpu]>=0.1.0
 opencv-python>=4.8.0   # Alternative mask generation
 
+# ---- Optional: LoRA weight loading (for fine-tuned models) ----
+peft>=0.10.0           # Required for loading LoRA weights at inference
+
 # ---- Optional: Monitoring ----
 prometheus-client>=0.19.0

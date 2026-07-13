@@ -50,11 +50,8 @@ logger = get_logger(__name__)
 
 # ─── Constants ─────────────────────────────────────────────────
 
-# CatVTON-FLUX base models — pre-trained weights available on HuggingFace
-# IMPORTANT: We load the INPAINT model (xiaozaa/flux1-fill-dev-diffusers) as the base,
-# because CatVTON-FLUX modifies FLUX.1-dev with spatial concatenation of mask + image.
-# Without this, the transformer won't accept the 32-channel input used by CatVTON.
-CATVTON_FLUX_BASE = "xiaozaa/flux1-fill-dev-diffusers"  # CatVTON inpainting model
+# CatVTON-FLUX base
+CATVTON_FLUX_BASE = "xiaozaa/flux1-fill-dev-diffusers"
 
 # Default image size for CatVTON-FLUX
 DEFAULT_HEIGHT = 768

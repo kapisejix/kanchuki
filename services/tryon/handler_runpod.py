@@ -40,6 +40,13 @@ IMAGE_HEIGHT = int(os.environ.get("IMAGE_HEIGHT", "512"))
 IMAGE_WIDTH = int(os.environ.get("IMAGE_WIDTH", "384"))
 DOWNLOAD_TIMEOUT = int(os.environ.get("DOWNLOAD_TIMEOUT", "30"))
 
+# Optional: Path to LoRA weights for fine-tuned CatVTON (SD 1.5-based)
+# Expected format: diffusers LoRA safetensors trained on the SD 1.5 inpainting
+# model's UNet attention layers (q_proj, k_proj, v_proj, o_proj, etc.).
+# Set to a local path or HuggingFace model ID.
+LORA_PATH = os.environ.get("CATVTON_LORA_PATH", "")
+LORA_SCALE = float(os.environ.get("CATVTON_LORA_SCALE", "1.0"))
+
 # R2 config (optional — falls back to returning result as base64)
 R2_ENDPOINT = os.environ.get("R2_ENDPOINT", "")
 R2_ACCESS_KEY = os.environ.get("R2_ACCESS_KEY_ID", "")
@@ -76,6 +83,31 @@ def load_model():
         weight_dtype=weight_dtype,
     )
     print("[CatVTON] Model loaded successfully")
+
+    # Load LoRA weights if configured (fine-tuned on Indian ethnic wear)
+    if LORA_PATH:
+        try:
+            from diffusers.utils import is_peft_available
+            if not is_peft_available():
+                raise ImportError("peft not installed — install via pip install peft")
+
+            print(f"[CatVTON] Loading LoRA weights from {LORA_PATH}...")
+            # load_attn_procs works on UNet2DConditionModel's standard attention
+            # layers (q_proj, k_proj, v_proj, o_proj). The CatVTON pipeline
+            # replaces cross-attention with SkipAttnProcessor but keeps
+            # self-attention layers intact — LoRA on those is still valid.
+            pipe.unet.load_attn_procs(LORA_PATH)
+
+            # Set LoRA scale (weight multiplier)
+            if LORA_SCALE != 1.0:
+                for module in pipe.unet.modules():
+                    if hasattr(module, "set_scale"):
+                        module.set_scale(LORA_SCALE)
+
+            print(f"[CatVTON] LoRA weights loaded (scale={LORA_SCALE})")
+        except Exception as e:
+            print(f"[CatVTON] Failed to load LoRA weights: {e}")
+            print(f"[CatVTON] Continuing with base model only")
 
     try:
         from huggingface_hub import snapshot_download

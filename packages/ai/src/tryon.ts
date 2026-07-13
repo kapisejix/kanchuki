@@ -158,27 +158,34 @@ async function callCatVTONOnce(
     throw new Error(`CatVTON error (${res.status}): ${errorBody}`)
   }
 
-  const raw = (await res.json()) as Record<string, unknown>
-
-  // Parse RunPod serverless response format
-  if (isRunPod) {
-    // RunPod runsync returns: { "output": { "result_url": "...", ... } } or { "error": "..." }
-    if (raw.error) {
-      throw new Error(`CatVTON inference failed: ${String(raw.error)}`)
+  const raw = (await res.json()) as Record<string, unknown>    // Parse RunPod serverless response format
+    if (isRunPod) {
+      // RunPod runsync returns: { "output": { ... }, "delayTime": ... } or { "error": "..." }
+      // The handler's return value is wrapped in "output" → output contains
+      // { result_url, status, error } from handler_runpod.py
+      if (raw.error) {
+        // RunPod-level error (e.g. exec timeout, worker crash)
+        throw new Error(`RunPod error: ${String(raw.error)}`)
+      }
+      const output = raw.output as Record<string, unknown> | undefined
+      const handlerError = output?.error as string | undefined
+      if (handlerError) {
+        throw new Error(`CatVTON handler error: ${handlerError}`)
+      }
+      const resultUrl = output?.result_url as string | undefined
+      if (!resultUrl) {
+        throw new Error(
+          `CatVTON returned no result_url. Full response: ${JSON.stringify(raw).slice(0, 500)}`,
+        )
+      }
+      return {
+        jobId: `catvton-${Date.now()}`,
+        status: 'completed',
+        outputUrls: [resultUrl],
+        errorMessage: null,
+        engine: 'catvton',
+      }
     }
-    const output = raw.output as Record<string, unknown> | undefined
-    const resultUrl = output?.result_url as string | undefined
-    if (!resultUrl) {
-      throw new Error('CatVTON inference returned no result_url')
-    }
-    return {
-      jobId: `catvton-${Date.now()}`,
-      status: 'completed',
-      outputUrls: [resultUrl],
-      errorMessage: null,
-      engine: 'catvton',
-    }
-  }
 
   // Parse self-hosted FastAPI response format
   const body_ = raw as { status: string; result_url: string; error?: string }
