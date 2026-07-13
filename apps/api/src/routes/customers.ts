@@ -25,6 +25,11 @@ const PhotoMeasurementInitSchema = z.object({
 const CustomerSchema = z.object({
   name: z.string().min(1).max(200),
   phone: z.string().min(10).max(15),
+  address_line1: z.string().max(200).optional(),
+  address_line2: z.string().max(200).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(100).optional(),
+  pincode: z.string().max(10).optional(),
   pref_colors: z.array(z.string().max(50)).max(20).optional().default([]),
   pref_styles: z.array(z.string().max(100)).max(10).optional().default([]),
   pref_fabrics: z.array(z.string().max(100)).max(10).optional().default([]),

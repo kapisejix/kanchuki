@@ -73,6 +73,11 @@ model Retailer {
   state        String?
   gstin        String?
 
+  // Full address (city/state above are pre-existing, kept for search/display)
+  address_line1 String?
+  address_line2 String?
+  pincode       String?
+
   categories String[] // ["suits", "sarees", "kurtis"]
 
   // Subscription
@@ -82,9 +87,10 @@ model Retailer {
   plan_expires_at DateTime?
 
   // Usage limits (snapshot from plan, avoids join on every request)
-  max_products   Int @default(500)
-  max_customers  Int @default(200)
-  try_on_credits Int @default(0)
+  max_products    Int @default(500)
+  max_customers   Int @default(200)
+  try_on_credits  Int @default(0)
+  max_staff_seats Int @default(3) // 3 free, additional seats ₹199/mo (PRO-REQUIREMENTS.md §6)
 
   // Razorpay
   razorpay_customer_id     String?
@@ -265,6 +271,13 @@ model Customer {
   name       String
   phone      String
   phone_hash String?
+
+  // Full address
+  address_line1 String?
+  address_line2 String?
+  city          String?
+  state         String?
+  pincode       String?
 
   // Explicit preferences (retailer-entered)
   pref_colors    String[]
