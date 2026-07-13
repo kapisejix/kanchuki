@@ -24,6 +24,22 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 
+// Retries a flaky network step up to `attempts` times with a short backoff.
+// Bulk import fires many sequential requests back-to-back — a single
+// transient timeout shouldn't permanently fail that photo.
+async function withRetry<T>(fn: () => Promise<T>, attempts = 3): Promise<T> {
+  let lastErr: unknown
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await fn()
+    } catch (err) {
+      lastErr = err
+      if (i < attempts - 1) await new Promise((r) => setTimeout(r, 500 * 2 ** i))
+    }
+  }
+  throw lastErr
+}
+
 // ─── Types ────────────────────────────────────────────────────────
 
 type PhotoItem = {
@@ -126,7 +142,9 @@ export default function BulkImportScreen() {
 
         // Get upload URL
         const blob = await readLocalImage(compressedUri)
-        const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
+        const uploadResult = await withRetry(() =>
+          productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size),
+        )
         const info = uploadResult.data
 
         // Mark as creating
@@ -137,13 +155,15 @@ export default function BulkImportScreen() {
         })
 
         // Upload to R2
-        await uploadImageToR2(compressedUri, info.upload_url, 'image/jpeg')
+        await withRetry(() => uploadImageToR2(compressedUri, info.upload_url, 'image/jpeg'))
 
         // Create product
-        const productResult = await productApi.create({
-          photo_r2_key: info.r2_key,
-          photo_url: info.public_url,
-        })
+        const productResult = await withRetry(() =>
+          productApi.create({
+            photo_r2_key: info.r2_key,
+            photo_url: info.public_url,
+          }),
+        )
         const productId = (productResult.data as { id: string }).id
 
         // Mark as done
