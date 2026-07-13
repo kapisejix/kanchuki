@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import Image from 'next/image'
-import { X, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera } from 'lucide-react'
+import { X, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette } from 'lucide-react'
 import type { PublicProduct, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 
@@ -26,11 +26,63 @@ export function ProductDetailSheet({
   onClose,
 }: Props) {
   const [photoIndex, setPhotoIndex] = useState(0)
+  const [variantPhotoUrl, setVariantPhotoUrl] = useState<string | null>(null)
+  const [variantColor, setVariantColor] = useState<string | null>(null)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const touchStartX = useRef<number | null>(null)
+  const prevIndexRef = useRef(photoIndex)
+
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
 
-  const photos = product.photos.length > 0 ? product.photos : [product.primary_photo_url]
+  // Build photos array: product photos + optionally a variant photo
+  const photos = product.photos.length > 0
+    ? (variantPhotoUrl && !product.photos.includes(variantPhotoUrl)
+        ? [...product.photos, variantPhotoUrl]
+        : product.photos)
+    : [product.primary_photo_url]
+
   const currentPhoto = photos[photoIndex] ?? product.primary_photo_url
+  const totalPhotos = photos.length
+
+  const goTo = useCallback((i: number) => {
+    if (isTransitioning) return
+    setIsTransitioning(true)
+    const clamped = Math.max(0, Math.min(i, totalPhotos - 1))
+    prevIndexRef.current = photoIndex // store previous before updating
+    setPhotoIndex(clamped)
+    setTimeout(() => setIsTransitioning(false), 300)
+  }, [totalPhotos, isTransitioning, photoIndex])
+
+  // Touch swipe handlers
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0]?.clientX ?? null
+  }, [])
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (touchStartX.current === null) return
+    const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
+    const SWIPE_THRESHOLD = 50
+    if (Math.abs(delta) > SWIPE_THRESHOLD) {
+      if (delta < 0 && photoIndex < totalPhotos - 1) {
+        goTo(photoIndex + 1)
+      } else if (delta > 0 && photoIndex > 0) {
+        goTo(photoIndex - 1)
+      }
+    }
+    touchStartX.current = null
+  }, [photoIndex, totalPhotos, goTo])
+
+  // Variant click handler: show variant photo in carousel
+  const handleVariantClick = useCallback((color: string, photoUrl: string | null) => {
+    if (photoUrl) {
+      setVariantPhotoUrl(photoUrl)
+      setVariantColor(color)
+      // Scroll to variant photo (last position)
+      const targetIdx = product.photos.length // variant is appended after product photos
+      goTo(targetIdx)
+    }
+  }, [product.photos.length, goTo])
 
   const handleEnquire = () => {
     if (isSold) return
@@ -70,48 +122,108 @@ export function ProductDetailSheet({
           <X size={16} />
         </button>
 
-        {/* Photo carousel */}
-        <div className="relative aspect-square w-full bg-gray-50">
-          {currentPhoto && (
-            <Image
-              src={currentPhoto}
-              alt={product.name ?? product.category ?? 'Product'}
-              fill
-              sizes="100vw"
-              className="object-cover"
-              priority
-            />
+        {/* Photo carousel with crossfade transition */}
+        <div
+          className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+        >
+          {/* Crossfade: two overlapping layers — outgoing fades out, incoming fades in */}
+          {/* Previous photo fading out — uses ref-tracked previous index for correct animation in both directions */}
+          {prevIndexRef.current !== photoIndex && photos[prevIndexRef.current] && (
+            <div
+              key={`prev-${photoIndex}`}
+              className="absolute inset-0 opacity-0 animate-fade-out pointer-events-none"
+              style={{ animation: 'fadeOut 0.25s ease-in-out forwards' }}
+            >
+              <Image
+                src={photos[prevIndexRef.current]!}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-cover"
+              />
+            </div>
+          )}
+          {/* Current photo fading in */}
+          <div
+            key={`curr-${photoIndex}`}
+            className="absolute inset-0 opacity-0"
+            style={{ animation: 'fadeIn 0.25s ease-in-out forwards' }}
+          >
+            {currentPhoto && (
+              <Image
+                src={currentPhoto}
+                alt={product.name ?? product.category ?? 'Product'}
+                fill
+                sizes="100vw"
+                className="object-cover"
+                priority
+              />
+            )}
+          </div>
+
+          {/* Keyframes injected once */}
+          <style jsx>{`
+            @keyframes fadeIn {
+              from { opacity: 0; }
+              to { opacity: 1; }
+            }
+            @keyframes fadeOut {
+              from { opacity: 1; }
+              to { opacity: 0; }
+            }
+          `}</style>
+
+          {/* Variant photo badge */}
+          {variantColor && variantPhotoUrl && photos[photoIndex] === variantPhotoUrl && (
+            <div className="absolute top-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+              <Palette size={12} />
+              {variantColor}
+            </div>
           )}
 
-          {photos.length > 1 && (
+          {/* Navigation arrows */}
+          {totalPhotos > 1 && (
             <>
-              <button
-                onClick={() => setPhotoIndex((i) => Math.max(0, i - 1))}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center"
-                disabled={photoIndex === 0}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                onClick={() => setPhotoIndex((i) => Math.min(photos.length - 1, i + 1))}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 flex items-center justify-center"
-                disabled={photoIndex === photos.length - 1}
-              >
-                <ChevronRight size={16} />
-              </button>
+              {photoIndex > 0 && (
+                <button
+                  onClick={() => goTo(photoIndex - 1)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95"
+                  aria-label="Previous photo"
+                >
+                  <ChevronLeft size={18} className="text-gray-700" />
+                </button>
+              )}
+              {photoIndex < totalPhotos - 1 && (
+                <button
+                  onClick={() => goTo(photoIndex + 1)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95"
+                  aria-label="Next photo"
+                >
+                  <ChevronRight size={18} className="text-gray-700" />
+                </button>
+              )}
 
               {/* Dots */}
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
-                {photos.map((_, i) => (
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+                {Array.from({ length: totalPhotos }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setPhotoIndex(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-colors ${
-                      i === photoIndex ? 'bg-white' : 'bg-white/50'
+                    onClick={() => goTo(i)}
+                    className={`rounded-full transition-all duration-200 ${
+                      i === photoIndex
+                        ? 'w-5 h-2 bg-white shadow-sm'
+                        : 'w-2 h-2 bg-white/60 hover:bg-white/80'
                     }`}
                     aria-label={`Photo ${i + 1}`}
                   />
                 ))}
+              </div>
+
+              {/* Photo counter */}
+              <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+                {photoIndex + 1} / {totalPhotos}
               </div>
             </>
           )}
@@ -142,7 +254,7 @@ export function ProductDetailSheet({
             {!isSold && (
               <button
                 onClick={() => onFavorite(product.id)}
-                className="w-10 h-10 rounded-full border-2 border-gray-100 flex items-center justify-center flex-shrink-0"
+                className="w-10 h-10 rounded-full border-2 border-gray-100 flex items-center justify-center flex-shrink-0 hover:border-rose-200 transition-colors"
                 aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
               >
                 <Heart
@@ -160,26 +272,45 @@ export function ProductDetailSheet({
             {product.occasions.slice(0, 2).map((o) => <Chip key={o} label={o} />)}
           </div>
 
-          {/* Color variants */}
+          {/* Color variants — clickable to show in carousel */}
           {product.variants.length > 0 && (
             <div>
-              <p className="text-xs text-gray-500 font-medium mb-2">Available Colors</p>
+              <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1.5">
+                <Palette size={12} />
+                Available Colors
+              </p>
               <div className="flex flex-wrap gap-2">
-                {product.variants.map((v) => (
-                  <div
-                    key={v.color}
-                    className="flex items-center gap-1.5 bg-gray-50 rounded-full px-3 py-1.5"
-                  >
-                    <span
-                      className="w-3 h-3 rounded-full border border-gray-200"
-                      style={{ backgroundColor: v.color.toLowerCase() }}
-                    />
-                    <span className="text-xs text-gray-700">{v.color}</span>
-                    {v.status === 'SOLD' && (
-                      <span className="text-xs text-red-400">(Sold)</span>
-                    )}
-                  </div>
-                ))}
+                {product.variants.map((v) => {
+                  const isActive = variantColor === v.color && variantPhotoUrl === v.photo_url
+                  return (
+                    <button
+                      key={v.color}
+                      onClick={() => v.photo_url ? handleVariantClick(v.color, v.photo_url) : undefined}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
+                        isActive
+                          ? 'bg-cyan-100 ring-2 ring-cyan-400 ring-offset-1'
+                          : v.photo_url
+                            ? 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
+                            : 'bg-gray-50 cursor-default'
+                      }`}
+                      title={v.photo_url ? `Click to see ${v.color} photo` : v.color}
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+                        style={{ backgroundColor: v.color.toLowerCase() }}
+                      />
+                      <span className={`text-xs ${isActive ? 'text-cyan-800 font-medium' : 'text-gray-700'}`}>
+                        {v.color}
+                      </span>
+                      {v.photo_url && !isActive && (
+                        <ChevronRight size={10} className="text-gray-300" />
+                      )}
+                      {v.status === 'SOLD' && (
+                        <span className="text-xs text-red-400">(Sold)</span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -204,10 +335,10 @@ export function ProductDetailSheet({
           <div className="px-4 pt-2">
             <button
               onClick={onTryOn}
-              className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-colors ${
+              className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
                 isReserved
                   ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm hover:shadow-md'
               }`}
               disabled={isReserved}
             >
@@ -227,10 +358,10 @@ export function ProductDetailSheet({
           <button
             onClick={handleEnquire}
             disabled={isSold}
-            className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-base ${
+            className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-base active:scale-[0.98] ${
               isSold
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600 text-white'
+                : 'bg-green-500 hover:bg-green-600 text-white shadow-sm hover:shadow-md'
             }`}
           >
             <MessageCircle size={20} />
