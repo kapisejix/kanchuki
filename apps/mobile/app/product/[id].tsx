@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Dimensions,
+  Animated,
 } from 'react-native'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -104,6 +105,20 @@ export default function ProductDetailScreen() {
   const carouselRef = useRef<ScrollView>(null)
   const displayPhotosRef = useRef(0)
 
+  // ── Pinch/zoom state ─────────────────────────────────────────────
+  const [isZoomed, setIsZoomed] = useState(false)
+  const [carouselScrollEnabled, setCarouselScrollEnabled] = useState(true)
+  const scaleAnim = useRef(new Animated.Value(1)).current
+  const panXAnim = useRef(new Animated.Value(0)).current
+  const panYAnim = useRef(new Animated.Value(0)).current
+  const lastPinchDistRef = useRef(0)
+  const lastTapRef = useRef(0)
+  const currentScaleRef = useRef(1)
+  const isPinchingRef = useRef(false)
+  const isPanningRef = useRef(false)
+  const panStartRef = useRef({ x: 0, y: 0 })
+  const panStartOffsetRef = useRef({ x: 0, y: 0 })
+
   // Get all displayable images (product photos + variant preview appended)
   const displayPhotos = (() => {
     const base = product?.photos ?? []
@@ -151,6 +166,130 @@ export default function ProductDetailScreen() {
       }
     }
   }, [variantPreviewUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Reset zoom when carousel navigates to a different photo
+  useEffect(() => {
+    if (isZoomed) {
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 7 }),
+        Animated.spring(panXAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
+        Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
+      ]).start()
+      setIsZoomed(false)
+      setCarouselScrollEnabled(true)
+      currentScaleRef.current = 1
+    }
+  }, [selectedPhotoIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep mutable refs in sync with Animated values for pan start offset
+  const latestPanX = useRef(0)
+  const latestPanY = useRef(0)
+  useEffect(() => {
+    const subX = panXAnim.addListener((v: { value: number }) => { latestPanX.current = v.value })
+    const subY = panYAnim.addListener((v: { value: number }) => { latestPanY.current = v.value })
+    return () => {
+      panXAnim.removeListener(subX)
+      panYAnim.removeListener(subY)
+    }
+  }, [panXAnim, panYAnim])
+
+  // ── Touch handlers for pinch/zoom + double-tap ──────────────────
+  const handlePhotoTouchStart = useCallback((e: { nativeEvent: { touches?: { pageX: number; pageY: number }[] } }) => {
+    const touches = e.nativeEvent.touches
+    if (touches && touches.length >= 2) {
+      // Pinch start — store initial distance
+      const dx = touches[0].pageX - touches[1].pageX
+      const dy = touches[0].pageY - touches[1].pageY
+      lastPinchDistRef.current = Math.sqrt(dx * dx + dy * dy)
+      isPinchingRef.current = true
+      setIsZoomed(true)
+      setCarouselScrollEnabled(false)
+      return
+    }
+    if (touches && touches.length === 1 && isZoomed && currentScaleRef.current > 1) {
+      // Pan start when zoomed
+      isPanningRef.current = true
+      panStartRef.current = { x: touches[0].pageX, y: touches[0].pageY }
+      panStartOffsetRef.current = { x: latestPanX.current, y: latestPanY.current }
+      setCarouselScrollEnabled(false)
+    }
+  }, [isZoomed])
+
+  const handlePhotoTouchMove = useCallback((e: { nativeEvent: { touches?: { pageX: number; pageY: number }[] } }) => {
+    const touches = e.nativeEvent.touches
+    if (isPinchingRef.current && touches && touches.length >= 2) {
+      const dx = touches[0].pageX - touches[1].pageX
+      const dy = touches[0].pageY - touches[1].pageY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const ratio = dist / lastPinchDistRef.current
+      const newScale = Math.max(1, Math.min(currentScaleRef.current * ratio, 6))
+      currentScaleRef.current = newScale
+      lastPinchDistRef.current = dist
+      scaleAnim.setValue(newScale)
+      return
+    }
+    if (isPanningRef.current && touches && touches.length === 1) {
+      const dx = touches[0].pageX - panStartRef.current.x
+      const dy = touches[0].pageY - panStartRef.current.y
+      panXAnim.setValue(panStartOffsetRef.current.x + dx)
+      panYAnim.setValue(panStartOffsetRef.current.y + dy)
+    }
+  }, [scaleAnim, panXAnim, panYAnim])
+
+  const handlePhotoTouchEnd = useCallback((e: { nativeEvent: { changedTouches?: { pageX: number; pageY: number }[] } }) => {
+    // End pinch
+    if (isPinchingRef.current) {
+      isPinchingRef.current = false
+      if (currentScaleRef.current < 1.15) {
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          useNativeDriver: true,
+          friction: 7,
+        }).start()
+        setIsZoomed(false)
+        setCarouselScrollEnabled(true)
+        currentScaleRef.current = 1
+      }
+      return
+    }
+    // End pan
+    if (isPanningRef.current) {
+      isPanningRef.current = false
+      return
+    }
+    // Quick tap — detect double-tap
+    const changed = e.nativeEvent.changedTouches
+    if (changed && changed.length === 1) {
+      const now = Date.now()
+      if (now - lastTapRef.current < 300) {
+        // Double-tap detected
+        lastTapRef.current = 0
+        if (currentScaleRef.current > 1) {
+          // Zoom out
+          Animated.parallel([
+            Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 7 }),
+            Animated.spring(panXAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
+            Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
+          ]).start()
+          setIsZoomed(false)
+          setCarouselScrollEnabled(true)
+          currentScaleRef.current = 1
+        } else {
+          // Zoom in to 2.5x
+          Animated.spring(scaleAnim, {
+            toValue: 2.5,
+            useNativeDriver: true,
+            friction: 7,
+          }).start()
+          setIsZoomed(true)
+          setCarouselScrollEnabled(false)
+          currentScaleRef.current = 2.5
+        }
+        return
+      }
+      lastTapRef.current = now
+    }
+  }, [scaleAnim, panXAnim, panYAnim])
 
   useEffect(() => {
     if (!product) return
@@ -341,6 +480,7 @@ export default function ProductDetailScreen() {
               horizontal
               pagingEnabled
               nestedScrollEnabled
+              scrollEnabled={carouselScrollEnabled}
               showsHorizontalScrollIndicator={false}
               decelerationRate="fast"
               scrollEventThrottle={16}
@@ -351,7 +491,21 @@ export default function ProductDetailScreen() {
               style={{ flex: 1 }}
             >
               {displayPhotos.map((photo) => (
-                <View key={photo.id} style={{ width: SCREEN_WIDTH, height: 380 }}>
+                <Animated.View
+                  key={photo.id}
+                  style={{
+                    width: SCREEN_WIDTH,
+                    height: 380,
+                    transform: [
+                      { scale: scaleAnim },
+                      { translateX: panXAnim },
+                      { translateY: panYAnim },
+                    ],
+                  }}
+                  onTouchStart={handlePhotoTouchStart}
+                  onTouchMove={handlePhotoTouchMove}
+                  onTouchEnd={handlePhotoTouchEnd}
+                >
                   {!imageErrors.has(photo.url) ? (
                     <Image
                       source={{ uri: photo.url }}
@@ -365,7 +519,7 @@ export default function ProductDetailScreen() {
                       <Text className="text-gray-400 text-xs">Image unavailable</Text>
                     </View>
                   )}
-                </View>
+                </Animated.View>
               ))}
             </ScrollView>
           ) : (
@@ -375,8 +529,8 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Left arrow */}
-          {displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
+          {/* Left arrow — hidden when zoomed */}
+          {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
             <TouchableOpacity
               onPress={() => goToPhoto(selectedPhotoIndex - 1)}
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
@@ -386,8 +540,8 @@ export default function ProductDetailScreen() {
             </TouchableOpacity>
           )}
 
-          {/* Right arrow */}
-          {displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
+          {/* Right arrow — hidden when zoomed */}
+          {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
             <TouchableOpacity
               onPress={() => goToPhoto(selectedPhotoIndex + 1)}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { X, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette } from 'lucide-react'
 import type { PublicProduct, PublicCollection } from '@kanchuki/shared'
@@ -32,6 +32,20 @@ export function ProductDetailSheet({
   const touchStartX = useRef<number | null>(null)
   const prevIndexRef = useRef(photoIndex)
 
+  // ── Pinch/Zoom state ─────────────────────────────────────────────
+  const [isZoomed, setIsZoomed] = useState(false)
+  const [scaleAnim, setScaleAnim] = useState(1)
+  const [panX, setPanX] = useState(0)
+  const [panY, setPanY] = useState(0)
+  const lastTapRef = useRef(0)
+  const lastPinchDistRef = useRef(0)
+  const lastPinchCenterRef = useRef({ x: 50, y: 50 })
+  const isPinchingRef = useRef(false)
+  const isPanningRef = useRef(false)
+  const panStartRef = useRef({ x: 0, y: 0 })
+  const panStartOffsetRef = useRef({ x: 0, y: 0 })
+  const currentScaleRef = useRef(1)
+
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
 
@@ -47,6 +61,12 @@ export function ProductDetailSheet({
 
   const goTo = useCallback((i: number) => {
     if (isTransitioning) return
+    // Reset zoom when navigating to a different photo
+    setScaleAnim(1)
+    setPanX(0)
+    setPanY(0)
+    setIsZoomed(false)
+    currentScaleRef.current = 1
     setIsTransitioning(true)
     const clamped = Math.max(0, Math.min(i, totalPhotos - 1))
     prevIndexRef.current = photoIndex // store previous before updating
@@ -54,12 +74,107 @@ export function ProductDetailSheet({
     setTimeout(() => setIsTransitioning(false), 300)
   }, [totalPhotos, isTransitioning, photoIndex])
 
-  // Touch swipe handlers
+  // ── Touch handlers for swipe + pinch/zoom + double-tap ──────────
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      // Pinch start — store initial distance and center
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      lastPinchDistRef.current = Math.sqrt(dx * dx + dy * dy)
+      const rect = e.currentTarget.getBoundingClientRect()
+      lastPinchCenterRef.current = {
+        x: ((e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left) / rect.width * 100,
+        y: ((e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top) / rect.height * 100,
+      }
+      isPinchingRef.current = true
+      setIsZoomed(true)
+      touchStartX.current = null // prevent swipe
+      return
+    }
+    if (e.touches.length === 1 && isZoomed && currentScaleRef.current > 1) {
+      // Pan when zoomed — store start position
+      isPanningRef.current = true
+      panStartRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      panStartOffsetRef.current = { x: panX, y: panY }
+      touchStartX.current = null // prevent swipe
+      return
+    }
+    // Normal swipe start (not zoomed, not pinching)
     touchStartX.current = e.touches[0]?.clientX ?? null
+  }, [isZoomed, panX, panY])
+
+  // Handle touch move for pinch and pan
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (isPinchingRef.current && e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX
+      const dy = e.touches[0].clientY - e.touches[1].clientY
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      const ratio = dist / lastPinchDistRef.current
+      const newScale = Math.max(1, Math.min(currentScaleRef.current * ratio, 6))
+      currentScaleRef.current = newScale
+      lastPinchDistRef.current = dist
+      setScaleAnim(newScale)
+      return
+    }
+    if (isPanningRef.current && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - panStartRef.current.x
+      const dy = e.touches[0].clientY - panStartRef.current.y
+      setPanX(panStartOffsetRef.current.x + dx)
+      setPanY(panStartOffsetRef.current.y + dy)
+    }
   }, [])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    // End pinch
+    if (isPinchingRef.current) {
+      isPinchingRef.current = false
+      // If scale is very close to 1, snap back
+      if (currentScaleRef.current < 1.15) {
+        setScaleAnim(1)
+        setIsZoomed(false)
+        currentScaleRef.current = 1
+      }
+      touchStartX.current = null
+      return
+    }
+    // End pan
+    if (isPanningRef.current) {
+      isPanningRef.current = false
+      touchStartX.current = null
+      return
+    }
+    // Quick tap — detect double-tap
+    if (touchStartX.current !== null) {
+      const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
+      if (Math.abs(delta) < 10) {
+        const now = Date.now()
+        if (now - lastTapRef.current < 300) {
+          // Double-tap detected
+          lastTapRef.current = 0
+          if (currentScaleRef.current > 1) {
+            // Zoom out
+            setScaleAnim(1)
+            setPanX(0)
+            setPanY(0)
+            setIsZoomed(false)
+            currentScaleRef.current = 1
+          } else {
+            // Zoom in to 2.5x at tap point
+            const rect = e.currentTarget.getBoundingClientRect()
+            const cx = ((e.changedTouches[0]?.clientX ?? rect.left) - rect.left) / rect.width * 100
+            const cy = ((e.changedTouches[0]?.clientY ?? rect.top) - rect.top) / rect.height * 100
+            lastPinchCenterRef.current = { x: cx, y: cy }
+            setScaleAnim(2.5)
+            setIsZoomed(true)
+            currentScaleRef.current = 2.5
+          }
+          touchStartX.current = null
+          return
+        }
+        lastTapRef.current = now
+      }
+    }
+    // Regular swipe detection
     if (touchStartX.current === null) return
     const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
     const SWIPE_THRESHOLD = 50
@@ -122,45 +237,61 @@ export function ProductDetailSheet({
           <X size={16} />
         </button>
 
-        {/* Photo carousel with crossfade transition */}
+        {/* Photo carousel with crossfade transition + pinch-to-zoom */}
         <div
           className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
           onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {/* Crossfade: two overlapping layers — outgoing fades out, incoming fades in */}
-          {/* Previous photo fading out — uses ref-tracked previous index for correct animation in both directions */}
-          {prevIndexRef.current !== photoIndex && photos[prevIndexRef.current] && (
-            <div
-              key={`prev-${photoIndex}`}
-              className="absolute inset-0 opacity-0 animate-fade-out pointer-events-none"
-              style={{ animation: 'fadeOut 0.25s ease-in-out forwards' }}
-            >
-              <Image
-                src={photos[prevIndexRef.current]!}
-                alt=""
-                fill
-                sizes="100vw"
-                className="object-cover"
-              />
-            </div>
-          )}
-          {/* Current photo fading in */}
+          {/* Zoom container — wraps crossfade layers, transforms for zoom/pan */}
           <div
-            key={`curr-${photoIndex}`}
-            className="absolute inset-0 opacity-0"
-            style={{ animation: 'fadeIn 0.25s ease-in-out forwards' }}
+            className="relative w-full h-full"
+            style={{
+              transform: isZoomed
+                ? `scale(${scaleAnim}) translate(${panX}px, ${panY}px)`
+                : 'scale(1) translate(0px, 0px)',
+              transformOrigin: `${lastPinchCenterRef.current.x}% ${lastPinchCenterRef.current.y}%`,
+              transition: isPinchingRef.current || isPanningRef.current
+                ? 'none'
+                : 'transform 0.2s ease-out',
+              cursor: isZoomed ? (isPanningRef.current ? 'grabbing' : 'grab') : 'default',
+              touchAction: isZoomed ? 'none' : 'pan-y',
+            }}
           >
-            {currentPhoto && (
-              <Image
-                src={currentPhoto}
-                alt={product.name ?? product.category ?? 'Product'}
-                fill
-                sizes="100vw"
-                className="object-cover"
-                priority
-              />
+            {/* Previous photo fading out — uses ref-tracked previous index */}
+            {prevIndexRef.current !== photoIndex && photos[prevIndexRef.current] && (
+              <div
+                key={`prev-${photoIndex}`}
+                className="absolute inset-0 opacity-0 animate-fade-out pointer-events-none"
+                style={{ animation: 'fadeOut 0.25s ease-in-out forwards' }}
+              >
+                <Image
+                  src={photos[prevIndexRef.current]!}
+                  alt=""
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                />
+              </div>
             )}
+            {/* Current photo fading in */}
+            <div
+              key={`curr-${photoIndex}`}
+              className="absolute inset-0 opacity-0"
+              style={{ animation: 'fadeIn 0.25s ease-in-out forwards' }}
+            >
+              {currentPhoto && (
+                <Image
+                  src={currentPhoto}
+                  alt={product.name ?? product.category ?? 'Product'}
+                  fill
+                  sizes="100vw"
+                  className="object-cover"
+                  priority
+                />
+              )}
+            </div>
           </div>
 
           {/* Keyframes injected once */}
@@ -183,8 +314,15 @@ export function ProductDetailSheet({
             </div>
           )}
 
+          {/* Zoom hint — shows briefly on first zoom */}
+          {isZoomed && (
+            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none animate-fadeIn">
+              Pinch to zoom · Double-tap to reset
+            </div>
+          )}
+
           {/* Navigation arrows */}
-          {totalPhotos > 1 && (
+          {totalPhotos > 1 && !isZoomed && (
             <>
               {photoIndex > 0 && (
                 <button
@@ -204,29 +342,31 @@ export function ProductDetailSheet({
                   <ChevronRight size={18} className="text-gray-700" />
                 </button>
               )}
-
-              {/* Dots */}
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
-                {Array.from({ length: totalPhotos }).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => goTo(i)}
-                    className={`rounded-full transition-all duration-200 ${
-                      i === photoIndex
-                        ? 'w-5 h-2 bg-white shadow-sm'
-                        : 'w-2 h-2 bg-white/60 hover:bg-white/80'
-                    }`}
-                    aria-label={`Photo ${i + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Photo counter */}
-              <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-                {photoIndex + 1} / {totalPhotos}
-              </div>
             </>
           )}
+
+          {/* Dots — visible always for photo count reference */}
+          {totalPhotos > 1 && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+              {Array.from({ length: totalPhotos }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  className={`rounded-full transition-all duration-200 ${
+                    i === photoIndex
+                      ? 'w-5 h-2 bg-white shadow-sm'
+                      : 'w-2 h-2 bg-white/60 hover:bg-white/80'
+                  }`}
+                  aria-label={`Photo ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Photo counter */}
+          <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+            {photoIndex + 1} / {totalPhotos}
+          </div>
         </div>
 
         {/* Details */}
