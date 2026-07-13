@@ -6,6 +6,7 @@ import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai'
 import { R2_PATHS } from '@kanchuki/shared'
 import { addTaggingJob, addEmbeddingJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError, forbidden } from '../plugins/error-handler.js'
+import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai'
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
 // After a product status change, purge the ISR cache for every collection
@@ -244,6 +245,56 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     if (!product) throw notFound('Product')
 
     return { data: product }
+  })
+
+  // ─── GET /products/:id/interested-customers ──────────────────────
+  // Reverse Fashion DNA match: which customers are most likely to want
+  // this specific product, ranked by preference-vector similarity.
+  server.get('/:id/interested-customers', async (request) => {
+    const { id } = request.params as { id: string }
+    const retailerId = request.retailerId
+
+    const query = z
+      .object({ limit: z.coerce.number().int().min(1).max(50).default(12) })
+      .safeParse(request.query)
+    if (!query.success) throw validationError('Invalid query')
+    const { limit } = query.data
+
+    const product = await prisma.product.findFirst({
+      where: { id, retailer_id: retailerId, deleted_at: null },
+      select: { id: true },
+    })
+    if (!product) throw notFound('Product')
+
+    type MatchRow = {
+      customer_id: string
+      name: string
+      phone: string
+      match_score: number
+    }
+
+    const rows = await prisma.$queryRaw<MatchRow[]>`
+      SELECT
+        c.id AS customer_id,
+        c.name,
+        c.phone,
+        (1 - (dna.preference_vector <=> pe.embedding)) AS match_score
+      FROM customer_fashion_dna dna
+      JOIN customers c ON c.id = dna.customer_id
+      JOIN product_embeddings pe ON pe.product_id = ${id}
+      WHERE dna.retailer_id = ${retailerId}
+        AND c.deleted_at IS NULL
+        AND dna.confidence_score >= ${MIN_CONFIDENCE_FOR_MATCHING}
+      ORDER BY match_score DESC
+      LIMIT ${limit * 2}
+    `
+
+    const customers = rows
+      .filter((r) => Number(r.match_score) > MATCH_SIMILARITY_THRESHOLD)
+      .slice(0, limit)
+      .map((r) => ({ id: r.customer_id, name: r.name, phone: r.phone, match_score: Number(r.match_score) }))
+
+    return { data: { customers } }
   })
 
   // ─── PUT /products/:id ──────────────────────────────────────────

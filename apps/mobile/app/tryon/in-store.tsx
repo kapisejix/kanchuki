@@ -25,7 +25,8 @@ import {
   RefreshCw,
 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
-import { productApi, tryOnApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { productApi, tryOnApi, retailerApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { PLAN_LIMITS } from '@kanchuki/shared'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
 
@@ -61,6 +62,17 @@ export default function InStoreTryOnScreen() {
     queryFn: () => productApi.list({ limit: 50 }),
     staleTime: 30_000,
   })
+
+  // Try-on credits — real-time count + low-credit warning (PLAN.md Phase 1 cost control)
+  const { data: retailerData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+    staleTime: 30_000,
+  })
+  const retailer = (retailerData as { data: { plan: keyof typeof PLAN_LIMITS; try_on_credits: number } | undefined } | undefined)?.data
+  const creditsTotal = retailer ? PLAN_LIMITS[retailer.plan].try_on_credits : 0
+  const creditsRemaining = retailer?.try_on_credits ?? 0
+  const creditsLow = creditsTotal > 0 && creditsRemaining / creditsTotal <= 0.2
 
   const products: Product[] = ((productsData as { data: Product[] } | undefined)?.data ?? [])
     .filter((p) => p.status === 'AVAILABLE')
@@ -275,6 +287,18 @@ export default function InStoreTryOnScreen() {
         </Text>
         <View className="w-6" />
       </View>
+
+      {/* Try-on credits banner */}
+      {retailer && (
+        <View
+          className={`px-4 py-2 border-b ${creditsLow ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'}`}
+        >
+          <Text className={`text-xs font-medium ${creditsLow ? 'text-amber-700' : 'text-gray-500'}`}>
+            {creditsRemaining} try-on credit{creditsRemaining === 1 ? '' : 's'} left
+            {creditsLow ? ' — running low, upgrade or top up soon' : ''}
+          </Text>
+        </View>
+      )}
 
       {/* Step: Select Product */}
       {step === 'select' && (
