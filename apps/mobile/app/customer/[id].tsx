@@ -8,6 +8,8 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  Modal,
+  Platform,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -127,6 +129,52 @@ export default function CustomerDetailScreen() {
   const [budgetMin, setBudgetMin] = useState('')
   const [budgetMax, setBudgetMax] = useState('')
   const [saving, setSaving] = useState(false)
+
+  // ── Manual measurement entry ────────────────────────────────────
+  const [showManualForm, setShowManualForm] = useState(false)
+  const [manualHeight, setManualHeight] = useState('')
+  const [manualBust, setManualBust] = useState('')
+  const [manualWaist, setManualWaist] = useState('')
+  const [manualHip, setManualHip] = useState('')
+  const [manualPantWaist, setManualPantWaist] = useState('')
+  const [manualPantHip, setManualPantHip] = useState('')
+  const [manualInseam, setManualInseam] = useState('')
+  const [savingManual, setSavingManual] = useState(false)
+
+  const handleSaveManualMeasurement = async () => {
+    const heightNum = parseFloat(manualHeight)
+    if (!heightNum || heightNum < 50 || heightNum > 250) {
+      Alert.alert('Height required', 'Enter a valid height between 50–250 cm.')
+      return
+    }
+    setSavingManual(true)
+    try {
+      if (!customer) return
+      await customerApi.createManualMeasurement(customer.id, {
+        height_cm: heightNum,
+        bust_cm: manualBust ? parseFloat(manualBust) : undefined,
+        waist_cm: manualWaist ? parseFloat(manualWaist) : undefined,
+        hip_cm: manualHip ? parseFloat(manualHip) : undefined,
+        pant_waist_cm: manualPantWaist ? parseFloat(manualPantWaist) : undefined,
+        pant_hip_cm: manualPantHip ? parseFloat(manualPantHip) : undefined,
+        inseam_cm: manualInseam ? parseFloat(manualInseam) : undefined,
+      })
+      void queryClient.invalidateQueries({ queryKey: ['customers', id, 'measurements'] })
+      setShowManualForm(false)
+      setManualHeight('')
+      setManualBust('')
+      setManualWaist('')
+      setManualHip('')
+      setManualPantWaist('')
+      setManualPantHip('')
+      setManualInseam('')
+      Alert.alert('Saved', 'Manual measurements recorded.')
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save measurements')
+    } finally {
+      setSavingManual(false)
+    }
+  }
 
   useEffect(() => {
     if (!customer) return
@@ -541,28 +589,40 @@ export default function CustomerDetailScreen() {
             <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Measurements
             </Text>
-            <TouchableOpacity
-              onPress={() => router.push(`/customer/${customer.id}/measurement`)}
-              className="flex-row items-center gap-1 bg-cyan-50 px-2.5 py-1 rounded-full"
-            >
-              <Ruler size={12} color="#0891B2" />
-              <Text className="text-cyan-700 text-xs font-semibold">Add Measurement</Text>
-            </TouchableOpacity>
+            <View className="flex-row gap-1.5">
+              <TouchableOpacity
+                onPress={() => setShowManualForm(true)}
+                className="flex-row items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full"
+              >
+                <Text className="text-emerald-700 text-xs font-semibold">Manual</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => router.push(`/customer/${customer.id}/measurement`)}
+                className="flex-row items-center gap-1 bg-cyan-50 px-2.5 py-1 rounded-full"
+              >
+                <Ruler size={12} color="#0891B2" />
+                <Text className="text-cyan-700 text-xs font-semibold">Camera</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {measurements.length === 0 ? (
             <Text className="text-xs text-gray-400">No measurements recorded yet.</Text>
           ) : (
             <View className="gap-2">
-              {measurements.map((m) => (
+              {measurements.slice(0, 3).map((m) => (
                 <View key={m.id} className="bg-cyan-50 rounded-xl px-3 py-2">
                   <View className="flex-row items-center justify-between">
-                    <Text className="text-xs font-semibold text-gray-700">
-                      {m.source === 'PHOTO' ? 'Photo capture' : 'Manual entry'}
-                    </Text>
-                    <Text className="text-[10px] text-gray-400">
-                      {new Date(m.created_at).toLocaleDateString('en-IN')}
-                    </Text>
+                    <View className="flex-row items-center gap-1.5">
+                      <View className={`px-2 py-0.5 rounded ${m.source === 'PHOTO' ? 'bg-cyan-100' : 'bg-emerald-100'}`}>
+                        <Text className={`text-[10px] font-semibold ${m.source === 'PHOTO' ? 'text-cyan-700' : 'text-emerald-700'}`}>
+                          {m.source === 'PHOTO' ? 'AI' : 'Tape'}
+                        </Text>
+                      </View>
+                      <Text className="text-[10px] text-gray-400">
+                        {new Date(m.created_at).toLocaleDateString('en-IN')}
+                      </Text>
+                    </View>
                   </View>
                   <Text className="text-xs text-gray-600 mt-1">
                     Height {m.height_cm}cm
@@ -575,6 +635,11 @@ export default function CustomerDetailScreen() {
                   )}
                 </View>
               ))}
+              {measurements.length > 3 && (
+                <Text className="text-[10px] text-gray-400 text-center">
+                  +{measurements.length - 3} more
+                </Text>
+              )}
             </View>
           )}
 
@@ -644,6 +709,144 @@ export default function CustomerDetailScreen() {
           <Text className="text-red-600 font-semibold text-sm">Delete Customer</Text>
         </TouchableOpacity>
       </View>
+
+      {/* ── Manual Measurement Modal ─────────────────────────────── */}
+      <Modal
+        visible={showManualForm}
+        animationType="slide"
+        {...(Platform.OS === 'ios' ? { presentationStyle: 'pageSheet' } : {})}
+        onRequestClose={() => setShowManualForm(false)}
+      >
+        <View className="flex-1 bg-cyan-50" style={{ paddingTop: insets.top + 16 }}>
+          {/* Modal Header */}
+          <View className="flex-row items-center justify-between px-4 pb-4">
+            <TouchableOpacity onPress={() => setShowManualForm(false)}>
+              <X size={22} color="#374151" />
+            </TouchableOpacity>
+            <Text className="text-base font-bold text-gray-900">Manual Measurements</Text>
+            <TouchableOpacity
+              onPress={() => void handleSaveManualMeasurement()}
+              disabled={savingManual}
+              className="bg-emerald-600 px-4 py-2 rounded-xl"
+            >
+              {savingManual ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white font-semibold text-sm">Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
+            {/* Height — required */}
+            <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
+              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Height (cm) *
+              </Text>
+              <TextInput
+                value={manualHeight}
+                onChangeText={setManualHeight}
+                placeholder="e.g. 162"
+                keyboardType="numeric"
+                className="text-lg font-bold text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                placeholderTextColor="#9CA3AF"
+              />
+            </View>
+
+            {/* Upper body */}
+            <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
+              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Upper Body (cm, optional)
+              </Text>
+              <View className="gap-3">
+                <View>
+                  <Text className="text-xs text-gray-500 mb-1">Bust</Text>
+                  <TextInput
+                    value={manualBust}
+                    onChangeText={setManualBust}
+                    placeholder="e.g. 92"
+                    keyboardType="numeric"
+                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View>
+                  <Text className="text-xs text-gray-500 mb-1">Waist</Text>
+                  <TextInput
+                    value={manualWaist}
+                    onChangeText={setManualWaist}
+                    placeholder="e.g. 76"
+                    keyboardType="numeric"
+                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View>
+                  <Text className="text-xs text-gray-500 mb-1">Hip</Text>
+                  <TextInput
+                    value={manualHip}
+                    onChangeText={setManualHip}
+                    placeholder="e.g. 100"
+                    keyboardType="numeric"
+                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+            </View>
+
+            {/* Lower body */}
+            <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
+              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                Lower Body (cm, optional)
+              </Text>
+              <View className="gap-3">
+                <View>
+                  <Text className="text-xs text-gray-500 mb-1">Pant Waist</Text>
+                  <TextInput
+                    value={manualPantWaist}
+                    onChangeText={setManualPantWaist}
+                    placeholder="e.g. 78"
+                    keyboardType="numeric"
+                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View>
+                  <Text className="text-xs text-gray-500 mb-1">Pant Hip</Text>
+                  <TextInput
+                    value={manualPantHip}
+                    onChangeText={setManualPantHip}
+                    placeholder="e.g. 102"
+                    keyboardType="numeric"
+                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+                <View>
+                  <Text className="text-xs text-gray-500 mb-1">Inseam</Text>
+                  <TextInput
+                    value={manualInseam}
+                    onChangeText={setManualInseam}
+                    placeholder="e.g. 78"
+                    keyboardType="numeric"
+                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View className="bg-amber-50 rounded-2xl p-3 border border-amber-100 mb-6">
+              <Text className="text-xs text-amber-700">
+                Use a flexible measuring tape. Measure over light clothing. Keep tape snug but not tight.
+              </Text>
+            </View>
+
+            <View className="h-8" />
+          </ScrollView>
+        </View>
+      </Modal>
 
       <View className="h-12" />
     </ScrollView>

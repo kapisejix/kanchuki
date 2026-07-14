@@ -398,29 +398,30 @@ Only platform combining:
 ---
 
 #### F-102b: Body Measurement Capture (feeds F-102 VTO fit)
-**Status:** 🟡 **Partially built** — MediaPipe Python script exists (`scripts/measurement_extractor.py`). No mobile/web UI wiring yet.
+**Status:** ✅ **Full stack (mobile)** — MediaPipe Python script (`scripts/measurement_extractor.py`), camera capture flow with front/back photos (React Native, Expo Camera), upload-to-R2 pipeline, extraction job (BullMQ → Python), and manual tape-measure entry form all built and wired end-to-end.
+
 **Description:** Two input paths, both write to same `CustomerMeasurement` record — VTO engine consumes either identically.
 
-**Path A — Photo (front + back):**
-- Customer/retailer captures front + back full-body photo (plain bg, arms slightly out)
-- Customer enters height (required — sole scale reference; no absolute scale from pixels alone)
-- MediaPipe Pose extracts body landmarks from both photos
-- Pipeline computes: bust, waist, hip width (front), corrected via back photo for shoulder/back-curve accuracy
-- Circumference derived from width via regression correction factor (body cross-section ≠ ellipse)
-- Original photos deleted immediately after landmark extraction (privacy — see SECURITY.md ephemeral photo rule)
+**Path A — Photo (front + back) — Built, tested:**
+- Mobile screen (`apps/mobile/app/customer/[id]/measurement.tsx`): Height input → Camera capture (front then back, 2/2 guide) → Preview side-by-side → Upload to R2 via presigned URLs → Queue MediaPipe extraction
+- Backend: `POST /customers/:id/measurements/photo-upload-url` creates measurement row + presigned URLs → `POST /customers/:id/measurements/:id/extract` queues job
+- Job: `apps/api/src/jobs/extract-measurement.ts` downloads both photos from R2, shells out to Python script, extracts landmarks, deletes originals, writes bust/waist/hip/inseam/confidence to DB
+- Photo retention: originals deleted immediately after landmark extraction (see SECURITY.md ephemeral rule)
+- Customer/retailer enters height (required — sole scale reference; no absolute scale from pixels alone)
+- Accuracy: ±3–5cm typical (2D single-angle limitation — disclosed as estimate)
 
-**Path B — Manual (inch-tape):**
-- Direct form entry: Height, Bust, Waist, Hip (upper body/kurta-suit fit)
-- Pant/Salwar: Waist, Hip, Length (inseam)
-- No CV involved — most accurate, zero AI cost, **default/primary path for MVP-adjacent rollout**
+**Path B — Manual (inch-tape) — Built:**
+- Mobile form (`apps/mobile/app/customer/[id].tsx`): Modal with fields for Height (required), Bust, Waist, Hip, Pant Waist, Pant Hip, Inseam
+- Labels optional fields clearly, shows measuring-tip banner
+- Uses `POST /customers/:id/measurements` (same endpoint the existing comprehensive-test.ts already uses)
+- Always available regardless of photo path status — zero AI cost
 
-**Acceptance Criteria:**
-- Manual path always available regardless of photo path status (fallback + primary for accuracy-sensitive cases)
-- Photo path accuracy: ±3–5cm typical (2D single-angle limitation — disclose to retailer/customer as estimate, not exact)
-- Selecting a clothing item for try-on automatically pulls customer's latest measurement record (either source) to scale the VTO overlay
-- Measurement photos never retained past landmark extraction (same ephemeral rule as VTO customer photos)
+**Customer profile display — Built:**
+- `apps/mobile/app/customer/[id].tsx` shows latest 3 measurements with source badge (AI/Tape) + date + values
+- Upper/lower size recommendations computed from measurements via size chart lookup (F-102c)
+- "Add Measurement" button offers both Manual and Camera options
 
-**Note:** Photo-path CV (MediaPipe Pose) runs locally/on-server — no per-call API cost, so it does not affect try-on credit budget (₹5–15/image) unlike FASHN/Replicate VTO calls.
+**Not built (web):** Customer-facing measurement capture on the web collection page. The web app (`apps/web`) is a customer-facing PWA for anonymous collection viewers — no customer identity available to store measurements against. Would require Phase 1 customer-identity flow.
 
 ---
 

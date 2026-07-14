@@ -440,6 +440,20 @@ export const customerApi = {
   getMeasurements: (id: string) =>
     request<{ data: unknown[] }>(`/v1/customers/${id}/measurements`, { getCacheTtlMs: 60_000 }),
 
+  createManualMeasurement: (id: string, data: {
+    height_cm: number
+    bust_cm?: number
+    waist_cm?: number
+    hip_cm?: number
+    pant_waist_cm?: number
+    pant_hip_cm?: number
+    inseam_cm?: number
+  }) =>
+    request<{ data: { id: string; source: string; height_cm: number; bust_cm: number | null; waist_cm: number | null; hip_cm: number | null } }>(
+      `/v1/customers/${id}/measurements`,
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+
   initPhotoMeasurement: (id: string, heightCm: number) =>
     request<{
       data: {
