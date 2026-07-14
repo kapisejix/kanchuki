@@ -147,6 +147,9 @@ export async function detectItems(imageUrl: string): Promise<DetectedItem[]> {
   const raw = toolUse.input as { items?: DetectedGarment[] }
   const garments = raw.items ?? []
 
+  // Claude sometimes fills optional string fields with the literal word "null" instead of omitting them
+  const nullable = (v: unknown): string | null => (v == null || v === 'null' ? null : (v as string))
+
   return garments.map((g) => ({
     bbox: {
       x_pct: g.position_x_pct,
@@ -156,18 +159,18 @@ export async function detectItems(imageUrl: string): Promise<DetectedItem[]> {
     },
     description: g.description,
     tags: {
-      category: g.category ?? null,
+      category: nullable(g.category),
       product_type: null,
-      primary_color: g.primary_color ?? null,
+      primary_color: nullable(g.primary_color),
       secondary_colors: g.secondary_colors ?? [],
-      fabric_estimate: g.fabric_estimate ?? null,
-      pattern: g.pattern ?? null,
+      fabric_estimate: nullable(g.fabric_estimate),
+      pattern: nullable(g.pattern),
       embellishments: [],
       neck_style: null,
       sleeve_type: null,
       occasions: g.occasions ?? [],
       price_range_estimate: null,
-      design_number_visible: g.design_number ?? null,
+      design_number_visible: nullable(g.design_number),
       is_catalog_image: garments.length > 1,
       search_tags: g.search_tags ?? [],
       confidence_notes: null,
