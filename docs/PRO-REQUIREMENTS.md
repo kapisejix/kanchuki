@@ -338,6 +338,7 @@ Only platform combining:
 ---
 
 #### F-102: AI Virtual Try-On (Self-Hosted)
+**Status:** 🟡 **Partially built** — engine deployed on RunPod, bg-removal preprocessing works, multi-piece chaining built. Quality on multi-piece ethnic wear still unconfirmed end-to-end. Licensing resolved (commercial license obtained).
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
 **Tech:** CatVTON (self-hosted Python microservice)  
@@ -385,6 +386,7 @@ Only platform combining:
 ---
 
 #### F-102c: Size Recommendation (Retailer Size Chart Match)
+**Status:** 🟡 **Full stack** — schema, API, mobile UI, lookup function all done. Customer-web integration deferred (no anonymous customer identity on share-link flow).
 **Description:** Recommend a size (S–10XL) to the customer by matching their `CustomerMeasurement` record (F-102b) against the retailer's own ready-garment size chart, distinct from and complementary to F-102 visual try-on.
 
 **Input:** Retailer-uploaded size chart per garment type (e.g. Kurtas/Tops/Anarkalis/Dresses: bust/waist/hip by size; Pants/Palazzos/Skirts: waist/hip/length by size) — same shape as sample chart supplied for this feature.
@@ -396,6 +398,7 @@ Only platform combining:
 ---
 
 #### F-102b: Body Measurement Capture (feeds F-102 VTO fit)
+**Status:** 🟡 **Partially built** — MediaPipe Python script exists (`scripts/measurement_extractor.py`). No mobile/web UI wiring yet.
 **Description:** Two input paths, both write to same `CustomerMeasurement` record — VTO engine consumes either identically.
 
 **Path A — Photo (front + back):**
