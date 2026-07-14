@@ -505,6 +505,9 @@ function Sidebar({
 
 // ─── Main Layout ───────────────────────────────────────────────
 
+// v2.0 — Premium admin panel with animated login
+// Last deployed: 2026-07-14
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
