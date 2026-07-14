@@ -33,7 +33,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] Node.js + Fastify API scaffold
 - [x] Next.js 14 customer web scaffold
 - [x] React Native (Expo) retailer app scaffold
-- [ ] CI/CD pipeline — CI done (`.github/workflows/ci.yml`: lint/typecheck/test/build); CD to Railway pending
+- [x] CI/CD pipeline — CI (`.github/workflows/ci.yml`: lint/typecheck/test/build) + CD to Railway (`.github/workflows/deploy.yml`) — **both operational, API + Web deployed live**
 - [x] Environment config (.env structure, secrets management)
 - [x] Basic logging (Pino)
 
@@ -108,18 +108,23 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] Hindi transliteration support (basic — map common words)
 
 **Week 15–16: Polish + MVP Launch**
+- [x] Filters on catalog (Category → Occasion → Price → Color) — mobile + web, client-side
+- [x] Size Charts (F-102c) — full stack: schema, API, mobile UI, lookup logic (5 tests), recommend endpoint
+- [x] Consent & Training Data (F-102d) — full stack: crop-tagging, consent collection, revocation flow, retention cron
+- [x] Catalog Import (F-001b) — dual-path PDF + bulk photo import with item detection
+- [x] Multi-Item Detection (F-001c) — detect C crop items from a single photo via Claude Vision bounding boxes
 - [ ] Performance optimization (load time < 3s on 3G)
 - [x] Error handling + offline resilience
 - [ ] Onboarding tutorial improvements based on 10-retailer pilot
-- [x] Analytics dashboard (basic metrics)
-- [x] Admin panel (retailer management, billing, premium UI with email/password login) — deployed live 2026-07-14
+- [x] Analytics dashboard (basic + detailed analytics with daily trends, category breakdown)
+- [x] Admin panel (retailer management, billing management, premium UI with email/password login, usage stats, trial extension, plan change) — **deployed live 2026-07-14**
 - [x] Razorpay subscription integration (14-day trial) — **code-complete, deferred until production deploy**
-    - Backend: cancel, create-order, verify-payment, webhook handler
+    - Backend: cancel, create-order, verify-payment, webhook handler, setup-plans
     - Mobile: billing screen with plan cards, cancel subscription
-    - Admin: plan management, setup-plans endpoint
+    - Admin: plan management, setup-plans endpoint, extend-trial, change-plan
     - Blocked: needs live Razorpay credentials + webhook endpoint registered in Razorpay dashboard
 - [x] Public landing page (Next.js)
-- [x] CI/CD pipeline — CI (`.github/workflows/ci.yml`) + CD to Railway (`.github/workflows/deploy.yml`) both operational
+- [x] CI/CD pipeline — CI (`.github/workflows/ci.yml`) + CD to Railway (`.github/workflows/deploy.yml`) — **both operational, API + Web deployed live**
 - [ ] Pilot with 10 retailers, collect feedback, fix critical issues
 
 **Deliverable:** MVP live, 50 retailer target

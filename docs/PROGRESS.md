@@ -1162,3 +1162,35 @@ Both `apps/mobile` and `apps/web` typecheck clean
 this session, no server-side filter params added (deliberately — client-side
 is correct here per the small per-screen dataset sizes above, revisit only
 if a screen's product count grows past what one page-load reasonably holds).
+
+---
+
+## 2026-07-14 — Full documentation audit: .md files updated to match codebase reality
+
+**Done — cross-reference audit:**
+- Read all API route files (retailers, products, search, customers, collections,
+  billing, admin, staff, consent, catalog-import, size-chart) and cross-referenced
+  against docs/PLAN.md and docs/PRO-REQUIREMENTS.md
+- Updated `docs/PLAN.md`:
+  - Month 1 CI/CD: changed from unchecked to ✅ — both CI + CD operational
+  - Month 4 Week 15-16: added filters, size charts, consent flow, catalog import,
+    multi-item detection, admin panel deploy as done
+- Updated `docs/PRO-REQUIREMENTS.md`:
+  - F-001c (Multi-Item Detection): Planned → ✅ Built
+  - F-006A (Status Propagation): updates + on-demand ISR revalidation added
+  - F-007 (Onboarding): Added ✅ Built status
+  - F-008 (Analytics): Updated with full metrics, ✅ Built
+  - F-102 (VTO): licensing resolved ✅, multi-piece chaining built
+  - New F-102e (Product Filters): ✅ Built
+  - New F-102f (Staff Management): ✅ Built
+  - New F-102g (Analytics Dashboard): ✅ Built
+  - Pricing: Razorpay deferred note
+- Committed all changes to git
+
+**Summary — current Phase 0 state:**
+- ✅ **95%+ of Phase 0 code complete** (all retailer-facing features built)
+- ❌ Performance optimization — not started (blocking on 3G load time)
+- ❌ 10-retailer pilot — no users yet
+- 🟡 RLS on try_on_jobs + audit_logs — open security gap
+- 🟡 Real 2-piece garment try-on test — mechanism confirmed, quality unconfirmed
+- 🟡 Legal review of consent copy (DPDP Act 2023) — placeholder text

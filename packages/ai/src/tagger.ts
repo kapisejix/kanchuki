@@ -106,11 +106,7 @@ const EXTRACT_TOOL: Anthropic.Tool = {
       search_tags: {
         type: 'array',
         items: { type: 'string' },
-        description: '10-15 searchable keywords: colors, fabrics, occasions, style in English + Hindi transliterations',
-      },
-      confidence_notes: {
-        type: 'string',
-        description: 'Uncertainty notes, e.g., "Fabric unclear — could be georgette or chiffon"',
+        description: '6-8 searchable keywords: colors, fabrics, occasions, style in English + Hindi transliterations',
       },
     },
     required: ['category', 'primary_color', 'occasions', 'search_tags', 'is_catalog_image'],
@@ -183,7 +179,7 @@ export async function tagProductImages(images: TaggableImage[]): Promise<AiTagRe
     design_number_visible: nullable(raw['design_number_visible']),
     is_catalog_image: (raw['is_catalog_image'] as boolean) ?? false,
     search_tags: (raw['search_tags'] as string[]) ?? [],
-    confidence_notes: nullable(raw['confidence_notes']),
+    confidence_notes: null,
   }
 }
 

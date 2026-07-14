@@ -142,18 +142,9 @@ Only platform combining:
 ---
 
 #### F-001c: Multi-Item Detection & Splitting from a Single Photo
-**Status:** Planned — not built. `packages/ai/src/tagger.ts` already has an `is_catalog_image` field in its extraction schema ("True if printed catalog/lookbook image") but nothing in the code branches on it today — one photo always produces exactly one `Product`, even when the photo shows several designs (e.g. a photographed catalog sheet, or several suit pieces laid out together in one frame).
+**Status:** ✅ **Built** (2026-07-13). `packages/ai/src/detector.ts` implements `detectItems()` using Claude Vision to find garment bounding boxes in a single image. Each detected region is cropped via `cropImage()` and runs the existing `detectCropAndTag()` pipeline per crop. The `catalog-import.ts` bulk-create endpoint (`POST /v1/catalog-import/bulk-create-products`) presents all N drafts to the retailer for review/edit before saving.
 
-**Problem:** A vendor who photographs a printed catalog *page* (several designs per page) or lays out several unpacked pieces in one shot, expecting each design to become its own catalog entry, instead gets one product with a wrong/blended set of AI tags — silently wrong, not an error the retailer would necessarily notice immediately.
-
-**Description:** Detect that an uploaded photo contains multiple distinct garments, crop each one out, and run F-001's existing per-item tagging pipeline (`tagProductImageUrl`) on each crop separately, producing N `Product` drafts instead of one.
-
-**How it would work (not yet designed in detail):**
-1. Object detection to find N garment bounding boxes in one image. Two options, real tradeoff not yet evaluated: (a) a dedicated CV object-detection model (new dependency, new inference step, extra cost/latency), or (b) ask Claude Vision itself to return bounding boxes for each detected garment in one call (reuses the existing Claude Vision integration, no new model to host — worth trying first per the ladder: already-integrated dependency before a new one).
-2. Crop each detected region, run existing `tagProductImageUrl` per crop.
-3. Present all N drafts to the retailer for review/edit before saving — same reasoning as F-001b: don't blind-trust an automatic split, a bad detection (e.g. splitting one design's front+back into two products) is worse than asking the retailer to confirm.
-
-**Relationship to F-001b:** this is the same underlying detection problem — a PDF catalog page IS a "photo with multiple items in it." Building this once, well, covers both F-001b's per-page splitting and the direct-photo case described above. **Build this before F-001b, not after** — F-001b is this feature applied to a rasterized PDF page rather than a camera photo.
+Both F-001b and F-001c share the same underlying `detector.ts` with the same `detectCropAndTag()` call — a PDF catalog page IS a "photo with multiple items in it." The detection pipeline was built once and covers both PDF pages (F-001b's rasterized page images) and direct multi-product camera photos (F-001c).
 
 ---
 
@@ -264,6 +255,7 @@ Only platform combining:
 ---
 
 #### F-006A: Product Status Propagation to Collection Links (Sold / Reserved)
+**Status:** ✅ **Built** — Product status (AVAILABLE/SOLD/RESERVED/NOT_SURE) propagates via ISR revalidation.
 **Priority:** P0  
 **Description:** Collection links are live pages, not snapshots. Product status changes made by the retailer propagate automatically to every shared collection link.
 
@@ -273,21 +265,23 @@ Only platform combining:
 
 1. **Single source of truth = product status in DB.** The Product model has `status`: `AVAILABLE / SOLD / RESERVED / NOT_SURE`. The shopkeeper opens the product in the retailer app (`product/[id].tsx`) and taps status → SOLD.
 2. **Collection links reflect the change automatically.** The collection page (`apps/web/src/app/c/[slug]/page.tsx`) renders products from the DB. The same product can sit in many collection links — mark SOLD once, every shared link updates. No need to edit or resend links.
-3. **Display rule — show a "Sold Out" badge, do not hide.** Hiding items makes a shared link look broken/empty to a customer who saw it earlier. A badge shows scarcity ("moves fast, enquire early"). A sold item must render as a greyed card with a "Sold Out" ribbon, and the enquiry button disabled. If the current `CollectionView` component does not yet do this, the change is small: the filter bar keeps the item, and the card renders the badge when `status === 'SOLD'`.
-4. **ISR caching caveat.** Collection pages use Next.js SSG/ISR — a page may serve a cached version for the revalidation window. A status change appears after revalidation (typically ≤ 60s depending on config), not instantly. Acceptable for MVP.
+3. **Display rule — show a "Sold Out" badge, do not hide.** Hiding items makes a shared link look broken/empty to a customer who saw it earlier. A badge shows scarcity ("moves fast, enquire early"). A sold item renders as a greyed card with a "Sold Out" ribbon, and the enquiry button disabled.
+4. **ISR caching caveat.** Collection pages use Next.js SSG/ISR — a page may serve a cached version for the revalidation window. A status change appears after revalidation (typically ≤ 60s depending on config), not instantly. Additionally, `PATCH /products/:id/status` triggers on-demand ISR revalidation via `revalidateCollectionsForProduct()` which calls `WEB_URL/api/revalidate` with the collection slug — purging the ISR cache immediately instead of waiting for the revalidation window.
 5. **RESERVED status.** When a customer says "hold it for me", the shopkeeper marks the product RESERVED. The link shows a "Reserved" badge so other customers see it is pending.
 
 **Out of scope for MVP:** Pushing updates into Meta's native WhatsApp Business catalog. That requires Meta Cloud API + catalog sync — Phase 2 (Month 13–14).
 
 **Acceptance Criteria:**
-- Marking a product SOLD updates all collection links containing it within the ISR revalidation window (≤ 60s)
-- Sold products remain visible in collection links with a greyed card + "Sold Out" ribbon; enquiry disabled
-- Reserved products show a "Reserved" badge
-- No manual link editing or resending required after a status change
+- ✅ Marking a product SOLD updates all collection links containing it via on-demand ISR revalidation
+- ✅ Sold products remain visible in collection links with a greyed card + "Sold Out" ribbon; enquiry disabled
+- ✅ Reserved products show a "Reserved" badge
+- ✅ No manual link editing or resending required after a status change
 
 ---
 
 #### F-007: Retailer Onboarding & Setup
+**Status:** ✅ **Built** — Full 6-step onboarding flow with step indicator, animated transitions, confetti animation on completion. API support for step tracking (`PATCH /retailers/me/onboarding`). Default rack/shelf presets available. Can skip steps and return later.
+
 **Priority:** P0  
 **Description:** First-time setup assistant to get retailer from install → first 10 products uploaded in < 30 minutes.
 
@@ -306,17 +300,24 @@ Only platform combining:
 
 ---
 
-#### F-008: Basic Analytics Dashboard
+#### F-008: Analytics Dashboard (Retailer)
+**Status:** ✅ **Built** — `GET /retailers/me/stats` and `GET /retailers/me/analytics` endpoints. Mobile home screen shows quick stats (products, views, enquiries, pending enquiries) + 2×2 quick actions grid + recent collections with stats.
+
 **Priority:** P1 (should have for MVP)  
 **Description:** Simple metrics for retailer.
 
 **Metrics:**
-- Total products in catalog
-- Collection links sent this month
-- Total views on collection links
-- Total enquiries received
+- Total products in catalog / available
+- Total customers
+- Active collections
+- Collection views this month + 7-day daily trend
+- Enquiries this month + 7-day daily trend
 - Top 5 most-viewed products
 - Top 5 most-enquired products
+- Category breakdown (pie/bar)
+- Status breakdown (Available/Sold/Reserved)
+- Recent collection performance (view/enquiry/favorite counts)
+- Plan usage (limits vs actual)
 
 ---
 
@@ -338,7 +339,7 @@ Only platform combining:
 ---
 
 #### F-102: AI Virtual Try-On (Self-Hosted)
-**Status:** 🟡 **Partially built** — engine deployed on RunPod, bg-removal preprocessing works, multi-piece chaining built. Quality on multi-piece ethnic wear still unconfirmed end-to-end. Licensing resolved (commercial license obtained).
+**Status:** 🟡 **Partially built** — engine deployed on RunPod, bg-removal preprocessing works, multi-piece chaining built (2 sequential CatVTON calls: upper → customer photo, then lower → first result). Quality on multi-piece ethnic wear still needs a real 2-piece outfit test. **✅ Licensing resolved** — commercial license obtained from CatVTON's author (2026-07-13).
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
 **Tech:** CatVTON (self-hosted Python microservice)  
@@ -542,7 +543,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - Additional staff seat: ₹199/month
 
 ### Billing Rules
-- Payment via Razorpay (UPI, cards, netbanking)
+- Payment via Razorpay (UPI, cards, netbanking) — **code complete, deferred. Launch with free trial only**
 - Annual plans: 20% discount built in
 - 14-day free trial (Growth features), no credit card
 - Auto-renewal with advance notice

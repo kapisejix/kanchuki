@@ -69,6 +69,18 @@ export function errorHandler(
     return
   }
 
+  // Zod validation errors (from z.parse() in route handlers)
+  if (error.name === 'ZodError') {
+    void reply.status(422).send({
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: (error as Error).message,
+        status: 422,
+      },
+    })
+    return
+  }
+
   // Generic server error — don't leak internals
   reply.log.error(error)
   void reply.status(500).send({

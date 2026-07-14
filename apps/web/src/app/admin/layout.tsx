@@ -508,6 +508,9 @@ function Sidebar({
 // v2.0 — Premium admin panel with animated login
 // Last deployed: 2026-07-14
 
+// Force dynamic rendering — framer-motion client components can't be statically prerendered
+export const dynamic = 'force-dynamic'
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
