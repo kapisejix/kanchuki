@@ -9,7 +9,11 @@ import { notFound, validationError } from '../plugins/error-handler.js'
 export const publicRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/stats ─────────────────────────────────────────
   // Landing page stats — real counts from the platform, no auth needed.
-  server.get('/stats', async () => {
+  server.get('/stats', {
+    config: {
+      cacheControl: 'public, max-age=60, s-maxage=60, stale-while-revalidate=600',
+    },
+  }, async (request, reply) => {
     const now = new Date()
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
 
@@ -19,6 +23,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
       prisma.retailer.count({ where: { deleted_at: null } }),
       prisma.collectionEnquiry.count({ where: { created_at: { gte: monthStart } } }),
     ])
+
+    reply.header('Cache-Control', 'public, max-age=60, s-maxage=60, stale-while-revalidate=600')
 
     return {
       data: {
@@ -32,7 +38,12 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── GET /public/collections/:slug ─────────────────────────────
   // Customer-facing: no auth required. Returns shop info + products.
-  server.get('/collections/:slug', async (request) => {
+  server.get('/collections/:slug', {
+    config: {
+      // Browser/CDN cache for 5 min, stale-while-revalidate for 1 hour
+      cacheControl: 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600',
+    },
+  }, async (request, reply) => {
     const { slug } = request.params as { slug: string }
 
     const collection = await prisma.collection.findFirst({
@@ -78,6 +89,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
       // Presigned URL failed or no r2_key — return original URL as fallback
       return url
     }
+
+    reply.header('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600')
 
     // Build public shape (no internal IDs that shouldn't be shared)
     // Show ALL non-deleted products — SOLD/RESERVED get visual badges on the frontend.

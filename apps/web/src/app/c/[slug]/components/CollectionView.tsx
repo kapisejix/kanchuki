@@ -158,7 +158,7 @@ export function CollectionView({ collection, slug }: Props) {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
-            {filteredProducts.map((product) => (
+            {filteredProducts.map((product, idx) => (
               <ProductCard
                 key={product.id}
                 product={product}
@@ -166,6 +166,8 @@ export function CollectionView({ collection, slug }: Props) {
                 onFavorite={toggleFavorite}
                 onTap={() => setSelectedProduct(product)}
                 collectionSlug={slug}
+                priority={idx < 2}
+                onTryOn={(p) => setTryOnProduct(p)}
               />
             ))}
           </div>
@@ -232,10 +234,11 @@ interface CardProps {
   onFavorite: (id: string) => void
   onTap: () => void
   collectionSlug?: string
+  priority?: boolean
+  onTryOn?: (product: PublicProduct) => void
 }
 
-function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }: CardProps) {
-  const [showTryOn, setShowTryOn] = useState(false)
+function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, priority, onTryOn }: CardProps) {
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
   const isUnavailable = isSold || isReserved
@@ -251,6 +254,8 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }
             fill
             sizes="(max-width: 640px) 45vw, 200px"
             className={`object-cover ${isSold ? 'grayscale' : ''}`}
+            priority={priority}
+            loading={priority ? 'eager' : 'lazy'}
           />
         ) : (
           <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -290,7 +295,7 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }
       {!isUnavailable && (
         <div className="px-2.5 pt-1.5">
           <button
-            onClick={(e) => { e.stopPropagation(); setShowTryOn(true) }}
+            onClick={(e) => { e.stopPropagation(); onTryOn?.(product) }}
             className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-medium
                        py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
           >
@@ -298,17 +303,6 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug }
             Try On
           </button>
         </div>
-      )}
-
-      {/* Try-On Modal */}
-      {showTryOn && collectionSlug && (
-        <TryOnModal
-          productName={product.category ?? 'Product'}
-          productPhotoUrl={product.primary_photo_url ?? ''}
-          collectionSlug={collectionSlug}
-          productId={product.id}
-          onClose={() => setShowTryOn(false)}
-        />
       )}
 
       {/* Info */}
