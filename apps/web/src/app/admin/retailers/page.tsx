@@ -3,17 +3,17 @@
 import { useState, useEffect, useCallback, Suspense } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { motion } from 'framer-motion'
 import {
   Store,
   Search,
   ChevronRight,
   ChevronLeft,
-  ChevronsLeft,
-  ChevronsRight,
   Package,
   Users,
   Share2,
   Clock,
+  Sparkles,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -36,6 +36,23 @@ type Retailer = {
 function getHeaders() {
   const key = sessionStorage.getItem('admin_key')
   return { 'x-admin-key': key ?? '' }
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05, delayChildren: 0.1 },
+  },
+}
+
+const rowVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: { type: 'spring', stiffness: 200, damping: 25 },
+  },
 }
 
 function RetailersContent() {
@@ -70,8 +87,6 @@ function RetailersContent() {
   }, [])
 
   useEffect(() => {
-    // Load initial data — respect ?filter=trial from dashboard link
-    const filter = searchParams.get('filter')
     loadRetailers('')
   }, [loadRetailers, searchParams])
 
@@ -98,107 +113,113 @@ function RetailersContent() {
 
   const statusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE':
-        return 'bg-green-100 text-green-700'
-      case 'TRIAL':
-        return 'bg-amber-100 text-amber-700'
-      case 'PAST_DUE':
-        return 'bg-red-100 text-red-700'
-      case 'CANCELLED':
-        return 'bg-gray-100 text-gray-500'
-      default:
-        return 'bg-gray-100 text-gray-500'
+      case 'ACTIVE': return 'bg-green-100 text-green-700'
+      case 'TRIAL': return 'bg-amber-100 text-amber-700'
+      case 'PAST_DUE': return 'bg-red-100 text-red-700'
+      case 'CANCELLED': return 'bg-gray-100 text-gray-500'
+      default: return 'bg-gray-100 text-gray-500'
     }
   }
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
       {/* Header */}
-      <div>
+      <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-900">Retailers</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          {retailers.length > 0 ? `${retailers.length} retailers shown` : 'Browse all retailers on the platform'}
-        </p>
+        <motion.div
+          animate={{ rotate: [0, 10, -10, 0] }}
+          transition={{ duration: 2, repeat: Infinity, repeatDelay: 5 }}
+        >
+          <Sparkles size={18} className="text-cyan-500" />
+        </motion.div>
       </div>
+      <p className="text-sm text-gray-500 -mt-4">
+        {retailers.length > 0 ? `${retailers.length} retailers shown` : 'Browse all retailers on the platform'}
+      </p>
 
       {/* Search */}
       <form onSubmit={handleSearch} className="flex gap-3">
-        <div className="relative flex-1">
-          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+        <div className="relative flex-1 group">
+          <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-cyan-500 transition-colors" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by shop name, city, or phone..."
-            className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2.5 bg-white/80 backdrop-blur-sm border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
           />
         </div>
-        <button
+        <motion.button
           type="submit"
-          className="bg-cyan-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-cyan-700 transition-all active:scale-[0.98]"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className="bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:shadow-lg hover:shadow-cyan-500/25 transition-all"
         >
           Search
-        </button>
+        </motion.button>
       </form>
 
-      {/* Retailer table */}
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+      {/* Table */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Shop</th>
-                <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">City</th>
-                <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Plan</th>
-                <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Package size={14} className="inline" /> Products
-                </th>
-                <th className="px-4 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Users size={14} className="inline" /> Customers
-                </th>
-                <th className="px-4 py-3.5 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Share2 size={14} className="inline" /> Collec.
-                </th>
-                <th className="px-4 py-3.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  <Clock size={14} className="inline" /> Joined
-                </th>
+              <tr className="border-b border-gray-100 bg-gray-50/80">
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Shop</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">City</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Plan</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Package size={14} className="inline" /> Products</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Users size={14} className="inline" /> Customers</th>
+                <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Share2 size={14} className="inline" /> Collec.</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><Clock size={14} className="inline" /> Joined</th>
                 <th className="px-4 py-3.5" />
               </tr>
             </thead>
-            <tbody>
+            <motion.tbody
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
               {loading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-50 animate-pulse">
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-32" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-20" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16" /></td>
-                    <td className="px-4 py-4"><div className="h-5 bg-gray-200 rounded-full w-14" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-8 mx-auto" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-8 mx-auto" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-8 mx-auto" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-16" /></td>
-                    <td className="px-4 py-4"><div className="h-4 bg-gray-200 rounded w-4" /></td>
+                  <tr key={i} className="border-b border-gray-50">
+                    {[...Array(9)].map((_, j) => (
+                      <td key={j} className="px-4 py-4">
+                        <div className="h-4 bg-gray-200/60 rounded animate-pulse" style={{ width: `${40 + Math.random() * 40}%` }} />
+                      </td>
+                    ))}
                   </tr>
                 ))
               ) : retailers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-gray-400">
-                    <Store size={32} className="mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">No retailers found</p>
-                    {search && (
-                      <p className="text-xs mt-1">Try a different search term</p>
-                    )}
+                  <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+                    >
+                      <Store size={40} className="mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm font-medium">No retailers found</p>
+                      {search && <p className="text-xs mt-1 text-gray-400">Try a different search term</p>}
+                    </motion.div>
                   </td>
                 </tr>
               ) : (
-                retailers.map((r) => {
+                retailers.map((r, i) => {
                   const trialEnd = r.trial_ends_at ? new Date(r.trial_ends_at) : null
                   const isExpiring = trialEnd && trialEnd < new Date(Date.now() + 7 * 86400000) && r.plan_status === 'TRIAL'
 
                   return (
-                    <tr
+                    <motion.tr
                       key={r.id}
-                      className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                      variants={rowVariants}
+                      whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
+                      className="border-b border-gray-50 transition-colors"
                     >
                       <td className="px-4 py-3.5">
                         <Link
@@ -207,12 +228,12 @@ function RetailersContent() {
                         >
                           {r.shop_name}
                           {!r.onboarding_completed && (
-                            <span className="ml-2 text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                            <span className="ml-2 text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
                               Setup
                             </span>
                           )}
                           {isExpiring && (
-                            <span className="ml-1.5 text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                            <span className="ml-1.5 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
                               Expiring
                             </span>
                           )}
@@ -232,9 +253,7 @@ function RetailersContent() {
                       <td className="px-4 py-3.5 text-center text-gray-600">{r.collection_count}</td>
                       <td className="px-4 py-3.5 text-gray-400 text-xs whitespace-nowrap">
                         {new Date(r.created_at).toLocaleDateString('en-IN', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric',
+                          day: '2-digit', month: 'short', year: 'numeric',
                         })}
                       </td>
                       <td className="px-4 py-3.5">
@@ -245,45 +264,49 @@ function RetailersContent() {
                           <ChevronRight size={18} />
                         </Link>
                       </td>
-                    </tr>
+                    </motion.tr>
                   )
                 })
               )}
-            </tbody>
+            </motion.tbody>
           </table>
         </div>
 
-        {/* Pagination footer */}
+        {/* Pagination */}
         {!loading && retailers.length > 0 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/50">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/80">
             <span className="text-xs text-gray-400">
               {retailers.length} retailer{retailers.length !== 1 ? 's' : ''}
             </span>
             <div className="flex items-center gap-2">
-              <button
+              <motion.button
                 onClick={handlePrev}
                 disabled={cursorHistory.length === 0}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 aria-label="Previous page"
               >
                 <ChevronLeft size={16} />
-              </button>
-              <span className="text-xs text-gray-400">
+              </motion.button>
+              <span className="text-xs text-gray-400 font-mono">
                 Page {cursorHistory.length + 1}
               </span>
-              <button
+              <motion.button
                 onClick={handleNext}
                 disabled={!hasMore}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-white/80 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 aria-label="Next page"
               >
                 <ChevronRight size={16} />
-              </button>
+              </motion.button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -291,9 +314,9 @@ export default function RetailersPage() {
   return (
     <Suspense fallback={
       <div className="space-y-6">
-        <div className="h-8 bg-gray-200 rounded w-48 animate-pulse" />
-        <div className="h-10 bg-gray-200 rounded-xl animate-pulse" />
-        <div className="h-96 bg-gray-200 rounded-2xl animate-pulse" />
+        <div className="h-8 bg-gray-200/60 rounded w-48 animate-pulse" />
+        <div className="h-10 bg-gray-200/60 rounded-xl animate-pulse" />
+        <div className="h-96 bg-gray-200/60 rounded-2xl animate-pulse" />
       </div>
     }>
       <RetailersContent />

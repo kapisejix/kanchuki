@@ -1080,6 +1080,24 @@ catalog-grid-mixed.jpg, woodee-*pdf (PDF catalog), shopping*.webp,
 
 ---
 
+## 2026-07-14 — Admin panel: email/password login + premium UI + framer-motion animations
+
+**Done — admin panel completed:**
+- Added `POST /v1/admin/login` endpoint — validates email+password against `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` env vars using HMAC-SHA256 + `timingSafeEqual`. Returns the admin API key for session reuse.
+- Premium login screen with animated floating gradient orbs, glassmorphism card, framer-motion entrance animations, password visibility toggle, shimmer button, error shake animation.
+- Premium collapsible sidebar with dark glassmorphism, spring-animated active nav indicator (`layoutId`), staggered nav items, admin profile section, logout with hover effects.
+- Dashboard enhanced: animated counters (`requestAnimationFrame` with cubic ease-out + cleanup), staggered card entrance, hover lift effects (box-shadow + transform), gradient accent bars, shimmer on quick-action cards.
+- Retailers list: staggered row entrance via `motion.tbody`, spring-animated hover states, shimmer on loading skeleton.
+- Retailer detail: `AnimatePresence` for action feedback, animated progress bars on plan limits, `layoutId` transitions, staggered stat grid.
+- Billing page: animated revenue cards, staggered cost analysis rows, animated pricing table, Razorpay on-hold note.
+- Security: rate-limited login (via global Fastify rate limit), timing-safe password comparison, session storage (existing pattern), admin key unchanged for programmatic access.
+
+**Razorpay on hold:** Webhook integration deferred until production deployment with live credentials. Billing page updated with note.
+
+**Env vars set on Railway:** `ADMIN_EMAIL=s.numbhraal@gmail.com`, `ADMIN_PASSWORD_HASH=<hmac-sha256 of 12345>` (never stored in source).
+
+---
+
 ## 2026-07-13 (later) — CatVTON licensing resolved, migration 008 applied live
 
 User confirmed commercial license obtained from CatVTON's author (ADR-006

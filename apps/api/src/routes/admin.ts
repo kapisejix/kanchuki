@@ -14,9 +14,59 @@ function validAdminKey(provided: string | undefined): boolean {
 }
 
 export const adminRoutes: FastifyPluginAsync = async (server) => {
-  server.addHook('preHandler', async (request) => {
+  server.addHook('preHandler', async (request, reply) => {
+    // Skip auth for login endpoint
+    if (request.routeOptions.url === '/login') return
+    if (request.routeOptions.url === '/login/') return
+
     const key = request.headers['x-admin-key'] as string | undefined
     if (!validAdminKey(key)) throw forbidden('Invalid admin key')
+  })
+
+  // ─── POST /admin/login ───────────────────────────────────────────
+  // Authenticate with email + password, returns admin API key for subsequent requests.
+  server.post('/login', async (request) => {
+    const body = z
+      .object({
+        email: z.string().email('Invalid email'),
+        password: z.string().min(1, 'Password is required'),
+      })
+      .parse(request.body)
+
+    const expectedEmail = process.env['ADMIN_EMAIL']
+    const expectedHash = process.env['ADMIN_PASSWORD_HASH']
+
+    if (!expectedEmail || !expectedHash) {
+      request.log.error('ADMIN_EMAIL or ADMIN_PASSWORD_HASH not configured')
+      throw forbidden('Invalid credentials')
+    }
+
+    // Compare email (case-insensitive)
+    if (body.email.toLowerCase() !== expectedEmail.toLowerCase()) {
+      throw forbidden('Invalid credentials')
+    }
+
+    // Compare password hash using timingSafeEqual
+    const providedHash = createHmac('sha256', 'admin-password')
+      .update(body.password)
+      .digest()
+    const expectedHashBuf = Buffer.from(expectedHash, 'hex')
+
+    if (
+      providedHash.length !== expectedHashBuf.length ||
+      !timingSafeEqual(providedHash, expectedHashBuf)
+    ) {
+      throw forbidden('Invalid credentials')
+    }
+
+    request.log.info('Admin login successful')
+
+    return {
+      data: {
+        token: process.env['ADMIN_API_KEY'],
+        email: body.email,
+      },
+    }
   })
 
   // ─── GET /admin/stats ───────────────────────────────────────────
