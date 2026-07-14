@@ -165,22 +165,25 @@ export async function tagProductImages(images: TaggableImage[]): Promise<AiTagRe
 
   const raw = toolUse.input as Record<string, unknown>
 
+  // Claude sometimes fills optional string fields with the literal word "null" instead of omitting them
+  const nullable = (v: unknown): string | null => (v == null || v === 'null' ? null : (v as string))
+
   return {
-    category: (raw['category'] as string) ?? null,
-    product_type: (raw['product_type'] as string) ?? null,
-    primary_color: (raw['primary_color'] as string) ?? null,
+    category: nullable(raw['category']),
+    product_type: nullable(raw['product_type']),
+    primary_color: nullable(raw['primary_color']),
     secondary_colors: (raw['secondary_colors'] as string[]) ?? [],
-    fabric_estimate: (raw['fabric_estimate'] as string) ?? null,
-    pattern: (raw['pattern'] as string) ?? null,
+    fabric_estimate: nullable(raw['fabric_estimate']),
+    pattern: nullable(raw['pattern']),
     embellishments: (raw['embellishments'] as string[]) ?? [],
-    neck_style: (raw['neck_style'] as string) ?? null,
-    sleeve_type: (raw['sleeve_type'] as string) ?? null,
+    neck_style: nullable(raw['neck_style']),
+    sleeve_type: nullable(raw['sleeve_type']),
     occasions: (raw['occasions'] as string[]) ?? [],
-    price_range_estimate: (raw['price_range_estimate'] as string) ?? null,
-    design_number_visible: (raw['design_number_visible'] as string) ?? null,
+    price_range_estimate: nullable(raw['price_range_estimate']),
+    design_number_visible: nullable(raw['design_number_visible']),
     is_catalog_image: (raw['is_catalog_image'] as boolean) ?? false,
     search_tags: (raw['search_tags'] as string[]) ?? [],
-    confidence_notes: (raw['confidence_notes'] as string) ?? null,
+    confidence_notes: nullable(raw['confidence_notes']),
   }
 }
 
