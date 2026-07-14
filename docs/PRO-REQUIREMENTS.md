@@ -323,9 +323,10 @@ Only platform combining:
 ### Phase 1: Core AI Features (Month 5–8)
 
 #### F-101: Fashion DNA — AI Customer Matching
+**Status:** 🔴 **Not started** — requires 3–6 months of behavior data from Phase 0.
 **Description:** AI learns customer preferences from behavior (views, favorites, enquiries, purchases) and automatically suggests matching products.
 
-**Requires:** 3–6 months of MVP behavior data from Phase 0.
+**Requires:** 3–6 months of MVP behavior data from Phase 0. Can't build yet.
 
 **Matching signals:**
 - Explicit preferences (captured in F-003)
@@ -445,11 +446,13 @@ Only platform combining:
 ---
 
 #### F-103: Remote Try-On via WhatsApp
+**Status:** 🔴 **Not started** — Phase 1 scope; requires F-102 (VTO) working first.
 **Description:** Retailer sends product via WhatsApp. Customer replies with their photo. AI generates try-on. Retailer sends back result.
 
 ---
 
 #### F-104: Auto-Personalized Collection Building
+**Status:** 🔴 **Not started** — depends on F-101 (Fashion DNA).
 **Description:** AI auto-suggests collection of 10–15 products for a specific customer based on their Fashion DNA. Retailer reviews, edits, sends.
 
 ---
@@ -587,6 +590,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - **Shiprocket / Delhivery** — delivery tracking
 - **Tally / Busy** — accounting integration
 - **Google My Business** — store discovery
+- **Auto catalog photo cleanup** — retailer snaps a raw in-store phone photo (mannequin/dummy, shop shelves, mirrors in frame — most local vendors can't afford studio photography and have high stock volume) and the pipeline auto-produces a clean single-product listing image. Building blocks already exist: `detector.ts::detectItems` (Claude Vision bbox-detect + crop) and `tryon.ts::removeBackgroundAndCache` (`@imgly/background-removal-node`, already installed, currently wired only into the try-on flow). Not yet chained into the catalog upload path (`detector.ts::detectCropAndTag`). Open decision when built: composite cropped garment onto plain white backdrop (standard e-comm look) vs. keep transparent PNG.
 
 ---
 
