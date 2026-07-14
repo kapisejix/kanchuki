@@ -199,6 +199,51 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     })
   })
 
+  // ─── POST /billing/cancel ──────────────────────────────────────
+  // Cancel the active subscription. Cancels in Razorpay and marks DB.
+  server.post('/cancel', async (request) => {
+    const retailer = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { razorpay_subscription_id: true, plan_status: true },
+    })
+    if (!retailer) throw notFound('Retailer')
+    if (!retailer.razorpay_subscription_id || retailer.plan_status === 'CANCELLED') {
+      throw validationError('No active subscription to cancel')
+    }
+
+    try {
+      // Cancel at Razorpay — subscriptions can't be cancelled immediately;
+      // Razorpay cancels at period end unless ?cancel_at_cycle_end=0 is passed.
+      await razorpay(`/subscriptions/${retailer.razorpay_subscription_id}/cancel`, {
+        method: 'POST',
+      })
+    } catch (err) {
+      request.log.warn(
+        { rzp_subscription: retailer.razorpay_subscription_id, err },
+        'Razorpay cancel failed — proceeding with local cancel',
+      )
+    }
+
+    await prisma.$transaction([
+      prisma.subscription.updateMany({
+        where: { retailer_id: request.retailerId, status: { not: 'CANCELLED' } },
+        data: { status: 'CANCELLED', cancelled_at: new Date() },
+      }),
+      prisma.retailer.update({
+        where: { id: request.retailerId },
+        data: {
+          plan_status: 'CANCELLED',
+          razorpay_subscription_id: null,
+          // Keep existing plan limits until period end — retailer still has access
+        },
+      }),
+    ])
+
+    request.log.info({ retailer_id: request.retailerId }, 'Subscription cancelled')
+
+    return { data: { plan_status: 'CANCELLED', cancelled_at: new Date().toISOString() } }
+  })
+
   // ─── GET /billing/invoices ──────────────────────────────────────
   server.get('/invoices', async (request) => {
     const payments = await prisma.subscriptionPayment.findMany({
@@ -207,6 +252,69 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       take: 50,
     })
     return { data: payments }
+  })
+
+  // ─── POST /billing/create-order (one-time payment, e.g. add-on credits) ─
+  server.post('/create-order', async (request) => {
+    const body = z
+      .object({ amount_paise: z.number().int().min(100).max(10_000_00) })
+      .parse(request.body)
+
+    const order = await razorpay<{ id: string; amount: number; currency: string; receipt: string }>(
+      '/orders',
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          amount: body.amount_paise,
+          currency: 'INR',
+          receipt: `addon_${request.retailerId}_${Date.now()}`,
+          notes: { retailer_id: request.retailerId },
+        }),
+      },
+    )
+
+    return {
+      data: {
+        order_id: order.id,
+        amount: order.amount,
+        currency: order.currency,
+        key_id: process.env['RAZORPAY_KEY_ID'],
+      },
+    }
+  })
+
+  // ─── POST /billing/verify-payment ──────────────────────────────
+  // Verify Razorpay payment signature. Called from the mobile/web client
+  // after a successful Razorpay Standard Checkout payment.
+  server.post('/verify-payment', async (request) => {
+    const body = z
+      .object({
+        razorpay_order_id: z.string(),
+        razorpay_payment_id: z.string(),
+        razorpay_signature: z.string(),
+      })
+      .parse(request.body)
+
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body
+
+    // HMAC-SHA256(order_id + "|" + payment_id, key_secret)
+    const expected = createHmac('sha256', process.env['RAZORPAY_KEY_SECRET'] ?? '')
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest('hex')
+
+    if (expected !== razorpay_signature) {
+      throw validationError('Payment signature verification failed')
+    }
+
+    // Payment verified — webhook handler records subscription.charged events.
+    // One-time add-on fulfillment (e.g. extra try-on credits) happens separately.
+    return {
+      data: {
+        verified: true,
+        razorpay_order_id,
+        razorpay_payment_id,
+      },
+    }
   })
 
   // ─── POST /billing/webhook (Razorpay → server, no JWT) ──────────

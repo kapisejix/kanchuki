@@ -546,6 +546,11 @@ export const billingApi = {
         body: JSON.stringify({ plan, billing_period: billingPeriod }),
       },
     ),
+
+  cancel: () =>
+    request<{ data: { plan_status: string; cancelled_at: string } }>('/v1/billing/cancel', {
+      method: 'POST',
+    }),
 }
 
 // ─── Catalog Import (F-001b / F-001c) ────────────────────────────
