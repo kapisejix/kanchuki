@@ -15,9 +15,8 @@ function validAdminKey(provided: string | undefined): boolean {
 
 export const adminRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', async (request, reply) => {
-    // Skip auth for login endpoint — inside encapsulated plugin (prefix added by parent), 
-    // routeOptions.url is just the route path '/login', not the full '/v1/admin/login'
-    if (request.routeOptions.url === '/login') return
+    // Skip auth for login endpoint — use request.url (raw URL) for reliability
+    if (request.url === '/v1/admin/login') return
 
     const key = request.headers['x-admin-key'] as string | undefined
     if (!validAdminKey(key)) throw forbidden('Invalid admin key')
