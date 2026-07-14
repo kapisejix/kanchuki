@@ -1104,3 +1104,43 @@ advisory fired again — same pre-existing, deliberately-left gap from
    customer traffic (not blocking further dev).
 4. Independent: non-VTO Phase 0 priorities in PLAN.md (perf, onboarding
    tutorial, Razorpay trial flow, admin panel, 10-retailer pilot).
+
+---
+
+## 2026-07-14 — Product filters (Category, Occasion, Price, Color) on catalog/collection browsing
+
+Feature request: filters shown before the product list on the browse
+surfaces — Category → Occasion → Price → Color, then the filtered list
+below. Client-side filtering only (data already fully loaded per screen;
+no new API params needed since occasions/color/price weren't in
+`ListProductsQuerySchema` anyway and pagination caps at 50/collection-size).
+
+**Mobile retailer catalog** (`apps/mobile/app/(tabs)/catalog.tsx`):
+- New `SlidersHorizontal` filter-toggle button next to the search bar opens
+  a panel with 4 chip rows in order: Category, Occasion, Price, Color.
+  Options are derived from whatever's actually in the loaded product list
+  (same "only show values present in data" pattern as the existing web
+  `FilterBar`) — Category/Occasion/Color from distinct field values, Price
+  from 4 fixed buckets (`Under ₹1000` / `₹1000–2500` / `₹2500–5000` /
+  `Above ₹5000`, in paise against `price_min`).
+- `Product` type gained `occasions: string[]` — field was already returned
+  by `GET /v1/products` (route spreads the full Prisma row) but the mobile
+  client type never declared it.
+- Empty state now distinguishes "no products match filter" (with a Clear
+  filters link) from "no products yet" (with the Add First Product CTA).
+
+**Customer web collection page** (`apps/web/src/app/c/[slug]/`):
+- `FilterBar.tsx` already had Color + Occasion (toggled via the existing
+  header Filter icon in `CollectionView.tsx`) — added Category and Price
+  using the same 4-bucket scheme as mobile, reordered rows to Category →
+  Occasion → Price → Color. Exported `priceMatchesBucket()` so
+  `CollectionView`'s `filteredProducts` logic and the chip UI share one
+  bucket definition instead of duplicating the ₹ thresholds.
+- `CollectionView.tsx` — added `filterCategory`/`filterPrice` state, wired
+  into `filteredProducts` and the "Clear filters" empty-state button.
+
+Both `apps/mobile` and `apps/web` typecheck clean
+(`tsc --noEmit`, zero errors). Not done: no live device/browser click-test
+this session, no server-side filter params added (deliberately — client-side
+is correct here per the small per-screen dataset sizes above, revisit only
+if a screen's product count grows past what one page-load reasonably holds).

@@ -396,7 +396,7 @@ export default function AddProductScreen() {
         <View className="flex-row gap-4 mb-8">
           <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-800 border border-gray-700">
             {photos.front && (
-              <Image source={{ uri: photos.front }} className="w-full h-full" contentFit="cover" />
+              <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             )}
             <Text className="absolute bottom-2 left-2 text-white text-xs bg-black/60 px-2 py-0.5 rounded-full">
               Front
@@ -405,7 +405,7 @@ export default function AddProductScreen() {
           <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-800 border border-gray-700 items-center justify-center">
             {photos.back ? (
               <>
-                <Image source={{ uri: photos.back }} className="w-full h-full" contentFit="cover" />
+                <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                 <Text className="absolute bottom-2 left-2 text-white text-xs bg-black/60 px-2 py-0.5 rounded-full">
                   Back
                 </Text>
@@ -500,9 +500,8 @@ export default function AddProductScreen() {
             {photos.front && (
               <Image
                 source={{ uri: photos.front }}
-                className="w-56 h-72 rounded-3xl"
                 contentFit="cover"
-                style={{ opacity: isComplete ? 0.9 : 0.4 }}
+                style={{ width: 224, height: 288, borderRadius: 24, opacity: isComplete ? 0.9 : 0.4 }}
               />
             )}
 
@@ -645,7 +644,7 @@ export default function AddProductScreen() {
         <View className="flex-row gap-3">
           {photos.front && (
             <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-100">
-              <Image source={{ uri: photos.front }} className="w-full h-full" contentFit="cover" />
+              <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
               <View className="absolute top-3 right-3 bg-cyan-600/90 px-2 py-1 rounded-full flex-row items-center gap-1">
                 <ActivityIndicator size="small" color="white" />
                 <Text className="text-white text-xs">AI tagging...</Text>
@@ -654,7 +653,7 @@ export default function AddProductScreen() {
           )}
           {photos.back && (
             <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-100">
-              <Image source={{ uri: photos.back }} className="w-full h-full" contentFit="cover" />
+              <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             </View>
           )}
         </View>

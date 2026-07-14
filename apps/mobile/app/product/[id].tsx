@@ -566,7 +566,7 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity
                   key={idx}
                   onPress={() => goToPhoto(idx)}
-                  className={`w-2 h-2 rounded-full transition-all ${
+                  className={`w-2 h-2 rounded-full ${
                     idx === selectedPhotoIndex ? 'bg-white w-3' : 'bg-white/50'
                   }`}
                 />

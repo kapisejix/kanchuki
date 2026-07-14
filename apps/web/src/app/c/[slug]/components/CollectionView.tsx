@@ -6,7 +6,7 @@ import { Heart, MessageCircle, Filter, Share2, ShoppingBag, Sparkles } from 'luc
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import dynamic from 'next/dynamic'
-import { FilterBar } from './FilterBar'
+import { FilterBar, priceMatchesBucket } from './FilterBar'
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
 // The components include image carousels, forms, and heavy lucide icons that
@@ -28,8 +28,10 @@ interface Props {
 export function CollectionView({ collection, slug }: Props) {
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null)
-  const [filterColor, setFilterColor] = useState<string | null>(null)
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
+  const [filterPrice, setFilterPrice] = useState<string | null>(null)
+  const [filterColor, setFilterColor] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null)
 
@@ -55,8 +57,10 @@ export function CollectionView({ collection, slug }: Props) {
   )
 
   const filteredProducts = collection.products.filter((p) => {
-    if (filterColor && p.primary_color?.toLowerCase() !== filterColor.toLowerCase()) return false
+    if (filterCategory && p.category !== filterCategory) return false
     if (filterOccasion && !p.occasions.includes(filterOccasion)) return false
+    if (!priceMatchesBucket(p.price_min, filterPrice)) return false
+    if (filterColor && p.primary_color?.toLowerCase() !== filterColor.toLowerCase()) return false
     return true
   })
 
@@ -117,10 +121,14 @@ export function CollectionView({ collection, slug }: Props) {
           {showFilters && (
             <FilterBar
               products={collection.products}
-              filterColor={filterColor}
+              filterCategory={filterCategory}
               filterOccasion={filterOccasion}
-              onColorChange={setFilterColor}
+              filterPrice={filterPrice}
+              filterColor={filterColor}
+              onCategoryChange={setFilterCategory}
               onOccasionChange={setFilterOccasion}
+              onPriceChange={setFilterPrice}
+              onColorChange={setFilterColor}
             />
           )}
         </div>
@@ -137,7 +145,12 @@ export function CollectionView({ collection, slug }: Props) {
             <ShoppingBag size={40} className="mx-auto mb-3 opacity-40" />
             <p className="text-sm">No products match the filter</p>
             <button
-              onClick={() => { setFilterColor(null); setFilterOccasion(null) }}
+              onClick={() => {
+                setFilterCategory(null)
+                setFilterOccasion(null)
+                setFilterPrice(null)
+                setFilterColor(null)
+              }}
               className="mt-2 text-cyan-600 text-sm underline"
             >
               Clear filters

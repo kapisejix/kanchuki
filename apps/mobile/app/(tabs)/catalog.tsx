@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MapPin } from 'lucide-react-native'
+import { Plus, Search, MapPin, SlidersHorizontal, X } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { productApi } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
@@ -20,11 +20,65 @@ type Product = {
   primary_color: string | null
   price_min: number | null
   price_max: number | null
+  occasions: string[]
   status: string
   primary_photo_url: string | null
   section: { name: string } | null
   location_notes: string | null
   ai_tagged: boolean
+}
+
+// ── Price buckets (paise, matches formatPriceRange units) ──────────
+const PRICE_BUCKETS = [
+  { label: 'Under ₹1000', max: 100_000 },
+  { label: '₹1000–2500', min: 100_000, max: 250_000 },
+  { label: '₹2500–5000', min: 250_000, max: 500_000 },
+  { label: 'Above ₹5000', min: 500_000 },
+] as const
+
+// ── Filter chip row ──────────────────────────────────────────────
+function ChipRow({
+  label,
+  options,
+  selected,
+  onSelect,
+}: {
+  label: string
+  options: string[]
+  selected: string | null
+  onSelect: (value: string | null) => void
+}) {
+  if (options.length === 0) return null
+  return (
+    <View className="mb-2.5">
+      <Text className="text-xs text-gray-500 mb-1.5">{label}</Text>
+      <View className="flex-row flex-wrap gap-2">
+        <TouchableOpacity
+          onPress={() => onSelect(null)}
+          className={`px-3 py-1.5 rounded-full border ${
+            selected === null ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+          }`}
+        >
+          <Text className={`text-xs font-medium ${selected === null ? 'text-white' : 'text-gray-600'}`}>
+            All
+          </Text>
+        </TouchableOpacity>
+        {options.map((opt) => (
+          <TouchableOpacity
+            key={opt}
+            onPress={() => onSelect(selected === opt ? null : opt)}
+            className={`px-3 py-1.5 rounded-full border ${
+              selected === opt ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+            }`}
+          >
+            <Text className={`text-xs font-medium ${selected === opt ? 'text-white' : 'text-gray-600'}`}>
+              {opt}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  )
 }
 
 type SearchResult = { data: Product[]; query_interpretation: unknown }
@@ -65,7 +119,7 @@ const CatalogCard = memo(function CatalogCard({
           {product.status === 'AVAILABLE' && (
             <TouchableOpacity
               onPress={onMarkSold}
-              className="mt-1.5 bg-gray-100 py-1.5 rounded-lg items-center active:bg-gray-200"
+              className="mt-1.5 bg-gray-100 py-1.5 rounded-lg items-center"
             >
               <Text className="text-xs text-gray-600 font-medium">Mark Sold</Text>
             </TouchableOpacity>
@@ -83,6 +137,12 @@ export default function CatalogScreen() {
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Product[] | null>(null)
 
+  const [showFilters, setShowFilters] = useState(false)
+  const [filterCategory, setFilterCategory] = useState<string | null>(null)
+  const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
+  const [filterPrice, setFilterPrice] = useState<string | null>(null)
+  const [filterColor, setFilterColor] = useState<string | null>(null)
+
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: ['products', 'list'],
     queryFn: () => productApi.list({ limit: 50 }),
@@ -91,9 +151,40 @@ export default function CatalogScreen() {
     gcTime: 300_000,
   })
 
-  const products: Product[] = isSearching && searchResults
+  const unfilteredProducts: Product[] = isSearching && searchResults
     ? searchResults
     : ((listData as ListResult | undefined)?.data ?? [])
+
+  const categoryOptions = Array.from(
+    new Set(unfilteredProducts.map((p) => p.category).filter((c): c is string => !!c)),
+  )
+  const occasionOptions = Array.from(new Set(unfilteredProducts.flatMap((p) => p.occasions)))
+  const colorOptions = Array.from(
+    new Set(unfilteredProducts.map((p) => p.primary_color).filter((c): c is string => !!c)),
+  )
+  const activeFilterCount = [filterCategory, filterOccasion, filterPrice, filterColor].filter(Boolean).length
+
+  const products = unfilteredProducts.filter((p) => {
+    if (filterCategory && p.category !== filterCategory) return false
+    if (filterOccasion && !p.occasions.includes(filterOccasion)) return false
+    if (filterColor && p.primary_color !== filterColor) return false
+    if (filterPrice) {
+      const bucket = PRICE_BUCKETS.find((b) => b.label === filterPrice)
+      const price = p.price_min ?? 0
+      if (bucket) {
+        if ('min' in bucket && price < bucket.min) return false
+        if ('max' in bucket && price >= bucket.max) return false
+      }
+    }
+    return true
+  })
+
+  const clearFilters = useCallback(() => {
+    setFilterCategory(null)
+    setFilterOccasion(null)
+    setFilterPrice(null)
+    setFilterColor(null)
+  }, [])
 
   const handleSearch = useCallback(async (query: string) => {
     setSearchQuery(query)
@@ -141,9 +232,18 @@ export default function CatalogScreen() {
     () => (
       <View className="items-center py-16">
         <Text className="text-gray-400 text-sm">
-          {isSearching ? 'No matching products' : 'No products yet'}
+          {isSearching
+            ? 'No matching products'
+            : activeFilterCount > 0
+              ? 'No products match the filter'
+              : 'No products yet'}
         </Text>
-        {!isSearching && (
+        {!isSearching && activeFilterCount > 0 && (
+          <TouchableOpacity onPress={clearFilters} className="mt-2">
+            <Text className="text-cyan-600 text-xs font-medium underline">Clear filters</Text>
+          </TouchableOpacity>
+        )}
+        {!isSearching && activeFilterCount === 0 && (
           <TouchableOpacity
             onPress={() => router.push('/product/add')}
             className="mt-3 bg-cyan-600 px-5 py-2.5 rounded-xl"
@@ -153,33 +253,71 @@ export default function CatalogScreen() {
         )}
       </View>
     ),
-    [isSearching],
+    [isSearching, activeFilterCount, clearFilters],
   )
 
   return (
     <View className="flex-1 bg-cyan-50">
       {/* Search Bar */}
       <View className="bg-white px-4 py-3 border-b border-gray-100">
-        <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2">
-          <Search size={16} color="#9CA3AF" />
-          <TextInput
-            value={searchQuery}
-            onChangeText={(text) => void handleSearch(text)}
-            placeholder="Pink cotton wedding suit under ₹2500..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-sm text-gray-900"
-            returnKeyType="search"
-          />
-          {isSearching && searchQuery.length > 0 && (
-            <TouchableOpacity onPress={clearSearch}>
-              <Text className="text-cyan-600 text-xs font-medium">Clear</Text>
-            </TouchableOpacity>
-          )}
+        <View className="flex-row items-center gap-2">
+          <View className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2">
+            <Search size={16} color="#9CA3AF" />
+            <TextInput
+              value={searchQuery}
+              onChangeText={(text) => void handleSearch(text)}
+              placeholder="Pink cotton wedding suit under ₹2500..."
+              placeholderTextColor="#9CA3AF"
+              className="flex-1 text-sm text-gray-900"
+              returnKeyType="search"
+            />
+            {isSearching && searchQuery.length > 0 && (
+              <TouchableOpacity onPress={clearSearch}>
+                <Text className="text-cyan-600 text-xs font-medium">Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            onPress={() => setShowFilters((v) => !v)}
+            className={`w-10 h-10 rounded-xl items-center justify-center border ${
+              activeFilterCount > 0 ? 'bg-cyan-600 border-cyan-600' : 'bg-gray-100 border-gray-100'
+            }`}
+          >
+            <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#6B7280'} />
+          </TouchableOpacity>
         </View>
         {isSearching && (
           <Text className="text-xs text-cyan-600 mt-1.5 px-1">
             AI search — try natural language
           </Text>
+        )}
+
+        {/* Filter panel — Category, Occasion, Price, Color, then the list below */}
+        {showFilters && (
+          <View className="mt-3 pt-3 border-t border-gray-100">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filters</Text>
+              <View className="flex-row items-center gap-3">
+                {activeFilterCount > 0 && (
+                  <TouchableOpacity onPress={clearFilters}>
+                    <Text className="text-cyan-600 text-xs font-medium">Clear all</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity onPress={() => setShowFilters(false)}>
+                  <X size={16} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
+            <ChipRow label="Occasion" options={occasionOptions} selected={filterOccasion} onSelect={setFilterOccasion} />
+            <ChipRow
+              label="Price"
+              options={PRICE_BUCKETS.map((b) => b.label)}
+              selected={filterPrice}
+              onSelect={setFilterPrice}
+            />
+            <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
+          </View>
         )}
       </View>
 

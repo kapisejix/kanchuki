@@ -568,7 +568,7 @@ export default function OnboardingScreen() {
                         goToStep(6 as Step) // For now all options proceed
                       }
                     }}
-                    className="flex-row items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl active:border-cyan-300"
+                    className="flex-row items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl"
                     activeOpacity={0.7}
                   >
                     <Text className="text-lg">
@@ -607,7 +607,7 @@ export default function OnboardingScreen() {
             <View className="mt-6 w-full gap-3">
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)')}
-                className="flex-row items-center gap-3 bg-cyan-600 rounded-2xl p-4 active:opacity-90"
+                className="flex-row items-center gap-3 bg-cyan-600 rounded-2xl p-4"
                 activeOpacity={0.9}
               >
                 <View className="w-10 h-10 rounded-xl bg-cyan-500 items-center justify-center">
@@ -624,7 +624,7 @@ export default function OnboardingScreen() {
 
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)')}
-                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4 active:border-cyan-300"
+                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4"
                 activeOpacity={0.8}
               >
                 <View className="w-10 h-10 rounded-xl bg-cyan-50 items-center justify-center">
@@ -641,7 +641,7 @@ export default function OnboardingScreen() {
 
               <TouchableOpacity
                 onPress={() => router.replace('/(tabs)')}
-                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4 active:border-cyan-300"
+                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4"
                 activeOpacity={0.8}
               >
                 <View className="w-10 h-10 rounded-xl bg-cyan-50 items-center justify-center">
@@ -712,7 +712,7 @@ export default function OnboardingScreen() {
           {step > 1 && (
             <TouchableOpacity
               onPress={() => goToStep((step - 1) as Step)}
-              className="w-12 h-12 rounded-2xl border-2 border-gray-200 items-center justify-center active:bg-cyan-50"
+              className="w-12 h-12 rounded-2xl border-2 border-gray-200 items-center justify-center"
               activeOpacity={0.7}
             >
               <Text className="text-gray-600 text-lg">←</Text>
@@ -722,7 +722,7 @@ export default function OnboardingScreen() {
             onPress={() => void handleNext()}
             disabled={!canProceed() || saving || showConfetti}
             className={`flex-1 py-4 rounded-2xl items-center justify-center ${
-              canProceed() && !saving ? 'bg-cyan-600 active:bg-cyan-700' : 'bg-gray-200'
+              canProceed() && !saving ? 'bg-cyan-600' : 'bg-gray-200'
             }`}
             activeOpacity={0.8}
           >
