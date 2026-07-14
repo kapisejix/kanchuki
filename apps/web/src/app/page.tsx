@@ -1112,7 +1112,7 @@ function FooterSection() {
           </p>
 
           {/* Links */}
-          <div className="flex gap-6 text-sm text-gray-500">
+          <div className="flex gap-5 text-sm text-gray-500">
             <a href="#" className="hover:text-gray-300 transition-colors">
               Privacy
             </a>
@@ -1121,6 +1121,10 @@ function FooterSection() {
             </a>
             <a href="mailto:hello@kanchuki.app" className="hover:text-gray-300 transition-colors">
               Contact
+            </a>
+            <span className="text-gray-700">·</span>
+            <a href="/admin" className="hover:text-gray-300 transition-colors text-gray-400">
+              Admin
             </a>
           </div>
         </div>

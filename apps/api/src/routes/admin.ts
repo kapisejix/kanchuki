@@ -3,7 +3,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@kanchuki/db'
 import { PLAN_PRICING } from '@kanchuki/shared'
-import { forbidden } from '../plugins/error-handler.js'
+import { forbidden, notFound } from '../plugins/error-handler.js'
 
 function validAdminKey(provided: string | undefined): boolean {
   const expected = process.env['ADMIN_API_KEY'] ?? ''
@@ -172,7 +172,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const count = Object.keys(created).length
     request.log.info({ created }, `Created ${count}/6 Razorpay plans`)
 
-    // Build env var snippet for easy copy-paste into Railway/.
     let envSnippet = '# Razorpay plan IDs — set these in your environment\n'
     for (const [key, val] of Object.entries(created)) {
       envSnippet += `${key}=${val.id}\n`
@@ -187,6 +186,209 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         total: 6,
         env_vars: created,
         env_snippet: envSnippet,
+      },
+    }
+  })
+
+  // ─── GET /admin/retailers/:id ──────────────────────────────────
+  // Full retailer detail with product/customer counts, try-on usage, subscription.
+  server.get('/retailers/:id', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params)
+
+    const retailer = await prisma.retailer.findUnique({
+      where: { id, deleted_at: null },
+      select: {
+        id: true,
+        shop_name: true,
+        owner_name: true,
+        phone: true,
+        city: true,
+        state: true,
+        gstin: true,
+        plan: true,
+        plan_status: true,
+        trial_ends_at: true,
+        plan_expires_at: true,
+        onboarding_completed: true,
+        onboarding_step: true,
+        created_at: true,
+        updated_at: true,
+        max_products: true,
+        max_customers: true,
+        try_on_credits: true,
+        max_staff_seats: true,
+        _count: {
+          select: {
+            products: { where: { deleted_at: null } },
+            customers: { where: { deleted_at: null } },
+            collections: { where: { deleted_at: null } },
+            staff: { where: { is_active: true } },
+          },
+        },
+      },
+    })
+
+    if (!retailer) throw notFound('Retailer not found')
+
+    // Get try-on usage this month
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+    const [tryOnUsageThisMonth, tryOnUsageTotal] = await Promise.all([
+      prisma.tryOnUsageLog.aggregate({
+        where: { retailer_id: id, created_at: { gte: monthStart } },
+        _sum: { cost_usd: true },
+        _count: true,
+      }),
+      prisma.tryOnUsageLog.aggregate({
+        where: { retailer_id: id },
+        _sum: { cost_usd: true },
+        _count: true,
+      }),
+    ])
+
+    // Get recent products
+    const recentProducts = await prisma.product.findMany({
+      where: { retailer_id: id, deleted_at: null },
+      orderBy: { created_at: 'desc' },
+      take: 10,
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        primary_color: true,
+        price_min: true,
+        status: true,
+        created_at: true,
+        _count: { select: { photos: true } },
+      },
+    })
+
+    const { _count, ...retailerData } = retailer
+
+    return {
+      data: {
+        ...retailerData,
+        product_count: _count.products,
+        customer_count: _count.customers,
+        collection_count: _count.collections,
+        staff_count: _count.staff,
+        try_on: {
+          this_month: {
+            count: tryOnUsageThisMonth._count,
+            cost_usd: tryOnUsageThisMonth._sum.cost_usd ?? 0,
+          },
+          total: {
+            count: tryOnUsageTotal._count,
+            cost_usd: tryOnUsageTotal._sum.cost_usd ?? 0,
+          },
+        },
+        recent_products: recentProducts,
+      },
+    }
+  })
+
+  // ─── POST /admin/retailers/:id/extend-trial ────────────────────
+  // Extend a retailer's trial by N days.
+  server.post('/retailers/:id/extend-trial', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params)
+    const body = z.object({ days: z.number().int().min(1).max(90) }).parse(request.body)
+
+    const retailer = await prisma.retailer.findUnique({
+      where: { id, deleted_at: null },
+      select: { id: true, trial_ends_at: true },
+    })
+    if (!retailer) throw notFound('Retailer not found')
+
+    const newEnd = retailer.trial_ends_at && retailer.trial_ends_at > new Date()
+      ? new Date(retailer.trial_ends_at.getTime() + body.days * 86400000)
+      : new Date(Date.now() + body.days * 86400000)
+
+    await prisma.retailer.update({
+      where: { id },
+      data: { trial_ends_at: newEnd, plan_status: 'TRIAL' },
+    })
+
+    request.log.info({ retailer_id: id, days: body.days, new_trial_end: newEnd }, 'Trial extended')
+
+    return { data: { trial_ends_at: newEnd.toISOString(), plan_status: 'TRIAL' } }
+  })
+
+  // ─── POST /admin/retailers/:id/change-plan ─────────────────────
+  // Change a retailer's plan and update limits.
+  server.post('/retailers/:id/change-plan', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params)
+    const body = z
+      .object({
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
+        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']),
+        extend_trial_days: z.number().int().min(0).max(90).optional(),
+      })
+      .parse(request.body)
+
+    const retailer = await prisma.retailer.findUnique({
+      where: { id, deleted_at: null },
+    })
+    if (!retailer) throw notFound('Retailer not found')
+
+    const limits: Record<string, { products: number; customers: number; try_on: number }> = {
+      STARTER: { products: 500, customers: 200, try_on: 0 },
+      GROWTH: { products: 2000, customers: 1000, try_on: 100 },
+      PRO: { products: 999999, customers: 999999, try_on: 500 },
+    }
+
+    const planLimits = limits[body.plan]
+    if (!planLimits) throw notFound(`Plan ${body.plan} not found`)
+
+    const updateData: Record<string, unknown> = {
+      plan: body.plan,
+      plan_status: body.status,
+      max_products: planLimits.products,
+      max_customers: planLimits.customers,
+      try_on_credits: planLimits.try_on,
+    }
+
+    if (body.extend_trial_days && body.extend_trial_days > 0) {
+      updateData.trial_ends_at = new Date(Date.now() + body.extend_trial_days * 86400000)
+    }
+
+    await prisma.retailer.update({ where: { id }, data: updateData })
+
+    request.log.info({ retailer_id: id, plan: body.plan, status: body.status }, 'Plan changed')
+
+    return { data: { plan: body.plan, plan_status: body.status, ...updateData } }
+  })
+
+  // ─── GET /admin/usage ──────────────────────────────────────────
+  // Platform-wide usage stats including try-on and revenue.
+  server.get('/usage', async () => {
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
+
+    const [tryOnUsage, activeSubscriptions, trialCount, totalRetailers] = await Promise.all([
+      prisma.tryOnUsageLog.aggregate({
+        where: { created_at: { gte: monthStart } },
+        _sum: { cost_usd: true },
+        _count: true,
+      }),
+      prisma.subscription.findMany({
+        where: { status: 'ACTIVE' },
+        select: { amount_inr: true, billing_period: true },
+      }),
+      prisma.retailer.count({ where: { plan_status: 'TRIAL', deleted_at: null } }),
+      prisma.retailer.count({ where: { deleted_at: null } }),
+    ])
+
+    const mrr = activeSubscriptions.reduce((sum, sub) => {
+      const monthlyAmount = sub.billing_period === 'annual' ? sub.amount_inr / 12 : sub.amount_inr
+      return sum + monthlyAmount
+    }, 0)
+
+    return {
+      data: {
+        total_retailers: totalRetailers,
+        trial_retailers: trialCount,
+        active_subscriptions: activeSubscriptions.length,
+        mrr_inr: Math.round(mrr),
+        try_on_this_month: tryOnUsage._count,
+        try_on_cost_usd: tryOnUsage._sum.cost_usd ?? 0,
       },
     }
   })
