@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Shield, Check, X, Loader2, AlertTriangle } from 'lucide-react'
 
 type Step = 'confirm' | 'submitting' | 'done' | 'error'
 
-export default function RevokeConsentPage() {
+function RevokeConsentForm() {
   const searchParams = useSearchParams()
   const initialToken = searchParams.get('token') ?? ''
 
@@ -167,5 +167,17 @@ export default function RevokeConsentPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function RevokeConsentPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-cyan-50 flex items-center justify-center p-4">
+        <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+      </div>
+    }>
+      <RevokeConsentForm />
+    </Suspense>
   )
 }
