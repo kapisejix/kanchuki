@@ -23,11 +23,11 @@
     "db:push": "pnpm --filter @kanchuki/db db:push"
   },
   "devDependencies": {
-    "turbo": "^2.0.0",
-    "typescript": "^5.5.0",
+    "@biomejs/biome": "^1.8.0",
     "@types/node": "^20.0.0",
     "prettier": "^3.3.0",
-    "@biomejs/biome": "^1.8.0"
+    "turbo": "^2.0.0",
+    "typescript": "^5.5.0"
   },
   "pnpm": {
     "overrides": {
