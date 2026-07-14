@@ -1191,6 +1191,47 @@ if a screen's product count grows past what one page-load reasonably holds).
 - ✅ **95%+ of Phase 0 code complete** (all retailer-facing features built)
 - ❌ Performance optimization — not started (blocking on 3G load time)
 - ❌ 10-retailer pilot — no users yet
-- 🟡 RLS on try_on_jobs + audit_logs — open security gap
-- 🟡 Real 2-piece garment try-on test — mechanism confirmed, quality unconfirmed
+- ✅ RLS on try_on_jobs + audit_logs — **FIXED** (migration 010 confirmed applied, verified live 2026-07-14)
+- 🟡 Real 2-piece garment try-on test — mechanism confirmed, quality unconfirmed (blocked: no RunPod workers)
 - 🟡 Legal review of consent copy (DPDP Act 2023) — placeholder text
+
+---
+
+## 2026-07-14 (later) — Mobile app + WhatsApp verified, try-on test deferred
+
+**Done — full verification of mobile app and customer web:**
+- Mobile typecheck (`tsc --noEmit`): ✅ **Pass — zero errors**
+- API typecheck: ✅ **Pass — zero errors**
+- API tests: ✅ **40/40 passed** (admin 24, cleanup 6, size-chart 5, tagger 5)
+- Railway API (`/health`): ✅ **HTTP 200** — live at `supportive-love-production-293a.up.railway.app`
+- Railway Web: ✅ **HTTP 200** — live at `magnificent-liberation-production-5e44.up.railway.app`
+
+**Mobile retailer app screens verified in code:**
+- **Home tab** — stats (views/enquiries/products/customers), trending products, 5 quick actions (Add Product, Search, Add Customer, New Collection, Size Charts)
+- **Catalog tab** — product grid (2-col FlatList with performance props: `windowSize=7`, `removeClippedSubviews`), AI search with natural language, filters (Category→Occasion→Price→Color), FAB for add/bulk/catalog import, Mark Sold per product
+- **Collections tab** — collection list + share on WhatsApp + enquiry tracking
+- **Customer tab** — add/search customer, preference capture, measurements, size recommendations
+- **Product detail** — photos, AI tags, status, store location, crop-tagging for 2-piece
+- **In-store try-on** — customer photo capture + product selection + try-on result
+
+**Customer web collection pages verified:**
+- Collection URL pattern: `https://magnificent-liberation-production-5e44.up.railway.app/c/[slug]/`
+- Product grid with filters (Category→Occasion→Price→Color), favorites (localStorage), WhatsApp enquiry deep link
+- Responsive mobile-first PWA, no account required
+
+**WhatsApp integration verified:**
+- Collection link generation → share URL → copy & paste in WhatsApp: ✅ **Working**
+- Customer "Enquire on WhatsApp" button → pre-filled message to retailer: ✅ **Working**
+- WhatsApp deep link (`wa.me/91...`) with shop name, collection title, products: ✅ `buildWhatsAppEnquiryLink()` + `buildEnquiryMessage()` in shared utils
+- Collection analytics (views, enquiries, favorites) on mobile + admin: ✅ **Working**
+- Meta WhatsApp Business API (automation, Phase 3): 🔴 **Not started** — not needed for MVP manual sharing
+
+**#4 — 2-piece try-on test deferred (no GPU workers):**
+- RunPod endpoint `pnvchif9f4bcom`: **0 ready workers** (9 completed, 29 failed, 2 in queue)
+- Test script `scripts/test-2piece-tryon.mjs` ready — needs user to scale worker on RunPod dashboard
+- Photos available: `test_person.jpg` + `test_garment.jpg` at repo root
+
+**Summary — user confirmed:**
+- WhatsApp manual sharing flow = done, no code changes needed
+- 2-piece try-on test = skip for now, run later when RunPod workers are available
+
