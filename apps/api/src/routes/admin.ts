@@ -5,7 +5,7 @@ import { prisma } from '@kanchuki/db'
 import { PLAN_PRICING } from '@kanchuki/shared'
 import { forbidden, notFound } from '../plugins/error-handler.js'
 
-function validAdminKey(provided: string | undefined): boolean {
+export function validAdminKey(provided: string | undefined): boolean {
   const expected = process.env['ADMIN_API_KEY'] ?? ''
   if (!expected || !provided) return false
   // Hash both sides so timingSafeEqual gets equal-length buffers

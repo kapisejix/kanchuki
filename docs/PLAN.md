@@ -137,12 +137,12 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 **Goal:** Move off single shared admin login to per-user staff accounts with territory-based access, so the marketing team can onboard retailers in-person and support can be routed by location. See `docs/PRO-REQUIREMENTS.md` Section 10, `docs/DATABASE.md` `TeamMember`/`Territory`/`SupportTicket` models.
 **Prerequisite:** Phase 0 MVP live and stable (admin panel, retailer/product/collection flows).
 
-- [ ] Real per-user staff login (`TeamMember` table, hashed passwords) — retires the single `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` env-var login
-- [ ] `Territory` table (State → City → Zone hierarchy) + admin UI to build it
-- [ ] `TeamMemberTerritory` assignment (staff ↔ territory, many-to-many) + `max_retailers` soft-cap flag on dashboards
-- [ ] Retailer `territory_id` auto-derived from pincode at signup, `onboarded_by_id` / `support_owner_id` attribution
-- [ ] Marketing Agent onboarding flow in admin panel, scoped to their territory, per-agent activation dashboard
-- [ ] `SupportTicket` entity + hybrid routing (visit-required → nearest territory agent; backend-manageable → open pool within region)
+- [x] Real per-user staff login (`TeamMember` table, hashed passwords) — API built (`POST /v1/team/login`, scrypt + JWT). Old admin-key login kept as a Super Admin bootstrap path, not yet retired.
+- [x] `Territory` table (State → City → Zone hierarchy) + API CRUD (`/v1/team/territories`). No admin UI yet to build it visually.
+- [x] `TeamMemberTerritory` assignment + `max_retailers` soft-cap flag — API done (`over_capacity` on `GET /v1/team/members`). No dashboard UI yet.
+- [x] Retailer `territory_id` auto-derived from pincode at signup, `onboarded_by_id` / `support_owner_id` attribution — API done (`POST /v1/team/retailers`)
+- [~] Marketing Agent onboarding flow — API endpoint done (`POST /v1/team/retailers`, scoped by role), no admin-panel UI surface yet (Phase A per §10.7)
+- [ ] `SupportTicket` entity + hybrid routing (visit-required → nearest territory agent; backend-manageable → open pool within region) — schema/migration only, no routing logic or endpoints
 - [ ] Manager rollup reporting: retailers onboarded per agent, coverage-gap view (zones with 0 assigned agent)
 - [ ] Staff mode inside the Expo retailer app, for offline-friendly field onboarding
 

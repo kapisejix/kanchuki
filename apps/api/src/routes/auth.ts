@@ -70,6 +70,16 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
 
     const { user, session } = authData
 
+    // A marketing agent may have pre-created this retailer in person (see
+    // team.ts POST /retailers) before the retailer ever logs in themselves —
+    // that row has a placeholder `pending:<id>` auth_user_id since no real
+    // Supabase user existed yet. Link it by phone instead of creating a
+    // second, duplicate row keyed on the now-real auth_user_id.
+    const pending = await prisma.retailer.findUnique({ where: { phone } })
+    if (pending && pending.auth_user_id.startsWith('pending:')) {
+      await prisma.retailer.update({ where: { id: pending.id }, data: { auth_user_id: user.id } })
+    }
+
     // Upsert retailer (first login = registration, subsequent = login)
     const retailer = await prisma.retailer.upsert({
       where: { auth_user_id: user.id },

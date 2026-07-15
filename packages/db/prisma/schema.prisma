@@ -61,6 +61,29 @@ enum SizeChartCategory {
   LOWER // Pants, Palazzos, Skirts — waist/hip/length
 }
 
+// ─── INTERNAL TEAM (Kanchuki admin/marketing/support, not retailer-side) ──
+
+enum TeamRole {
+  SUPER_ADMIN
+  MARKETING_MANAGER
+  MARKETING_AGENT
+  SUPPORT_MANAGER
+  SUPPORT_AGENT
+}
+
+enum TerritoryLevel {
+  STATE
+  CITY
+  ZONE
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  RESOLVED
+  CLOSED
+}
+
 // ─── RETAILERS ───────────────────────────────────────────────────
 
 model Retailer {
@@ -79,6 +102,12 @@ model Retailer {
   pincode       String?
 
   categories String[] // ["suits", "sarees", "kurtis"]
+
+  // Internal team attribution (Section 10, PRO-REQUIREMENTS.md) — nullable,
+  // only set for retailers onboarded/derived through the internal team flow.
+  territory_id     String?
+  onboarded_by_id  String? // TeamMember.id — marketing agent who signed them up
+  support_owner_id String? // TeamMember.id — current support point of contact
 
   // Subscription
   plan            SubscriptionPlan   @default(STARTER)
@@ -113,9 +142,14 @@ model Retailer {
   subscriptions  Subscription[]
   try_on_usage   TryOnUsageLog[]
   size_charts    SizeChart[]
+  territory      Territory?      @relation(fields: [territory_id], references: [id])
+  onboarded_by   TeamMember?     @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
+  support_owner  TeamMember?     @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
+  support_tickets SupportTicket[]
 
   @@index([phone])
   @@index([city])
+  @@index([territory_id])
   @@map("retailers")
 }
 
@@ -499,6 +533,81 @@ model Staff {
 
   @@index([retailer_id])
   @@map("staff")
+}
+
+// ─── INTERNAL TEAM (Kanchuki admin/marketing/support) ─────────────
+// See docs/PRO-REQUIREMENTS.md Section 10. Separate from retailer-side
+// Staff above — these are Kanchuki's own employees.
+
+model TeamMember {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password_hash String
+  role          TeamRole
+  is_active     Boolean  @default(true)
+  max_retailers Int? // soft cap; dashboard flags when exceeded, never blocks onboarding
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  territories         TeamMemberTerritory[]
+  onboarded_retailers Retailer[]      @relation("OnboardedRetailers")
+  supported_retailers Retailer[]      @relation("SupportedRetailers")
+  assigned_tickets    SupportTicket[]
+
+  @@index([email])
+  @@map("team_members")
+}
+
+model Territory {
+  id        String         @id @default(cuid())
+  name      String
+  level     TerritoryLevel
+  parent_id String? // self-reference: ZONE -> CITY -> STATE
+  pincodes  String[] // only meaningful at ZONE level
+
+  parent    Territory?             @relation("TerritoryHierarchy", fields: [parent_id], references: [id])
+  children  Territory[]            @relation("TerritoryHierarchy")
+  staff     TeamMemberTerritory[]
+  retailers Retailer[]
+
+  @@index([parent_id])
+  @@map("territories")
+}
+
+model TeamMemberTerritory {
+  id             String   @id @default(cuid())
+  team_member_id String
+  territory_id   String
+  assigned_at    DateTime @default(now())
+
+  team_member TeamMember @relation(fields: [team_member_id], references: [id])
+  territory   Territory  @relation(fields: [territory_id], references: [id])
+
+  @@unique([team_member_id, territory_id])
+  @@index([territory_id])
+  @@map("team_member_territories")
+}
+
+model SupportTicket {
+  id              String       @id @default(cuid())
+  retailer_id     String
+  requires_visit  Boolean      @default(false)
+  region_scope_id String? // Territory.id this ticket is poolable within, when not visit-bound
+  assigned_to_id  String? // TeamMember.id, nullable until picked up
+  status          TicketStatus @default(OPEN)
+  note            String?
+
+  created_at  DateTime  @default(now())
+  resolved_at DateTime?
+
+  retailer    Retailer    @relation(fields: [retailer_id], references: [id])
+  assigned_to TeamMember? @relation(fields: [assigned_to_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([status])
+  @@map("support_tickets")
 }
 
 // ─── SUBSCRIPTIONS ───────────────────────────────────────────────

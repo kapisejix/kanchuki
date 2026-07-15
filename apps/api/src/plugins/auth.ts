@@ -151,6 +151,8 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     if (request.routeOptions.url === '/v1/billing/webhook') return
     // Admin routes authenticate via x-admin-key header (checked in admin.ts)
     if (request.routeOptions.url?.startsWith('/v1/admin')) return
+    // Team routes authenticate via their own Bearer JWT or x-admin-key (checked in team.ts)
+    if (request.routeOptions.url?.startsWith('/v1/team')) return
     // Auth routes are how a client obtains a Bearer token in the first place
     if (request.routeOptions.url?.startsWith('/v1/auth')) return
     // Remote try-on endpoints (customer-facing, no auth)
