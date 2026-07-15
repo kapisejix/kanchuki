@@ -92,9 +92,9 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
           AND p.status::text = ANY(${Prisma.raw(
             `ARRAY[${(filters?.status ?? ['AVAILABLE']).map((s) => `'${s}'`).join(',')}]::text[]`,
           )})
-          ${priceMax !== null ? Prisma.raw(`AND p.price_min <= ${priceMax}`) : Prisma.empty}
-          ${priceMin !== null ? Prisma.raw(`AND p.price_min >= ${priceMin}`) : Prisma.empty}
-          ${filters?.category ? Prisma.raw(`AND p.category = '${filters.category.replace(/'/g, "''")}'`) : Prisma.empty}
+          ${priceMax !== null ? Prisma.sql`AND p.price_min <= ${priceMax}` : Prisma.empty}
+          ${priceMin !== null ? Prisma.sql`AND p.price_min >= ${priceMin}` : Prisma.empty}
+          ${filters?.category ? Prisma.sql`AND p.category = ${filters.category}` : Prisma.empty}
         ORDER BY similarity DESC
         LIMIT ${limit * 2}
       `

@@ -244,20 +244,20 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       type RawMatchRow = { id: string; match_score: number }
 
       const conditions = [
-        `p.retailer_id = '${retailerId}'`,
-        `p.deleted_at IS NULL`,
-        `p.status = 'AVAILABLE'`,
+        Prisma.sql`p.retailer_id = ${retailerId}`,
+        Prisma.sql`p.deleted_at IS NULL`,
+        Prisma.sql`p.status = 'AVAILABLE'`,
       ]
-      if (price_max != null) conditions.push(`p.price_min <= ${price_max}`)
-      if (category) conditions.push(`p.category = '${category.replace(/'/g, "''")}'`)
+      if (price_max != null) conditions.push(Prisma.sql`p.price_min <= ${price_max}`)
+      if (category) conditions.push(Prisma.sql`p.category = ${category}`)
 
       const rows = await prisma.$queryRaw<RawMatchRow[]>`
         SELECT
           p.id,
-          (1 - (pe.embedding <=> ${Prisma.raw(`'${dnaRow.preference_vector}'`)})) AS match_score
+          (1 - (pe.embedding <=> ${dnaRow.preference_vector}::vector)) AS match_score
         FROM products p
         JOIN product_embeddings pe ON p.id = pe.product_id
-        WHERE ${Prisma.raw(conditions.join(' AND '))}
+        WHERE ${Prisma.join(conditions, ' AND ')}
         ORDER BY match_score DESC
         LIMIT ${limit * 2}
       `

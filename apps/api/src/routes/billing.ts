@@ -326,12 +326,23 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
 
     const event = request.body as {
       event: string
+      created_at?: number
       payload: {
         subscription?: { entity: RazorpaySubscription & { plan_id: string } }
         payment?: {
           entity: { id: string; order_id?: string; amount: number; status: string }
         }
       }
+    }
+
+    // Replay protection: reject stale events (signature alone doesn't prevent
+    // a captured request from being resent later, e.g. to resurrect a cancelled plan)
+    const WEBHOOK_MAX_AGE_SECONDS = 300
+    if (
+      typeof event.created_at !== 'number' ||
+      Math.abs(Date.now() / 1000 - event.created_at) > WEBHOOK_MAX_AGE_SECONDS
+    ) {
+      return reply.status(401).send({ error: { code: 'STALE_EVENT', status: 401 } })
     }
 
     const rzpSub = event.payload?.subscription?.entity

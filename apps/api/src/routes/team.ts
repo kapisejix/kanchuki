@@ -33,7 +33,7 @@ function requireRole(request: import('fastify').FastifyRequest, allowed: TeamRol
 
 const LoginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(1),
+  password: z.string().min(1).max(128),
 })
 
 const TerritorySchema = z.object({
@@ -46,7 +46,7 @@ const TerritorySchema = z.object({
 const CreateMemberSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
-  password: z.string().min(8),
+  password: z.string().min(8).max(128),
   role: z.enum(['SUPER_ADMIN', 'MARKETING_MANAGER', 'MARKETING_AGENT', 'SUPPORT_MANAGER', 'SUPPORT_AGENT']),
   max_retailers: z.number().int().min(1).max(10000).optional(),
   territory_ids: z.array(z.string()).max(100).optional(),
