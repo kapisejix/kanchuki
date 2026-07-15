@@ -86,30 +86,34 @@ export function CollectionView({ collection, slug }: Props) {
   }, [collection.title])
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 font-sans">
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm">
-        <div className="max-w-md mx-auto px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
+        <div className="max-w-md mx-auto px-4 py-3.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] text-cyan-700/80 font-semibold uppercase tracking-wider truncate">
                 {collection.retailer.shop_name} · {collection.retailer.city}
               </p>
-              <h1 className="text-base font-bold text-gray-900 leading-tight">
+              <h1 className="font-display text-lg font-bold text-gray-900 leading-tight tracking-tight truncate">
                 {collection.title}
               </h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 flex-shrink-0">
               <button
                 onClick={() => setShowFilters((v) => !v)}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
+                className={`p-2.5 rounded-full transition-all active:scale-90 ${
+                  showFilters
+                    ? 'bg-cyan-50 text-cyan-700 shadow-soft'
+                    : 'text-gray-500 hover:bg-gray-100'
+                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2`}
                 aria-label="Toggle filters"
               >
                 <Filter size={18} />
               </button>
               <button
                 onClick={() => void handleShare()}
-                className="p-2 rounded-full hover:bg-gray-100 text-gray-600"
+                className="p-2.5 rounded-full text-gray-500 hover:bg-gray-100 transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
                 aria-label="Share collection"
               >
                 <Share2 size={18} />
@@ -135,15 +139,18 @@ export function CollectionView({ collection, slug }: Props) {
       </header>
 
       {/* ── Product Grid ── */}
-      <main className="max-w-md mx-auto px-3 py-3">
+      <main className="max-w-md mx-auto px-3 py-4">
         {collection.description && (
-          <p className="text-sm text-gray-600 mb-3 px-1">{collection.description}</p>
+          <p className="text-sm text-gray-600 leading-relaxed mb-4 px-1">{collection.description}</p>
         )}
 
         {filteredProducts.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <ShoppingBag size={40} className="mx-auto mb-3 opacity-40" />
-            <p className="text-sm">No products match the filter</p>
+          <div className="text-center py-20 px-6">
+            <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag size={26} className="text-cyan-400" />
+            </div>
+            <p className="text-sm font-medium text-gray-700 mb-1">No products match this filter</p>
+            <p className="text-xs text-gray-400 mb-4">Try clearing a filter to see more of the collection</p>
             <button
               onClick={() => {
                 setFilterCategory(null)
@@ -151,7 +158,7 @@ export function CollectionView({ collection, slug }: Props) {
                 setFilterPrice(null)
                 setFilterColor(null)
               }}
-              className="mt-2 text-cyan-600 text-sm underline"
+              className="text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
             >
               Clear filters
             </button>
@@ -175,11 +182,11 @@ export function CollectionView({ collection, slug }: Props) {
       </main>
 
       {/* ── Sticky Bottom Bar ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 safe-area-inset-bottom">
+      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 safe-area-inset-bottom shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1 text-sm text-gray-600">
+          <div className="flex items-center gap-1.5 text-sm text-gray-600 flex-shrink-0">
             <Heart size={16} className="text-rose-500 fill-rose-500" />
-            <span>
+            <span className="font-medium tabular-nums">
               {favorites.size > 0
                 ? `${favorites.size} saved`
                 : `${collection.products.length} items`}
@@ -188,7 +195,9 @@ export function CollectionView({ collection, slug }: Props) {
           <button
             onClick={handleEnquireAll}
             className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold
-                       py-3 px-4 rounded-2xl flex items-center justify-center gap-2 transition-colors"
+                       py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2
+                       shadow-soft-lg transition-all active:scale-[0.98] hover:-translate-y-0.5
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
           >
             <MessageCircle size={18} />
             {favorites.size > 0 ? `Enquire about ${favorites.size} items` : 'Enquire on WhatsApp'}
@@ -244,16 +253,19 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
   const isUnavailable = isSold || isReserved
 
   return (
-    <div className={`bg-white rounded-2xl overflow-hidden shadow-sm border ${isSold ? 'border-red-100 opacity-80' : isReserved ? 'border-amber-100' : 'border-gray-100'}`}>
+    <div className={`group bg-white rounded-2xl overflow-hidden shadow-soft border transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg ${isSold ? 'border-red-100 opacity-80' : isReserved ? 'border-amber-100' : 'border-gray-100'}`}>
       {/* Photo */}
-      <button onClick={onTap} className="relative w-full aspect-[3/4] block">
+      <button
+        onClick={onTap}
+        className="relative w-full aspect-[3/4] block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-inset"
+      >
         {product.primary_photo_url ? (
           <Image
             src={product.primary_photo_url}
             alt={product.name ?? product.category ?? 'Product'}
             fill
             sizes="(max-width: 640px) 45vw, 200px"
-            className={`object-cover ${isSold ? 'grayscale' : ''}`}
+            className={`object-cover transition-transform duration-300 group-hover:scale-[1.03] ${isSold ? 'grayscale' : ''}`}
             priority={priority}
             loading={priority ? 'eager' : 'lazy'}
           />
@@ -265,12 +277,12 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
 
         {/* Status badge ribbon */}
         {isSold && (
-          <div className="absolute top-0 left-0 bg-red-500 text-white text-[10px] font-bold px-3 py-1 rounded-br-lg shadow-sm">
+          <div className="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
             Sold Out
           </div>
         )}
         {isReserved && (
-          <div className="absolute top-0 left-0 bg-amber-400 text-amber-900 text-[10px] font-bold px-3 py-1 rounded-br-lg shadow-sm">
+          <div className="absolute top-2.5 left-2.5 bg-amber-400 text-amber-900 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
             Reserved
           </div>
         )}
@@ -279,8 +291,9 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
         {!isSold && (
           <button
             onClick={(e) => { e.stopPropagation(); onFavorite(product.id) }}
-            className="absolute top-2 right-2 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm
-                       flex items-center justify-center shadow-sm"
+            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm
+                       flex items-center justify-center shadow-soft transition-transform active:scale-90
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
             aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
           >
             <Heart
@@ -293,24 +306,25 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
 
       {/* Try-On button — hide for SOLD, show as disabled for RESERVED */}
       {!isUnavailable && (
-        <div className="px-2.5 pt-1.5">
+        <div className="px-2.5 pt-2">
           <button
             onClick={(e) => { e.stopPropagation(); onTryOn?.(product) }}
-            className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-medium
-                       py-2 rounded-xl flex items-center justify-center gap-1 transition-colors"
+            className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-semibold
+                       py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1"
           >
-            <Sparkles size={14} />
+            <Sparkles size={13} />
             Try On
           </button>
         </div>
       )}
 
       {/* Info */}
-      <div className="p-2.5">
+      <div className="p-2.5 pt-2">
         <div className="flex items-center gap-1.5 mb-1">
           {product.primary_color && (
             <span
-              className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+              className="w-2.5 h-2.5 rounded-full border border-gray-200 flex-shrink-0"
               style={{ backgroundColor: product.primary_color.toLowerCase() }}
               title={product.primary_color}
             />
@@ -319,13 +333,13 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
             {product.category ?? product.occasions[0] ?? 'Product'}
           </p>
           {isSold && (
-            <span className="text-[10px] text-red-400 font-medium ml-auto">Sold</span>
+            <span className="text-[10px] text-red-400 font-semibold ml-auto">Sold</span>
           )}
           {isReserved && (
-            <span className="text-[10px] text-amber-500 font-medium ml-auto">Reserved</span>
+            <span className="text-[10px] text-amber-500 font-semibold ml-auto">Reserved</span>
           )}
         </div>
-        <p className={`text-sm font-semibold ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+        <p className={`font-display text-sm font-bold tabular-nums ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
           {formatPriceRange(product.price_min, product.price_max)}
         </p>
         {product.fabric_estimate && (

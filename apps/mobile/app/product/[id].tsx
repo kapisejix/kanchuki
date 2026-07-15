@@ -534,7 +534,7 @@ export default function ProductDetailScreen() {
             <TouchableOpacity
               onPress={() => goToPhoto(selectedPhotoIndex - 1)}
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
-              style={{ elevation: 3 }}
+              style={{ elevation: 3, zIndex: 10 }}
             >
               <ChevronLeft size={20} color="#374151" />
             </TouchableOpacity>
@@ -545,7 +545,7 @@ export default function ProductDetailScreen() {
             <TouchableOpacity
               onPress={() => goToPhoto(selectedPhotoIndex + 1)}
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
-              style={{ elevation: 3 }}
+              style={{ elevation: 3, zIndex: 10 }}
             >
               <ChevronRight size={20} color="#374151" />
             </TouchableOpacity>

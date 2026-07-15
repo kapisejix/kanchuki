@@ -76,6 +76,11 @@ export function ProductDetailSheet({
 
   // ── Touch handlers for swipe + pinch/zoom + double-tap ──────────
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Nav arrows/dots/counter live inside this same touch zone — don't let
+    // their taps feed the swipe/double-tap-zoom detector below (two quick
+    // arrow taps were being misread as a double-tap, zooming in and hiding
+    // the arrows).
+    if ((e.target as HTMLElement).closest('button')) return
     if (e.touches.length === 2) {
       // Pinch start — store initial distance and center
       const dx = e.touches[0].clientX - e.touches[1].clientX
@@ -125,6 +130,7 @@ export function ProductDetailSheet({
   }, [])
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if ((e.target as HTMLElement).closest('button')) return
     // End pinch
     if (isPinchingRef.current) {
       isPinchingRef.current = false
@@ -231,10 +237,11 @@ export function ProductDetailSheet({
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center z-10"
+          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
+                     transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
           aria-label="Close"
         >
-          <X size={16} />
+          <X size={17} className="text-gray-600" />
         </button>
 
         {/* Photo carousel with crossfade transition + pinch-to-zoom */}
@@ -327,7 +334,7 @@ export function ProductDetailSheet({
               {photoIndex > 0 && (
                 <button
                   onClick={() => goTo(photoIndex - 1)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95"
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                   aria-label="Previous photo"
                 >
                   <ChevronLeft size={18} className="text-gray-700" />
@@ -336,7 +343,7 @@ export function ProductDetailSheet({
               {photoIndex < totalPhotos - 1 && (
                 <button
                   onClick={() => goTo(photoIndex + 1)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-sm flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
                   aria-label="Next photo"
                 >
                   <ChevronRight size={18} className="text-gray-700" />
@@ -383,10 +390,10 @@ export function ProductDetailSheet({
           {/* Price + favorite */}
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className={`text-xl font-bold ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+              <p className={`font-display text-2xl font-bold tabular-nums tracking-tight ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                 {formatPriceRange(product.price_min, product.price_max)}
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 mt-0.5">
                 {product.category}
                 {product.occasions[0] ? ` · ${product.occasions[0]}` : ''}
               </p>
@@ -394,7 +401,9 @@ export function ProductDetailSheet({
             {!isSold && (
               <button
                 onClick={() => onFavorite(product.id)}
-                className="w-10 h-10 rounded-full border-2 border-gray-100 flex items-center justify-center flex-shrink-0 hover:border-rose-200 transition-colors"
+                className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center flex-shrink-0
+                           transition-all active:scale-90 hover:border-rose-200 hover:bg-rose-50
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
                 aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
               >
                 <Heart
@@ -475,10 +484,10 @@ export function ProductDetailSheet({
           <div className="px-4 pt-2">
             <button
               onClick={onTryOn}
-              className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] ${
+              className={`w-full font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
                 isReserved
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-sm hover:shadow-md'
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-cyan-500'
               }`}
               disabled={isReserved}
             >
@@ -486,7 +495,7 @@ export function ProductDetailSheet({
               {isReserved ? 'Try On Unavailable' : 'Try This On'}
             </button>
             {isReserved && (
-              <p className="text-center text-xs text-amber-500 mt-1">
+              <p className="text-center text-xs text-amber-500 mt-1.5">
                 Reserved items cannot be tried on
               </p>
             )}
@@ -498,10 +507,10 @@ export function ProductDetailSheet({
           <button
             onClick={handleEnquire}
             disabled={isSold}
-            className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-base active:scale-[0.98] ${
+            className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-base active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               isSold
-                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600 text-white shadow-sm hover:shadow-md'
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-green-500'
             }`}
           >
             <MessageCircle size={20} />
@@ -520,7 +529,7 @@ export function ProductDetailSheet({
 
 function Chip({ label }: { label: string }) {
   return (
-    <span className="text-xs bg-gray-100 text-gray-700 px-3 py-1.5 rounded-full font-medium">
+    <span className="text-xs bg-gray-50 border border-gray-100 text-gray-700 px-3 py-1.5 rounded-full font-medium">
       {label}
     </span>
   )

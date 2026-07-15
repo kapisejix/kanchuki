@@ -56,10 +56,10 @@ export function FilterBar({
           <span className="text-xs text-gray-500 flex-shrink-0">Category:</span>
           <button
             onClick={() => onCategoryChange(null)}
-            className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
               filterCategory === null
-                ? 'bg-cyan-600 text-white border-cyan-600'
-                : 'bg-white text-gray-600 border-gray-200'
+                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
             }`}
           >
             All
@@ -68,10 +68,10 @@ export function FilterBar({
             <button
               key={category}
               onClick={() => onCategoryChange(filterCategory === category ? null : category)}
-              className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
                 filterCategory === category
-                  ? 'bg-cyan-600 text-white border-cyan-600'
-                  : 'bg-white text-gray-600 border-gray-200'
+                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
               }`}
             >
               {category}
@@ -86,10 +86,10 @@ export function FilterBar({
           <span className="text-xs text-gray-500 flex-shrink-0">For:</span>
           <button
             onClick={() => onOccasionChange(null)}
-            className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
               filterOccasion === null
-                ? 'bg-cyan-600 text-white border-cyan-600'
-                : 'bg-white text-gray-600 border-gray-200'
+                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
             }`}
           >
             All
@@ -98,10 +98,10 @@ export function FilterBar({
             <button
               key={occasion}
               onClick={() => onOccasionChange(filterOccasion === occasion ? null : occasion)}
-              className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
                 filterOccasion === occasion
-                  ? 'bg-cyan-600 text-white border-cyan-600'
-                  : 'bg-white text-gray-600 border-gray-200'
+                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
               }`}
             >
               {occasion}
@@ -115,10 +115,10 @@ export function FilterBar({
         <span className="text-xs text-gray-500 flex-shrink-0">Price:</span>
         <button
           onClick={() => onPriceChange(null)}
-          className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+          className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
             filterPrice === null
-              ? 'bg-cyan-600 text-white border-cyan-600'
-              : 'bg-white text-gray-600 border-gray-200'
+              ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
           }`}
         >
           All
@@ -127,10 +127,10 @@ export function FilterBar({
           <button
             key={bucket.label}
             onClick={() => onPriceChange(filterPrice === bucket.label ? null : bucket.label)}
-            className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
               filterPrice === bucket.label
-                ? 'bg-cyan-600 text-white border-cyan-600'
-                : 'bg-white text-gray-600 border-gray-200'
+                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
             }`}
           >
             {bucket.label}
@@ -144,10 +144,10 @@ export function FilterBar({
           <span className="text-xs text-gray-500 flex-shrink-0">Color:</span>
           <button
             onClick={() => onColorChange(null)}
-            className={`flex-shrink-0 text-xs px-3 py-1 rounded-full border transition-colors ${
+            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
               filterColor === null
-                ? 'bg-cyan-600 text-white border-cyan-600'
-                : 'bg-white text-gray-600 border-gray-200'
+                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
             }`}
           >
             All
@@ -156,10 +156,10 @@ export function FilterBar({
             <button
               key={color}
               onClick={() => onColorChange(filterColor === color ? null : color)}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs px-3 py-1 rounded-full border transition-colors ${
+              className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
                 filterColor === color
-                  ? 'bg-cyan-600 text-white border-cyan-600'
-                  : 'bg-white text-gray-600 border-gray-200'
+                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                  : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
               }`}
             >
               <span
