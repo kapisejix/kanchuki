@@ -645,7 +645,64 @@ So that the retailer knows which ones I'm interested in
 
 ---
 
-## 10. Out of Scope (MVP)
+## 10. Internal Team Management (Admin / Marketing / Support)
+
+**Status:** Approved requirement, not yet built. Post-MVP — build after Phase 0 core retailer/customer flows are stable (see `docs/PLAN.md`).
+
+### 10.1 Problem
+
+Retailers don't all self-signup. Kanchuki's marketing team visits stores in person and sets up the retailer account on their behalf. Each marketing rep covers a set of stores based on assigned location. Support needs the same location-aware coverage. Today there is a single shared admin login (env-var based) — no per-user staff accounts, no territory concept, no way to see who onboarded or supports a given retailer.
+
+### 10.2 Staff roles (separate from retailer-side `Staff`/shop-staff)
+
+| Role | Scope | Can do |
+|---|---|---|
+| Super Admin | Global | Create staff, define territories, billing, reassign anyone, override any cap |
+| Marketing Manager | Assigned territories | Manage agents under them, reassign retailers within their region, see over-capacity flags |
+| Marketing Agent | Assigned territories | Onboard new retailers in their territory only, view their own onboarded retailers + activation status |
+| Support Manager | Assigned territories | Manage support agents, escalations, reassign tickets |
+| Support Agent | Assigned territories + region | See routing rules below |
+
+Every staff member gets a real login (replaces the single shared admin credential). Session scopes every retailer-list/detail API call to that staff member's assigned territories.
+
+### 10.3 Territory — hierarchical
+
+State → City → Zone (pincode-cluster). Admin assigns a staff member at whichever level fits (a manager may own a whole state, an agent owns one zone). A retailer's territory is auto-derived from their address/pincode at signup; admin can override.
+
+### 10.4 Retailer attribution
+
+- `territory_id` — which zone the retailer belongs to
+- `onboarded_by` — which marketing agent signed them up
+- `support_owner` — current support point of contact (can differ from onboarder, can change over time)
+
+### 10.5 Capacity — soft warning, never a hard block
+
+`max_retailers` per staff member (e.g. 50). Onboarding is never blocked mid-visit. Once a rep exceeds their limit, their dashboard and their manager's dashboard flag it (e.g. "52/50 — over capacity") so the manager can rebalance the territory or add coverage.
+
+### 10.6 Support routing — hybrid
+
+- **Requires a store visit** (hardware, in-person issue) → routed to the nearest Support Agent whose territory covers that retailer's zone.
+- **Backend-manageable** (billing question, WhatsApp link issue, account setting — anything fixable remotely) → open pool; any Support Agent in the same state/region can pick it up, not locked to the exact zone.
+
+Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned staff (nullable until picked up), region scope it's poolable within, status. No ticketing exists today — new build.
+
+### 10.7 Field onboarding surface — phased
+
+- **Phase A:** Marketing Agent role added to the existing Next.js admin panel. Works from a phone browser — fastest to ship, reuses what's deployed.
+- **Phase B:** Native "staff mode" inside the existing Expo retailer app, for offline-friendly onboarding (camera, poor-connectivity in-store), matching the project's offline-first constraint.
+
+### 10.8 Build order
+
+1. Real per-user staff login (retire single admin-env-var login) + `Territory` table
+2. Staff↔territory assignment, admin UI to build territories + assign staff, capacity flag
+3. Marketing Agent onboarding flow (web), scoped to their territory, activation dashboard per agent
+4. Support layer: support role, `SupportTicket` entity, hybrid routing
+5. Reporting: manager rollups, per-agent leaderboard, coverage-gap view (zones with 0 assigned agent)
+6. Staff mode in Expo app (offline-first field onboarding)
+
+---
+
+## 11. Out of Scope (MVP)
 
 - AI virtual try-on
 - WhatsApp Business API automation

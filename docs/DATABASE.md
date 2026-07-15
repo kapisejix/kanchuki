@@ -73,6 +73,27 @@ enum UserRole {
   ADMIN
 }
 
+enum TeamRole {
+  SUPER_ADMIN
+  MARKETING_MANAGER
+  MARKETING_AGENT
+  SUPPORT_MANAGER
+  SUPPORT_AGENT
+}
+
+enum TerritoryLevel {
+  STATE
+  CITY
+  ZONE
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  RESOLVED
+  CLOSED
+}
+
 enum ProductStatus {
   AVAILABLE
   SOLD
@@ -131,6 +152,12 @@ model Retailer {
   state           String?
   gstin           String?           // optional at signup, required for billing
   categories      String[]          // ["suits", "sarees", "kurtis"]
+  pincode         String?           // used to auto-derive territory_id at signup
+
+  // Internal team attribution (Section 10, PRO-REQUIREMENTS.md)
+  territory_id     String?
+  onboarded_by_id  String?          // TeamMember.id — marketing agent who signed them up
+  support_owner_id String?          // TeamMember.id — current support point of contact
   
   // Subscription
   plan            SubscriptionPlan @default(STARTER)
@@ -163,9 +190,14 @@ model Retailer {
   staff        Staff[]
   subscriptions Subscription[]
   store_sections StoreSection[]
+  territory      Territory?   @relation(fields: [territory_id], references: [id])
+  onboarded_by   TeamMember?  @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
+  support_owner  TeamMember?  @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
+  support_tickets SupportTicket[]
   
   @@index([phone])
   @@index([city])
+  @@index([territory_id])
   @@map("retailers")
 }
 
@@ -568,6 +600,82 @@ model Staff {
 }
 
 // ─────────────────────────────────────────────
+// INTERNAL TEAM (Kanchuki admin/marketing/support)
+// Not yet built — see PRO-REQUIREMENTS.md Section 10
+// ─────────────────────────────────────────────
+
+model TeamMember {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  password_hash String
+  role          TeamRole
+  is_active     Boolean  @default(true)
+  max_retailers Int?     // soft cap; dashboard flags when exceeded, never blocks onboarding
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  territories         TeamMemberTerritory[]
+  onboarded_retailers Retailer[] @relation("OnboardedRetailers")
+  supported_retailers Retailer[] @relation("SupportedRetailers")
+  assigned_tickets    SupportTicket[]
+
+  @@index([email])
+  @@map("team_members")
+}
+
+model Territory {
+  id        String          @id @default(cuid())
+  name      String
+  level     TerritoryLevel
+  parent_id String?         // self-reference: ZONE -> CITY -> STATE
+  pincodes  String[]        // only meaningful at ZONE level
+
+  parent    Territory?  @relation("TerritoryHierarchy", fields: [parent_id], references: [id])
+  children  Territory[] @relation("TerritoryHierarchy")
+  staff     TeamMemberTerritory[]
+  retailers Retailer[]
+
+  @@index([parent_id])
+  @@map("territories")
+}
+
+model TeamMemberTerritory {
+  id            String   @id @default(cuid())
+  team_member_id String
+  territory_id   String
+  assigned_at    DateTime @default(now())
+
+  team_member TeamMember @relation(fields: [team_member_id], references: [id])
+  territory   Territory  @relation(fields: [territory_id], references: [id])
+
+  @@unique([team_member_id, territory_id])
+  @@index([territory_id])
+  @@map("team_member_territories")
+}
+
+model SupportTicket {
+  id              String       @id @default(cuid())
+  retailer_id     String
+  requires_visit  Boolean      @default(false)
+  region_scope_id String?      // Territory.id this ticket is poolable within, when not visit-bound
+  assigned_to_id  String?      // TeamMember.id, nullable until picked up
+  status          TicketStatus @default(OPEN)
+  note            String?
+
+  created_at DateTime  @default(now())
+  resolved_at DateTime?
+
+  retailer    Retailer    @relation(fields: [retailer_id], references: [id])
+  assigned_to TeamMember? @relation(fields: [assigned_to_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([status])
+  @@map("support_tickets")
+}
+
+// ─────────────────────────────────────────────
 // SUBSCRIPTIONS & BILLING
 // ─────────────────────────────────────────────
 
@@ -738,6 +846,10 @@ CREATE POLICY retailer_isolation ON products
   USING (retailer_id = auth.uid());
 
 -- Same pattern on: customers, collections, staff, etc.
+-- Internal team access (not yet built) is scoped at the API layer, not RLS:
+-- a TeamMember's session carries their assigned territory_ids, and every
+-- retailer-list/detail query filters by retailer.territory_id IN (...).
+-- Super Admin bypasses the filter.
 -- Public read on collections (for customer web)
 ALTER TABLE collections ENABLE ROW LEVEL SECURITY;
 CREATE POLICY public_collection_read ON collections

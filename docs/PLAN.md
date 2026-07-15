@@ -10,6 +10,7 @@
 
 ```
 Phase 0: MVP           Month 1–4    Digitize store + WhatsApp collections
+Phase 0.5: Internal Team  (post-MVP)  Admin/marketing/support staff logins + territory routing
 Phase 1: AI Core       Month 5–8    Fashion DNA + Virtual Try-On
 Phase 2: B2B Network   Month 9–12   Wholesaler/Manufacturer layer
 Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + multi-store
@@ -128,6 +129,24 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [ ] Pilot with 10 retailers, collect feedback, fix critical issues
 
 **Deliverable:** MVP live, 50 retailer target
+
+---
+
+## Phase 0.5: Internal Team Management (Admin / Marketing / Support)
+
+**Goal:** Move off single shared admin login to per-user staff accounts with territory-based access, so the marketing team can onboard retailers in-person and support can be routed by location. See `docs/PRO-REQUIREMENTS.md` Section 10, `docs/DATABASE.md` `TeamMember`/`Territory`/`SupportTicket` models.
+**Prerequisite:** Phase 0 MVP live and stable (admin panel, retailer/product/collection flows).
+
+- [ ] Real per-user staff login (`TeamMember` table, hashed passwords) — retires the single `ADMIN_EMAIL`/`ADMIN_PASSWORD_HASH` env-var login
+- [ ] `Territory` table (State → City → Zone hierarchy) + admin UI to build it
+- [ ] `TeamMemberTerritory` assignment (staff ↔ territory, many-to-many) + `max_retailers` soft-cap flag on dashboards
+- [ ] Retailer `territory_id` auto-derived from pincode at signup, `onboarded_by_id` / `support_owner_id` attribution
+- [ ] Marketing Agent onboarding flow in admin panel, scoped to their territory, per-agent activation dashboard
+- [ ] `SupportTicket` entity + hybrid routing (visit-required → nearest territory agent; backend-manageable → open pool within region)
+- [ ] Manager rollup reporting: retailers onboarded per agent, coverage-gap view (zones with 0 assigned agent)
+- [ ] Staff mode inside the Expo retailer app, for offline-friendly field onboarding
+
+**Deliverable:** Marketing/support teams manage retailers through their own scoped logins instead of the shared admin key
 
 ---
 
