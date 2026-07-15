@@ -195,6 +195,11 @@ export const retailerApi = {
       body: JSON.stringify(data),
     }),
   getSections: () => request<{ data: unknown[] }>('/v1/retailers/me/sections', { getCacheTtlMs: 120_000 }),
+  createSection: (data: { name: string; type: string; parent_id?: string }) =>
+    request<{ data: { id: string; name: string; type: string } }>('/v1/retailers/me/sections', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 }
 
 // ─── Products ─────────────────────────────────────────────────────
@@ -251,6 +256,12 @@ export const productApi = {
     }),
 
   delete: (id: string) => request<void>(`/v1/products/${id}`, { method: 'DELETE' }),
+
+  bulkDelete: (ids: string[]) =>
+    request<{ data: { deleted_count: number } }>('/v1/products/bulk-delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids }),
+    }),
 
   search: (query: string, filters?: Record<string, unknown>, limit = 12) =>
     request<{ data: unknown[]; query_interpretation: unknown }>('/v1/search', {
@@ -574,6 +585,9 @@ export type CatalogDetectedItem = {
   cropped_url: string
   cropped_r2_key: string
   page_number?: number
+  phash: string
+  is_duplicate: boolean
+  duplicate_of_product_id: string | null
   tags: {
     category: string | null
     primary_color: string | null
@@ -665,7 +679,10 @@ export const catalogImportApi = {
       search_tags?: string[]
       price_min?: number | null
       price_max?: number | null
+      section_id?: string | null
+      phash?: string | null
     }>,
+    default_section_id?: string | null,
   ) =>
     request<{
       data: {
@@ -675,7 +692,7 @@ export const catalogImportApi = {
       }
     }>('/v1/catalog-import/bulk-create-products', {
       method: 'POST',
-      body: JSON.stringify({ items }),
+      body: JSON.stringify({ items, default_section_id }),
       timeoutMs: 60_000,
     }),
 }

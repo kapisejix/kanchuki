@@ -2,7 +2,14 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { createHash, randomBytes } from 'node:crypto'
 import { prisma } from '@kanchuki/db'
-import { detectCropAndTag, fetchImageBuffer, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai'
+import {
+  detectCropAndTag,
+  fetchImageBuffer,
+  getUploadPresignedUrl,
+  publicUrl,
+  hammingDistance,
+  DUPLICATE_HAMMING_THRESHOLD,
+} from '@kanchuki/ai'
 import { PLAN_LIMITS } from '@kanchuki/shared'
 import { addTaggingJob } from '../jobs/index.js'
 import { notFound, validationError, planLimitExceeded } from '../plugins/error-handler.js'
@@ -14,6 +21,9 @@ interface DetectedItemResponse {
   cropped_url: string
   cropped_r2_key: string
   page_number?: number
+  phash: string
+  is_duplicate: boolean
+  duplicate_of_product_id: string | null
   tags: {
     category: string | null
     primary_color: string | null
@@ -44,6 +54,9 @@ const ImportPdfSchema = z.object({
 })
 
 const BulkCreateProductsSchema = z.object({
+  // F-001d: applied to every item that doesn't set its own section_id below —
+  // "enter rack/shelf once per photo, not once per item"
+  default_section_id: z.string().nullable().optional(),
   items: z
     .array(
       z.object({
@@ -57,6 +70,8 @@ const BulkCreateProductsSchema = z.object({
         search_tags: z.array(z.string()).optional(),
         price_min: z.number().int().nullable().optional(),
         price_max: z.number().int().nullable().optional(),
+        section_id: z.string().nullable().optional(),
+        phash: z.string().nullable().optional(),
       }),
     )
     .min(1)
@@ -73,6 +88,34 @@ const UploadUrlSchema = z.object({
 
 function randHex(length: number): string {
   return randomBytes(length).toString('hex')
+}
+
+// F-001d: flags a crop as a likely duplicate of something already in the
+// retailer's catalog (same rack shot twice, or already present via a
+// supplier PDF import). Non-blocking — caller still lets the retailer save.
+async function flagDuplicates(
+  retailerId: string,
+  items: Array<{ phash: string }>,
+): Promise<Array<{ is_duplicate: boolean; duplicate_of_product_id: string | null }>> {
+  if (items.length === 0) return []
+
+  const existing = await prisma.productPhoto.findMany({
+    where: { retailer_id: retailerId, phash: { not: null } },
+    select: { phash: true, product_id: true },
+  })
+
+  return items.map((item) => {
+    let best: { product_id: string; distance: number } | null = null
+    for (const photo of existing) {
+      const distance = hammingDistance(item.phash, photo.phash!)
+      if (!best || distance < best.distance) best = { product_id: photo.product_id, distance }
+    }
+    const isDuplicate = best !== null && best.distance <= DUPLICATE_HAMMING_THRESHOLD
+    return {
+      is_duplicate: isDuplicate,
+      duplicate_of_product_id: isDuplicate ? best!.product_id : null,
+    }
+  })
 }
 
 // ─── Plugin ───────────────────────────────────────────────────────
@@ -130,11 +173,15 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     try {
       const items = await detectCropAndTag(image_url, retailerId)
+      const dupes = await flagDuplicates(retailerId, items)
 
-      const response: DetectedItemResponse[] = items.map((item) => ({
+      const response: DetectedItemResponse[] = items.map((item, i) => ({
         description: item.description,
         cropped_url: item.croppedUrl,
         cropped_r2_key: item.r2Key,
+        phash: item.phash,
+        is_duplicate: dupes[i]!.is_duplicate,
+        duplicate_of_product_id: dupes[i]!.duplicate_of_product_id,
         tags: item.tags,
       }))
 
@@ -180,6 +227,9 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
                 cropped_url: item.croppedUrl,
                 cropped_r2_key: item.r2Key,
                 page_number: i + 1,
+                phash: item.phash,
+                is_duplicate: false,
+                duplicate_of_product_id: null,
                 tags: item.tags,
               })
             }
@@ -187,6 +237,12 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             request.log.warn({ err, pageNum: i + 1 }, 'Detection failed for PDF page')
           }
         }
+
+        const dupes = await flagDuplicates(retailerId, allItems)
+        allItems.forEach((item, i) => {
+          item.is_duplicate = dupes[i]!.is_duplicate
+          item.duplicate_of_product_id = dupes[i]!.duplicate_of_product_id
+        })
 
         return reply.status(200).send({
           data: {
@@ -267,7 +323,33 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const parsed = BulkCreateProductsSchema.safeParse(request.body)
     if (!parsed.success) throw validationError(parsed.error.issues[0]?.message ?? 'Invalid')
 
-    const { items } = parsed.data
+    const { items, default_section_id } = parsed.data
+
+    // F-001d: resolve rack/shelf location — verify any section_id (per-item
+    // override or the once-per-photo default) actually belongs to this
+    // retailer, silently drop anything that doesn't rather than failing the
+    // whole batch over a stale/bad location hint.
+    const requestedSectionIds = [
+      ...new Set(
+        [default_section_id, ...items.map((i) => i.section_id)].filter(
+          (id): id is string => !!id,
+        ),
+      ),
+    ]
+    const validSectionIds = new Set(
+      requestedSectionIds.length
+        ? (
+            await prisma.storeSection.findMany({
+              where: { retailer_id: retailerId, id: { in: requestedSectionIds } },
+              select: { id: true },
+            })
+          ).map((s) => s.id)
+        : [],
+    )
+    const resolveSectionId = (itemSectionId: string | null | undefined): string | undefined => {
+      const candidate = itemSectionId ?? default_section_id
+      return candidate && validSectionIds.has(candidate) ? candidate : undefined
+    }
 
     // Check plan limits
     const retailer = await prisma.retailer.findUnique({
@@ -306,12 +388,14 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
       search_tags: item.search_tags ?? undefined,
       price_min: item.price_min ?? undefined,
       price_max: item.price_max ?? undefined,
+      section_id: resolveSectionId(item.section_id),
       photos: {
         create: {
           retailer_id: retailerId,
           is_primary: true,
           r2_key: item.cropped_r2_key,
           url: item.cropped_url,
+          phash: item.phash ?? undefined,
         },
       },
     }))

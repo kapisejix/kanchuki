@@ -6,10 +6,11 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Alert,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MapPin, SlidersHorizontal, X } from 'lucide-react-native'
+import { Plus, Search, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { productApi } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
@@ -89,16 +90,22 @@ type ListResult = { data: Product[]; pagination: { cursor: string | null; has_mo
 const CatalogCard = memo(function CatalogCard({
   product,
   onPress,
+  onLongPress,
   onMarkSold,
+  selected,
 }: {
   product: Product
   onPress: () => void
+  onLongPress: () => void
   onMarkSold: () => void
+  selected: boolean
 }) {
   return (
     <ProductCard
       imageUrl={product.primary_photo_url}
       onPress={onPress}
+      onLongPress={onLongPress}
+      selected={selected}
       statusBadge={product.status !== 'AVAILABLE' ? product.status : null}
       showAIDot={!product.ai_tagged}
       footer={
@@ -136,6 +143,10 @@ export default function CatalogScreen() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Product[] | null>(null)
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const selectionMode = selectedIds.size > 0
+  const [deleting, setDeleting] = useState(false)
 
   const [showFilters, setShowFilters] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
@@ -215,15 +226,57 @@ export default function CatalogScreen() {
     void queryClient.invalidateQueries({ queryKey: ['products'] })
   }, [queryClient])
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const clearSelection = useCallback(() => setSelectedIds(new Set()), [])
+
+  const handleBulkDelete = useCallback(() => {
+    const count = selectedIds.size
+    Alert.alert(
+      `Delete ${count} product${count !== 1 ? 's' : ''}?`,
+      'This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setDeleting(true)
+            try {
+              await productApi.bulkDelete([...selectedIds])
+              clearSelection()
+              void queryClient.invalidateQueries({ queryKey: ['products'] })
+            } catch (err) {
+              Alert.alert('Delete failed', err instanceof Error ? err.message : 'Try again.')
+            } finally {
+              setDeleting(false)
+            }
+          },
+        },
+      ],
+    )
+  }, [selectedIds, clearSelection, queryClient])
+
   const renderItem = useCallback(
     ({ item }: { item: Product }) => (
       <CatalogCard
         product={item}
-        onPress={() => router.push(`/product/${item.id}`)}
+        selected={selectedIds.has(item.id)}
+        onPress={() =>
+          selectionMode ? toggleSelect(item.id) : router.push(`/product/${item.id}`)
+        }
+        onLongPress={() => toggleSelect(item.id)}
         onMarkSold={() => void handleMarkSold(item.id)}
       />
     ),
-    [handleMarkSold],
+    [handleMarkSold, selectionMode, selectedIds, toggleSelect],
   )
 
   const keyExtractor = useCallback((item: Product) => item.id, [])
@@ -341,35 +394,62 @@ export default function CatalogScreen() {
         />
       )}
 
-      {/* FAB — quick import menu */}
-      <View className="absolute bottom-6 right-4 items-end gap-2">
-        <TouchableOpacity
-          onPress={() => router.push('/product/add')}
-          className="w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
+      {/* Selection action bar — replaces the FAB while items are selected */}
+      {selectionMode ? (
+        <View
+          className="absolute bottom-6 left-4 right-4 bg-gray-900 rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-lg"
           style={{ elevation: 6 }}
-          activeOpacity={0.8}
         >
-          <Plus size={24} color="white" />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push('/product/bulk')}
-          className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
-          style={{ elevation: 3 }}
-          activeOpacity={0.7}
-        >
-          <Text className="text-xs text-gray-500">Bulk</Text>
-          <Text className="text-xs">📷</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => router.push('/product/catalog-import')}
-          className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
-          style={{ elevation: 3 }}
-          activeOpacity={0.7}
-        >
-          <Text className="text-xs text-gray-500">Catalog</Text>
-          <Text className="text-xs">📋</Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity onPress={clearSelection} disabled={deleting}>
+            <Text className="text-gray-300 text-sm">Cancel</Text>
+          </TouchableOpacity>
+          <Text className="text-white text-sm font-semibold">{selectedIds.size} selected</Text>
+          <TouchableOpacity
+            onPress={handleBulkDelete}
+            disabled={deleting}
+            className="flex-row items-center gap-1.5 bg-red-600 px-3 py-2 rounded-xl"
+          >
+            {deleting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Trash2 size={14} color="white" />
+                <Text className="text-white text-sm font-semibold">Delete</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : (
+        /* FAB — quick import menu */
+        <View className="absolute bottom-6 right-4 items-end gap-2">
+          <TouchableOpacity
+            onPress={() => router.push('/product/add')}
+            className="w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
+            style={{ elevation: 6 }}
+            activeOpacity={0.8}
+          >
+            <Plus size={24} color="white" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/product/bulk')}
+            className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
+            style={{ elevation: 3 }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-xs text-gray-500">Bulk</Text>
+            <Text className="text-xs">📷</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/product/catalog-import')}
+            className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
+            style={{ elevation: 3 }}
+            activeOpacity={0.7}
+          >
+            <Text className="text-xs text-gray-500">Catalog</Text>
+            <Text className="text-xs">📋</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   )
 }

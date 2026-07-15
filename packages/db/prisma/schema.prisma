@@ -247,6 +247,11 @@ model ProductPhoto {
   // in packages/ai/src/tryon.ts; see PRO-REQUIREMENTS.md F-102.
   piece_type String?
 
+  // F-001d bulk onboarding: 64-bit aHash hex string, used to flag likely
+  // duplicate re-shoots of the same garment across rack photos/imports.
+  // See packages/ai/src/phash.ts.
+  phash String?
+
   sort_order Int      @default(0)
   created_at DateTime @default(now())
 

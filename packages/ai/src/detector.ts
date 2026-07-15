@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import type { AiTagResult } from '@kanchuki/shared'
 import { tagProductImageUrl } from './tagger.js'
 import { uploadBuffer, publicUrl } from './r2.js'
+import { computePhash } from './phash.js'
 
 // Lazy import: sharp's native dlopen can crash on Windows+pnpm. Deferring the
 // import to first-use avoids the crash when loading modules that merely import
@@ -231,7 +232,7 @@ export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
 export async function detectCropAndTag(
   sourceImageUrl: string,
   retailerId: string,
-): Promise<Array<DetectedItem & { croppedUrl: string; r2Key: string }>> {
+): Promise<Array<DetectedItem & { croppedUrl: string; r2Key: string; phash: string }>> {
   // Fetch image
   const imageBuffer = await fetchImageBuffer(sourceImageUrl)
   const { width, height } = await getImageDimensions(imageBuffer)
@@ -247,7 +248,8 @@ export async function detectCropAndTag(
       await uploadBuffer(r2Key, imageBuffer, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
       const tags = await tagProductImageUrl(sourceImageUrl)
-      return [{ bbox: { x_pct: 0, y_pct: 0, w_pct: 100, h_pct: 100 }, description: 'Full image', tags, croppedUrl, r2Key }]
+      const phash = await computePhash(imageBuffer)
+      return [{ bbox: { x_pct: 0, y_pct: 0, w_pct: 100, h_pct: 100 }, description: 'Full image', tags, croppedUrl, r2Key, phash }]
     }
     // Single item detected
     const item = items[0]!
@@ -256,11 +258,12 @@ export async function detectCropAndTag(
     await uploadBuffer(r2Key, cropped, 'image/jpeg')
     const croppedUrl = publicUrl(r2Key)
     const tags = await tagProductImageUrl(croppedUrl)
-    return [{ ...item, tags, croppedUrl, r2Key }]
+    const phash = await computePhash(cropped)
+    return [{ ...item, tags, croppedUrl, r2Key, phash }]
   }
 
   // Multiple items — crop each one, upload, tag
-  const results: Array<DetectedItem & { croppedUrl: string; r2Key: string }> = []
+  const results: Array<DetectedItem & { croppedUrl: string; r2Key: string; phash: string }> = []
 
   for (const item of items) {
     try {
@@ -269,7 +272,8 @@ export async function detectCropAndTag(
       await uploadBuffer(r2Key, cropped, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
       const tags = await tagProductImageUrl(croppedUrl)
-      results.push({ ...item, tags, croppedUrl, r2Key })
+      const phash = await computePhash(cropped)
+      results.push({ ...item, tags, croppedUrl, r2Key, phash })
     } catch (err) {
       // Skip items that fail detection — log but don't crash the batch
       console.error(`Failed to process detected item "${item.description}":`, err)

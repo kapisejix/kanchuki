@@ -205,6 +205,7 @@ export default function OnboardingScreen() {
   const [gstin, setGstin] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [statePickerOpen, setStatePickerOpen] = useState(false)
+  const [skuEstimate, setSkuEstimate] = useState('')
 
   const canProceed = useCallback((): boolean => {
     if (step === 1) return shopName.trim().length >= 2
@@ -488,6 +489,25 @@ export default function OnboardingScreen() {
             <Text className="text-xs text-gray-400 mt-4 text-center">
               {selectedCategories.length} selected
             </Text>
+
+            <View className="mt-6">
+              <Text className="text-sm font-semibold text-gray-600 mb-2">
+                About how many items do you carry?{' '}
+                <Text className="text-gray-400 font-normal">(optional)</Text>
+              </Text>
+              <TextInput
+                value={skuEstimate}
+                onChangeText={(t) => setSkuEstimate(t.replace(/[^0-9]/g, ''))}
+                placeholder="e.g. 1500"
+                keyboardType="number-pad"
+                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900"
+                placeholderTextColor="#9CA3AF"
+                maxLength={6}
+              />
+              <Text className="text-xs text-gray-400 mt-2 px-1">
+                Over ~100 items? We'll offer a faster rack-by-rack bulk upload instead of one photo at a time.
+              </Text>
+            </View>
           </View>
         )
 
@@ -606,7 +626,14 @@ export default function OnboardingScreen() {
 
             <View className="mt-6 w-full gap-3">
               <TouchableOpacity
-                onPress={() => router.replace('/(tabs)')}
+                onPress={() => {
+                  const estimate = parseInt(skuEstimate, 10)
+                  if (estimate >= 100) {
+                    router.replace(`/product/bulk-onboard?target=${estimate}`)
+                  } else {
+                    router.replace('/(tabs)')
+                  }
+                }}
                 className="flex-row items-center gap-3 bg-cyan-600 rounded-2xl p-4"
                 activeOpacity={0.9}
               >
@@ -614,9 +641,13 @@ export default function OnboardingScreen() {
                   <Text className="text-xl">📷</Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-white text-sm font-bold">Add your first product</Text>
+                  <Text className="text-white text-sm font-bold">
+                    {parseInt(skuEstimate, 10) >= 100 ? 'Start bulk onboarding' : 'Add your first product'}
+                  </Text>
                   <Text className="text-cyan-200 text-xs mt-0.5">
-                    AI tags it automatically — takes 8 seconds
+                    {parseInt(skuEstimate, 10) >= 100
+                      ? 'Photograph one rack at a time'
+                      : 'AI tags it automatically — takes 8 seconds'}
                   </Text>
                 </View>
                 <Text className="text-white text-lg">→</Text>

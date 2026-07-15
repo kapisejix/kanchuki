@@ -29,6 +29,8 @@ export interface ProductCardProps {
   imageUrl: string | null
   /** Tap handler */
   onPress: () => void
+  /** Optional: long-press handler (e.g. enter bulk-selection mode) */
+  onLongPress?: () => void
   /** Footer content rendered below the image */
   footer: React.ReactNode
   /** Elevation level (default 2) */
@@ -54,6 +56,7 @@ export interface ProductCardProps {
 const ProductCard = memo(function ProductCard({
   imageUrl,
   onPress,
+  onLongPress,
   footer,
   elevation = 2,
   style,
@@ -73,6 +76,7 @@ const ProductCard = memo(function ProductCard({
   return (
     <TouchableOpacity
       onPress={onPress}
+      onLongPress={onLongPress}
       // Elevation on outer node, but NOT rounded — elevation + rounded-2xl
       // on the same node clips the Image on Android. Inner View handles
       // rounding and overflow clipping.

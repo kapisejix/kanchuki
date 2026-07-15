@@ -414,6 +414,21 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     return { data: updated }
   })
 
+  // ─── POST /products/bulk-delete ──────────────────────────────────
+  server.post('/bulk-delete', async (request, reply) => {
+    const body = z
+      .object({ ids: z.array(z.string().min(1)).min(1).max(100) })
+      .safeParse(request.body)
+    if (!body.success) throw validationError('Provide 1-100 product ids')
+
+    const result = await prisma.product.updateMany({
+      where: { id: { in: body.data.ids }, retailer_id: request.retailerId, deleted_at: null },
+      data: { deleted_at: new Date() },
+    })
+
+    return reply.status(200).send({ data: { deleted_count: result.count } })
+  })
+
   // ─── DELETE /products/:id ───────────────────────────────────────
   server.delete('/:id', async (request, reply) => {
     const { id } = request.params as { id: string }

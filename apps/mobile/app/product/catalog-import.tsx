@@ -80,29 +80,97 @@ export default function CatalogImportScreen() {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
         quality: 0.85,
+        allowsMultipleSelection: true,
+        selectionLimit: 20,
       })
 
-      if (result.canceled || !result.assets[0]) return
+      if (result.canceled || result.assets.length === 0) return
 
-      const uri = result.assets[0].uri
+      if (result.assets.length === 1) {
+        const uri = result.assets[0]!.uri
+        const compressed = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 1400 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        )
+        setSourceUrl(compressed.uri)
+        setSourceType('image')
+        await uploadSource(compressed.uri, 'image/jpeg')
+        return
+      }
 
-      // Compress
-      const compressed = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1400 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-      )
-
-      setSourceUrl(compressed.uri)
-      setSourceType('image')
-
-      // Upload
-      await uploadSource(compressed.uri, 'image/jpeg')
+      // Multiple pages picked at once (e.g. screenshots of a wholesaler PDF
+      // catalog) — detect on each, merge into one review/select queue below.
+      await uploadAndDetectMultiple(result.assets.map((a) => a.uri))
     } catch (err) {
       Alert.alert(
         'Photo Error',
-        err instanceof Error ? err.message : 'Could not pick that photo.',
+        err instanceof Error ? err.message : 'Could not pick those photos.',
       )
+    }
+  }, [])
+
+  // ── Upload + detect multiple source photos, merge into one queue ─
+
+  const uploadAndDetectMultiple = useCallback(async (uris: string[]) => {
+    setStep('uploading')
+    setError(null)
+    try {
+      const uploadedUrls: string[] = []
+      for (const uri of uris) {
+        const compressed = await ImageManipulator.manipulateAsync(
+          uri,
+          [{ resize: { width: 1400 } }],
+          { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+        )
+        const blob = await readLocalImage(compressed.uri)
+        const uploadResult = await catalogImportApi.getUploadUrl(
+          'catalog-source.jpg',
+          'image/jpeg',
+          blob.size,
+        )
+        const info = uploadResult.data
+        await uploadImageToR2(compressed.uri, info.upload_url, 'image/jpeg')
+        uploadedUrls.push(info.public_url)
+      }
+      setSourceUrl(uploadedUrls[0] ?? '')
+      setSourceType('image')
+
+      setStep('detecting')
+      const merged: CatalogDetectedItem[] = []
+      for (let i = 0; i < uploadedUrls.length; i++) {
+        try {
+          const detected = await catalogImportApi.detectItems(uploadedUrls[i]!)
+          for (const item of detected.data.items) {
+            merged.push({
+              ...item,
+              description: `Page ${i + 1}: ${item.description}`,
+            })
+          }
+        } catch (err) {
+          console.error(`Detection failed for page ${i + 1}:`, err)
+        }
+      }
+
+      setItems(
+        merged.map((item) => ({
+          original: item,
+          approved: !item.is_duplicate,
+          edits: {
+            category: item.tags.category ?? '',
+            primary_color: item.tags.primary_color ?? '',
+            fabric_estimate: item.tags.fabric_estimate ?? '',
+            pattern: item.tags.pattern ?? '',
+            occasions: (item.tags.occasions ?? []).join(', '),
+            search_tags: (item.tags.search_tags ?? []).join(', '),
+            price: '',
+          },
+        })),
+      )
+      setStep('reviewing')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Upload failed. Try again.')
+      setStep('source')
     }
   }, [])
 
@@ -314,7 +382,8 @@ export default function CatalogImportScreen() {
               Catalog Photo
             </Text>
             <Text className="text-xs text-gray-500 mt-0.5">
-              Rack shot, catalog page, or multi-product display photo
+              Rack shot, catalog page, or multi-product display photo — pick
+              several pages at once, then choose which products to import
             </Text>
           </View>
           <Text className="text-gray-300">→</Text>
