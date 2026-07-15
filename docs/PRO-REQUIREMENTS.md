@@ -148,6 +148,34 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 ---
 
+#### F-001d: Guided Bulk Onboarding Flow (500–3000+ SKU stores)
+**Status:** 🔲 Planned
+**Priority:** P0 (for retailers above ~100 SKUs; below that, single-photo F-001 flow is sufficient)
+
+**Problem:** A store with 3000 items cannot realistically be onboarded one photo per item — even at 20 photos/batch (F-001) that's 150 upload batches. Two pipelines already exist (F-001b PDF import, F-001c multi-item detection) that each turn one capture into many products; this feature packages them into a dedicated onboarding wizard instead of leaving the retailer to discover ad-hoc bulk upload on their own.
+
+**Two capture paths, same review queue:**
+
+1. **Path A — Rack/Shelf Batch Capture (reuses F-001c, no new detection code).** Retailer photographs one rack/shelf at a time (10–20 folded/stacked items per photo instead of 1). Each photo runs the existing `detectCropAndTag()` pipeline. New: the wizard asks for the rack/shelf location **once per photo**, not once per item — every crop detected from that photo inherits the same Floor→Section→Rack→Shelf value by default (retailer can override per-item in review if a rack is mixed). This is the piece that doesn't exist today; F-001c currently has no location-inheritance step.
+2. **Path B — Supplier Catalog Reuse (reuses F-001b, no new import code).** If the retailer restocks from a wholesaler/manufacturer that already provides a printed catalog, PDF, or pricelist, the existing PDF import endpoint (`POST /v1/catalog-import/import-pdf`) is surfaced directly inside onboarding instead of only inside the general catalog-import screen. Retailer reconciles price/stock/location per item afterward; whatever fraction of the 3000 SKUs matches a supplier catalog needs zero retailer photography.
+
+**New work needed (wizard shell, not new AI/detection logic):**
+- Onboarding branch: "~how many items do you carry?" → routes to guided bulk wizard when answer is above a threshold (e.g. 100), instead of the existing single-product-upload step 4 in F-007.
+- Unified review queue merging drafts from both paths (currently F-001b and F-001c each have their own review screen) with a running counter ("482 / 3000 catalogued") so a multi-day onboarding can be resumed.
+- Duplicate-flag check: perceptual-hash (e.g. `sharp` + a pHash lib) on each cropped product image, warns retailer before save if a crop looks near-identical to one already catalogued (same design shot twice across two rack photos, or already present via a supplier import) — resolves independently of AI tagging, doesn't block save.
+- Location-inheritance field on the batch-capture UI (Path A) — this is the one net-new mobile screen; everything else is routing existing endpoints into a new entry point.
+
+**Acceptance Criteria:**
+- Retailer can go from empty catalog to 3000 catalogued items without shooting more than ~150–300 rack photos (Path A) plus whatever supplier catalogs cover (Path B)
+- Rack-photo location field is entered once per photo, not once per item
+- Review queue remains usable (no pagination collapse, no timeout) at 100+ pending drafts in a single batch
+- Duplicate warning fires on same-design re-shoots without blocking the retailer from saving anyway if it's a false positive
+- Wizard is optional — retailers under the SKU threshold keep the existing single-photo F-001 flow unchanged
+
+**Explicitly not in this feature:** no new Claude Vision prompt, no new detection model — this is a UX/routing layer over F-001b + F-001c.
+
+---
+
 #### F-002: Product Catalog with Store Location
 **Priority:** P0  
 **Description:** Digital catalog where each product has rack/shelf location for physical retrieval.

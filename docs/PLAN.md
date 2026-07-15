@@ -73,6 +73,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] Bulk photo import (multiple images)
 - [x] Multi-item detection & splitting from one photo (F-001c) — built 2026-07-13
 - [x] PDF / printed-catalog bulk import (F-001b) — built 2026-07-13; dual-path: client-side + server-side page rasterization
+- [ ] Guided bulk onboarding wizard for large stores, 500–3000+ SKUs (F-001d, spec'd 2026-07-15) — rack/shelf batch capture with location inherited per-photo (reuses F-001c) + supplier PDF catalog reuse surfaced in onboarding (reuses F-001b) + unified review queue + duplicate-crop warning
 
 **Deliverable:** Retailer can build full digital catalog with AI assistance
 

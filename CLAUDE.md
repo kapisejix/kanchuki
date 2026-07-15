@@ -42,6 +42,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - WhatsApp collection link generator
 - Customer mobile web page (view, favorite, enquire)
 - Basic in-store AI search ("cotton pink suits under ₹2000")
+- Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, planned): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — see `docs/PRO-REQUIREMENTS.md`
 
 **NOT in MVP:** VTO, WhatsApp API automation, Fashion DNA AI matching, Manufacturer/Wholesaler layer, UPI payment tracking
 

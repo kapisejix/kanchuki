@@ -1235,3 +1235,18 @@ if a screen's product count grows past what one page-load reasonably holds).
 - WhatsApp manual sharing flow = done, no code changes needed
 - 2-piece try-on test = skip for now, run later when RunPod workers are available
 
+---
+
+## 2026-07-15 — Bulk onboarding for large stores (500–3000+ SKU), spec only, no code
+
+User asked: how does a retailer with 3000 items realistically get everything into the catalog (one photo per item doesn't scale). Researched against existing docs before proposing anything new — found the hard part is already built: F-001c (multi-item detection from one photo, splits N garments per shot) and F-001b (PDF/printed-catalog import) both already exist and already turn one capture into many products. Gave 3 options; user picked combining rack/shelf batch photos (F-001c reuse) + supplier catalog reuse (F-001b reuse) over building a new video-frame-scan pipeline.
+
+**Docs updated (no code touched this session):**
+- `docs/PRO-REQUIREMENTS.md` — new **F-001d: Guided Bulk Onboarding Flow** (🔲 Planned), inserted after F-001c. Two paths sharing one review queue: Path A = rack/shelf batch capture with location entered once per photo instead of once per item (net-new piece — F-001c has no location-inheritance step today); Path B = supplier PDF/pricelist import surfaced directly in onboarding instead of only in the general catalog-import screen. Also specs a unified review queue with a running counter, and a perceptual-hash duplicate-crop warning (same design re-shot across two rack photos, or already present via a supplier import). Explicitly scoped as a UX/routing layer over F-001b + F-001c — no new Claude Vision prompt or detection model needed.
+- `docs/PLAN.md` — added unchecked line item under Month 2 Week 7-8 catalog features for F-001d.
+- `docs/CLAUDE.md` — added a line under MVP "Build only" list noting large-store bulk onboarding via rack-batch capture + supplier catalog reuse.
+
+**Not done:** no schema, no endpoint, no UI — this was a research + spec session only, per explicit user instruction ("dont start coding yet, just updates files").
+
+**Next session (if picked up):** location-inheritance field is the one genuinely new mobile screen (batch-capture flow, Path A) — everything else in F-001d routes existing F-001b/F-001c endpoints into a new onboarding entry point plus a merged review queue.
+
