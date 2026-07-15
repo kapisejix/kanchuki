@@ -1,10 +1,10 @@
 import { prisma, Prisma } from '@kanchuki/db'
-import { tagProductImageUrls } from '@kanchuki/ai'
+import { tagProductImageUrls, fetchImageBuffer, uploadBuffer, cleanupProductPhoto } from '@kanchuki/ai'
 import { addEmbeddingJob } from './index.js'
 import type { TaggingJobData } from './index.js'
 
 export async function handleTagProduct(data: TaggingJobData): Promise<void> {
-  const { product_id, retailer_id, photo_url, back_photo_url } = data
+  const { product_id, retailer_id, photo_url, back_photo_url, r2_key } = data
 
   try {
     // Mark photo as tagging in progress
@@ -12,6 +12,18 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       where: { product_id, retailer_id },
       data: { ai_tagged: false },
     })
+
+    // Auto catalog photo cleanup (PRO-REQUIREMENTS.md): overwrite the raw
+    // retailer upload in place with a background-stripped, white-backdrop
+    // version. Same r2_key/photo_url, so no DB write needed. Best-effort —
+    // ponytail: swallow failures, a raw-but-tagged photo beats a failed job.
+    try {
+      const raw = await fetchImageBuffer(photo_url)
+      const cleaned = await cleanupProductPhoto(raw)
+      await uploadBuffer(r2_key, cleaned, 'image/jpeg')
+    } catch (err) {
+      console.error(`Photo cleanup failed for product ${product_id}, keeping raw photo:`, err)
+    }
 
     const urls = back_photo_url ? [photo_url, back_photo_url] : [photo_url]
     const tags = await tagProductImageUrls(urls)

@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { removeBackground } from '@imgly/background-removal-node'
 import { createHash } from 'node:crypto'
 import type { AiTagResult } from '@kanchuki/shared'
 import { tagProductImageUrl } from './tagger.js'
@@ -226,6 +227,19 @@ export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
 }
 
 /**
+ * Strip background and composite onto a plain white backdrop — the standard
+ * e-commerce listing look (PRO-REQUIREMENTS.md "Auto catalog photo cleanup").
+ * Callers should fall back to the original buffer on failure — a raw-but-tagged
+ * photo beats a failed upload.
+ */
+export async function cleanupProductPhoto(buffer: Buffer): Promise<Buffer> {
+  const blob = await removeBackground(buffer)
+  const cutout = Buffer.from(await blob.arrayBuffer())
+  const s = await getSharp()
+  return s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
+}
+
+/**
  * Detect items, crop each one, upload crops to R2, and run AI tagging on each crop.
  * Returns the detected items with their final tagged data and R2 URLs.
  */
@@ -244,21 +258,23 @@ export async function detectCropAndTag(
     // Single item — no cropping needed, just tag the original
     if (items.length === 0) {
       // No items detected — create one product from the whole image
-      const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(imageBuffer).digest('hex').slice(0, 16)}.jpg`
-      await uploadBuffer(r2Key, imageBuffer, 'image/jpeg')
+      const cleaned = await cleanupProductPhoto(imageBuffer).catch(() => imageBuffer)
+      const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
+      await uploadBuffer(r2Key, cleaned, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
       const tags = await tagProductImageUrl(sourceImageUrl)
-      const phash = await computePhash(imageBuffer)
+      const phash = await computePhash(cleaned)
       return [{ bbox: { x_pct: 0, y_pct: 0, w_pct: 100, h_pct: 100 }, description: 'Full image', tags, croppedUrl, r2Key, phash }]
     }
     // Single item detected
     const item = items[0]!
     const cropped = await cropImage(imageBuffer, item.bbox, width, height)
-    const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cropped).digest('hex').slice(0, 16)}.jpg`
-    await uploadBuffer(r2Key, cropped, 'image/jpeg')
+    const cleaned = await cleanupProductPhoto(cropped).catch(() => cropped)
+    const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
+    await uploadBuffer(r2Key, cleaned, 'image/jpeg')
     const croppedUrl = publicUrl(r2Key)
     const tags = await tagProductImageUrl(croppedUrl)
-    const phash = await computePhash(cropped)
+    const phash = await computePhash(cleaned)
     return [{ ...item, tags, croppedUrl, r2Key, phash }]
   }
 
@@ -268,11 +284,12 @@ export async function detectCropAndTag(
   for (const item of items) {
     try {
       const cropped = await cropImage(imageBuffer, item.bbox, width, height)
-      const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cropped).digest('hex').slice(0, 16)}.jpg`
-      await uploadBuffer(r2Key, cropped, 'image/jpeg')
+      const cleaned = await cleanupProductPhoto(cropped).catch(() => cropped)
+      const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
+      await uploadBuffer(r2Key, cleaned, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
       const tags = await tagProductImageUrl(croppedUrl)
-      const phash = await computePhash(cropped)
+      const phash = await computePhash(cleaned)
       results.push({ ...item, tags, croppedUrl, r2Key, phash })
     } catch (err) {
       // Skip items that fail detection — log but don't crash the batch
