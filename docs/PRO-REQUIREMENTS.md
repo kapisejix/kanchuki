@@ -174,6 +174,8 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 **Explicitly not in this feature:** no new Claude Vision prompt, no new detection model — this is a UX/routing layer over F-001b + F-001c.
 
+**Dev workflow (when this ships):** run `database-reviewer` skill before applying the location-inheritance field migration (schema/RLS check, same convention as 005/006/007 in this repo). Run `code-review` skill on the wizard/review-queue diff before merge (standard repo gate, not new for this feature).
+
 ---
 
 #### F-002: Product Catalog with Store Location
