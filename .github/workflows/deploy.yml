@@ -20,6 +20,9 @@ on:
 #   RAILWAY_API_SERVICE_ID     — Service ID from Railway API service
 #                                 (URL: /project/{p}/service/{this_id})
 #   RAILWAY_WEB_SERVICE_ID     — Service ID from Railway Web service
+#   PROD_DATABASE_URL          — Supabase production connection string,
+#                                 used to run `prisma migrate deploy`
+#                                 before the new API version goes live
 #
 # Security best practice: enable "Require status checks" branch
 # protection on main so CI must pass before merge. This prevents
@@ -78,6 +81,11 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      - name: Run pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: pnpm --filter @kanchuki/db exec prisma migrate deploy
 
       - name: Install Railway CLI
         run: |
