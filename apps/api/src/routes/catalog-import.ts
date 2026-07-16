@@ -13,6 +13,7 @@ import {
 import { PLAN_LIMITS } from '@kanchuki/shared'
 import { addTaggingJob } from '../jobs/index.js'
 import { notFound, validationError, planLimitExceeded } from '../plugins/error-handler.js'
+import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -171,8 +172,20 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { image_url } = parsed.data
 
+    // F-010: gate before spending Vision API + crop cost; detectCropAndTag can
+    // return several items from one photo, so the exact count isn't known
+    // until after it runs — increment by the real count below.
+    await checkQuota(retailerId, 'IMAGE_CROP')
+    await checkQuota(retailerId, 'AI_TAGGING_CALL')
+
     try {
       const items = await detectCropAndTag(image_url, retailerId)
+      incrementUsage(retailerId, 'IMAGE_CROP', items.length).catch((err) => {
+        request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage')
+      })
+      incrementUsage(retailerId, 'AI_TAGGING_CALL', items.length).catch((err) => {
+        request.log.error({ err, retailer_id: retailerId }, 'Failed to record tagging usage')
+      })
       const dupes = await flagDuplicates(retailerId, items)
 
       const response: DetectedItemResponse[] = items.map((item, i) => ({
@@ -212,6 +225,14 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { pdf_url, max_pages, page_images } = parsed.data
 
+    // F-010: gate once for the whole page batch (not per-page — one DB round
+    // trip, not N). Exact item count is only known after detection finishes,
+    // so increment by the real total below.
+    if (page_images && page_images.length > 0) {
+      await checkQuota(retailerId, 'IMAGE_CROP')
+      await checkQuota(retailerId, 'AI_TAGGING_CALL')
+    }
+
     try {
       // Path A: Client already rendered pages → detect on each
       if (page_images && page_images.length > 0) {
@@ -237,6 +258,13 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             request.log.warn({ err, pageNum: i + 1 }, 'Detection failed for PDF page')
           }
         }
+
+        incrementUsage(retailerId, 'IMAGE_CROP', allItems.length).catch((err) => {
+          request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage')
+        })
+        incrementUsage(retailerId, 'AI_TAGGING_CALL', allItems.length).catch((err) => {
+          request.log.error({ err, retailer_id: retailerId }, 'Failed to record tagging usage')
+        })
 
         const dupes = await flagDuplicates(retailerId, allItems)
         allItems.forEach((item, i) => {
@@ -373,6 +401,10 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         throw planLimitExceeded('products')
       }
     }
+    // F-010: additive — no-op until plan_limits has a PRODUCT_UPLOAD row for
+    // this plan (seeded for STARTER/GROWTH/PRO already). The PLAN_LIMITS
+    // check above stays authoritative.
+    await checkQuota(retailerId, 'PRODUCT_UPLOAD', items.length)
 
     // Create products in parallel, 10 at a time
     const created: Array<{ id: string; cropped_url: string }> = []
@@ -431,6 +463,10 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         })
       }
     }
+
+    incrementUsage(retailerId, 'PRODUCT_UPLOAD', created.length).catch((err) => {
+      request.log.error({ err, retailer_id: retailerId }, 'Failed to record product-upload usage')
+    })
 
     return reply.status(201).send({
       data: {
