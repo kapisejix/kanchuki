@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { removeBackground } from '@imgly/background-removal-node'
 import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
 import { objectExists, uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
+import { bgRemovalPublicPath } from './detector.js'
 
 // ─── Configuration ─────────────────────────────────────────────
 // CatVTON self-hosted: ~$0.005/try-on, requires a GPU server.
@@ -105,7 +106,7 @@ async function removeBackgroundAndCache(productPhotoUrl: string): Promise<string
   // place at the same URL.
   if (await objectExists(key)) return publicUrl(key)
 
-  const blob = await removeBackground(productPhotoUrl)
+  const blob = await removeBackground(productPhotoUrl, { publicPath: bgRemovalPublicPath() })
   const buffer = Buffer.from(await blob.arrayBuffer())
   await uploadBuffer(key, buffer, 'image/png')
   return publicUrl(key)

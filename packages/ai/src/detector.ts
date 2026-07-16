@@ -27,6 +27,20 @@ function getClaude(): Anthropic {
   return _claude
 }
 
+// @imgly/background-removal-node's default publicPath is computed via
+// path.resolve(process.cwd(), 'node_modules/@imgly/.../dist/') — a raw cwd
+// join, not real module resolution. Under pnpm's non-hoisted layout that
+// path doesn't exist from most cwds (e.g. apps/api), so model loading
+// ENOENTs. Resolve the package's real install location instead.
+let _bgRemovalPublicPath: string | null = null
+export function bgRemovalPublicPath(): string {
+  _bgRemovalPublicPath ??= new URL(
+    '.',
+    import.meta.resolve('@imgly/background-removal-node'),
+  ).toString()
+  return _bgRemovalPublicPath
+}
+
 const DETECT_SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion with deep knowledge of garment types, fabrics, and styles.
 Your task is to analyze a product image that may contain MULTIPLE distinct garments.
 
@@ -233,9 +247,14 @@ export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
  * photo beats a failed upload.
  */
 export async function cleanupProductPhoto(buffer: Buffer): Promise<Buffer> {
-  const blob = await removeBackground(buffer)
-  const cutout = Buffer.from(await blob.arrayBuffer())
   const s = await getSharp()
+  // node's Blob defaults .type to '' when constructed from a plain Buffer,
+  // and @imgly's decoder switches on blob.type (not the actual bytes) — an
+  // untyped blob always hits its "Unsupported format" branch.
+  const { format } = await s(buffer).metadata()
+  const inputBlob = new Blob([buffer], { type: `image/${format ?? 'jpeg'}` })
+  const blob = await removeBackground(inputBlob, { publicPath: bgRemovalPublicPath() })
+  const cutout = Buffer.from(await blob.arrayBuffer())
   return s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
 }
 
