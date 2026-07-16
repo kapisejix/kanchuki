@@ -17,6 +17,7 @@ const {
   mockCollectionEnquiryCount,
   mockTryOnUsageAggregate,
   mockSubscriptionFindMany,
+  mockCustomerFindMany,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
   mockRetailerFindMany: vi.fn(),
@@ -29,6 +30,7 @@ const {
   mockCollectionEnquiryCount: vi.fn(),
   mockTryOnUsageAggregate: vi.fn(),
   mockSubscriptionFindMany: vi.fn(),
+  mockCustomerFindMany: vi.fn(),
 }))
 
 vi.mock('@kanchuki/db', () => ({
@@ -48,6 +50,7 @@ vi.mock('@kanchuki/db', () => ({
     collectionEnquiry: { count: mockCollectionEnquiryCount },
     tryOnUsageLog: { aggregate: mockTryOnUsageAggregate },
     subscription: { findMany: mockSubscriptionFindMany },
+    customer: { findMany: mockCustomerFindMany },
   },
   Prisma: {},
 }))
@@ -240,6 +243,41 @@ describe('GET /admin/retailers', () => {
     expect(res.statusCode).toBe(200)
     expect(res.json().data).toEqual([])
     expect(res.json().pagination.has_more).toBe(false)
+    await app.close()
+  })
+})
+
+// ─── GET /admin/customers ──────────────────────────────────────────
+
+describe('GET /admin/customers', () => {
+  it('returns cross-retailer customer list with retailer info', async () => {
+    mockCustomerFindMany.mockResolvedValue([
+      {
+        id: 'c1',
+        name: 'Test Customer',
+        phone: '+919999999999',
+        gender: 'FEMALE',
+        consent_given: true,
+        created_at: new Date('2026-07-10'),
+        retailer: { id: 'retailer_1', shop_name: 'Test Shop', city: 'Test City' },
+        _count: { measurements: 2 },
+      },
+    ])
+
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/customers', headers: authedHeaders() })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().data).toHaveLength(1)
+    expect(res.json().data[0].measurement_count).toBe(2)
+    expect(res.json().data[0].retailer.shop_name).toBe('Test Shop')
+    await app.close()
+  })
+
+  it('requires the admin key', async () => {
+    const app = await buildApp()
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/customers' })
+    expect(res.statusCode).toBe(403)
     await app.close()
   })
 })
