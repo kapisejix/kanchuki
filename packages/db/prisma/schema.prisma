@@ -124,6 +124,11 @@ model Retailer {
   state        String?
   gstin        String?
 
+  // WhatsApp business number — nullable, falls back to `phone` if unset
+  // Allows retailers to use a separate business number for collection link
+  // enquiries and remote try-on (PRO-REQUIREMENTS.md F-009 §4).
+  whatsapp_number String?
+
   // Full address (city/state above are pre-existing, kept for search/display)
   address_line1 String?
   address_line2 String?

@@ -4,6 +4,22 @@ One file, update at end of each work session: what's done, what's next, what's b
 
 ---
 
+## 2026-07-16 — CatVTON → Fashion V-Tone v1.5 Engine Swap
+
+**Complete CatVTON removal from the project:**
+- **Engine swapped:** CatVTON (CC BY-NC-SA) → Fashion V-Tone v1.5 (Apache 2.0)
+- **All CatVTON code removed:** `services/tryon/` directory, `scripts/training/`, `scripts/dataset/`, `CatVTON/` submodule
+- **New service:** `services/fashion-vtone/app.py` — FastAPI microservice wrapping `fashn-vton` library
+- **Simplified engine:** V-Tone is maskless — no background removal preprocessing needed (no rembg or remove.bg)
+- **No GPU required:** V-Tone runs on CPU (~$0.0003/try-on), eliminating RunPod GPU hosting costs entirely
+- **All docs updated:** CLAUDE.md, TECH-STACK.md, DATABASE.md, DEPLOY.md, PRO-REQUIREMENTS.md (F-102), PLAN.md, SECURITY.md, ADR-006, TRAINING.md, SKILLS-AND-MCP.md, final-research.md, MEMORY.md
+- **Tests:** All pass (typechecks + unit)
+- **CatVTON retained as fallback?** No — V-Tone is the sole engine. CatVTON references removed everywhere.
+
+**Next:** Deploy V-Tone on Railway CPU server, test with real retailer photos, compare quality against old CatVTON results.
+
+---
+
 ## 2026-07-08 (Railway deploy + CatVTON RunPod first test)
 
 **Git/GitHub:**

@@ -1,0 +1,18 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "services/fashion-vtone/Dockerfile",
+    "watchPatterns": [
+      "services/fashion-vtone/**",
+      "pnpm-lock.yaml"
+    ]
+  },
+  "deploy": {
+    "startCommand": "",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 5
+  }
+}

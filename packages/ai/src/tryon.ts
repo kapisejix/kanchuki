@@ -1,44 +1,32 @@
-import { createHash } from 'node:crypto'
-import { removeBackground } from '@imgly/background-removal-node'
 import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
-import { objectExists, uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
-import { bgRemovalPublicPath } from './detector.js'
+import { uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
 
 // ─── Configuration ─────────────────────────────────────────────
-// CatVTON self-hosted: ~$0.005/try-on, requires a GPU server.
-// Deploy via services/tryon/Dockerfile or services/tryon/Dockerfile.runpod.
+// Fashion V-Tone v1.5 (Apache 2.0, maskless, CPU-capable)
+// Deploy via services/fashion-vtone/Dockerfile
+// ~$0.0003/try-on on CPU, ~10-30s on GPU
 
-const CATVTON_API_URL = process.env['CATVTON_API_URL'] ?? ''           // e.g. http://localhost:8000
-const RUNPOD_API_KEY = process.env['RUNPOD_API_KEY'] ?? ''             // required when CATVTON_API_URL is a RunPod endpoint
+const VTONE_API_URL = process.env['VTONE_API_URL'] ?? ''
 const R2_TRYON_PREFIX = 'tryon-results'
-const R2_PREPROCESSED_PREFIX = 'tryon-preprocessed'
-// Admin-only training-data copies (F-103). Separate bucket prefix from every
-// customer-facing/retailer-facing path above — nothing in this codebase
-// serves URLs under this prefix back to a client, and it is not covered by
-// the tryon-results 24h-expiry cron. See docs/SECURITY.md §3b.
 const R2_TRAINING_PREFIX = 'training-data'
 
 // ─── Types ─────────────────────────────────────────────────────
 
 export interface TryOnRequest {
-  customerPhotoUrl: string   // URL of customer's full-body photo
-  productPhotoUrl: string    // URL of product/garment photo (single-photo fallback)
-  productCategory?: string | null  // AI-tagged category, drives CatVTON cloth_type (see resolveClothType)
-  /** Separate upper/lower piece photos, if the retailer tagged them (ProductPhoto.piece_type).
-   *  When both are present for a PIECE_TAGGABLE_CATEGORIES product, triggers real two-call
-   *  chaining instead of the single-photo "overall" fallback. */
+  customerPhotoUrl: string
+  productPhotoUrl: string
+  productCategory?: string | null
   pieceGarmentUrls?: { upper?: string; lower?: string }
 }
 
-export type ClothType = 'upper' | 'lower' | 'overall'
+export type VtoneCategory = 'tops' | 'bottoms' | 'one-pieces'
 
 export interface TryOnResult {
   jobId: string
   status: 'queued' | 'processing' | 'completed' | 'failed'
   outputUrls: string[]
   errorMessage: string | null
-  /** Which engine produced this result */
-  engine: 'catvton'
+  engine: 'vton'
 }
 
 // ─── R2 paths ─────────────────────────────────────────────────
@@ -47,191 +35,105 @@ export function tryonResultR2Key(jobId: string): string {
   return `${R2_TRYON_PREFIX}/${jobId}/result.jpg`
 }
 
-// ─── CatVTON (self-hosted) ─────────────────────────────────────
+// ─── Category Mapping ──────────────────────────────────────────
+// Maps Kanchuki's AI-tagged categories to V-Tone categories.
+// V-Tone uses: tops, bottoms, one-pieces
 
-/** True if the URL points to a RunPod serverless endpoint */
-function isRunPodUrl(url: string): boolean {
-  return url.includes('api.runpod.ai') || url.includes('api.runpod.io')
-}
-
-// Categories that are a 2+ piece outfit (kameez+salwar, choli+skirt, kurta+pajama,
-// or a saree's continuous drape) but have only ONE product photo shot as a set —
-// no piece-tagged photo available (see resolveClothType's fallback below vs.
-// isPieceTaggableCategory's real two-call chaining path).
+// Categories that are a 2+ piece outfit but have only ONE product photo
+// shot as a set — no piece-tagged photo available.
 const MULTIPIECE_AS_OVERALL = new Set([
   'Ladies Suit', 'Readymade Suit', "Men's Kurta Pajama", 'Lehenga', 'Saree',
 ])
 
-// Categories where a retailer can tag separate upper/lower piece photos
-// (ProductPhoto.piece_type) — excludes Saree, which has no natural upper/lower
-// split. Shared with mobile UI gating; see @kanchuki/shared.
+// Categories where a retailer can tag separate upper/lower piece photos.
 const PIECE_TAGGABLE = new Set<string>(PIECE_TAGGABLE_CATEGORIES)
 
 export function isPieceTaggableCategory(category: string | null | undefined): boolean {
   return !!category && PIECE_TAGGABLE.has(category)
 }
 
-// Draping physics unsupported for MVP (PRO-REQUIREMENTS.md F-102) — excluded
-// from CatVTON entirely rather than sent through a mask that can't represent it.
+// Draping physics unsupported for MVP — excluded from try-on entirely.
 const UNSUPPORTED_CATEGORIES = new Set(['Dupatta'])
 
 export function isUnsupportedTryOnCategory(category: string | null | undefined): boolean {
   return !!category && UNSUPPORTED_CATEGORIES.has(category)
 }
 
-/** Single-photo fallback cloth_type — used when no piece-tagged photos exist. */
-export function resolveClothType(category: string | null | undefined): ClothType {
-  if (!category) return 'upper'
-  if (MULTIPIECE_AS_OVERALL.has(category)) return 'overall'
-  return 'upper'
+/** Map Kanchuki category to V-Tone category. */
+function resolveVtoneCategory(category: string | null | undefined): VtoneCategory {
+  if (!category) return 'tops'
+  if (MULTIPIECE_AS_OVERALL.has(category)) return 'one-pieces'
+  return 'tops'
 }
 
-function preprocessedR2Key(sourceUrl: string): string {
-  const hash = createHash('sha256').update(sourceUrl).digest('hex').slice(0, 32)
-  return `${R2_PREPROCESSED_PREFIX}/${hash}.png`
-}
+// ─── V-Tone Inference ──────────────────────────────────────────
 
 /**
- * Strip the background from a raw retailer product photo before it goes to
- * CatVTON. Raw uploads are rarely bg-clean (see PRO-REQUIREMENTS.md F-102) —
- * this is the input-quality gate root-caused as the main driver of low-match
- * try-on results. Output is cached in R2 by content hash of the source URL,
- * so re-try-oning the same product doesn't reprocess every call.
+ * One V-Tone inference call.
+ * Maskless — no background removal needed, handles raw product photos.
+ * Returns sync (10-30s on GPU, 30-60s on CPU).
  */
-async function removeBackgroundAndCache(productPhotoUrl: string): Promise<string> {
-  const key = preprocessedR2Key(productPhotoUrl)
-  // ponytail: cache is presence-only (key = hash of source URL), no TTL/
-  // invalidation — fine since the same product photo always maps to the
-  // same output. Add invalidation if retailers start replacing photos in
-  // place at the same URL.
-  if (await objectExists(key)) return publicUrl(key)
-
-  const blob = await removeBackground(productPhotoUrl, { publicPath: bgRemovalPublicPath() })
-  const buffer = Buffer.from(await blob.arrayBuffer())
-  await uploadBuffer(key, buffer, 'image/png')
-  return publicUrl(key)
-}
-
-/**
- * One CatVTON inference call. Supports two deployment modes:
- * 1. Self-hosted FastAPI server — sends to /try-on (sync)
- * 2. RunPod serverless — sends to /runsync with { input: { ... } } wrapper
- * Returns immediately with the completed result (sync, ~35-45s).
- */
-async function callCatVTONOnce(
+async function callVTONOnce(
   personImageUrl: string,
-  garmentPhotoUrl: string,
-  clothType: ClothType,
+  garmentImageUrl: string,
+  category: VtoneCategory,
 ): Promise<TryOnResult> {
-  const garmentImageUrl = await removeBackgroundAndCache(garmentPhotoUrl)
-
-  const isRunPod = isRunPodUrl(CATVTON_API_URL)
-  const endpoint = isRunPod
-    ? `${CATVTON_API_URL}/runsync`
-    : `${CATVTON_API_URL}/try-on`
-
-  const body = isRunPod
-    ? {
-        input: {
-          person_image_url: personImageUrl,
-          garment_image_url: garmentImageUrl,
-          cloth_type: clothType,
-        },
-      }
-    : {
-        person_image_url: personImageUrl,
-        garment_image_url: garmentImageUrl,
-        cloth_type: clothType,
-      }
-
-  const res = await fetch(endpoint, {
+  const res = await fetch(`${VTONE_API_URL}/try-on`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(isRunPod ? { Authorization: `Bearer ${RUNPOD_API_KEY}` } : {}),
-    },
-    signal: AbortSignal.timeout(120_000),  // 2 min timeout
-    body: JSON.stringify(body),
+    headers: { 'Content-Type': 'application/json' },
+    signal: AbortSignal.timeout(120_000),
+    body: JSON.stringify({
+      person_image_url: personImageUrl,
+      garment_image_url: garmentImageUrl,
+      category,
+    }),
   })
 
   if (!res.ok) {
     const errorBody = await res.text().catch(() => '')
-    throw new Error(`CatVTON error (${res.status}): ${errorBody}`)
+    throw new Error(`V-Tone error (${res.status}): ${errorBody}`)
   }
 
-  const raw = (await res.json()) as Record<string, unknown>    // Parse RunPod serverless response format
-    if (isRunPod) {
-      // RunPod runsync returns: { "output": { ... }, "delayTime": ... } or { "error": "..." }
-      // The handler's return value is wrapped in "output" → output contains
-      // { result_url, status, error } from handler_runpod.py
-      if (raw.error) {
-        // RunPod-level error (e.g. exec timeout, worker crash)
-        throw new Error(`RunPod error: ${String(raw.error)}`)
-      }
-      const output = raw.output as Record<string, unknown> | undefined
-      const handlerError = output?.error as string | undefined
-      if (handlerError) {
-        throw new Error(`CatVTON handler error: ${handlerError}`)
-      }
-      const resultUrl = output?.result_url as string | undefined
-      if (!resultUrl) {
-        throw new Error(
-          `CatVTON returned no result_url. Full response: ${JSON.stringify(raw).slice(0, 500)}`,
-        )
-      }
-      return {
-        jobId: `catvton-${Date.now()}`,
-        status: 'completed',
-        outputUrls: [resultUrl],
-        errorMessage: null,
-        engine: 'catvton',
-      }
-    }
-
-  // Parse self-hosted FastAPI response format
-  const body_ = raw as { status: string; result_url: string; error?: string }
+  const body_ = (await res.json()) as { status: string; result_url: string; error?: string }
   if (body_.status === 'failed') {
-    throw new Error(`CatVTON inference failed: ${body_.error ?? 'unknown error'}`)
+    throw new Error(`V-Tone inference failed: ${body_.error ?? 'unknown error'}`)
   }
 
   return {
-    jobId: `catvton-${Date.now()}`,
+    jobId: `vton-${Date.now()}`,
     status: 'completed',
     outputUrls: [body_.result_url],
-    errorMessage: body_.error ?? null,
-    engine: 'catvton',
+    errorMessage: null,
+    engine: 'vton',
   }
 }
 
 /**
- * Trigger a try-on via self-hosted CatVTON. Two paths:
- * - Piece-tagged multi-piece outfit (upper + lower photos both present, category
- *   is PIECE_TAGGABLE): two sequential calls per PRO-REQUIREMENTS.md F-102 —
- *   upper first, then lower composited onto the upper result (chained, not
- *   onto the original customer photo). The intermediate result is persisted to
- *   R2 first: RunPod's base64 data-URI result can't be re-downloaded by the
- *   next call's person_image_url (its Python side does requests.get(), which
- *   can't fetch data: URIs), so it needs a real HTTPS URL before chaining.
- * - Everything else: single call, cloth_type from resolveClothType (whole-photo
- *   "overall" for multi-piece-shot-as-one-photo categories, "upper" otherwise).
+ * Trigger a try-on via Fashion V-Tone v1.5.
+ * Two paths:
+ * - Piece-tagged multi-piece outfit (upper + lower photos both present):
+ *   two sequential calls — tops first, then bottoms composited onto the result.
+ * - Everything else: single call with mapped V-Tone category.
  */
-async function triggerCatVTON(request: TryOnRequest): Promise<TryOnResult> {
+async function triggerVTON(request: TryOnRequest): Promise<TryOnResult> {
   if (isUnsupportedTryOnCategory(request.productCategory)) {
     throw new Error(`Try-on not supported for category "${request.productCategory}" (draping unsupported for MVP)`)
   }
 
   const { upper: upperPhotoUrl, lower: lowerPhotoUrl } = request.pieceGarmentUrls ?? {}
   if (upperPhotoUrl && lowerPhotoUrl && isPieceTaggableCategory(request.productCategory)) {
-    const upperResult = await callCatVTONOnce(request.customerPhotoUrl, upperPhotoUrl, 'upper')
+    // Multi-piece: tops first, then chain bottoms onto result
+    const upperResult = await callVTONOnce(request.customerPhotoUrl, upperPhotoUrl, 'tops')
     const intermediateUrl = await saveTryOnResultToR2(
       `tryon-chain-${Date.now()}`,
       upperResult.outputUrls[0]!,
     )
-    return callCatVTONOnce(intermediateUrl, lowerPhotoUrl, 'lower')
+    return callVTONOnce(intermediateUrl, lowerPhotoUrl, 'bottoms')
   }
 
-  const clothType = resolveClothType(request.productCategory)
-  return callCatVTONOnce(request.customerPhotoUrl, request.productPhotoUrl, clothType)
+  // Single photo path
+  const category = resolveVtoneCategory(request.productCategory)
+  return callVTONOnce(request.customerPhotoUrl, request.productPhotoUrl, category)
 }
 
 // ─── Download helper ──────────────────────────────────────────
@@ -246,24 +148,23 @@ async function downloadBufferFromUrl(url: string): Promise<Buffer> {
 // ─── Public API ────────────────────────────────────────────────
 
 /**
- * Trigger a virtual try-on via CatVTON self-hosted engine.
- * Throws if CATVTON_API_URL is not configured.
+ * Trigger a virtual try-on via Fashion V-Tone v1.5.
+ * Apache 2.0 licensed, maskless, CPU-capable.
+ * Throws if VTONE_API_URL is not configured.
  */
 export async function triggerTryOn(request: TryOnRequest): Promise<TryOnResult> {
-  if (!CATVTON_API_URL) {
+  if (!VTONE_API_URL) {
     throw new Error(
-      'No try-on engine configured. Set CATVTON_API_URL to your self-hosted CatVTON endpoint ' +
-      '(e.g. http://localhost:8000 for local or https://api.runpod.ai/v2/{endpoint_id} for RunPod).',
+      'Try-on engine not configured. Set VTONE_API_URL to your Fashion V-Tone service endpoint.',
     )
   }
 
-  console.log('[TryOn] Using CatVTON engine')
-  return await triggerCatVTON(request)
+  console.log('[TryOn] Using V-Tone v1.5 engine')
+  return await triggerVTON(request)
 }
 
 /**
  * Save try-on result image to R2 for persistence.
- * Downloads the result from the output URL and uploads it to R2.
  */
 export async function saveTryOnResultToR2(
   jobId: string,
@@ -278,10 +179,7 @@ export async function saveTryOnResultToR2(
 /**
  * Persist a training-consent copy of a completed try-on's photos under the
  * admin-only R2_TRAINING_PREFIX. Only called when the customer explicitly
- * opted in (TryOnJob.consent_to_training) — see docs/PRO-REQUIREMENTS.md
- * F-103. Returns the R2 keys for the caller to record in
- * TrainingPhotoConsent; does not touch the database itself (this package
- * has no Prisma dependency, matching the rest of tryon.ts).
+ * opted in (TryOnJob.consent_to_training).
  */
 export async function saveTrainingConsentCopy(
   jobId: string,

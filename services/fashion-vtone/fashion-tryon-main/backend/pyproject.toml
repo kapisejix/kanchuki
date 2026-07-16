@@ -1,0 +1,21 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Fashion Try-On API Backend"
+readme = "README.md"
+requires-python = ">=3.12.11"
+dependencies = [
+    "fashn-vton",
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "python-multipart>=0.0.12",
+    "pillow>=10.0.0",
+]
+
+[tool.uv.sources]
+fashn-vton = { git = "https://github.com/fashn-AI/fashn-vton-1.5.git" }
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.0",
+]

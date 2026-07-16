@@ -13,7 +13,7 @@ import {
 import { R2_PATHS } from '@kanchuki/shared'
 import { addTaggingJob, addEmbeddingJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError, forbidden } from '../plugins/error-handler.js'
-import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai'
+import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, detectColor } from '@kanchuki/ai'
 import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
@@ -87,9 +87,18 @@ const UpdateProductSchema = CreateProductSchema.partial().omit({
   photo_url: true,
 })
 
+const NEW_ARRIVAL_DAYS = 30
+
+function isNewArrival(createdAt: Date | string): boolean {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - NEW_ARRIVAL_DAYS)
+  return new Date(createdAt) >= cutoff
+}
+
 const ListProductsQuerySchema = z.object({
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
   category: z.string().optional(),
+  is_new_arrival: z.coerce.boolean().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 })
@@ -236,7 +245,15 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const query = ListProductsQuerySchema.safeParse(request.query)
     if (!query.success) throw validationError(query.error.issues[0]?.message ?? 'Invalid query')
 
-    const { status, category, cursor, limit } = query.data
+    const { status, category, cursor, limit, is_new_arrival } = query.data
+
+    // When is_new_arrival filter is active, compute the cutoff date so the
+    // query only returns products created within the last 30 days — no cron,
+    // no migration, no stored flag. This is a derived, time-sensitive filter
+    // that automatically expires as products age past the window.
+    const arrivalCutoff = is_new_arrival
+      ? (() => { const d = new Date(); d.setDate(d.getDate() - NEW_ARRIVAL_DAYS); return d })()
+      : undefined
 
     const products = await prisma.product.findMany({
       where: {
@@ -244,6 +261,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         deleted_at: null,
         ...(status ? { status } : {}),
         ...(category ? { category } : {}),
+        ...(arrivalCutoff ? { created_at: { gte: arrivalCutoff } } : {}),
         ...(cursor ? { id: { gt: cursor } } : {}),
       },
       include: {
@@ -263,6 +281,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         primary_photo_url: await photoUrlToDisplay(
           p.photos[0] ? { url: p.photos[0].url, r2_key: (p.photos[0] as { r2_key?: string }).r2_key ?? null } : null,
         ),
+        is_new_arrival: isNewArrival(p.created_at),
         photos: undefined,
       })),
     )
@@ -584,6 +603,25 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     )
 
     return { data: variantsWithUrls }
+  })
+
+  // ─── POST /products/detect-color ───────────────────────────────
+  // Lightweight Claude Haiku call that extracts only the dominant color
+  // from a variant/product photo. Designed for the "Add Color Variant"
+  // screen to pre-fill the color field instead of requiring manual entry.
+  server.post('/detect-color', async (request, reply) => {
+    const body = z
+      .object({ image_url: z.string().url() })
+      .safeParse(request.body)
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+
+    try {
+      const color = await detectColor(body.data.image_url)
+      return reply.status(200).send({ data: { color } })
+    } catch (err) {
+      request.log.error({ err, image_url: body.data.image_url }, 'Color detection failed')
+      return reply.status(200).send({ data: { color: null } })
+    }
   })
 
   // ─── DELETE /products/:id/variants/:variantId ────────────────────

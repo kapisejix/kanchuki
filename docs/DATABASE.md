@@ -751,7 +751,7 @@ model TryOnJob {
   status      TryOnStatus @default(QUEUED)
   error_message String?
   
-  api_provider String  // "catvton" — self-hosted CatVTON engine
+  api_provider String  // "vton" — self-hosted Fashion V-Tone engine
   api_job_id  String?  // external job ID
   api_cost_usd Float?  // cost in USD for this job
   

@@ -1,7 +1,8 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, Share, ActivityIndicator } from 'react-native'
+import { useState, useEffect } from 'react'
+import { View, Text, ScrollView, TouchableOpacity, Image, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { Stack, useLocalSearchParams } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { Eye, Heart, MessageCircle, Link2, Users } from 'lucide-react-native'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2 } from 'lucide-react-native'
 import { collectionApi } from '../../src/lib/api'
 
 type CollectionDetail = {
@@ -35,8 +36,119 @@ type CollectionDetail = {
   }[]
 }
 
+// ── Edit Collection Modal ──────────────────────────────────────────
+
+function EditModal({
+  visible,
+  collection,
+  onClose,
+  onSaved,
+}: {
+  visible: boolean
+  collection: CollectionDetail | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [title, setTitle] = useState(collection?.title ?? '')
+  const [expiryDays, setExpiryDays] = useState('30')
+  const [saving, setSaving] = useState(false)
+
+  // Sync form fields when modal opens with a different collection
+  useEffect(() => {
+    if (visible && collection) {
+      setTitle(collection.title)
+      if (collection.expires_at) {
+        const remaining = Math.ceil(
+          (new Date(collection.expires_at).getTime() - Date.now()) / 86_400_000,
+        )
+        setExpiryDays(String(Math.max(1, remaining)))
+      } else {
+        setExpiryDays('30')
+      }
+    }
+  }, [visible, collection])
+
+  const handleSave = async () => {
+    if (!collection || !title.trim()) return
+    setSaving(true)
+    try {
+      await collectionApi.update(collection.id, {
+        title: title.trim(),
+        ...(expiryDays ? { expires_days: parseInt(expiryDays, 10) } : {}),
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/50 items-center justify-center px-6">
+        <View className="bg-white rounded-3xl w-full p-6 gap-4">
+          <Text className="text-lg font-bold text-gray-900">Edit Collection</Text>
+
+          <View>
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Title
+            </Text>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Collection name"
+              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
+              placeholderTextColor="#9CA3AF"
+              autoFocus
+            />
+          </View>
+
+          <View>
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Expires in (days)
+            </Text>
+            <TextInput
+              value={expiryDays}
+              onChangeText={setExpiryDays}
+              placeholder="30"
+              keyboardType="numeric"
+              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+
+          <View className="flex-row gap-3 mt-2">
+            <TouchableOpacity
+              onPress={onClose}
+              disabled={saving}
+              className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center"
+            >
+              <Text className="text-gray-700 font-semibold">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => void handleSave()}
+              disabled={saving || !title.trim()}
+              className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white font-semibold">Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 export default function CollectionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
+  const queryClient = useQueryClient()
+  const [showEditModal, setShowEditModal] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['collections', id],
@@ -59,9 +171,57 @@ export default function CollectionDetailScreen() {
       url: collection.url,
     })
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Delete Collection',
+      `Permanently delete "${collection.title}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await collectionApi.delete(collection.id)
+              void queryClient.invalidateQueries({ queryKey: ['collections'] })
+            } catch (err) {
+              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete')
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  const handleEditSaved = () => {
+    void queryClient.invalidateQueries({ queryKey: ['collections', id] })
+    void queryClient.invalidateQueries({ queryKey: ['collections'] })
+  }
+
   return (
     <>
-      <Stack.Screen options={{ title: collection.title, headerShown: true }} />
+      <Stack.Screen
+        options={{
+          title: collection.title,
+          headerShown: true,
+          headerRight: () => (
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => setShowEditModal(true)}
+                className="w-9 h-9 bg-blue-50 rounded-full items-center justify-center"
+              >
+                <Edit size={16} color="#2563EB" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDelete}
+                className="w-9 h-9 bg-red-50 rounded-full items-center justify-center"
+              >
+                <Trash2 size={16} color="#DC2626" />
+              </TouchableOpacity>
+            </View>
+          ),
+        }}
+      />
       <ScrollView className="flex-1 bg-cyan-50">
         {/* Stats */}
         <View className="flex-row flex-wrap px-4 pt-4 gap-3">
@@ -83,6 +243,24 @@ export default function CollectionDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* Action buttons row */}
+        <View className="px-4 pt-3 flex-row gap-3">
+          <TouchableOpacity
+            onPress={() => setShowEditModal(true)}
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-blue-50 border border-blue-100 py-3 rounded-xl"
+          >
+            <Edit size={16} color="#2563EB" />
+            <Text className="text-blue-700 text-sm font-semibold">Edit</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDelete}
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-red-50 border border-red-100 py-3 rounded-xl"
+          >
+            <Trash2 size={16} color="#DC2626" />
+            <Text className="text-red-600 text-sm font-semibold">Delete</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Enquiries */}
         {collection.enquiries.length > 0 && (
@@ -135,6 +313,14 @@ export default function CollectionDetailScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Edit Modal */}
+      <EditModal
+        visible={showEditModal}
+        collection={collection}
+        onClose={() => setShowEditModal(false)}
+        onSaved={handleEditSaved}
+      />
     </>
   )
 }

@@ -1,9 +1,11 @@
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Share } from 'react-native'
+import { useRef, useState } from 'react'
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Share, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Share2, Check } from 'lucide-react-native'
+import { X, Share2, Check, Download } from 'lucide-react-native'
 import QRCode from 'react-native-qrcode-svg'
+import { Paths, writeAsStringAsync } from 'expo-file-system'
 import { retailerApi, collectionApi } from '../src/lib/api'
 
 type QrSlug = { public_slug: string; profile_url: string }
@@ -13,6 +15,8 @@ type CollectionRow = { id: string; title: string; status: string; product_count:
 export default function StoreProfileScreen() {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
+  const qrRef = useRef<any>(null)
+  const [exporting, setExporting] = useState(false)
 
   const { data: qrData, isLoading: qrLoading } = useQuery({
     queryKey: ['retailer', 'qr-slug'],
@@ -31,6 +35,36 @@ export default function StoreProfileScreen() {
     mutationFn: (collectionId: string) => retailerApi.setStorefront(collectionId),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] }),
   })
+
+  const handleExportImage = async () => {
+    if (!qr || exporting) return
+    setExporting(true)
+    try {
+      // Get QR code as base64 PNG data URL via the SVG ref
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        if (qrRef.current) {
+          qrRef.current.toDataURL((base64: string) => resolve(base64))
+        } else {
+          reject(new Error('QR ref not available'))
+        }
+      })
+
+      // Save to temp file and share
+      const fileUri = `${Paths.cache.uri}store-qr-${Date.now()}.png`
+      await writeAsStringAsync(fileUri, dataUrl, {
+        encoding: 'base64',
+      })
+
+      await Share.share({
+        url: fileUri,
+        message: `Here's my store QR code — scan to view my catalog!`,
+      })
+    } catch (err) {
+      Alert.alert('Export failed', err instanceof Error ? err.message : 'Could not export QR code')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const qr = (qrData as { data: QrSlug } | undefined)?.data
   const me = (meData as { data: RetailerMe } | undefined)?.data
@@ -55,20 +89,39 @@ export default function StoreProfileScreen() {
               <ActivityIndicator color="#0891B2" />
             </View>
           ) : (
-            <QRCode value={qr.profile_url} size={220} />
+            <QRCode value={qr.profile_url} size={220} getRef={(ref: any) => { qrRef.current = ref }} />
           )}
         </View>
         <Text className="text-xs text-gray-500 text-center mt-3 px-8">
           Customers scan this to view your store profile and catalog
         </Text>
         {qr && (
-          <TouchableOpacity
-            onPress={() => void Share.share({ message: qr.profile_url })}
-            className="flex-row items-center gap-2 bg-cyan-600 px-5 py-3 rounded-2xl mt-4"
-          >
-            <Share2 size={16} color="white" />
-            <Text className="text-white font-semibold text-sm">Share Link</Text>
-          </TouchableOpacity>
+          <>
+            <TouchableOpacity
+              onPress={() => void Share.share({ message: qr.profile_url })}
+              className="flex-row items-center gap-2 bg-cyan-600 px-5 py-3 rounded-2xl mt-4"
+            >
+              <Share2 size={16} color="white" />
+              <Text className="text-white font-semibold text-sm">Share Link</Text>
+            </TouchableOpacity>
+
+            <View className="flex-row gap-3 mt-2">
+              <TouchableOpacity
+                onPress={() => void handleExportImage()}
+                disabled={exporting}
+                className="flex-1 flex-row items-center justify-center gap-2 bg-gray-800 border border-gray-700 py-3 rounded-2xl"
+              >
+                {exporting ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <>
+                    <Download size={16} color="white" />
+                    <Text className="text-white font-semibold text-sm">Save QR Image</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
         )}
       </View>
 

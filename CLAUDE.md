@@ -57,14 +57,14 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 | Customer Web | Next.js 14 (App Router) | PWA, SEO, SSR |
 | Backend API | Node.js + Fastify | Fast, TypeScript native |
 | AI Tagging | Claude Vision API (claude-3-5-sonnet) | Best for Indian fashion understanding |
-| VTO Engine | **CatVTON (self-hosted)** | ~$0.005/try-on, runs on 8GB+ VRAM |
+| VTO Engine | **Fashion V-Tone v1.5 (self-hosted)** | Apache 2.0, maskless, CPU-capable |
 | Database | PostgreSQL 16 + pgvector | Vector search for Fashion DNA |
 | Cache | Redis | Session, rate limit, job queue |
 | Storage | Cloudflare R2 | Cost-effective image storage |
 | Auth | Supabase Auth | Phone OTP for retailers |
 | Payments | Razorpay | UPI + INR subscriptions |
 | WhatsApp | Meta Cloud API (official) | Phase 2 |
-| Deployment | Railway (API+Web) + RunPod (CatVTON GPU) | Cloud GPU for try-on |
+| Deployment | Railway (API+Web) + optional CPU server for V-Tone | No GPU required |
 | CDN | Cloudflare | Free tier, fast India PoPs |
 
 ---

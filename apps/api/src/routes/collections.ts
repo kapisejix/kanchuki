@@ -350,6 +350,50 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     })
   })
 
+  // ─── PATCH /collections/:id ─────────────────────────────────────
+  // Update collection title and/or expiry. Product list changes are not
+  // supported here — create a new collection if you need a different
+  // set of products.
+  server.patch('/:id', async (request) => {
+    const { id } = request.params as { id: string }
+
+    const body = z
+      .object({
+        title: z.string().min(1).max(200).optional(),
+        expires_days: z.number().int().min(1).max(90).optional(),
+      })
+      .safeParse(request.body)
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+
+    const existing = await prisma.collection.findFirst({
+      where: { id, retailer_id: request.retailerId, deleted_at: null },
+    })
+    if (!existing) throw notFound('Collection')
+
+    const updateData: Record<string, unknown> = {}
+    if (body.data.title) updateData['title'] = body.data.title
+    if (body.data.expires_days) {
+      updateData['expires_at'] = addDays(new Date(), body.data.expires_days)
+    }
+
+    const updated = await prisma.collection.update({
+      where: { id },
+      data: updateData,
+      include: {
+        _count: { select: { products: true } },
+      },
+    })
+
+    const webBase = process.env['WEB_URL'] ?? ''
+    return {
+      data: {
+        ...updated,
+        product_count: updated._count.products,
+        url: `${webBase}/c/${updated.slug}`,
+      },
+    }
+  })
+
   // ─── DELETE /collections/:id ────────────────────────────────────
   server.delete('/:id', async (request, reply) => {
     const { id } = request.params as { id: string }

@@ -1,8 +1,8 @@
-import { useCallback, memo } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Share, ActivityIndicator } from 'react-native'
+import { useCallback, memo, useState, useEffect } from 'react'
+import { View, Text, FlatList, TouchableOpacity, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { Plus, Eye, MessageCircle, Link2, Clock } from 'lucide-react-native'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2 } from 'lucide-react-native'
 import { collectionApi } from '../../src/lib/api'
 
 type Collection = {
@@ -26,16 +26,130 @@ function daysUntil(dateStr: string | null): string {
   return `${diff}d left`
 }
 
+// ── Edit Collection Modal ──────────────────────────────────────────
+
+function EditCollectionModal({
+  visible,
+  collection,
+  onClose,
+  onSaved,
+}: {
+  visible: boolean
+  collection: Collection | null
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [title, setTitle] = useState(collection?.title ?? '')
+  const [expiryDays, setExpiryDays] = useState('30')
+  const [saving, setSaving] = useState(false)
+
+  // Sync form fields when modal opens with a different collection
+  useEffect(() => {
+    if (visible && collection) {
+      setTitle(collection.title)
+      // Calculate remaining days from expires_at
+      if (collection.expires_at) {
+        const remaining = Math.ceil(
+          (new Date(collection.expires_at).getTime() - Date.now()) / 86_400_000,
+        )
+        setExpiryDays(String(Math.max(1, remaining)))
+      } else {
+        setExpiryDays('30')
+      }
+    }
+  }, [visible, collection])
+
+  const handleSave = async () => {
+    if (!collection || !title.trim()) return
+    setSaving(true)
+    try {
+      await collectionApi.update(collection.id, {
+        title: title.trim(),
+        ...(expiryDays ? { expires_days: parseInt(expiryDays, 10) } : {}),
+      })
+      onSaved()
+      onClose()
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/50 items-center justify-center px-6">
+        <View className="bg-white rounded-3xl w-full p-6 gap-4">
+          <Text className="text-lg font-bold text-gray-900">Edit Collection</Text>
+
+          <View>
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Title
+            </Text>
+            <TextInput
+              value={title}
+              onChangeText={setTitle}
+              placeholder="Collection name"
+              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
+              placeholderTextColor="#9CA3AF"
+              autoFocus
+            />
+          </View>
+
+          <View>
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+              Expires in (days)
+            </Text>
+            <TextInput
+              value={expiryDays}
+              onChangeText={setExpiryDays}
+              placeholder="30"
+              keyboardType="numeric"
+              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+
+          <View className="flex-row gap-3 mt-2">
+            <TouchableOpacity
+              onPress={onClose}
+              disabled={saving}
+              className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center"
+            >
+              <Text className="text-gray-700 font-semibold">Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => void handleSave()}
+              disabled={saving || !title.trim()}
+              className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+            >
+              {saving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white font-semibold">Save</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 // ── Memoized Collection Card ───────────────────────────────────────
 
 const CollectionCard = memo(function CollectionCard({
   item,
   onPress,
   onShare,
+  onEdit,
+  onDelete,
 }: {
   item: Collection
   onPress: () => void
   onShare: () => void
+  onEdit: () => void
+  onDelete: () => void
 }) {
   return (
     <TouchableOpacity onPress={onPress} className="bg-white rounded-2xl p-4 border border-gray-100">
@@ -76,16 +190,35 @@ const CollectionCard = memo(function CollectionCard({
         </View>
       </View>
 
-      {/* Share button */}
-      {item.status === 'ACTIVE' && (
+      {/* Action buttons row */}
+      <View className="flex-row gap-2">
+        {/* Share */}
+        {item.status === 'ACTIVE' && (
+          <TouchableOpacity
+            onPress={onShare}
+            className="flex-1 flex-row items-center justify-center gap-2 bg-green-50 border border-green-100 py-2.5 rounded-xl"
+          >
+            <Link2 size={14} color="#16A34A" />
+            <Text className="text-green-700 text-sm font-semibold">Share</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Edit */}
         <TouchableOpacity
-          onPress={onShare}
-          className="flex-row items-center justify-center gap-2 bg-green-50 border border-green-100 py-2.5 rounded-xl"
+          onPress={onEdit}
+          className="flex-row items-center justify-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-2.5 rounded-xl"
         >
-          <Link2 size={14} color="#16A34A" />
-          <Text className="text-green-700 text-sm font-semibold">Share on WhatsApp</Text>
+          <Edit size={14} color="#2563EB" />
         </TouchableOpacity>
-      )}
+
+        {/* Delete */}
+        <TouchableOpacity
+          onPress={onDelete}
+          className="flex-row items-center justify-center bg-red-50 border border-red-100 px-3 py-2.5 rounded-xl"
+        >
+          <Trash2 size={14} color="#DC2626" />
+        </TouchableOpacity>
+      </View>
     </TouchableOpacity>
   )
 })
@@ -93,6 +226,10 @@ const CollectionCard = memo(function CollectionCard({
 // ── Collections Screen ─────────────────────────────────────────────
 
 export default function CollectionsScreen() {
+  const queryClient = useQueryClient()
+  const [editTarget, setEditTarget] = useState<Collection | null>(null)
+  const [showEditModal, setShowEditModal] = useState(false)
+
   const { data, isLoading } = useQuery({
     queryKey: ['collections'],
     queryFn: () => collectionApi.list(),
@@ -112,6 +249,37 @@ export default function CollectionsScreen() {
     [],
   )
 
+  const handleEdit = useCallback((collection: Collection) => {
+    setEditTarget(collection)
+    setShowEditModal(true)
+  }, [])
+
+  const handleDelete = useCallback((collection: Collection) => {
+    Alert.alert(
+      'Delete Collection',
+      `Permanently delete "${collection.title}"? This cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await collectionApi.delete(collection.id)
+              void queryClient.invalidateQueries({ queryKey: ['collections'] })
+            } catch (err) {
+              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete')
+            }
+          },
+        },
+      ],
+    )
+  }, [queryClient])
+
+  const handleEditSaved = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ['collections'] })
+  }, [queryClient])
+
   const renderItem = useCallback(
     ({ item }: { item: Collection }) => (
       <CollectionCard
@@ -120,9 +288,11 @@ export default function CollectionsScreen() {
           router.push({ pathname: '/collection/[id]', params: { id: item.id } })
         }
         onShare={() => void handleShare(item)}
+        onEdit={() => handleEdit(item)}
+        onDelete={() => handleDelete(item)}
       />
     ),
-    [handleShare],
+    [handleShare, handleEdit, handleDelete],
   )
 
   const keyExtractor = useCallback((item: Collection) => item.id, [])
@@ -172,6 +342,17 @@ export default function CollectionsScreen() {
       >
         <Plus size={24} color="white" />
       </TouchableOpacity>
+
+      {/* Edit Modal */}
+      <EditCollectionModal
+        visible={showEditModal}
+        collection={editTarget}
+        onClose={() => {
+          setShowEditModal(false)
+          setEditTarget(null)
+        }}
+        onSaved={handleEditSaved}
+      />
     </View>
   )
 }

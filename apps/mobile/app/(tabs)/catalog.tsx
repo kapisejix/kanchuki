@@ -153,10 +153,11 @@ export default function CatalogScreen() {
   const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
   const [filterPrice, setFilterPrice] = useState<string | null>(null)
   const [filterColor, setFilterColor] = useState<string | null>(null)
+  const [filterNewArrival, setFilterNewArrival] = useState(false)
 
   const { data: listData, isLoading: listLoading } = useQuery({
-    queryKey: ['products', 'list'],
-    queryFn: () => productApi.list({ limit: 50 }),
+    queryKey: ['products', 'list', { is_new_arrival: filterNewArrival }],
+    queryFn: () => productApi.list({ limit: 50, ...(filterNewArrival ? { is_new_arrival: true } : {}) }),
     enabled: !isSearching,
     staleTime: 30_000,
     gcTime: 300_000,
@@ -173,7 +174,7 @@ export default function CatalogScreen() {
   const colorOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.primary_color).filter((c): c is string => !!c)),
   )
-  const activeFilterCount = [filterCategory, filterOccasion, filterPrice, filterColor].filter(Boolean).length
+  const activeFilterCount = [filterCategory, filterOccasion, filterPrice, filterColor, filterNewArrival ? 'New Arrivals' : null].filter(Boolean).length
 
   const products = unfilteredProducts.filter((p) => {
     if (filterCategory && p.category !== filterCategory) return false
@@ -362,14 +363,27 @@ export default function CatalogScreen() {
               </View>
             </View>
             <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
-            <ChipRow label="Occasion" options={occasionOptions} selected={filterOccasion} onSelect={setFilterOccasion} />
-            <ChipRow
-              label="Price"
+            <ChipRow label="Occasion" options={occasionOptions} selected={filterOccasion} onSelect={setFilterOccasion} />            <ChipRow label="Price"
               options={PRICE_BUCKETS.map((b) => b.label)}
               selected={filterPrice}
               onSelect={setFilterPrice}
             />
             <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
+            {/* New Arrivals — derived flag, no cron, auto-expires at 30 days */}
+            <View className="mb-2.5">
+              <Text className="text-xs text-gray-500 mb-1.5">Age</Text>
+              <TouchableOpacity
+                onPress={() => setFilterNewArrival((v) => !v)}
+                className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
+                  filterNewArrival ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                }`}
+              >
+                {filterNewArrival && <Text className="text-white text-xs font-medium">✓ </Text>}
+                <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-gray-600'}`}>
+                  New Arrivals (30d)
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
       </View>

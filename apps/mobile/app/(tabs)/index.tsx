@@ -1,7 +1,7 @@
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Search, Eye, MessageCircle, Package, Ruler, QrCode } from 'lucide-react-native'
+import { Camera, Users, Link2, Search, Eye, MessageCircle, Package, Ruler, QrCode, Settings } from 'lucide-react-native'
 import { retailerApi } from '../../src/lib/api'
 
 type RankedProduct = {
@@ -180,6 +180,13 @@ export default function HomeScreen() {
             sublabel="Scan to view your catalog"
             onPress={() => router.push('/store-profile')}
             accent="#FDF2F8"
+          />
+          <QuickAction
+            icon={<Settings size={22} color="#6B7280" />}
+            label="Settings"
+            sublabel="Profile · Billing · Staff"
+            onPress={() => router.push('/settings' as any)}
+            accent="#F3F4F6"
           />
         </View>
       </View>

@@ -50,7 +50,7 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
     }
 
     // For remote flow: customer_photo_r2_key may be a base64 data URL.
-    // CatVTON's Python requests.get() can't fetch data: URLs, so upload to R2 first.
+    // V-Tone's Python requests.get() can't fetch data: URLs, so upload to R2 first.
     // For in-store flow: it's an R2 key that needs to be converted to a public URL.
     let customerPhotoUrl: string
     if (is_remote) {
@@ -83,7 +83,7 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
       },
     })
 
-    // Trigger CatVTON try-on engine
+    // Trigger try-on engine (Fashion V-Tone v1.5)
     const triggerResult = await triggerTryOn({
       customerPhotoUrl,
       productPhotoUrl,
@@ -97,7 +97,7 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
       data: { api_job_id: triggerResult.jobId },
     })
 
-    // CatVTON is synchronous — result already available from triggerTryOn
+    // Engine is synchronous — result already available from triggerTryOn
     const finalResult = triggerResult
 
     if (finalResult.status === 'completed' && finalResult.outputUrls.length > 0) {
@@ -107,8 +107,8 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
         finalResult.outputUrls[0]!,
       )
 
-      // Calculate cost per try-on (CatVTON: ~$0.005 on L4 GPU)
-      const costUsd = 0.005
+      // Calculate cost per try-on (V-Tone: ~$0.0003 on CPU, ~$0.003 on L4 GPU)
+      const costUsd = 0.003
 
       // Update job as completed
       await prisma.tryOnJob.update({

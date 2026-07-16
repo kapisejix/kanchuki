@@ -8,7 +8,11 @@ below for that decision, plus a licensing finding that affects the
 hypothetical upgrade. **Resolved 2026-07-13: commercial license for CatVTON
 obtained from the author (option 1) — no engine swap needed, NC-exposure
 closed.**
-**Date:** 2026-07-11 (original), 2026-07-12 (revisit), 2026-07-13 (licensing resolved)
+**2026-07-16 UPDATE: CatVTON was swapped for Fashion V-Tone v1.5 (Apache 2.0,
+maskless CPU-capable). CatVTON code fully removed from the project.
+V-Tone is now the sole try-on engine. See docs/TECH-STACK.md §11.
+This ADR's reasoning about 3D pipeline deferral is unchanged.**
+**Date:** 2026-07-11 (original), 2026-07-12 (revisit), 2026-07-13 (licensing resolved), 2026-07-16 (engine swap)
 **Context:** Phase 1 (Virtual Try-On), evaluated after early CatVTON quality complaints ("not even 1% close" on product+customer image match)
 
 ## Decision

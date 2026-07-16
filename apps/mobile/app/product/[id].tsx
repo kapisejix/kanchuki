@@ -579,7 +579,7 @@ export default function ProductDetailScreen() {
                     <Image
                       source={{ uri: displayUrl(photo) }}
                       style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
+                      contentFit="contain"
                       onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
                     />
                   ) : (

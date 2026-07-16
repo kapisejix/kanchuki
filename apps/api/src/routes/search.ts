@@ -6,6 +6,14 @@ import { embedSearchQuery, formatVectorLiteral } from '@kanchuki/ai'
 import { extractBudgetFromQuery, normalizeSearchQuery } from '@kanchuki/shared'
 import { validationError } from '../plugins/error-handler.js'
 
+const NEW_ARRIVAL_DAYS = 30
+
+function isNewArrival(createdAt: Date | string): boolean {
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - NEW_ARRIVAL_DAYS)
+  return new Date(createdAt) >= cutoff
+}
+
 const SearchSchema = z.object({
   query: z.string().min(1).max(500),
   filters: z
@@ -115,10 +123,18 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
       const photoMap = new Map(photos.map((ph) => [ph.product_id, ph.url]))
       const sectionMap = new Map(sections.map((s) => [s.id, s]))
 
+      // Fetch created_at for search results to compute is_new_arrival
+      const productDates = await prisma.product.findMany({
+        where: { id: { in: productIds } },
+        select: { id: true, created_at: true },
+      })
+      const dateMap = new Map(productDates.map((p) => [p.id, p.created_at]))
+
       results = filtered.map((r) => ({
         ...r,
         section: r.section_id ? (sectionMap.get(r.section_id) ?? null) : null,
         primary_photo_url: photoMap.get(r.id) ?? null,
+        is_new_arrival: r.id ? isNewArrival(dateMap.get(r.id) ?? new Date()) : false,
       }))
     } else {
       // ── Fallback: tag-based filter search (no embeddings yet) ──
@@ -147,6 +163,7 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
       results = products.map((p) => ({
         ...p,
         primary_photo_url: p.photos[0]?.url ?? null,
+        is_new_arrival: isNewArrival(p.created_at),
         photos: undefined,
       }))
     }

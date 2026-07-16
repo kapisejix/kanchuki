@@ -81,9 +81,18 @@ export function errorHandler(
     return
   }
 
-  // Generic server error — don't leak internals
+  // Generic server error — don't leak internals in production
   reply.log.error(error)
+  const isDev = process.env['NODE_ENV'] === 'development'
+  const message = isDev
+    ? error.message ?? 'Something went wrong'
+    : 'Something went wrong'
   void reply.status(500).send({
-    error: { code: 'INTERNAL_ERROR', message: 'Something went wrong', status: 500 },
+    error: {
+      code: 'INTERNAL_ERROR',
+      message,
+      ...(isDev ? { stack: error.stack } : {}),
+      status: 500,
+    },
   })
 }

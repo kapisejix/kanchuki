@@ -42,7 +42,7 @@
 ├─────────────────────────────────────────────────────────────┤
 │  AI Tagging              │  Claude Vision (claude-3-5-sonnet) │
 │  Embeddings              │  OpenAI text-embedding-3-small     │
-│  VTO Engine              │  CatVTON (self-hosted)             │
+│  VTO Engine              │  Fashion V-Tone v1.5 (self-hosted) │
 │  WhatsApp                │  Meta Cloud API (Phase 2)          │
 ├─────────────────────────────────────────────────────────────┤
 │  Hosting (API + Web)     │  Railway                           │
@@ -274,43 +274,40 @@ r2://kanchuki-prod/
 
 ---
 
-### 11. Virtual Try-On: CatVTON (Self-Hosted)
+### 11. Virtual Try-On: Fashion V-Tone v1.5 (Self-Hosted)
 
-**Choice (Revised June 2026 — Cost Optimization):**  
-**CatVTON (self-hosted Python microservice)**  
+**Choice (July 2026 — Switched from CatVTON):**  
+**Fashion V-Tone v1.5 (self-hosted Python microservice via `fashn-vton`)**  
 
-**Why CatVTON:**
-- **~$0.005/try-on** on an L4 GPU ($0.44/hr)
-- Open-source (CC BY-NC-SA 4.0 — verify commercial terms)
-- Single-UNet architecture: simpler, fewer failure points, runs on <8GB VRAM
-- 1024×768 output resolution, ~35 seconds per try-on
-- Can be fine-tuned for Indian ethnic wear via LoRA
-- No API dependency — full control over uptime, latency, cost
+**Why Fashion V-Tone:**
+- **Apache 2.0 license** — fully commercial, unlike CatVTON's CC BY-NC-SA
+- **Maskless architecture** — no background removal or segmentation masks needed. Handles raw retailer photos directly
+- **CPU-capable** — can run on the same server as the API (~30-60s on CPU), eliminating GPU hosting costs entirely
+- **~$0.0003/try-on on CPU**, ~$0.005/try-on on GPU
+- **Modern MMDiT architecture** — generates directly in pixel space for higher quality on fine details (embroidery, fabric texture)
+- **One-line install** — `pip install fashn-vton` — vs CatVTON's complex DensePose/SCHP build chain
 
 **Deployment:**
-- Python/FastAPI microservice in `services/tryon/`
-- Containerized with Docker
-- Runs on RunPod/Jarvis Labs L4 GPU ($0.44/hr, serverless billing)
-- ~90 try-ons per GPU-hour → **$0.005 per try-on**
+- Python/FastAPI microservice in `services/fashion-vtone/`
+- Containerized with Docker (`services/fashion-vtone/Dockerfile`)
+- Runs on CPU (no GPU needed) or GPU for faster inference
+- Models auto-download from Hugging Face on first run (~2.3 GB total)
 
-**GPU Requirements:**
-| GPU | VRAM | Cost/hr | Try-ons/hr | Cost/try-on |
-|-----|------|---------|-----------|-------------|
-| RTX 3060 (used) | 12GB | — (one-time ₹15K) | ~100 | ~₹0 (free after purchase) |
-| NVIDIA L4 (cloud) | 24GB | $0.44 | ~90 | ~$0.005 |
-| NVIDIA T4 (cloud) | 16GB | $0.20 | ~45 | ~$0.004 |
+**Hardware Options:**
+| Hardware | Cost | Try-ons/hr | Cost/try-on |
+|----------|------|-----------|-------------|
+| CPU (existing API server) | $0 (already paid for) | ~60-120 | ~$0.0003 |
+| NVIDIA L4 (cloud) | $0.44/hr | ~120-360 | ~$0.001-0.004 |
 
-**Path to better Indian ethnic wear quality:**
-1. Deploy CatVTON as-is (works well for kurtis, suits, gowns)
-2. Collect 200-500 Indian garment photos from real product uploads
-3. Run LoRA fine-tuning for sarees, lehengas, unstitched suits
-4. Swap model weights — no app code changes needed
+**Multi-piece chaining:** Same approach as before — two sequential calls (tops → bottoms composited onto the result) for 2-piece outfits like kameez+salwar, kurta+pajama, lehenga+choli.
 
 **Cost comparison:**
 | Method | Cost per try-on | Monthly (1000 try-ons) |
 |--------|----------------|----------------------|
-| **CatVTON self-hosted** | **$0.005/ try-on** | **$5 (₹400) for 1000 try-ons** |
-| Replicate IDM-VTON | ~$0.02 (₹1.6) | $20 (₹1,600) |
+| **V-Tone on CPU** | **~$0.0003** | **~$0.30** |
+| V-Tone on L4 GPU | ~$0.003 | ~$3 |
+| CatVTON on L4 GPU (old) | ~$0.005 | ~$5 |
+| Replicate IDM-VTON | ~$0.02 | ~$20 |
 
 ---
 

@@ -3,6 +3,13 @@ import { z } from 'zod'
 import { prisma } from '@kanchuki/db'
 import { generateCollectionSlug } from '@kanchuki/shared'
 import { notFound, validationError } from '../plugins/error-handler.js'
+import type { QuotaResourceType, QuotaPeriod } from '@kanchuki/db'
+
+function periodStart(period: QuotaPeriod, now = new Date()): Date {
+  if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  if (period === 'MONTH') return new Date(now.getFullYear(), now.getMonth(), 1)
+  return new Date(0) // LIFETIME
+}
 
 const UpdateRetailerSchema = z.object({
   shop_name: z.string().min(1).max(200).optional(),
@@ -17,6 +24,11 @@ const UpdateRetailerSchema = z.object({
     .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format')
     .optional(),
   categories: z.array(z.string().max(50)).max(10).optional(),
+  // F-009: separate WhatsApp business number (falls back to phone if unset)
+  whatsapp_number: z
+    .string()
+    .regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number')
+    .optional(),
 })
 
 const StoreSectionSchema = z.object({
@@ -330,6 +342,119 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       select: { storefront_collection_id: true },
     })
     return { data: updated }
+  })
+
+  // ─── GET /retailers/me/usage ──────────────────────────────────────
+  // F-010: Return usage vs limits for all metered resources.
+  server.get('/me/usage', async (request) => {
+    const retailerId = request.retailerId
+
+    const retailer = await prisma.retailer.findUnique({
+      where: { id: retailerId },
+      select: { plan: true },
+    })
+    if (!retailer) throw notFound('Retailer')
+
+    const ALL_RESOURCES: QuotaResourceType[] = [
+      'PRODUCT_UPLOAD',
+      'AI_TAGGING_CALL',
+      'TRY_ON',
+      'IMAGE_CROP',
+      'BG_REMOVAL',
+      'API_REQUEST',
+    ]
+
+    // Check for per-retailer override
+    const overrides = await prisma.retailerLimitOverride.findMany({
+      where: { retailer_id: retailerId },
+    })
+    const overrideMap = new Map(overrides.map((o) => [o.resource_type, o]))
+
+    // Fetch plan limits for retailer's plan
+    const planLimits = await prisma.planLimit.findMany({
+      where: { plan: retailer.plan },
+    })
+    const planLimitMap = new Map(planLimits.map((p) => [p.resource_type, p]))
+
+    // Fetch current usage counters
+    const now = new Date()
+    const counters = await prisma.usageCounter.findMany({
+      where: { retailer_id: retailerId },
+    })
+
+    const usage = ALL_RESOURCES.map((resourceType) => {
+      const override = overrideMap.get(resourceType)
+      if (override) {
+        // Per-retailer override takes priority
+        const start = periodStart(override.period, now)
+        const counter = counters.find(
+          (c) => c.resource_type === resourceType && c.period_start.getTime() === start.getTime(),
+        )
+        return {
+          resource_type: resourceType,
+          limit: override.limit_per_period,
+          used: counter?.count ?? 0,
+          period: override.period,
+          source: 'override' as const,
+        }
+      }
+
+      const planLimit = planLimitMap.get(resourceType)
+      if (!planLimit) {
+        // No limit configured — unlimited
+        return {
+          resource_type: resourceType,
+          limit: -1, // unlimited
+          used: 0,
+          period: 'LIFETIME' as QuotaPeriod,
+          source: 'unlimited' as const,
+        }
+      }
+
+      const start = periodStart(planLimit.period, now)
+      const counter = counters.find(
+        (c) => c.resource_type === resourceType && c.period_start.getTime() === start.getTime(),
+      )
+      return {
+        resource_type: resourceType,
+        limit: planLimit.limit_per_period,
+        used: counter?.count ?? 0,
+        period: planLimit.period,
+        source: 'plan' as const,
+      }
+    })
+
+    return { data: usage }
+  })
+
+  // ─── DELETE /retailers/me ───────────────────────────────────────
+  // F-009: Soft-delete the retailer account. Collections become inaccessible.
+  // Products/customers/billing records are retained for audit/GST compliance.
+  server.delete('/me', async (request, reply) => {
+    const retailerId = request.retailerId
+
+    const existing = await prisma.retailer.findUnique({
+      where: { id: retailerId, deleted_at: null },
+    })
+    if (!existing) throw notFound('Retailer')
+
+    // Soft-delete retailer + archive all collections + deactivate staff
+    await Promise.all([
+      prisma.retailer.update({
+        where: { id: retailerId },
+        data: { deleted_at: new Date() },
+      }),
+      prisma.collection.updateMany({
+        where: { retailer_id: retailerId, deleted_at: null },
+        data: { deleted_at: new Date(), status: 'ARCHIVED' },
+      }),
+      prisma.staff.updateMany({
+        where: { retailer_id: retailerId, is_active: true },
+        data: { is_active: false },
+      }),
+    ])
+
+    return reply.status(204).send()
   })
 
   // ─── Store Sections ─────────────────────────────────────────────

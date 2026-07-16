@@ -3,7 +3,6 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
-  HeadObjectCommand,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
@@ -45,16 +44,6 @@ export async function getDownloadPresignedUrl(
 /** Delete an object from R2 */
 export async function deleteObject(key: string): Promise<void> {
   await r2.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }))
-}
-
-/** True if an object exists at this key, without downloading its body */
-export async function objectExists(key: string): Promise<boolean> {
-  try {
-    await r2.send(new HeadObjectCommand({ Bucket: BUCKET, Key: key }))
-    return true
-  } catch {
-    return false
-  }
 }
 
 /** Download an object's bytes directly (for server-side processing, e.g. CV jobs) */

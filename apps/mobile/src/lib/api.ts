@@ -209,6 +209,21 @@ export const retailerApi = {
       method: 'PATCH',
       body: JSON.stringify({ collection_id: collectionId }),
     }),
+
+  /** F-009: Soft-delete the retailer account */
+  delete: () => request<void>('/v1/retailers/me', { method: 'DELETE' }),
+
+  /** F-010: Get usage vs limits for all metered resources */
+  getUsage: () =>
+    request<{
+      data: Array<{
+        resource_type: string
+        limit: number
+        used: number
+        period: string
+        source: 'plan' | 'override' | 'unlimited'
+      }>
+    }>('/v1/retailers/me/usage', { getCacheTtlMs: 30_000 }),
 }
 
 // ─── Products ─────────────────────────────────────────────────────
@@ -236,10 +251,11 @@ export const productApi = {
       timeoutMs: 30_000,
     }),
 
-  list: (params?: { status?: string; category?: string; cursor?: string; limit?: number }) => {
+  list: (params?: { status?: string; category?: string; is_new_arrival?: boolean; cursor?: string; limit?: number }) => {
     const qs = new URLSearchParams()
     if (params?.status) qs.set('status', params.status)
     if (params?.category) qs.set('category', params.category)
+    if (params?.is_new_arrival) qs.set('is_new_arrival', 'true')
     if (params?.cursor) qs.set('cursor', params.cursor)
     if (params?.limit) qs.set('limit', String(params.limit))
     return request<{ data: unknown[]; pagination: unknown }>(`/v1/products?${qs}`, {
@@ -308,6 +324,14 @@ export const productApi = {
 
   deleteVariant: (productId: string, variantId: string) =>
     request<void>(`/v1/products/${productId}/variants/${variantId}`, { method: 'DELETE' }),
+
+  /** Quick color-only AI detect — pre-fills color field on "Add Color" screen */
+  detectColor: (imageUrl: string) =>
+    request<{ data: { color: string | null } }>('/v1/products/detect-color', {
+      method: 'POST',
+      body: JSON.stringify({ image_url: imageUrl }),
+      timeoutMs: 15_000,
+    }),
 }
 
 // ─── Upload helper (direct to R2) ─────────────────────────────────
@@ -513,6 +537,36 @@ export const customerApi = {
       }
     }>(`/v1/customers/${id}/matches?${qs}`, { getCacheTtlMs: 60_000 })
   },
+}
+
+// ─── Staff / Team (F-009) ────────────────────────────────────────
+
+export type StaffMember = {
+  id: string
+  name: string
+  phone: string
+  role: 'owner' | 'manager' | 'salesperson'
+  is_active: boolean
+  created_at: string
+}
+
+export const staffApi = {
+  list: () =>
+    request<{ data: StaffMember[] }>('/v1/staff', { getCacheTtlMs: 15_000 }),
+
+  create: (data: { name: string; phone: string; role?: string }) =>
+    request<{ data: StaffMember }>('/v1/staff', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: { name?: string; phone?: string; role?: string }) =>
+    request<{ data: StaffMember }>(`/v1/staff/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) => request<void>(`/v1/staff/${id}`, { method: 'DELETE' }),
 }
 
 // ─── Size Charts ──────────────────────────────────────────────────
@@ -726,6 +780,14 @@ export const collectionApi = {
 
   get: (id: string) =>
     request<{ data: unknown }>(`/v1/collections/${id}`, { getCacheTtlMs: 30_000 }),
+
+  update: (id: string, data: { title?: string; expires_days?: number }) =>
+    request<{ data: Record<string, unknown> }>(`/v1/collections/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) => request<void>(`/v1/collections/${id}`, { method: 'DELETE' }),
 
   // Phase 1 — AI auto-suggest collection for a customer
   autoSuggest: (customerId: string, title?: string) =>

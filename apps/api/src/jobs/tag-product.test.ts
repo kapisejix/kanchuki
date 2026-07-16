@@ -27,6 +27,12 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('@kanchuki/ai', () => ({
   tagProductImageUrls: mockTagProductImageUrls,
+  // Best-effort cleanup is called with auto_cleanup=true (default) but
+  // doesn't need to do anything in unit tests — the tagging assertions
+  // are what we're actually testing.
+  fetchImageBuffer: vi.fn().mockRejectedValue(new Error('mock: no network')),
+  uploadBuffer: vi.fn().mockResolvedValue(undefined),
+  cleanupProductPhoto: vi.fn().mockResolvedValue(Buffer.from('')),
 }))
 
 vi.mock('./index.js', () => ({

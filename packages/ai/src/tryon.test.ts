@@ -1,23 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveClothType, isUnsupportedTryOnCategory, isPieceTaggableCategory } from './tryon.js'
-
-describe('resolveClothType', () => {
-  it('maps single-piece and unknown categories to upper', () => {
-    expect(resolveClothType('Kurti')).toBe('upper')
-    expect(resolveClothType('Blouse')).toBe('upper')
-    expect(resolveClothType('Other')).toBe('upper')
-    expect(resolveClothType(null)).toBe('upper')
-    expect(resolveClothType(undefined)).toBe('upper')
-  })
-
-  it('maps multi-piece-shot-as-a-set categories to overall', () => {
-    expect(resolveClothType('Ladies Suit')).toBe('overall')
-    expect(resolveClothType('Readymade Suit')).toBe('overall')
-    expect(resolveClothType("Men's Kurta Pajama")).toBe('overall')
-    expect(resolveClothType('Lehenga')).toBe('overall')
-    expect(resolveClothType('Saree')).toBe('overall')
-  })
-})
+import { isUnsupportedTryOnCategory, isPieceTaggableCategory } from './tryon.js'
 
 describe('isUnsupportedTryOnCategory', () => {
   it('flags Dupatta as unsupported, everything else as supported', () => {

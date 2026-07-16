@@ -22,6 +22,10 @@ import {
   UserCheck,
   IndianRupee,
   Sparkles,
+  Sliders,
+  Plus,
+  X,
+  Loader2,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -90,20 +94,32 @@ export default function RetailerDetailPage() {
   const [actionMsg, setActionMsg] = useState('')
   const [extendDays, setExtendDays] = useState(14)
   const [actionLoading, setActionLoading] = useState(false)
+  // F-010: override state
+  const [overrides, setOverrides] = useState<Array<{ id: string; resource_type: string; limit_per_period: number; period: string; reason: string | null }>>([])
+  const [overridesLoading, setOverridesLoading] = useState(true)
+  const [showOverrideForm, setShowOverrideForm] = useState(false)
+  const [overrideForm, setOverrideForm] = useState({ resource_type: 'PRODUCT_UPLOAD', limit_per_period: '', period: 'MONTH', reason: '' })
+  const [overrideSaving, setOverrideSaving] = useState(false)
 
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/v1/admin/retailers/${id}`, {
-          headers: getHeaders(),
-        })
-        if (!res.ok) throw new Error('Retailer not found')
-        const json = await res.json()
-        setRetailer(json.data)
+        const [retailerRes, overridesRes] = await Promise.all([
+          fetch(`${API_URL}/v1/admin/retailers/${id}`, { headers: getHeaders() }),
+          fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, { headers: getHeaders() }),
+        ])
+        if (!retailerRes.ok) throw new Error('Retailer not found')
+        const retailerJson = await retailerRes.json()
+        setRetailer(retailerJson.data)
+        if (overridesRes.ok) {
+          const overridesJson = await overridesRes.json()
+          setOverrides(overridesJson.data ?? [])
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load')
       } finally {
         setLoading(false)
+        setOverridesLoading(false)
       }
     }
     load()
@@ -129,6 +145,52 @@ export default function RetailerDetailPage() {
       setActionMsg(err instanceof Error ? err.message : 'Action failed')
     } finally {
       setActionLoading(false)
+    }
+  }
+
+  // F-010: override CRUD handlers
+  const saveOverride = async () => {
+    setOverrideSaving(true)
+    setActionMsg('')
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, {
+        method: 'POST',
+        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          resource_type: overrideForm.resource_type,
+          limit_per_period: Number(overrideForm.limit_per_period),
+          period: overrideForm.period,
+          reason: overrideForm.reason || undefined,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to save override')
+      const json = await res.json()
+      setOverrides((prev) => {
+        const others = prev.filter((o) => o.resource_type !== json.data.resource_type)
+        return [...others, json.data]
+      })
+      setShowOverrideForm(false)
+      setOverrideForm({ resource_type: 'PRODUCT_UPLOAD', limit_per_period: '', period: 'MONTH', reason: '' })
+      setActionMsg('Override saved')
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : 'Save failed')
+    } finally {
+      setOverrideSaving(false)
+    }
+  }
+
+  const deleteOverride = async (overrideId: string) => {
+    setActionMsg('')
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/overrides/${overrideId}`, {
+        method: 'DELETE',
+        headers: getHeaders(),
+      })
+      if (!res.ok) throw new Error('Failed to delete override')
+      setOverrides((prev) => prev.filter((o) => o.id !== overrideId))
+      setActionMsg('Override removed — retailer falls back to plan default')
+    } catch (err) {
+      setActionMsg(err instanceof Error ? err.message : 'Delete failed')
     }
   }
 
@@ -418,6 +480,114 @@ export default function RetailerDetailPage() {
               <LimitRow label="Staff Seats" current={retailer.staff_count} max={retailer.max_staff_seats} />
               <LimitRow label="Try-On Credits" current={retailer.try_on_credits} max={1000} />
             </div>
+          </div>
+
+          {/* F-010: Overrides card */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Sliders size={16} className="text-gray-400" /> Overrides
+              </h2>
+              <motion.button
+                onClick={() => setShowOverrideForm(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="p-1.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-all"
+                aria-label="Add override"
+              >
+                <Plus size={16} />
+              </motion.button>
+            </div>
+
+            {overridesLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 size={16} className="animate-spin text-gray-400" />
+              </div>
+            ) : overrides.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-xs text-gray-400">No overrides. Retailer uses plan defaults.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {overrides.map((o) => (
+                  <div key={o.id} className="flex items-center justify-between py-2 px-3 bg-amber-50/50 rounded-xl text-sm">
+                    <div className="flex-1">
+                      <span className="font-mono text-xs text-gray-700">{o.resource_type}</span>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {o.limit_per_period === -1 ? 'Unlimited' : o.limit_per_period} / {o.period}
+                        {o.reason && <span className="ml-1">· {o.reason}</span>}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteOverride(o.id)}
+                      className="p-1 text-gray-300 hover:text-red-500 transition-colors"
+                      aria-label={`Remove override for ${o.resource_type}`}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add override form */}
+            {showOverrideForm && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mt-4 pt-4 border-t border-gray-100 space-y-3"
+              >
+                <select
+                  value={overrideForm.resource_type}
+                  onChange={(e) => setOverrideForm({ ...overrideForm, resource_type: e.target.value })}
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                >
+                  {['PRODUCT_UPLOAD', 'AI_TAGGING_CALL', 'TRY_ON', 'IMAGE_CROP', 'BG_REMOVAL', 'API_REQUEST'].map((rt) => (
+                    <option key={rt} value={rt}>{rt}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    value={overrideForm.limit_per_period}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, limit_per_period: e.target.value })}
+                    placeholder="Limit (-1 = unlimited)"
+                    className="flex-1 border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  />
+                  <select
+                    value={overrideForm.period}
+                    onChange={(e) => setOverrideForm({ ...overrideForm, period: e.target.value })}
+                    className="border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                  >
+                    {['DAY', 'MONTH', 'LIFETIME'].map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
+                </div>
+                <input
+                  type="text"
+                  value={overrideForm.reason}
+                  onChange={(e) => setOverrideForm({ ...overrideForm, reason: e.target.value })}
+                  placeholder="Reason (optional)"
+                  className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowOverrideForm(false); setOverrideForm({ resource_type: 'PRODUCT_UPLOAD', limit_per_period: '', period: 'MONTH', reason: '' }) }}
+                    className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2 rounded-xl hover:bg-gray-200 transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveOverride}
+                    disabled={overrideSaving || !overrideForm.limit_per_period}
+                    className="flex-1 bg-gradient-to-r from-cyan-600 to-blue-600 text-white text-sm font-semibold py-2 rounded-xl hover:shadow-lg hover:shadow-cyan-500/20 disabled:opacity-60 transition-all"
+                  >
+                    {overrideSaving ? 'Saving...' : 'Save'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
           </div>
         </motion.div>
       </div>

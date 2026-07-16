@@ -17,7 +17,7 @@
  *   />
  */
 
-import { memo, useState, useEffect } from 'react'
+import React, { memo, useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
 

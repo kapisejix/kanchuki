@@ -207,3 +207,38 @@ export async function tagProductImageUrls(imageUrls: string[]): Promise<AiTagRes
   const images = await Promise.all(imageUrls.map(fetchTaggableImage))
   return tagProductImages(images)
 }
+
+/**
+ * Quick color-only detection using Claude Haiku (cheaper than full tagging).
+ * Returns just the dominant color name, intended for the "Add Color Variant"
+ * screen to pre-fill the color field instead of requiring manual entry.
+ */
+export async function detectColor(imageUrl: string): Promise<string | null> {
+  const image = await fetchTaggableImage(imageUrl)
+
+  const response = await getClaude().messages.create({
+    model: 'claude-3-haiku-20240307',
+    max_tokens: 50,
+    temperature: 0,
+    system: 'You are a color expert for Indian fashion. Extract only the dominant color of the garment in the photo. Return a short, specific color name like "Bottle Green", "Rani Pink", "Navy Blue", "Mustard Yellow", "Maroon", "Peach", "Ivory", "Teal", etc. Return JUST the color name, nothing else.',
+    messages: [
+      {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: image.mediaType, data: image.buffer.toString('base64') },
+          },
+          { type: 'text', text: 'What is the dominant color of this garment?' },
+        ],
+      },
+    ],
+  })
+
+  const text = response.content
+    .filter((c): c is { type: 'text'; text: string } => c.type === 'text')
+    .map((c) => c.text.trim())
+    .join(' ')
+
+  return text || null
+}

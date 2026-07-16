@@ -156,7 +156,7 @@ YOUR PLATFORM        YES       YES       YES         YES       YES   ← UNIQUE
 | Assumption | Risk Level | How to Validate |
 |---|---|---|
 | Retailers will consistently upload product photos | HIGH | Pilot with 10 shops, measure upload rate after 2 weeks |
-| AI try-on quality will be acceptable for ethnic wear (saree draping, unstitched suits) | HIGH | Test CatVTON on 50 ethnic wear samples before shipping |
+| AI try-on quality will be acceptable for ethnic wear (saree draping, unstitched suits) | HIGH | Test Fashion V-Tone v1.5 on 50 ethnic wear samples before shipping |
 | Customers will upload their own photo for remote try-on | MEDIUM | Survey 50 customers about photo upload comfort |
 | Retailers will pay ₹999–2,499/month | MEDIUM | Offer 30-day free trial, track conversion to paid |
 | WhatsApp collection links get opened and acted on | MEDIUM | A/B test with 5 retailers, measure open + enquiry rate |
@@ -277,7 +277,7 @@ This is 12–18 months of work, not an MVP.
 
 ### High Risk
 
-1. **AI try-on quality for ethnic wear** — Saree draping, dupatta placement, and unstitched suit layering are technically harder than Western wear. CatVTON may produce poor results for Indian garments initially. Plan to fine-tune with LoRA for sarees, lehengas, and unstitched suits.
+1. **AI try-on quality for ethnic wear** — Saree draping, dupatta placement, and unstitched suit layering are technically harder than Western wear. Fashion V-Tone v1.5 (Apache 2.0, maskless) handles raw product photos better than CatVTON. Fine-tune with LoRA for sarees, lehengas, and unstitched suits if needed.
 
 2. **Retailer behavior change** — Getting a shopkeeper to upload 200 products and maintain them is hard. Many will try once and drop off. Solve with: bulk WhatsApp image import, staff who help with initial upload (service model), and AI that does 90% of the work from one photo.
 

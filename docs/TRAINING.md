@@ -1,4 +1,16 @@
-# CatVTON Fine-Tuning for Indian Ethnic Wear
+# ~~CatVTON Fine-Tuning for Indian Ethnic Wear~~ — SUPERSEDED
+
+**Superseded 2026-07-16** — CatVTON and its training pipeline have been removed from the project.
+
+**Replacement:** Fashion V-Tone v1.5 (Apache 2.0, maskless, CPU-capable) is now the sole try-on engine.
+The old CatVTON LoRA fine-tuning pipeline (`scripts/training/`, `scripts/dataset/`) has been deleted.
+
+If V-Tone model fine-tuning for Indian ethnic wear is pursued in the future, it will use V-Tone's own
+fine-tuning API (not documented yet — see F-102d consent collection for the data pipeline).
+
+---
+
+*Original document preserved below for historical reference.*
 
 ## Overview
 

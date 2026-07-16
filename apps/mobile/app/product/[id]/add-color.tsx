@@ -18,7 +18,10 @@ export default function AddColorVariantScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [photoUri, setPhotoUri] = useState<string | null>(null)
   const [color, setColor] = useState('')
+  const [detectingColor, setDetectingColor] = useState(false)
   const cameraRef = useRef<CameraView>(null)
+  // Store upload result so we don't re-upload on save
+  const uploadInfoRef = useRef<{ r2_key: string; public_url: string } | null>(null)
 
   const handleCapture = async () => {
     if (!cameraRef.current) return
@@ -44,22 +47,61 @@ export default function AddColorVariantScreen() {
     )
     setPhotoUri(compressed.uri)
     setStep('preview')
+
+    // Auto-upload + AI color detect in background
+    detectColorAsync(compressed.uri)
+  }
+
+  const detectColorAsync = async (uri: string) => {
+    setDetectingColor(true)
+    try {
+      const blob = await readLocalImage(uri)
+      const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
+      const info = uploadResult.data
+      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+
+      // Store upload info so handleSave doesn't upload again
+      uploadInfoRef.current = { r2_key: info.r2_key, public_url: info.public_url }
+
+      // Quick AI color detection
+      try {
+        const colorResult = await productApi.detectColor(info.public_url)
+        if (colorResult.data.color) {
+          setColor(colorResult.data.color)
+        }
+      } catch {
+        // Color detection is best-effort — user can type manually
+      }
+    } catch {
+      // Upload failed — user can retry on save
+    } finally {
+      setDetectingColor(false)
+    }
   }
 
   const handleSave = async () => {
     if (!photoUri || !color.trim()) return
     setStep('saving')
     try {
-      const blob = await readLocalImage(photoUri)
-      const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
-      const info = uploadResult.data
-      await uploadImageToR2(photoUri, info.upload_url, 'image/jpeg')
+      // Use pre-uploaded photo if available, otherwise upload now
+      if (uploadInfoRef.current) {
+        await productApi.addVariant(id, {
+          color: color.trim(),
+          r2_key: uploadInfoRef.current.r2_key,
+          url: uploadInfoRef.current.public_url,
+        })
+      } else {
+        const blob = await readLocalImage(photoUri)
+        const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
+        const info = uploadResult.data
+        await uploadImageToR2(photoUri, info.upload_url, 'image/jpeg')
 
-      await productApi.addVariant(id, {
-        color: color.trim(),
-        r2_key: info.r2_key,
-        url: info.public_url,
-      })
+        await productApi.addVariant(id, {
+          color: color.trim(),
+          r2_key: info.r2_key,
+          url: info.public_url,
+        })
+      }
 
       router.back()
     } catch (err) {
@@ -137,7 +179,7 @@ export default function AddColorVariantScreen() {
   // preview + saving
   return (
     <View className="flex-1 bg-black">
-      {photoUri && <Image source={{ uri: photoUri }} className="flex-1" contentFit="contain" />}
+      {photoUri && <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />}
 
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
         <TouchableOpacity

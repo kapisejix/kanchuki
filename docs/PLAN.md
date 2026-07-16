@@ -192,14 +192,18 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Month 7–8: Virtual Try-On (Self-Hosted)
 
 **Tech Choice:**
-- **CatVTON (self-hosted)** — open-source, runs on <8GB VRAM, ~35s per image, $0.005/try-on
-- **Strategy:** Deploy CatVTON first (3-5 days), fine-tune for Indian ethnic wear later (1-2 weeks)
+- **Fashion V-Tone v1.5 (self-hosted)** — Apache 2.0, maskless, CPU-capable, ~$0.0003/try-on on CPU
+- **Strategy:** Deploy V-Tone as sole engine. No GPU needed. CatVTON removed 2026-07-16.
 - Quality gate: 80% acceptance rate on 50-sample ethnic wear test panel
 
 **CatVTON specs:**
 | Metric | Value |
 |--------|-------|
-| Cost per try-on | $0.005 (~₹0.4) |
+| Cost per try-on | $0.0003 on CPU (~₹0.025), $0.003 on L4 GPU (~₹0.25) |
+| License | Apache 2.0 |
+| GPU Required | No — runs on CPU |
+| Architecture | MMDiT (maskless) |
+| Install | `pip install fashn-vton` |
 | GPU needed | 8GB+ VRAM (RTX 3060) |
 | Latency | ~35s |
 | Indian wear quality | Good (improves with fine-tuning) |
@@ -224,25 +228,25 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - Real-time credit count shown to retailer
 - Low-credit warning at 20% remaining
 
-**Step 1 — Deploy CatVTON (3-5 days):**
-1. Create Python/FastAPI microservice wrapping CatVTON model
-2. Containerize with Docker
-3. Deploy to RunPod/Jarvis Labs with L4 GPU ($0.44/hr, serverless billing)
-4. Test end-to-end with sample products
+**Deploy V-Tone service:**
+1. Python/FastAPI microservice in `services/fashion-vtone/` wraps `fashn-vton`
+2. Runs on CPU alongside API server, or GPU for faster inference
+3. Models auto-download from Hugging Face on first run (~2.3 GB)
+4. Set `VTONE_API_URL` env var pointing to the service
+5. Test end-to-end with sample products
 
-**Step 2 — Fine-tune for Indian wear (1-2 weeks, after deployment):**
-1. Collect 200-500 Indian garment photos from real product uploads
-2. Create proper segmentation masks (SAM-based)
-3. Run LoRA fine-tuning on CatVTON
-4. Swap model weights in microservice — no app code changes needed
-5. Retest with sarees, lehengas, unstitched suits
+**Future fine-tuning for Indian ethnic wear (deferred):**
+1. Collect paired training data via F-102d consent flow
+2. Fine-tune with LoRA on V-Tone architecture
+3. Swap model weights — no app code changes needed
+4. Retest with sarees, lehengas, unstitched suits
 
-**Step 0 — Product/customer photo quality gate (do before Step 1 retest, cheap fix, likely root cause of early "no match" results):**
-- Add bg-removal preprocessing (rembg/remove.bg) before every `triggerCatVTON` call
+**Product/customer photo quality gate:**
+- V-Tone is maskless — no bg-removal preprocessing needed
 - Enforce ghost-mannequin/flat-lay product photo capture + plain-bg customer photo (see `docs/PRO-REQUIREMENTS.md` F-102)
-- Multi-piece ethnic sets (kameez+salwar+dupatta): sequential upper/lower calls, dupatta excluded from CatVTON pass for MVP
+- Multi-piece ethnic sets (kameez+salwar+dupatta): sequential tops → bottoms calls, dupatta excluded for MVP
 
-**Deferred (not Phase 1 scope):** Measurement-driven body-shape rendering (SMPL/STAR 3D body model + pose-conditioned diffusion, e.g. IDM-VTON/OOTDiffusion) — evaluated, ~6-15x GPU cost vs CatVTON (₹0.4 → ₹2.5-6.5/try-on) for only ~10-20% photorealism gain on benchmarks that don't even cover ethnic wear. Revisit post-MVP if margin allows. Decision + numbers: `docs/adrs/ADR-006-defer-3d-parametric-vto.md`. Height/weight/measurements still used for size recommendation (F-102c, simple chart lookup, no GPU) — different feature, ships independently.
+**Deferred (not Phase 1 scope):** Measurement-driven body-shape rendering (SMPL/STAR 3D body model + pose-conditioned diffusion) — cost gap vs V-Tone still significant even at CPU pricing. Revisit post-MVP if margin allows. Decision + numbers: `docs/adrs/ADR-006-defer-3d-parametric-vto.md` (updated 2026-07-16 with V-Tone swap). Height/weight/measurements still used for size recommendation (F-102c, simple chart lookup, no GPU) — different feature, ships independently.
 
 ---
 
@@ -329,8 +333,8 @@ graph TD
 | Collection link live | M3 | Customer opens link on mobile, enquires |
 | MVP beta | M4 | 10 pilot retailers, real feedback |
 | MVP public | M4 | 50 paying retailers |
-| CatVTON self-hosted deployed | M5 | Try-on working on 10 test products |
-| CatVTON fine-tuned for Indian wear | M6 | 80% quality on saree/lehenga test set |
+| V-Tone v1.5 deployed | M1 | Try-on working on 10 test products |
+| V-Tone fine-tuned for Indian wear | M6 | 80% quality on saree/lehenga test set |
 | Fashion DNA live | M7 | 1000+ customer behavior events, matching visible |
 | VTO in-store live | M8 | Full VTO flow with fine-tuned model |
 | Wholesaler beta | M10 | 5 wholesalers sharing catalogs with retailers |
@@ -362,7 +366,7 @@ graph TD
 
 | Risk | Mitigation |
 |------|-----------|
-| VTO quality unacceptable | Test on 50 ethnic wear samples before shipping; fine-tune CatVTON with LoRA for Indian garments |
+| VTO quality unacceptable | Test on 50 ethnic wear samples before shipping; fine-tune V-Tone for Indian garments |
 | Retailer upload behavior drops off | Gamify (streak, leaderboard), offer human onboarding support for first 50 products |
 | WhatsApp API account ban | Build SMS fallback (MSG91) from Day 1; never spam |
 | AI tagging cost spike | Cache embeddings; batch process; use Claude Haiku for bulk |

@@ -70,7 +70,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         customer_photo_r2_key,
         consent_to_training,
         status: 'QUEUED',
-        api_provider: 'catvton',
+        api_provider: 'vton',
         queued_at: new Date(),
       },
     })
@@ -274,7 +274,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         customer_photo_r2_key: customer_photo_url, // store URL directly for remote flow
         consent_to_training,
         status: 'QUEUED',
-        api_provider: 'catvton',
+        api_provider: 'vton',
         queued_at: new Date(),
       },
     })

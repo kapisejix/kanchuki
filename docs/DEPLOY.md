@@ -15,7 +15,7 @@
 | Cloudflare R2 bucket | Image storage | [cloudflare.com](https://cloudflare.com) |
 | Upstash Redis | Queue + Cache | [upstash.com](https://upstash.com) |
 | Razorpay account | Subscriptions | [razorpay.com](https://razorpay.com) |
-| GPU cloud (RunPod/Vast) | Self-hosted CatVTON try-on (~$0.005/try-on) | [runpod.io](https://runpod.io) |
+| (None — V-Tone runs on CPU alongside API server) | Self-hosted Fashion V-Tone v1.5 (~$0.0003/try-on on CPU) | — |
 
 ---
 
@@ -133,9 +133,9 @@ R2_PUBLIC_URL="https://pub-xxx.r2.dev"
 ANTHROPIC_API_KEY="..."
 OPENAI_API_KEY="..."
 
-# Virtual Try-On (CatVTON self-hosted — primary, ~$0.005/try-on)
-# Deploy separately: see services/tryon/README.md for GPU cloud setup
-CATVTON_API_URL="http://your-tryon-server:8000"
+# Virtual Try-On (Fashion V-Tone v1.5 — runs on CPU, ~$0.0003/try-on)
+# Deploy the V-Tone microservice: see services/fashion-vtone/
+VTONE_API_URL="http://localhost:8000"
 
 # Razorpay
 RAZORPAY_KEY_ID="rzp_live_xxx"
@@ -276,60 +276,152 @@ npx railway up --service @kanchuki/web
 
 ---
 
-## Optional: Deploy CatVTON Try-On Service
+## Deploy Fashion V-Tone v1.5 Try-On Service on Railway
 
-CatVTON self-hosted GPU server for virtual try-on (~$0.005/try-on).
+Fashion V-Tone v1.5 self-hosted virtual try-on (~$0.0003/try-on on CPU, Apache 2.0 licensed).
 
-### Option A: RunPod (Serverless, recommended)
+### Prerequisites
 
-1. Create a [RunPod account](https://runpod.io) and add funds ($10 minimum)
-2. Go to **Serverless → Endpoints → New Endpoint**
-3. Fill in:
-   - **Name:** `kanchuki-tryon`
-   - **Docker Image:** `ghcr.io/kapisejix/kanchuki-tryon:<git-sha>` — CI pushes both `:latest` and `:<git-sha>`. Pin the template to the SHA tag and update it on every deploy; RunPod caches `:latest` on workers and won't re-pull it on its own.
-   - **Container Disk:** 50GB (model is ~10GB)
-   - **GPU Type:** L4 (24GB) — good balance of speed & cost ($0.44/hr)
-   - **Max Workers:** 2
-   - **Idle Timeout:** 60s
-   - **Endpoint Timeout:** 120s (CatVTON takes ~35s per request)
-4. **Deploy** → wait for **Active** status (~5 min)
-5. Copy the endpoint URL: `https://{runpod-id}-8000.proxy.runpod.net`
-6. Set as `CATVTON_API_URL` env var in your API service: `https://api.runpod.ai/v2/{endpoint_id}`
+- Railway project with API service already deployed (see steps above)
+- R2 bucket with credentials (already configured for API service)
+- GitHub repo connected to Railway
 
-> The Docker image is built automatically by the CI workflow
-> (`.github/workflows/docker-tryon.yml`) when `services/tryon/` changes.
-> To trigger a manual build: GitHub → Actions → "Build & Push CatVTON" → "Run workflow".
+### Step 1: Add V-Tone as a Railway Service
 
-### Option B: Docker (own GPU server)
+1. **Railway Dashboard → New → Add a service → GitHub repo**
+2. Select the same Kanchuki repo
+3. Set **Root Directory** to `.` (repo root)
+4. Railway will detect the `services/fashion-vtone/railway.json` config automatically
+5. **Do NOT** start with a template — Railway will build from the Dockerfile
+
+### Step 2: Add Environment Variables
+
+In the Railway dashboard for the V-Tone service, add these env vars (reuse the same R2 creds as your API service):
 
 ```bash
-# Build the Docker image
-cd services/tryon
-docker build -t kanchuki-tryon -f Dockerfile .
+# R2 (same as API service — for uploading try-on results)
+R2_ACCOUNT_ID=your_account_id
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
+R2_BUCKET_NAME=kanchuki-prod
+R2_PUBLIC_URL=https://pub-xxx.r2.dev
 
-# Run with GPU
+# Port (Railway sets this automatically)
+PORT=8000
+
+# Optional: increase download timeout for large images
+DOWNLOAD_TIMEOUT=60
+```
+
+> **Note:** No `VTONE_DEVICE` env var needed — it defaults to CPU on Railway's CPU tier.
+> No `VTONE_WEIGHTS_DIR` env var needed — weights auto-download to HuggingFace cache.
+
+### Step 3: Deploy
+
+Once the env vars are set, Railway will automatically start building the Docker image.
+
+**First build will be slow (~10-15 min):**
+- Installing `fashn-vton` from GitHub source (~3 min)
+- Downloading model weights on **first container start** (~2.3 GB, ~3-5 min)
+  - The first cold start will hit the `start_period` health check timeout (300s)
+  - **The service will appear unhealthy** for ~3-5 min while weights download — this is normal
+  - After the initial download, subsequent restarts are instant (weights cached)
+
+**Check deployment progress:**
+```bash
+# Get the Railway-generated URL from the dashboard (Settings → Domains)
+curl https://your-vtone-service.railway.app/health
+```
+
+Expected response when ready:
+```json
+{"status": "ok", "pipeline_loaded": true, "device": "cpu", "gpu_available": false}
+```
+
+### Step 4: Wire to API Service
+
+Once the V-Tone service is healthy, copy its Railway-generated URL:
+- Dashboard → V-Tone Service → Settings → Domains → `*.railway.app` URL
+
+Add this URL as `VTONE_API_URL` to your **API** service's environment variables:
+
+```bash
+VTONE_API_URL=https://your-vtone-service.railway.app
+```
+
+This connects the API's `triggerTryOn()` function to the deployed V-Tone engine.
+
+### Step 5: Test
+
+```bash
+# Quick health check through the API
+curl https://api.kanchuki.app/health
+
+# Or test V-Tone directly with the test script
+node --env-file=.env services/fashion-vtone/test-tryon.mjs
+# If local test images exist (test_person.jpg, test_garment.jpg), they'll be
+# auto-uploaded to R2 and sent through V-Tone
+```
+
+### Quick Start (Local Dev)
+
+```bash
+cd services/fashion-vtone
+pip install -r requirements.txt
+pip uninstall -y onnxruntime-gpu; pip install onnxruntime  # CPU only
+python app.py
+```
+
+The server starts on port 8000. Set `VTONE_API_URL=http://localhost:8000` in your `.env`.
+
+### Docker (Local)
+
+```bash
+cd services/fashion-vtone
+docker build -t kanchuki-vton -f Dockerfile .
 cd ../..
-R2_ENDPOINT=... R2_ACCESS_KEY_ID=... R2_SECRET_ACCESS_KEY=... \
-  R2_BUCKET_NAME=... R2_PUBLIC_URL=... \
-  docker compose -f services/tryon/docker-compose.yml up -d
+docker run -d -p 8000:8000 \
+  -e R2_ENDPOINT="..." \
+  -e R2_ACCESS_KEY_ID="..." \
+  -e R2_SECRET_ACCESS_KEY="..." \
+  -e R2_BUCKET_NAME="kanchuki-prod" \
+  kanchuki-vton
 ```
 
-Test the deployment:
-```bash
-curl http://localhost:8000/health
-# → { "status": "ok", "model_loaded": true, "gpu_available": true }
+### Configuration Reference
 
-# Warm the model (avoids cold-start on first real request)
-curl -X POST http://localhost:8000/warmup
-```
+| Env Var | Default | Description |
+|---------|---------|-------------|
+| `VTONE_DEVICE` | auto (CPU on Railway) | Set to `cuda` for GPU inference |
+| `VTONE_WEIGHTS_DIR` | `./weights` | Model weights cache directory |
+| `DOWNLOAD_TIMEOUT` | 30 | Image download timeout (seconds) |
+| `R2_ENDPOINT` | — | Cloudflare R2 S3 endpoint (from R2_ACCOUNT_ID) |
+| `R2_ACCESS_KEY_ID` | — | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | — | R2 secret key |
+| `R2_BUCKET_NAME` | — | R2 bucket name |
+| `R2_PUBLIC_URL` | — | Public URL prefix for R2 objects |
+| `PORT` | 8000 | HTTP port |
 
-### Cost Comparison
+### Hardware Options
 
-| Volume | CatVTON (self-hosted) |
-|--------|----------------------|
-| 100 try-ons/mo | ~$1.50 |
-| 500 try-ons/mo | ~$7.30 |
-| 2000 try-ons/mo | ~$29 |
+| Hardware | Try-ons/hr | Cost/hr | Cost/try-on |
+|----------|-----------|---------|-------------|
+| CPU (4+ cores) | ~60-120 | $0 (shared with API server) | ~$0.0003 |
+| NVIDIA L4 | ~120-360 | $0.44 | ~$0.001-0.004 |
+
+### Notes
+
+- Models auto-download from Hugging Face on first run (~2.3 GB total)
+- No GPU required — CPU inference works well for Phase 0/MVP scale
+- Maskless architecture — no background removal preprocessing needed
+- First cold start: ~5-10 min (model download). Subsequent starts: < 30s
+- CatVTON code was fully removed from the project on 2026-07-16
+
+### Production Checklist (add to existing checklist)
+
+- [ ] V-Tone Railway service created and healthy
+- [ ] `VTONE_API_URL` added to API service environment variables
+- [ ] Test try-on completed successfully with a real photo
 
 ---
 
@@ -345,4 +437,4 @@ curl -X POST http://localhost:8000/warmup
 - [ ] Logging enabled (Axiom or Railway logs)
 - [ ] Rate limiting configured (`@fastify/rate-limit` already wired)
 - [ ] CI passing on main branch
-- [ ] CatVTON deployed (L4 GPU on RunPod)
+- [ ] V-Tone v1.5 deployed (CPU or GPU)

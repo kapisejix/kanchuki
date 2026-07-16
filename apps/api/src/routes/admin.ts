@@ -502,9 +502,78 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     return { data: row }
   })
 
+  // ─── GET /admin/retailers/:id/overrides ─────────────────────────
+  // F-010: List per-retailer limit overrides for a specific retailer.
+  server.get('/retailers/:id/overrides', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params)
+
+    const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } })
+    if (!retailer) throw notFound('Retailer')
+
+    const overrides = await prisma.retailerLimitOverride.findMany({
+      where: { retailer_id: id },
+      orderBy: { resource_type: 'asc' },
+    })
+    return { data: overrides }
+  })
+
+  // ─── POST /admin/retailers/:id/overrides ────────────────────────
+  // F-010: Create or update a per-retailer limit override.
+  server.post('/retailers/:id/overrides', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params)
+    const body = z
+      .object({
+        resource_type: z.enum([
+          'PRODUCT_UPLOAD',
+          'AI_TAGGING_CALL',
+          'TRY_ON',
+          'IMAGE_CROP',
+          'BG_REMOVAL',
+          'API_REQUEST',
+        ]),
+        limit_per_period: z.number().int().min(-1),
+        period: z.enum(['DAY', 'MONTH', 'LIFETIME']),
+        reason: z.string().max(200).optional(),
+      })
+      .parse(request.body)
+
+    const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } })
+    if (!retailer) throw notFound('Retailer')
+
+    const override = await prisma.retailerLimitOverride.upsert({
+      where: {
+        retailer_id_resource_type: { retailer_id: id, resource_type: body.resource_type },
+      },
+      create: { retailer_id: id, ...body },
+      update: { limit_per_period: body.limit_per_period, period: body.period, reason: body.reason },
+    })
+
+    request.log.info({ retailer_id: id, resource_type: body.resource_type }, 'Override set')
+    return { data: override }
+  })
+
+  // ─── DELETE /admin/retailers/:id/overrides/:overrideId ───────────
+  // F-010: Remove a per-retailer limit override, falling back to plan default.
+  server.delete('/retailers/:id/overrides/:overrideId', async (request, reply) => {
+    const { id, overrideId } = z
+      .object({ id: z.string(), overrideId: z.string() })
+      .parse(request.params)
+
+    const existing = await prisma.retailerLimitOverride.findFirst({
+      where: { id: overrideId, retailer_id: id },
+    })
+    if (!existing) throw notFound('Override')
+
+    await prisma.retailerLimitOverride.delete({ where: { id: overrideId } })
+
+    request.log.info({ retailer_id: id, resource_type: existing.resource_type }, 'Override removed')
+    return reply.status(204).send()
+  })
+
   // ─── GET /admin/usage ──────────────────────────────────────────
   // Platform-wide usage stats including try-on and revenue.
   server.get('/usage', async () => {
+  
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1)
 
     const [tryOnUsage, activeSubscriptions, trialCount, totalRetailers] = await Promise.all([

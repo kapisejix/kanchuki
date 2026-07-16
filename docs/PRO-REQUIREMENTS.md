@@ -424,50 +424,38 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-102: AI Virtual Try-On (Self-Hosted)
-**Status:** 🟡 **Partially built** — engine deployed on RunPod, bg-removal preprocessing works, multi-piece chaining built (2 sequential CatVTON calls: upper → customer photo, then lower → first result). Quality on multi-piece ethnic wear still needs a real 2-piece outfit test. **✅ Licensing resolved** — commercial license obtained from CatVTON's author (2026-07-13).
+**Status:** 🟢 **Built** — Fashion V-Tone v1.5 engine (Apache 2.0, maskless, CPU-capable), multi-piece chaining, training consent collection. Replaced CatVTON 2026-07-16.
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
-**Tech:** CatVTON (self-hosted Python microservice)  
-**Cost:** ~₹0.4 per try-on (self-hosted on L4 GPU)  
-**GPU Requirement:** 8GB+ VRAM (RTX 3060 or better)  
-**Latency:** ~35 seconds per try-on  
+**Tech:** Fashion V-Tone v1.5 (self-hosted Python microservice via `fashn-vton`)  
+**Cost:** ~₹0.025 per try-on on CPU (~$0.0003), ~₹0.25 on L4 GPU (~$0.003)  
+**GPU Requirement:** None — runs on CPU (~30-60s) or GPU for faster inference  
+**Latency:** ~30-60s on CPU, ~10-30s on GPU  
 **Quality threshold:** 80% of try-ons rated "acceptable" by sample retailer panel
 
-**Deployment Strategy (Two-Step):**
+**Maskless Architecture (Key Advantage):**
+Fashion V-Tone does NOT require background removal or segmentation masks — it handles raw product photos directly. This eliminates the `rembg` preprocessing step that CatVTON required, saving ~$0.003/image and removing a fragile dependency.
 
-**Step 1 — Deploy CatVTON as-is (Week 1):**
-- Python/FastAPI microservice wrapping CatVTON
-- Containerized, deployed on RunPod L4 GPU ($0.44/hr, serverless)
-- Works well for kurtis, suits, gowns, readymade garments
-- ~$0.005 per try-on
-
-**Step 2 — Fine-tune for Indian ethnic wear (Week 2-3):**
-- Collect 200-500 Indian garment photos from real uploads
-- Create segmentation masks (SAM-based)
-- Run LoRA fine-tuning for sarees, lehengas, unstitched suits
-- Swap model weights — no application code changes needed
+**Deployment:**
+- Python/FastAPI microservice in `services/fashion-vtone/`
+- Containerized with `services/fashion-vtone/Dockerfile`
+- Runs on CPU alongside the API server, or GPU for faster inference
+- Models auto-download from Hugging Face on first run (~2.3 GB)
 
 **Cost:**
 | Method | Cost per try-on | Monthly (1000 try-ons) |
 |--------|----------------|----------------------|
-| **CatVTON (self-hosted)** | **₹0.4** | **₹400** |
+| **V-Tone on CPU** | **₹0.025** | **₹25** |
+| V-Tone on L4 GPU | ~₹0.25 | ~₹250 |
 
-**Specific challenges for Indian ethnic wear:**
-- Saree draping (6-yard drape simulation) — requires fine-tuning
-- Dupatta placement — requires fine-tuning
-- Unstitched suit layering — requires fine-tuning
-- Heavy embroidery texture rendering — CatVTON handles well natively
+**Category mapping:** V-Tone accepts one of `tops` / `bottoms` / `one-pieces` per call:
+  - Mapping from product category: `upper` → `tops`, `lower` → `bottoms`, `overall` → `one-pieces`
+  - Kameez + Salwar (2-piece): two sequential calls (tops, then bottoms on the first result)
+  - Dupatta: excluded from V-Tone pass (draping physics unsupported)
 
-**Product Photo Requirements (input-quality gate — root cause of most low-match results):**
-- Background: plain/removed (rembg or remove.bg preprocessing step before CatVTON call — raw retailer photos are NOT bg-clean by default, must add as pipeline step in `triggerCatVTON`)
-- Capture: ghost-mannequin or flat-lay, front view, garment only, no props/wrinkles/watermark
-- Lighting: even, diffused, no hard shadow
-- Resolution: min 768×1024
-- Category mapping: CatVTON accepts one of `upper` / `lower` / `overall` per call — no native multi-garment compositing
-  - Kameez + Salwar (2-piece): two sequential calls (upper, then lower on the first result), OR single `overall` photo if garment shot as a set
-  - Dupatta: excluded from CatVTON pass (draping physics unsupported) — either static PNG overlay post-render or omit for MVP
+**Customer photo requirements:** front-facing, full body, plain background, standing straight. V-Tone is more forgiving of background complexity than CatVTON.
 
-**Customer photo requirements:** front-facing, full body, plain background, standing straight, arms slightly away from torso, fitted/plain clothing (baggy clothes confuse the silhouette mask), even lighting.
+**Product Photo Requirements:** Less strict than CatVTON — raw retailer photos work without background removal preprocessing.
 
 ---
 
@@ -669,8 +657,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - **Razorpay** — subscription billing
 
 ### Required (Phase 1)
-- **CatVTON** — AI virtual try-on (self-hosted)
-- **Replicate (IDM-VTON)** — VTO fallback
+- **Fashion V-Tone v1.5** — AI virtual try-on (self-hosted, Apache 2.0)
 - **pgvector** — semantic similarity search for Fashion DNA
 
 ### Required (Phase 2)
