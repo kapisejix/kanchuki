@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Animated,
   StyleSheet,
+  Switch,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -83,6 +84,7 @@ export default function AddProductScreen() {
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
+  const [autoCleanup, setAutoCleanup] = useState(true)
 
   const cameraRef = useRef<CameraView>(null)
 
@@ -252,6 +254,7 @@ export default function AddProductScreen() {
         search_tags: aiTags?.search_tags ?? [],
         location_notes: location || undefined,
         notes: notes || undefined,
+        auto_cleanup: autoCleanup,
       })
 
       void queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -656,6 +659,17 @@ export default function AddProductScreen() {
               <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
             </View>
           )}
+        </View>
+
+        {/* Auto-clean toggle: crop + white-background removal (runs server-side after Save) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-sm font-semibold text-gray-900">Auto-clean photo</Text>
+            <Text className="text-xs text-gray-500 mt-0.5">
+              Crop to the garment and remove the background. Turn off for a styled/mannequin shot you want to keep as-is.
+            </Text>
+          </View>
+          <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
         </View>
 
         {/* Price */}

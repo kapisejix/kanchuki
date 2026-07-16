@@ -6,6 +6,7 @@ import { getUploadPresignedUrl, triggerTryOn, publicUrl } from '@kanchuki/ai'
 import { R2_PATHS } from '@kanchuki/shared'
 import { addTryOnJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js'
+import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 // ─── Schemas ─────────────────────────────────────────────────
 
@@ -33,6 +34,9 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     if (retailer.try_on_credits <= 0) {
       throw planLimitExceeded('try-on credits')
     }
+    // F-010: additive — plan_limits has no TRY_ON row yet, so this is a
+    // no-op until seeded. try_on_credits above stays authoritative.
+    await checkQuota(retailerId, 'TRY_ON')
 
     const body = InitiateTryOnSchema.safeParse(request.body)
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
@@ -50,6 +54,9 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     await prisma.retailer.update({
       where: { id: retailerId },
       data: { try_on_credits: { decrement: 1 } },
+    })
+    incrementUsage(retailerId, 'TRY_ON').catch((err) => {
+      request.log.error({ err, retailer_id: retailerId }, 'Failed to record try-on usage')
     })
 
     // Create TryOnJob record
@@ -245,11 +252,16 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     if (retailer.try_on_credits <= 0) {
       throw validationError('Retailer has no try-on credits remaining')
     }
+    // F-010: additive — no-op until plan_limits has a TRY_ON row.
+    await checkQuota(collection.retailer_id, 'TRY_ON')
 
     // Decrement credit
     await prisma.retailer.update({
       where: { id: collection.retailer_id },
       data: { try_on_credits: { decrement: 1 } },
+    })
+    incrementUsage(collection.retailer_id, 'TRY_ON').catch((err) => {
+      request.log.error({ err, retailer_id: collection.retailer_id }, 'Failed to record try-on usage')
     })
 
     // Create TryOnJob record with customer photo URL (base64 data URL for remote flow)

@@ -84,6 +84,29 @@ enum TicketStatus {
   CLOSED
 }
 
+// ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
+
+enum QuotaResourceType {
+  PRODUCT_UPLOAD
+  AI_TAGGING_CALL
+  TRY_ON
+  IMAGE_CROP
+  BG_REMOVAL
+  API_REQUEST
+}
+
+enum QuotaPeriod {
+  DAY
+  MONTH
+  LIFETIME
+}
+
+enum QuotaAddonStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
 // ─── RETAILERS ───────────────────────────────────────────────────
 
 model Retailer {
@@ -134,18 +157,21 @@ model Retailer {
   deleted_at DateTime?
 
   // Relations
-  products       Product[]
-  customers      Customer[]
-  collections    Collection[]
-  staff          Staff[]
-  store_sections StoreSection[]
-  subscriptions  Subscription[]
-  try_on_usage   TryOnUsageLog[]
-  size_charts    SizeChart[]
-  territory      Territory?      @relation(fields: [territory_id], references: [id])
-  onboarded_by   TeamMember?     @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
-  support_owner  TeamMember?     @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
-  support_tickets SupportTicket[]
+  products              Product[]
+  customers             Customer[]
+  collections           Collection[]
+  staff                 Staff[]
+  store_sections        StoreSection[]
+  subscriptions         Subscription[]
+  try_on_usage          TryOnUsageLog[]
+  size_charts           SizeChart[]
+  limit_overrides       RetailerLimitOverride[]
+  usage_counters        UsageCounter[]
+  quota_addon_purchases QuotaAddonPurchase[]
+  territory             Territory?              @relation(fields: [territory_id], references: [id])
+  onboarded_by          TeamMember?             @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
+  support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
+  support_tickets       SupportTicket[]
 
   @@index([phone])
   @@index([city])
@@ -557,8 +583,8 @@ model TeamMember {
   updated_at DateTime @updatedAt
 
   territories         TeamMemberTerritory[]
-  onboarded_retailers Retailer[]      @relation("OnboardedRetailers")
-  supported_retailers Retailer[]      @relation("SupportedRetailers")
+  onboarded_retailers Retailer[]            @relation("OnboardedRetailers")
+  supported_retailers Retailer[]            @relation("SupportedRetailers")
   assigned_tickets    SupportTicket[]
 
   @@index([email])
@@ -572,8 +598,8 @@ model Territory {
   parent_id String? // self-reference: ZONE -> CITY -> STATE
   pincodes  String[] // only meaningful at ZONE level
 
-  parent    Territory?             @relation("TerritoryHierarchy", fields: [parent_id], references: [id])
-  children  Territory[]            @relation("TerritoryHierarchy")
+  parent    Territory?            @relation("TerritoryHierarchy", fields: [parent_id], references: [id])
+  children  Territory[]           @relation("TerritoryHierarchy")
   staff     TeamMemberTerritory[]
   retailers Retailer[]
 
@@ -760,6 +786,84 @@ model TryOnUsageLog {
   @@index([retailer_id, created_at])
   @@index([created_at])
   @@map("try_on_usage_logs")
+}
+
+// ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
+// Admin-configurable limits per plan/resource + per-retailer overrides,
+// a rolling usage counter checked before every metered action, and
+// self-serve overage purchases. See docs/PRO-REQUIREMENTS.md F-010.
+
+model PlanLimit {
+  id               String            @id @default(cuid())
+  plan             SubscriptionPlan
+  resource_type    QuotaResourceType
+  limit_per_period Int // -1 = unlimited
+  period           QuotaPeriod       @default(MONTH)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([plan, resource_type])
+  @@map("plan_limits")
+}
+
+model RetailerLimitOverride {
+  id               String            @id @default(cuid())
+  retailer_id      String
+  resource_type    QuotaResourceType
+  limit_per_period Int // -1 = unlimited
+  period           QuotaPeriod       @default(MONTH)
+  reason           String? // why admin granted a bespoke limit
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([retailer_id, resource_type])
+  @@index([retailer_id])
+  @@map("retailer_limit_overrides")
+}
+
+model UsageCounter {
+  id            String            @id @default(cuid())
+  retailer_id   String
+  resource_type QuotaResourceType
+  period_start  DateTime // truncated to period boundary (day/month start)
+  count         Int               @default(0)
+
+  updated_at DateTime @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([retailer_id, resource_type, period_start])
+  @@index([retailer_id])
+  @@map("usage_counters")
+}
+
+model QuotaAddonPurchase {
+  id            String            @id @default(cuid())
+  retailer_id   String
+  resource_type QuotaResourceType
+  quantity      Int // extra units purchased, credited to the current UsageCounter period
+
+  amount_inr Int // paise
+  status     QuotaAddonStatus @default(PENDING)
+
+  razorpay_order_id   String?
+  razorpay_payment_id String?
+
+  gst_amount         Int?
+  gst_invoice_number String?
+
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([retailer_id, created_at])
+  @@map("quota_addon_purchases")
 }
 
 // ─── SIZE CHARTS (F-102c — size recommendation, no GPU cost) ────

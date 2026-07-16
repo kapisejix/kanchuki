@@ -7,6 +7,7 @@ import { R2_PATHS } from '@kanchuki/shared'
 import { addTaggingJob, addEmbeddingJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError, forbidden } from '../plugins/error-handler.js'
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai'
+import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 // ─── On-Demand ISR Revalidation ───────────────────────────────────
 // After a product status change, purge the ISR cache for every collection
@@ -73,6 +74,7 @@ const CreateProductSchema = z.object({
   notes: z.string().max(1000).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
+  auto_cleanup: z.boolean().optional().default(true),
 })
 
 const UpdateProductSchema = CreateProductSchema.partial().omit({
@@ -169,11 +171,15 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     if (currentCount >= retailer.max_products) {
       throw planLimitExceeded('products')
     }
+    // F-010: generalized quota gate, additive for now — plan_limits has no
+    // seed row for PRODUCT_UPLOAD yet so this is a no-op until an admin adds
+    // one. The max_products check above stays authoritative until then.
+    await checkQuota(retailerId, 'PRODUCT_UPLOAD')
 
     const body = CreateProductSchema.safeParse(request.body)
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
 
-    const { photo_r2_key, photo_url, back_photo_r2_key, back_photo_url, metadata, ...rest } =
+    const { photo_r2_key, photo_url, back_photo_r2_key, back_photo_url, metadata, auto_cleanup, ...rest } =
       body.data
 
     if (rest.section_id) {
@@ -208,6 +214,12 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       include: { photos: true, section: { select: { name: true } } },
     })
 
+    // Best-effort — a failed usage-counter write shouldn't fail an upload
+    // that already succeeded.
+    incrementUsage(retailerId, 'PRODUCT_UPLOAD').catch((err) => {
+      request.log.error({ err, product_id: product.id }, 'Failed to record product-upload usage')
+    })
+
     // Fire-and-forget: if Redis/BullMQ is down the tagging job won't block
     // product creation. We set ai_tag_error so the UI shows a failure banner
     // instead of spinning "AI tagging in progress..." forever.
@@ -217,6 +229,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       photo_url,
       r2_key: photo_r2_key,
       back_photo_url,
+      auto_cleanup,
     }).catch(async (err) => {
       request.log.error({ err, product_id: product.id }, 'Failed to queue tagging job')
       try {

@@ -2,11 +2,18 @@ import { prisma, Prisma } from '@kanchuki/db'
 import { tagProductImageUrls, fetchImageBuffer, uploadBuffer, cleanupProductPhoto } from '@kanchuki/ai'
 import { addEmbeddingJob } from './index.js'
 import type { TaggingJobData } from './index.js'
+import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 export async function handleTagProduct(data: TaggingJobData): Promise<void> {
-  const { product_id, retailer_id, photo_url, back_photo_url, r2_key } = data
+  const { product_id, retailer_id, photo_url, back_photo_url, r2_key, auto_cleanup = true } = data
 
   try {
+    // F-010: no prior enforcement existed for AI tagging calls — this is the
+    // first gate. Falls through as a no-op until plan_limits has a row for
+    // AI_TAGGING_CALL. Errors here flow into the same catch below (ai_tag_error
+    // + BullMQ retry) as any other failure in this job.
+    await checkQuota(retailer_id, 'AI_TAGGING_CALL')
+
     // Mark photo as tagging in progress
     await prisma.productPhoto.updateMany({
       where: { product_id, retailer_id },
@@ -17,16 +24,23 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // retailer upload in place with a background-stripped, white-backdrop
     // version. Same r2_key/photo_url, so no DB write needed. Best-effort —
     // ponytail: swallow failures, a raw-but-tagged photo beats a failed job.
-    try {
-      const raw = await fetchImageBuffer(photo_url)
-      const cleaned = await cleanupProductPhoto(raw)
-      await uploadBuffer(r2_key, cleaned, 'image/jpeg')
-    } catch (err) {
-      console.error(`Photo cleanup failed for product ${product_id}, keeping raw photo:`, err)
+    // Retailer-toggleable via auto_cleanup (product/add.tsx) for shots that
+    // shouldn't be cropped/bg-stripped (e.g. styled mannequin display).
+    if (auto_cleanup) {
+      try {
+        await checkQuota(retailer_id, 'BG_REMOVAL')
+        const raw = await fetchImageBuffer(photo_url)
+        const cleaned = await cleanupProductPhoto(raw)
+        await uploadBuffer(r2_key, cleaned, 'image/jpeg')
+        await incrementUsage(retailer_id, 'BG_REMOVAL')
+      } catch (err) {
+        console.error(`Photo cleanup failed for product ${product_id}, keeping raw photo:`, err)
+      }
     }
 
     const urls = back_photo_url ? [photo_url, back_photo_url] : [photo_url]
     const tags = await tagProductImageUrls(urls)
+    await incrementUsage(retailer_id, 'AI_TAGGING_CALL')
 
     // Update product with AI tags
     await prisma.product.update({

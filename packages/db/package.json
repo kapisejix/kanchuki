@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
     "db:seed": "prisma db seed",
+    "db:seed:plan-limits": "tsx prisma/seed-plan-limits.ts",
     "studio": "prisma studio",
     "typecheck": "tsc --noEmit"
   },

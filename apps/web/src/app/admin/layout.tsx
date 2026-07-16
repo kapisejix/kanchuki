@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Store,
   CreditCard,
+  Gauge,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Retailers', href: '/admin/retailers', icon: Store },
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
+  { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
 ]
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'

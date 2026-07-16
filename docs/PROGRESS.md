@@ -1250,3 +1250,15 @@ User asked: how does a retailer with 3000 items realistically get everything int
 
 **Next session (if picked up):** location-inheritance field is the one genuinely new mobile screen (batch-capture flow, Path A) — everything else in F-001d routes existing F-001b/F-001c endpoints into a new onboarding entry point plus a merged review queue.
 
+## 2026-07-16 — Retailer settings + generalized quota/limits system, spec only, no code
+
+User asked for a retailer settings area (profile edit/delete, subscription, team, WhatsApp config) plus quotas across every metered resource (uploads, AI tagging, try-on, crop, bg-removal, API) that admin can set per plan, with self-serve overage purchase. Checked existing state first: `Retailer` already has `max_products`, `max_customers`, `try_on_credits` hardcoded columns, billing screen + Razorpay subscription flow + admin plan-change already built (Month 4), `Staff` table exists but has no UI. No limit or usage tracking exists for AI-tagging/crop/bg-removal/API calls, and the only "buy more" path is a manual "extra 50 try-ons ₹299" pricing-table line, not self-serve or generalized.
+
+**Docs updated (no code touched this session):**
+- `docs/PRO-REQUIREMENTS.md` — new **F-009: Retailer Account & Team Settings** (🔴 Not started) covering profile edit/delete, subscription view (reuses existing billing screen), team management UI (new — `Staff` table has no UI today), WhatsApp number config (new `Retailer.whatsapp_number` field, since code today assumes `phone` IS the WhatsApp number). New **F-010: Quota & Limits System** (🔴 Not started, P0) — generalizes the 3 hardcoded limit columns into `plan_limits` + `retailer_limit_overrides` (admin-editable rows, no schema change per new limit) + `usage_counters` (per retailer/resource/period) + one shared `checkQuota()` gate + `quota_addon_purchases` (generalizes the existing try-on add-on to any resource via Razorpay one-time charge). Also updated Section 6 Add-ons to point at F-010.
+- `docs/PLAN.md` — new **Month 4b** checklist block for F-009/F-010, inserted before Phase 0.5.
+- `docs/CLAUDE.md` — added a line under MVP "Build only" list noting F-009/F-010, planned.
+
+**Not done:** no schema, no endpoint, no UI — spec-only session per explicit user instruction ("just explain me first and then update it in .md files").
+
+**Next session (if picked up):** `plan_limits`/`usage_counters`/`checkQuota()` is the part worth building first — everything downstream (F-009's usage display, the upsell UI, admin screens) reads off it. Team management UI (F-009 section 3) is the other genuinely-new piece with zero existing scaffolding.

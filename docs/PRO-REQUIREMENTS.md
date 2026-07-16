@@ -351,6 +351,53 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 ---
 
+#### F-009: Retailer Account & Team Settings
+**Status:** 🔴 **Not started** — planned, spec only (2026-07-16)
+
+**Priority:** P1  
+**Description:** Retailer-facing settings screen covering account and team management. Mostly UI wiring over pieces that already exist rather than new backend surface.
+
+**Sections:**
+1. **Profile** — edit shop name, owner name, city, state, GSTIN, categories, pincode. Delete/deactivate account (soft-delete via `Retailer.deleted_at`, already a column).
+2. **Subscription** — view current plan, usage vs limits (reuses F-008's "Plan usage" data + F-010 below), upgrade/downgrade/cancel (reuses the billing screen + Razorpay endpoints already built per `docs/PLAN.md` Month 4).
+3. **Team** — invite/remove shop staff, reuses the existing `Staff` table (`docs/DATABASE.md`) — no UI exists for it yet, this is the missing piece.
+4. **WhatsApp** — configure the WhatsApp number used for collection links (F-005) and remote try-on (F-103). New: `Retailer.whatsapp_number` (nullable, falls back to `phone` if unset) — today the code assumes `phone` IS the WhatsApp number, which breaks for retailers using a separate business number.
+
+**Acceptance Criteria:**
+- Retailer can edit every profile field and see the change reflected on collection links immediately
+- Account delete requires confirmation + shows what happens to active collections/customers (soft-delete, not a hard delete — GST/audit records must survive per `docs/SECURITY.md`)
+- Team screen lists staff with role, add/remove without support involvement
+- WhatsApp number validated (10-digit Indian mobile) before save
+
+---
+
+#### F-010: Quota & Limits System (Admin-Configurable, Cross-Resource)
+**Status:** 🔴 **Not started** — planned, spec only (2026-07-16)
+
+**Priority:** P0 — blocks safe monetization; see CLAUDE.md Key Risk #4 (AI cost per try-on, margin tight at ₹999/month plan)
+
+**Problem:** Limits today are 3 hardcoded columns on `Retailer` (`max_products`, `max_customers`, `try_on_credits`, see `docs/DATABASE.md`), settable only by changing the whole plan. There is no limit — and no usage tracking — for AI-tagging calls, image crop, background removal, or general API requests. Every new metered resource today means a new column + new enforcement code scattered per endpoint. The only "buy more" path is the manual "extra 50 try-ons ₹299" line in the pricing table — not self-serve, not generalized to other resources.
+
+**Design — one mechanism for every resource, not one column per resource:**
+- `plan_limits` table: `(plan, resource_type, limit_per_period, period)` — admin edits rows in the existing admin panel; adding a new limit value never requires a schema change.
+- `retailer_limit_overrides` table: same shape keyed by `retailer_id` — lets admin grant one retailer a bespoke limit without inventing a new plan tier.
+- `usage_counters` table: `(retailer_id, resource_type, period_start, count)` — incremented by one shared `incrementUsage(retailerId, resourceType, n)` call at each metered action site.
+- One `checkQuota(retailerId, resourceType)` gate, called before every metered action. Over limit → `QuotaExceededError` → API responds 402 with `{ used, limit, resource_type, addon_price }` so the client can render an upsell instead of a bare failure.
+- `quota_addon_purchases` table — generalizes the existing "extra 50 try-ons ₹299" add-on to any `resource_type`. One-time Razorpay charge (reuses the subscription billing integration already built) tops up `usage_counters` for the current period.
+- `resource_type` enum, extensible: `PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST`.
+
+**Admin surface:** CRUD on `plan_limits` / `retailer_limit_overrides` inside the existing admin panel (`docs/PLAN.md` Month 4 — admin panel already deployed) — no new admin infrastructure needed, just new screens on it.
+
+**Explicitly not in this feature:** per-second/burst rate limiting (that's an infra concern — Fastify/Cloudflare rate-limit plugin — not a billing quota) and usage-based dynamic pricing (flat overage packs only, matches the existing pricing model in Section 6).
+
+**Acceptance Criteria:**
+- Every metered action (upload, AI tag, try-on, crop, bg-removal, API call) is gated by `checkQuota` before it runs
+- Admin can change any plan's limit for any resource without a deploy
+- Retailer sees usage vs limit per resource in F-009's Subscription section
+- Crossing a limit shows an in-app "buy more" flow, completes via Razorpay, unblocks immediately on webhook confirmation
+
+---
+
 ### Phase 1: Core AI Features (Month 5–8)
 
 #### F-101: Fashion DNA — AI Customer Matching
@@ -571,6 +618,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - Extra 50 try-ons: ₹299
 - 100 WhatsApp API conversations: ₹49 (pass-through)
 - Additional staff seat: ₹199/month
+- Generalized to any metered resource (uploads, AI tagging, crop, bg-removal, API calls) via F-010's `quota_addon_purchases` — planned, see Section 3 F-010
 
 ### Billing Rules
 - Payment via Razorpay (UPI, cards, netbanking) — **code complete, deferred. Launch with free trial only**

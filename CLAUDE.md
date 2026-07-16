@@ -43,6 +43,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - Customer mobile web page (view, favorite, enquire)
 - Basic in-store AI search ("cotton pink suits under ₹2000")
 - Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, planned): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — see `docs/PRO-REQUIREMENTS.md`
+- Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009, planned) + generalized quota/limits system across upload/AI-tagging/try-on/crop/bg-removal/API with admin-set per-plan limits and self-serve overage purchase (F-010, planned) — see `docs/PRO-REQUIREMENTS.md`
 
 **NOT in MVP:** VTO, WhatsApp API automation, Fashion DNA AI matching, Manufacturer/Wholesaler layer, UPI payment tracking
 

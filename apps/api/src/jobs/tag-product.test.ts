@@ -5,10 +5,22 @@ const mockUpdateProduct = vi.fn()
 const mockTagProductImageUrls = vi.fn()
 const mockAddEmbeddingJob = vi.fn()
 
+// F-010 quota gate (checkQuota/incrementUsage) — no plan_limits/override row
+// in these fixtures, so effectiveLimit() resolves null and every call is a
+// fail-open no-op, same as the unseeded-table behavior in production today.
+const mockFindUniqueOverride = vi.fn().mockResolvedValue(null)
+const mockFindUniqueOrThrowRetailer = vi.fn().mockResolvedValue({ plan: 'STARTER' })
+const mockFindUniquePlanLimit = vi.fn().mockResolvedValue(null)
+const mockUpsertUsageCounter = vi.fn().mockResolvedValue({})
+
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     productPhoto: { updateMany: mockUpdateManyPhoto },
     product: { update: mockUpdateProduct },
+    retailer: { findUniqueOrThrow: mockFindUniqueOrThrowRetailer },
+    retailerLimitOverride: { findUnique: mockFindUniqueOverride },
+    planLimit: { findUnique: mockFindUniquePlanLimit },
+    usageCounter: { upsert: mockUpsertUsageCounter },
   },
   Prisma: {},
 }))
@@ -53,6 +65,10 @@ beforeEach(() => {
   mockUpdateProduct.mockReset().mockResolvedValue({})
   mockTagProductImageUrls.mockReset()
   mockAddEmbeddingJob.mockReset().mockResolvedValue(undefined)
+  mockFindUniqueOverride.mockReset().mockResolvedValue(null)
+  mockFindUniqueOrThrowRetailer.mockReset().mockResolvedValue({ plan: 'STARTER' })
+  mockFindUniquePlanLimit.mockReset().mockResolvedValue(null)
+  mockUpsertUsageCounter.mockReset().mockResolvedValue({})
 })
 
 describe('handleTagProduct', () => {

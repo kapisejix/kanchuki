@@ -406,6 +406,49 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     return { data: { plan: body.plan, plan_status: body.status, ...updateData } }
   })
 
+  // ─── GET /admin/plan-limits ─────────────────────────────────────
+  // F-010: admin-configurable quota per plan/resource. Read-only for now
+  // for retailer_limit_overrides — this screen manages plan-wide defaults.
+  server.get('/plan-limits', async () => {
+    const rows = await prisma.planLimit.findMany({
+      orderBy: [{ plan: 'asc' }, { resource_type: 'asc' }],
+    })
+    return { data: rows }
+  })
+
+  // ─── PUT /admin/plan-limits ─────────────────────────────────────
+  // Upsert one (plan, resource_type) row. Creates it if this is the first
+  // time a resource is being limited (e.g. admin decides to start metering
+  // API_REQUEST later) — checkQuota() treats a missing row as unlimited,
+  // so this is also how a limit gets turned on for the first time.
+  server.put('/plan-limits', async (request) => {
+    const body = z
+      .object({
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
+        resource_type: z.enum([
+          'PRODUCT_UPLOAD',
+          'AI_TAGGING_CALL',
+          'TRY_ON',
+          'IMAGE_CROP',
+          'BG_REMOVAL',
+          'API_REQUEST',
+        ]),
+        limit_per_period: z.number().int().min(-1),
+        period: z.enum(['DAY', 'MONTH', 'LIFETIME']),
+      })
+      .parse(request.body)
+
+    const row = await prisma.planLimit.upsert({
+      where: { plan_resource_type: { plan: body.plan, resource_type: body.resource_type } },
+      create: body,
+      update: { limit_per_period: body.limit_per_period, period: body.period },
+    })
+
+    request.log.info({ plan: body.plan, resource_type: body.resource_type }, 'Plan limit updated')
+
+    return { data: row }
+  })
+
   // ─── GET /admin/usage ──────────────────────────────────────────
   // Platform-wide usage stats including try-on and revenue.
   server.get('/usage', async () => {

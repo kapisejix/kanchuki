@@ -82,6 +82,7 @@ export interface TaggingJobData {
   photo_url: string
   r2_key: string
   back_photo_url?: string
+  auto_cleanup?: boolean // crop + white-background cleanup; retailer-toggleable, default true
 }
 
 export interface EmbeddingJobData {

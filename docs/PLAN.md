@@ -133,6 +133,21 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
+### Month 4b: Retailer Settings + Quota & Limits System (F-009, F-010)
+
+**Status:** Not started — spec'd 2026-07-16, see `docs/PRO-REQUIREMENTS.md` F-009/F-010
+
+- [ ] Retailer settings screen: profile edit/delete, subscription view (reuses existing billing screen), team/staff management UI (reuses existing `Staff` table), WhatsApp number config field
+- [ ] `plan_limits` + `retailer_limit_overrides` tables (admin-configurable, per resource_type)
+- [ ] `usage_counters` table + shared `incrementUsage()` call at each metered action site
+- [ ] Shared `checkQuota()` gate wired into: product upload, AI tagging, try-on, image crop, bg-removal, API requests
+- [ ] `quota_addon_purchases` — self-serve overage purchase via Razorpay (reuses existing subscription billing integration)
+- [ ] Admin panel screens for editing `plan_limits` / `retailer_limit_overrides`
+
+**Deliverable:** Admin can set/adjust limits per plan or per retailer for every metered resource without a deploy; retailers can self-serve buy more when they cross a limit.
+
+---
+
 ## Phase 0.5: Internal Team Management (Admin / Marketing / Support)
 
 **Goal:** Move off single shared admin login to per-user staff accounts with territory-based access, so the marketing team can onboard retailers in-person and support can be routed by location. See `docs/PRO-REQUIREMENTS.md` Section 10, `docs/DATABASE.md` `TeamMember`/`Territory`/`SupportTicket` models.
