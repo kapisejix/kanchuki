@@ -16,14 +16,15 @@ import { useQueryClient } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
+import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, Camera, ImagePlus, ChevronDown, Check, SkipForward } from 'lucide-react-native'
+import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { OCCASION_TYPES, PRODUCT_CATEGORIES } from '@kanchuki/shared'
 
-type Slot = 'front' | 'back'
-type Step = 'camera' | 'preview' | 'back_choice' | 'ai_tagging' | 'edit' | 'saving'
+type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
+type CaptureMode = 'photo' | 'scan'
 
 type AiTags = {
   category: string | null
@@ -40,7 +41,7 @@ type UploadInfo = {
   product_id: string
 }
 
-type UploadStage = 'preparing' | 'linking_front' | 'uploading_front' | 'linking_back' | 'uploading_back' | 'finalizing'
+type UploadStage = 'preparing' | 'linking' | 'uploading' | 'finalizing'
 
 type UploadProgress = {
   stage: UploadStage
@@ -50,25 +51,34 @@ type UploadProgress = {
 
 const UPLOAD_STEPS: { stage: UploadStage; label: string; icon: string }[] = [
   { stage: 'preparing', label: 'Prepare', icon: '📷' },
-  { stage: 'linking_front', label: 'Link', icon: '🔗' },
-  { stage: 'uploading_front', label: 'Upload', icon: '☁️' },
+  { stage: 'linking', label: 'Link', icon: '🔗' },
+  { stage: 'uploading', label: 'Upload', icon: '☁️' },
   { stage: 'finalizing', label: 'Done', icon: '✅' },
 ]
+
+// Scan mode: burst a few stills while the retailer pans over the product,
+// keep the sharpest one client-side. No video is ever recorded or uploaded.
+const SCAN_BURST_COUNT = 5
+const SCAN_BURST_INTERVAL_MS = 200
 
 export default function AddProductScreen() {
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('camera')
-  const [slot, setSlot] = useState<Slot>('front')
+  const [captureMode, setCaptureMode] = useState<CaptureMode>('photo')
+  const [isScanning, setIsScanning] = useState(false)
   const [permission, requestPermission] = useCameraPermissions()
-  const [photos, setPhotos] = useState<{ front: string | null; back: string | null }>({
-    front: null,
-    back: null,
-  })
-  const [uploadInfo, setUploadInfo] = useState<{ front: UploadInfo | null; back: UploadInfo | null }>({
-    front: null,
-    back: null,
-  })
+  const [photo, setPhoto] = useState<string | null>(null)
+  // Scan mode: retailer picks which burst frame to keep instead of the app
+  // silently auto-picking one. scanBestUri marks the file-size-sharpest
+  // frame as the pre-highlighted recommendation.
+  const [scanFrames, setScanFrames] = useState<string[]>([])
+  const [scanBestUri, setScanBestUri] = useState<string | null>(null)
+  const [scanSelected, setScanSelected] = useState<string[]>([])
+  // Extra frames the retailer multi-selected on the scan review screen —
+  // uploaded as additional product photos after the primary photo saves.
+  const [extraFrames, setExtraFrames] = useState<string[]>([])
+  const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null)
   const [aiTags, setAiTags] = useState<AiTags | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
@@ -90,11 +100,62 @@ export default function AddProductScreen() {
 
   // ── Camera capture ──────────────────────────────────────────────
 
+  const processPhoto = async (uri: string) => {
+    try {
+      // Compress to target < 500KB
+      const compressed = await ImageManipulator.manipulateAsync(
+        uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      )
+      setPhoto(compressed.uri)
+      setStep('preview')
+    } catch (err) {
+      Alert.alert(
+        'Photo Error',
+        err instanceof Error ? err.message : 'Could not process that photo. Try again.',
+      )
+    }
+  }
+
   const handleCapture = async () => {
     if (!cameraRef.current) return
     const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 })
     if (!photo?.uri) return
     await processPhoto(photo.uri)
+  }
+
+  const handleScanCapture = async () => {
+    if (!cameraRef.current || isScanning) return
+    setIsScanning(true)
+    try {
+      const frames: string[] = []
+      for (let i = 0; i < SCAN_BURST_COUNT; i++) {
+        const shot = await cameraRef.current.takePictureAsync({ quality: 0.85 })
+        if (shot?.uri) frames.push(shot.uri)
+        if (i < SCAN_BURST_COUNT - 1) {
+          await new Promise((r) => setTimeout(r, SCAN_BURST_INTERVAL_MS))
+        }
+      }
+      if (frames.length === 0) throw new Error('Scan failed — no frames captured')
+
+      // ponytail: file size as a sharpness proxy — a sharper frame carries more
+      // high-frequency detail and compresses larger at the same JPEG quality.
+      // Cheap, no native image analysis. Upgrade to on-device Laplacian
+      // variance scoring if bad-frame picks show up in practice. This only
+      // picks the pre-highlighted recommendation — the retailer still
+      // chooses which frame to keep on the review screen below.
+      const sized = frames.map((uri) => ({ uri, size: new File(uri).size }))
+      const best = sized.reduce((a, b) => (b.size > a.size ? b : a))
+      setScanFrames(frames)
+      setScanBestUri(best.uri)
+      setScanSelected([best.uri])
+      setStep('scan_review')
+    } catch (err) {
+      Alert.alert('Scan Error', err instanceof Error ? err.message : 'Could not scan product. Try again.')
+    } finally {
+      setIsScanning(false)
+    }
   }
 
   const handlePickFromGallery = async () => {
@@ -104,24 +165,6 @@ export default function AddProductScreen() {
     })
     if (result.canceled || !result.assets[0]) return
     await processPhoto(result.assets[0].uri)
-  }
-
-  const processPhoto = async (uri: string) => {
-    try {
-      // Compress to target < 500KB
-      const compressed = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1200 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-      )
-      setPhotos((prev) => ({ ...prev, [slot]: compressed.uri }))
-      setStep('preview')
-    } catch (err) {
-      Alert.alert(
-        'Photo Error',
-        err instanceof Error ? err.message : 'Could not process that photo. Try again.',
-      )
-    }
   }
 
   // ── Update progress with smooth animation ───────────────────────
@@ -163,7 +206,7 @@ export default function AddProductScreen() {
     ).start()
   }, [spinnerRotate])
 
-  // ── Upload one photo, return its UploadInfo ─────────────────────
+  // ── Upload photo, return its UploadInfo ──────────────────────────
 
   const uploadPhoto = async (
     uri: string,
@@ -179,38 +222,23 @@ export default function AddProductScreen() {
     return info
   }
 
-  // ── Upload photo(s) + queue AI tagging ──────────────────────────
+  // ── Upload photo + queue AI tagging ──────────────────────────────
 
   const handleUploadAndTag = async () => {
-    if (!photos.front) return
+    if (!photo) return
     setStep('ai_tagging')
     setAiError(null)
     startSpinner()
 
     try {
-      // Stage 1: Prepare
       updateProgress(5, 'preparing', 'Getting ready...')
+      updateProgress(10, 'linking', 'Starting upload...')
 
-      // Stage 2: Upload front photo
-      updateProgress(10, 'linking_front', 'Starting upload...')
-      const frontInfo = await uploadPhoto(photos.front, (pct, msg) => {
-        updateProgress(pct, 'linking_front', msg)
+      const info = await uploadPhoto(photo, (pct, msg) => {
+        updateProgress(pct, 'uploading', msg)
       })
-      updateProgress(55, 'uploading_front', 'Front photo uploaded ✓')
+      setUploadInfo(info)
 
-      // Stage 3: Upload back photo (if available)
-      let backInfo = null
-      if (photos.back) {
-        updateProgress(60, 'linking_back', 'Uploading back photo...')
-        backInfo = await uploadPhoto(photos.back, (pct, msg) => {
-          updateProgress(pct, 'linking_back', msg)
-        })
-        updateProgress(78, 'uploading_back', 'Back photo uploaded ✓')
-      }
-
-      setUploadInfo({ front: frontInfo, back: backInfo })
-
-      // Stage 4: Finalize
       updateProgress(90, 'finalizing', 'Almost done...')
       await new Promise((r) => setTimeout(r, 400))
 
@@ -226,25 +254,22 @@ export default function AddProductScreen() {
     } catch (err) {
       spinnerRotate.stopAnimation()
       setAiError(err instanceof Error ? err.message : 'Upload failed')
-      setStep('back_choice')
+      setStep('preview')
     }
   }
 
   // ── Save product ────────────────────────────────────────────────
 
   const handleSave = async () => {
-    if (!uploadInfo.front) return
+    if (!uploadInfo) return
     setStep('saving')
 
     const priceInPaise = price ? Math.round(parseFloat(price) * 100) : undefined
 
     try {
-      await productApi.create({
-        photo_r2_key: uploadInfo.front.r2_key,
-        photo_url: uploadInfo.front.public_url,
-        ...(uploadInfo.back
-          ? { back_photo_r2_key: uploadInfo.back.r2_key, back_photo_url: uploadInfo.back.public_url }
-          : {}),
+      const created = await productApi.create({
+        photo_r2_key: uploadInfo.r2_key,
+        photo_url: uploadInfo.public_url,
         price_min: priceInPaise,
         price_max: priceInPaise,
         category: aiTags?.category ?? undefined,
@@ -256,6 +281,22 @@ export default function AddProductScreen() {
         notes: notes || undefined,
         auto_cleanup: autoCleanup,
       })
+
+      // Extra frames the retailer multi-selected on the scan review screen —
+      // best-effort: one failing shouldn't undo a product that already saved.
+      const productId = (created.data as { id: string }).id
+      for (const uri of extraFrames) {
+        try {
+          const info = await uploadPhoto(uri)
+          await productApi.addPhoto(productId, {
+            r2_key: info.r2_key,
+            url: info.public_url,
+            content_type: 'image/jpeg',
+          })
+        } catch (err) {
+          console.warn('Extra scan frame upload failed', err)
+        }
+      }
 
       void queryClient.invalidateQueries({ queryKey: ['products'] })
 
@@ -290,32 +331,43 @@ export default function AddProductScreen() {
     )
   }
 
-  // ── Camera step (front or back, depending on `slot`) ─────────────
+  // ── Camera step ────────────────────────────────────────────────
 
   if (step === 'camera') {
-    const label = slot === 'front' ? 'Front photo' : 'Back photo'
     return (
       <View className="flex-1 bg-black">
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
         <TouchableOpacity
-          onPress={() => (slot === 'back' ? setStep('back_choice') : router.back())}
+          onPress={() => router.back()}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
         >
           <X size={20} color="white" />
         </TouchableOpacity>
 
-        <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
-          <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
-            {label} · 1 of 2
-          </Text>
+        {/* Photo / Scan mode toggle */}
+        <View className="absolute left-0 right-0 flex-row items-center justify-center gap-2" style={{ top: insets.top + 8 }}>
+          <TouchableOpacity
+            onPress={() => setCaptureMode('photo')}
+            className={`px-4 py-1.5 rounded-full ${captureMode === 'photo' ? 'bg-cyan-600' : 'bg-black/50'}`}
+          >
+            <Text className="text-white text-xs font-semibold">Photo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setCaptureMode('scan')}
+            className={`px-4 py-1.5 rounded-full ${captureMode === 'scan' ? 'bg-cyan-600' : 'bg-black/50'}`}
+          >
+            <Text className="text-white text-xs font-semibold">Scan</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Frame guide */}
         <View className="flex-1 items-center justify-center">
-          <View className="w-72 h-80 border-2 border-white/40 rounded-3xl" />
-          <Text className="text-white/60 text-sm mt-4">Place product in frame</Text>
+          <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
+          <Text className="text-white/60 text-sm mt-4">
+            {captureMode === 'scan' ? 'Pan slowly over the product' : 'Fit product top to bottom in frame'}
+          </Text>
         </View>
 
         {/* Controls */}
@@ -323,6 +375,7 @@ export default function AddProductScreen() {
           <View className="flex-row items-center gap-10">
             <TouchableOpacity
               onPress={() => void handlePickFromGallery()}
+              disabled={isScanning}
               className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
             >
               <ImagePlus size={24} color="white" />
@@ -330,121 +383,154 @@ export default function AddProductScreen() {
 
             {/* Shutter */}
             <TouchableOpacity
-              onPress={() => void handleCapture()}
+              onPress={() => void (captureMode === 'scan' ? handleScanCapture() : handleCapture())}
+              disabled={isScanning}
               className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
             >
-              <View className="w-14 h-14 bg-white rounded-full" />
+              {isScanning ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <View className="w-14 h-14 bg-white rounded-full" />
+              )}
             </TouchableOpacity>
 
             <View className="w-14" />
           </View>
-          <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
+          <Text className="text-white/50 text-xs">
+            {isScanning
+              ? 'Scanning...'
+              : captureMode === 'scan'
+                ? 'Tap to scan · Gallery to import'
+                : 'Tap to capture · Gallery to import'}
+          </Text>
         </View>
       </View>
     )
   }
 
-  // ── Preview step (front or back) ──────────────────────────────────
+  // ── Scan review step — pick which burst frames to keep ───────────
+
+  if (step === 'scan_review') {
+    const toggleFrame = (uri: string) => {
+      setScanSelected((prev) =>
+        prev.includes(uri) ? prev.filter((u) => u !== uri) : [...prev, uri],
+      )
+    }
+
+    const confirmSelection = () => {
+      if (scanSelected.length === 0) return
+      // Recommended frame leads if selected, else keep capture order.
+      const ordered = scanBestUri && scanSelected.includes(scanBestUri)
+        ? [scanBestUri, ...scanSelected.filter((u) => u !== scanBestUri)]
+        : scanSelected
+      const [primary, ...rest] = ordered
+      setExtraFrames(rest)
+      void processPhoto(primary)
+    }
+
+    return (
+      <View className="flex-1 bg-black" style={{ paddingTop: insets.top + 16 }}>
+        <TouchableOpacity
+          onPress={() => {
+            setScanFrames([])
+            setScanBestUri(null)
+            setScanSelected([])
+            setStep('camera')
+          }}
+          className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center z-10"
+          style={{ top: insets.top + 8 }}
+        >
+          <X size={20} color="white" />
+        </TouchableOpacity>
+
+        <Text className="text-white text-center font-semibold mt-2">Pick shots to keep</Text>
+        <Text className="text-white/50 text-xs text-center mt-1 mb-4 px-8">
+          Recommended frame is pre-selected — tap thumbnails to add or remove, only selected shots are saved
+        </Text>
+
+        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+          <View className="flex-row flex-wrap justify-center gap-3 px-4">
+            {scanFrames.map((uri, idx) => {
+              const isBest = uri === scanBestUri
+              const isSelected = scanSelected.includes(uri)
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => toggleFrame(uri)}
+                  className={`w-28 h-40 rounded-xl overflow-hidden border-2 ${isSelected ? 'border-cyan-400' : 'border-white/20'}`}
+                >
+                  <Image
+                    source={{ uri }}
+                    style={{ width: '100%', height: '100%', opacity: isSelected ? 1 : 0.5 }}
+                    contentFit="cover"
+                  />
+                  {isBest && (
+                    <View className="absolute top-1.5 left-1.5 bg-cyan-500 px-2 py-0.5 rounded-full">
+                      <Text className="text-white text-[9px] font-bold">Best</Text>
+                    </View>
+                  )}
+                  <View
+                    className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full items-center justify-center border-2 ${isSelected ? 'bg-cyan-500 border-cyan-500' : 'bg-black/40 border-white/60'}`}
+                  >
+                    {isSelected && <Check size={14} color="white" />}
+                  </View>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
+        </ScrollView>
+
+        <View className="px-6" style={{ paddingBottom: 24 + insets.bottom }}>
+          <TouchableOpacity
+            onPress={confirmSelection}
+            disabled={scanSelected.length === 0}
+            className={`py-4 rounded-2xl items-center ${scanSelected.length === 0 ? 'bg-white/10' : 'bg-cyan-600'}`}
+          >
+            <Text className="text-white font-semibold">
+              {scanSelected.length <= 1
+                ? 'Continue →'
+                : `Continue with ${scanSelected.length} photos →`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  // ── Preview step ───────────────────────────────────────────────
 
   if (step === 'preview') {
-    const uri = photos[slot]
     return (
       <View className="flex-1 bg-black">
-        {uri && (
+        {photo && (
           <Image
-            source={{ uri }}
+            source={{ uri: photo }}
             style={StyleSheet.absoluteFill}
             contentFit="contain"
           />
         )}
+        {aiError && (
+          <View className="absolute top-0 left-0 right-0 bg-red-500/90 px-4 py-3" style={{ paddingTop: insets.top + 12 }}>
+            <Text className="text-white text-sm text-center">{aiError}</Text>
+          </View>
+        )}
         <View className="absolute bottom-12 left-0 right-0 flex-row gap-4 px-6">
           <TouchableOpacity
-            onPress={() => setStep('camera')}
+            onPress={() => {
+              setPhoto(null)
+              setAiError(null)
+              setExtraFrames([])
+              setStep('camera')
+            }}
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">Retake</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setStep('back_choice')}
+            onPress={() => void handleUploadAndTag()}
             className="flex-1 bg-cyan-600 py-4 rounded-2xl items-center"
           >
-            <Text className="text-white font-semibold">
-              {slot === 'front' ? 'Use Photo →' : 'Use Photo ✓'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    )
-  }
-
-  // ── Back-photo choice step ─────────────────────────────────────────
-
-  if (step === 'back_choice') {
-    const backDone = !!photos.back
-    return (
-      <View className="flex-1 bg-gray-950 px-6" style={{ paddingTop: insets.top + 24 }}>
-        {aiError && (
-          <View className="bg-red-500/90 rounded-xl p-3 mb-4">
-            <Text className="text-white text-sm">{aiError}</Text>
-          </View>
-        )}
-
-        <Text className="text-white text-xl font-bold mb-2">
-          {backDone ? 'Back photo added' : 'Add a back photo?'}
-        </Text>
-        <Text className="text-gray-400 text-sm mb-6">
-          Back photos help AI read fabric texture, embellishments, and design numbers on the tag.
-        </Text>
-
-        <View className="flex-row gap-4 mb-8">
-          <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-800 border border-gray-700">
-            {photos.front && (
-              <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            )}
-            <Text className="absolute bottom-2 left-2 text-white text-xs bg-black/60 px-2 py-0.5 rounded-full">
-              Front
-            </Text>
-          </View>
-          <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-800 border border-gray-700 items-center justify-center">
-            {photos.back ? (
-              <>
-                <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                <Text className="absolute bottom-2 left-2 text-white text-xs bg-black/60 px-2 py-0.5 rounded-full">
-                  Back
-                </Text>
-              </>
-            ) : (
-              <Camera size={28} color="#6B7280" />
-            )}
-          </View>
-        </View>
-
-        <View className="gap-3">
-          {!backDone && (
-            <TouchableOpacity
-              onPress={() => {
-                setSlot('back')
-                setStep('camera')
-              }}
-              className="bg-cyan-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
-            >
-              <Camera size={18} color="white" />
-              <Text className="text-white font-semibold">Take / Choose Back Photo</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            onPress={() => void handleUploadAndTag()}
-            className="bg-white/10 py-4 rounded-2xl items-center flex-row justify-center gap-2"
-          >
-            {backDone ? (
-              <Check size={18} color="white" />
-            ) : (
-              <SkipForward size={18} color="white" />
-            )}
-            <Text className="text-white font-semibold">
-              {backDone ? 'Continue →' : 'Skip — front photo only'}
-            </Text>
+            <Text className="text-white font-semibold">{aiError ? 'Try Again' : 'Use Photo →'}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -454,14 +540,8 @@ export default function AddProductScreen() {
   // ── AI Tagging step ───────────────────────────────────────────────
 
   if (step === 'ai_tagging') {
-    // Resolve which step the user is visually on (0-indexed)
-    const hasBackPhoto = photos.back !== null
-    const stepOrder: UploadStage[] = hasBackPhoto
-      ? ['preparing', 'linking_front', 'uploading_front', 'linking_back', 'uploading_back', 'finalizing']
-      : ['preparing', 'linking_front', 'uploading_front', 'finalizing']
-
-    const currentStepIndex = stepOrder.indexOf(uploadProgress.stage)
-    const totalSteps = stepOrder.length
+    const currentStepIndex = UPLOAD_STEPS.findIndex((s) => s.stage === uploadProgress.stage)
+    const totalSteps = UPLOAD_STEPS.length
     const isComplete = uploadProgress.percent === 100
 
     const animWidth = progressAnim.interpolate({
@@ -479,7 +559,7 @@ export default function AddProductScreen() {
         <TouchableOpacity
           onPress={() => {
             setAiError('Upload cancelled')
-            setStep('back_choice')
+            setStep('preview')
           }}
           className="absolute left-4 w-10 h-10 bg-white/10 rounded-full items-center justify-center z-10"
           style={{ top: insets.top + 8 }}
@@ -500,9 +580,9 @@ export default function AddProductScreen() {
         {/* Photo preview */}
         <View className="items-center mb-6">
           <View className="relative">
-            {photos.front && (
+            {photo && (
               <Image
-                source={{ uri: photos.front }}
+                source={{ uri: photo }}
                 contentFit="cover"
                 style={{ width: 224, height: 288, borderRadius: 24, opacity: isComplete ? 0.9 : 0.4 }}
               />
@@ -558,24 +638,9 @@ export default function AddProductScreen() {
         {/* Step indicator */}
         <View className="flex-row items-start justify-center px-4">
           {UPLOAD_STEPS.map((stepDef, idx) => {
-            // Skip 'uploading_front' and 'linking_back' if no back photo
-            if (!hasBackPhoto && (stepDef.stage === 'linking_back' || stepDef.stage === 'uploading_back')) {
-              return null
-            }
-
             const completed = isCompletedStep(idx)
             const active = isActiveStep(idx)
-
-            // Stage emoji map
-            const stageIcons: Record<UploadStage, string> = {
-              preparing: '📷',
-              linking_front: '🔗',
-              uploading_front: '☁️',
-              linking_back: '🔗',
-              uploading_back: '☁️',
-              finalizing: '✅',
-            }
-            const displayIcon = completed || isComplete ? '✅' : active ? (stageIcons[stepDef.stage] ?? '○') : '○'
+            const displayIcon = completed || isComplete ? '✅' : active ? stepDef.icon : '○'
 
             return (
               <View key={stepDef.stage} className="items-center flex-1">
@@ -621,14 +686,14 @@ export default function AddProductScreen() {
   // ── Edit / Confirm step ───────────────────────────────────────────
 
   return (
-    <ScrollView className="flex-1 bg-cyan-50">
-      {/* Header */}
+    <View className="flex-1 bg-cyan-50">
+      {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <X size={22} color="#374151" />
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={24} color="#374151" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-gray-900">Product Details</Text>
         <TouchableOpacity
@@ -642,24 +707,18 @@ export default function AddProductScreen() {
         </TouchableOpacity>
       </View>
 
+      <ScrollView className="flex-1">
       <View className="px-4 py-4 gap-4">
         {/* Photo preview */}
-        <View className="flex-row gap-3">
-          {photos.front && (
-            <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-100">
-              <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-              <View className="absolute top-3 right-3 bg-cyan-600/90 px-2 py-1 rounded-full flex-row items-center gap-1">
-                <ActivityIndicator size="small" color="white" />
-                <Text className="text-white text-xs">AI tagging...</Text>
-              </View>
+        {photo && (
+          <View className="h-56 rounded-2xl overflow-hidden bg-gray-100">
+            <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+            <View className="absolute top-3 right-3 bg-cyan-600/90 px-2 py-1 rounded-full flex-row items-center gap-1">
+              <ActivityIndicator size="small" color="white" />
+              <Text className="text-white text-xs">AI tagging...</Text>
             </View>
-          )}
-          {photos.back && (
-            <View className="flex-1 h-48 rounded-2xl overflow-hidden bg-gray-100">
-              <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Auto-clean toggle: crop + white-background removal (runs server-side after Save) */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center justify-between">
@@ -755,6 +814,7 @@ export default function AddProductScreen() {
       </View>
 
       <View className="h-12" />
-    </ScrollView>
+      </ScrollView>
+    </View>
   )
 }

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Animated,
+  Modal,
 } from 'react-native'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -16,7 +17,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { X, Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight } from 'lucide-react-native'
+import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
@@ -89,6 +90,13 @@ export default function ProductDetailScreen() {
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  // Manual crop + white-background cleanup for a photo already on the
+  // product. Cache-bust the displayed uri per photo since cleanup overwrites
+  // the same r2_key/url — expo-image/CDN would otherwise keep showing the
+  // old cached bytes at an unchanged URL.
+  const [cleaningPhotoId, setCleaningPhotoId] = useState<string | null>(null)
+  const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
 
   // Editable AI fields
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
@@ -102,6 +110,11 @@ export default function ProductDetailScreen() {
   const [variantPreviewUrl, setVariantPreviewUrl] = useState<string | null>(null)
   const [variantPreviewColor, setVariantPreviewColor] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+  // Measured on layout rather than trusting the static Dimensions snapshot —
+  // if the rendered carousel width ever differs from SCREEN_WIDTH (safe-area
+  // insets, split-screen, tablet), scrollTo's computed x lands on the wrong
+  // page and paging silently stops working.
+  const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH)
   const carouselRef = useRef<ScrollView>(null)
   const displayPhotosRef = useRef(0)
 
@@ -145,15 +158,24 @@ export default function ProductDetailScreen() {
     return result
   })()
 
+  const displayUrl = (photo: { id: string; url: string }) => {
+    const bust = photoCacheBust[photo.id]
+    return bust ? `${photo.url}${photo.url.includes('?') ? '&' : '?'}cb=${bust}` : photo.url
+  }
+
   const currentPhotoUrl = displayPhotos[selectedPhotoIndex]?.url ?? null
   const currentPhotoIsVariant = (displayPhotos[selectedPhotoIndex] as { is_variant_preview?: boolean } | undefined)?.is_variant_preview ?? false
 
   const goToPhoto = useCallback((index: number) => {
     const count = displayPhotosRef.current
     const clamped = Math.max(0, Math.min(index, count - 1))
-    carouselRef.current?.scrollTo({ x: clamped * SCREEN_WIDTH, animated: true })
+    // State update first: the thumbnail/dot highlight and the arrow
+    // visibility all read from selectedPhotoIndex, so they must switch even
+    // if the imperative scrollTo below silently no-ops (e.g. ref not yet
+    // attached, or fires before the ScrollView has measured its layout).
     setSelectedPhotoIndex(clamped)
-  }, [])
+    carouselRef.current?.scrollTo({ x: clamped * carouselWidth, animated: true })
+  }, [carouselWidth])
 
   // When a variant is selected, scroll the carousel to the variant photo
   // after the state update has rendered the new displayPhotos array.
@@ -161,8 +183,8 @@ export default function ProductDetailScreen() {
     if (variantPreviewUrl && product) {
       const variantIdx = displayPhotos.length - 1
       if (variantIdx >= (product.photos.length ?? 0)) {
-        carouselRef.current?.scrollTo({ x: variantIdx * SCREEN_WIDTH, animated: true })
         setSelectedPhotoIndex(variantIdx)
+        carouselRef.current?.scrollTo({ x: variantIdx * carouselWidth, animated: true })
       }
     }
   }, [variantPreviewUrl]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -366,15 +388,34 @@ export default function ProductDetailScreen() {
     }
   }
 
+  const handleCleanupPhoto = async (photoId: string) => {
+    if (!product) return
+    setCleaningPhotoId(photoId)
+    try {
+      await productApi.cleanupPhoto(product.id, photoId)
+      setPhotoCacheBust((prev) => ({ ...prev, [photoId]: Date.now() }))
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to clean up photo')
+    } finally {
+      setCleaningPhotoId(null)
+    }
+  }
+
   // Many vendor "set" shots (kameez+dupatta draped on a mannequin, with the
   // folded bottom piece sitting on a stand in the same frame — see
   // docs/PRO-REQUIREMENTS.md F-102) can't be piece-tagged as-is: tagging is
   // per-whole-photo, and one photo can't be both pieces. This re-picks the
-  // same image from the gallery with the OS's native crop tool, uploads the
-  // cropped result as a new ProductPhoto, and tags it directly — no new
-  // dependency, expo-image-picker's built-in allowsEditing crop screen
-  // already covers this.
+  // same image from the gallery and crops out just the requested piece.
+  //
+  // Uses a custom drag-line crop screen below instead of ImagePicker's
+  // allowsEditing — on iOS that native editor is a fixed, non-resizable
+  // square crop box, which can't express "everything above/below this line",
+  // the actual thing retailers need for a top/bottom garment split.
   const [cropping, setCropping] = useState<'upper' | 'lower' | null>(null)
+  const [cropDraft, setCropDraft] = useState<{ uri: string; width: number; height: number; piece: 'upper' | 'lower' } | null>(null)
+  const [splitFraction, setSplitFraction] = useState(0.5)
+  const [cropSaving, setCropSaving] = useState(false)
 
   const handleCropPiece = async (piece: 'upper' | 'lower') => {
     if (!product) return
@@ -386,16 +427,33 @@ export default function ProductDetailScreen() {
         return
       }
 
-      const picked = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.85,
-      })
-      if (picked.canceled || !picked.assets[0]?.uri) return
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
+      const asset = picked.canceled ? null : picked.assets[0]
+      if (!asset?.uri || !asset.width || !asset.height) return
+
+      setSplitFraction(0.5)
+      setCropDraft({ uri: asset.uri, width: asset.width, height: asset.height, piece })
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to open photo')
+    } finally {
+      setCropping(null)
+    }
+  }
+
+  const handleConfirmCrop = async () => {
+    if (!product || !cropDraft) return
+    setCropSaving(true)
+    try {
+      const { uri, width, height, piece } = cropDraft
+      const splitY = Math.round(splitFraction * height)
+      const crop =
+        piece === 'upper'
+          ? { originX: 0, originY: 0, width, height: splitY }
+          : { originX: 0, originY: splitY, width, height: height - splitY }
 
       const manipulated = await ImageManipulator.manipulateAsync(
-        picked.assets[0].uri,
-        [{ resize: { width: 1200 } }],
+        uri,
+        [{ crop }, { resize: { width: 1200 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       )
 
@@ -411,27 +469,30 @@ export default function ProductDetailScreen() {
         piece_type: piece,
       })
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+      setCropDraft(null)
     } catch (err) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to crop photo')
     } finally {
-      setCropping(null)
+      setCropSaving(false)
     }
   }
 
   const handleDelete = () => {
-    if (!product) return
+    if (!product || deleting) return
     Alert.alert('Delete Product', 'This removes it from your catalog. This cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
+          setDeleting(true)
           try {
             await productApi.delete(product.id)
             invalidate()
             router.back()
           } catch (err) {
             Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete product')
+            setDeleting(false)
           }
         },
       },
@@ -447,14 +508,14 @@ export default function ProductDetailScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-cyan-50">
-      {/* Header */}
+    <View className="flex-1 bg-cyan-50">
+      {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
-          <X size={22} color="#374151" />
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={24} color="#374151" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-gray-900">Product Details</Text>
         <TouchableOpacity
@@ -470,10 +531,18 @@ export default function ProductDetailScreen() {
         </TouchableOpacity>
       </View>
 
+      <ScrollView className="flex-1">
       {/* Photo Gallery — swipeable carousel */}
       <View className="bg-white">
         {/* Swipeable photo carousel */}
-        <View className="relative" style={{ height: 380 }}>
+        <View
+          className="relative"
+          style={{ height: 380 }}
+          onLayout={(e) => {
+            const w = e.nativeEvent.layout.width
+            if (w > 0 && w !== carouselWidth) setCarouselWidth(w)
+          }}
+        >
           {displayPhotos.length > 0 ? (
             <ScrollView
               ref={carouselRef}
@@ -485,7 +554,7 @@ export default function ProductDetailScreen() {
               decelerationRate="fast"
               scrollEventThrottle={16}
               onMomentumScrollEnd={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH)
+                const index = Math.round(e.nativeEvent.contentOffset.x / carouselWidth)
                 setSelectedPhotoIndex(index)
               }}
               style={{ flex: 1 }}
@@ -494,7 +563,7 @@ export default function ProductDetailScreen() {
                 <Animated.View
                   key={photo.id}
                   style={{
-                    width: SCREEN_WIDTH,
+                    width: carouselWidth,
                     height: 380,
                     transform: [
                       { scale: scaleAnim },
@@ -508,7 +577,7 @@ export default function ProductDetailScreen() {
                 >
                   {!imageErrors.has(photo.url) ? (
                     <Image
-                      source={{ uri: photo.url }}
+                      source={{ uri: displayUrl(photo) }}
                       style={{ width: '100%', height: '100%' }}
                       contentFit="cover"
                       onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
@@ -598,7 +667,7 @@ export default function ProductDetailScreen() {
                     }`}
                   >
                     <Image
-                      source={{ uri: photo.url }}
+                      source={{ uri: displayUrl(photo) }}
                       style={{ width: '100%', height: '100%' }}
                       contentFit="cover"
                     />
@@ -677,6 +746,26 @@ export default function ProductDetailScreen() {
               </TouchableOpacity>
             ))}
         </View>
+      )}
+
+      {/* Manual crop + white-background cleanup for the currently viewed photo */}
+      {!currentPhotoIsVariant && displayPhotos[selectedPhotoIndex] && (
+        <TouchableOpacity
+          onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
+          disabled={cleaningPhotoId !== null}
+          className="mx-4 mt-2 flex-row items-center justify-center gap-1.5 border border-dashed border-cyan-300 rounded-xl py-2"
+        >
+          {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
+            <ActivityIndicator size="small" color="#0891B2" />
+          ) : (
+            <Wand2 size={14} color="#0891B2" />
+          )}
+          <Text className="text-cyan-700 text-xs font-medium">
+            {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id
+              ? 'Cleaning up...'
+              : 'Crop & remove background'}
+          </Text>
+        </TouchableOpacity>
       )}
 
       {!product.ai_tagged && !product.ai_tag_error && (
@@ -1015,14 +1104,97 @@ export default function ProductDetailScreen() {
         {/* Delete */}
         <TouchableOpacity
           onPress={handleDelete}
+          disabled={deleting}
           className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-red-100 bg-red-50"
         >
-          <Trash2 size={16} color="#DC2626" />
-          <Text className="text-red-600 font-semibold text-sm">Delete Product</Text>
+          {deleting ? (
+            <ActivityIndicator size="small" color="#DC2626" />
+          ) : (
+            <Trash2 size={16} color="#DC2626" />
+          )}
+          <Text className="text-red-600 font-semibold text-sm">
+            {deleting ? 'Deleting…' : 'Delete Product'}
+          </Text>
         </TouchableOpacity>
       </View>
 
       <View className="h-12" />
-    </ScrollView>
+      </ScrollView>
+
+      {/* Adjustable-height crop: drag the line to where the upper piece ends
+          / lower piece begins, then crop just that half. */}
+      <Modal visible={cropDraft !== null} transparent animationType="fade" onRequestClose={() => setCropDraft(null)}>
+        {cropDraft && (() => {
+          const displayWidth = SCREEN_WIDTH - 48
+          const displayHeight = displayWidth * (cropDraft.height / cropDraft.width)
+          const lineY = splitFraction * displayHeight
+          const updateSplit = (y: number) => {
+            const clamped = Math.max(0.08, Math.min(0.92, y / displayHeight))
+            setSplitFraction(clamped)
+          }
+          return (
+            <View className="flex-1 bg-black/80 items-center justify-center px-6">
+              <Text className="text-white font-semibold mb-1">
+                Drag the line to where the {cropDraft.piece} piece {cropDraft.piece === 'upper' ? 'ends' : 'begins'}
+              </Text>
+              <Text className="text-gray-400 text-xs mb-4">
+                {cropDraft.piece === 'upper' ? 'Top' : 'Bottom'} highlighted section will be saved
+              </Text>
+              <View
+                style={{ width: displayWidth, height: displayHeight }}
+                onStartShouldSetResponder={() => true}
+                onMoveShouldSetResponder={() => true}
+                onResponderGrant={(e) => updateSplit(e.nativeEvent.locationY)}
+                onResponderMove={(e) => updateSplit(e.nativeEvent.locationY)}
+              >
+                <Image source={{ uri: cropDraft.uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute', left: 0, right: 0, top: 0, height: lineY,
+                    backgroundColor: cropDraft.piece === 'lower' ? 'rgba(0,0,0,0.6)' : 'transparent',
+                  }}
+                />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute', left: 0, right: 0, top: lineY, bottom: 0,
+                    backgroundColor: cropDraft.piece === 'upper' ? 'rgba(0,0,0,0.6)' : 'transparent',
+                  }}
+                />
+                <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: lineY - 1, height: 2, backgroundColor: '#0891B2' }} />
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute', left: '50%', marginLeft: -22, top: lineY - 14,
+                    width: 44, height: 28, borderRadius: 14, backgroundColor: '#0891B2',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <Text className="text-white text-[10px] font-bold">{Math.round(splitFraction * 100)}%</Text>
+                </View>
+              </View>
+
+              <View className="flex-row gap-3 mt-6 w-full">
+                <TouchableOpacity
+                  onPress={() => setCropDraft(null)}
+                  disabled={cropSaving}
+                  className="flex-1 bg-white/10 py-3.5 rounded-2xl items-center"
+                >
+                  <Text className="text-white font-semibold">Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => void handleConfirmCrop()}
+                  disabled={cropSaving}
+                  className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+                >
+                  {cropSaving ? <ActivityIndicator color="white" /> : <Text className="text-white font-semibold">Crop & Save</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )
+        })()}
+      </Modal>
+    </View>
   )
 }

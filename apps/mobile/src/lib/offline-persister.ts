@@ -141,10 +141,9 @@ export function persistQueryCache(queryClient: any): void {
         overwrite: true,
       })
     }
-    ;(file as { write: (c: string, o?: Record<string, string>) => void }).write(
-      JSON.stringify(payload),
-      { encoding: 'utf8' },
-    )
+    // iOS native File.write(_:) takes exactly one argument — passing an
+    // options object throws InvalidArgsNumberException at the native layer.
+    ;(file as { write: (c: string) => void }).write(JSON.stringify(payload))
   } catch (err) {
     console.warn(
       '[offline-persister] Failed to persist cache:',

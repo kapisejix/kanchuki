@@ -72,23 +72,12 @@ beforeEach(() => {
 })
 
 describe('handleTagProduct', () => {
-  it('tags with front photo only when no back photo present', async () => {
+  it('tags the primary photo only', async () => {
     mockTagProductImageUrls.mockResolvedValue(fakeTags)
 
     await handleTagProduct(baseData)
 
     expect(mockTagProductImageUrls).toHaveBeenCalledWith([baseData.photo_url])
-  })
-
-  it('tags with front+back photos when back photo present', async () => {
-    mockTagProductImageUrls.mockResolvedValue(fakeTags)
-
-    await handleTagProduct({ ...baseData, back_photo_url: 'https://cdn.example.com/back.jpg' })
-
-    expect(mockTagProductImageUrls).toHaveBeenCalledWith([
-      baseData.photo_url,
-      'https://cdn.example.com/back.jpg',
-    ])
   })
 
   it('writes tags to product and marks primary photo tagged, then queues embedding', async () => {

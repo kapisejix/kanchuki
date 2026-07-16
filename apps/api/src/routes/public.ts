@@ -2,7 +2,7 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { createHash } from 'crypto'
 import { prisma } from '@kanchuki/db'
-import { buildEnquiryMessage } from '@kanchuki/shared'
+import { buildEnquiryMessage, normalizeIndianPhone } from '@kanchuki/shared'
 import { getDownloadPresignedUrl } from '@kanchuki/ai'
 import { notFound, validationError } from '../plugins/error-handler.js'
 
@@ -277,5 +277,93 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
     })
 
     return reply.status(204).send()
+  })
+
+  // ─── GET /public/retailers/:slug ─────────────────────────────────
+  // QR profile page: no auth required. Storefront link only included if the
+  // retailer has picked one and it's still an active collection.
+  server.get('/retailers/:slug', async (request) => {
+    const { slug } = request.params as { slug: string }
+
+    const retailer = await prisma.retailer.findFirst({
+      where: { public_slug: slug, deleted_at: null },
+      select: {
+        shop_name: true,
+        city: true,
+        state: true,
+        address_line1: true,
+        address_line2: true,
+        categories: true,
+        storefront_collection_id: true,
+      },
+    })
+    if (!retailer) throw notFound('Retailer')
+
+    const storefront = retailer.storefront_collection_id
+      ? await prisma.collection.findFirst({
+          where: { id: retailer.storefront_collection_id, status: 'ACTIVE', deleted_at: null },
+          select: { slug: true },
+        })
+      : null
+
+    return {
+      data: {
+        shop_name: retailer.shop_name,
+        city: retailer.city,
+        state: retailer.state,
+        address_line1: retailer.address_line1,
+        address_line2: retailer.address_line2,
+        categories: retailer.categories,
+        storefront_slug: storefront?.slug ?? null,
+      },
+    }
+  })
+
+  // ─── POST /public/retailers/:slug/leads ──────────────────────────
+  // QR profile contact gate: Name, Phone, Gender, mandatory consent.
+  // Upserts a Customer row under this retailer, same as retailer-manual-entry.
+  server.post('/retailers/:slug/leads', async (request, reply) => {
+    const { slug } = request.params as { slug: string }
+
+    const retailer = await prisma.retailer.findFirst({
+      where: { public_slug: slug, deleted_at: null },
+      select: { id: true },
+    })
+    if (!retailer) throw notFound('Retailer')
+
+    const body = z
+      .object({
+        name: z.string().min(1).max(200),
+        phone: z.string().min(10).max(15),
+        gender: z.enum(['MALE', 'FEMALE']),
+        consent: z.literal(true, { message: 'Consent is required' }),
+      })
+      .safeParse(request.body)
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+
+    const normalizedPhone = normalizeIndianPhone(body.data.phone)
+    const phone_hash = createHash('sha256').update(normalizedPhone).digest('hex')
+
+    const customer = await prisma.customer.upsert({
+      where: { retailer_id_phone: { retailer_id: retailer.id, phone: normalizedPhone } },
+      create: {
+        retailer_id: retailer.id,
+        name: body.data.name,
+        phone: normalizedPhone,
+        phone_hash,
+        gender: body.data.gender,
+        consent_given: true,
+        consent_at: new Date(),
+      },
+      update: {
+        name: body.data.name,
+        gender: body.data.gender,
+        consent_given: true,
+        consent_at: new Date(),
+      },
+      select: { id: true, name: true },
+    })
+
+    return reply.status(201).send({ data: customer })
   })
 }

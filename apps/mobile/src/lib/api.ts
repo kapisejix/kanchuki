@@ -200,6 +200,15 @@ export const retailerApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getQrSlug: () =>
+    request<{ data: { public_slug: string; profile_url: string } }>('/v1/retailers/me/qr-slug', {
+      method: 'POST',
+    }),
+  setStorefront: (collectionId: string | null) =>
+    request<{ data: { storefront_collection_id: string | null } }>('/v1/retailers/me/storefront', {
+      method: 'PATCH',
+      body: JSON.stringify({ collection_id: collectionId }),
+    }),
 }
 
 // ─── Products ─────────────────────────────────────────────────────
@@ -284,6 +293,12 @@ export const productApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  cleanupPhoto: (productId: string, photoId: string) =>
+    request<{ data: { id: string; url: string } }>(
+      `/v1/products/${productId}/photos/${photoId}/cleanup`,
+      { method: 'POST', timeoutMs: 30_000 },
+    ),
 
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
@@ -465,7 +480,7 @@ export const customerApi = {
       { method: 'POST', body: JSON.stringify(data) },
     ),
 
-  initPhotoMeasurement: (id: string, heightCm: number) =>
+  initPhotoMeasurement: (id: string, heightCm: number, consentGiven: boolean) =>
     request<{
       data: {
         measurement_id: string
@@ -475,7 +490,7 @@ export const customerApi = {
       }
     }>(`/v1/customers/${id}/measurements/photo-upload-url`, {
       method: 'POST',
-      body: JSON.stringify({ height_cm: heightCm }),
+      body: JSON.stringify({ height_cm: heightCm, consent_given: consentGiven }),
     }),
 
   extractMeasurement: (id: string, measurementId: string) =>

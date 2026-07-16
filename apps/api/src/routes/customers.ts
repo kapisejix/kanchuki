@@ -20,6 +20,9 @@ const ManualMeasurementSchema = z.object({
 
 const PhotoMeasurementInitSchema = z.object({
   height_cm: z.number().min(50).max(250),
+  consent_given: z.literal(true, {
+    message: 'Customer consent is required before capturing measurement photos',
+  }),
 })
 
 const CustomerSchema = z.object({
@@ -279,6 +282,8 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
         retailer_id: request.retailerId,
         source: 'PHOTO',
         height_cm: body.data.height_cm,
+        consent_given: true,
+        consent_at: new Date(),
       },
     })
 

@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma } from '@kanchuki/db'
+import { generateCollectionSlug } from '@kanchuki/shared'
 import { notFound, validationError } from '../plugins/error-handler.js'
 
 const UpdateRetailerSchema = z.object({
@@ -276,6 +277,57 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         ...(body.data.completed === true ? { onboarding_completed: true } : {}),
       },
       select: { onboarding_step: true, onboarding_completed: true },
+    })
+    return { data: updated }
+  })
+
+  // ─── POST /retailers/me/qr-slug ─────────────────────────────────
+  // Get-or-create the stable slug the QR code encodes (/store/{slug}).
+  server.post('/me/qr-slug', async (request) => {
+    const existing = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { public_slug: true, shop_name: true },
+    })
+    if (!existing) throw notFound('Retailer')
+    const webBase = process.env['WEB_URL'] ?? ''
+
+    if (existing.public_slug) {
+      return { data: { public_slug: existing.public_slug, profile_url: `${webBase}/store/${existing.public_slug}` } }
+    }
+
+    let slug = generateCollectionSlug(existing.shop_name)
+    while (await prisma.retailer.findUnique({ where: { public_slug: slug } })) {
+      slug = generateCollectionSlug(existing.shop_name)
+    }
+
+    const updated = await prisma.retailer.update({
+      where: { id: request.retailerId },
+      data: { public_slug: slug },
+      select: { public_slug: true },
+    })
+    return { data: { public_slug: updated.public_slug, profile_url: `${webBase}/store/${updated.public_slug}` } }
+  })
+
+  // ─── PATCH /retailers/me/storefront ─────────────────────────────
+  // Pick which collection the QR profile page opens into after the
+  // contact gate. Pass collection_id: null to unset.
+  server.patch('/me/storefront', async (request) => {
+    const body = z
+      .object({ collection_id: z.string().nullable() })
+      .safeParse(request.body)
+    if (!body.success) throw validationError('Invalid body')
+
+    if (body.data.collection_id) {
+      const owned = await prisma.collection.findFirst({
+        where: { id: body.data.collection_id, retailer_id: request.retailerId, deleted_at: null },
+      })
+      if (!owned) throw validationError('Collection does not belong to your store')
+    }
+
+    const updated = await prisma.retailer.update({
+      where: { id: request.retailerId },
+      data: { storefront_collection_id: body.data.collection_id },
+      select: { storefront_collection_id: true },
     })
     return { data: updated }
   })

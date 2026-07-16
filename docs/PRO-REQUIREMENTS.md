@@ -101,7 +101,7 @@ Only platform combining:
 
 #### F-001: Photo Upload & AI Auto-Tagging
 **Priority:** P0 (must have)  
-**Description:** Retailer takes photo of product (suit/saree/kurti). AI auto-extracts:
+**Description:** Retailer captures one complete product photo, top to bottom (suit/saree/kurti). AI auto-extracts:
 - Category (unstitched suit, kurti, saree, lehenga, etc.)
 - Primary color, secondary colors
 - Fabric estimate (cotton, silk, georgette, chanderi, etc.)
@@ -111,6 +111,14 @@ Only platform combining:
 - Neck style, sleeve type
 - Price range (if visible on tag/board)
 - Auto-generated search tags
+
+**Capture modes** (`apps/mobile/app/product/add.tsx`):
+- **Photo** — single tap or gallery import (existing).
+- **Scan** — retailer pans the phone over the product; the app bursts ~5 stills client-side over ~1s and keeps the largest-file-size frame as a sharpness proxy, discarding the rest. No video is ever recorded or uploaded — only the one winning still enters the normal upload path. Ceiling: file-size-as-sharpness is a rough heuristic; upgrade to on-device Laplacian variance scoring if quality complaints show it picking bad frames.
+
+**One product, one photo, one AI tag:** Product creation captures a single primary photo (no front/back split). That primary photo is the only image ever sent to AI tagging (`addTaggingJob` / `handleTagProduct`). Additional photos can be attached afterward via `POST /v1/products/:id/photos` (up to 10 total) — these are stored and served but never queued for AI tagging.
+
+Crop + white-background cleanup (`cleanupProductPhoto`, retailer-toggleable via `auto_cleanup`) still runs server-side on the primary photo after upload, same as before — Scan mode feeds into this unchanged.
 
 **Acceptance Criteria:**
 - Upload completes in < 5 seconds on 4G

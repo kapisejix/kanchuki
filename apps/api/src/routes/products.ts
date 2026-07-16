@@ -2,7 +2,14 @@ import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
 import { prisma, Prisma } from '@kanchuki/db'
 import { createId } from '@paralleldrive/cuid2'
-import { getUploadPresignedUrl, getDownloadPresignedUrl, publicUrl } from '@kanchuki/ai'
+import {
+  getUploadPresignedUrl,
+  getDownloadPresignedUrl,
+  publicUrl,
+  fetchImageBuffer,
+  uploadBuffer,
+  cleanupProductPhoto,
+} from '@kanchuki/ai'
 import { R2_PATHS } from '@kanchuki/shared'
 import { addTaggingJob, addEmbeddingJob } from '../jobs/index.js'
 import { notFound, planLimitExceeded, validationError, forbidden } from '../plugins/error-handler.js'
@@ -53,8 +60,6 @@ type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number]
 const CreateProductSchema = z.object({
   photo_r2_key: z.string().min(1),
   photo_url: z.string().url(),
-  back_photo_r2_key: z.string().min(1).optional(),
-  back_photo_url: z.string().url().optional(),
   price_min: z.number().int().min(0).max(100_000_000).optional(),
   price_max: z.number().int().min(0).max(100_000_000).optional(),
   mrp: z.number().int().min(0).max(100_000_000).optional(),
@@ -80,8 +85,6 @@ const CreateProductSchema = z.object({
 const UpdateProductSchema = CreateProductSchema.partial().omit({
   photo_r2_key: true,
   photo_url: true,
-  back_photo_r2_key: true,
-  back_photo_url: true,
 })
 
 const ListProductsQuerySchema = z.object({
@@ -179,8 +182,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateProductSchema.safeParse(request.body)
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
 
-    const { photo_r2_key, photo_url, back_photo_r2_key, back_photo_url, metadata, auto_cleanup, ...rest } =
-      body.data
+    const { photo_r2_key, photo_url, metadata, auto_cleanup, ...rest } = body.data
 
     if (rest.section_id) {
       const section = await prisma.storeSection.findFirst({
@@ -195,20 +197,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
         ...rest,
         photos: {
-          create: [
-            { url: photo_url, r2_key: photo_r2_key, is_primary: true, retailer_id: retailerId },
-            ...(back_photo_url && back_photo_r2_key
-              ? [
-                  {
-                    url: back_photo_url,
-                    r2_key: back_photo_r2_key,
-                    is_primary: false,
-                    sort_order: 1,
-                    retailer_id: retailerId,
-                  },
-                ]
-              : []),
-          ],
+          create: [{ url: photo_url, r2_key: photo_r2_key, is_primary: true, retailer_id: retailerId }],
         },
       },
       include: { photos: true, section: { select: { name: true } } },
@@ -228,7 +217,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       retailer_id: retailerId,
       photo_url,
       r2_key: photo_r2_key,
-      back_photo_url,
       auto_cleanup,
     }).catch(async (err) => {
       request.log.error({ err, product_id: product.id }, 'Failed to queue tagging job')
@@ -491,6 +479,29 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       },
     })
     return reply.status(201).send({ data: photo })
+  })
+
+  // ─── POST /products/:id/photos/:photoId/cleanup ───────────────────
+  // Manual retailer-triggered crop + white-background removal, for photos
+  // added after product creation or where auto_cleanup was off at upload
+  // time. Reuses the same cleanupProductPhoto pipeline as the automatic
+  // post-upload job (apps/api/src/jobs/tag-product.ts).
+  server.post('/:id/photos/:photoId/cleanup', async (request, reply) => {
+    const { id, photoId } = request.params as { id: string; photoId: string }
+
+    const photo = await prisma.productPhoto.findFirst({
+      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+    })
+    if (!photo) throw notFound('Product photo')
+
+    await checkQuota(request.retailerId, 'BG_REMOVAL')
+
+    const raw = await fetchImageBuffer(photo.url)
+    const cleaned = await cleanupProductPhoto(raw)
+    await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg')
+    await incrementUsage(request.retailerId, 'BG_REMOVAL')
+
+    return reply.status(200).send({ data: { id: photo.id, url: photo.url } })
   })
 
   // ─── PATCH /products/:id/photos/:photoId ──────────────────────────

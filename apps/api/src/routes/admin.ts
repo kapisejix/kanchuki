@@ -168,6 +168,59 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     }
   })
 
+  // ─── GET /admin/customers ───────────────────────────────────────
+  // Cross-retailer customer list (User Management) — PII, admin-only.
+  server.get('/customers', async (request) => {
+    const query = z
+      .object({
+        cursor: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        search: z.string().max(100).optional(),
+      })
+      .safeParse(request.query)
+    const { cursor, limit, search } = query.success
+      ? query.data
+      : { cursor: undefined, limit: 50, search: undefined }
+
+    const customers = await prisma.customer.findMany({
+      where: {
+        deleted_at: null,
+        ...(cursor ? { id: { gt: cursor } } : {}),
+        ...(search
+          ? {
+              OR: [
+                { name: { contains: search, mode: 'insensitive' as const } },
+                { phone: { contains: search } },
+              ],
+            }
+          : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        phone: true,
+        gender: true,
+        consent_given: true,
+        created_at: true,
+        retailer: { select: { id: true, shop_name: true, city: true } },
+        _count: { select: { measurements: true } },
+      },
+      orderBy: { id: 'asc' },
+      take: limit + 1,
+    })
+
+    const hasMore = customers.length > limit
+    const page = hasMore ? customers.slice(0, limit) : customers
+
+    return {
+      data: page.map(({ _count, ...c }) => ({ ...c, measurement_count: _count.measurements })),
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+      },
+    }
+  })
+
   // ─── POST /admin/billing/setup-plans ────────────────────────────
   // Auto-creates all 6 Razorpay plans (3 plans × monthly/annual).
   // Run once after setting RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET.

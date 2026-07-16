@@ -23,11 +23,13 @@ import {
   Sparkles,
   Bell,
   AlertCircle,
+  Users,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Retailers', href: '/admin/retailers', icon: Store },
+  { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
   { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
 ]

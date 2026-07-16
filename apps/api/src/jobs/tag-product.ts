@@ -5,7 +5,7 @@ import type { TaggingJobData } from './index.js'
 import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 export async function handleTagProduct(data: TaggingJobData): Promise<void> {
-  const { product_id, retailer_id, photo_url, back_photo_url, r2_key, auto_cleanup = true } = data
+  const { product_id, retailer_id, photo_url, r2_key, auto_cleanup = true } = data
 
   try {
     // F-010: no prior enforcement existed for AI tagging calls — this is the
@@ -19,6 +19,14 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       where: { product_id, retailer_id },
       data: { ai_tagged: false },
     })
+
+    // Tag from the original, untouched photo FIRST. Background removal below
+    // overwrites this same r2_key/photo_url with a bg-stripped version, and
+    // general-purpose bg removal can over-strip a busy/patterned garment shot
+    // down to a near-blank cutout — feeding that into Claude Vision produced
+    // null category/color/occasions instead of a bad-but-present garment photo.
+    const tags = await tagProductImageUrls([photo_url])
+    await incrementUsage(retailer_id, 'AI_TAGGING_CALL')
 
     // Auto catalog photo cleanup (PRO-REQUIREMENTS.md): overwrite the raw
     // retailer upload in place with a background-stripped, white-backdrop
@@ -37,10 +45,6 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         console.error(`Photo cleanup failed for product ${product_id}, keeping raw photo:`, err)
       }
     }
-
-    const urls = back_photo_url ? [photo_url, back_photo_url] : [photo_url]
-    const tags = await tagProductImageUrls(urls)
-    await incrementUsage(retailer_id, 'AI_TAGGING_CALL')
 
     // Update product with AI tags
     await prisma.product.update({

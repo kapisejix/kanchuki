@@ -56,6 +56,11 @@ enum MeasurementSource {
   MANUAL // entered directly via inch-tape
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum SizeChartCategory {
   UPPER // Kurtas, Tops, Anarkalis, Dresses — bust/waist/hip
   LOWER // Pants, Palazzos, Skirts — waist/hip/length
@@ -125,6 +130,11 @@ model Retailer {
   pincode       String?
 
   categories String[] // ["suits", "sarees", "kurtis"]
+
+  // Public QR profile — visitors scan a QR encoding /store/{public_slug},
+  // pass the contact gate, then land on this collection as the storefront.
+  public_slug              String? @unique
+  storefront_collection_id String? // FK to Collection.id, no Prisma relation (loose pointer, same convention as Product.source_id)
 
   // Internal team attribution (Section 10, PRO-REQUIREMENTS.md) — nullable,
   // only set for retailers onboarded/derived through the internal team flow.
@@ -338,6 +348,12 @@ model Customer {
   phone      String
   phone_hash String?
   email      String?
+  gender     Gender?
+
+  // Consent to be contacted — required when captured via the public QR
+  // profile gate, unset for retailer-manual-entry customers.
+  consent_given Boolean   @default(false)
+  consent_at    DateTime?
 
   // Full address
   address_line1 String?
@@ -401,6 +417,11 @@ model CustomerMeasurement {
   photo_deleted_at    DateTime?
   pose_landmarks_json Json?
   confidence_score    Float?
+
+  // Customer consent to capture/use these photos — required for the PHOTO
+  // source path, always false for MANUAL (no photo taken).
+  consent_given Boolean   @default(false)
+  consent_at    DateTime?
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

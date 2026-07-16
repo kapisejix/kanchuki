@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native'
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet, Switch } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -21,6 +21,7 @@ export default function MeasurementCaptureScreen() {
   const [slot, setSlot] = useState<Slot>('front')
   const [permission, requestPermission] = useCameraPermissions()
   const [height, setHeight] = useState('')
+  const [consentGiven, setConsentGiven] = useState(false)
   const [photos, setPhotos] = useState<{ front: string | null; back: string | null }>({
     front: null,
     back: null,
@@ -60,6 +61,10 @@ export default function MeasurementCaptureScreen() {
       Alert.alert('Height required', 'Enter a valid height between 50–250 cm.')
       return
     }
+    if (!consentGiven) {
+      Alert.alert('Consent required', 'The customer must consent before their photos are captured.')
+      return
+    }
     setSlot('front')
     setStep('camera')
   }
@@ -79,7 +84,7 @@ export default function MeasurementCaptureScreen() {
     setError(null)
     try {
       const heightNum = parseFloat(height)
-      const init = await customerApi.initPhotoMeasurement(id, heightNum)
+      const init = await customerApi.initPhotoMeasurement(id, heightNum, consentGiven)
       const { measurement_id, front_upload_url, back_upload_url } = init.data
 
       // Upload front photo
@@ -132,9 +137,18 @@ export default function MeasurementCaptureScreen() {
           />
         </View>
 
+        <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-6 flex-row items-center gap-3">
+          <Switch value={consentGiven} onValueChange={setConsentGiven} />
+          <Text className="flex-1 text-xs text-gray-600">
+            Customer has consented to their front/back photos being captured and used to
+            estimate measurements for try-on.
+          </Text>
+        </View>
+
         <TouchableOpacity
           onPress={startCapture}
-          className="bg-cyan-600 py-4 rounded-2xl items-center"
+          disabled={!consentGiven}
+          className={`py-4 rounded-2xl items-center ${consentGiven ? 'bg-cyan-600' : 'bg-gray-300'}`}
         >
           <Text className="text-white font-semibold">Continue to Front Photo →</Text>
         </TouchableOpacity>
