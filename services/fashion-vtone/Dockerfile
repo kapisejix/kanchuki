@@ -22,6 +22,8 @@ RUN apt-get update && apt-get install -y \
     git \
     && rm -rf /var/lib/apt/lists/*
 
+ENV VTONE_WEIGHTS_DIR=/app/weights
+
 # Copy requirements first for Docker layer caching
 COPY services/fashion-vtone/requirements.txt /app/requirements.txt
 
@@ -32,6 +34,14 @@ COPY services/fashion-vtone/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt && \
     pip install --no-cache-dir --force-reinstall --no-deps onnxruntime && \
     rm -rf /root/.cache/pip
+
+# Pre-download model weights so cold start doesn't fetch ~2.3 GB
+# huggingface-hub is already installed as a dep of fashn-vton
+# This layer is cached unless scripts/ change
+COPY services/fashion-vtone/scripts/ /app/scripts/
+RUN chmod +x /app/scripts/download-weights.sh && \
+    bash /app/scripts/download-weights.sh /app/weights && \
+    rm -rf /root/.cache/huggingface/hub
 
 # Copy service app
 COPY services/fashion-vtone/app.py /app/app.py
