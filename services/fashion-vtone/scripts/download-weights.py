@@ -31,6 +31,9 @@ import os
 import sys
 import time
 
+# Suppress GPU probe warnings in Docker/CI builds
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
+
 from huggingface_hub import hf_hub_download
 
 try:
@@ -50,7 +53,7 @@ def download_tryon_model(weights_dir: str) -> str:
         filename="model.safetensors",
         local_dir=weights_dir,
         local_dir_use_symlinks=False,
-        resume=True,
+        resume_download=True,
     )
     elapsed = time.time() - t0
     size_mb = os.path.getsize(path) / (1024 * 1024)
@@ -77,7 +80,7 @@ def download_dwpose_models(weights_dir: str) -> str:
             filename=filename,
             local_dir=dwpose_dir,
             local_dir_use_symlinks=False,
-            resume=True,
+            resume_download=True,
         )
         elapsed = time.time() - t0
         size_mb = os.path.getsize(path) / (1024 * 1024)

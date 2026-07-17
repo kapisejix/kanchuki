@@ -5,7 +5,7 @@ import { createId } from '@paralleldrive/cuid2'
 import { getUploadPresignedUrl, triggerTryOn, publicUrl } from '@kanchuki/ai'
 import { R2_PATHS } from '@kanchuki/shared'
 import { addTryOnJob } from '../jobs/index.js'
-import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js'
+import { notFound, validationError } from '../plugins/error-handler.js'
 import { checkQuota, incrementUsage } from '../lib/quota.js'
 
 // ─── Schemas ─────────────────────────────────────────────────
@@ -26,16 +26,12 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
   server.post('/initiate', async (request, reply) => {
     const retailerId = request.retailerId
 
-    // Check try-on credits
-    const retailer = await prisma.retailer.findUniqueOrThrow({
-      where: { id: retailerId },
-      select: { try_on_credits: true },
-    })
-    if (retailer.try_on_credits <= 0) {
-      throw planLimitExceeded('try-on credits')
-    }
-    // F-010: additive — plan_limits has no TRY_ON row yet, so this is a
-    // no-op until seeded. try_on_credits above stays authoritative.
+    // Check try-on quota via F-010 monthly UsageCounter (plan_limits seeded
+    // with MONTHLY periods — STARTER=0, GROWTH=100, PRO=500). This
+    // auto-resets each month via period_start tracking. Previously the gate
+    // used try_on_credits (a lifetime decrementing column that never
+    // replenished), causing the 'limit exceeded' error permanently once
+    // credits were spent regardless of plan period.
     await checkQuota(retailerId, 'TRY_ON')
 
     const body = InitiateTryOnSchema.safeParse(request.body)
@@ -50,11 +46,8 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     })
     if (!product) throw notFound('Product')
 
-    // Decrement credit
-    await prisma.retailer.update({
-      where: { id: retailerId },
-      data: { try_on_credits: { decrement: 1 } },
-    })
+    // Record usage — F-010 UsageCounter handles monthly period tracking.
+    // Best-effort: a failed usage write shouldn't fail the try-on.
     incrementUsage(retailerId, 'TRY_ON').catch((err) => {
       request.log.error({ err, retailer_id: retailerId }, 'Failed to record try-on usage')
     })
@@ -244,22 +237,12 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     })
     if (!collectionProduct) throw validationError('Product not found in this collection')
 
-    // Check retailer has try-on credits
-    const retailer = await prisma.retailer.findUniqueOrThrow({
-      where: { id: collection.retailer_id },
-      select: { try_on_credits: true },
-    })
-    if (retailer.try_on_credits <= 0) {
-      throw validationError('Retailer has no try-on credits remaining')
-    }
-    // F-010: additive — no-op until plan_limits has a TRY_ON row.
+    // Check try-on quota via F-010 monthly UsageCounter (plan_limits seeded
+    // with MONTHLY periods — STARTER=0, GROWTH=100, PRO=500). This
+    // auto-resets each month via period_start tracking.
     await checkQuota(collection.retailer_id, 'TRY_ON')
 
-    // Decrement credit
-    await prisma.retailer.update({
-      where: { id: collection.retailer_id },
-      data: { try_on_credits: { decrement: 1 } },
-    })
+    // Record usage — F-010 UsageCounter handles monthly period tracking.
     incrementUsage(collection.retailer_id, 'TRY_ON').catch((err) => {
       request.log.error({ err, retailer_id: collection.retailer_id }, 'Failed to record try-on usage')
     })

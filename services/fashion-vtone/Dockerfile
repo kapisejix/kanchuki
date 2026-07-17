@@ -28,20 +28,27 @@ ENV VTONE_WEIGHTS_DIR=/app/weights
 COPY services/fashion-vtone/requirements.txt /app/requirements.txt
 
 # Install Python deps including fashn-vton from GitHub
-# Then swap onnxruntime-gpu → onnxruntime for CPU-only Railway tier
-# --force-reinstall --no-deps replaces onnxruntime files in-place without
-# leaving fashn-vton's dependency metadata in a broken state
-RUN pip install --no-cache-dir -r /app/requirements.txt && \
-    pip install --no-cache-dir --force-reinstall --no-deps onnxruntime && \
+# fashn-vton pulls a GPU torch wheel + onnxruntime-gpu, both of which drag
+# in several GB of nvidia-* CUDA wheels. Railway tier is CPU-only, so:
+# install CPU torch/torchvision FIRST (before requirements.txt) so pip sees
+# the version requirement already satisfied and skips the GPU wheel + its
+# nvidia-* deps entirely, instead of downloading ~1.5GB just to replace it.
+# onnxruntime-gpu is still swapped after, since it's a hard pin.
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir -r /app/requirements.txt && \
+    pip uninstall -y onnxruntime-gpu $(pip list --format=freeze | grep -oE '^nvidia-[a-z0-9-]+') && \
+    pip install --no-cache-dir onnxruntime && \
     rm -rf /root/.cache/pip
 
 # Pre-download model weights so cold start doesn't fetch ~2.3 GB
-# huggingface-hub is already installed as a dep of fashn-vton
-# This layer is cached unless scripts/ change
+# Uses the Python API (hf_hub_download) which is more reliable than
+# huggingface-cli (deprecated in newer huggingface_hub versions).
+# This layer is cached unless scripts/ change.
 COPY services/fashion-vtone/scripts/ /app/scripts/
-RUN chmod +x /app/scripts/download-weights.sh && \
-    bash /app/scripts/download-weights.sh /app/weights && \
-    rm -rf /root/.cache/huggingface/hub
+RUN python /app/scripts/download-weights.py --weights-dir /app/weights
+# Note: FashnHumanParser weights land in the default HF hub cache (not
+# /app/weights), unlike TryOnModel/DWPose which use local_dir=. Do not
+# rm -rf that cache here or the parser re-fetches ~244MB on every cold start.
 
 # Copy service app
 COPY services/fashion-vtone/app.py /app/app.py
