@@ -65,3 +65,6 @@ tryon-multipiece-result.jpg
 
 # Generated catalog grid test images
 /scripts/demo/catalog-grid*.jpg
+
+# Fashion V-Tone model weights (downloaded at build/deploy time)
+services/fashion-vtone/weights/
