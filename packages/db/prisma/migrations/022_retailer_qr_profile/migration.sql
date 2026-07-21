@@ -7,7 +7,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS "retailers_public_slug_key" ON "retailers"("pu
 
 -- Gated contact-form capture on that profile page writes into the existing
 -- Customer table — gender + explicit consent to be contacted.
-CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'Gender' AND typcategory = 'E') THEN
+    CREATE TYPE "Gender" AS ENUM ('MALE', 'FEMALE');
+  END IF;
+END $$;
 ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "gender" "Gender";
 ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "consent_given" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "customers" ADD COLUMN IF NOT EXISTS "consent_at" TIMESTAMP(3);

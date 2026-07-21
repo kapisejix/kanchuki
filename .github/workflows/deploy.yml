@@ -7,6 +7,7 @@ on:
       - 'apps/api/**'
       - 'apps/web/**'
       - 'packages/**'
+      - 'services/fashion-vtone/**'
       - 'pnpm-lock.yaml'
       - 'pnpm-workspace.yaml'
       - 'turbo.json'
@@ -20,6 +21,7 @@ on:
 #   RAILWAY_API_SERVICE_ID     — Service ID from Railway API service
 #                                 (URL: /project/{p}/service/{this_id})
 #   RAILWAY_WEB_SERVICE_ID     — Service ID from Railway Web service
+#   RAILWAY_VTONE_SERVICE_ID   — Service ID from Railway V-Tone service
 #   PROD_DATABASE_URL          — Supabase production connection string,
 #                                 used to run `prisma migrate deploy`
 #                                 before the new API version goes live
@@ -40,6 +42,7 @@ jobs:
     outputs:
       api: ${{ steps.filter.outputs.api }}
       web: ${{ steps.filter.outputs.web }}
+      vtone: ${{ steps.filter.outputs.vtone }}
     steps:
       - uses: actions/checkout@v7
 
@@ -61,6 +64,8 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
+            vtone:
+              - 'services/fashion-vtone/**'
 
   ####################################################################
   # Deploy API Service
@@ -126,3 +131,24 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: railway up --detach --environment production --service ${{ secrets.RAILWAY_WEB_SERVICE_ID }}
+
+  ####################################################################
+  # Deploy Fashion V-Tone v1.5 Service (Docker)
+  ####################################################################
+  deploy-vtone:
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.vtone == 'true'
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.com/install.sh | bash
+          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy V-Tone to Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach --environment production --service ${{ secrets.RAILWAY_VTONE_SERVICE_ID }}
