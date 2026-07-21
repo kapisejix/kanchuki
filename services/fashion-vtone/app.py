@@ -22,6 +22,7 @@ API:
         -> { "status": "completed", "result_url": "https://...", "latency_ms": 15000 }
 """
 
+import asyncio
 import io
 import os
 import time
@@ -72,19 +73,34 @@ class HealthResponse(BaseModel):
 # ─── Global pipeline reference ─────────────────────────────────
 
 pipeline = None
+pipeline_loading = False
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Initialize the V-Tone pipeline on startup."""
-    global pipeline
-    logger.info("Initializing Fashion V-Tone v1.5 pipeline...")
+
+async def _load_pipeline():
+    """Load the V-Tone pipeline in a background task so the health
+    endpoint responds immediately and Railway health checks pass.
+
+    The model weights (~2.3 GB) load from disk, which can take
+    5-10 minutes on CPU. By running this as a background asyncio
+    task, the FastAPI app starts serving requests right away.
+    """
+    global pipeline, pipeline_loading
+    pipeline_loading = True
     try:
         from fashn_vton import TryOnPipeline
+        logger.info("Loading Fashion V-Tone v1.5 pipeline in background...")
         pipeline = TryOnPipeline(weights_dir=WEIGHTS_DIR)
         logger.info("Fashion V-Tone pipeline initialized successfully")
     except Exception as e:
         logger.error(f"Failed to initialize pipeline: {e}")
-        raise
+    finally:
+        pipeline_loading = False
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start pipeline loading in background; don't block startup."""
+    asyncio.create_task(_load_pipeline())
     yield
     if pipeline is not None:
         pipeline.unload()
@@ -207,8 +223,14 @@ async def root():
 @app.get("/health", response_model=HealthResponse)
 async def health():
     import torch
+    if pipeline is not None:
+        status = "ok"
+    elif pipeline_loading:
+        status = "loading"
+    else:
+        status = "error"
     return HealthResponse(
-        status="ok" if pipeline is not None else "error",
+        status=status,
         pipeline_loaded=pipeline is not None,
         device=str(torch.device("cuda" if torch.cuda.is_available() else "cpu")),
         gpu_available=torch.cuda.is_available(),
@@ -224,7 +246,8 @@ async def try_on(request: TryOnRequest):
     without background removal preprocessing.
     """
     if pipeline is None:
-        raise HTTPException(status_code=503, detail="Pipeline not initialized")
+        detail = "Pipeline still loading" if pipeline_loading else "Pipeline not initialized"
+        raise HTTPException(status_code=503, detail=detail)
 
     start_time = time.time()
 
