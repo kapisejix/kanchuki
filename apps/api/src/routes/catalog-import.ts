@@ -116,7 +116,7 @@ async function flagDuplicates(
     const isDuplicate = best !== null && best.distance <= DUPLICATE_HAMMING_THRESHOLD;
     return {
       is_duplicate: isDuplicate,
-      duplicate_of_product_id: isDuplicate ? best?.product_id : null,
+      duplicate_of_product_id: isDuplicate ? (best?.product_id ?? null) : null,
     };
   });
 }
@@ -274,8 +274,8 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
         const dupes = await flagDuplicates(retailerId, allItems);
         allItems.forEach((item, i) => {
-          item.is_duplicate = dupes[i]?.is_duplicate;
-          item.duplicate_of_product_id = dupes[i]?.duplicate_of_product_id;
+          item.is_duplicate = dupes[i]?.is_duplicate ?? false;
+          item.duplicate_of_product_id = dupes[i]?.duplicate_of_product_id ?? null;
         });
 
         return reply.status(200).send({
