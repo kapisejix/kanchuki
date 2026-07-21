@@ -1,15 +1,15 @@
-import { prisma } from '@kanchuki/db'
-import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db'
-import { planLimitExceeded } from '../plugins/error-handler.js'
+import { prisma } from '@kanchuki/db';
+import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
+import { planLimitExceeded } from '../plugins/error-handler.js';
 
 // F-010 (docs/PRO-REQUIREMENTS.md): one gate + one counter for every metered
 // resource instead of a hardcoded column per resource. Call checkQuota before
 // the metered action runs, incrementUsage after it succeeds.
 
 function periodStart(period: QuotaPeriod, now = new Date()): Date {
-  if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (period === 'MONTH') return new Date(now.getFullYear(), now.getMonth(), 1)
-  return new Date(0) // LIFETIME — one counter row forever
+  if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'MONTH') return new Date(now.getFullYear(), now.getMonth(), 1);
+  return new Date(0); // LIFETIME — one counter row forever
 }
 
 async function effectiveLimit(
@@ -18,21 +18,21 @@ async function effectiveLimit(
 ): Promise<{ limit: number; period: QuotaPeriod } | null> {
   const override = await prisma.retailerLimitOverride.findUnique({
     where: { retailer_id_resource_type: { retailer_id: retailerId, resource_type: resourceType } },
-  })
-  if (override) return { limit: override.limit_per_period, period: override.period }
+  });
+  if (override) return { limit: override.limit_per_period, period: override.period };
 
   const retailer = await prisma.retailer.findUniqueOrThrow({
     where: { id: retailerId },
     select: { plan: true },
-  })
+  });
   const planLimit = await prisma.planLimit.findUnique({
     where: { plan_resource_type: { plan: retailer.plan, resource_type: resourceType } },
-  })
+  });
   // ponytail: plan_limits has no seed rows yet (business numbers not decided
   // for AI_TAGGING_CALL/IMAGE_CROP/BG_REMOVAL/API_REQUEST) — fail-open until
   // an admin adds a row, instead of blocking every retailer on every call.
-  if (!planLimit) return null
-  return { limit: planLimit.limit_per_period, period: planLimit.period }
+  if (!planLimit) return null;
+  return { limit: planLimit.limit_per_period, period: planLimit.period };
 }
 
 export async function checkQuota(
@@ -40,8 +40,8 @@ export async function checkQuota(
   resourceType: QuotaResourceType,
   amount = 1,
 ): Promise<void> {
-  const effective = await effectiveLimit(retailerId, resourceType)
-  if (!effective || effective.limit === -1) return // unlimited, or not yet configured
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) return; // unlimited, or not yet configured
 
   const counter = await prisma.usageCounter.findUnique({
     where: {
@@ -51,10 +51,10 @@ export async function checkQuota(
         period_start: periodStart(effective.period),
       },
     },
-  })
-  const used = counter?.count ?? 0
+  });
+  const used = counter?.count ?? 0;
   if (used + amount > effective.limit) {
-    throw planLimitExceeded(resourceType.toLowerCase().replace(/_/g, ' '))
+    throw planLimitExceeded(resourceType.toLowerCase().replace(/_/g, ' '));
   }
 }
 
@@ -68,8 +68,8 @@ export async function incrementUsage(
   resourceType: QuotaResourceType,
   amount = 1,
 ): Promise<void> {
-  const effective = await effectiveLimit(retailerId, resourceType)
-  const start = periodStart(effective?.period ?? 'MONTH')
+  const effective = await effectiveLimit(retailerId, resourceType);
+  const start = periodStart(effective?.period ?? 'MONTH');
 
   await prisma.usageCounter.upsert({
     where: {
@@ -79,7 +79,12 @@ export async function incrementUsage(
         period_start: start,
       },
     },
-    create: { retailer_id: retailerId, resource_type: resourceType, period_start: start, count: amount },
+    create: {
+      retailer_id: retailerId,
+      resource_type: resourceType,
+      period_start: start,
+      count: amount,
+    },
     update: { count: { increment: amount } },
-  })
+  });
 }

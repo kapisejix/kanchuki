@@ -1,9 +1,9 @@
-import { prisma } from '@kanchuki/db'
-import { embedProduct, formatVectorLiteral } from '@kanchuki/ai'
-import type { EmbeddingJobData } from './index.js'
+import { embedProduct, formatVectorLiteral } from '@kanchuki/ai';
+import { prisma } from '@kanchuki/db';
+import type { EmbeddingJobData } from './index.js';
 
 export async function handleGenerateEmbedding(data: EmbeddingJobData): Promise<void> {
-  const { product_id, retailer_id } = data
+  const { product_id, retailer_id } = data;
 
   const product = await prisma.product.findFirst({
     where: { id: product_id, retailer_id, deleted_at: null },
@@ -20,11 +20,11 @@ export async function handleGenerateEmbedding(data: EmbeddingJobData): Promise<v
       price_min: true,
       notes: true,
     },
-  })
+  });
 
-  if (!product) return // Product deleted before job ran — skip silently
+  if (!product) return; // Product deleted before job ran — skip silently
 
-  const { embedding, input_hash } = await embedProduct(product)
+  const { embedding, input_hash } = await embedProduct(product);
 
   // Upsert — overwrite existing embedding if tags were updated
   await prisma.$executeRaw`
@@ -43,5 +43,5 @@ export async function handleGenerateEmbedding(data: EmbeddingJobData): Promise<v
       embedding = EXCLUDED.embedding,
       input_hash = EXCLUDED.input_hash,
       updated_at = NOW()
-  `
+  `;
 }

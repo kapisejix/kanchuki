@@ -1,9 +1,9 @@
-import { prisma } from '@kanchuki/db'
-import { computeFashionDNA, formatPreferenceVector, MIN_INTERACTIONS_FOR_DNA } from '@kanchuki/ai'
+import { MIN_INTERACTIONS_FOR_DNA, computeFashionDNA, formatPreferenceVector } from '@kanchuki/ai';
+import { prisma } from '@kanchuki/db';
 
 export interface FashionDNAJobData {
-  customer_id: string
-  retailer_id: string
+  customer_id: string;
+  retailer_id: string;
 }
 
 /**
@@ -18,7 +18,7 @@ export interface FashionDNAJobData {
  * the job succeeds silently (no DNA to compute yet — nothing wrong).
  */
 export async function handleUpdateFashionDNA(data: FashionDNAJobData): Promise<void> {
-  const { customer_id, retailer_id } = data
+  const { customer_id, retailer_id } = data;
 
   // Fetch customer with explicit preferences
   const customer = await prisma.customer.findFirst({
@@ -33,12 +33,12 @@ export async function handleUpdateFashionDNA(data: FashionDNAJobData): Promise<v
       budget_max: true,
       notes: true,
     },
-  })
+  });
 
-  if (!customer) return // Customer deleted — skip silently
+  if (!customer) return; // Customer deleted — skip silently
 
   // Fetch interactions with product details (last 180 days, most recent 200)
-  const cutoffDate = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000)
+  const cutoffDate = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000);
 
   const interactions = await prisma.customerInteraction.findMany({
     where: {
@@ -63,7 +63,7 @@ export async function handleUpdateFashionDNA(data: FashionDNAJobData): Promise<v
         },
       },
     },
-  })
+  });
 
   if (interactions.length < MIN_INTERACTIONS_FOR_DNA) {
     // Not enough signal yet — if a stale DNA row exists, leave it intact
@@ -80,8 +80,8 @@ export async function handleUpdateFashionDNA(data: FashionDNAJobData): Promise<v
       update: {
         interaction_count: interactions.length,
       },
-    })
-    return
+    });
+    return;
   }
 
   // Compute the DNA
@@ -113,9 +113,9 @@ export async function handleUpdateFashionDNA(data: FashionDNAJobData): Promise<v
       budget_max: customer.budget_max,
       notes: customer.notes,
     },
-  )
+  );
 
-  if (!dna) return // Shouldn't happen since we checked count, but guard
+  if (!dna) return; // Shouldn't happen since we checked count, but guard
 
   // Upsert the DNA record — use raw SQL for the vector column
   await prisma.$executeRaw`
@@ -151,5 +151,5 @@ export async function handleUpdateFashionDNA(data: FashionDNAJobData): Promise<v
       interaction_count = EXCLUDED.interaction_count,
       confidence_score = EXCLUDED.confidence_score,
       last_updated_at = NOW()
-  `
+  `;
 }

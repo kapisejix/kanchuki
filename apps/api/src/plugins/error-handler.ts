@@ -1,4 +1,4 @@
-import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify'
+import type { FastifyError, FastifyReply, FastifyRequest } from 'fastify';
 
 export class AppError extends Error {
   constructor(
@@ -7,17 +7,17 @@ export class AppError extends Error {
     public readonly status: number = 400,
     public readonly field?: string,
   ) {
-    super(message)
-    this.name = 'AppError'
+    super(message);
+    this.name = 'AppError';
   }
 }
 
 export function notFound(resource: string): AppError {
-  return new AppError('NOT_FOUND', `${resource} not found`, 404)
+  return new AppError('NOT_FOUND', `${resource} not found`, 404);
 }
 
 export function forbidden(message = 'Access denied'): AppError {
-  return new AppError('FORBIDDEN', message, 403)
+  return new AppError('FORBIDDEN', message, 403);
 }
 
 export function planLimitExceeded(resource: string): AppError {
@@ -25,11 +25,11 @@ export function planLimitExceeded(resource: string): AppError {
     'PLAN_LIMIT_EXCEEDED',
     `Your plan limit for ${resource} has been reached. Please upgrade.`,
     402,
-  )
+  );
 }
 
 export function validationError(message: string, field?: string): AppError {
-  return new AppError('VALIDATION_ERROR', message, 422, field)
+  return new AppError('VALIDATION_ERROR', message, 422, field);
 }
 
 export function errorHandler(
@@ -45,8 +45,8 @@ export function errorHandler(
         field: error.field,
         status: error.status,
       },
-    })
-    return
+    });
+    return;
   }
 
   // Zod validation errors (from fastify-type-provider-zod)
@@ -57,16 +57,16 @@ export function errorHandler(
         message: error.message,
         status: 422,
       },
-    })
-    return
+    });
+    return;
   }
 
   // Rate limit
   if (error.statusCode === 429) {
     void reply.status(429).send({
       error: { code: 'RATE_LIMITED', message: 'Too many requests', status: 429 },
-    })
-    return
+    });
+    return;
   }
 
   // Zod validation errors (from z.parse() in route handlers)
@@ -77,16 +77,14 @@ export function errorHandler(
         message: (error as Error).message,
         status: 422,
       },
-    })
-    return
+    });
+    return;
   }
 
   // Generic server error — don't leak internals in production
-  reply.log.error(error)
-  const isDev = process.env['NODE_ENV'] === 'development'
-  const message = isDev
-    ? error.message ?? 'Something went wrong'
-    : 'Something went wrong'
+  reply.log.error(error);
+  const isDev = process.env.NODE_ENV === 'development';
+  const message = isDev ? (error.message ?? 'Something went wrong') : 'Something went wrong';
   void reply.status(500).send({
     error: {
       code: 'INTERNAL_ERROR',
@@ -94,5 +92,5 @@ export function errorHandler(
       ...(isDev ? { stack: error.stack } : {}),
       status: 500,
     },
-  })
+  });
 }

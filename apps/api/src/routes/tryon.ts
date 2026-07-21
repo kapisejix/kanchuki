@@ -1,12 +1,12 @@
-import type { FastifyPluginAsync } from 'fastify'
-import { z } from 'zod'
-import { prisma } from '@kanchuki/db'
-import { createId } from '@paralleldrive/cuid2'
-import { getUploadPresignedUrl, triggerTryOn, publicUrl } from '@kanchuki/ai'
-import { R2_PATHS } from '@kanchuki/shared'
-import { addTryOnJob } from '../jobs/index.js'
-import { notFound, validationError } from '../plugins/error-handler.js'
-import { checkQuota, incrementUsage } from '../lib/quota.js'
+import { getUploadPresignedUrl, publicUrl, triggerTryOn } from '@kanchuki/ai';
+import { prisma } from '@kanchuki/db';
+import { R2_PATHS } from '@kanchuki/shared';
+import { createId } from '@paralleldrive/cuid2';
+import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { addTryOnJob } from '../jobs/index.js';
+import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { notFound, validationError } from '../plugins/error-handler.js';
 
 // ─── Schemas ─────────────────────────────────────────────────
 
@@ -15,7 +15,7 @@ const InitiateTryOnSchema = z.object({
   customer_photo_r2_key: z.string().min(1),
   measurement_id: z.string().optional(),
   consent_to_training: z.boolean().optional().default(false),
-})
+});
 
 // ─── Routes ──────────────────────────────────────────────────
 
@@ -24,7 +24,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
   // Shopkeeper-initiated try-on: customer photo already uploaded to R2.
   // Checks credits, creates TryOnJob record, queues processing.
   server.post('/initiate', async (request, reply) => {
-    const retailerId = request.retailerId
+    const retailerId = request.retailerId;
 
     // Check try-on quota via F-010 monthly UsageCounter (plan_limits seeded
     // with MONTHLY periods — STARTER=0, GROWTH=100, PRO=500). This
@@ -32,28 +32,28 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
     // used try_on_credits (a lifetime decrementing column that never
     // replenished), causing the 'limit exceeded' error permanently once
     // credits were spent regardless of plan period.
-    await checkQuota(retailerId, 'TRY_ON')
+    await checkQuota(retailerId, 'TRY_ON');
 
-    const body = InitiateTryOnSchema.safeParse(request.body)
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+    const body = InitiateTryOnSchema.safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { product_id, customer_photo_r2_key, measurement_id, consent_to_training } = body.data
+    const { product_id, customer_photo_r2_key, measurement_id, consent_to_training } = body.data;
 
     // Verify product belongs to this retailer
     const product = await prisma.product.findFirst({
       where: { id: product_id, retailer_id: retailerId, deleted_at: null },
       select: { id: true },
-    })
-    if (!product) throw notFound('Product')
+    });
+    if (!product) throw notFound('Product');
 
     // Record usage — F-010 UsageCounter handles monthly period tracking.
     // Best-effort: a failed usage write shouldn't fail the try-on.
     incrementUsage(retailerId, 'TRY_ON').catch((err) => {
-      request.log.error({ err, retailer_id: retailerId }, 'Failed to record try-on usage')
-    })
+      request.log.error({ err, retailer_id: retailerId }, 'Failed to record try-on usage');
+    });
 
     // Create TryOnJob record
-    const jobId = createId()
+    const jobId = createId();
     const tryOnJob = await prisma.tryOnJob.create({
       data: {
         id: jobId,
@@ -66,7 +66,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         api_provider: 'vton',
         queued_at: new Date(),
       },
-    })
+    });
 
     // Queue async processing
     await addTryOnJob({
@@ -76,43 +76,41 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
       customer_photo_r2_key,
       measurement_id: measurement_id ?? null,
       consent_to_training,
-    })
+    });
 
     return reply.status(201).send({
       data: {
         id: tryOnJob.id,
         status: 'QUEUED',
       },
-    })
-  })
+    });
+  });
 
   // ─── POST /try-on/upload-url ──────────────────────────────────
   // Get presigned URL to upload customer photo for try-on.
   // Used by both in-store (shopkeeper app) and remote (customer web).
   server.post('/upload-url', async (request, reply) => {
-    const retailerId = request.retailerId
-
     const body = z
       .object({
         content_type: z.enum(['image/jpeg', 'image/png', 'image/webp'] as const),
         size_bytes: z.number().int().min(1).max(10_000_000),
       })
-      .safeParse(request.body)
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { content_type, size_bytes } = body.data
-    if (size_bytes > 10_000_000) throw validationError('File too large (max 10MB)', 'size_bytes')
+    const { content_type, size_bytes } = body.data;
+    if (size_bytes > 10_000_000) throw validationError('File too large (max 10MB)', 'size_bytes');
 
-    const jobId = createId()
-    const ext = content_type === 'image/jpeg' ? 'jpg' : content_type === 'image/png' ? 'png' : 'webp'
-    const filename = `customer-${createId()}.${ext}`
-    const r2Key = R2_PATHS.tryonInput(jobId)
+    const jobId = createId();
+    const r2Key = R2_PATHS.tryonInput(jobId);
 
-    let uploadUrl: string
+    let uploadUrl: string;
     try {
-      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 600)
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 600);
     } catch {
-      throw validationError('Photo storage is not configured. Please contact support to enable try-on photos.')
+      throw validationError(
+        'Photo storage is not configured. Please contact support to enable try-on photos.',
+      );
     }
 
     return reply.status(200).send({
@@ -123,14 +121,14 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         job_id: jobId,
         expires_in: 600,
       },
-    })
-  })
+    });
+  });
 
   // ─── GET /try-on/jobs/:id ─────────────────────────────────────
   // Poll try-on job status and result.
   server.get('/jobs/:id', async (request) => {
-    const { id } = request.params as { id: string }
-    const retailerId = request.retailerId
+    const { id } = request.params as { id: string };
+    const retailerId = request.retailerId;
 
     const job = await prisma.tryOnJob.findFirst({
       where: { id, retailer_id: retailerId },
@@ -146,37 +144,37 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         completed_at: true,
         measurement_id: true,
       },
-    })
-    if (!job) throw notFound('Try-on job')
+    });
+    if (!job) throw notFound('Try-on job');
 
     // If the job is completed and the customer consented to training, include
     // the revocation_token so the retailer can show a revocation link to
     // the customer (they show them the result screen).
-    let revocationToken: string | null = null
+    let revocationToken: string | null = null;
     if (job.status === 'COMPLETED') {
       const consent = await prisma.trainingPhotoConsent.findUnique({
         where: { try_on_job_id: id },
         select: { revocation_token: true },
-      })
-      revocationToken = consent?.revocation_token ?? null
+      });
+      revocationToken = consent?.revocation_token ?? null;
     }
 
-    return { data: { ...job, revocation_token: revocationToken } }
-  })
+    return { data: { ...job, revocation_token: revocationToken } };
+  });
 
   // ─── GET /try-on/jobs ─────────────────────────────────────────
   // List try-on jobs for this retailer (recent first).
   server.get('/jobs', async (request) => {
-    const retailerId = request.retailerId
+    const retailerId = request.retailerId;
     const query = z
       .object({
         limit: z.coerce.number().int().min(1).max(50).default(20),
         cursor: z.string().optional(),
       })
-      .safeParse(request.query)
-    if (!query.success) throw validationError('Invalid query')
+      .safeParse(request.query);
+    if (!query.success) throw validationError('Invalid query');
 
-    const { limit, cursor } = query.data
+    const { limit, cursor } = query.data;
 
     const jobs = await prisma.tryOnJob.findMany({
       where: {
@@ -194,16 +192,19 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         queued_at: true,
         completed_at: true,
       },
-    })
+    });
 
-    const hasMore = jobs.length > limit
-    const page = hasMore ? jobs.slice(0, limit) : jobs
+    const hasMore = jobs.length > limit;
+    const page = hasMore ? jobs.slice(0, limit) : jobs;
 
     return {
       data: page,
-      pagination: { cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null, has_more: hasMore },
-    }
-  })
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+      },
+    };
+  });
 
   // ─── POST /try-on/remote ─────────────────────────────────────
   // Customer-initiated try-on from the web collection page (no auth).
@@ -219,36 +220,39 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         viewer_token: z.string().optional(),
         consent_to_training: z.boolean().optional().default(false),
       })
-      .safeParse(request.body)
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { collection_slug, product_id, customer_photo_url, viewer_token, consent_to_training } = body.data
+    const { collection_slug, product_id, customer_photo_url, consent_to_training } = body.data;
 
     // Look up the collection to verify it exists and get the retailer
     const collection = await prisma.collection.findFirst({
       where: { slug: collection_slug, status: 'ACTIVE', deleted_at: null },
       select: { id: true, retailer_id: true },
-    })
-    if (!collection) throw notFound('Collection')
+    });
+    if (!collection) throw notFound('Collection');
 
     // Verify product is in this collection
     const collectionProduct = await prisma.collectionProduct.findFirst({
       where: { collection_id: collection.id, product_id },
-    })
-    if (!collectionProduct) throw validationError('Product not found in this collection')
+    });
+    if (!collectionProduct) throw validationError('Product not found in this collection');
 
     // Check try-on quota via F-010 monthly UsageCounter (plan_limits seeded
     // with MONTHLY periods — STARTER=0, GROWTH=100, PRO=500). This
     // auto-resets each month via period_start tracking.
-    await checkQuota(collection.retailer_id, 'TRY_ON')
+    await checkQuota(collection.retailer_id, 'TRY_ON');
 
     // Record usage — F-010 UsageCounter handles monthly period tracking.
     incrementUsage(collection.retailer_id, 'TRY_ON').catch((err) => {
-      request.log.error({ err, retailer_id: collection.retailer_id }, 'Failed to record try-on usage')
-    })
+      request.log.error(
+        { err, retailer_id: collection.retailer_id },
+        'Failed to record try-on usage',
+      );
+    });
 
     // Create TryOnJob record with customer photo URL (base64 data URL for remote flow)
-    const jobId = createId()
+    const jobId = createId();
     const tryOnJob = await prisma.tryOnJob.create({
       data: {
         id: jobId,
@@ -260,7 +264,7 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         api_provider: 'vton',
         queued_at: new Date(),
       },
-    })
+    });
 
     // Queue async processing
     await addTryOnJob({
@@ -270,20 +274,20 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
       customer_photo_r2_key: customer_photo_url, // pass URL directly for remote
       is_remote: true,
       consent_to_training,
-    })
+    });
 
     return reply.status(201).send({
       data: {
         id: tryOnJob.id,
         status: 'QUEUED',
       },
-    })
-  })
+    });
+  });
 
   // ─── GET /try-on/remote/:id ───────────────────────────────────
   // Customer polls try-on result (no auth, just job ID).
   server.get('/remote/:id', async (request) => {
-    const { id } = request.params as { id: string }
+    const { id } = request.params as { id: string };
 
     const job = await prisma.tryOnJob.findUnique({
       where: { id },
@@ -296,20 +300,20 @@ export const tryOnRoutes: FastifyPluginAsync = async (server) => {
         queued_at: true,
         completed_at: true,
       },
-    })
-    if (!job) throw notFound('Try-on job')
+    });
+    if (!job) throw notFound('Try-on job');
 
     // If the job is completed and the customer consented to training, include
     // the revocation_token so the result UI can show a revocation link.
-    let revocationToken: string | null = null
+    let revocationToken: string | null = null;
     if (job.status === 'COMPLETED') {
       const consent = await prisma.trainingPhotoConsent.findUnique({
         where: { try_on_job_id: id },
         select: { revocation_token: true },
-      })
-      revocationToken = consent?.revocation_token ?? null
+      });
+      revocationToken = consent?.revocation_token ?? null;
     }
 
-    return { data: { ...job, revocation_token: revocationToken } }
-  })
-}
+    return { data: { ...job, revocation_token: revocationToken } };
+  });
+};

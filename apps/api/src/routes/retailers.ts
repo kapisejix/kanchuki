@@ -1,14 +1,14 @@
-import type { FastifyPluginAsync } from 'fastify'
-import { z } from 'zod'
-import { prisma } from '@kanchuki/db'
-import { generateCollectionSlug } from '@kanchuki/shared'
-import { notFound, validationError } from '../plugins/error-handler.js'
-import type { QuotaResourceType, QuotaPeriod } from '@kanchuki/db'
+import { prisma } from '@kanchuki/db';
+import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
+import { generateCollectionSlug } from '@kanchuki/shared';
+import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { notFound, validationError } from '../plugins/error-handler.js';
 
 function periodStart(period: QuotaPeriod, now = new Date()): Date {
-  if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  if (period === 'MONTH') return new Date(now.getFullYear(), now.getMonth(), 1)
-  return new Date(0) // LIFETIME
+  if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'MONTH') return new Date(now.getFullYear(), now.getMonth(), 1);
+  return new Date(0); // LIFETIME
 }
 
 const UpdateRetailerSchema = z.object({
@@ -29,22 +29,22 @@ const UpdateRetailerSchema = z.object({
     .string()
     .regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number')
     .optional(),
-})
+});
 
 const StoreSectionSchema = z.object({
   name: z.string().min(1).max(100),
   type: z.enum(['rack', 'shelf', 'section', 'floor', 'box']),
   parent_id: z.string().optional(),
   sort_order: z.number().int().min(0).max(999).optional(),
-})
+});
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /retailers/me ──────────────────────────────────────────
   server.get('/me', async (request) => {
     const retailer = await prisma.retailer.findUnique({
       where: { id: request.retailerId, deleted_at: null },
-    })
-    if (!retailer) throw notFound('Retailer')
+    });
+    if (!retailer) throw notFound('Retailer');
 
     const [productCount, customerCount] = await Promise.all([
       prisma.product.count({
@@ -53,36 +53,36 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       prisma.customer.count({
         where: { retailer_id: request.retailerId, deleted_at: null },
       }),
-    ])
+    ]);
 
     return {
       data: {
         ...retailer,
         usage: { product_count: productCount, customer_count: customerCount },
       },
-    }
-  })
+    };
+  });
 
   // ─── PUT /retailers/me ──────────────────────────────────────────
   server.put('/me', async (request) => {
-    const body = UpdateRetailerSchema.safeParse(request.body)
+    const body = UpdateRetailerSchema.safeParse(request.body);
     if (!body.success) {
-      throw validationError(body.error.issues[0]?.message ?? 'Validation failed')
+      throw validationError(body.error.issues[0]?.message ?? 'Validation failed');
     }
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
       data: body.data,
-    })
+    });
 
-    return { data: updated }
-  })
+    return { data: updated };
+  });
 
   // ─── GET /retailers/me/stats ────────────────────────────────────
   server.get('/me/stats', async (request) => {
-    const retailerId = request.retailerId
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const retailerId = request.retailerId;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     const [
       totalProducts,
@@ -93,9 +93,13 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       topViewed,
       topEnquired,
     ] = await Promise.all([
-      prisma.product.count({ where: { retailer_id: retailerId, deleted_at: null, status: 'AVAILABLE' } }),
+      prisma.product.count({
+        where: { retailer_id: retailerId, deleted_at: null, status: 'AVAILABLE' },
+      }),
       prisma.customer.count({ where: { retailer_id: retailerId, deleted_at: null } }),
-      prisma.collection.count({ where: { retailer_id: retailerId, status: 'ACTIVE', deleted_at: null } }),
+      prisma.collection.count({
+        where: { retailer_id: retailerId, status: 'ACTIVE', deleted_at: null },
+      }),
       prisma.collectionView.count({
         where: { retailer_id: retailerId, created_at: { gte: monthStart } },
       }),
@@ -116,9 +120,9 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         orderBy: { _count: { product_id: 'desc' } },
         take: 5,
       }),
-    ])
+    ]);
 
-    const productIds = [...topViewed, ...topEnquired].map((g) => g.product_id as string)
+    const productIds = [...topViewed, ...topEnquired].map((g) => g.product_id as string);
     const products = productIds.length
       ? await prisma.product.findMany({
           where: { id: { in: productIds } },
@@ -129,18 +133,26 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
             photos: { where: { is_primary: true }, select: { url: true }, take: 1 },
           },
         })
-      : []
+      : [];
     const productMap = new Map(
       products.map((p) => [
         p.id,
-        { id: p.id, category: p.category, primary_color: p.primary_color, photo_url: p.photos[0]?.url ?? null },
+        {
+          id: p.id,
+          category: p.category,
+          primary_color: p.primary_color,
+          photo_url: p.photos[0]?.url ?? null,
+        },
       ]),
-    )
+    );
 
     const toRanked = (groups: typeof topViewed) =>
       groups
         .filter((g) => productMap.has(g.product_id as string))
-        .map((g) => ({ product: productMap.get(g.product_id as string), count: g._count.product_id }))
+        .map((g) => ({
+          product: productMap.get(g.product_id as string),
+          count: g._count.product_id,
+        }));
 
     return {
       data: {
@@ -152,22 +164,22 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         top_viewed_products: toRanked(topViewed),
         top_enquired_products: toRanked(topEnquired),
       },
-    }
-  })
+    };
+  });
 
   // ─── GET /retailers/me/plan ─────────────────────────────────────
   // ─── GET /retailers/me/analytics ────────────────────────────────
   server.get('/me/analytics', async (request) => {
-    const retailerId = request.retailerId
-    const now = new Date()
+    const retailerId = request.retailerId;
+    const now = new Date();
 
     // Last 7 days of daily views + enquiries
-    const days: { date: string; views: number; enquiries: number }[] = []
+    const days: { date: string; views: number; enquiries: number }[] = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date(now)
-      d.setDate(d.getDate() - i)
-      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate())
-      const dayEnd = new Date(dayStart.getTime() + 86_400_000)
+      const d = new Date(now);
+      d.setDate(d.getDate() - i);
+      const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const dayEnd = new Date(dayStart.getTime() + 86_400_000);
 
       const [views, enquiries] = await Promise.all([
         prisma.collectionView.count({
@@ -176,13 +188,13 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         prisma.collectionEnquiry.count({
           where: { retailer_id: retailerId, created_at: { gte: dayStart, lt: dayEnd } },
         }),
-      ])
+      ]);
 
       days.push({
         date: dayStart.toISOString().slice(0, 10),
         views,
         enquiries,
-      })
+      });
     }
 
     // Category distribution
@@ -191,14 +203,14 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       where: { retailer_id: retailerId, deleted_at: null },
       _count: { id: true },
       orderBy: { _count: { id: 'desc' } },
-    })
+    });
 
     // Status distribution
     const statusGroups = await prisma.product.groupBy({
       by: ['status'],
       where: { retailer_id: retailerId, deleted_at: null },
       _count: { id: true },
-    })
+    });
 
     // Recent collection performance
     const collections = await prisma.collection.findMany({
@@ -216,7 +228,7 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         created_at: true,
         _count: { select: { products: true } },
       },
-    })
+    });
 
     // Plan usage
     const retailer = await prisma.retailer.findUnique({
@@ -228,7 +240,7 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         max_customers: true,
         try_on_credits: true,
       },
-    })
+    });
 
     return {
       data: {
@@ -251,8 +263,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         })),
         plan: retailer,
       },
-    }
-  })
+    };
+  });
 
   // ─── GET /retailers/me/plan ─────────────────────────────────────
   server.get('/me/plan', async (request) => {
@@ -267,10 +279,10 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         max_customers: true,
         try_on_credits: true,
       },
-    })
-    if (!retailer) throw notFound('Retailer')
-    return { data: retailer }
-  })
+    });
+    if (!retailer) throw notFound('Retailer');
+    return { data: retailer };
+  });
 
   // ─── PATCH /retailers/me/onboarding ────────────────────────────
   server.patch('/me/onboarding', async (request) => {
@@ -279,8 +291,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         step: z.number().int().min(0).max(6),
         completed: z.boolean().optional(),
       })
-      .safeParse(request.body)
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
@@ -289,9 +301,9 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         ...(body.data.completed === true ? { onboarding_completed: true } : {}),
       },
       select: { onboarding_step: true, onboarding_completed: true },
-    })
-    return { data: updated }
-  })
+    });
+    return { data: updated };
+  });
 
   // ─── POST /retailers/me/qr-slug ─────────────────────────────────
   // Get-or-create the stable slug the QR code encodes (/store/{slug}).
@@ -299,61 +311,69 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     const existing = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
       select: { public_slug: true, shop_name: true },
-    })
-    if (!existing) throw notFound('Retailer')
-    const webBase = process.env['WEB_URL'] ?? ''
+    });
+    if (!existing) throw notFound('Retailer');
+    const webBase = process.env.WEB_URL ?? '';
 
     if (existing.public_slug) {
-      return { data: { public_slug: existing.public_slug, profile_url: `${webBase}/store/${existing.public_slug}` } }
+      return {
+        data: {
+          public_slug: existing.public_slug,
+          profile_url: `${webBase}/store/${existing.public_slug}`,
+        },
+      };
     }
 
-    let slug = generateCollectionSlug(existing.shop_name)
+    let slug = generateCollectionSlug(existing.shop_name);
     while (await prisma.retailer.findUnique({ where: { public_slug: slug } })) {
-      slug = generateCollectionSlug(existing.shop_name)
+      slug = generateCollectionSlug(existing.shop_name);
     }
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
       data: { public_slug: slug },
       select: { public_slug: true },
-    })
-    return { data: { public_slug: updated.public_slug, profile_url: `${webBase}/store/${updated.public_slug}` } }
-  })
+    });
+    return {
+      data: {
+        public_slug: updated.public_slug,
+        profile_url: `${webBase}/store/${updated.public_slug}`,
+      },
+    };
+  });
 
   // ─── PATCH /retailers/me/storefront ─────────────────────────────
   // Pick which collection the QR profile page opens into after the
   // contact gate. Pass collection_id: null to unset.
   server.patch('/me/storefront', async (request) => {
-    const body = z
-      .object({ collection_id: z.string().nullable() })
-      .safeParse(request.body)
-    if (!body.success) throw validationError('Invalid body')
+    const body = z.object({ collection_id: z.string().nullable() }).safeParse(request.body);
+    if (!body.success) throw validationError('Invalid body');
 
     if (body.data.collection_id) {
       const owned = await prisma.collection.findFirst({
         where: { id: body.data.collection_id, retailer_id: request.retailerId, deleted_at: null },
-      })
-      if (!owned) throw validationError('Collection does not belong to your store')
+      });
+      if (!owned) throw validationError('Collection does not belong to your store');
     }
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
       data: { storefront_collection_id: body.data.collection_id },
       select: { storefront_collection_id: true },
-    })
-    return { data: updated }
-  })
+    });
+    return { data: updated };
+  });
 
   // ─── GET /retailers/me/usage ──────────────────────────────────────
   // F-010: Return usage vs limits for all metered resources.
   server.get('/me/usage', async (request) => {
-    const retailerId = request.retailerId
+    const retailerId = request.retailerId;
 
     const retailer = await prisma.retailer.findUnique({
       where: { id: retailerId },
       select: { plan: true },
-    })
-    if (!retailer) throw notFound('Retailer')
+    });
+    if (!retailer) throw notFound('Retailer');
 
     const ALL_RESOURCES: QuotaResourceType[] = [
       'PRODUCT_UPLOAD',
@@ -362,44 +382,44 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       'IMAGE_CROP',
       'BG_REMOVAL',
       'API_REQUEST',
-    ]
+    ];
 
     // Check for per-retailer override
     const overrides = await prisma.retailerLimitOverride.findMany({
       where: { retailer_id: retailerId },
-    })
-    const overrideMap = new Map(overrides.map((o) => [o.resource_type, o]))
+    });
+    const overrideMap = new Map(overrides.map((o) => [o.resource_type, o]));
 
     // Fetch plan limits for retailer's plan
     const planLimits = await prisma.planLimit.findMany({
       where: { plan: retailer.plan },
-    })
-    const planLimitMap = new Map(planLimits.map((p) => [p.resource_type, p]))
+    });
+    const planLimitMap = new Map(planLimits.map((p) => [p.resource_type, p]));
 
     // Fetch current usage counters
-    const now = new Date()
+    const now = new Date();
     const counters = await prisma.usageCounter.findMany({
       where: { retailer_id: retailerId },
-    })
+    });
 
     const usage = ALL_RESOURCES.map((resourceType) => {
-      const override = overrideMap.get(resourceType)
+      const override = overrideMap.get(resourceType);
       if (override) {
         // Per-retailer override takes priority
-        const start = periodStart(override.period, now)
+        const start = periodStart(override.period, now);
         const counter = counters.find(
           (c) => c.resource_type === resourceType && c.period_start.getTime() === start.getTime(),
-        )
+        );
         return {
           resource_type: resourceType,
           limit: override.limit_per_period,
           used: counter?.count ?? 0,
           period: override.period,
           source: 'override' as const,
-        }
+        };
       }
 
-      const planLimit = planLimitMap.get(resourceType)
+      const planLimit = planLimitMap.get(resourceType);
       if (!planLimit) {
         // No limit configured — unlimited
         return {
@@ -408,35 +428,35 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
           used: 0,
           period: 'LIFETIME' as QuotaPeriod,
           source: 'unlimited' as const,
-        }
+        };
       }
 
-      const start = periodStart(planLimit.period, now)
+      const start = periodStart(planLimit.period, now);
       const counter = counters.find(
         (c) => c.resource_type === resourceType && c.period_start.getTime() === start.getTime(),
-      )
+      );
       return {
         resource_type: resourceType,
         limit: planLimit.limit_per_period,
         used: counter?.count ?? 0,
         period: planLimit.period,
         source: 'plan' as const,
-      }
-    })
+      };
+    });
 
-    return { data: usage }
-  })
+    return { data: usage };
+  });
 
   // ─── DELETE /retailers/me ───────────────────────────────────────
   // F-009: Soft-delete the retailer account. Collections become inaccessible.
   // Products/customers/billing records are retained for audit/GST compliance.
   server.delete('/me', async (request, reply) => {
-    const retailerId = request.retailerId
+    const retailerId = request.retailerId;
 
     const existing = await prisma.retailer.findUnique({
       where: { id: retailerId, deleted_at: null },
-    })
-    if (!existing) throw notFound('Retailer')
+    });
+    if (!existing) throw notFound('Retailer');
 
     // Soft-delete retailer + archive all collections + deactivate staff
     await Promise.all([
@@ -452,10 +472,10 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         where: { retailer_id: retailerId, is_active: true },
         data: { is_active: false },
       }),
-    ])
+    ]);
 
-    return reply.status(204).send()
-  })
+    return reply.status(204).send();
+  });
 
   // ─── Store Sections ─────────────────────────────────────────────
 
@@ -463,48 +483,48 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     const sections = await prisma.storeSection.findMany({
       where: { retailer_id: request.retailerId },
       orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
-    })
-    return { data: sections }
-  })
+    });
+    return { data: sections };
+  });
 
   server.post('/me/sections', async (request, reply) => {
-    const body = StoreSectionSchema.safeParse(request.body)
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+    const body = StoreSectionSchema.safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const section = await prisma.storeSection.create({
       data: { retailer_id: request.retailerId, ...body.data },
-    })
-    return reply.status(201).send({ data: section })
-  })
+    });
+    return reply.status(201).send({ data: section });
+  });
 
   server.put('/me/sections/:id', async (request) => {
-    const { id } = request.params as { id: string }
-    const body = StoreSectionSchema.partial().safeParse(request.body)
-    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid')
+    const { id } = request.params as { id: string };
+    const body = StoreSectionSchema.partial().safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const existing = await prisma.storeSection.findFirst({
       where: { id, retailer_id: request.retailerId },
-    })
-    if (!existing) throw notFound('Section')
+    });
+    if (!existing) throw notFound('Section');
 
     const updated = await prisma.storeSection.update({
       where: { id },
       data: body.data,
-    })
-    return { data: updated }
-  })
+    });
+    return { data: updated };
+  });
 
   server.delete('/me/sections/:id', async (request, reply) => {
-    const { id } = request.params as { id: string }
+    const { id } = request.params as { id: string };
 
     const inUse = await prisma.product.count({
       where: { section_id: id, retailer_id: request.retailerId, deleted_at: null },
-    })
+    });
     if (inUse > 0) {
-      throw validationError('Section has products assigned. Reassign them first.')
+      throw validationError('Section has products assigned. Reassign them first.');
     }
 
-    await prisma.storeSection.delete({ where: { id } })
-    return reply.status(204).send()
-  })
-}
+    await prisma.storeSection.delete({ where: { id } });
+    return reply.status(204).send();
+  });
+};

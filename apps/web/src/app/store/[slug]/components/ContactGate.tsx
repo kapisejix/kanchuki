@@ -87,7 +87,7 @@ export function ContactGate({ slug, profile }: Props) {
       >
         <h1 className="text-lg font-bold text-gray-900 mb-1">{profile.shop_name}</h1>
         <p className="text-xs text-gray-500 mb-5">
-          Share your details to view this store's catalog.
+          Share your details to view this store&apos;s catalog.
         </p>
 
         {error && (
