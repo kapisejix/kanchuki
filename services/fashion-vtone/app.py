@@ -22,9 +22,9 @@ API:
         -> { "status": "completed", "result_url": "https://...", "latency_ms": 15000 }
 """
 
-import asyncio
 import io
 import os
+import threading
 import time
 import uuid
 import logging
@@ -34,7 +34,6 @@ from typing import Literal, Optional
 import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from PIL import Image
 
@@ -76,19 +75,19 @@ pipeline = None
 pipeline_loading = False
 
 
-async def _load_pipeline():
-    """Load the V-Tone pipeline in a background task so the health
+def _load_pipeline_sync():
+    """Load the V-Tone pipeline in a daemon thread so the health
     endpoint responds immediately and Railway health checks pass.
 
     The model weights (~2.3 GB) load from disk, which can take
-    5-10 minutes on CPU. By running this as a background asyncio
-    task, the FastAPI app starts serving requests right away.
+    5-10 minutes on CPU. Running in a background daemon thread
+    keeps the FastAPI event loop responsive from the start.
     """
     global pipeline, pipeline_loading
     pipeline_loading = True
     try:
         from fashn_vton import TryOnPipeline
-        logger.info("Loading Fashion V-Tone v1.5 pipeline in background...")
+        logger.info("Loading Fashion V-Tone v1.5 pipeline in background thread...")
         pipeline = TryOnPipeline(weights_dir=WEIGHTS_DIR)
         logger.info("Fashion V-Tone pipeline initialized successfully")
     except Exception as e:
@@ -99,8 +98,9 @@ async def _load_pipeline():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start pipeline loading in background; don't block startup."""
-    asyncio.create_task(_load_pipeline())
+    """Start pipeline loading in a daemon thread; don't block startup."""
+    thread = threading.Thread(target=_load_pipeline_sync, daemon=True)
+    thread.start()
     yield
     if pipeline is not None:
         pipeline.unload()
