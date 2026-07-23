@@ -42,8 +42,16 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     if (auto_cleanup) {
       try {
         await checkQuota(retailer_id, 'BG_REMOVAL');
+        // F-011: use the retailer's picked background instead of white, if set.
+        const withBg = await prisma.product.findUnique({
+          where: { id: product_id },
+          include: { background_image: true },
+        });
+        const bgUrl = withBg?.background_image?.is_active
+          ? withBg.background_image.image_url
+          : undefined;
         const raw = await fetchImageBuffer(photo_url);
-        const cleaned = await cleanupProductPhoto(raw);
+        const cleaned = await cleanupProductPhoto(raw, bgUrl);
         await uploadBuffer(r2_key, cleaned, 'image/jpeg');
         await incrementUsage(retailer_id, 'BG_REMOVAL');
       } catch (err) {

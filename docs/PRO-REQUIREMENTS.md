@@ -406,6 +406,32 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 ---
 
+#### F-011: Custom Product Background Library
+**Status:** 🔴 **Not started** — planned, spec only (2026-07-23)
+
+**Priority:** P1 — visual polish for catalog listings, not a launch blocker
+
+**Problem:** `cleanupProductPhoto()` (`packages/ai/src/detector.ts`) already strips the background via `@imgly/background-removal-node` and composites the cutout onto plain white (`s(cutout).flatten({ background: '#ffffff' })`). Retailers want the option of a nicer backdrop (flower pots, designer rack, studio, outdoor) instead of flat white, for both the static product photo and the 360° spin frames (`apps/api/src/jobs/extract-spin-frames.ts`).
+
+**Design — reuse the existing cutout, swap the composite target:**
+- `background_images` table: `(id, name, image_url, thumbnail_url, is_active, created_by_admin_id)`. Admin-only writes.
+- Admin panel screen to upload a background image directly, or generate one via an image-gen API call (one-time, ~$ per image, not per-product) — either path just produces a URL in `background_images`.
+- Retailer product-photo screen (`apps/mobile/app/product/add.tsx`, after the existing crop/bg-removal toggle) gets a background picker: white (current default) or any active `background_images` row.
+- `cleanupProductPhoto()` takes an optional `backgroundImageUrl` param — when set, composites the RGBA cutout onto that image instead of `flatten({ background: '#ffffff' })`; falls through to white when unset, so existing behavior is unchanged by default.
+- Spin frame extraction reuses the same cutout+composite step per frame — no new pipeline, just the same composite call inside the existing frame loop.
+
+**Cost:** No new per-product AI cost — bg-removal and compositing are already self-hosted (`@imgly` + sharp), same as today. Only cost is the one-time background image creation (admin-side, few $ total for 4-5 images) and R2 storage for those images (negligible). No new `resource_type` needed in F-010's quota system — this doesn't add a metered AI call.
+
+**Explicitly not in this feature:** retailer-uploaded custom backgrounds (admin-only for now, keeps the library curated/premium-looking and avoids a moderation queue — revisit if retailers ask for it as a Pro-tier option).
+
+**Acceptance Criteria:**
+- Admin can upload or AI-generate a background image and mark it active/inactive from the admin panel
+- Retailer sees a background picker after crop/remove-background, defaulting to white
+- Selected background applies to both the static product photo and 360° spin frames
+- Existing products with no background selected keep the current white-flatten behavior unchanged
+
+---
+
 ### Phase 1: Core AI Features (Month 5–8)
 
 #### F-101: Fashion DNA — AI Customer Matching

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
@@ -95,6 +95,17 @@ export default function AddProductScreen() {
   const [notes, setNotes] = useState('')
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [autoCleanup, setAutoCleanup] = useState(true)
+  const [backgroundImages, setBackgroundImages] = useState<
+    { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
+  >([])
+  const [backgroundImageId, setBackgroundImageId] = useState<string | null>(null)
+
+  useEffect(() => {
+    productApi
+      .getBackgroundImages()
+      .then((res) => setBackgroundImages(res.data))
+      .catch(() => {}) // ponytail: best-effort — picker just stays empty (white-only)
+  }, [])
 
   const cameraRef = useRef<CameraView>(null)
 
@@ -280,6 +291,7 @@ export default function AddProductScreen() {
         location_notes: location || undefined,
         notes: notes || undefined,
         auto_cleanup: autoCleanup,
+        background_image_id: backgroundImageId,
       })
 
       // Extra frames the retailer multi-selected on the scan review screen —
@@ -302,8 +314,14 @@ export default function AddProductScreen() {
 
       Alert.alert(
         'Product Added!',
-        'AI is tagging your product in the background. Check your catalog in a moment.',
-        [{ text: 'OK', onPress: () => router.back() }],
+        'AI is tagging your product in the background. Want to add a 360° spin view now?',
+        [
+          { text: 'Skip', style: 'cancel', onPress: () => router.back() },
+          {
+            text: 'Add Spin View',
+            onPress: () => router.replace(`/product/${productId}/spin-video`),
+          },
+        ],
       )
     } catch (err) {
       setStep('edit')
@@ -730,6 +748,42 @@ export default function AddProductScreen() {
           </View>
           <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
         </View>
+
+        {/* Background picker — F-011, only meaningful once auto-clean is on */}
+        {autoCleanup && backgroundImages.length > 0 && (
+          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              Background
+            </Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => setBackgroundImageId(null)}
+                  className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${
+                    backgroundImageId === null ? 'border-cyan-600' : 'border-gray-200'
+                  }`}
+                >
+                  <Text className="text-[10px] text-gray-500">White</Text>
+                </TouchableOpacity>
+                {backgroundImages.map((bg) => (
+                  <TouchableOpacity
+                    key={bg.id}
+                    onPress={() => setBackgroundImageId(bg.id)}
+                    className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
+                      backgroundImageId === bg.id ? 'border-cyan-600' : 'border-gray-200'
+                    }`}
+                  >
+                    <Image
+                      source={{ uri: bg.thumbnail_url ?? bg.image_url }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                    />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
 
         {/* Price */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100">

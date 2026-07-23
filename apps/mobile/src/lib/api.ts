@@ -371,6 +371,23 @@ export const productApi = {
       { method: 'POST', timeoutMs: 30_000 },
     ),
 
+  // F-011: admin-curated background library for the crop/cleanup picker.
+  getBackgroundImages: () =>
+    request<{ data: { id: string; name: string; image_url: string; thumbnail_url: string | null }[] }>(
+      '/v1/products/background-images',
+      { getCacheTtlMs: 60_000 },
+    ),
+
+  setBackground: (productId: string, backgroundImageId: string | null) =>
+    request<{ data: { background_image_id: string | null; photo_url: string | null } }>(
+      `/v1/products/${productId}/background`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ background_image_id: backgroundImageId }),
+        timeoutMs: 30_000,
+      },
+    ),
+
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
       method: 'POST',

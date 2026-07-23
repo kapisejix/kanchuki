@@ -88,6 +88,7 @@ const CreateProductSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
   auto_cleanup: z.boolean().optional().default(true),
+  background_image_id: z.string().nullable().optional(),
 });
 
 const UpdateProductSchema = CreateProductSchema.partial().omit({
@@ -142,6 +143,16 @@ async function photoUrlToDisplay(
 }
 
 export const productRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /products/background-images ─────────────────────────────
+  // F-011: retailer-facing picker — active, admin-curated backgrounds only.
+  server.get('/background-images', async () => {
+    const rows = await prisma.backgroundImage.findMany({
+      where: { is_active: true },
+      orderBy: { created_at: 'desc' },
+    });
+    return { data: rows };
+  });
+
   // ─── POST /products/upload-url ──────────────────────────────────
   server.post('/upload-url', async (request, reply) => {
     const body = z
@@ -564,17 +575,65 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
 
     const photo = await prisma.productPhoto.findFirst({
       where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+      include: { product: { include: { background_image: true } } },
     });
     if (!photo) throw notFound('Product photo');
 
     await checkQuota(request.retailerId, 'BG_REMOVAL');
 
+    const bgUrl = photo.product.background_image?.is_active
+      ? photo.product.background_image.image_url
+      : undefined;
     const raw = await fetchImageBuffer(photo.url);
-    const cleaned = await cleanupProductPhoto(raw);
+    const cleaned = await cleanupProductPhoto(raw, bgUrl);
     await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
     await incrementUsage(request.retailerId, 'BG_REMOVAL');
 
     return reply.status(200).send({ data: { id: photo.id, url: photo.url } });
+  });
+
+  // ─── PATCH /products/:id/background ────────────────────────────────
+  // F-011: retailer picks a background from the admin library (or null for
+  // white). Re-runs cleanupProductPhoto on the primary photo with the new
+  // backdrop. Spin frames pick up the selection on their next
+  // extraction (extract-spin-frames.ts reads background_image_id at
+  // generation time) — not retroactively reprocessed here.
+  server.patch('/:id/background', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z.object({ background_image_id: z.string().nullable() }).parse(request.body);
+
+    const product = await prisma.product.findFirst({
+      where: { id, retailer_id: request.retailerId, deleted_at: null },
+      include: { photos: { where: { is_primary: true }, take: 1 } },
+    });
+    if (!product) throw notFound('Product');
+
+    let bgUrl: string | undefined;
+    if (body.background_image_id) {
+      const bg = await prisma.backgroundImage.findFirst({
+        where: { id: body.background_image_id, is_active: true },
+      });
+      if (!bg) throw validationError('Background image not found or inactive');
+      bgUrl = bg.image_url;
+    }
+
+    await prisma.product.update({
+      where: { id },
+      data: { background_image_id: body.background_image_id },
+    });
+
+    const photo = product.photos[0];
+    if (photo) {
+      await checkQuota(request.retailerId, 'BG_REMOVAL');
+      const raw = await fetchImageBuffer(photo.url);
+      const cleaned = await cleanupProductPhoto(raw, bgUrl);
+      await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
+      await incrementUsage(request.retailerId, 'BG_REMOVAL');
+    }
+
+    return reply.status(200).send({
+      data: { background_image_id: body.background_image_id, photo_url: photo?.url ?? null },
+    });
   });
 
   // ─── POST /products/:id/spin-video/upload-url ─────────────────────

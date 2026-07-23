@@ -241,12 +241,12 @@ export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
 }
 
 /**
- * Strip background and composite onto a plain white backdrop — the standard
- * e-commerce listing look (PRO-REQUIREMENTS.md "Auto catalog photo cleanup").
- * Callers should fall back to the original buffer on failure — a raw-but-tagged
- * photo beats a failed upload.
+ * Strip background and composite onto a backdrop — plain white by default,
+ * or a retailer-selected background image (PRO-REQUIREMENTS.md F-011) when
+ * `backgroundImageUrl` is given. Callers should fall back to the original
+ * buffer on failure — a raw-but-tagged photo beats a failed upload.
  */
-export async function cleanupProductPhoto(buffer: Buffer): Promise<Buffer> {
+export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: string): Promise<Buffer> {
   const s = await getSharp()
   // node's Blob defaults .type to '' when constructed from a plain Buffer,
   // and @imgly's decoder switches on blob.type (not the actual bytes) — an
@@ -255,6 +255,20 @@ export async function cleanupProductPhoto(buffer: Buffer): Promise<Buffer> {
   const inputBlob = new Blob([buffer], { type: `image/${format ?? 'jpeg'}` })
   const blob = await removeBackground(inputBlob, { publicPath: bgRemovalPublicPath() })
   const cutout = Buffer.from(await blob.arrayBuffer())
+
+  if (backgroundImageUrl) {
+    try {
+      const bg = await fetchImageBuffer(backgroundImageUrl)
+      const { width, height } = await s(cutout).metadata()
+      const bgResized = await s(bg).resize(width, height, { fit: 'cover' }).toBuffer()
+      return s(bgResized).composite([{ input: cutout }]).jpeg({ quality: 88 }).toBuffer()
+    } catch (err) {
+      // ponytail: best-effort — bad/unreachable background image falls back
+      // to the white backdrop rather than failing the whole photo cleanup.
+      console.error('Custom background composite failed, falling back to white:', err)
+    }
+  }
+
   return s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
 }
 

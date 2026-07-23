@@ -3,7 +3,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { deleteObject, downloadBuffer, publicUrl, uploadBuffer } from '@kanchuki/ai';
+import { cleanupProductPhoto, deleteObject, downloadBuffer, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 
@@ -61,9 +61,24 @@ export async function handleExtractSpinFrames(data: SpinFrameJobData): Promise<v
       .slice(0, SPIN_FRAME_COUNT);
     if (frameFiles.length === 0) throw new Error('ffmpeg produced no frames');
 
+    // F-011: if the retailer has picked a custom background, composite every
+    // frame onto it (same cutout+composite as the static photo). No custom
+    // background selected → frames stay as raw ffmpeg output, unchanged.
+    const product = await prisma.product.findUnique({
+      where: { id: product_id },
+      include: { background_image: true },
+    });
+    const bgUrl =
+      product?.background_image?.is_active ? product.background_image.image_url : undefined;
+
     const uploaded = await Promise.all(
       frameFiles.map(async (file, i) => {
-        const buf = await readFile(join(dir, file));
+        let buf: Buffer = await readFile(join(dir, file));
+        if (bgUrl) {
+          // ponytail: best-effort per frame — one bad frame falls back to
+          // its raw ffmpeg output instead of failing the whole spin.
+          buf = await cleanupProductPhoto(buf, bgUrl).catch(() => buf);
+        }
         const r2Key = R2_PATHS.spinFrame(retailer_id, product_id, i);
         await uploadBuffer(r2Key, buf, 'image/jpeg');
         return { r2Key, i };
