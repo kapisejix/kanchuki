@@ -380,6 +380,22 @@ export const productApi = {
   deleteVariant: (productId: string, variantId: string) =>
     request<void>(`/v1/products/${productId}/variants/${variantId}`, { method: 'DELETE' }),
 
+  getSpinVideoUploadUrl: (productId: string, contentType: string, sizeBytes: number) =>
+    request<{ data: { upload_url: string; r2_key: string; expires_in: number } }>(
+      `/v1/products/${productId}/spin-video/upload-url`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ content_type: contentType, size_bytes: sizeBytes }),
+        timeoutMs: 30_000,
+      },
+    ),
+
+  submitSpinVideo: (productId: string, r2Key: string) =>
+    request<{ data: { spin_status: string } }>(`/v1/products/${productId}/spin-video`, {
+      method: 'POST',
+      body: JSON.stringify({ r2_key: r2Key }),
+    }),
+
   /** Quick color-only AI detect — pre-fills color field on "Add Color" screen */
   detectColor: (imageUrl: string) =>
     request<{ data: { color: string | null } }>('/v1/products/detect-color', {

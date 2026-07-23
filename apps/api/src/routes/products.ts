@@ -12,7 +12,7 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { addEmbeddingJob, addTaggingJob } from '../jobs/index.js';
+import { addEmbeddingJob, addSpinFrameJob, addTaggingJob } from '../jobs/index.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import {
   forbidden,
@@ -61,6 +61,9 @@ async function revalidateCollectionsForProduct(productId: string): Promise<void>
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 type AllowedMime = (typeof ALLOWED_MIME_TYPES)[number];
+
+const ALLOWED_SPIN_VIDEO_MIME_TYPES = ['video/mp4', 'video/quicktime'] as const;
+const MAX_SPIN_VIDEO_BYTES = 50_000_000; // ~50MB, a few seconds of 1080p
 
 const CreateProductSchema = z.object({
   photo_r2_key: z.string().min(1),
@@ -324,6 +327,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       where: { id, retailer_id: request.retailerId, deleted_at: null },
       include: {
         photos: { orderBy: { sort_order: 'asc' } },
+        spin_frames: { orderBy: { frame_index: 'asc' } },
         variants: true,
         section: { select: { name: true } },
       },
@@ -335,6 +339,14 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       (product.photos ?? []).map(async (photo) => ({
         ...photo,
         url: (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url,
+      })),
+    );
+
+    // Generate presigned URLs for spin frames (same fallback as photos)
+    const spinFramesWithUrls = await Promise.all(
+      (product.spin_frames ?? []).map(async (frame) => ({
+        ...frame,
+        url: (await photoUrlToDisplay({ url: frame.url, r2_key: frame.r2_key })) ?? frame.url,
       })),
     );
 
@@ -350,7 +362,14 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       }),
     );
 
-    return { data: { ...product, photos: photosWithUrls, variants: variantsWithUrls } };
+    return {
+      data: {
+        ...product,
+        photos: photosWithUrls,
+        spin_frames: spinFramesWithUrls,
+        variants: variantsWithUrls,
+      },
+    };
   });
 
   // ─── GET /products/:id/interested-customers ──────────────────────
@@ -556,6 +575,64 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     await incrementUsage(request.retailerId, 'BG_REMOVAL');
 
     return reply.status(200).send({ data: { id: photo.id, url: photo.url } });
+  });
+
+  // ─── POST /products/:id/spin-video/upload-url ─────────────────────
+  server.post('/:id/spin-video/upload-url', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const existing = await prisma.product.findFirst({
+      where: { id, retailer_id: request.retailerId, deleted_at: null },
+    });
+    if (!existing) throw notFound('Product');
+
+    const body = z
+      .object({
+        content_type: z.enum(ALLOWED_SPIN_VIDEO_MIME_TYPES),
+        size_bytes: z.number().int().min(1).max(MAX_SPIN_VIDEO_BYTES),
+      })
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    const r2Key = R2_PATHS.spinVideo(request.retailerId, id);
+    let uploadUrl: string;
+    try {
+      uploadUrl = await getUploadPresignedUrl(r2Key, body.data.content_type, 300);
+    } catch {
+      throw validationError(
+        'Video storage is not configured. Please contact support to enable spin videos.',
+      );
+    }
+
+    return reply.status(200).send({
+      data: { upload_url: uploadUrl, r2_key: r2Key, expires_in: 300 },
+    });
+  });
+
+  // ─── POST /products/:id/spin-video ────────────────────────────────
+  // Confirms the video finished uploading to R2 and queues frame extraction.
+  server.post('/:id/spin-video', async (request, reply) => {
+    const { id } = request.params as { id: string };
+
+    const existing = await prisma.product.findFirst({
+      where: { id, retailer_id: request.retailerId, deleted_at: null },
+    });
+    if (!existing) throw notFound('Product');
+
+    const body = z.object({ r2_key: z.string().min(1) }).safeParse(request.body);
+    if (!body.success) throw validationError('r2_key required');
+
+    await prisma.product.update({
+      where: { id },
+      data: { spin_status: 'processing', spin_error: null },
+    });
+    await addSpinFrameJob({
+      product_id: id,
+      retailer_id: request.retailerId,
+      video_r2_key: body.data.r2_key,
+    });
+
+    return reply.status(202).send({ data: { spin_status: 'processing' } });
   });
 
   // ─── PATCH /products/:id/photos/:photoId ──────────────────────────

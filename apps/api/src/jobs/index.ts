@@ -4,6 +4,8 @@ import { Redis } from 'ioredis';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
 import type { MeasurementJobData } from './extract-measurement.js';
+import { handleExtractSpinFrames } from './extract-spin-frames.js';
+import type { SpinFrameJobData } from './extract-spin-frames.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import { handleProcessTryOn } from './process-tryon.js';
 import type { TryOnJobData } from './process-tryon.js';
@@ -34,6 +36,7 @@ let measurementQueue: Queue | null = null;
 let tryOnQueue: Queue | null = null;
 let cleanupQueue: Queue | null = null;
 let fashionDNAQueue: Queue | null = null;
+let spinFrameQueue: Queue | null = null;
 
 function getTaggingQueue(): Queue {
   taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() });
@@ -63,6 +66,11 @@ function getCleanupQueue(): Queue {
 function getFashionDNAQueue(): Queue {
   fashionDNAQueue ??= new Queue(QUEUES.FASHION_DNA, { connection: getRedis() });
   return fashionDNAQueue;
+}
+
+function getSpinFrameQueue(): Queue {
+  spinFrameQueue ??= new Queue(QUEUES.SPIN_FRAME_EXTRACTION, { connection: getRedis() });
+  return spinFrameQueue;
 }
 
 // ─── Job Producers ────────────────────────────────────────────────
@@ -125,6 +133,15 @@ export async function addTryOnJob(data: TryOnJobData): Promise<void> {
   });
 }
 
+export async function addSpinFrameJob(data: SpinFrameJobData): Promise<void> {
+  await getSpinFrameQueue().add('extract-spin-frames', data, {
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 5000 },
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -180,6 +197,16 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   );
 
+  // Spin-frame extraction worker (concurrency 1 — ffmpeg is CPU/IO bound)
+  const spinFrameWorker = new Worker(
+    QUEUES.SPIN_FRAME_EXTRACTION,
+    async (job) => {
+      const data = job.data as SpinFrameJobData;
+      await handleExtractSpinFrames(data);
+    },
+    { connection: redis, concurrency: 1 },
+  );
+
   // Training-data cleanup worker (concurrency 1 — lightweight, runs daily)
   const cleanupWorker = new Worker(
     QUEUES.CLEANUP,
@@ -220,6 +247,10 @@ export async function startWorkers(): Promise<void> {
 
   fashionDNAWorker.on('failed', (job, err) => {
     console.error(`[jobs] update-fashion-dna failed ${job?.id}:`, err.message);
+  });
+
+  spinFrameWorker.on('failed', (job, err) => {
+    console.error(`[jobs] extract-spin-frames failed ${job?.id}:`, err.message);
   });
 
   cleanupWorker.on('failed', (job, err) => {

@@ -284,6 +284,11 @@ model Product {
   ai_tagged    Boolean @default(false)
   ai_tag_error String?
 
+  // 360-degree spin view state — null until a spin video is uploaded.
+  // 'processing' | 'ready' | 'failed', set by the frame-extraction job.
+  spin_status String?
+  spin_error  String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -291,6 +296,7 @@ model Product {
   retailer         Retailer              @relation(fields: [retailer_id], references: [id])
   section          StoreSection?         @relation(fields: [section_id], references: [id])
   photos           ProductPhoto[]
+  spin_frames      ProductSpinFrame[]
   variants         ProductVariant[]
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
@@ -335,6 +341,23 @@ model ProductPhoto {
 
   @@index([product_id])
   @@map("product_photos")
+}
+
+model ProductSpinFrame {
+  id          String @id @default(cuid())
+  product_id  String
+  retailer_id String
+
+  url         String
+  r2_key      String
+  frame_index Int
+
+  created_at DateTime @default(now())
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_spin_frames")
 }
 
 model ProductVariant {

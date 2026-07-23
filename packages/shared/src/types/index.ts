@@ -203,6 +203,7 @@ export interface PublicProduct {
   location: string | null
   primary_photo_url: string
   photos: string[]
+  spin_frames: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]
 }
 

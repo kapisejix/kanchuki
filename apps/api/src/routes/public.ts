@@ -65,6 +65,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
               product: {
                 include: {
                   photos: { orderBy: { sort_order: 'asc' } },
+                  spin_frames: { orderBy: { frame_index: 'asc' } },
                   variants: true,
                   section: { select: { name: true } },
                 },
@@ -136,6 +137,9 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
               ),
               photos: await Promise.all(
                 p.photos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
+              ),
+              spin_frames: await Promise.all(
+                p.spin_frames.map(async (f) => await displayUrl(f.url, f.r2_key)),
               ),
               variants: await Promise.all(
                 availableVariants.map(async (v) => ({

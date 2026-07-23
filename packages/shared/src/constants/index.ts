@@ -174,6 +174,10 @@ export const R2_PATHS = {
     docType: 'gst' | 'aadhar_front' | 'aadhar_back',
     filename: string,
   ) => `retailers/${retailerId}/kyc/${docType}/${filename}`,
+  spinVideo: (retailerId: string, productId: string) =>
+    `retailers/${retailerId}/products/${productId}/spin/video.mp4`,
+  spinFrame: (retailerId: string, productId: string, frameIndex: number) =>
+    `retailers/${retailerId}/products/${productId}/spin/frame-${frameIndex}.jpg`,
 } as const
 
 // ─── BullMQ Queue Names ───────────────────────────────────────────
@@ -185,6 +189,7 @@ export const QUEUES = {
   CLEANUP: 'kanchuki-cleanup',
   MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
   FASHION_DNA: 'kanchuki-fashion-dna',
+  SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
 } as const
 
 // ─── Cache TTLs (seconds) ─────────────────────────────────────────

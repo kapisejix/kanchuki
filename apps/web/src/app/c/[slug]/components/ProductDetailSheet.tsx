@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw } from 'lucide-react'
 import type { PublicProduct, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
+import { Product360Viewer } from './Product360Viewer'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
@@ -61,6 +62,8 @@ export function ProductDetailSheet({
 
   const currentPhoto = photos[photoIndex] ?? product.primary_photo_url
   const totalPhotos = photos.length
+  const has360 = product.spin_frames.length > 0
+  const [view360, setView360] = useState(false)
 
   const goTo = useCallback((i: number) => {
     if (isTransitioning) return
@@ -257,14 +260,31 @@ export function ProductDetailSheet({
           <X size={17} className="text-gray-600" />
         </button>
 
-        {/* Photo carousel with crossfade transition + pinch-to-zoom */}
+        {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
         <div
           className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={view360 ? undefined : handleTouchStart}
+          onTouchMove={view360 ? undefined : handleTouchMove}
+          onTouchEnd={view360 ? undefined : handleTouchEnd}
         >
-          {/* Zoom container — wraps crossfade layers, transforms for zoom/pan */}
+          {has360 && (
+            <button
+              type="button"
+              onClick={() => setView360((v) => !v)}
+              className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/90 hover:bg-white shadow-soft flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-gray-700 transition-all active:scale-95"
+            >
+              <RotateCw size={12} />
+              {view360 ? 'Photos' : '360°'}
+            </button>
+          )}
+
+          {view360 ? (
+            <Product360Viewer
+              frames={product.spin_frames}
+              alt={product.name ?? product.category ?? 'Product'}
+            />
+          ) : (
+          /* Zoom container — wraps crossfade layers, transforms for zoom/pan */
           <div
             className="relative w-full h-full"
             style={{
@@ -313,80 +333,85 @@ export function ProductDetailSheet({
               )}
             </div>
           </div>
-
-          {/* Keyframes injected once */}
-          <style jsx>{`
-            @keyframes fadeIn {
-              from { opacity: 0; }
-              to { opacity: 1; }
-            }
-            @keyframes fadeOut {
-              from { opacity: 1; }
-              to { opacity: 0; }
-            }
-          `}</style>
-
-          {/* Variant photo badge */}
-          {variantColor && variantPhotoUrl && photos[photoIndex] === variantPhotoUrl && (
-            <div className="absolute top-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
-              <Palette size={12} />
-              {variantColor}
-            </div>
           )}
 
-          {/* Zoom hint — shows briefly on first zoom */}
-          {isZoomed && (
-            <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none animate-fadeIn">
-              Pinch to zoom · Double-tap to reset
-            </div>
-          )}
-
-          {/* Navigation arrows */}
-          {totalPhotos > 1 && !isZoomed && (
+          {/* Keyframes + photo-mode chrome — hidden while the 360 viewer is active */}
+          {!view360 && (
             <>
-              {photoIndex > 0 && (
-                <button
-                  onClick={() => goTo(photoIndex - 1)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  aria-label="Previous photo"
-                >
-                  <ChevronLeft size={18} className="text-gray-700" />
-                </button>
+              <style jsx>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; }
+                  to { opacity: 1; }
+                }
+                @keyframes fadeOut {
+                  from { opacity: 1; }
+                  to { opacity: 0; }
+                }
+              `}</style>
+
+              {/* Variant photo badge */}
+              {variantColor && variantPhotoUrl && photos[photoIndex] === variantPhotoUrl && (
+                <div className="absolute top-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                  <Palette size={12} />
+                  {variantColor}
+                </div>
               )}
-              {photoIndex < totalPhotos - 1 && (
-                <button
-                  onClick={() => goTo(photoIndex + 1)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  aria-label="Next photo"
-                >
-                  <ChevronRight size={18} className="text-gray-700" />
-                </button>
+
+              {/* Zoom hint — shows briefly on first zoom */}
+              {isZoomed && (
+                <div className="absolute bottom-16 left-1/2 -translate-x-1/2 z-10 bg-black/60 text-white text-[10px] font-medium px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none animate-fadeIn">
+                  Pinch to zoom · Double-tap to reset
+                </div>
               )}
+
+              {/* Navigation arrows */}
+              {totalPhotos > 1 && !isZoomed && (
+                <>
+                  {photoIndex > 0 && (
+                    <button
+                      onClick={() => goTo(photoIndex - 1)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                      aria-label="Previous photo"
+                    >
+                      <ChevronLeft size={18} className="text-gray-700" />
+                    </button>
+                  )}
+                  {photoIndex < totalPhotos - 1 && (
+                    <button
+                      onClick={() => goTo(photoIndex + 1)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                      aria-label="Next photo"
+                    >
+                      <ChevronRight size={18} className="text-gray-700" />
+                    </button>
+                  )}
+                </>
+              )}
+
+              {/* Dots — visible always for photo count reference */}
+              {totalPhotos > 1 && (
+                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+                  {Array.from({ length: totalPhotos }).map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => goTo(i)}
+                      className={`rounded-full transition-all duration-200 ${
+                        i === photoIndex
+                          ? 'w-5 h-2 bg-white shadow-sm'
+                          : 'w-2 h-2 bg-white/60 hover:bg-white/80'
+                      }`}
+                      aria-label={`Photo ${i + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Photo counter */}
+              <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+                {photoIndex + 1} / {totalPhotos}
+              </div>
             </>
           )}
-
-          {/* Dots — visible always for photo count reference */}
-          {totalPhotos > 1 && (
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
-              {Array.from({ length: totalPhotos }).map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => goTo(i)}
-                  className={`rounded-full transition-all duration-200 ${
-                    i === photoIndex
-                      ? 'w-5 h-2 bg-white shadow-sm'
-                      : 'w-2 h-2 bg-white/60 hover:bg-white/80'
-                  }`}
-                  aria-label={`Photo ${i + 1}`}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Photo counter */}
-          <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-            {photoIndex + 1} / {totalPhotos}
-          </div>
         </div>
 
         {/* Details */}

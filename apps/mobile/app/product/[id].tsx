@@ -17,7 +17,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2 } from 'lucide-react-native'
+import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
@@ -45,7 +45,10 @@ type Product = {
   notes: string | null
   ai_tagged: boolean
   ai_tag_error: string | null
+  spin_status: string | null
+  spin_error: string | null
   photos: Photo[]
+  spin_frames: { id: string; url: string }[]
   variants: Variant[]
   section: { name: string } | null
 }
@@ -74,11 +77,13 @@ export default function ProductDetailScreen() {
   const { data, isLoading } = useQuery({
     queryKey: ['products', id],
     queryFn: () => productApi.get(id),
-    // Poll while AI tagging is still running so the spinner clears itself
-    // instead of requiring the user to leave and re-enter the screen.
+    // Poll while AI tagging or spin-frame extraction is still running so the
+    // spinner clears itself instead of requiring the user to leave and re-enter.
     refetchInterval: (query) => {
       const p = (query.state.data as { data: Product } | undefined)?.data
-      if (!p || (!p.ai_tagged && !p.ai_tag_error)) return 3_000
+      if (!p) return 3_000
+      if (!p.ai_tagged && !p.ai_tag_error) return 3_000
+      if (p.spin_status === 'processing') return 3_000
       return false
     },
   })
@@ -913,6 +918,36 @@ export default function ProductDetailScreen() {
                 </TouchableOpacity>
               )
             })}
+          </View>
+        </View>
+
+        {/* 360 spin view */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1">
+              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+                360° Spin View
+              </Text>
+              <Text className="text-xs text-gray-400">
+                {product.spin_status === 'processing'
+                  ? 'Processing spin video...'
+                  : product.spin_status === 'ready'
+                    ? `${product.spin_frames.length} frames ready`
+                    : product.spin_status === 'failed'
+                      ? (product.spin_error ?? 'Processing failed — try again')
+                      : 'Record a short spin video of the garment'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => router.push(`/product/${product.id}/spin-video`)}
+              disabled={product.spin_status === 'processing'}
+              className="bg-cyan-50 px-2.5 py-1.5 rounded-full flex-row items-center gap-1"
+            >
+              <RotateCw size={12} color="#0891B2" />
+              <Text className="text-cyan-700 text-xs font-semibold">
+                {product.spin_status === 'ready' ? 'Retake' : 'Add'}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 

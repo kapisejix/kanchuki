@@ -1,0 +1,5 @@
+# ffmpeg/ffprobe binaries for the spin-frame-extraction job
+# (apps/api/src/jobs/extract-spin-frames.ts). Harmless on the web service,
+# which shares this root-level Nixpacks config per docs/DEPLOY.md.
+[phases.setup]
+aptPkgs = ["ffmpeg"]
