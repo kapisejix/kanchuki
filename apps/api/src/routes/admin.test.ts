@@ -22,6 +22,12 @@ const {
   mockSubscriptionFindMany,
   mockCustomerFindMany,
   mockTransaction,
+  mockIntegrationFindMany,
+  mockIntegrationFindUnique,
+  mockIntegrationCreate,
+  mockIntegrationUpdate,
+  mockIntegrationDelete,
+  mockAuditLogCreate,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
   mockRetailerFindMany: vi.fn(),
@@ -41,10 +47,28 @@ const {
   mockTransaction: vi.fn((ops: unknown) =>
     Array.isArray(ops) ? Promise.all(ops) : (ops as () => unknown)(),
   ),
+  mockIntegrationFindMany: vi.fn(),
+  mockIntegrationFindUnique: vi.fn(),
+  mockIntegrationCreate: vi.fn(),
+  mockIntegrationUpdate: vi.fn(),
+  mockIntegrationDelete: vi.fn(),
+  mockAuditLogCreate: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
+  encryptSecret: (plaintext: string) => `enc:${plaintext}`,
+  maskSecret: (plaintext: string) => `masked:${plaintext.slice(-4)}`,
+  invalidateSecret: vi.fn(),
+  getSecret: vi.fn(),
   prisma: {
+    integrationSetting: {
+      findMany: mockIntegrationFindMany,
+      findUnique: mockIntegrationFindUnique,
+      create: mockIntegrationCreate,
+      update: mockIntegrationUpdate,
+      delete: mockIntegrationDelete,
+    },
+    auditLog: { create: mockAuditLogCreate },
     retailer: {
       findUnique: mockRetailerFindUnique,
       findMany: mockRetailerFindMany,
@@ -721,6 +745,129 @@ describe('GET /admin/usage', () => {
     expect(res.json().data.mrr_inr).toBe(0);
     expect(res.json().data.active_subscriptions).toBe(0);
     expect(res.json().data.try_on_cost_usd).toBe(0);
+    await app.close();
+  });
+});
+
+// ─── Integration Settings (F-012) ───────────────────────────────────
+
+describe('Admin integrations', () => {
+  it('rejects unauthenticated requests', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/integrations' });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('lists the full catalog, marking unconfigured keys as not configured', async () => {
+    mockIntegrationFindMany.mockResolvedValue([]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/integrations',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(200);
+    const data = res.json().data;
+    expect(data.length).toBeGreaterThan(0);
+    expect(data.every((row: { configured: boolean }) => row.configured === false)).toBe(true);
+    await app.close();
+  });
+
+  it('creates a credential, storing only the encrypted+masked form, never the raw value', async () => {
+    mockIntegrationFindUnique.mockResolvedValue(null);
+    mockIntegrationCreate.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ id: 'int_1', ...data, created_at: new Date(), updated_at: new Date() }),
+    );
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/integrations',
+      headers: jsonHeaders(),
+      payload: { key_name: 'RAZORPAY_KEY_SECRET', value: 'rzp_live_supersecretvalue' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json().data;
+    expect(body.encrypted_value).toBeUndefined();
+    expect(body.masked_preview).toBe('masked:alue');
+    expect(mockIntegrationCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          key_name: 'RAZORPAY_KEY_SECRET',
+          encrypted_value: 'enc:rzp_live_supersecretvalue',
+        }),
+      }),
+    );
+    expect(mockAuditLogCreate).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an unknown key_name', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/integrations',
+      headers: jsonHeaders(),
+      payload: { key_name: 'NOT_A_REAL_KEY', value: 'whatever' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockIntegrationCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects creating a key that is already configured', async () => {
+    mockIntegrationFindUnique.mockResolvedValue({ id: 'int_1', key_name: 'ANTHROPIC_API_KEY' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/integrations',
+      headers: jsonHeaders(),
+      payload: { key_name: 'ANTHROPIC_API_KEY', value: 'sk-ant-new' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockIntegrationCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rotates a value on PATCH without ever returning it', async () => {
+    mockIntegrationFindUnique.mockResolvedValue({ id: 'int_1', key_name: 'OPENAI_API_KEY' });
+    mockIntegrationUpdate.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ id: 'int_1', key_name: 'OPENAI_API_KEY', ...data }),
+    );
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/admin/integrations/int_1',
+      headers: jsonHeaders(),
+      payload: { value: 'sk-new-rotated-key' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.encrypted_value).toBeUndefined();
+    expect(mockIntegrationUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ encrypted_value: 'enc:sk-new-rotated-key' }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('deletes a credential row, falling back to .env for that key', async () => {
+    mockIntegrationFindUnique.mockResolvedValue({ id: 'int_1', key_name: 'META_APP_SECRET' });
+    mockIntegrationDelete.mockResolvedValue({ id: 'int_1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/integrations/int_1',
+      headers: authedHeaders(),
+    });
+
+    expect(res.statusCode).toBe(204);
+    expect(mockIntegrationDelete).toHaveBeenCalledWith({ where: { id: 'int_1' } });
     await app.close();
   });
 });

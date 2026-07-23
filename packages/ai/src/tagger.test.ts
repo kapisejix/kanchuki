@@ -8,6 +8,10 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }))
 
+vi.mock('@kanchuki/db', () => ({
+  getSecret: vi.fn().mockResolvedValue('test-anthropic-key'),
+}))
+
 const { tagProductImages, tagProductImageUrl, tagProductImageUrls, imageHash } = await import(
   './tagger.js'
 )

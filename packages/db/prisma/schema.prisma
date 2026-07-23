@@ -1037,3 +1037,35 @@ model AuditLog {
   @@index([created_at])
   @@map("audit_logs")
 }
+
+// ─── INTEGRATION SETTINGS ──────────────────────────────────────────
+// Admin-managed, encrypted third-party credentials (F-012). Replaces the
+// corresponding .env var when a row is active — see @kanchuki/db/secrets
+// getSecret(). Bootstrap secrets that resolve this table (DATABASE_URL,
+// ENCRYPTION_MASTER_KEY, SUPABASE_JWT_SECRET, TEAM_JWT_SECRET) can never
+// live here — chicken-and-egg, they stay env-only.
+
+enum IntegrationCategory {
+  AI
+  PAYMENT
+  STORAGE
+  WHATSAPP
+}
+
+model IntegrationSetting {
+  id String @id @default(cuid())
+
+  key_name String              @unique // matches the .env var name it overrides, e.g. "RAZORPAY_KEY_SECRET"
+  category IntegrationCategory
+  label    String // human label shown in admin UI, e.g. "Razorpay Key Secret"
+
+  encrypted_value String // AES-256-GCM: base64(iv).base64(authTag).base64(ciphertext)
+  masked_preview  String // e.g. "sk_live_••••wxyz" — safe to return from the API, never the real value
+
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([category])
+  @@map("integration_settings")
+}

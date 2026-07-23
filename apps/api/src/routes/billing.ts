@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { prisma } from '@kanchuki/db';
+import { getSecret, prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, PLAN_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -26,8 +26,8 @@ const RAZORPAY_PLAN_IDS: Record<Plan, Record<Period, string | undefined>> = {
 
 // ponytail: raw fetch instead of razorpay SDK — we need 2 endpoints, SDK adds a dep
 async function razorpay<T>(path: string, init?: RequestInit): Promise<T> {
-  const keyId = process.env.RAZORPAY_KEY_ID ?? '';
-  const keySecret = process.env.RAZORPAY_KEY_SECRET ?? '';
+  const keyId = (await getSecret('RAZORPAY_KEY_ID')) ?? '';
+  const keySecret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
   const res = await fetch(`https://api.razorpay.com/v1${path}`, {
     ...init,
     headers: {
@@ -43,8 +43,8 @@ async function razorpay<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
-function verifyWebhookSignature(rawBody: string, signature: string): boolean {
-  const secret = process.env.RAZORPAY_WEBHOOK_SECRET ?? '';
+async function verifyWebhookSignature(rawBody: string, signature: string): Promise<boolean> {
+  const secret = (await getSecret('RAZORPAY_WEBHOOK_SECRET')) ?? '';
   if (!secret || !signature) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
   const a = Buffer.from(expected);
@@ -278,7 +278,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
         order_id: order.id,
         amount: order.amount,
         currency: order.currency,
-        key_id: process.env.RAZORPAY_KEY_ID,
+        key_id: await getSecret('RAZORPAY_KEY_ID'),
       },
     };
   });
@@ -298,7 +298,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
     // HMAC-SHA256(order_id + "|" + payment_id, key_secret)
-    const expected = createHmac('sha256', process.env.RAZORPAY_KEY_SECRET ?? '')
+    const expected = createHmac('sha256', (await getSecret('RAZORPAY_KEY_SECRET')) ?? '')
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
@@ -320,7 +320,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /billing/webhook (Razorpay → server, no JWT) ──────────
   server.post('/webhook', async (request, reply) => {
     const signature = request.headers['x-razorpay-signature'] as string | undefined;
-    if (!signature || !request.rawBody || !verifyWebhookSignature(request.rawBody, signature)) {
+    if (!signature || !request.rawBody || !(await verifyWebhookSignature(request.rawBody, signature))) {
       return reply.status(401).send({ error: { code: 'INVALID_SIGNATURE', status: 401 } });
     }
 

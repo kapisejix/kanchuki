@@ -25,6 +25,7 @@ import {
   AlertCircle,
   Users,
   Image as ImageIcon,
+  KeyRound,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -34,6 +35,7 @@ const NAV_ITEMS = [
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
   { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
   { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
+  { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
 ]
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'

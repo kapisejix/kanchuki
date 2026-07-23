@@ -1,10 +1,11 @@
 import OpenAI from 'openai'
 import { createHash } from 'crypto'
+import { getSecret } from '@kanchuki/db'
 import { normalizeSearchQuery } from '@kanchuki/shared'
 
 let _openai: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  _openai ??= new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] })
+async function getOpenAI(): Promise<OpenAI> {
+  _openai ??= new OpenAI({ apiKey: await getSecret('OPENAI_API_KEY') })
   return _openai
 }
 
@@ -52,7 +53,7 @@ export function textHash(text: string): string {
 
 /** Generate embedding vector for a text string */
 export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await getOpenAI().embeddings.create({
+  const response = await (await getOpenAI()).embeddings.create({
     model: EMBEDDING_MODEL,
     input: text,
     dimensions: EMBEDDING_DIMENSIONS,

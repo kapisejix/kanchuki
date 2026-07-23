@@ -1,3 +1,4 @@
+import { getSecret } from '@kanchuki/db'
 import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
 import { uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
 
@@ -6,7 +7,9 @@ import { uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
 // Deploy via services/fashion-vtone/Dockerfile
 // ~$0.0003/try-on on CPU, ~10-30s on GPU
 
-const VTONE_API_URL = process.env['VTONE_API_URL'] ?? ''
+async function getVtoneApiUrl(): Promise<string> {
+  return (await getSecret('VTONE_API_URL')) ?? ''
+}
 const R2_TRYON_PREFIX = 'tryon-results'
 const R2_TRAINING_PREFIX = 'training-data'
 
@@ -78,7 +81,7 @@ async function callVTONOnce(
   garmentImageUrl: string,
   category: VtoneCategory,
 ): Promise<TryOnResult> {
-  const res = await fetch(`${VTONE_API_URL}/try-on`, {
+  const res = await fetch(`${await getVtoneApiUrl()}/try-on`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(120_000),
@@ -153,7 +156,7 @@ async function downloadBufferFromUrl(url: string): Promise<Buffer> {
  * Throws if VTONE_API_URL is not configured.
  */
 export async function triggerTryOn(request: TryOnRequest): Promise<TryOnResult> {
-  if (!VTONE_API_URL) {
+  if (!(await getVtoneApiUrl())) {
     throw new Error(
       'Try-on engine not configured. Set VTONE_API_URL to your Fashion V-Tone service endpoint.',
     )

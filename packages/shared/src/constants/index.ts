@@ -181,6 +181,29 @@ export const R2_PATHS = {
   backgroundImage: (filename: string) => `admin/background-images/${filename}`,
 } as const
 
+// ─── Integration Settings (F-012) ──────────────────────────────────
+// Canonical catalog of third-party credentials the super admin can manage
+// in DB (Integrations section) instead of only via .env. Bootstrap secrets
+// that resolve this table (DATABASE_URL, ENCRYPTION_MASTER_KEY,
+// SUPABASE_JWT_SECRET, TEAM_JWT_SECRET) are deliberately excluded — see
+// docs/SECURITY.md.
+
+export const INTEGRATION_KEYS = [
+  { key_name: 'ANTHROPIC_API_KEY', category: 'AI', label: 'Claude API Key (product tagging)' },
+  { key_name: 'OPENAI_API_KEY', category: 'AI', label: 'OpenAI API Key (embeddings)' },
+  { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
+  { key_name: 'RAZORPAY_KEY_ID', category: 'PAYMENT', label: 'Razorpay Key ID' },
+  { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },
+  { key_name: 'RAZORPAY_WEBHOOK_SECRET', category: 'PAYMENT', label: 'Razorpay Webhook Secret' },
+  { key_name: 'R2_ACCESS_KEY_ID', category: 'STORAGE', label: 'Cloudflare R2 Access Key ID' },
+  { key_name: 'R2_SECRET_ACCESS_KEY', category: 'STORAGE', label: 'Cloudflare R2 Secret Access Key' },
+  { key_name: 'R2_BUCKET_NAME', category: 'STORAGE', label: 'Cloudflare R2 Bucket Name' },
+  { key_name: 'META_APP_SECRET', category: 'WHATSAPP', label: 'Meta App Secret (WhatsApp API)' },
+  { key_name: 'META_VERIFY_TOKEN', category: 'WHATSAPP', label: 'Meta Webhook Verify Token' },
+] as const
+
+export type IntegrationKeyName = (typeof INTEGRATION_KEYS)[number]['key_name']
+
 // ─── BullMQ Queue Names ───────────────────────────────────────────
 
 export const QUEUES = {

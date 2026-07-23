@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { removeBackground } from '@imgly/background-removal-node'
 import { createHash } from 'node:crypto'
+import { getSecret } from '@kanchuki/db'
 import type { AiTagResult } from '@kanchuki/shared'
 import { tagProductImageUrl } from './tagger.js'
 import { uploadBuffer, publicUrl } from './r2.js'
@@ -22,8 +23,8 @@ async function getSharp() {
 }
 
 let _claude: Anthropic | null = null
-function getClaude(): Anthropic {
-  _claude ??= new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] })
+async function getClaude(): Promise<Anthropic> {
+  _claude ??= new Anthropic({ apiKey: await getSecret('ANTHROPIC_API_KEY') })
   return _claude
 }
 
@@ -134,7 +135,7 @@ export async function detectItems(imageUrl: string): Promise<DetectedItem[]> {
     : 'image/jpeg'
   ) as 'image/jpeg' | 'image/png' | 'image/webp'
 
-  const response = await getClaude().messages.create({
+  const response = await (await getClaude()).messages.create({
     model: 'claude-sonnet-4-5-20250929',
     max_tokens: 2048,
     temperature: 0,

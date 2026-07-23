@@ -281,6 +281,9 @@ importers:
       '@imgly/background-removal-node':
         specifier: ^1.4.5
         version: 1.4.5
+      '@kanchuki/db':
+        specifier: workspace:*
+        version: link:../db
       '@kanchuki/shared':
         specifier: workspace:*
         version: link:../shared
@@ -322,6 +325,9 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@20.19.43)(lightningcss@1.32.0)(terser@5.48.0)
 
   packages/shared:
     devDependencies:

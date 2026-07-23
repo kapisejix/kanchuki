@@ -1,10 +1,11 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createHash } from 'crypto'
+import { getSecret } from '@kanchuki/db'
 import type { AiTagResult } from '@kanchuki/shared'
 
 let _claude: Anthropic | null = null
-function getClaude(): Anthropic {
-  _claude ??= new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] })
+async function getClaude(): Promise<Anthropic> {
+  _claude ??= new Anthropic({ apiKey: await getSecret('ANTHROPIC_API_KEY') })
   return _claude
 }
 
@@ -138,7 +139,7 @@ export async function tagProductImages(images: TaggableImage[]): Promise<AiTagRe
       ? 'Analyze these front and back photos of the same Indian ethnic fashion product and extract all product attributes. Use the back photo for fabric texture, embellishment, and design-number details not visible from the front.'
       : 'Analyze this Indian ethnic fashion product image and extract all product attributes.'
 
-  const response = await getClaude().messages.create({
+  const response = await (await getClaude()).messages.create({
     model: 'claude-sonnet-4-5-20250929',
     max_tokens: 1024,
     temperature: 0,
@@ -216,7 +217,7 @@ export async function tagProductImageUrls(imageUrls: string[]): Promise<AiTagRes
 export async function detectColor(imageUrl: string): Promise<string | null> {
   const image = await fetchTaggableImage(imageUrl)
 
-  const response = await getClaude().messages.create({
+  const response = await (await getClaude()).messages.create({
     model: 'claude-3-haiku-20240307',
     max_tokens: 50,
     temperature: 0,
