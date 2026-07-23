@@ -2,6 +2,7 @@
 
 import { useState, useCallback, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Shield, Check, X, Loader2, AlertTriangle } from 'lucide-react'
 
 type Step = 'confirm' | 'submitting' | 'done' | 'error'
@@ -44,7 +45,13 @@ function RevokeConsentForm() {
   }, [token])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-cyan-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-white to-cyan-50 flex items-center justify-center p-4 relative">
+      <Link
+        href="/"
+        className="absolute top-4 left-4 text-sm text-cyan-700/70 hover:text-cyan-700 flex items-center gap-1"
+      >
+        ← Back
+      </Link>
       <div className="w-full max-w-md">
         {/* Brand header */}
         <div className="text-center mb-8">

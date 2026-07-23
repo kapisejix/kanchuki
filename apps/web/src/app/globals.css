@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 :root {
+  /* App has no dark theme — without this, browsers with OS/browser dark
+     mode enabled auto-invert native control text (buttons, inputs) on
+     hover/focus/active, turning explicit dark Tailwind text colors light
+     and unreadable against our light backgrounds. */
+  color-scheme: light;
+
   --color-primary: #0891B2;
   --color-primary-light: #cffafe;
   --color-amber: #F59E0B;

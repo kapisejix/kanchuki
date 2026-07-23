@@ -200,6 +200,7 @@ export interface PublicProduct {
   fabric_estimate: string | null
   occasions: string[]
   search_tags: string[]
+  location: string | null
   primary_photo_url: string
   photos: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]

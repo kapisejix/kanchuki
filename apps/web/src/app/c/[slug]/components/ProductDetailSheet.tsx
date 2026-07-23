@@ -2,9 +2,12 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
-import { X, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin } from 'lucide-react'
 import type { PublicProduct, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
+
+// ponytail: Try-On feature not finished yet — flip to true when ready.
+const TRY_ON_ENABLED = false
 
 interface Props {
   product: PublicProduct
@@ -234,6 +237,16 @@ export function ProductDetailSheet({
           <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
 
+        {/* Back button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
+                     transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          aria-label="Back to catalog"
+        >
+          <ArrowLeft size={17} className="text-gray-600" />
+        </button>
+
         {/* Close button */}
         <button
           onClick={onClose}
@@ -387,6 +400,14 @@ export function ProductDetailSheet({
             </div>
           )}
 
+          {/* Store location — tell staff where to find this item */}
+          {product.location && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
+              <MapPin size={14} />
+              {product.location}
+            </div>
+          )}
+
           {/* Price + favorite */}
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -404,7 +425,7 @@ export function ProductDetailSheet({
                 className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center flex-shrink-0
                            transition-all active:scale-90 hover:border-rose-200 hover:bg-rose-50
                            focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                aria-label={isFavorited ? 'Remove from favorites' : 'Save to favorites'}
+                aria-label={isFavorited ? 'Remove from Selected' : 'Add to Selected'}
               >
                 <Heart
                   size={20}
@@ -480,7 +501,7 @@ export function ProductDetailSheet({
         </div>
 
         {/* Try-On CTA — disabled for SOLD */}
-        {!isSold && (
+        {TRY_ON_ENABLED && !isSold && (
           <div className="px-4 pt-2">
             <button
               onClick={onTryOn}

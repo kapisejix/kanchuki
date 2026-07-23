@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Share, Alert } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -18,7 +18,7 @@ export default function StoreProfileScreen() {
   const qrRef = useRef<any>(null)
   const [exporting, setExporting] = useState(false)
 
-  const { data: qrData, isLoading: qrLoading } = useQuery({
+  const { data: qrData, isLoading: qrLoading, isError: qrError, refetch: refetchQr } = useQuery({
     queryKey: ['retailer', 'qr-slug'],
     queryFn: () => retailerApi.getQrSlug(),
   })
@@ -84,7 +84,17 @@ export default function StoreProfileScreen() {
 
       <View className="items-center px-6 mb-6">
         <View className="bg-white rounded-3xl p-6 border border-gray-100 items-center">
-          {qrLoading || !qr ? (
+          {qrError ? (
+            <View className="w-56 h-56 items-center justify-center px-4">
+              <Text className="text-sm text-gray-500 text-center mb-3">Couldn't load QR code</Text>
+              <TouchableOpacity
+                onPress={() => void refetchQr()}
+                className="bg-cyan-600 rounded-full px-4 py-2"
+              >
+                <Text className="text-white font-semibold text-sm">Retry</Text>
+              </TouchableOpacity>
+            </View>
+          ) : qrLoading || !qr ? (
             <View className="w-56 h-56 items-center justify-center">
               <ActivityIndicator color="#0891B2" />
             </View>
@@ -97,6 +107,11 @@ export default function StoreProfileScreen() {
         </Text>
         {qr && (
           <>
+            <TouchableOpacity onPress={() => void Linking.openURL(qr.profile_url)}>
+              <Text className="text-sm text-cyan-700 underline text-center mt-2 px-8">
+                {qr.profile_url}
+              </Text>
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void Share.share({ message: qr.profile_url })}
               className="flex-row items-center gap-2 bg-cyan-600 px-5 py-3 rounded-2xl mt-4"

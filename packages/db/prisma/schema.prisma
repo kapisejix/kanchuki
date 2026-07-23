@@ -31,6 +31,13 @@ enum SubscriptionStatus {
   CANCELLED
 }
 
+enum KycStatus {
+  NOT_SUBMITTED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum CollectionStatus {
   ACTIVE
   EXPIRED
@@ -130,9 +137,37 @@ model Retailer {
   whatsapp_number String?
 
   // Full address (city/state above are pre-existing, kept for search/display)
+  // address_line1 is enforced as required at the API/UI layer (F-009 profile
+  // edit) — kept nullable in the DB since older rows predate the requirement.
   address_line1 String?
   address_line2 String?
   pincode       String?
+
+  // Store branding — optional
+  logo_url    String?
+  logo_r2_key String?
+
+  // KYC verification (F-009) — GST certificate + Aadhar front/back for identity proof
+  kyc_status              KycStatus @default(NOT_SUBMITTED)
+  kyc_gst_url             String?
+  kyc_gst_r2_key          String?
+  kyc_aadhar_front_url    String?
+  kyc_aadhar_front_r2_key String?
+  kyc_aadhar_back_url     String?
+  kyc_aadhar_back_r2_key  String?
+  kyc_submitted_at        DateTime?
+  kyc_reviewed_at         DateTime?
+  kyc_rejection_reason    String?
+
+  // Meta WhatsApp Business API — retailer's own credentials, bring-your-own.
+  // When set, collection bulk-send uses this instead of the one-by-one wa.me
+  // flow. Requires a pre-approved message template in the retailer's Meta
+  // Business Manager (single body variable — see collections.ts bulk-send).
+  whatsapp_api_phone_number_id String?
+  whatsapp_api_access_token    String?
+  whatsapp_api_template_name   String?
+  whatsapp_api_template_lang   String?
+  whatsapp_api_configured_at   DateTime?
 
   categories String[] // ["suits", "sarees", "kurtis"]
 

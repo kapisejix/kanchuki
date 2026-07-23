@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Image, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
+import { View, Text, ScrollView, FlatList, TouchableOpacity, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { Stack, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2 } from 'lucide-react-native'
-import { collectionApi } from '../../src/lib/api'
+import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check } from 'lucide-react-native'
+import { normalizeIndianPhone } from '@kanchuki/shared'
+import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 
 type CollectionDetail = {
   id: string
@@ -145,10 +146,220 @@ function EditModal({
   )
 }
 
+// ── Share via WhatsApp Modal (customer picker, one-by-one send) ─────
+
+type CustomerLite = { id: string; name: string; phone: string }
+
+function ShareModal({
+  visible,
+  collection,
+  onClose,
+}: {
+  visible: boolean
+  collection: CollectionDetail | null
+  onClose: () => void
+}) {
+  const [search, setSearch] = useState('')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [queue, setQueue] = useState<CustomerLite[] | null>(null)
+  const [queueIndex, setQueueIndex] = useState(0)
+  const [bulkSending, setBulkSending] = useState(false)
+  const [bulkResult, setBulkResult] = useState<{ sent: number; failed_count: number } | null>(null)
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['customers', 'picker', search],
+    queryFn: () => customerApi.list(search || undefined),
+    enabled: visible,
+    staleTime: 30_000,
+  })
+  const customers = ((data as { data: CustomerLite[] } | undefined)?.data ?? [])
+
+  const { data: waApiData } = useQuery({
+    queryKey: ['retailer', 'whatsapp-api'],
+    queryFn: () => retailerApi.getWhatsAppApiConfig(),
+    enabled: visible,
+    staleTime: 60_000,
+  })
+  const apiConfigured = waApiData?.data.configured ?? false
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const openChat = (customer: CustomerLite) => {
+    if (!collection) return
+    const message = `Hi ${customer.name}! Check out our collection "${collection.title}": ${collection.url}`
+    const digits = `91${normalizeIndianPhone(customer.phone)}`
+    void Linking.openURL(`https://wa.me/${digits}?text=${encodeURIComponent(message)}`)
+  }
+
+  const startSending = () => {
+    const picked = customers.filter((c) => selected.has(c.id))
+    if (picked.length === 0) return
+    setQueue(picked)
+    setQueueIndex(0)
+    openChat(picked[0]!)
+  }
+
+  const sendNext = () => {
+    if (!queue) return
+    const next = queueIndex + 1
+    if (next >= queue.length) {
+      handleClose()
+      return
+    }
+    setQueueIndex(next)
+    openChat(queue[next]!)
+  }
+
+  const handleBulkSend = async () => {
+    const picked = customers.filter((c) => selected.has(c.id))
+    if (picked.length === 0 || !collection) return
+    setBulkSending(true)
+    try {
+      const res = await collectionApi.bulkSend(collection.id, picked.map((c) => c.id))
+      setBulkResult({ sent: res.data.sent, failed_count: res.data.failed_count })
+      setSelected(new Set())
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Bulk send failed')
+    } finally {
+      setBulkSending(false)
+    }
+  }
+
+  const handleClose = () => {
+    setQueue(null)
+    setQueueIndex(0)
+    setSelected(new Set())
+    setSearch('')
+    setBulkResult(null)
+    onClose()
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      <View className="flex-1 bg-black/50 justify-end">
+        <View className="bg-white rounded-t-3xl max-h-[85%] p-5">
+          {bulkResult ? (
+            <View className="items-center py-6 gap-3">
+              <Text className="text-base font-bold text-gray-900">Sent via WhatsApp Business API</Text>
+              <Text className="text-sm text-gray-600">{bulkResult.sent} delivered</Text>
+              {bulkResult.failed_count > 0 && (
+                <Text className="text-sm text-red-500">{bulkResult.failed_count} failed</Text>
+              )}
+              <TouchableOpacity onPress={handleClose} className="bg-gray-100 px-6 py-3 rounded-xl mt-2">
+                <Text className="text-gray-700 font-semibold">Done</Text>
+              </TouchableOpacity>
+            </View>
+          ) : queue ? (
+            <View className="items-center py-6 gap-3">
+              <Text className="text-base font-bold text-gray-900">
+                Message {queueIndex + 1} of {queue.length}
+              </Text>
+              <Text className="text-sm text-gray-500">{queue[queueIndex]!.name}</Text>
+              <Text className="text-xs text-gray-400 text-center px-4">
+                WhatsApp opened with the message pre-filled. Tap Send in WhatsApp, then come back and tap Next.
+              </Text>
+              <TouchableOpacity onPress={sendNext} className="bg-green-600 px-6 py-3 rounded-xl mt-2">
+                <Text className="text-white font-semibold">
+                  {queueIndex + 1 >= queue.length ? 'Done' : 'Next Customer'}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClose} className="mt-1">
+                <Text className="text-gray-400 text-xs">Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <Text className="text-lg font-bold text-gray-900 mb-3">Share with Customers</Text>
+              <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2 mb-3">
+                <Search size={16} color="#9CA3AF" />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder="Search by name or phone..."
+                  placeholderTextColor="#9CA3AF"
+                  className="flex-1 text-sm text-gray-900"
+                />
+              </View>
+              {isLoading ? (
+                <ActivityIndicator color="#0891B2" className="py-8" />
+              ) : (
+                <FlatList
+                  data={customers}
+                  keyExtractor={(c) => c.id}
+                  style={{ maxHeight: 320 }}
+                  ListEmptyComponent={
+                    <Text className="text-gray-400 text-sm text-center py-8">No customers saved yet</Text>
+                  }
+                  renderItem={({ item }) => {
+                    const isSelected = selected.has(item.id)
+                    return (
+                      <TouchableOpacity
+                        onPress={() => toggle(item.id)}
+                        className="flex-row items-center gap-3 py-2.5 border-b border-gray-50"
+                      >
+                        <View
+                          className={`w-5 h-5 rounded-md border items-center justify-center ${
+                            isSelected ? 'bg-cyan-600 border-cyan-600' : 'border-gray-300'
+                          }`}
+                        >
+                          {isSelected && <Check size={12} color="white" />}
+                        </View>
+                        <View className="flex-1">
+                          <Text className="text-sm font-medium text-gray-900">{item.name}</Text>
+                          <Text className="text-xs text-gray-400">{item.phone}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    )
+                  }}
+                />
+              )}
+              {apiConfigured && (
+                <TouchableOpacity
+                  disabled={selected.size === 0 || bulkSending}
+                  onPress={() => void handleBulkSend()}
+                  className={`mt-4 py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-cyan-600' : 'bg-gray-200'}`}
+                >
+                  {bulkSending ? (
+                    <ActivityIndicator size="small" color="white" />
+                  ) : (
+                    <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-gray-400'}`}>
+                      Send via WhatsApp Business API ({selected.size})
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                disabled={selected.size === 0}
+                onPress={startSending}
+                className={`${apiConfigured ? 'mt-2' : 'mt-4'} py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-green-600' : 'bg-gray-200'}`}
+              >
+                <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-gray-400'}`}>
+                  {apiConfigured ? 'Or send one-by-one' : 'Share via WhatsApp'} ({selected.size})
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleClose} className="items-center py-3">
+                <Text className="text-gray-400 text-sm">Cancel</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+      </View>
+    </Modal>
+  )
+}
+
 export default function CollectionDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['collections', id],
@@ -164,12 +375,6 @@ export default function CollectionDetailScreen() {
       </View>
     )
   }
-
-  const handleShare = () =>
-    void Share.share({
-      message: `Check out ${collection.title}: ${collection.url}`,
-      url: collection.url,
-    })
 
   const handleDelete = () => {
     Alert.alert(
@@ -235,7 +440,7 @@ export default function CollectionDetailScreen() {
         {collection.status === 'ACTIVE' && (
           <View className="px-4 pt-4">
             <TouchableOpacity
-              onPress={handleShare}
+              onPress={() => setShowShareModal(true)}
               className="flex-row items-center justify-center gap-2 bg-green-600 py-3 rounded-xl"
             >
               <Link2 size={16} color="white" />
@@ -320,6 +525,12 @@ export default function CollectionDetailScreen() {
         collection={collection}
         onClose={() => setShowEditModal(false)}
         onSaved={handleEditSaved}
+      />
+
+      <ShareModal
+        visible={showShareModal}
+        collection={collection}
+        onClose={() => setShowShareModal(false)}
       />
     </>
   )

@@ -2,11 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import Image from 'next/image'
+import Link from 'next/link'
 import { Heart, MessageCircle, Filter, Share2, ShoppingBag, Sparkles } from 'lucide-react'
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import dynamic from 'next/dynamic'
 import { FilterBar, priceMatchesBucket } from './FilterBar'
+import { wishlistKey, loadWishlist } from '../lib/wishlist'
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
 // The components include image carousels, forms, and heavy lucide icons that
@@ -20,13 +22,16 @@ const TryOnModal = dynamic(
   { ssr: false },
 )
 
+// ponytail: Try-On feature not finished yet — flip to true when ready.
+const TRY_ON_ENABLED = false
+
 interface Props {
   collection: PublicCollection
   slug: string
 }
 
 export function CollectionView({ collection, slug }: Props) {
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [favorites, setFavorites] = useState<Set<string>>(() => loadWishlist(slug))
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
@@ -50,6 +55,7 @@ export function CollectionView({ collection, slug }: Props) {
             body: JSON.stringify({ product_id: productId }),
           })
         }
+        localStorage.setItem(wishlistKey(slug), JSON.stringify(Array.from(next)))
         return next
       })
     },
@@ -184,14 +190,15 @@ export function CollectionView({ collection, slug }: Props) {
       {/* ── Sticky Bottom Bar ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 safe-area-inset-bottom shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-1.5 text-sm text-gray-600 flex-shrink-0">
+          <Link
+            href={`/c/${slug}/wishlist`}
+            className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 flex-shrink-0 bg-gray-50
+                       border border-gray-100 rounded-2xl px-4 py-3.5 hover:bg-rose-50 hover:border-rose-200
+                       transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+          >
             <Heart size={16} className="text-rose-500 fill-rose-500" />
-            <span className="font-medium tabular-nums">
-              {favorites.size > 0
-                ? `${favorites.size} saved`
-                : `${collection.products.length} items`}
-            </span>
-          </div>
+            Selected{favorites.size > 0 && ` (${favorites.size})`}
+          </Link>
           <button
             onClick={handleEnquireAll}
             className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold
@@ -255,9 +262,17 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
   return (
     <div className={`group bg-white rounded-2xl overflow-hidden shadow-soft border transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg ${isSold ? 'border-red-100 opacity-80' : isReserved ? 'border-amber-100' : 'border-gray-100'}`}>
       {/* Photo */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onTap}
-        className="relative w-full aspect-[3/4] block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-inset"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onTap()
+          }
+        }}
+        className="relative w-full aspect-[3/4] block cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-inset"
       >
         {product.primary_photo_url ? (
           <Image
@@ -302,10 +317,10 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
             />
           </button>
         )}
-      </button>
+      </div>
 
       {/* Try-On button — hide for SOLD, show as disabled for RESERVED */}
-      {!isUnavailable && (
+      {TRY_ON_ENABLED && !isUnavailable && (
         <div className="px-2.5 pt-2">
           <button
             onClick={(e) => { e.stopPropagation(); onTryOn?.(product) }}

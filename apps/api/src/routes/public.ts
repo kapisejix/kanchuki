@@ -66,6 +66,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
                 include: {
                   photos: { orderBy: { sort_order: 'asc' } },
                   variants: true,
+                  section: { select: { name: true } },
                 },
               },
             },
@@ -128,6 +129,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
               fabric_estimate: p.fabric_estimate,
               occasions: p.occasions,
               search_tags: p.search_tags,
+              location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
               primary_photo_url: await displayUrl(
                 p.photos.find((ph) => ph.is_primary)?.url ?? p.photos[0]?.url ?? '',
                 (p.photos.find((ph) => ph.is_primary) ?? p.photos[0])?.r2_key ?? null,

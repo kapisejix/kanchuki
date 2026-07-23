@@ -1,7 +1,7 @@
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { Prisma } from '@kanchuki/db';
-import { addDays, generateCollectionSlug } from '@kanchuki/shared';
+import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../plugins/error-handler.js';
@@ -423,5 +423,97 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       data: { deleted_at: new Date(), status: 'ARCHIVED' },
     });
     return reply.status(204).send();
+  });
+
+  // ─── POST /collections/:id/bulk-send ────────────────────────────
+  // Sends the collection link to multiple customers in one call via the
+  // retailer's own Meta WhatsApp Business API credentials (configured under
+  // /retailers/me/whatsapp-api). Requires a pre-approved message template
+  // with exactly one body variable — we fill it with the full personalized
+  // message, same text the one-by-one wa.me flow sends.
+  server.post('/:id/bulk-send', async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const body = z
+      .object({ customer_ids: z.array(z.string()).min(1).max(100) })
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    const retailerId = request.retailerId;
+
+    const [collection, retailer, customers] = await Promise.all([
+      prisma.collection.findFirst({
+        where: { id, retailer_id: retailerId, deleted_at: null, status: 'ACTIVE' },
+      }),
+      prisma.retailer.findUnique({
+        where: { id: retailerId },
+        select: {
+          whatsapp_api_phone_number_id: true,
+          whatsapp_api_access_token: true,
+          whatsapp_api_template_name: true,
+          whatsapp_api_template_lang: true,
+        },
+      }),
+      prisma.customer.findMany({
+        where: { id: { in: body.data.customer_ids }, retailer_id: retailerId, deleted_at: null },
+        select: { id: true, name: true, phone: true },
+      }),
+    ]);
+    if (!collection) throw notFound('Collection');
+    if (
+      !retailer?.whatsapp_api_phone_number_id ||
+      !retailer.whatsapp_api_access_token ||
+      !retailer.whatsapp_api_template_name
+    ) {
+      throw validationError(
+        'WhatsApp Business API is not configured. Add it under Settings first, or use the one-by-one share option.',
+      );
+    }
+
+    const webUrl = `${process.env.WEB_URL ?? ''}/c/${collection.slug}`;
+    const { whatsapp_api_phone_number_id, whatsapp_api_access_token } = retailer;
+    const templateName = retailer.whatsapp_api_template_name;
+    const templateLang = retailer.whatsapp_api_template_lang ?? 'en_US';
+
+    const results = await Promise.allSettled(
+      customers.map(async (customer) => {
+        const message = `Hi ${customer.name}! Check out our collection "${collection.title}": ${webUrl}`;
+        const res = await fetch(
+          `https://graph.facebook.com/v21.0/${whatsapp_api_phone_number_id}/messages`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${whatsapp_api_access_token}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              messaging_product: 'whatsapp',
+              to: `91${normalizeIndianPhone(customer.phone)}`,
+              type: 'template',
+              template: {
+                name: templateName,
+                language: { code: templateLang },
+                components: [{ type: 'body', parameters: [{ type: 'text', text: message }] }],
+              },
+            }),
+          },
+        );
+        if (!res.ok) {
+          const errBody = await res.text();
+          throw new Error(errBody);
+        }
+        return customer.id;
+      }),
+    );
+
+    const sent = results.filter((r) => r.status === 'fulfilled').length;
+    const failed = results
+      .map((r, i) => ({ r, customer: customers[i]! }))
+      .filter((x) => x.r.status === 'rejected')
+      .map((x) => ({
+        customer_id: x.customer.id,
+        error: x.r.status === 'rejected' ? String((x.r as PromiseRejectedResult).reason) : '',
+      }));
+
+    return reply.status(200).send({ data: { sent, failed_count: failed.length, failed } });
   });
 };

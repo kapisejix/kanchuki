@@ -1,24 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import type { PublicCollection } from '@kanchuki/shared'
 import { CollectionView } from './components/CollectionView'
+import { fetchCollection } from './lib/fetchCollection'
 
 interface Props {
   params: Promise<{ slug: string }>
-}
-
-async function fetchCollection(slug: string): Promise<PublicCollection | null> {
-  const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
-  try {
-    const res = await fetch(`${apiUrl}/v1/public/collections/${slug}`, {
-      next: { revalidate: 60 }, // ISR — revalidate every 60s
-    })
-    if (!res.ok) return null
-    const json = (await res.json()) as { data: PublicCollection }
-    return json.data
-  } catch {
-    return null
-  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

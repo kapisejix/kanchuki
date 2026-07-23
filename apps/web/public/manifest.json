@@ -1,0 +1,9 @@
+{
+  "name": "Kanchuki",
+  "short_name": "Kanchuki",
+  "description": "AI-powered fashion collections for Indian clothing stores",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FAFAFA",
+  "theme_color": "#0891B2"
+}

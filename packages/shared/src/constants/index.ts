@@ -167,6 +167,13 @@ export const R2_PATHS = {
   tryonResult: (jobId: string) => `tryon/${jobId}/result.jpg`,
   measurementPhoto: (customerId: string, measurementId: string, side: 'front' | 'back') =>
     `measurements/${customerId}/${measurementId}/${side}.jpg`,
+  retailerLogo: (retailerId: string, filename: string) =>
+    `retailers/${retailerId}/logo/${filename}`,
+  retailerKyc: (
+    retailerId: string,
+    docType: 'gst' | 'aadhar_front' | 'aadhar_back',
+    filename: string,
+  ) => `retailers/${retailerId}/kyc/${docType}/${filename}`,
 } as const
 
 // ─── BullMQ Queue Names ───────────────────────────────────────────

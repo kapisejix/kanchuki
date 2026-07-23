@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Store, MapPin, ArrowRight, Loader2 } from 'lucide-react'
+import { Store, MapPin, Loader2 } from 'lucide-react'
 import type { RetailerProfile } from '../page'
 
 interface Props {
@@ -12,14 +13,32 @@ interface Props {
 
 type Gender = 'MALE' | 'FEMALE'
 
+const leadKey = (slug: string) => `kanchuki_lead_${slug}`
+
 export function ContactGate({ slug, profile }: Props) {
-  const [passed, setPassed] = useState(false)
+  const router = useRouter()
+  const [checkingReturningVisitor, setCheckingReturningVisitor] = useState(true)
+  const [noStorefrontYet, setNoStorefrontYet] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [gender, setGender] = useState<Gender | null>(null)
   const [consent, setConsent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Already submitted details for this store before — skip the form and
+  // go straight to the catalog instead of asking again.
+  useEffect(() => {
+    const alreadySubmitted = localStorage.getItem(leadKey(slug))
+    if (alreadySubmitted) {
+      if (profile.storefront_slug) {
+        router.replace(`/c/${profile.storefront_slug}`)
+        return
+      }
+      setNoStorefrontYet(true)
+    }
+    setCheckingReturningVisitor(false)
+  }, [slug, profile.storefront_slug, router])
 
   const canSubmit = name.trim().length > 0 && phone.trim().length >= 10 && gender !== null && consent
 
@@ -38,17 +57,40 @@ export function ContactGate({ slug, profile }: Props) {
         const json = (await res.json()) as { error?: { message?: string } }
         throw new Error(json.error?.message ?? 'Could not submit your details')
       }
-      setPassed(true)
+      localStorage.setItem(leadKey(slug), '1')
+      // Replace (not push) so the back button never lands back on this form —
+      // it skips straight past this history entry to the catalog.
+      if (profile.storefront_slug) {
+        router.replace(`/c/${profile.storefront_slug}`)
+      } else {
+        setNoStorefrontYet(true)
+        setSubmitting(false)
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
-    } finally {
       setSubmitting(false)
     }
   }
 
-  if (passed) {
+  if (checkingReturningVisitor) {
     return (
-      <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 gap-6">
+      <div className="min-h-screen bg-cyan-50 flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-cyan-600" />
+      </div>
+    )
+  }
+
+  // No catalog to redirect to yet (retailer hasn't published a storefront) —
+  // nothing to auto-open, so just say so.
+  if (noStorefrontYet) {
+    return (
+      <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 gap-6 relative">
+        <Link
+          href="/"
+          className="absolute top-4 left-4 text-sm text-cyan-700/70 hover:text-cyan-700 flex items-center gap-1"
+        >
+          ← Back
+        </Link>
         <div className="bg-white rounded-3xl border border-gray-100 p-8 max-w-sm w-full text-center">
           <div className="w-14 h-14 bg-cyan-100 rounded-full items-center justify-center flex mx-auto mb-4">
             <Store size={26} className="text-cyan-600" />
@@ -60,27 +102,20 @@ export function ContactGate({ slug, profile }: Props) {
               {[profile.address_line1, profile.city, profile.state].filter(Boolean).join(', ')}
             </p>
           )}
-          {profile.categories.length > 0 && (
-            <p className="text-xs text-gray-400 mt-2">{profile.categories.join(' · ')}</p>
-          )}
-
-          {profile.storefront_slug ? (
-            <Link
-              href={`/c/${profile.storefront_slug}`}
-              className="mt-6 inline-flex items-center justify-center gap-2 bg-cyan-600 text-white font-semibold text-sm px-6 py-3 rounded-2xl hover:bg-cyan-500 transition-colors"
-            >
-              View Catalog <ArrowRight size={16} />
-            </Link>
-          ) : (
-            <p className="mt-6 text-sm text-gray-400">Catalog coming soon.</p>
-          )}
+          <p className="mt-6 text-sm text-gray-400">Catalog coming soon.</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6">
+    <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 relative">
+      <Link
+        href="/"
+        className="absolute top-4 left-4 text-sm text-cyan-700/70 hover:text-cyan-700 flex items-center gap-1"
+      >
+        ← Back
+      </Link>
       <form
         onSubmit={(e) => void handleSubmit(e)}
         className="bg-white rounded-3xl border border-gray-100 p-6 max-w-sm w-full"

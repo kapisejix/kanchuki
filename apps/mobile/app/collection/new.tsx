@@ -5,7 +5,6 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Share,
   Alert,
   ActivityIndicator,
 } from 'react-native'
@@ -50,11 +49,7 @@ export default function NewCollectionScreen() {
       }),
     onSuccess: async (res) => {
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
-      await Share.share({
-        message: `Check out ${title.trim()}: ${res.data.url}`,
-        url: res.data.url,
-      })
-      router.back()
+      router.replace(`/collection/${res.data.id as string}`)
     },
     onError: (err: Error) => Alert.alert('Could not create collection', err.message),
   })

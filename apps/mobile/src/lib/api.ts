@@ -70,7 +70,7 @@ async function request<T>(
 ): Promise<T> {
   const token = await getToken()
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(options.body ? { 'Content-Type': 'application/json' } : {}),
     ...(options.headers as Record<string, string> | undefined),
   }
   if (token) headers['Authorization'] = `Bearer ${token}`
@@ -209,6 +209,61 @@ export const retailerApi = {
       method: 'PATCH',
       body: JSON.stringify({ collection_id: collectionId }),
     }),
+
+  /** F-009: Store logo upload */
+  getLogoUploadUrl: (contentType: string, sizeBytes: number) =>
+    request<{
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+    }>('/v1/retailers/me/logo-upload-url', {
+      method: 'POST',
+      body: JSON.stringify({ filename: 'logo.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      timeoutMs: 30_000,
+    }),
+
+  /** F-009: KYC doc upload — gst | aadhar_front | aadhar_back */
+  getKycUploadUrl: (docType: 'gst' | 'aadhar_front' | 'aadhar_back', contentType: string, sizeBytes: number) =>
+    request<{
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+    }>('/v1/retailers/me/kyc-upload-url', {
+      method: 'POST',
+      body: JSON.stringify({
+        doc_type: docType,
+        filename: `${docType}.jpg`,
+        content_type: contentType,
+        size_bytes: sizeBytes,
+      }),
+      timeoutMs: 30_000,
+    }),
+
+  submitKycDoc: (docType: 'gst' | 'aadhar_front' | 'aadhar_back', r2Key: string, url: string) =>
+    request<{ data: { kyc_status: string } }>('/v1/retailers/me/kyc', {
+      method: 'PATCH',
+      body: JSON.stringify({ doc_type: docType, r2_key: r2Key, url }),
+    }),
+
+  /** Meta WhatsApp Business API — bring-your-own credentials for bulk send */
+  getWhatsAppApiConfig: () =>
+    request<{
+      data: {
+        configured: boolean
+        whatsapp_api_phone_number_id: string | null
+        whatsapp_api_template_name: string | null
+        whatsapp_api_template_lang: string | null
+      }
+    }>('/v1/retailers/me/whatsapp-api', { getCacheTtlMs: 30_000 }),
+
+  saveWhatsAppApiConfig: (data: {
+    phone_number_id: string
+    access_token?: string
+    template_name: string
+    template_lang?: string
+  }) =>
+    request<{ data: { configured: boolean } }>('/v1/retailers/me/whatsapp-api', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  disconnectWhatsAppApi: () => request<void>('/v1/retailers/me/whatsapp-api', { method: 'DELETE' }),
 
   /** F-009: Soft-delete the retailer account */
   delete: () => request<void>('/v1/retailers/me', { method: 'DELETE' }),
@@ -795,5 +850,15 @@ export const collectionApi = {
       method: 'POST',
       body: JSON.stringify({ customer_id: customerId, title, limit: 12 }),
       timeoutMs: 15_000,
+    }),
+
+  /** Bulk-send via retailer's configured WhatsApp Business API */
+  bulkSend: (id: string, customerIds: string[]) =>
+    request<{
+      data: { sent: number; failed_count: number; failed: { customer_id: string; error: string }[] }
+    }>(`/v1/collections/${id}/bulk-send`, {
+      method: 'POST',
+      body: JSON.stringify({ customer_ids: customerIds }),
+      timeoutMs: 30_000,
     }),
 }
