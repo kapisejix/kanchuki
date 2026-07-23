@@ -26,6 +26,9 @@ import {
   Plus,
   X,
   Loader2,
+  Hash,
+  FileText,
+  ExternalLink,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -38,6 +41,16 @@ type RetailerDetail = {
   city: string
   state: string | null
   gstin: string | null
+  address_line1: string | null
+  address_line2: string | null
+  pincode: string | null
+  kyc_status: string
+  kyc_gst_url: string | null
+  kyc_aadhar_front_url: string | null
+  kyc_aadhar_back_url: string | null
+  kyc_submitted_at: string | null
+  kyc_reviewed_at: string | null
+  kyc_rejection_reason: string | null
   plan: string
   plan_status: string
   trial_ends_at: string | null
@@ -309,15 +322,48 @@ export default function RetailerDetailPage() {
               <Store size={16} className="text-gray-400" /> Profile
             </h2>
             <div className="grid grid-cols-2 gap-4 text-sm">
+              <ProfileField label="Retailer ID" value={retailer.id} icon={Hash} />
               <ProfileField label="Shop Name" value={retailer.shop_name} />
               <ProfileField label="Owner" value={retailer.owner_name || '—'} />
               <ProfileField label="Phone" value={retailer.phone} icon={Phone} />
               <ProfileField label="GSTIN" value={retailer.gstin || '—'} />
+              <ProfileField
+                label="Address"
+                value={[retailer.address_line1, retailer.address_line2, retailer.pincode].filter(Boolean).join(', ') || '—'}
+                icon={MapPin}
+              />
               <ProfileField label="City" value={retailer.city} icon={MapPin} />
               <ProfileField label="State" value={retailer.state || '—'} />
               <ProfileField label="Onboarding" value={retailer.onboarding_completed ? '✅ Completed' : `Step ${retailer.onboarding_step}`} />
               <ProfileField label="Joined" value={new Date(retailer.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} icon={Calendar} />
             </div>
+          </div>
+
+          {/* KYC card */}
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Shield size={16} className="text-gray-400" /> KYC Verification
+              </h2>
+              <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                retailer.kyc_status === 'VERIFIED' ? 'bg-green-100 text-green-700' :
+                retailer.kyc_status === 'PENDING' ? 'bg-amber-100 text-amber-700' :
+                retailer.kyc_status === 'REJECTED' ? 'bg-red-100 text-red-700' :
+                'bg-gray-100 text-gray-500'
+              }`}>
+                {retailer.kyc_status.replace('_', ' ')}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+              <KycDocLink label="GST Certificate" url={retailer.kyc_gst_url} />
+              <KycDocLink label="Aadhar Front" url={retailer.kyc_aadhar_front_url} />
+              <KycDocLink label="Aadhar Back" url={retailer.kyc_aadhar_back_url} />
+            </div>
+            {retailer.kyc_rejection_reason && (
+              <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-3">
+                Rejection reason: {retailer.kyc_rejection_reason}
+              </p>
+            )}
           </div>
 
           {/* Stats grid */}
@@ -605,6 +651,28 @@ function ProfileField({ label, value, icon: Icon }: { label: string; value: stri
         {label}
       </span>
       <span className="text-gray-900 font-medium text-sm">{value}</span>
+    </div>
+  )
+}
+
+function KycDocLink({ label, url }: { label: string; url: string | null }) {
+  return (
+    <div className="flex items-center justify-between py-2 px-3 bg-gray-50/80 rounded-xl border border-gray-100">
+      <span className="flex items-center gap-1.5 text-gray-600 text-xs">
+        <FileText size={13} className="text-gray-400" /> {label}
+      </span>
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium"
+        >
+          View <ExternalLink size={12} />
+        </a>
+      ) : (
+        <span className="text-xs text-gray-300">Not submitted</span>
+      )}
     </div>
   )
 }

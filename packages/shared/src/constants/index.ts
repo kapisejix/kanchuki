@@ -3,14 +3,14 @@
 export const PLAN_LIMITS = {
   STARTER: {
     max_products: 500,
-    max_customers: 200,
+    max_customers: Infinity,
     max_collection_links_per_month: 50,
     try_on_credits: 0,
     whatsapp_api: false,
   },
   GROWTH: {
     max_products: 2000,
-    max_customers: 1000,
+    max_customers: Infinity,
     max_collection_links_per_month: Infinity,
     try_on_credits: 100,
     whatsapp_api: false,
@@ -178,6 +178,7 @@ export const R2_PATHS = {
     `retailers/${retailerId}/products/${productId}/spin/video.mp4`,
   spinFrame: (retailerId: string, productId: string, frameIndex: number) =>
     `retailers/${retailerId}/products/${productId}/spin/frame-${frameIndex}.jpg`,
+  backgroundImage: (filename: string) => `admin/background-images/${filename}`,
 } as const
 
 // ─── BullMQ Queue Names ───────────────────────────────────────────

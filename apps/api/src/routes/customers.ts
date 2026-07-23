@@ -10,7 +10,7 @@ import { R2_PATHS, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addFashionDNAJob, addMeasurementJob } from '../jobs/index.js';
-import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
+import { notFound, validationError } from '../plugins/error-handler.js';
 
 const ManualMeasurementSchema = z.object({
   height_cm: z.number().min(50).max(250),
@@ -51,15 +51,6 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /customers ────────────────────────────────────────────
   server.post('/', async (request, reply) => {
     const retailerId = request.retailerId;
-
-    const retailer = await prisma.retailer.findUniqueOrThrow({
-      where: { id: retailerId },
-      select: { max_customers: true },
-    });
-    const count = await prisma.customer.count({
-      where: { retailer_id: retailerId, deleted_at: null },
-    });
-    if (count >= retailer.max_customers) throw planLimitExceeded('customers');
 
     const body = CustomerSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');

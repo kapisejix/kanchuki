@@ -241,7 +241,7 @@ function PlanUsageBar({
       <View className="flex-row justify-between items-center mb-1">
         <Text className="text-xs text-gray-600">{label}</Text>
         <Text className="text-xs font-semibold text-gray-900">
-          {current}/{max === 1_000_000 ? '∞' : max.toLocaleString('en-IN')}
+          {current}/{max >= 999999 ? '∞' : max.toLocaleString('en-IN')}
         </Text>
       </View>
       <View className="h-2 bg-gray-100 rounded-full overflow-hidden">

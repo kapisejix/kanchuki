@@ -10,27 +10,37 @@ const {
   mockRetailerFindMany,
   mockRetailerCount,
   mockRetailerUpdate,
+  mockRetailerUpdateMany,
   mockProductCount,
   mockProductFindMany,
   mockCollectionCount,
+  mockCollectionUpdateMany,
   mockCollectionViewCount,
   mockCollectionEnquiryCount,
+  mockStaffUpdateMany,
   mockTryOnUsageAggregate,
   mockSubscriptionFindMany,
   mockCustomerFindMany,
+  mockTransaction,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
   mockRetailerFindMany: vi.fn(),
   mockRetailerCount: vi.fn(),
   mockRetailerUpdate: vi.fn(),
+  mockRetailerUpdateMany: vi.fn(),
   mockProductCount: vi.fn(),
   mockProductFindMany: vi.fn(),
   mockCollectionCount: vi.fn(),
+  mockCollectionUpdateMany: vi.fn(),
   mockCollectionViewCount: vi.fn(),
   mockCollectionEnquiryCount: vi.fn(),
+  mockStaffUpdateMany: vi.fn(),
   mockTryOnUsageAggregate: vi.fn(),
   mockSubscriptionFindMany: vi.fn(),
   mockCustomerFindMany: vi.fn(),
+  mockTransaction: vi.fn((ops: unknown) =>
+    Array.isArray(ops) ? Promise.all(ops) : (ops as () => unknown)(),
+  ),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -40,17 +50,20 @@ vi.mock('@kanchuki/db', () => ({
       findMany: mockRetailerFindMany,
       count: mockRetailerCount,
       update: mockRetailerUpdate,
+      updateMany: mockRetailerUpdateMany,
     },
     product: {
       count: mockProductCount,
       findMany: mockProductFindMany,
     },
-    collection: { count: mockCollectionCount },
+    collection: { count: mockCollectionCount, updateMany: mockCollectionUpdateMany },
     collectionView: { count: mockCollectionViewCount },
     collectionEnquiry: { count: mockCollectionEnquiryCount },
+    staff: { updateMany: mockStaffUpdateMany },
     tryOnUsageLog: { aggregate: mockTryOnUsageAggregate },
     subscription: { findMany: mockSubscriptionFindMany },
     customer: { findMany: mockCustomerFindMany },
+    $transaction: mockTransaction,
   },
   Prisma: {},
 }));
@@ -253,6 +266,70 @@ describe('GET /admin/retailers', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toEqual([]);
     expect(res.json().pagination.has_more).toBe(false);
+    await app.close();
+  });
+
+  it('filters by city, plan, status, and state', async () => {
+    mockRetailerFindMany.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({
+      method: 'GET',
+      url: '/v1/admin/retailers?city=Mumbai&plan=GROWTH&status=ACTIVE&state=Maharashtra',
+      headers: authedHeaders(),
+    });
+
+    expect(mockRetailerFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          city: expect.objectContaining({ contains: 'Mumbai' }),
+          plan: 'GROWTH',
+          plan_status: 'ACTIVE',
+          state: expect.objectContaining({ equals: 'Maharashtra' }),
+        }),
+      }),
+    );
+    await app.close();
+  });
+});
+
+// ─── DELETE /admin/retailers ───────────────────────────────────────
+
+describe('DELETE /admin/retailers', () => {
+  it('bulk soft-deletes retailers and archives their collections/staff', async () => {
+    mockRetailerUpdateMany.mockResolvedValue({ count: 2 });
+    mockCollectionUpdateMany.mockResolvedValue({ count: 0 });
+    mockStaffUpdateMany.mockResolvedValue({ count: 0 });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/retailers',
+      headers: jsonHeaders(),
+      body: { ids: ['retailer_1', 'retailer_2'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.deleted).toBe(2);
+    expect(mockRetailerUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ['retailer_1', 'retailer_2'] } }),
+        data: expect.objectContaining({ deleted_at: expect.any(Date) }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('rejects an empty ids array', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/retailers',
+      headers: jsonHeaders(),
+      body: { ids: [] },
+    });
+
+    expect(res.statusCode).toBe(422);
     await app.close();
   });
 });
@@ -503,7 +580,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
       data: expect.objectContaining({
         plan: 'STARTER',
         max_products: 500,
-        max_customers: 200,
+        max_customers: 999999,
         try_on_credits: 0,
       }),
     });

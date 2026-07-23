@@ -1,6 +1,7 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { PLAN_PRICING } from '@kanchuki/shared';
+import { PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound } from '../plugins/error-handler.js';
@@ -107,16 +108,24 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         cursor: z.string().optional(),
         limit: z.coerce.number().int().min(1).max(100).default(50),
         search: z.string().max(100).optional(),
+        city: z.string().max(100).optional(),
+        state: z.string().max(100).optional(),
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
+        status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']).optional(),
       })
       .safeParse(request.query);
-    const { cursor, limit, search } = query.success
+    const { cursor, limit, search, city, state, plan, status } = query.success
       ? query.data
-      : { cursor: undefined, limit: 50, search: undefined };
+      : { cursor: undefined, limit: 50, search: undefined, city: undefined, state: undefined, plan: undefined, status: undefined };
 
     const retailers = await prisma.retailer.findMany({
       where: {
         deleted_at: null,
         ...(cursor ? { id: { gt: cursor } } : {}),
+        ...(city ? { city: { contains: city, mode: 'insensitive' as const } } : {}),
+        ...(state ? { state: { equals: state, mode: 'insensitive' as const } } : {}),
+        ...(plan ? { plan } : {}),
+        ...(status ? { plan_status: status } : {}),
         ...(search
           ? {
               OR: [
@@ -131,6 +140,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         id: true,
         shop_name: true,
         city: true,
+        state: true,
         phone: true,
         plan: true,
         plan_status: true,
@@ -164,6 +174,32 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         has_more: hasMore,
       },
     };
+  });
+
+  // ─── DELETE /admin/retailers ─────────────────────────────────────
+  // Bulk soft-delete retailers from the admin grid. Archives their
+  // collections and deactivates staff, same as the retailer self-delete
+  // flow (DELETE /retailers/me) — products/customers/billing kept for GST audit.
+  server.delete('/retailers', async (request) => {
+    const body = z.object({ ids: z.array(z.string()).min(1).max(100) }).parse(request.body);
+
+    await prisma.$transaction([
+      prisma.retailer.updateMany({
+        where: { id: { in: body.ids }, deleted_at: null },
+        data: { deleted_at: new Date() },
+      }),
+      prisma.collection.updateMany({
+        where: { retailer_id: { in: body.ids }, deleted_at: null },
+        data: { deleted_at: new Date(), status: 'ARCHIVED' },
+      }),
+      prisma.staff.updateMany({
+        where: { retailer_id: { in: body.ids }, is_active: true },
+        data: { is_active: false },
+      }),
+    ]);
+
+    request.log.info({ retailer_ids: body.ids }, 'Bulk retailer delete');
+    return { data: { deleted: body.ids.length } };
   });
 
   // ─── GET /admin/customers ───────────────────────────────────────
@@ -308,6 +344,16 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         city: true,
         state: true,
         gstin: true,
+        address_line1: true,
+        address_line2: true,
+        pincode: true,
+        kyc_status: true,
+        kyc_gst_url: true,
+        kyc_aadhar_front_url: true,
+        kyc_aadhar_back_url: true,
+        kyc_submitted_at: true,
+        kyc_reviewed_at: true,
+        kyc_rejection_reason: true,
         plan: true,
         plan_status: true,
         trial_ends_at: true,
@@ -434,8 +480,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     if (!retailer) throw notFound('Retailer not found');
 
     const limits: Record<string, { products: number; customers: number; try_on: number }> = {
-      STARTER: { products: 500, customers: 200, try_on: 0 },
-      GROWTH: { products: 2000, customers: 1000, try_on: 100 },
+      STARTER: { products: 500, customers: 999999, try_on: 0 },
+      GROWTH: { products: 2000, customers: 999999, try_on: 100 },
       PRO: { products: 999999, customers: 999999, try_on: 500 },
     };
 
@@ -609,5 +655,69 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         try_on_cost_usd: tryOnUsage._sum.cost_usd ?? 0,
       },
     };
+  });
+
+  // ─── GET /admin/background-images ───────────────────────────────
+  // F-011: full library incl. inactive rows (admin needs to see what's
+  // hidden from the retailer picker in order to re-activate it).
+  server.get('/background-images', async () => {
+    const rows = await prisma.backgroundImage.findMany({ orderBy: { created_at: 'desc' } });
+    return { data: rows };
+  });
+
+  // ─── POST /admin/background-images/upload-url ───────────────────
+  // Presigned PUT so the admin panel uploads image bytes straight to R2,
+  // same pattern as the retailer spin-video upload (products.ts).
+  server.post('/background-images/upload-url', async (request) => {
+    const body = z
+      .object({
+        content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+        filename: z.string().min(1).max(200),
+      })
+      .parse(request.body);
+
+    const ext = body.content_type.split('/')[1];
+    const r2Key = R2_PATHS.backgroundImage(
+      `${createHash('sha256').update(body.filename + Date.now()).digest('hex').slice(0, 16)}.${ext}`,
+    );
+    const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
+
+    return { data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 } };
+  });
+
+  // ─── POST /admin/background-images ───────────────────────────────
+  // Registers a background already uploaded via the presigned URL above.
+  server.post('/background-images', async (request) => {
+    const body = z
+      .object({
+        name: z.string().min(1).max(100),
+        image_url: z.string().url(),
+        thumbnail_url: z.string().url().optional(),
+      })
+      .parse(request.body);
+
+    const row = await prisma.backgroundImage.create({ data: body });
+    return { data: row };
+  });
+
+  // ─── PATCH /admin/background-images/:id ──────────────────────────
+  // Toggle visibility in the retailer picker or rename. No hard delete —
+  // products may already reference a row (background_image_id FK is
+  // ON DELETE SET NULL), so deactivating keeps existing selections intact
+  // while hiding it from new picks.
+  server.patch('/background-images/:id', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const body = z
+      .object({
+        name: z.string().min(1).max(100).optional(),
+        is_active: z.boolean().optional(),
+      })
+      .parse(request.body);
+
+    const existing = await prisma.backgroundImage.findUnique({ where: { id } });
+    if (!existing) throw notFound('Background image');
+
+    const row = await prisma.backgroundImage.update({ where: { id }, data: body });
+    return { data: row };
   });
 };

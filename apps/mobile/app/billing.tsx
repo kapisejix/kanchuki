@@ -6,8 +6,8 @@ import { Check, CreditCard, XCircle, ShieldAlert } from 'lucide-react-native'
 import { billingApi } from '../src/lib/api'
 
 const PLAN_FEATURES: Record<string, string[]> = {
-  STARTER: ['500 products', '200 customers', '50 collection links/month'],
-  GROWTH: ['2,000 products', '1,000 customers', 'Unlimited collection links', '100 try-on credits'],
+  STARTER: ['500 products', 'Unlimited customers', '50 collection links/month'],
+  GROWTH: ['2,000 products', 'Unlimited customers', 'Unlimited collection links', '100 try-on credits'],
   PRO: ['Unlimited products', 'Unlimited customers', 'Unlimited collection links', '500 try-on credits', 'WhatsApp API'],
 }
 

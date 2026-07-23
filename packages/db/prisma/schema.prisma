@@ -190,7 +190,7 @@ model Retailer {
 
   // Usage limits (snapshot from plan, avoids join on every request)
   max_products    Int @default(500)
-  max_customers   Int @default(200)
+  max_customers   Int @default(999999)
   try_on_credits  Int @default(0)
   max_staff_seats Int @default(3) // 3 free, additional seats ₹199/mo (PRO-REQUIREMENTS.md §6)
 
@@ -289,12 +289,18 @@ model Product {
   spin_status String?
   spin_error  String?
 
+  // F-011: retailer-picked backdrop from the admin-curated library, applied
+  // by cleanupProductPhoto() in place of the default white flatten. Null =
+  // white (unchanged default behavior).
+  background_image_id String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
   retailer         Retailer              @relation(fields: [retailer_id], references: [id])
   section          StoreSection?         @relation(fields: [section_id], references: [id])
+  background_image BackgroundImage?      @relation(fields: [background_image_id], references: [id], onDelete: SetNull)
   photos           ProductPhoto[]
   spin_frames      ProductSpinFrame[]
   variants         ProductVariant[]
@@ -876,6 +882,25 @@ model TryOnUsageLog {
 // Admin-configurable limits per plan/resource + per-retailer overrides,
 // a rolling usage counter checked before every metered action, and
 // self-serve overage purchases. See docs/PRO-REQUIREMENTS.md F-010.
+
+// F-011: admin-curated backdrop library. Retailers select one for their
+// product photo/spin; cleanupProductPhoto() composites the bg-stripped
+// cutout onto it instead of the default white flatten.
+model BackgroundImage {
+  id                  String   @id @default(cuid())
+  name                String
+  image_url           String
+  thumbnail_url       String?
+  is_active           Boolean  @default(true)
+  created_by_admin_id String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  products Product[]
+
+  @@map("background_images")
+}
 
 model PlanLimit {
   id               String            @id @default(cuid())
