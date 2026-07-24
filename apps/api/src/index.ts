@@ -11,6 +11,7 @@ import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { billingRoutes } from './routes/billing.js';
 import { catalogImportRoutes } from './routes/catalog-import.js';
+import { checkoutRoutes } from './routes/checkout.js';
 import { categoryRoutes } from './routes/categories.js';
 import { collectionRoutes } from './routes/collections.js';
 import { consentRoutes } from './routes/consent.js';
@@ -89,6 +90,7 @@ await server.register(consentRoutes, { prefix: '/v1/consent' });
 await server.register(catalogImportRoutes, { prefix: '/v1' });
 await server.register(staffRoutes, { prefix: '/v1/staff' });
 await server.register(teamRoutes, { prefix: '/v1/team' });
+await server.register(checkoutRoutes, { prefix: '/v1' });
 
 // ─── Health Check ─────────────────────────────────────────────────
 

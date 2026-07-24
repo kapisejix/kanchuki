@@ -223,6 +223,8 @@ model Retailer {
   onboarded_by          TeamMember?             @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
   support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
   support_tickets       SupportTicket[]
+  payment_account       RetailerPaymentAccount?
+  orders                Order[]
 
   @@index([phone])
   @@index([city])
@@ -337,6 +339,7 @@ model Product {
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
   interactions     CustomerInteraction[]
+  order_items      OrderItem[]
 
   @@index([retailer_id])
   @@index([retailer_id, status])
@@ -1067,6 +1070,108 @@ model AuditLog {
   @@index([resource_type, resource_id])
   @@index([created_at])
   @@map("audit_logs")
+}
+
+// ─── L2 ECOMMERCE CHECKOUT (F-302) ──────────────────────────────
+// Stage A — Direct-to-Retailer: each retailer connects their own Razorpay
+// account. Existence of an active row here IS the L1/L2 tier gate.
+
+enum PaymentMode {
+  DIRECT // Stage A — retailer's own Razorpay account
+  ROUTE  // Stage B — Razorpay Linked Account (future)
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  REFUNDED
+  FULFILLED
+}
+
+enum RouteOnboardingStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+model RetailerPaymentAccount {
+  id          String      @id @default(cuid())
+  retailer_id String      @unique
+  payment_mode PaymentMode @default(DIRECT)
+
+  // Stage A (DIRECT) — encrypted via packages/db/src/secrets.ts
+  // encryptSecret()/decryptSecret() (AES-256-GCM, same mechanism as F-012)
+  razorpay_key_id                 String?  // public-ish, plaintext ok
+  razorpay_key_secret_encrypted   String?  // AES-256-GCM
+  razorpay_webhook_secret_encrypted String? // AES-256-GCM
+
+  // Stage B (ROUTE) — future Razorpay Linked Account
+  razorpay_linked_account_id String?
+  route_status                RouteOnboardingStatus?
+  onboarding_url               String?
+
+  is_active   Boolean   @default(false)
+  verified_at DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@map("retailer_payment_accounts")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  retailer_id   String
+  collection_id String?     // which collection link the customer bought from
+
+  // Anonymous checkout — no reusable Address entity, per-order snapshot
+  customer_name    String
+  customer_phone   String
+  shipping_address Json  // { line1, line2?, city, state, pincode }
+
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  // Amounts in paise (same convention as Product.price_min/max)
+  subtotal_amount Int
+  gst_amount      Int
+  total_amount    Int
+
+  payment_mode PaymentMode  // snapshotted from RetailerPaymentAccount at create time
+  razorpay_order_id   String? @unique
+  razorpay_payment_id String?
+
+  gst_invoice_number String?
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  paid_at      DateTime?
+  cancelled_at DateTime?
+
+  retailer Retailer    @relation(fields: [retailer_id], references: [id])
+  items    OrderItem[]
+
+  @@index([retailer_id])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  order_id   String
+  product_id String
+
+  // Snapshotted at order time — retailer catalog price/name can change later
+  product_name_snapshot String?
+  price_snapshot         Int
+  quantity               Int @default(1) // always 1 — one Product row = one garment
+
+  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@index([order_id])
+  @@map("order_items")
 }
 
 // ─── INTEGRATION SETTINGS ──────────────────────────────────────────

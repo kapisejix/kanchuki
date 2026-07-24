@@ -50,6 +50,17 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
   const [showFilters, setShowFilters] = useState(false);
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null);
 
+  // F-302: Check if the retailer has online checkout enabled
+  const [checkoutEnabled, setCheckoutEnabled] = useState(false);
+  useEffect(() => {
+    fetch(`/v1/public/checkout/retailer-status/${slug}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json) => {
+        if (json?.data?.checkout_enabled) setCheckoutEnabled(true);
+      })
+      .catch(() => undefined);
+  }, [slug]);
+
   // Product list, pagination, and loading are now server-driven — the initial
   // page comes from SSR (`collection`), further pages/filter changes refetch
   // through productsApiPath.
@@ -354,16 +365,17 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
       </div>
 
       {/* ── Product Detail Sheet ── */}
-      {selectedProduct && (
-        <ProductDetailSheet
-          product={selectedProduct}
-          retailer={collection.retailer}
-          collectionTitle={collection.title}
-          isFavorited={favorites.has(selectedProduct.id)}
-          onFavorite={toggleFavorite}
-          onTryOn={() => setTryOnProduct(selectedProduct)}
-          onClose={() => setSelectedProduct(null)}
-        />
+      {selectedProduct && (          <ProductDetailSheet
+              product={selectedProduct}
+              retailer={collection.retailer}
+              collectionTitle={collection.title}
+              isFavorited={favorites.has(selectedProduct.id)}
+              checkoutEnabled={checkoutEnabled}
+              slug={slug}
+              onFavorite={toggleFavorite}
+              onTryOn={() => setTryOnProduct(selectedProduct)}
+              onClose={() => setSelectedProduct(null)}
+          />
       )}
 
       {/* ── Try-On Modal ── */}

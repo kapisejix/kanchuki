@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
+import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
@@ -15,6 +17,8 @@ interface Props {
   retailer: PublicCollection['retailer']
   collectionTitle: string
   isFavorited: boolean
+  checkoutEnabled: boolean
+  slug: string
   onFavorite: (id: string) => void
   onTryOn: () => void
   onClose: () => void
@@ -25,10 +29,13 @@ export function ProductDetailSheet({
   retailer,
   collectionTitle,
   isFavorited,
+  checkoutEnabled,
+  slug,
   onFavorite,
   onTryOn,
   onClose,
 }: Props) {
+  const router = useRouter()
   const [photoIndex, setPhotoIndex] = useState(0)
   const [variantPhotoUrl, setVariantPhotoUrl] = useState<string | null>(null)
   const [variantColor, setVariantColor] = useState<string | null>(null)
@@ -588,8 +595,40 @@ export function ProductDetailSheet({
           </div>
         )}
 
+        {/* Add to Cart — shown when checkout is enabled */}
+        {checkoutEnabled && !isSold && (
+          <div className="px-4 pt-2">
+            <button
+              onClick={() => {
+                const cart = loadCart(slug)
+                cart.set(
+                  product.id,
+                  productToCartItem({
+                    id: product.id,
+                    name: product.name,
+                    price_min: product.price_min,
+                    category: product.category,
+                    primary_photo_url: product.primary_photo_url,
+                  }),
+                )
+                saveCart(slug, cart)
+                router.push(`/c/${slug}/cart`)
+              }}
+              disabled={isReserved}
+              className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-base active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+                isReserved
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-cyan-500'
+              }`}
+            >
+              <ShoppingCart size={20} />
+              {isReserved ? 'Reserved' : 'Add to Cart'}
+            </button>
+          </div>
+        )}
+
         {/* Enquire CTA — disabled for SOLD */}
-        <div className={`px-4 pb-6 pt-2 ${isSold ? 'pt-4' : ''}`}>
+        <div className={`px-4 pb-6 pt-2 ${isSold || checkoutEnabled ? 'pt-2' : 'pt-4'}`}>
           <button
             onClick={handleEnquire}
             disabled={isSold}

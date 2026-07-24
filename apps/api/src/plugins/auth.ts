@@ -149,8 +149,9 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     // Skip auth for public routes
     if (request.routeOptions.url?.startsWith('/v1/public')) return;
     if (request.routeOptions.url === '/health') return;
-    // Razorpay webhook authenticates via HMAC signature, not JWT
+    // Razorpay webhooks authenticate via HMAC signature, not JWT
     if (request.routeOptions.url === '/v1/billing/webhook') return;
+    if (request.routeOptions.url === '/v1/public/webhooks/razorpay') return;
     // Admin routes authenticate via x-admin-key header (checked in admin.ts)
     if (request.routeOptions.url?.startsWith('/v1/admin')) return;
     // Team routes authenticate via their own Bearer JWT or x-admin-key (checked in team.ts)
