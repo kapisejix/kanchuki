@@ -25,6 +25,11 @@ const nextConfig = {
         hostname: '*.cloudflare.com',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: '*.r2.cloudflarestorage.com',
+        pathname: '/**',
+      },
     ],
   },
   // PWA manifest & service worker served from /public

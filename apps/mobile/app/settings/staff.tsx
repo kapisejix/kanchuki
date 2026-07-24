@@ -3,9 +3,10 @@ import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   ActivityIndicator, Alert, Modal,
 } from 'react-native'
-import { Stack } from 'expo-router'
+import { router } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Trash2, X, User } from 'lucide-react-native'
+import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
 import { staffApi, type StaffMember } from '../../src/lib/api'
 
 // ─── Add Staff Modal ───────────────────────────────────────────────
@@ -108,6 +109,7 @@ function AddStaffModal({
 export default function StaffScreen() {
   const [showAdd, setShowAdd] = useState(false)
   const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
 
   const { data, isLoading } = useQuery({
     queryKey: ['staff'],
@@ -166,9 +168,21 @@ export default function StaffScreen() {
   )
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Team Members', headerShown: true }} />
-      <View className="flex-1 bg-cyan-50 px-4 pt-4">
+    <View className="flex-1 bg-cyan-50">
+      {/* Header */}
+      <View
+        className="bg-white border-b border-gray-100 px-4 pb-4"
+        style={{ paddingTop: insets.top + 12 }}
+      >
+        <View className="flex-row items-center gap-3">
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <ChevronLeft size={24} color="#374151" />
+          </TouchableOpacity>
+          <Text className="text-base font-bold text-gray-900">Team Members</Text>
+        </View>
+      </View>
+
+      <View className="flex-1 px-4 pt-4">
         {isLoading ? (
           <ActivityIndicator className="mt-16" color="#0891B2" />
         ) : staff.length === 0 ? (
@@ -211,6 +225,6 @@ export default function StaffScreen() {
 
         <AddStaffModal visible={showAdd} onClose={() => setShowAdd(false)} />
       </View>
-    </>
+    </View>
   )
 }
