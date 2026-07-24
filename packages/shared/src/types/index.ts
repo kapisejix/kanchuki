@@ -186,8 +186,19 @@ export interface PublicCollection {
   description: string | null
   expires_at: string | null
   products: PublicProduct[]
+  total: number
+  page: number
+  page_size: number
+  filters: {
+    categories: string[]
+    occasions: string[]
+    colors: string[]
+  }
 }
 
+// Thin shape for grid/list views — excludes per-product arrays (photos,
+// spin_frames, variants) that require presigning every URL. Fetch
+// PublicProductDetail on demand (product detail sheet) instead.
 export interface PublicProduct {
   id: string
   name: string | null
@@ -196,12 +207,16 @@ export interface PublicProduct {
   status: ProductStatus
   category: string | null
   primary_color: string | null
-  secondary_colors: string[]
-  fabric_estimate: string | null
   occasions: string[]
-  search_tags: string[]
   location: string | null
   primary_photo_url: string
+  has_360: boolean
+}
+
+export interface PublicProductDetail extends PublicProduct {
+  secondary_colors: string[]
+  fabric_estimate: string | null
+  search_tags: string[]
   photos: string[]
   spin_frames: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]

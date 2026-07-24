@@ -30,16 +30,21 @@ export default function RootLayout() {
 
   // ── Rehydrate offline cache on mount ──────────────────────────
   useEffect(() => {
-    void (async () => {
-      await restoreQueryCache(queryClient)
-    })()
+    restoreQueryCache(queryClient).catch(() => {
+      // Non-fatal — offline cache unavailable, app works without it
+    })
   }, [])
 
   // ── Auth redirect ─────────────────────────────────────────────
   useEffect(() => {
-    void getToken().then((token) => {
-      if (!token) router.replace('/auth/phone')
-    })
+    getToken()
+      .then((token) => {
+        if (!token) router.replace('/auth/phone')
+      })
+      .catch(() => {
+        // SecureStore unavailable — treat as unauthenticated
+        router.replace('/auth/phone')
+      })
   }, [])
 
   // ── Persist cache on background + pause/resume queries ────────

@@ -535,3 +535,89 @@ Before each major release:
 - [ ] Verify CSP headers on all pages
 
 **Skill reference:** Use `security-bounty-hunter` skill for pre-launch audit.
+
+---
+
+## 11. L2 Ecommerce Checkout — Retailer Payment Credentials (F-302/F-307, planned)
+
+**Status:** Architecture decided 2026-07-24, not yet built. Recorded here so the design is threat-modeled before implementation starts, not after.
+
+### 11.1 Why direct-to-retailer first (Stage A)
+
+Kanchuki's own Razorpay account (used for subscription billing today) must **never** touch a retailer's sale money. If it did — even transiently — that's acting as a payment aggregator under RBI rules, which requires a PA license (slow, expensive, not something to back into by accident). Stage A avoids this entirely: each retailer's checkout money flows through *their own* Razorpay account, using *their own* KYC. Kanchuki only stores the credentials needed to call the Razorpay API on the retailer's behalf and to verify webhooks — it never custodies funds.
+
+Stage B (Razorpay Route, F-307) intentionally reintroduces Kanchuki as merchant-of-record for lower retailer friction — that's a deliberate compliance trade-off to make consciously later, not a default. Before enabling Stage B for real money: confirm current RBI marketplace-payment guidance with Razorpay support and legal counsel. Do not treat Route's marketing description as a substitute for that sign-off.
+
+### 11.2 Credential storage — reuses F-012, does not reinvent it
+
+`RetailerPaymentAccount.razorpay_key_secret_encrypted` and `.razorpay_webhook_secret_encrypted` use the exact same `encryptSecret()`/`decryptSecret()` functions from `packages/db/src/secrets.ts` (AES-256-GCM, keyed by the existing `ENCRYPTION_MASTER_KEY` env var) that F-012's admin-managed `IntegrationSetting` table already uses. The difference is scope, not mechanism: `IntegrationSetting` is one row per platform-wide key name (admin-only writes); `RetailerPaymentAccount` is one row per retailer (retailer-authenticated writes, scoped to their own `retailer_id` like every other retailer table).
+
+- `razorpay_key_id` is not secret (Razorpay's own docs treat it as safe to expose client-side, same as a Stripe publishable key) — stored plaintext, returned to the client to initialize Razorpay Checkout.js.
+- `razorpay_key_secret` and the webhook secret are always encrypted at rest, never returned to any client, never logged.
+- Same masking convention as F-012's admin UI (`maskSecret()` — show only the last 4 characters) applies to any retailer-facing "connected account" display.
+- RLS: `RetailerPaymentAccount` follows the standard retailer-isolation policy (§2) — a retailer can only read/write their own row. No cross-retailer read path, including for Super Admin support tooling (support should see *that* an account is connected, never the decrypted secret).
+
+### 11.3 Webhook signature verification — verify before trusting anything in the payload
+
+Razorpay's webhook POSTs to `/v1/public/webhooks/razorpay` are **not** scoped to a specific retailer in the URL — a naive design would trust a `retailer_id` path/query param to pick which webhook secret to verify against, which lets an attacker point the verification at a *different* retailer's (weaker or attacker-known) secret. Instead:
+
+```
+1. Parse payload.payment.entity.order_id (Razorpay's own field, present on every payment webhook)
+2. Look up the local Order by razorpay_order_id — this is the ONLY trusted way to find which retailer this webhook belongs to
+3. Load that Order's retailer's RetailerPaymentAccount.razorpay_webhook_secret_encrypted, decrypt it
+4. Verify the request signature (HMAC-SHA256 over the raw body) against THAT secret, using crypto.timingSafeEqual — same pattern as the existing Meta webhook validator in §6
+5. Only after signature verification passes: read event type, update Order.status, mark Product SOLD
+```
+
+If the `order_id` doesn't resolve to a local `Order`, or the signature check fails, respond 400 and do nothing else — never branch on payload contents before verification succeeds.
+
+### 11.4 Checkout PII (address, phone)
+
+- Shipping address is a per-order snapshot (`Order.shipping_address` JSON), not a reusable customer-profile entity — no customer account exists anywhere else in this app, so there is nothing to attach a reusable address to. Same "retailer-owned, not shared cross-tenant" principle as existing `Customer` PII (§9) applies to `Order.customer_name`/`customer_phone`.
+- Retention: same 7-year GST/IT compliance window as `SubscriptionPayment` (see `docs/DATABASE.md` retention table) — orders are financial records, not marketing data, so they don't get the shorter customer-interaction retention windows.
+- If a retailer disconnects their payment account, delete (not soft-delete) the encrypted key/secret columns immediately — a disconnected credential has no legitimate reason to persist, unlike business records which are soft-deleted by convention (§ Design Principles, `docs/DATABASE.md`).
+
+### 11.5 Open items (must resolve before this ships, not deferred silently)
+
+- Rate limiting on `/v1/public/webhooks/razorpay` and the checkout-creation endpoint (prevent an attacker from spamming order creation to lock a product in RESERVED status — needs a per-IP or per-session limit plus the auto-expiry cron already planned in `docs/PLAN.md`)
+- Audit logging for payment-account connect/disconnect and for every order status transition (extends the existing `AuditLog` model, same as every other sensitive admin action in §8)
+- Legal review of the Stage B (Route) compliance posture before enabling it for any retailer
+
+### 11.6 Payment integrity — never trust the client for money
+
+This is the section that answers "is it hacker-proof": no payment integration is "100% secure" as an absolute, but every known class of e-commerce payment attack below has a specific, standard mitigation. Skipping any one of these is how real breaches happen — this list is the actual bar, not a nice-to-have.
+
+- **Amount tampering.** The checkout POST body must never include a trusted `total_amount` field. Server recomputes the order total from `OrderItem` × the *snapshotted* product price (`Product.price_min` at add-to-cart time, same snapshot principle as `docs/DATABASE.md` `OrderItem.price_snapshot`) before creating the Razorpay order. A client that submits a manipulated total gets silently overridden by the server-computed figure, never trusted.
+- **Fake "success" callback.** Razorpay Checkout.js's client-side `handler` callback fires in the browser — a modified/scripted client could invoke it without a real payment ever happening. The client callback is allowed to update the UI optimistically ("confirming your payment…") but **must never by itself flip `Order.status` to `PAID`**. That transition only happens after either (a) the client-submitted `razorpay_payment_id`/`razorpay_order_id`/`razorpay_signature` triple is verified server-side via HMAC (Razorpay's documented payment-verification signature, distinct from the webhook signature in §11.3), or (b) the async webhook confirms it. Both paths converge on the same server-side verified transition — the webhook is the durable source of truth if the callback path is ever skipped (tab closed mid-payment, etc.).
+- **Webhook replay.** An attacker who somehow captures a valid webhook payload could resend it. Mitigation: the `Order` status transition is idempotent — only `PENDING_PAYMENT → PAID` is a valid transition; a webhook for an already-`PAID` order is a no-op, not a re-process. Additionally reject webhooks whose Razorpay timestamp is older than a few minutes, narrowing the replay window even further.
+- **Webhook source spoofing.** Signature verification (§11.3) is the primary control. Defense in depth: allowlist Razorpay's published webhook source IPs at the edge (Cloudflare, already in the stack) in addition to the signature check — belt and suspenders, not a substitute for the signature check.
+
+### 11.7 Inventory race condition (double-sell)
+
+This catalog models one `Product` row as one physical, one-off garment (`AVAILABLE`/`SOLD`, not a stock-count SKU) — so two customers checking out the same product at the same moment is a real double-sell risk, not a theoretical one. Order-creation must reserve the product with an atomic conditional update inside the same DB transaction as the `Order`/`OrderItem` insert:
+
+```
+UPDATE products SET status = 'RESERVED' WHERE id = ? AND status = 'AVAILABLE'
+-- Prisma: updateMany({ where: { id, status: 'AVAILABLE' }, data: { status: 'RESERVED' } })
+-- then check result.count === 1 — if 0, someone else got there first, reject the checkout
+```
+
+A read-then-write (`findUnique` check status, then separately `update`) is the classic TOCTOU bug here — two concurrent requests can both pass the read check before either writes. The conditional `updateMany` + rowcount check closes that window.
+
+### 11.8 Retailer account takeover — a new risk this feature introduces
+
+Every other feature in this app, a compromised retailer login costs that retailer their own data. This feature is different: a compromised retailer login lets an attacker **redirect where that retailer's future sale money goes** — by changing the connected `RetailerPaymentAccount` to an attacker-controlled Razorpay account. This is a materially higher-value target than anything else in the platform today and needs its own controls, not just the existing OTP login (§1):
+
+- **Step-up re-authentication** (re-enter OTP) specifically on connect/change/disconnect of the payment account — not covered by an already-valid session token alone.
+- **Out-of-band notification** (SMS/WhatsApp) to the retailer's registered phone whenever the payment account changes — so a real retailer notices an attacker's change even if the attacker is mid-session.
+- **Audit log** every connect/change/disconnect with before/after state (extends existing `AuditLog`, §8) — already listed in §11.5, called out again here because it's the primary forensic trail for this specific risk.
+
+### 11.9 PCI-DSS scope
+
+Using Razorpay Checkout.js (hosted modal/iframe) means **raw card numbers never touch Kanchuki's servers or JavaScript execution context** — card entry happens inside Razorpay's own iframe. This keeps Kanchuki in the lightest PCI-DSS tier (SAQ-A: "fully outsourced payment processing"), not the heavy SAQ-D tier that applies to anyone who handles card data directly.
+
+**This holds only as long as card entry stays inside Razorpay's hosted UI.** Never build a custom card-number/CVV input field — that would pull the platform into full PCI-DSS scope (network segmentation, quarterly ASV scans, annual audit) for no product benefit Razorpay's own hosted checkout doesn't already provide.
+
+### 11.10 Anonymous order lookup (IDOR)
+
+Checkout has no customer account (§11.4), so an order-status/confirmation page is keyed by `Order.id` alone unless deliberately hardened. `Order.id` is a non-guessable cuid2 (same convention as every other ID in this app, §2), but relying on ID-secrecy alone is weak defense if a link ever leaks via browser history, analytics tooling, or a shared screenshot. Require the checkout phone number as a second factor before rendering address/payment details on any order-lookup page — same bearer-plus-verification posture as the existing `revocation_token` pattern (§3c), not full authentication, but not ID-alone either.

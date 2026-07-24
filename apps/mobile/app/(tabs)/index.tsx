@@ -185,7 +185,7 @@ export default function HomeScreen() {
             icon={<Settings size={22} color="#6B7280" />}
             label="Settings"
             sublabel="Profile · Billing · Staff"
-            onPress={() => router.push('/settings' as any)}
+            onPress={() => router.push('/settings')}
             accent="#F3F4F6"
           />
         </View>

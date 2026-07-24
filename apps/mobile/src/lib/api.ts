@@ -306,10 +306,11 @@ export const productApi = {
       timeoutMs: 30_000,
     }),
 
-  list: (params?: { status?: string; category?: string; is_new_arrival?: boolean; cursor?: string; limit?: number }) => {
+  list: (params?: { status?: string; category?: string; category_id?: string; is_new_arrival?: boolean; cursor?: string; limit?: number }) => {
     const qs = new URLSearchParams()
     if (params?.status) qs.set('status', params.status)
     if (params?.category) qs.set('category', params.category)
+    if (params?.category_id) qs.set('category_id', params.category_id)
     if (params?.is_new_arrival) qs.set('is_new_arrival', 'true')
     if (params?.cursor) qs.set('cursor', params.cursor)
     if (params?.limit) qs.set('limit', String(params.limit))
@@ -460,15 +461,33 @@ export async function uploadImageToR2(
   uploadUrl: string,
   contentType: string,
   timeoutMs = 30_000,
+  onProgress?: (fraction: number) => void,
 ): Promise<void> {
-  let result: LegacyFileSystem.FileSystemUploadResult
+  let result: LegacyFileSystem.FileSystemUploadResult | undefined | null
   try {
+    const uploadPromise = onProgress
+      ? LegacyFileSystem.createUploadTask(
+          uploadUrl,
+          localUri,
+          {
+            httpMethod: 'PUT',
+            uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
+            headers: { 'Content-Type': contentType },
+          },
+          (data) => {
+            if (data.totalBytesExpectedToSend > 0) {
+              onProgress(data.totalBytesSent / data.totalBytesExpectedToSend)
+            }
+          },
+        ).uploadAsync()
+      : LegacyFileSystem.uploadAsync(uploadUrl, localUri, {
+          httpMethod: 'PUT',
+          uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
+          headers: { 'Content-Type': contentType },
+        })
+
     result = await Promise.race([
-      LegacyFileSystem.uploadAsync(uploadUrl, localUri, {
-        httpMethod: 'PUT',
-        uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
-        headers: { 'Content-Type': contentType },
-      }),
+      uploadPromise,
       new Promise<never>((_, reject) =>
         setTimeout(
           () => reject(new ApiError('TIMEOUT', 'Image upload timed out. Check your connection.', 408)),
@@ -485,8 +504,8 @@ export async function uploadImageToR2(
     )
   }
 
-  if (result.status < 200 || result.status >= 300) {
-    throw new ApiError('UPLOAD_FAILED', 'Image upload failed', result.status)
+  if (!result || result.status < 200 || result.status >= 300) {
+    throw new ApiError('UPLOAD_FAILED', 'Image upload failed', result?.status ?? 0)
   }
 }
 
@@ -893,5 +912,51 @@ export const collectionApi = {
       method: 'POST',
       body: JSON.stringify({ customer_ids: customerIds }),
       timeoutMs: 30_000,
+    }),
+}
+
+// ─── Product Categories ────────────────────────────────────────────
+
+export type ProductCategory = {
+  id: string
+  name: string
+  image_url: string | null
+  sort_order: number
+  product_count: number
+}
+
+export const categoryApi = {
+  list: () => request<{ data: ProductCategory[] }>('/v1/categories', { getCacheTtlMs: 15_000 }),
+
+  get: (id: string) =>
+    request<{ data: ProductCategory }>(`/v1/categories/${id}`, { getCacheTtlMs: 15_000 }),
+
+  create: (data: { name: string; image_url?: string; image_r2_key?: string }) =>
+    request<{ data: ProductCategory }>('/v1/categories', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  update: (id: string, data: { name?: string; image_url?: string | null; image_r2_key?: string | null }) =>
+    request<{ data: ProductCategory }>(`/v1/categories/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  delete: (id: string) => request<void>(`/v1/categories/${id}`, { method: 'DELETE' }),
+
+  getUploadUrl: (contentType: string, sizeBytes: number) =>
+    request<{
+      data: { upload_url: string; r2_key: string; public_url: string; expires_in: number }
+    }>('/v1/categories/upload-url', {
+      method: 'POST',
+      body: JSON.stringify({ filename: 'category.jpg', content_type: contentType, size_bytes: sizeBytes }),
+      timeoutMs: 30_000,
+    }),
+
+  assignProducts: (id: string, productIds: string[]) =>
+    request<{ data: { assigned_count: number } }>(`/v1/categories/${id}/products`, {
+      method: 'POST',
+      body: JSON.stringify({ product_ids: productIds }),
     }),
 }

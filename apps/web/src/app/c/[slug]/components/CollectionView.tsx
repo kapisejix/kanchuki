@@ -1,13 +1,13 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Heart, MessageCircle, Filter, Share2, ShoppingBag, Sparkles } from 'lucide-react'
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import dynamic from 'next/dynamic'
-import { FilterBar, priceMatchesBucket } from './FilterBar'
+import { FilterBar } from './FilterBar'
 import { wishlistKey, loadWishlist } from '../lib/wishlist'
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
@@ -25,12 +25,19 @@ const TryOnModal = dynamic(
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
 
+const PAGE_SIZE = 12
+
 interface Props {
   collection: PublicCollection
   slug: string
+  // Web proxy path this flow's paginated/filtered product fetches go through
+  // — differs for a plain collection vs. a category listing (both render
+  // this same component). See apps/web/src/app/api/c/[slug]/products and
+  // apps/web/src/app/api/store/[slug]/categories/[categoryId]/products.
+  productsApiPath: string
 }
 
-export function CollectionView({ collection, slug }: Props) {
+export function CollectionView({ collection, slug, productsApiPath }: Props) {
   const [favorites, setFavorites] = useState<Set<string>>(() => loadWishlist(slug))
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
@@ -39,6 +46,66 @@ export function CollectionView({ collection, slug }: Props) {
   const [filterColor, setFilterColor] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null)
+
+  // Product list, pagination, and loading are now server-driven — the initial
+  // page comes from SSR (`collection`), further pages/filter changes refetch
+  // through productsApiPath.
+  const [products, setProducts] = useState(collection.products)
+  const [total, setTotal] = useState(collection.total)
+  const [page, setPage] = useState(collection.page)
+  const [loading, setLoading] = useState(false)
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const isFirstRun = useRef(true)
+
+  // Every product summary seen this session (every fetched page) — lets the
+  // "Enquire about N items" message include favorites from pages other than
+  // the one currently on screen, without a dedicated favorites-detail fetch.
+  // ponytail: a favorite from a page never fetched this session won't resolve
+  // here; full fix means storing product summaries (not just ids) in the
+  // wishlist itself.
+  const productCacheRef = useRef<Map<string, PublicProduct>>(
+    new Map(collection.products.map((p) => [p.id, p])),
+  )
+
+  const fetchProducts = useCallback(
+    async (nextPage: number, filters: { category: string | null; occasion: string | null; price: string | null; color: string | null }) => {
+      setLoading(true)
+      const qs = new URLSearchParams({ page: String(nextPage), pageSize: String(PAGE_SIZE) })
+      if (filters.category) qs.set('category', filters.category)
+      if (filters.occasion) qs.set('occasion', filters.occasion)
+      if (filters.price) qs.set('price', filters.price)
+      if (filters.color) qs.set('color', filters.color)
+      try {
+        const res = await fetch(`${productsApiPath}?${qs}`)
+        if (!res.ok) return
+        const json = (await res.json()) as { data: PublicCollection }
+        setProducts(json.data.products)
+        setTotal(json.data.total)
+        setPage(json.data.page)
+        for (const p of json.data.products) productCacheRef.current.set(p.id, p)
+      } finally {
+        setLoading(false)
+      }
+    },
+    [productsApiPath],
+  )
+
+  // Filter change → refetch page 1. Skips the very first run since SSR
+  // already fetched page 1 with no filters applied.
+  useEffect(() => {
+    if (isFirstRun.current) {
+      isFirstRun.current = false
+      return
+    }
+    void fetchProducts(1, { category: filterCategory, occasion: filterOccasion, price: filterPrice, color: filterColor })
+  }, [filterCategory, filterOccasion, filterPrice, filterColor, fetchProducts])
+
+  const goToPage = useCallback(
+    (nextPage: number) => {
+      void fetchProducts(nextPage, { category: filterCategory, occasion: filterOccasion, price: filterPrice, color: filterColor })
+    },
+    [fetchProducts, filterCategory, filterOccasion, filterPrice, filterColor],
+  )
 
   const toggleFavorite = useCallback(
     (productId: string) => {
@@ -62,25 +129,19 @@ export function CollectionView({ collection, slug }: Props) {
     [slug],
   )
 
-  const filteredProducts = collection.products.filter((p) => {
-    if (filterCategory && p.category !== filterCategory) return false
-    if (filterOccasion && !p.occasions.includes(filterOccasion)) return false
-    if (!priceMatchesBucket(p.price_min, filterPrice)) return false
-    if (filterColor && p.primary_color?.toLowerCase() !== filterColor.toLowerCase()) return false
-    return true
-  })
-
-  const favoriteProducts = collection.products.filter((p) => favorites.has(p.id))
+  const favoriteProducts = Array.from(favorites)
+    .map((id) => productCacheRef.current.get(id))
+    .filter((p): p is PublicProduct => p !== undefined)
 
   const handleEnquireAll = useCallback(() => {
     const message = buildEnquiryMessage({
       shopName: collection.retailer.shop_name,
       collectionTitle: collection.title,
-      products: favoriteProducts.length > 0 ? favoriteProducts : collection.products.slice(0, 3),
+      products: favoriteProducts.length > 0 ? favoriteProducts : products.slice(0, 3),
     })
     const url = buildWhatsAppEnquiryLink(collection.retailer.phone, message)
     window.open(url, '_blank')
-  }, [collection, favoriteProducts])
+  }, [collection, favoriteProducts, products])
 
   const handleShare = useCallback(async () => {
     const url = window.location.href
@@ -130,7 +191,9 @@ export function CollectionView({ collection, slug }: Props) {
           {/* Filter Bar */}
           {showFilters && (
             <FilterBar
-              products={collection.products}
+              categories={collection.filters.categories}
+              occasions={collection.filters.occasions}
+              colors={collection.filters.colors}
               filterCategory={filterCategory}
               filterOccasion={filterOccasion}
               filterPrice={filterPrice}
@@ -150,7 +213,7 @@ export function CollectionView({ collection, slug }: Props) {
           <p className="text-sm text-gray-600 leading-relaxed mb-4 px-1">{collection.description}</p>
         )}
 
-        {filteredProducts.length === 0 ? (
+        {products.length === 0 ? (
           <div className="text-center py-20 px-6">
             <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-4">
               <ShoppingBag size={26} className="text-cyan-400" />
@@ -170,20 +233,44 @@ export function CollectionView({ collection, slug }: Props) {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {filteredProducts.map((product, idx) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                isFavorited={favorites.has(product.id)}
-                onFavorite={toggleFavorite}
-                onTap={() => setSelectedProduct(product)}
-                collectionSlug={slug}
-                priority={idx < 2}
-                onTryOn={(p) => setTryOnProduct(p)}
-              />
-            ))}
-          </div>
+          <>
+            <div className={`grid grid-cols-2 gap-3 transition-opacity ${loading ? 'opacity-50' : ''}`}>
+              {products.map((product, idx) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  isFavorited={favorites.has(product.id)}
+                  onFavorite={toggleFavorite}
+                  onTap={() => setSelectedProduct(product)}
+                  collectionSlug={slug}
+                  priority={idx < 2}
+                  onTryOn={(p) => setTryOnProduct(p)}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-3 mt-5">
+                <button
+                  onClick={() => goToPage(Math.max(1, page - 1))}
+                  disabled={page === 1 || loading}
+                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                >
+                  Prev
+                </button>
+                <span className="text-xs font-medium text-gray-500">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  onClick={() => goToPage(Math.min(totalPages, page + 1))}
+                  disabled={page === totalPages || loading}
+                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -254,7 +341,7 @@ interface CardProps {
   onTryOn?: (product: PublicProduct) => void
 }
 
-function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, priority, onTryOn }: CardProps) {
+function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryOn }: CardProps) {
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
   const isUnavailable = isSold || isReserved
@@ -357,9 +444,6 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, collectionSlug, 
         <p className={`font-display text-sm font-bold tabular-nums ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
           {formatPriceRange(product.price_min, product.price_max)}
         </p>
-        {product.fabric_estimate && (
-          <p className="text-xs text-gray-400 mt-0.5">{product.fabric_estimate}</p>
-        )}
       </div>
     </div>
   )

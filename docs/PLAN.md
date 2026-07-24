@@ -281,11 +281,34 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - Conversation inbox for retailer
 - Meta conversation fee pass-through billing
 
-### Month 15–16: Payments + GST
+### Month 15–16: Payments + GST — Retailer Ecommerce Checkout (L2 tier)
 
-- UPI payment link generation per order (Razorpay)
-- Order confirmation + receipt
-- **GST invoice generation (CRITICAL)**:
+**Decided 2026-07-24.** Full spec: `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema: `docs/DATABASE.md`, threat model: `docs/SECURITY.md` §11.
+
+**What this actually is:** WhatsApp is not the payment rail — Meta's Catalog/Cart + WhatsApp Pay aren't a viable checkout path for a third-party platform at this stage. WhatsApp keeps doing what it already does (share the collection link, notify on order). Cart → address → payment happens in the existing customer PWA (`apps/web/src/app/c/[slug]`); today's "Enquire on WhatsApp" button becomes "Buy Now" for retailers who've turned commerce on.
+
+**Two-stage rollout, ship Stage A first:**
+
+**Stage A — Direct-to-Retailer**
+- Each retailer connects their *own* Razorpay account (their own KYC/GST) via a new Settings section (extends F-009)
+- Kanchuki stores their `key_id`/`key_secret` encrypted (reuses F-012's `encryptSecret`/`decryptSecret` AES-256-GCM helpers, new per-retailer `RetailerPaymentAccount` row — not the global admin-only `IntegrationSetting` table)
+- Kanchuki creates Razorpay orders using *that retailer's* credentials — money never touches Kanchuki's own Razorpay account
+- **Why first:** zero custody of retailer sale funds → avoids needing an RBI Payment Aggregator license. Subscription billing (Kanchuki's own Razorpay account, already built) stays completely separate from this
+- Tier gate: a retailer with no active `RetailerPaymentAccount` just sees today's Enquire flow — presence of an active connected account *is* the L1/L2 distinction, no separate feature-flag column needed
+
+**Stage B — Razorpay Route (upgrade)**
+- Retailer onboards via Razorpay's Linked Account (Route) instead of bringing their own account — lower onboarding friction (no separate Razorpay signup)
+- Kanchuki's own Razorpay account becomes merchant-of-record; Razorpay auto-splits each payment to the retailer's linked account, optionally net of a Kanchuki platform commission (new revenue lever, not required)
+- Requires confirming current RBI marketplace-payment guidance with Razorpay/legal before enabling for real transactions — Route is designed for exactly this, but treat as a compliance gate, not an assumption
+- `RetailerPaymentAccount.payment_mode` (`DIRECT` | `ROUTE`) lets retailers coexist across both modes during migration; each `Order` snapshots the mode it was placed under
+
+**Shared build regardless of stage:**
+- `Order` / `OrderItem` (price-snapshotted at order time — retailer catalog prices can change later)
+- Cart: client-side, same localStorage pattern as the existing Wishlist page
+- Checkout: address form (no customer account — same anonymous-browsing principle as the rest of the customer PWA), order summary, Razorpay Checkout.js
+- Product status reuses the existing state machine: AVAILABLE → RESERVED at order-create → SOLD at payment-confirmed-webhook (auto-revert to AVAILABLE + cancel order if unpaid after a timeout, via cron)
+- Retailer-facing order list/management screen (mobile + admin)
+- **GST invoice generation (CRITICAL, unchanged requirement)**:
   - GSTIN validation
   - HSN code mapping for apparel
   - B2C + B2B invoice formats

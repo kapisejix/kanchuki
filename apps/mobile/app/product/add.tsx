@@ -12,7 +12,7 @@ import {
   Switch,
 } from 'react-native'
 import { router } from 'expo-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
@@ -20,7 +20,7 @@ import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
-import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { OCCASION_TYPES, PRODUCT_CATEGORIES } from '@kanchuki/shared'
 
 type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
@@ -94,7 +94,8 @@ export default function AddProductScreen() {
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
-  const [autoCleanup, setAutoCleanup] = useState(true)
+  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [autoCleanup, setAutoCleanup] = useState(false)
   const [backgroundImages, setBackgroundImages] = useState<
     { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
   >([])
@@ -106,6 +107,12 @@ export default function AddProductScreen() {
       .then((res) => setBackgroundImages(res.data))
       .catch(() => {}) // ponytail: best-effort — picker just stays empty (white-only)
   }, [])
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories', 'list'],
+    queryFn: () => categoryApi.list(),
+  })
+  const categories = categoriesData?.data ?? []
 
   const cameraRef = useRef<CameraView>(null)
 
@@ -288,6 +295,7 @@ export default function AddProductScreen() {
         fabric_estimate: aiTags?.fabric_estimate ?? undefined,
         occasions: selectedOccasions.length > 0 ? selectedOccasions : (aiTags?.occasions ?? []),
         search_tags: aiTags?.search_tags ?? [],
+        category_id: categoryId ?? undefined,
         location_notes: location || undefined,
         notes: notes || undefined,
         auto_cleanup: autoCleanup,
@@ -812,6 +820,43 @@ export default function AddProductScreen() {
             className="text-sm text-gray-900"
             placeholderTextColor="#9CA3AF"
           />
+        </View>
+
+        {/* Category (retailer-curated merchandising group, optional) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Category
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/category')}>
+              <Text className="text-cyan-600 text-xs font-semibold">Manage</Text>
+            </TouchableOpacity>
+          </View>
+          {categories.length === 0 ? (
+            <Text className="text-xs text-gray-400">
+              No categories yet — tap Manage to create one.
+            </Text>
+          ) : (
+            <View className="flex-row flex-wrap gap-2">
+              {categories.map((cat) => {
+                const selected = categoryId === cat.id
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setCategoryId(selected ? null : cat.id)}
+                    className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                      selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    {selected && <Check size={12} color="white" />}
+                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          )}
         </View>
 
         {/* Occasion tags */}

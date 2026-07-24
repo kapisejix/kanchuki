@@ -179,6 +179,8 @@ export const R2_PATHS = {
   spinFrame: (retailerId: string, productId: string, frameIndex: number) =>
     `retailers/${retailerId}/products/${productId}/spin/frame-${frameIndex}.jpg`,
   backgroundImage: (filename: string) => `admin/background-images/${filename}`,
+  categoryImage: (retailerId: string, filename: string) =>
+    `retailers/${retailerId}/categories/${filename}`,
 } as const
 
 // ─── Integration Settings (F-012) ──────────────────────────────────
@@ -229,6 +231,17 @@ export const CACHE_TTL = {
 
 export const COLLECTION_SLUG_LENGTH = 8
 export const COLLECTION_DEFAULT_EXPIRY_DAYS = 30
+
+// ─── Public Collection Price Buckets (paise) ─────────────────────
+// Shared by the public API filter query and the web FilterBar so labels
+// and boundaries can't drift between client display and server filtering.
+
+export const PUBLIC_PRICE_BUCKETS = [
+  { label: 'Under ₹1000', max: 100_000 },
+  { label: '₹1000–2500', min: 100_000, max: 250_000 },
+  { label: '₹2500–5000', min: 250_000, max: 500_000 },
+  { label: 'Above ₹5000', min: 500_000 },
+] as const satisfies { label: string; min?: number; max?: number }[]
 
 // ─── Indian States ────────────────────────────────────────────────
 

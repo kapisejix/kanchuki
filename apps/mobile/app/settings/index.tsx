@@ -11,6 +11,7 @@ import {
   ChevronRight, ChevronLeft, User, CreditCard, Smartphone,
   Users, QrCode, Trash2, LogOut, Check, X, Package,
   BarChart2, AlertTriangle, ShieldCheck, ImagePlus, FileText, MessageCircle,
+  FolderKanban,
 } from 'lucide-react-native'
 import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 
@@ -810,10 +811,17 @@ export default function SettingsScreen() {
           <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Store</Text>
 
           <SettingsRow
+            icon={<FolderKanban size={18} color="#0891B2" />}
+            label="Product Categories"
+            subtitle="Group products for customer browsing"
+            onPress={() => router.push('/category')}
+          />
+
+          <SettingsRow
             icon={<Users size={18} color="#F59E0B" />}
             label="Team Members"
             subtitle="Manage shop staff"
-            onPress={() => router.push('/settings/staff' as any)}
+            onPress={() => router.push('/settings/staff')}
           />
 
           <SettingsRow

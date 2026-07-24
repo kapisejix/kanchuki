@@ -212,6 +212,7 @@ model Retailer {
   collections           Collection[]
   staff                 Staff[]
   store_sections        StoreSection[]
+  product_categories    ProductCategory[]
   subscriptions         Subscription[]
   try_on_usage          TryOnUsageLog[]
   size_charts           SizeChart[]
@@ -246,6 +247,30 @@ model StoreSection {
 
   @@index([retailer_id])
   @@map("store_sections")
+}
+
+// ─── PRODUCT CATEGORIES ──────────────────────────────────────────
+// Retailer-curated merchandising group with a cover photo — distinct from
+// Product.category (free-text AI tag like "Saree", "Kurti"). Drives the
+// customer-facing "browse by category" screen after storefront signup.
+
+model ProductCategory {
+  id           String  @id @default(cuid())
+  retailer_id  String
+  name         String
+  image_url    String?
+  image_r2_key String?
+  sort_order   Int     @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer  @relation(fields: [retailer_id], references: [id])
+  products Product[]
+
+  @@unique([retailer_id, name])
+  @@index([retailer_id])
+  @@map("product_categories")
 }
 
 // ─── PRODUCTS ────────────────────────────────────────────────────
@@ -294,6 +319,10 @@ model Product {
   // white (unchanged default behavior).
   background_image_id String?
 
+  // Retailer-curated merchandising group (see ProductCategory) — distinct
+  // from the free-text `category` AI tag above.
+  category_id String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -301,6 +330,7 @@ model Product {
   retailer         Retailer              @relation(fields: [retailer_id], references: [id])
   section          StoreSection?         @relation(fields: [section_id], references: [id])
   background_image BackgroundImage?      @relation(fields: [background_image_id], references: [id], onDelete: SetNull)
+  product_category ProductCategory?      @relation(fields: [category_id], references: [id], onDelete: SetNull)
   photos           ProductPhoto[]
   spin_frames      ProductSpinFrame[]
   variants         ProductVariant[]
@@ -311,6 +341,7 @@ model Product {
   @@index([retailer_id])
   @@index([retailer_id, status])
   @@index([retailer_id, category])
+  @@index([retailer_id, category_id])
   @@index([retailer_id, deleted_at])
   @@map("products")
 }

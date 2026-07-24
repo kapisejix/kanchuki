@@ -18,7 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw } from 'lucide-react-native'
-import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
   PRODUCT_CATEGORIES,
@@ -33,6 +33,7 @@ type Variant = { id: string; color: string; photo_url: string | null }
 type Product = {
   id: string
   category: string | null
+  category_id: string | null
   product_type: string | null
   primary_color: string | null
   fabric_estimate: string | null
@@ -108,6 +109,13 @@ export default function ProductDetailScreen() {
   const [editedColor, setEditedColor] = useState('')
   const [editedFabric, setEditedFabric] = useState<string | null>(null)
   const [editedPattern, setEditedPattern] = useState<string | null>(null)
+  const [editedCategoryId, setEditedCategoryId] = useState<string | null>(null)
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories', 'list'],
+    queryFn: () => categoryApi.list(),
+  })
+  const categories = categoriesData?.data ?? []
 
   // Photo gallery state — tracks which photo is selected in the gallery
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
@@ -328,6 +336,7 @@ export default function ProductDetailScreen() {
     setEditedColor(product.primary_color ?? '')
     setEditedFabric(product.fabric_estimate)
     setEditedPattern(product.pattern)
+    setEditedCategoryId(product.category_id)
     setSelectedPhotoIndex(0)
     setVariantPreviewUrl(null)
     setVariantPreviewColor(null)
@@ -350,6 +359,7 @@ export default function ProductDetailScreen() {
         primary_color: editedColor || undefined,
         fabric_estimate: editedFabric ?? undefined,
         pattern: editedPattern ?? undefined,
+        category_id: editedCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
         occasions: selectedOccasions,
@@ -853,6 +863,43 @@ export default function ProductDetailScreen() {
               )
             })}
           </View>
+        </View>
+
+        {/* Merchandising category (retailer-curated, optional) */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Category (Catalog Group)
+            </Text>
+            <TouchableOpacity onPress={() => router.push('/category')}>
+              <Text className="text-cyan-600 text-xs font-semibold">Manage</Text>
+            </TouchableOpacity>
+          </View>
+          {categories.length === 0 ? (
+            <Text className="text-xs text-gray-400">
+              No categories yet — tap Manage to create one.
+            </Text>
+          ) : (
+            <View className="flex-row flex-wrap gap-2">
+              {categories.map((cat) => {
+                const selected = editedCategoryId === cat.id
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setEditedCategoryId(selected ? null : cat.id)}
+                    className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                      selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    {selected && <Check size={12} color="white" />}
+                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })}
+            </View>
+          )}
         </View>
 
         {/* Color (editable) */}

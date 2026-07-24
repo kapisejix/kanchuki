@@ -1,27 +1,11 @@
 'use client'
 
-import type { PublicProduct } from '@kanchuki/shared'
-
-// Price buckets (paise, matches formatPriceRange units)
-const PRICE_BUCKETS = [
-  { label: 'Under ₹1000', max: 100_000 },
-  { label: '₹1000–2500', min: 100_000, max: 250_000 },
-  { label: '₹2500–5000', min: 250_000, max: 500_000 },
-  { label: 'Above ₹5000', min: 500_000 },
-] as const
-
-export function priceMatchesBucket(priceMin: number | null, bucketLabel: string | null): boolean {
-  if (!bucketLabel) return true
-  const bucket = PRICE_BUCKETS.find((b) => b.label === bucketLabel)
-  if (!bucket) return true
-  const price = priceMin ?? 0
-  if ('min' in bucket && price < bucket.min) return false
-  if ('max' in bucket && price >= bucket.max) return false
-  return true
-}
+import { PUBLIC_PRICE_BUCKETS } from '@kanchuki/shared'
 
 interface Props {
-  products: PublicProduct[]
+  categories: string[]
+  occasions: string[]
+  colors: string[]
   filterCategory: string | null
   filterOccasion: string | null
   filterPrice: string | null
@@ -33,7 +17,9 @@ interface Props {
 }
 
 export function FilterBar({
-  products,
+  categories,
+  occasions,
+  colors,
   filterCategory,
   filterOccasion,
   filterPrice,
@@ -43,11 +29,6 @@ export function FilterBar({
   onPriceChange,
   onColorChange,
 }: Props) {
-  // Collect unique values
-  const categories = Array.from(new Set(products.map((p) => p.category).filter((c): c is string => c !== null)))
-  const occasions = Array.from(new Set(products.flatMap((p) => p.occasions)))
-  const colors = Array.from(new Set(products.map((p) => p.primary_color).filter((c): c is string => c !== null)))
-
   return (
     <div className="mt-2 space-y-2">
       {/* Category filter */}
@@ -123,7 +104,7 @@ export function FilterBar({
         >
           All
         </button>
-        {PRICE_BUCKETS.map((bucket) => (
+        {PUBLIC_PRICE_BUCKETS.map((bucket) => (
           <button
             key={bucket.label}
             onClick={() => onPriceChange(filterPrice === bucket.label ? null : bucket.label)}

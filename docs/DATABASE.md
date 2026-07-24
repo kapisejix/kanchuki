@@ -44,6 +44,10 @@ manufacturers ──── manufacturer_designs (Phase 2)
 
 subscriptions ──── subscription_events (billing history)
 try_on_jobs (Phase 1, ephemeral)
+
+retailers ──── retailer_payment_accounts (1:1, Phase 3 — F-302/F-307)
+retailers ──── orders (1:many, Phase 3 — F-302)
+orders ──── order_items (1:many, Phase 3 — F-302)
 ```
 
 ---
@@ -795,6 +799,116 @@ model AuditLog {
   @@index([created_at])
   @@map("audit_logs")
 }
+
+// ─────────────────────────────────────────────
+// L2 ECOMMERCE CHECKOUT (Phase 3 — F-302/F-307)
+// Planned only — decided 2026-07-24, no migration written yet.
+// ─────────────────────────────────────────────
+
+enum PaymentMode {
+  DIRECT  // Stage A — retailer's own Razorpay account, keys stored here (encrypted)
+  ROUTE   // Stage B — Razorpay Linked Account, Kanchuki's account is merchant-of-record
+}
+
+enum RouteOnboardingStatus {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  REFUNDED
+  FULFILLED
+}
+
+// One row per retailer who has turned on checkout. Existence of an ACTIVE
+// row here is the whole L1/L2 gate — no separate feature-flag column.
+model RetailerPaymentAccount {
+  id          String      @id @default(cuid())
+  retailer_id String      @unique
+  payment_mode PaymentMode @default(DIRECT)
+
+  // Stage A (DIRECT) — reuses packages/db/src/secrets.ts encryptSecret()/
+  // decryptSecret() (AES-256-GCM, same mechanism as F-012 IntegrationSetting)
+  // but keyed per-retailer here instead of the global admin-only table.
+  razorpay_key_id                 String?  // public-ish, not secret — plaintext ok
+  razorpay_key_secret_encrypted   String?  // AES-256-GCM, same format as IntegrationSetting.encrypted_value
+  razorpay_webhook_secret_encrypted String? // used to verify Stage A webhook signatures
+
+  // Stage B (ROUTE)
+  razorpay_linked_account_id String?
+  route_status                RouteOnboardingStatus?
+  onboarding_url               String?  // Razorpay-hosted KYC link, short-lived
+
+  is_active   Boolean   @default(false)
+  verified_at DateTime?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+
+  retailer    Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@map("retailer_payment_accounts")
+}
+
+model Order {
+  id            String      @id @default(cuid())
+  retailer_id   String
+  collection_id String?     // which collection link the customer bought from, if any
+
+  // No reusable Address entity — checkout is anonymous (no customer login
+  // anywhere else in this app), so the address is a one-time order snapshot,
+  // not a profile a customer could reuse.
+  customer_name    String
+  customer_phone   String
+  shipping_address Json     // { line1, line2?, city, state, pincode }
+
+  status OrderStatus @default(PENDING_PAYMENT)
+
+  // Amounts in paise, same convention as Product.price_min/max
+  subtotal_amount Int
+  gst_amount      Int
+  total_amount    Int
+
+  payment_mode PaymentMode  // snapshotted from RetailerPaymentAccount at order-create time
+  razorpay_order_id   String? @unique
+  razorpay_payment_id String?
+
+  gst_invoice_number String?
+
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  paid_at      DateTime?
+  cancelled_at DateTime?
+
+  retailer Retailer    @relation(fields: [retailer_id], references: [id])
+  items    OrderItem[]
+
+  @@index([retailer_id])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id         String @id @default(cuid())
+  order_id   String
+  product_id String
+
+  // Snapshotted at order time — retailer catalog price/name can change later
+  product_name_snapshot String?
+  price_snapshot         Int
+  quantity               Int @default(1) // practically always 1 — see F-302 note:
+                                          // one Product row = one physical garment
+                                          // (AVAILABLE/SOLD), not a stock-count SKU
+
+  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [product_id], references: [id])
+
+  @@index([order_id])
+  @@map("order_items")
+}
 ```
 
 ---
@@ -871,6 +985,8 @@ CREATE POLICY public_collection_read ON collections
 | Audit logs | 3 years | Regulatory compliance |
 | Payment records | 7 years | GST/IT compliance |
 | Soft-deleted records | 30 days then hard delete | Cron cleanup |
+| Orders (F-302, planned) | 7 years | Same GST/IT compliance window as SubscriptionPayment |
+| Retailer Razorpay keys (F-302, planned) | Until retailer disconnects the account | Deleted, not soft-deleted — see `docs/SECURITY.md` §11 |
 
 ---
 

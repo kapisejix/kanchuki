@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw } from 'lucide-react'
-import type { PublicProduct, PublicCollection } from '@kanchuki/shared'
+import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import { Product360Viewer } from './Product360Viewer'
 
@@ -33,6 +33,24 @@ export function ProductDetailSheet({
   const [variantPhotoUrl, setVariantPhotoUrl] = useState<string | null>(null)
   const [variantColor, setVariantColor] = useState<string | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showSpinModal, setShowSpinModal] = useState(false)
+
+  // Grid/card view only has the thin summary — photos, spin frames, variants,
+  // fabric, and tags are fetched here on open instead of shipping with every
+  // product in the list response.
+  const [detail, setDetail] = useState<PublicProductDetail | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/products/${product.id}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { data: PublicProductDetail } | null) => {
+        if (!cancelled && json) setDetail(json.data)
+      })
+      .catch(() => undefined)
+    return () => {
+      cancelled = true
+    }
+  }, [product.id])
   const touchStartX = useRef<number | null>(null)
   const prevIndexRef = useRef(photoIndex)
 
@@ -53,16 +71,23 @@ export function ProductDetailSheet({
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
 
-  // Build photos array: product photos + optionally a variant photo
-  const photos = product.photos.length > 0
-    ? (variantPhotoUrl && !product.photos.includes(variantPhotoUrl)
-        ? [...product.photos, variantPhotoUrl]
-        : product.photos)
-    : [product.primary_photo_url]
+  const spinFrames = detail?.spin_frames ?? []
+  const variants = detail?.variants ?? []
+  const fabricEstimate = detail?.fabric_estimate ?? null
+  const searchTags = detail?.search_tags ?? []
+
+  // Build photos array: detail photos (once loaded) + optionally a variant
+  // photo — falls back to just the grid thumbnail until detail arrives.
+  const basePhotos = detail?.photos.length ? detail.photos : product.primary_photo_url ? [product.primary_photo_url] : []
+  const photos = variantPhotoUrl && !basePhotos.includes(variantPhotoUrl)
+    ? [...basePhotos, variantPhotoUrl]
+    : basePhotos
 
   const currentPhoto = photos[photoIndex] ?? product.primary_photo_url
   const totalPhotos = photos.length
-  const has360 = product.spin_frames.length > 0
+  // Before detail loads, trust the grid's has_360 flag so the slide dot/icon
+  // don't pop in late; once loaded, the real frame count is authoritative.
+  const has360 = detail ? spinFrames.length > 0 : product.has_360
   // 360 view is appended as one more slide after the photos, not a separate mode.
   const totalSlides = totalPhotos + (has360 ? 1 : 0)
   const isSpinSlide = has360 && photoIndex === totalPhotos
@@ -208,10 +233,10 @@ export function ProductDetailSheet({
       setVariantPhotoUrl(photoUrl)
       setVariantColor(color)
       // Scroll to variant photo (last position)
-      const targetIdx = product.photos.length // variant is appended after product photos
+      const targetIdx = basePhotos.length // variant is appended after product photos
       goTo(targetIdx)
     }
-  }, [product.photos.length, goTo])
+  }, [basePhotos.length, goTo])
 
   const handleEnquire = () => {
     if (isSold) return
@@ -271,7 +296,7 @@ export function ProductDetailSheet({
         >
           {isSpinSlide ? (
             <Product360Viewer
-              frames={product.spin_frames}
+              frames={spinFrames}
               alt={product.name ?? product.category ?? 'Product'}
             />
           ) : (
@@ -413,6 +438,22 @@ export function ProductDetailSheet({
           </div>
         </div>
 
+        {/* 360 spin icon — opens the same viewer fullscreen */}
+        {has360 && (
+          <div className="px-4 pt-3">
+            <button
+              onClick={() => setShowSpinModal(true)}
+              className="w-full flex items-center justify-center gap-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700
+                         text-sm font-semibold py-2.5 rounded-xl transition-colors
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1"
+              aria-label="View 360° spin fullscreen"
+            >
+              <RotateCw size={16} />
+              View 360°
+            </button>
+          </div>
+        )}
+
         {/* Details */}
         <div className="p-4 space-y-3">
           {/* Status badge */}
@@ -462,19 +503,19 @@ export function ProductDetailSheet({
           {/* Attribute chips */}
           <div className="flex flex-wrap gap-2">
             {product.primary_color && <Chip label={product.primary_color} />}
-            {product.fabric_estimate && <Chip label={product.fabric_estimate} />}
+            {fabricEstimate && <Chip label={fabricEstimate} />}
             {product.occasions.slice(0, 2).map((o) => <Chip key={o} label={o} />)}
           </div>
 
           {/* Color variants — clickable to show in carousel */}
-          {product.variants.length > 0 && (
+          {variants.length > 0 && (
             <div>
               <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1.5">
                 <Palette size={12} />
                 Available Colors
               </p>
               <div className="flex flex-wrap gap-2">
-                {product.variants.map((v) => {
+                {variants.map((v) => {
                   const isActive = variantColor === v.color && variantPhotoUrl === v.photo_url
                   return (
                     <button
@@ -510,9 +551,9 @@ export function ProductDetailSheet({
           )}
 
           {/* Tags */}
-          {product.search_tags.length > 0 && (
+          {searchTags.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
-              {product.search_tags.slice(0, 8).map((tag) => (
+              {searchTags.slice(0, 8).map((tag) => (
                 <span
                   key={tag}
                   className="text-xs bg-cyan-50 text-cyan-700 px-2 py-1 rounded-full"
@@ -568,6 +609,32 @@ export function ProductDetailSheet({
           </p>
         </div>
       </div>
+
+      {/* Fullscreen 360 spin popup */}
+      {showSpinModal && has360 && (
+        <div
+          className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
+          onClick={() => setShowSpinModal(false)}
+        >
+          <button
+            onClick={() => setShowSpinModal(false)}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center z-10
+                       transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            aria-label="Close 360° view"
+          >
+            <X size={20} className="text-white" />
+          </button>
+          <div
+            className="relative w-full h-full max-w-lg max-h-[100vh] aspect-square"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Product360Viewer
+              frames={spinFrames}
+              alt={product.name ?? product.category ?? 'Product'}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

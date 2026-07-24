@@ -19,7 +19,7 @@
     "@kanchuki/shared": "workspace:*",
     "@react-navigation/native": "^7.3.8",
     "@tanstack/react-query": "^5.53.3",
-    "expo": "~54.0.35",
+    "expo": "~54.0.36",
     "expo-camera": "~17.0.10",
     "expo-constants": "~18.0.13",
     "expo-file-system": "~19.0.23",

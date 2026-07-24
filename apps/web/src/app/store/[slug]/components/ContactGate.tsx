@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Store, MapPin, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import type { RetailerProfile } from '../page'
 
 interface Props {
@@ -18,7 +18,6 @@ const leadKey = (slug: string) => `kanchuki_lead_${slug}`
 export function ContactGate({ slug, profile }: Props) {
   const router = useRouter()
   const [checkingReturningVisitor, setCheckingReturningVisitor] = useState(true)
-  const [noStorefrontYet, setNoStorefrontYet] = useState(false)
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [gender, setGender] = useState<Gender | null>(null)
@@ -31,14 +30,11 @@ export function ContactGate({ slug, profile }: Props) {
   useEffect(() => {
     const alreadySubmitted = localStorage.getItem(leadKey(slug))
     if (alreadySubmitted) {
-      if (profile.storefront_slug) {
-        router.replace(`/c/${profile.storefront_slug}`)
-        return
-      }
-      setNoStorefrontYet(true)
+      router.replace(`/store/${slug}/categories`)
+      return
     }
     setCheckingReturningVisitor(false)
-  }, [slug, profile.storefront_slug, router])
+  }, [slug, router])
 
   const canSubmit = name.trim().length > 0 && phone.trim().length >= 10 && gender !== null && consent
 
@@ -60,12 +56,7 @@ export function ContactGate({ slug, profile }: Props) {
       localStorage.setItem(leadKey(slug), '1')
       // Replace (not push) so the back button never lands back on this form —
       // it skips straight past this history entry to the catalog.
-      if (profile.storefront_slug) {
-        router.replace(`/c/${profile.storefront_slug}`)
-      } else {
-        setNoStorefrontYet(true)
-        setSubmitting(false)
-      }
+      router.replace(`/store/${slug}/categories`)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
       setSubmitting(false)
@@ -76,34 +67,6 @@ export function ContactGate({ slug, profile }: Props) {
     return (
       <div className="min-h-screen bg-cyan-50 flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-cyan-600" />
-      </div>
-    )
-  }
-
-  // No catalog to redirect to yet (retailer hasn't published a storefront) —
-  // nothing to auto-open, so just say so.
-  if (noStorefrontYet) {
-    return (
-      <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 gap-6 relative">
-        <Link
-          href="/"
-          className="absolute top-4 left-4 text-sm text-cyan-700/70 hover:text-cyan-700 flex items-center gap-1"
-        >
-          ← Back
-        </Link>
-        <div className="bg-white rounded-3xl border border-gray-100 p-8 max-w-sm w-full text-center">
-          <div className="w-14 h-14 bg-cyan-100 rounded-full items-center justify-center flex mx-auto mb-4">
-            <Store size={26} className="text-cyan-600" />
-          </div>
-          <h1 className="text-xl font-bold text-gray-900">{profile.shop_name}</h1>
-          {(profile.city || profile.address_line1) && (
-            <p className="text-sm text-gray-500 mt-1 flex items-center justify-center gap-1">
-              <MapPin size={14} />
-              {[profile.address_line1, profile.city, profile.state].filter(Boolean).join(', ')}
-            </p>
-          )}
-          <p className="mt-6 text-sm text-gray-400">Catalog coming soon.</p>
-        </div>
       </div>
     )
   }

@@ -83,6 +83,7 @@ const CreateProductSchema = z.object({
   occasions: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),
   section_id: z.string().optional(),
+  category_id: z.string().nullable().optional(),
   location_notes: z.string().max(200).optional(),
   notes: z.string().max(1000).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -107,6 +108,7 @@ function isNewArrival(createdAt: Date | string): boolean {
 const ListProductsQuerySchema = z.object({
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
   category: z.string().optional(),
+  category_id: z.string().optional(),
   is_new_arrival: z.coerce.boolean().optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
@@ -223,6 +225,12 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       });
       if (!section) throw forbidden('Section does not belong to your store');
     }
+    if (rest.category_id) {
+      const cat = await prisma.productCategory.findFirst({
+        where: { id: rest.category_id, retailer_id: retailerId },
+      });
+      if (!cat) throw forbidden('Category does not belong to your store');
+    }
 
     const product = await prisma.product.create({
       data: {
@@ -274,7 +282,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const query = ListProductsQuerySchema.safeParse(request.query);
     if (!query.success) throw validationError(query.error.issues[0]?.message ?? 'Invalid query');
 
-    const { status, category, cursor, limit, is_new_arrival } = query.data;
+    const { status, category, category_id, cursor, limit, is_new_arrival } = query.data;
 
     // When is_new_arrival filter is active, compute the cutoff date so the
     // query only returns products created within the last 30 days — no cron,
@@ -294,6 +302,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         deleted_at: null,
         ...(status ? { status } : {}),
         ...(category ? { category } : {}),
+        ...(category_id ? { category_id } : {}),
         ...(arrivalCutoff ? { created_at: { gte: arrivalCutoff } } : {}),
         ...(cursor ? { id: { gt: cursor } } : {}),
       },

@@ -1,9 +1,26 @@
 import type { PublicCollection } from '@kanchuki/shared'
 
-export async function fetchCollection(slug: string): Promise<PublicCollection | null> {
+export interface FetchCollectionParams {
+  page?: number
+  pageSize?: number
+}
+
+// No params (e.g. the wishlist page, which needs every product to match
+// saved ids regardless of which page they'd fall on) => API returns everything.
+export async function fetchCollection(
+  slug: string,
+  params?: FetchCollectionParams,
+): Promise<PublicCollection | null> {
   const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
+  const qs = params
+    ? `?${new URLSearchParams(
+        Object.entries(params)
+          .filter(([, v]) => v !== undefined)
+          .map(([k, v]) => [k, String(v)]),
+      )}`
+    : ''
   try {
-    const res = await fetch(`${apiUrl}/v1/public/collections/${slug}`, {
+    const res = await fetch(`${apiUrl}/v1/public/collections/${slug}${qs}`, {
       next: { revalidate: 60 }, // ISR — revalidate every 60s
     })
     if (!res.ok) {

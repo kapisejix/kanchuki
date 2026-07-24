@@ -16,10 +16,15 @@ export default function SpinVideoScreen() {
   const [step, setStep] = useState<Step>('camera');
   const [permission, requestPermission] = useCameraPermissions();
   const [videoUri, setVideoUri] = useState<string | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
+  const [uploadPercent, setUploadPercent] = useState(0);
   const cameraRef = useRef<CameraView>(null);
 
   const handleRecord = async () => {
-    if (!cameraRef.current) return;
+    // Starting a recording session before the native camera has finished
+    // initializing silently produces an empty/near-zero-length video on some
+    // devices — recordAsync still resolves, so wait for onCameraReady first.
+    if (!cameraRef.current || !isCameraReady) return;
     setStep('recording');
     try {
       const video = await cameraRef.current.recordAsync({
@@ -44,11 +49,14 @@ export default function SpinVideoScreen() {
   const handleUpload = async () => {
     if (!videoUri) return;
     setStep('uploading');
+    setUploadPercent(0);
     try {
       const file = await readLocalImage(videoUri);
       const uploadResult = await productApi.getSpinVideoUploadUrl(id, 'video/mp4', file.size);
       const info = uploadResult.data;
-      await uploadImageToR2(videoUri, info.upload_url, 'video/mp4', 60_000);
+      await uploadImageToR2(videoUri, info.upload_url, 'video/mp4', 60_000, (fraction) =>
+        setUploadPercent(Math.round(fraction * 100)),
+      );
       await productApi.submitSpinVideo(id, info.r2_key);
 
       Alert.alert('Spin Video Uploaded', 'Processing the 360° view now — check back in a minute.', [
@@ -112,9 +120,15 @@ export default function SpinVideoScreen() {
 
   if (step === 'uploading') {
     return (
-      <View className="flex-1 bg-black items-center justify-center">
+      <View className="flex-1 bg-black items-center justify-center px-10">
         <ActivityIndicator size="large" color="#0891B2" />
-        <Text className="text-white mt-4">Uploading spin video...</Text>
+        <Text className="text-white mt-4">Uploading spin video... {uploadPercent}%</Text>
+        <View className="w-full h-2 bg-white/10 rounded-full overflow-hidden mt-4">
+          <View
+            className="h-full bg-cyan-500 rounded-full"
+            style={{ width: `${uploadPercent}%` }}
+          />
+        </View>
       </View>
     );
   }
@@ -122,7 +136,14 @@ export default function SpinVideoScreen() {
   // camera + recording
   return (
     <View className="flex-1 bg-black">
-      <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" mode="video" mute />
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        mode="video"
+        mute
+        onCameraReady={() => setIsCameraReady(true)}
+      />
 
       <TouchableOpacity
         onPress={() => router.back()}
@@ -147,20 +168,29 @@ export default function SpinVideoScreen() {
       <View className="items-center gap-4" style={{ paddingBottom: 48 + insets.bottom }}>
         <TouchableOpacity
           onPress={() => (step === 'recording' ? handleStop() : void handleRecord())}
+          disabled={step !== 'recording' && !isCameraReady}
           className={`w-20 h-20 rounded-full border-4 items-center justify-center ${
             step === 'recording' ? 'border-red-500' : 'border-white'
-          }`}
+          } ${!isCameraReady && step !== 'recording' ? 'opacity-40' : ''}`}
         >
-          <View
-            className={
-              step === 'recording'
-                ? 'w-8 h-8 bg-red-500 rounded-md'
-                : 'w-14 h-14 bg-white rounded-full'
-            }
-          />
+          {!isCameraReady && step !== 'recording' ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <View
+              className={
+                step === 'recording'
+                  ? 'w-8 h-8 bg-red-500 rounded-md'
+                  : 'w-14 h-14 bg-white rounded-full'
+              }
+            />
+          )}
         </TouchableOpacity>
         <Text className="text-white/50 text-xs">
-          {step === 'recording' ? 'Tap to stop early' : 'Tap to start recording'}
+          {step === 'recording'
+            ? 'Tap to stop early'
+            : isCameraReady
+              ? 'Tap to start recording'
+              : 'Preparing camera...'}
         </Text>
       </View>
     </View>
