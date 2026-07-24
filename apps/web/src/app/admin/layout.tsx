@@ -26,6 +26,9 @@ import {
   Users,
   Image as ImageIcon,
   KeyRound,
+  UsersRound,
+  Ticket,
+  BarChart3,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -36,6 +39,9 @@ const NAV_ITEMS = [
   { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
   { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
   { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
+  { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
+  { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
+  { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
 ]
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
