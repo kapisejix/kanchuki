@@ -467,7 +467,11 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       select: { id: true, territory_id: true },
     });
     if (!retailer) throw notFound('Retailer');
-    if (!tm.isSuperAdmin && retailer.territory_id && !tm.territoryIds.includes(retailer.territory_id)) {
+    if (
+      !tm.isSuperAdmin &&
+      retailer.territory_id &&
+      !tm.territoryIds.includes(retailer.territory_id)
+    ) {
       throw forbidden('Retailer is outside your territory');
     }
 
@@ -502,7 +506,10 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    request.log.info({ ticket_id: ticket.id, retailer_id: body.data.retailer_id }, 'Support ticket created');
+    request.log.info(
+      { ticket_id: ticket.id, retailer_id: body.data.retailer_id },
+      'Support ticket created',
+    );
 
     return { data: ticket };
   });
@@ -584,7 +591,10 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     // Check authorization: Super Admin bypasses all checks
     if (!tm.isSuperAdmin) {
       // Must be in the same territory
-      if (existing.retailer.territory_id && !tm.territoryIds.includes(existing.retailer.territory_id)) {
+      if (
+        existing.retailer.territory_id &&
+        !tm.territoryIds.includes(existing.retailer.territory_id)
+      ) {
         throw forbidden('Ticket is outside your territory');
       }
       // Only support roles can update tickets
@@ -607,7 +617,8 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
           where: { id: body.data.assigned_to_id },
           select: { role: true, is_active: true },
         });
-        if (!assignee || !assignee.is_active) throw validationError('Assignee not found or inactive');
+        if (!assignee || !assignee.is_active)
+          throw validationError('Assignee not found or inactive');
         if (!['SUPPORT_AGENT', 'SUPPORT_MANAGER', 'SUPER_ADMIN'].includes(assignee.role)) {
           throw validationError('Can only assign to support team members');
         }
@@ -705,7 +716,11 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     // Fetch activation breakdown per agent
     const withActivation = await Promise.all(
       agents.map(async (agent) => {
-        const agentWhere = { [agent.role === 'SUPPORT_AGENT' || agent.role === 'SUPPORT_MANAGER' ? 'support_owner_id' : 'onboarded_by_id']: agent.id };
+        const agentWhere = {
+          [agent.role === 'SUPPORT_AGENT' || agent.role === 'SUPPORT_MANAGER'
+            ? 'support_owner_id'
+            : 'onboarded_by_id']: agent.id,
+        };
         const [activated, trial, active] = await Promise.all([
           prisma.retailer.count({
             where: {
