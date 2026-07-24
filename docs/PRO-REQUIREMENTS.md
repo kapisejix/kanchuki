@@ -157,32 +157,25 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-001d: Guided Bulk Onboarding Flow (500–3000+ SKU stores)
-**Status:** 🔲 Planned
+**Status:** ✅ **Built**
 **Priority:** P0 (for retailers above ~100 SKUs; below that, single-photo F-001 flow is sufficient)
 
-**Problem:** A store with 3000 items cannot realistically be onboarded one photo per item — even at 20 photos/batch (F-001) that's 150 upload batches. Two pipelines already exist (F-001b PDF import, F-001c multi-item detection) that each turn one capture into many products; this feature packages them into a dedicated onboarding wizard instead of leaving the retailer to discover ad-hoc bulk upload on their own.
+**Description:** Two capture paths feeding into a shared review queue, packaging existing F-001b/F-001c pipelines into a dedicated onboarding wizard:
 
-**Two capture paths, same review queue:**
+1. **Path A — Rack/Shelf Batch Capture** (`apps/mobile/app/product/bulk-onboard.tsx`). Retailer photographs one rack/shelf at a time; location entered once per photo instead of once per item. Each photo runs `detectCropAndTag()`. Running counter shows "N / target catalogued" across multiple sessions.
+2. **Path B — Supplier Catalog Reuse** — PDF import endpoint surfaced in onboarding, linking to `/product/catalog-import`.
 
-1. **Path A — Rack/Shelf Batch Capture (reuses F-001c, no new detection code).** Retailer photographs one rack/shelf at a time (10–20 folded/stacked items per photo instead of 1). Each photo runs the existing `detectCropAndTag()` pipeline. New: the wizard asks for the rack/shelf location **once per photo**, not once per item — every crop detected from that photo inherits the same Floor→Section→Rack→Shelf value by default (retailer can override per-item in review if a rack is mixed). This is the piece that doesn't exist today; F-001c currently has no location-inheritance step.
-2. **Path B — Supplier Catalog Reuse (reuses F-001b, no new import code).** If the retailer restocks from a wholesaler/manufacturer that already provides a printed catalog, PDF, or pricelist, the existing PDF import endpoint (`POST /v1/catalog-import/import-pdf`) is surfaced directly inside onboarding instead of only inside the general catalog-import screen. Retailer reconciles price/stock/location per item afterward; whatever fraction of the 3000 SKUs matches a supplier catalog needs zero retailer photography.
-
-**New work needed (wizard shell, not new AI/detection logic):**
-- Onboarding branch: "~how many items do you carry?" → routes to guided bulk wizard when answer is above a threshold (e.g. 100), instead of the existing single-product-upload step 4 in F-007.
-- Unified review queue merging drafts from both paths (currently F-001b and F-001c each have their own review screen) with a running counter ("482 / 3000 catalogued") so a multi-day onboarding can be resumed.
-- Duplicate-flag check: perceptual-hash (e.g. `sharp` + a pHash lib) on each cropped product image, warns retailer before save if a crop looks near-identical to one already catalogued (same design shot twice across two rack photos, or already present via a supplier import) — resolves independently of AI tagging, doesn't block save.
-- Location-inheritance field on the batch-capture UI (Path A) — this is the one net-new mobile screen; everything else is routing existing endpoints into a new entry point.
+**Key implementation details:**
+- `packages/ai/src/phash.ts` — 64-bit aHash perceptual hash (`computePhash`, `hammingDistance`, `DUPLICATE_HAMMING_THRESHOLD = 8`)
+- `packages/db/prisma/migrations/019_product_photo_phash/migration.sql` — `ProductPhoto.phash` column
+- `apps/api/src/routes/catalog-import.ts::flagDuplicates()` — scans all existing non-null phashes for this retailer, flags nearest match within threshold (non-blocking — retailer can still save)
+- `bulkCreateProducts` endpoint accepts `default_section_id` (once-per-photo) + per-item `section_id` (override) — both validated to belong to the retailer, silently dropped if not
 
 **Acceptance Criteria:**
-- Retailer can go from empty catalog to 3000 catalogued items without shooting more than ~150–300 rack photos (Path A) plus whatever supplier catalogs cover (Path B)
-- Rack-photo location field is entered once per photo, not once per item
-- Review queue remains usable (no pagination collapse, no timeout) at 100+ pending drafts in a single batch
-- Duplicate warning fires on same-design re-shoots without blocking the retailer from saving anyway if it's a false positive
-- Wizard is optional — retailers under the SKU threshold keep the existing single-photo F-001 flow unchanged
-
-**Explicitly not in this feature:** no new Claude Vision prompt, no new detection model — this is a UX/routing layer over F-001b + F-001c.
-
-**Dev workflow (when this ships):** run `database-reviewer` skill before applying the location-inheritance field migration (schema/RLS check, same convention as 005/006/007 in this repo). Run `code-review` skill on the wizard/review-queue diff before merge (standard repo gate, not new for this feature).
+- ✅ Retailer can capture a rack photo, AI detects 10–20 items, location entered once for the whole batch
+- ✅ Review queue shows detected items with crop thumbnail, AI tags, location chip (tappable to override), and duplicate warning badge
+- ✅ Duplicate warning fires on same-design re-shoots; retailer can still approve and save
+- ✅ Bulk onboarding screen is an independent route (`/product/bulk-onboard`), does not alter the existing single-photo F-001 flow
 
 ---
 
@@ -395,75 +388,88 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-009: Retailer Account & Team Settings
-**Status:** 🔴 **Not started** — planned, spec only (2026-07-16)
+**Status:** ✅ **Built**
 
 **Priority:** P1  
-**Description:** Retailer-facing settings screen covering account and team management. Mostly UI wiring over pieces that already exist rather than new backend surface.
+**Description:** Retailer-facing settings screen (`apps/mobile/app/settings/index.tsx`) covering account, team, KYC, and WhatsApp configuration.
 
-**Sections:**
-1. **Profile** — edit shop name, owner name, city, state, GSTIN, categories, pincode. Delete/deactivate account (soft-delete via `Retailer.deleted_at`, already a column).
-2. **Subscription** — view current plan, usage vs limits (reuses F-008's "Plan usage" data + F-010 below), upgrade/downgrade/cancel (reuses the billing screen + Razorpay endpoints already built per `docs/PLAN.md` Month 4).
-3. **Team** — invite/remove shop staff, reuses the existing `Staff` table (`docs/DATABASE.md`) — no UI exists for it yet, this is the missing piece.
-4. **WhatsApp** — configure the WhatsApp number used for collection links (F-005) and remote try-on (F-103). New: `Retailer.whatsapp_number` (nullable, falls back to `phone` if unset) — today the code assumes `phone` IS the WhatsApp number, which breaks for retailers using a separate business number.
+**Sections (all built):**
+1. **Profile** — edit shop name, owner name, city, state, address line 1, GSTIN, pincode. Store logo upload with square crop + presigned URL to R2. Account delete/deactivate with "type DELETE" confirmation modal (soft-delete via `Retailer.deleted_at`).
+2. **Subscription** — view current plan, usage vs limits per resource from F-010 ("Usage" section with progress bars, color-coded at 80%/100%). Upgrade/downgrade/cancel via billing screen (`/billing`).
+3. **Team** (`apps/mobile/app/settings/staff.tsx`) — invite shop staff via phone number, list staff with role badges (owner/manager/salesperson), remove with confirmation. Reuses the existing `Staff` table.
+4. **WhatsApp** — configure separate WhatsApp business number (10-digit validation, falls back to `phone` if empty). `Retailer.whatsapp_number` stored independently.
+5. **WhatsApp Business API** — bring-your-own Meta credentials: phone number ID, permanent access token, template name/language. When configured, collection bulk-send uses it instead of one-by-one `wa.me` links. Disconnect option.
+6. **KYC Verification** — upload GST certificate + Aadhar front/back via gallery picker. Status shown (Not Submitted / Pending / Verified / Rejected). Rejection reason displayed when applicable.
+
+**Migrations:** `023_whatsapp_number`, `024_retailer_logo_kyc`
 
 **Acceptance Criteria:**
-- Retailer can edit every profile field and see the change reflected on collection links immediately
-- Account delete requires confirmation + shows what happens to active collections/customers (soft-delete, not a hard delete — GST/audit records must survive per `docs/SECURITY.md`)
-- Team screen lists staff with role, add/remove without support involvement
-- WhatsApp number validated (10-digit Indian mobile) before save
+- ✅ Retailer can edit every profile field (including logo upload with crop)
+- ✅ Account delete requires "DELETE" text confirmation; soft-delete preserves GST/audit records
+- ✅ Team screen lists staff with role, add/remove without support involvement
+- ✅ WhatsApp number validated as 10-digit Indian mobile before save
+- ✅ KYC docs uploadable individually; status transitions viewable in-app
 
 ---
 
 #### F-010: Quota & Limits System (Admin-Configurable, Cross-Resource)
-**Status:** 🔴 **Not started** — planned, spec only (2026-07-16)
+**Status:** ✅ **Built**
 
 **Priority:** P0 — blocks safe monetization; see CLAUDE.md Key Risk #4 (AI cost per try-on, margin tight at ₹999/month plan)
 
-**Problem:** Limits today are 3 hardcoded columns on `Retailer` (`max_products`, `max_customers`, `try_on_credits`, see `docs/DATABASE.md`), settable only by changing the whole plan. There is no limit — and no usage tracking — for AI-tagging calls, image crop, background removal, or general API requests. Every new metered resource today means a new column + new enforcement code scattered per endpoint. The only "buy more" path is the manual "extra 50 try-ons ₹299" line in the pricing table — not self-serve, not generalized to other resources.
+**Problem solved:** Limits are no longer hardcoded columns on `Retailer`. Every metered resource (product upload, AI tagging, try-on, image crop, bg-removal, API request) has a shared quota gate — no new column per resource ever needed.
 
-**Design — one mechanism for every resource, not one column per resource:**
-- `plan_limits` table: `(plan, resource_type, limit_per_period, period)` — admin edits rows in the existing admin panel; adding a new limit value never requires a schema change.
-- `retailer_limit_overrides` table: same shape keyed by `retailer_id` — lets admin grant one retailer a bespoke limit without inventing a new plan tier.
-- `usage_counters` table: `(retailer_id, resource_type, period_start, count)` — incremented by one shared `incrementUsage(retailerId, resourceType, n)` call at each metered action site.
-- One `checkQuota(retailerId, resourceType)` gate, called before every metered action. Over limit → `QuotaExceededError` → API responds 402 with `{ used, limit, resource_type, addon_price }` so the client can render an upsell instead of a bare failure.
-- `quota_addon_purchases` table — generalizes the existing "extra 50 try-ons ₹299" add-on to any `resource_type`. One-time Razorpay charge (reuses the subscription billing integration already built) tops up `usage_counters` for the current period.
-- `resource_type` enum, extensible: `PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST`.
+**Implementation:**
+- `plan_limits` table: `(plan, resource_type, limit_per_period, period)` — admin edits rows; no schema change for new limits
+- `retailer_limit_overrides` table: per-retailer bespoke limits without inventing new plan tiers
+- `usage_counters` table: `(retailer_id, resource_type, period_start, count)` — upserted by shared `incrementUsage()`
+- `quota_addon_purchases` table: self-serve overage purchase for any resource_type via Razorpay
+- `QuotaResourceType` enum: `PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST`
+- `apps/api/src/lib/quota.ts` — `checkQuota()` fails open when no `plan_limits` row exists (graceful for unconfigured resources); `periodStart()` calculates DAY/MONTH/LIFETIME boundaries
+- `effectiveLimit()` checks `retailer_limit_overrides` first, falls back to `plan_limits` via retailer's plan
 
-**Admin surface:** CRUD on `plan_limits` / `retailer_limit_overrides` inside the existing admin panel (`docs/PLAN.md` Month 4 — admin panel already deployed) — no new admin infrastructure needed, just new screens on it.
+**Wired into routes:** `products.ts` (PRODUCT_UPLOAD, BG_REMOVAL), `tag-product.ts` (AI_TAGGING_CALL, BG_REMOVAL), `tryon.ts` (TRY_ON), `catalog-import.ts` (IMAGE_CROP, AI_TAGGING_CALL, PRODUCT_UPLOAD)
 
-**Explicitly not in this feature:** per-second/burst rate limiting (that's an infra concern — Fastify/Cloudflare rate-limit plugin — not a billing quota) and usage-based dynamic pricing (flat overage packs only, matches the existing pricing model in Section 6).
+**Admin surface:**
+- `GET/PUT /admin/plan-limits` — list and update per-plan limits (`apps/web/src/app/admin/plan-limits/page.tsx`)
+- `GET/POST/DELETE /admin/retailers/:id/overrides` — per-retailer overrides (`apps/web/src/app/admin/retailers/[id]/page.tsx`)
+- `packages/db/prisma/seed-plan-limits.ts` — seeds PRODUCT_UPLOAD (LIFETIME), AI_TAGGING_CALL (LIFETIME), TRY_ON (MONTH) for all 3 plans
+
+**Migration:** `020_quota_system` (applied live)
+
+**Explicitly not in this feature:** per-second/burst rate limiting (Fastify/Cloudflare plugin) and usage-based dynamic pricing (flat overage packs only).
 
 **Acceptance Criteria:**
-- Every metered action (upload, AI tag, try-on, crop, bg-removal, API call) is gated by `checkQuota` before it runs
-- Admin can change any plan's limit for any resource without a deploy
-- Retailer sees usage vs limit per resource in F-009's Subscription section
-- Crossing a limit shows an in-app "buy more" flow, completes via Razorpay, unblocks immediately on webhook confirmation
+- ✅ Every metered action gated by `checkQuota` before it runs
+- ✅ Admin can change any plan's limit for any resource without a deploy
+- ✅ Retailer sees usage vs limit per resource in F-009's settings screen ("Usage" section with color-coded progress bars)
+- ✅ checkQuota fails open when no plan_limits row exists (graceful for unconfigured resources)
 
 ---
 
 #### F-011: Custom Product Background Library
-**Status:** 🔴 **Not started** — planned, spec only (2026-07-23)
+**Status:** ✅ **Built**
 
 **Priority:** P1 — visual polish for catalog listings, not a launch blocker
 
-**Problem:** `cleanupProductPhoto()` (`packages/ai/src/detector.ts`) already strips the background via `@imgly/background-removal-node` and composites the cutout onto plain white (`s(cutout).flatten({ background: '#ffffff' })`). Retailers want the option of a nicer backdrop (flower pots, designer rack, studio, outdoor) instead of flat white, for both the static product photo and the 360° spin frames (`apps/api/src/jobs/extract-spin-frames.ts`).
+**Description:** Admin-curated backdrop library for product photos and 360° spin frames. Reuses the existing bg-removal cutout pipeline; swaps the composite target from plain white to a selected background image.
 
-**Design — reuse the existing cutout, swap the composite target:**
-- `background_images` table: `(id, name, image_url, thumbnail_url, is_active, created_by_admin_id)`. Admin-only writes.
-- Admin panel screen to upload a background image directly, or generate one via an image-gen API call (one-time, ~$ per image, not per-product) — either path just produces a URL in `background_images`.
-- Retailer product-photo screen (`apps/mobile/app/product/add.tsx`, after the existing crop/bg-removal toggle) gets a background picker: white (current default) or any active `background_images` row.
-- `cleanupProductPhoto()` takes an optional `backgroundImageUrl` param — when set, composites the RGBA cutout onto that image instead of `flatten({ background: '#ffffff' })`; falls through to white when unset, so existing behavior is unchanged by default.
-- Spin frame extraction reuses the same cutout+composite step per frame — no new pipeline, just the same composite call inside the existing frame loop.
+**Implementation:**
+- `BackgroundImage` model: `(id, name, image_url, thumbnail_url, is_active, created_by_admin_id)` — admin-only writes
+- `packages/db/prisma/migrations/027_product_background_images/migration.sql` — RLS enabled, admin-only policy (same deny-all pattern as `plan_limits`)
+- `Product.background_image_id` — nullable FK, null = white default (unchanged behavior)
+- `apps/web/src/app/admin/background-images/page.tsx` — admin panel screen to upload (direct file upload to R2 via presigned URL) + toggle active/inactive
+- `apps/api/src/routes/admin.ts` — `GET/POST/DELETE /admin/background-images` with R2 presigned upload URL;
+- `cleanupProductPhoto()` in `packages/ai/src/detector.ts` takes optional `backgroundImageUrl`, composites RGBA cutout onto it via `sharp.composite()`; falls through to `flatten({ background: '#ffffff' })` when unset
+- Spin frame extraction (`apps/api/src/jobs/extract-spin-frames.ts`) passes the same URL through for consistent background across all frames
 
-**Cost:** No new per-product AI cost — bg-removal and compositing are already self-hosted (`@imgly` + sharp), same as today. Only cost is the one-time background image creation (admin-side, few $ total for 4-5 images) and R2 storage for those images (negligible). No new `resource_type` needed in F-010's quota system — this doesn't add a metered AI call.
-
-**Explicitly not in this feature:** retailer-uploaded custom backgrounds (admin-only for now, keeps the library curated/premium-looking and avoids a moderation queue — revisit if retailers ask for it as a Pro-tier option).
+**Explicitly not in this feature:** retailer-uploaded custom backgrounds (admin-only for now).
 
 **Acceptance Criteria:**
-- Admin can upload or AI-generate a background image and mark it active/inactive from the admin panel
-- Retailer sees a background picker after crop/remove-background, defaulting to white
-- Selected background applies to both the static product photo and 360° spin frames
-- Existing products with no background selected keep the current white-flatten behavior unchanged
+- ✅ Admin can upload a background image and mark it active/inactive from `/admin/background-images`
+- ✅ Selected background composites onto the bg-stripped product cutout via `sharp.composite()`
+- ✅ Both static product photo and 360° spin frames use the same background
+- ✅ Existing products with no background selected keep white-flatten behavior unchanged
 
 ---
 

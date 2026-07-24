@@ -73,7 +73,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] Bulk photo import (multiple images)
 - [x] Multi-item detection & splitting from one photo (F-001c) — built 2026-07-13
 - [x] PDF / printed-catalog bulk import (F-001b) — built 2026-07-13; dual-path: client-side + server-side page rasterization
-- [ ] Guided bulk onboarding wizard for large stores, 500–3000+ SKUs (F-001d, spec'd 2026-07-15) — rack/shelf batch capture with location inherited per-photo (reuses F-001c) + supplier PDF catalog reuse surfaced in onboarding (reuses F-001b) + unified review queue + duplicate-crop warning
+- [x] Guided bulk onboarding wizard for large stores, 500–3000+ SKUs (F-001d) — rack/shelf batch capture with location inherited per-photo (reuses F-001c) + supplier PDF catalog reuse surfaced in onboarding (reuses F-001b) + unified review queue with running counter + duplicate-crop warning via perceptual-hash
 
 **Deliverable:** Retailer can build full digital catalog with AI assistance
 
@@ -133,18 +133,16 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
-### Month 4b: Retailer Settings + Quota & Limits System (F-009, F-010)
+### Month 4b: Retailer Settings + Quota & Limits + Polish Features (F-009, F-010, F-011, F-012)
 
-**Status:** Not started — spec'd 2026-07-16, see `docs/PRO-REQUIREMENTS.md` F-009/F-010
+**Status:** ✅ **Completed** — see `docs/PRO-REQUIREMENTS.md` for details
 
-- [ ] Retailer settings screen: profile edit/delete, subscription view (reuses existing billing screen), team/staff management UI (reuses existing `Staff` table), WhatsApp number config field
-- [ ] `plan_limits` + `retailer_limit_overrides` tables (admin-configurable, per resource_type)
-- [ ] `usage_counters` table + shared `incrementUsage()` call at each metered action site
-- [ ] Shared `checkQuota()` gate wired into: product upload, AI tagging, try-on, image crop, bg-removal, API requests
-- [ ] `quota_addon_purchases` — self-serve overage purchase via Razorpay (reuses existing subscription billing integration)
-- [ ] Admin panel screens for editing `plan_limits` / `retailer_limit_overrides`
+- [x] **F-009: Retailer Account & Team Settings** — full settings screen (`apps/mobile/app/settings/index.tsx`): profile edit with store logo, subscription view, KYC document upload (GST cert + Aadhar), WhatsApp number config with 10-digit validation, WhatsApp Business API bring-your-own-credentials, soft-delete account with confirmation. Team/staff management (`apps/mobile/app/settings/staff.tsx`) — add/remove shop staff with role assignment.
+- [x] **F-010: Quota & Limits System** — `plan_limits` + `retailer_limit_overrides` + `usage_counters` + `quota_addon_purchases` tables. Shared `checkQuota()`/`incrementUsage()` gate wired into: product upload, AI tagging, try-on, image crop, bg-removal, API requests. Admin panel screens for CRUD on limits & overrides (`/admin/plan-limits`, `/admin/retailers/:id`). Seed script (`seed-plan-limits.ts`) for 3 plans × 3 resource types.
+- [x] **F-011: Custom Product Background Library** — `BackgroundImage` model + admin upload screen (`/admin/background-images`). `cleanupProductPhoto()` accepts optional background image URL. Applied to both static photos and 360° spin frames.
+- [x] **F-012: Encrypted Integration Settings** — `IntegrationSetting` model + AES-256-GCM encryption helpers (`encryptSecret`/`decryptSecret`/`getSecret`/`setSecret`). Admin panel screen (`/admin/integrations`) to manage third-party API keys without .env redeploys.
 
-**Deliverable:** Admin can set/adjust limits per plan or per retailer for every metered resource without a deploy; retailers can self-serve buy more when they cross a limit.
+**Deliverable:** Admin can set/adjust limits per plan or per retailer for every metered resource without a deploy; retailers can self-serve buy more when they cross a limit. Retailer has full account management, team/staff, KYC, and WhatsApp configuration from the mobile app.
 
 ---
 
