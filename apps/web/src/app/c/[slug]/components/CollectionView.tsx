@@ -8,7 +8,7 @@ import type { PublicCollection, PublicProduct } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
 import dynamic from 'next/dynamic'
 import { FilterBar } from './FilterBar'
-import { wishlistKey, loadWishlist } from '../lib/wishlist'
+import { wishlistKey, loadWishlist, saveWishlist, productToWishlistItem, type WishlistItem } from '../lib/wishlist'
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
 // The components include image carousels, forms, and heavy lucide icons that
@@ -38,7 +38,7 @@ interface Props {
 }
 
 export function CollectionView({ collection, slug, productsApiPath }: Props) {
-  const [favorites, setFavorites] = useState<Set<string>>(() => loadWishlist(slug))
+  const [favorites, setFavorites] = useState<Map<string, WishlistItem>>(() => loadWishlist(slug))
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
@@ -57,12 +57,11 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const isFirstRun = useRef(true)
 
-  // Every product summary seen this session (every fetched page) — lets the
-  // "Enquire about N items" message include favorites from pages other than
-  // the one currently on screen, without a dedicated favorites-detail fetch.
-  // ponytail: a favorite from a page never fetched this session won't resolve
-  // here; full fix means storing product summaries (not just ids) in the
-  // wishlist itself.
+  // Fetch-on-demand cache: products seen this session are cached here for
+  // the "Enquire about N items" detail resolution when a favorite wasn't
+  // captured at heart-click time (e.g. a session restored from a cold load).
+  // Primary source of truth is now the wishlist itself (product summaries
+  // stored in localStorage), so this cache is strictly a fallback.
   const productCacheRef = useRef<Map<string, PublicProduct>>(
     new Map(collection.products.map((p) => [p.id, p])),
   )
@@ -82,7 +81,9 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
         setProducts(json.data.products)
         setTotal(json.data.total)
         setPage(json.data.page)
-        for (const p of json.data.products) productCacheRef.current.set(p.id, p)
+        for (const p of json.data.products) {
+          productCacheRef.current.set(p.id, p)
+        }
       } finally {
         setLoading(false)
       }
@@ -108,13 +109,15 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
   )
 
   const toggleFavorite = useCallback(
-    (productId: string) => {
+    (productId: string, product?: { name: string | null; price_min: number | null; price_max: number | null; category: string | null }) => {
       setFavorites((prev) => {
-        const next = new Set(prev)
+        const next = new Map(prev)
         if (next.has(productId)) {
           next.delete(productId)
         } else {
-          next.add(productId)
+          // Store product summary at heart-click time (we have the product
+          // object in hand) — this is the core F-006 fix: no more bare IDs.
+          next.set(productId, productToWishlistItem({ id: productId, name: product?.name ?? null, price_min: product?.price_min ?? null, price_max: product?.price_max ?? null, category: product?.category ?? null }))
           // Fire-and-forget analytics ping
           void fetch(`/api/c/${slug}/favorite`, {
             method: 'POST',
@@ -122,16 +125,17 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
             body: JSON.stringify({ product_id: productId }),
           })
         }
-        localStorage.setItem(wishlistKey(slug), JSON.stringify(Array.from(next)))
+        saveWishlist(slug, next)
         return next
       })
     },
     [slug],
   )
 
-  const favoriteProducts = Array.from(favorites)
-    .map((id) => productCacheRef.current.get(id))
-    .filter((p): p is PublicProduct => p !== undefined)
+  // Resolve favorite items: try stored summaries first, fall back to session cache
+  const favoriteProducts: Array<{ id: string; name: string | null; price_min: number | null; price_max: number | null; category: string | null }> = Array.from(favorites.values()).map(
+    (item) => (item.name ? item : (productCacheRef.current.get(item.id) ?? item)),
+  )
 
   const handleEnquireAll = useCallback(() => {
     const message = buildEnquiryMessage({
@@ -240,7 +244,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
                   key={product.id}
                   product={product}
                   isFavorited={favorites.has(product.id)}
-                  onFavorite={toggleFavorite}
+                  onFavorite={(id) => toggleFavorite(id, product)}
                   onTap={() => setSelectedProduct(product)}
                   collectionSlug={slug}
                   priority={idx < 2}

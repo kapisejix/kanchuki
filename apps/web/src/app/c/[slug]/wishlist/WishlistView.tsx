@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { ArrowLeft, ShoppingBag, Heart, MapPin } from 'lucide-react'
 import type { PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange } from '@kanchuki/shared'
-import { loadWishlist } from '../lib/wishlist'
+import { loadWishlist, type WishlistItem } from '../lib/wishlist'
 
 interface Props {
   collection: PublicCollection
@@ -14,15 +14,15 @@ interface Props {
 }
 
 export function WishlistView({ collection, slug }: Props) {
-  const [savedIds, setSavedIds] = useState<Set<string> | null>(null)
+  const [savedMap, setSavedMap] = useState<Map<string, WishlistItem> | null>(null)
 
   useEffect(() => {
-    setSavedIds(loadWishlist(slug))
+    setSavedMap(loadWishlist(slug))
   }, [slug])
 
-  if (savedIds === null) return null
+  if (savedMap === null) return null
 
-  const savedProducts = collection.products.filter((p) => savedIds.has(p.id))
+  const savedProducts = collection.products.filter((p) => savedMap.has(p.id))
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">

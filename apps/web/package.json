@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@kanchuki/shared": "workspace:*",
+    "@serwist/next": "9",
+    "@serwist/sw": "9",
     "@tailwindcss/typography": "^0.5.13",
     "autoprefixer": "^10.4.19",
     "clsx": "^2.1.1",

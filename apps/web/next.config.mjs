@@ -1,7 +1,16 @@
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import withSerwistInit from '@serwist/next'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const withSerwist = withSerwistInit({
+  swSrc: 'src/app/sw.ts',
+  swDest: 'public/sw.js',
+  // Cache product photos aggressively (photos rarely change once shot)
+  cacheOnFrontEndNav: true,
+  reloadOnOnline: true,
+})
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -47,4 +56,4 @@ const nextConfig = {
   },
 }
 
-export default nextConfig
+export default withSerwist(nextConfig)
