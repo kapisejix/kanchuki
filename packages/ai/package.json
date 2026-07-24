@@ -39,13 +39,13 @@
     "@kanchuki/db": "workspace:*",
     "@kanchuki/shared": "workspace:*",
     "openai": "^4.52.0",
-    "sharp": "^0.33.5",
-    "pdfjs-dist": "^4.8.69"
+    "pdfjs-dist": "^4.8.69",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/sharp": "^0.32.0",
     "typescript": "^5.5.0",
-    "vitest": "^2.0.0"
+    "vitest": "^3.2.6"
   }
 }

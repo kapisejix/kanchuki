@@ -51,6 +51,6 @@
     "@types/react": "~19.1.17",
     "react-test-renderer": "^19.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.0"
+    "vitest": "^3.2.6"
   }
 }
