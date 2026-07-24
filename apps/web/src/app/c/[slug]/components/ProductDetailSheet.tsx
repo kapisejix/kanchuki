@@ -63,7 +63,9 @@ export function ProductDetailSheet({
   const currentPhoto = photos[photoIndex] ?? product.primary_photo_url
   const totalPhotos = photos.length
   const has360 = product.spin_frames.length > 0
-  const [view360, setView360] = useState(false)
+  // 360 view is appended as one more slide after the photos, not a separate mode.
+  const totalSlides = totalPhotos + (has360 ? 1 : 0)
+  const isSpinSlide = has360 && photoIndex === totalPhotos
 
   const goTo = useCallback((i: number) => {
     if (isTransitioning) return
@@ -74,11 +76,11 @@ export function ProductDetailSheet({
     setIsZoomed(false)
     currentScaleRef.current = 1
     setIsTransitioning(true)
-    const clamped = Math.max(0, Math.min(i, totalPhotos - 1))
+    const clamped = Math.max(0, Math.min(i, totalSlides - 1))
     prevIndexRef.current = photoIndex // store previous before updating
     setPhotoIndex(clamped)
     setTimeout(() => setIsTransitioning(false), 300)
-  }, [totalPhotos, isTransitioning, photoIndex])
+  }, [totalSlides, isTransitioning, photoIndex])
 
   // ── Touch handlers for swipe + pinch/zoom + double-tap ──────────
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
@@ -191,14 +193,14 @@ export function ProductDetailSheet({
     const delta = (e.changedTouches[0]?.clientX ?? touchStartX.current) - touchStartX.current
     const SWIPE_THRESHOLD = 50
     if (Math.abs(delta) > SWIPE_THRESHOLD) {
-      if (delta < 0 && photoIndex < totalPhotos - 1) {
+      if (delta < 0 && photoIndex < totalSlides - 1) {
         goTo(photoIndex + 1)
       } else if (delta > 0 && photoIndex > 0) {
         goTo(photoIndex - 1)
       }
     }
     touchStartX.current = null
-  }, [photoIndex, totalPhotos, goTo])
+  }, [photoIndex, totalSlides, goTo])
 
   // Variant click handler: show variant photo in carousel
   const handleVariantClick = useCallback((color: string, photoUrl: string | null) => {
@@ -263,22 +265,11 @@ export function ProductDetailSheet({
         {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
         <div
           className="relative aspect-square w-full bg-gray-50 overflow-hidden select-none"
-          onTouchStart={view360 ? undefined : handleTouchStart}
-          onTouchMove={view360 ? undefined : handleTouchMove}
-          onTouchEnd={view360 ? undefined : handleTouchEnd}
+          onTouchStart={isSpinSlide ? undefined : handleTouchStart}
+          onTouchMove={isSpinSlide ? undefined : handleTouchMove}
+          onTouchEnd={isSpinSlide ? undefined : handleTouchEnd}
         >
-          {has360 && (
-            <button
-              type="button"
-              onClick={() => setView360((v) => !v)}
-              className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-white/90 hover:bg-white shadow-soft flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold text-gray-700 transition-all active:scale-95"
-            >
-              <RotateCw size={12} />
-              {view360 ? 'Photos' : '360°'}
-            </button>
-          )}
-
-          {view360 ? (
+          {isSpinSlide ? (
             <Product360Viewer
               frames={product.spin_frames}
               alt={product.name ?? product.category ?? 'Product'}
@@ -335,8 +326,8 @@ export function ProductDetailSheet({
           </div>
           )}
 
-          {/* Keyframes + photo-mode chrome — hidden while the 360 viewer is active */}
-          {!view360 && (
+          {/* Keyframes + photo-only chrome — hidden while the 360 slide is active */}
+          {!isSpinSlide && (
             <>
               <style jsx>{`
                 @keyframes fadeIn {
@@ -363,55 +354,63 @@ export function ProductDetailSheet({
                   Pinch to zoom · Double-tap to reset
                 </div>
               )}
-
-              {/* Navigation arrows */}
-              {totalPhotos > 1 && !isZoomed && (
-                <>
-                  {photoIndex > 0 && (
-                    <button
-                      onClick={() => goTo(photoIndex - 1)}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                      aria-label="Previous photo"
-                    >
-                      <ChevronLeft size={18} className="text-gray-700" />
-                    </button>
-                  )}
-                  {photoIndex < totalPhotos - 1 && (
-                    <button
-                      onClick={() => goTo(photoIndex + 1)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                      aria-label="Next photo"
-                    >
-                      <ChevronRight size={18} className="text-gray-700" />
-                    </button>
-                  )}
-                </>
-              )}
-
-              {/* Dots — visible always for photo count reference */}
-              {totalPhotos > 1 && (
-                <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
-                  {Array.from({ length: totalPhotos }).map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => goTo(i)}
-                      className={`rounded-full transition-all duration-200 ${
-                        i === photoIndex
-                          ? 'w-5 h-2 bg-white shadow-sm'
-                          : 'w-2 h-2 bg-white/60 hover:bg-white/80'
-                      }`}
-                      aria-label={`Photo ${i + 1}`}
-                    />
-                  ))}
-                </div>
-              )}
-
-              {/* Photo counter */}
-              <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-                {photoIndex + 1} / {totalPhotos}
-              </div>
             </>
           )}
+
+          {/* 360 slide badge */}
+          {isSpinSlide && (
+            <div className="absolute top-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+              <RotateCw size={12} />
+              Drag to rotate
+            </div>
+          )}
+
+          {/* Navigation arrows — spans photos + the 360 slide */}
+          {totalSlides > 1 && !isZoomed && (
+            <>
+              {photoIndex > 0 && (
+                <button
+                  onClick={() => goTo(photoIndex - 1)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                  aria-label="Previous"
+                >
+                  <ChevronLeft size={18} className="text-gray-700" />
+                </button>
+              )}
+              {photoIndex < totalSlides - 1 && (
+                <button
+                  onClick={() => goTo(photoIndex + 1)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                  aria-label="Next"
+                >
+                  <ChevronRight size={18} className="text-gray-700" />
+                </button>
+              )}
+            </>
+          )}
+
+          {/* Dots — last dot is the 360 slide when present */}
+          {totalSlides > 1 && (
+            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+              {Array.from({ length: totalSlides }).map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => goTo(i)}
+                  className={`rounded-full transition-all duration-200 ${
+                    i === photoIndex
+                      ? 'w-5 h-2 bg-white shadow-sm'
+                      : 'w-2 h-2 bg-white/60 hover:bg-white/80'
+                  }`}
+                  aria-label={has360 && i === totalPhotos ? '360° view' : `Photo ${i + 1}`}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Counter */}
+          <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+            {isSpinSlide ? '360°' : `${photoIndex + 1} / ${totalPhotos}`}
+          </div>
         </div>
 
         {/* Details */}
