@@ -295,7 +295,7 @@ export default function OnboardingScreen() {
       })
       setShowConfetti(true)
       setTimeout(() => {
-        router.replace('/(tabs)')
+        router.replace('/')
       }, 2500)
     } catch {
       Alert.alert('Error', 'Could not save. Please try again.')
@@ -631,7 +631,7 @@ export default function OnboardingScreen() {
                   if (estimate >= 100) {
                     router.replace(`/product/bulk-onboard?target=${estimate}`)
                   } else {
-                    router.replace('/(tabs)')
+                    router.replace('/')
                   }
                 }}
                 className="flex-row items-center gap-3 bg-cyan-600 rounded-2xl p-4"
@@ -654,7 +654,7 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => router.replace('/(tabs)')}
+                onPress={() => router.replace('/')}
                 className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4"
                 activeOpacity={0.8}
               >
@@ -671,7 +671,7 @@ export default function OnboardingScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => router.replace('/(tabs)')}
+                onPress={() => router.replace('/')}
                 className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4"
                 activeOpacity={0.8}
               >

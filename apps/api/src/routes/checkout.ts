@@ -1,8 +1,9 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { encryptSecret, decryptSecret, maskSecret, prisma } from '@kanchuki/db';
+import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { notFound, validationError, forbidden } from '../plugins/error-handler.js';
+import { supabase } from '../index.js';
+import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -65,7 +66,11 @@ const ConnectPaymentAccountSchema = z.object({
   razorpay_key_id: z.string().min(1).max(100),
   razorpay_key_secret: z.string().min(1).max(200),
   razorpay_webhook_secret: z.string().min(1).max(200).optional(),
-  otp: z.string().length(6).optional(), // step-up re-auth on update
+  otp: z
+    .string()
+    .length(6)
+    .regex(/^\d{6}$/, 'OTP must be 6 digits')
+    .optional(), // step-up re-auth on update
 });
 
 const CreateOrderSchema = z.object({
@@ -145,9 +150,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Mask the key_id: show last 4 chars only
-    const maskedKeyId = account.razorpay_key_id
-      ? `••••${account.razorpay_key_id.slice(-4)}`
-      : null;
+    const maskedKeyId = account.razorpay_key_id ? `••••${account.razorpay_key_id.slice(-4)}` : null;
 
     return {
       data: {
@@ -173,21 +176,31 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       where: { retailer_id: request.retailerId },
     });
 
-    if (existing && existing.is_active) {
+    if (existing?.is_active) {
       // SECURITY §11.8: Changing an active payment account requires step-up re-auth
-      // Verify the OTP matches the retailer's phone number via Supabase
       if (!otp) {
         throw validationError(
           'OTP verification required to change payment account. Request a new OTP via /auth/otp.',
         );
       }
-      // The OTP verification is handled by the existing Supabase Auth flow.
-      // If the request reaches here with a valid Bearer token, we trust the
-      // session — but require explicit OTP re-entry for payment account changes.
-      // Ideally this would be verified server-side via Supabase's verifyOtp,
-      // but for the MVP we rely on the fresh OTP session having been verified
-      // by the client before sending this request. The client must call
-      // /auth/otp and verify the OTP before POSTing here.
+
+      // Verify OTP server-side via Supabase Auth
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: request.retailerId },
+        select: { phone: true },
+      });
+      if (!retailer) throw notFound('Retailer');
+
+      const e164 = `+91${retailer.phone}`;
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        phone: e164,
+        token: otp,
+        type: 'sms',
+      });
+
+      if (otpError) {
+        throw validationError('Invalid or expired OTP. Request a new one via /auth/otp.');
+      }
     }
 
     // Verify the credentials work by making a test call to Razorpay
@@ -199,7 +212,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
         },
         '/payments?count=1',
       );
-    } catch (err) {
+    } catch {
       throw validationError(
         'Invalid Razorpay credentials. Please check your Key ID and Key Secret.',
       );
@@ -208,7 +221,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
     const encryptedKeySecret = encryptSecret(razorpay_key_secret);
     const encryptedWebhookSecret = razorpay_webhook_secret
       ? encryptSecret(razorpay_webhook_secret)
-      : existing?.razorpay_webhook_secret_encrypted ?? null;
+      : (existing?.razorpay_webhook_secret_encrypted ?? null);
 
     const account = await prisma.retailerPaymentAccount.upsert({
       where: { retailer_id: request.retailerId },
@@ -238,10 +251,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    request.log.info(
-      { retailer_id: request.retailerId },
-      'Payment account connected',
-    );
+    request.log.info({ retailer_id: request.retailerId }, 'Payment account connected');
 
     return {
       data: {
@@ -260,17 +270,37 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) throw notFound('Payment account');
 
     // SECURITY §11.8: Step-up re-auth required to disconnect
-    // (same as POST — client must have verified OTP before calling this)
+    // Verify OTP from query parameter (DELETE body is not reliably supported)
+    const otp = (request.query as { otp?: string }).otp;
+    if (!otp || !/^\d{6}$/.test(otp)) {
+      throw validationError(
+        'OTP verification required to disconnect payment account. Request a new OTP via /auth/otp.',
+      );
+    }
+
+    const retailer = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { phone: true },
+    });
+    if (!retailer) throw notFound('Retailer');
+
+    const e164 = `+91${retailer.phone}`;
+    const { error: otpError } = await supabase.auth.verifyOtp({
+      phone: e164,
+      token: otp,
+      type: 'sms',
+    });
+
+    if (otpError) {
+      throw validationError('Invalid or expired OTP. Request a new one via /auth/otp.');
+    }
 
     // Delete the encrypted secrets immediately (not soft-delete — SECURITY §11.4)
     await prisma.retailerPaymentAccount.delete({
       where: { retailer_id: request.retailerId },
     });
 
-    request.log.info(
-      { retailer_id: request.retailerId },
-      'Payment account disconnected',
-    );
+    request.log.info({ retailer_id: request.retailerId }, 'Payment account disconnected');
 
     return { data: { disconnected: true } };
   });
@@ -281,276 +311,321 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
 
   // ── POST /public/checkout/create-order ──────────────────────────
   // Create an order + Razorpay order. Server computes amounts atomically.
-  server.post('/public/checkout/create-order', async (request) => {
-    const body = CreateOrderSchema.safeParse(request.body);
-    if (!body.success) {
-      throw validationError(body.error.issues[0]?.message ?? 'Invalid order');
-    }
-
-    const { items, collection_id, customer_name, customer_phone, shipping_address } = body.data;
-    const firstItem = items[0];
-    if (!firstItem) throw validationError('No items in order');
-
-    // 1. Find the retailer via the first product
-    const firstProduct = await prisma.product.findUnique({
-      where: { id: firstItem.product_id },
-      select: { retailer_id: true, name: true, price_min: true, status: true },
-    });
-    if (!firstProduct) throw notFound('Product');
-    const retailerId = firstProduct.retailer_id;
-
-    // 2. Validate all products belong to the same retailer and are AVAILABLE
-    const productIds = items.map((i) => i.product_id);
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds }, retailer_id: retailerId },
-      select: { id: true, name: true, price_min: true, status: true },
-    });
-
-    if (products.length !== items.length) {
-      throw validationError('One or more products not found');
-    }
-
-    const unavailable = products.filter((p) => p.status !== 'AVAILABLE');
-    if (unavailable.length > 0) {
-      throw validationError(
-        `Product(s) no longer available: ${unavailable.map((p) => p.name ?? p.id).join(', ')}`,
-      );
-    }
-
-    // 3. Check retailer has an active payment account (L2 tier gate)
-    const paymentAccount = await prisma.retailerPaymentAccount.findUnique({
-      where: { retailer_id: retailerId, is_active: true },
-      select: {
-        id: true,
-        payment_mode: true,
-        razorpay_key_id: true,
-        razorpay_key_secret_encrypted: true,
+  // SECURITY: Per-IP rate limited to prevent product-reservation brute force.
+  server.post(
+    '/public/checkout/create-order',
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: '1 minute',
+          keyGenerator: (req) => req.ip,
+        },
       },
-    });
-    if (!paymentAccount) {
-      throw validationError('This retailer does not accept online payments yet');
-    }
-
-    // 4. Server-side amount computation (SECURITY §11.6 — never trust client)
-    let subtotal = 0;
-    const orderItemsData = items.map((item) => {
-      const product = products.find((p) => p.id === item.product_id)!;
-      const price = product.price_min ?? 0;
-      subtotal += price;
-      return {
-        product_id: item.product_id,
-        product_name_snapshot: product.name,
-        price_snapshot: price,
-        quantity: item.quantity,
-      };
-    });
-
-    const gstAmount = computeGst(subtotal);
-    const totalAmount = subtotal + gstAmount;
-
-    // 5. Atomic product reservation + order creation (SECURITY §11.7)
-    // Use a transaction to atomically reserve all products
-    const result = await prisma.$transaction(async (tx) => {
-      // Try to reserve all products atomically
-      for (const item of items) {
-        const updated = await tx.product.updateMany({
-          where: {
-            id: item.product_id,
-            retailer_id: retailerId,
-            status: 'AVAILABLE',
-          },
-          data: { status: 'RESERVED' },
-        });
-        if (updated.count === 0) {
-          // Prisma auto-rolls back the entire transaction on throw —
-          // no manual rollback needed.
-          throw validationError(
-            `Product is no longer available: ${products.find((p) => p.id === item.product_id)?.name ?? item.product_id}`,
-          );
-        }
+    },
+    async (request) => {
+      const body = CreateOrderSchema.safeParse(request.body);
+      if (!body.success) {
+        throw validationError(body.error.issues[0]?.message ?? 'Invalid order');
       }
 
-      // Generate GST invoice number
-      const gstInvoiceNumber = generateGstInvoiceNumber();
+      const { items, collection_id, customer_name, customer_phone, shipping_address } = body.data;
+      const firstItem = items[0];
+      if (!firstItem) throw validationError('No items in order');
 
-      // Create the order
-      const order = await tx.order.create({
+      // 1. Find the retailer via the first product
+      const firstProduct = await prisma.product.findUnique({
+        where: { id: firstItem.product_id },
+        select: { retailer_id: true, name: true, price_min: true, status: true },
+      });
+      if (!firstProduct) throw notFound('Product');
+      const retailerId = firstProduct.retailer_id;
+
+      // 2. Validate all products belong to the same retailer and are AVAILABLE
+      const productIds = items.map((i) => i.product_id);
+      const products = await prisma.product.findMany({
+        where: { id: { in: productIds }, retailer_id: retailerId },
+        select: { id: true, name: true, price_min: true, status: true },
+      });
+
+      if (products.length !== items.length) {
+        throw validationError('One or more products not found');
+      }
+
+      const unavailable = products.filter((p) => p.status !== 'AVAILABLE');
+      if (unavailable.length > 0) {
+        throw validationError(
+          `Product(s) no longer available: ${unavailable.map((p) => p.name ?? p.id).join(', ')}`,
+        );
+      }
+
+      // 3. Check retailer has an active payment account (L2 tier gate)
+      const paymentAccount = await prisma.retailerPaymentAccount.findUnique({
+        where: { retailer_id: retailerId, is_active: true },
+        select: {
+          id: true,
+          payment_mode: true,
+          razorpay_key_id: true,
+          razorpay_key_secret_encrypted: true,
+        },
+      });
+      if (!paymentAccount) {
+        throw validationError('This retailer does not accept online payments yet');
+      }
+
+      // 4. Server-side amount computation (SECURITY §11.6 — never trust client)
+      let subtotal = 0;
+      const orderItemsData: Array<{
+        product_id: string;
+        product_name_snapshot: string | null;
+        price_snapshot: number;
+        quantity: number;
+      }> = [];
+      for (const item of items) {
+        const product = products.find((p) => p.id === item.product_id);
+        const price = product?.price_min ?? 0;
+        subtotal += price;
+        orderItemsData.push({
+          product_id: item.product_id,
+          product_name_snapshot: product?.name ?? null,
+          price_snapshot: price,
+          quantity: item.quantity,
+        });
+      }
+
+      const gstAmount = computeGst(subtotal);
+      const totalAmount = subtotal + gstAmount;
+
+      // 5. Atomic product reservation + order creation (SECURITY §11.7)
+      // Use a transaction to atomically reserve all products
+      const result = await prisma.$transaction(async (tx) => {
+        // Try to reserve all products atomically
+        for (const item of items) {
+          const updated = await tx.product.updateMany({
+            where: {
+              id: item.product_id,
+              retailer_id: retailerId,
+              status: 'AVAILABLE',
+            },
+            data: { status: 'RESERVED' },
+          });
+          if (updated.count === 0) {
+            // Prisma auto-rolls back the entire transaction on throw —
+            // no manual rollback needed.
+            throw validationError(
+              `Product is no longer available: ${products.find((p) => p.id === item.product_id)?.name ?? item.product_id}`,
+            );
+          }
+        }
+
+        // Generate GST invoice number
+        const gstInvoiceNumber = generateGstInvoiceNumber();
+
+        // Create the order
+        const order = await tx.order.create({
+          data: {
+            retailer_id: retailerId,
+            collection_id: collection_id ?? null,
+            customer_name,
+            customer_phone,
+            shipping_address: shipping_address as object,
+            status: 'PENDING_PAYMENT',
+            subtotal_amount: subtotal,
+            gst_amount: gstAmount,
+            total_amount: totalAmount,
+            payment_mode: 'DIRECT',
+            gst_invoice_number: gstInvoiceNumber,
+            items: {
+              create: orderItemsData,
+            },
+          },
+          select: {
+            id: true,
+            total_amount: true,
+            gst_amount: true,
+            subtotal_amount: true,
+            gst_invoice_number: true,
+            status: true,
+          },
+        });
+
+        return { order, gstInvoiceNumber };
+      });
+
+      // 6. Create Razorpay order using the retailer's credentials
+      const razorpayKeyId = paymentAccount.razorpay_key_id ?? '';
+      const razorpayKeySecretEncrypted = paymentAccount.razorpay_key_secret_encrypted ?? '';
+      const razorpayOrder = await razorpayAsRetailer<RazorpayOrder>(
+        {
+          razorpay_key_id: razorpayKeyId,
+          razorpay_key_secret_encrypted: razorpayKeySecretEncrypted,
+        },
+        '/orders',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            amount: totalAmount,
+            currency: 'INR',
+            receipt: result.order.id,
+            notes: {
+              retailer_id: retailerId,
+              order_id: result.order.id,
+            },
+          }),
+        },
+      );
+
+      // 7. Save the Razorpay order ID on our order record
+      await prisma.order.update({
+        where: { id: result.order.id },
+        data: { razorpay_order_id: razorpayOrder.id },
+      });
+
+      request.log.info(
+        { order_id: result.order.id, razorpay_order_id: razorpayOrder.id },
+        'Order created',
+      );
+
+      return {
         data: {
-          retailer_id: retailerId,
-          collection_id: collection_id ?? null,
+          order_id: result.order.id,
+          razorpay_order_id: razorpayOrder.id,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          key_id: paymentAccount.razorpay_key_id ?? '',
           customer_name,
           customer_phone,
-          shipping_address: shipping_address as object,
-          status: 'PENDING_PAYMENT',
+          shipping_address,
+          gst_invoice_number: result.gstInvoiceNumber,
           subtotal_amount: subtotal,
           gst_amount: gstAmount,
           total_amount: totalAmount,
-          payment_mode: 'DIRECT',
-          gst_invoice_number: gstInvoiceNumber,
-          items: {
-            create: orderItemsData,
-          },
+          items: orderItemsData.map((i) => ({
+            product_id: i.product_id,
+            name: i.product_name_snapshot,
+            price: i.price_snapshot,
+            quantity: i.quantity,
+          })),
         },
-        select: {
-          id: true,
-          total_amount: true,
-          gst_amount: true,
-          subtotal_amount: true,
-          gst_invoice_number: true,
-          status: true,
-        },
-      });
-
-      return { order, gstInvoiceNumber };
-    });
-
-    // 6. Create Razorpay order using the retailer's credentials
-    const razorpayOrder = await razorpayAsRetailer<RazorpayOrder>(
-      {
-        razorpay_key_id: paymentAccount.razorpay_key_id!,
-        razorpay_key_secret_encrypted: paymentAccount.razorpay_key_secret_encrypted!,
-      },
-      '/orders',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          amount: totalAmount,
-          currency: 'INR',
-          receipt: result.order.id,
-          notes: {
-            retailer_id: retailerId,
-            order_id: result.order.id,
-          },
-        }),
-      },
-    );
-
-    // 7. Save the Razorpay order ID on our order record
-    await prisma.order.update({
-      where: { id: result.order.id },
-      data: { razorpay_order_id: razorpayOrder.id },
-    });
-
-    request.log.info(
-      { order_id: result.order.id, razorpay_order_id: razorpayOrder.id },
-      'Order created',
-    );
-
-    return {
-      data: {
-        order_id: result.order.id,
-        razorpay_order_id: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        key_id: paymentAccount.razorpay_key_id ?? '',
-        customer_name,
-        customer_phone,
-        shipping_address,
-        gst_invoice_number: result.gstInvoiceNumber,
-        subtotal_amount: subtotal,
-        gst_amount: gstAmount,
-        total_amount: totalAmount,
-        items: orderItemsData.map((i) => ({
-          product_id: i.product_id,
-          name: i.product_name_snapshot,
-          price: i.price_snapshot,
-          quantity: i.quantity,
-        })),
-      },
-    };
-  });
+      };
+    },
+  );
 
   // ── POST /public/checkout/verify-payment ────────────────────────
   // Verify Razorpay payment signature client-side (called from browser after
   // successful payment). Never flips Order.status alone — the webhook is the
   // durable source of truth — but provides immediate UI feedback.
-  server.post('/public/checkout/verify-payment', async (request) => {
-    const body = z
-      .object({
-        razorpay_order_id: z.string().min(1),
-        razorpay_payment_id: z.string().min(1),
-        razorpay_signature: z.string().min(1),
-      })
-      .parse(request.body);
-
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
-
-    // Look up the order to find which retailer's credentials to use
-    const ord = await prisma.order.findUnique({
-      where: { razorpay_order_id },
-      select: { id: true, retailer_id: true, status: true },
-    });
-    if (!ord) throw notFound('Order');
-
-    // Get the retailer's payment account to retrieve the key secret for verification
-    const payAcct = await prisma.retailerPaymentAccount.findUnique({
-      where: { retailer_id: ord.retailer_id, is_active: true },
-      select: { razorpay_key_secret_encrypted: true },
-    });
-    if (!payAcct || !payAcct.razorpay_key_secret_encrypted) {
-      throw validationError('Retailer payment account not found');
-    }
-
-    const keySecret = decryptSecret(payAcct.razorpay_key_secret_encrypted);
-
-    // HMAC-SHA256(order_id + "|" + payment_id, key_secret)
-    const expected = createHmac('sha256', keySecret)
-      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
-      .digest('hex');
-
-    if (expected !== razorpay_signature) {
-      throw validationError('Payment verification failed');
-    }
-
-    // SECURITY §11.6: Client callback alone must never flip Order.status to PAID.
-    // We store the payment_id but the webhook is the source of truth.
-    // Update order with payment_id for reference (status stays PENDING_PAYMENT until webhook)
-    await prisma.order.update({
-      where: { razorpay_order_id },
-      data: { razorpay_payment_id },
-    });
-
-    return {
-      data: {
-        verified: true,
-        razorpay_order_id,
-        razorpay_payment_id,
-        order_id: ord.id,
+  server.post(
+    '/public/checkout/verify-payment',
+    {
+      config: {
+        rateLimit: {
+          max: 10,
+          timeWindow: '1 minute',
+          keyGenerator: (req) => req.ip,
+        },
       },
-    };
-  });
+    },
+    async (request) => {
+      const body = z
+        .object({
+          razorpay_order_id: z.string().min(1),
+          razorpay_payment_id: z.string().min(1),
+          razorpay_signature: z.string().min(1),
+        })
+        .parse(request.body);
+
+      const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
+
+      // Look up the order to find which retailer's credentials to use
+      const ord = await prisma.order.findUnique({
+        where: { razorpay_order_id },
+        select: { id: true, retailer_id: true, status: true },
+      });
+      if (!ord) throw notFound('Order');
+
+      // Get the retailer's payment account to retrieve the key secret for verification
+      const payAcct = await prisma.retailerPaymentAccount.findUnique({
+        where: { retailer_id: ord.retailer_id, is_active: true },
+        select: { razorpay_key_secret_encrypted: true },
+      });
+      if (!payAcct || !payAcct.razorpay_key_secret_encrypted) {
+        throw validationError('Retailer payment account not found');
+      }
+
+      const keySecret = decryptSecret(payAcct.razorpay_key_secret_encrypted);
+
+      // HMAC-SHA256(order_id + "|" + payment_id, key_secret)
+      const expected = createHmac('sha256', keySecret)
+        .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+        .digest('hex');
+
+      if (expected !== razorpay_signature) {
+        throw validationError('Payment verification failed');
+      }
+
+      // SECURITY §11.6: Client callback alone must never flip Order.status to PAID.
+      // We store the payment_id but the webhook is the source of truth.
+      // Update order with payment_id for reference (status stays PENDING_PAYMENT until webhook)
+      await prisma.order.update({
+        where: { razorpay_order_id },
+        data: { razorpay_payment_id },
+      });
+
+      return {
+        data: {
+          verified: true,
+          razorpay_order_id,
+          razorpay_payment_id,
+          order_id: ord.id,
+        },
+      };
+    },
+  );
 
   // ── GET /public/orders/:id ──────────────────────────────────────
   // Check order status (customer-facing, no auth — uses order ID)
-  server.get('/public/orders/:id', async (request) => {
-    const { id } = request.params as { id: string };
-    const order = await prisma.order.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        status: true,
-        total_amount: true,
-        gst_amount: true,
-        subtotal_amount: true,
-        gst_invoice_number: true,
-        customer_name: true,
-        paid_at: true,
-        created_at: true,
-        items: {
-          select: {
-            product_name_snapshot: true,
-            price_snapshot: true,
-            quantity: true,
-            product_id: true,
-          },
+  server.get(
+    '/public/orders/:id',
+    {
+      config: {
+        rateLimit: {
+          max: 30,
+          timeWindow: '1 minute',
+          keyGenerator: (req) => req.ip,
         },
-        collection_id: true,
       },
-    });
-    if (!order) throw notFound('Order');
+    },
+    async (request) => {
+      const { id } = request.params as { id: string };
+      const order = await prisma.order.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          status: true,
+          total_amount: true,
+          gst_amount: true,
+          subtotal_amount: true,
+          gst_invoice_number: true,
+          customer_name: true,
+          paid_at: true,
+          created_at: true,
+          items: {
+            select: {
+              product_name_snapshot: true,
+              price_snapshot: true,
+              quantity: true,
+              product_id: true,
+            },
+          },
+          collection_id: true,
+        },
+      });
+      if (!order) throw notFound('Order');
 
-    return { data: order };
-  });
+      return { data: order };
+    },
+  );
 
   // ═══════════════════════════════════════════════════════════════
   //  WEBHOOK (public, signature-verified)
@@ -816,10 +891,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       }
     });
 
-    request.log.info(
-      { order_id: id, status },
-      'Order status updated',
-    );
+    request.log.info({ order_id: id, status }, 'Order status updated');
 
     return { data: { id, status } };
   });
@@ -861,10 +933,14 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
-    const retailerId = retailer?.id ?? (await prisma.collection.findUnique({
-      where: { slug },
-      select: { retailer_id: true },
-    }))?.retailer_id;
+    const retailerId =
+      retailer?.id ??
+      (
+        await prisma.collection.findUnique({
+          where: { slug },
+          select: { retailer_id: true },
+        })
+      )?.retailer_id;
 
     if (!retailerId) {
       return { data: { checkout_enabled: false } };

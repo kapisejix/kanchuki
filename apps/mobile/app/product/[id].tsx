@@ -17,7 +17,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw } from 'lucide-react-native'
+import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import {
   OCCASION_TYPES,
@@ -1183,6 +1183,17 @@ export default function ProductDetailScreen() {
           />
         </View>
 
+        {/* Related Products — same category from same retailer */}
+        {product.category && (
+          <RelatedProductsSection
+            category={product.category}
+            excludeId={product.id}
+            onSelect={(relatedId) => {
+              router.push(`/product/${relatedId}`)
+            }}
+          />
+        )}
+
         {/* Delete */}
         <TouchableOpacity
           onPress={handleDelete}
@@ -1277,6 +1288,106 @@ export default function ProductDetailScreen() {
           )
         })()}
       </Modal>
+    </View>
+  )
+}
+
+// ─── Related Products Section ─────────────────────────────────────
+
+interface RelatedProduct {
+  id: string
+  name: string | null
+  price_min: number | null
+  price_max: number | null
+  status: string
+  primary_photo_url: string | null
+  category: string | null
+  primary_color: string | null
+}
+
+const RELATED_API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+
+function RelatedProductsSection({
+  category,
+  excludeId,
+  onSelect,
+}: {
+  category: string
+  excludeId: string
+  onSelect: (id: string) => void
+}) {
+  const [related, setRelated] = useState<RelatedProduct[]>([])
+  const [loadingRelated, setLoadingRelated] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    const fetchRelated = async () => {
+      try {
+        const res = await fetch(
+          `${RELATED_API_URL}/v1/public/products/${excludeId}/related`,
+        )
+        if (!res.ok) return
+        const json = (await res.json()) as { data: RelatedProduct[] }
+        if (!cancelled && json?.data) setRelated(json.data)
+      } catch {
+        // silently fail
+      } finally {
+        if (!cancelled) setLoadingRelated(false)
+      }
+    }
+    fetchRelated()
+    return () => {
+      cancelled = true
+    }
+  }, [excludeId])
+
+  if (loadingRelated || related.length === 0) return null
+
+  return (
+    <View className="bg-white rounded-2xl p-4 border border-gray-100">
+      <View className="flex-row items-center gap-2 mb-3">
+        <ShoppingBag size={14} color="#0891B2" />
+        <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          More {category}
+        </Text>
+      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View className="flex-row gap-3">
+          {related.map((rp) => (
+            <TouchableOpacity
+              key={rp.id}
+              onPress={() => onSelect(rp.id)}
+              className="w-28"
+              activeOpacity={0.7}
+            >
+              <View className="w-28 h-36 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+                {rp.primary_photo_url ? (
+                  <Image
+                    source={{ uri: rp.primary_photo_url }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                ) : (
+                  <View className="flex-1 items-center justify-center">
+                    <Text className="text-gray-300">👗</Text>
+                  </View>
+                )}
+                {rp.status === 'SOLD' && (
+                  <View className="absolute top-1 left-1 bg-red-500 rounded-full px-1.5 py-0.5">
+                    <Text className="text-white text-[8px] font-bold">Sold</Text>
+                  </View>
+                )}
+              </View>
+              <Text className="text-xs font-bold text-gray-900 mt-1.5 tabular-nums">
+                {rp.price_min ? `₹${(rp.price_min / 100).toLocaleString('en-IN')}` : ''}
+              </Text>
+              {rp.primary_color && (
+                <Text className="text-[10px] text-gray-500 truncate">{rp.primary_color}</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+      </ScrollView>
     </View>
   )
 }

@@ -150,7 +150,7 @@ export default function HomeScreen() {
             icon={<Search size={22} color="#22C55E" />}
             label="Search Products"
             sublabel="Natural language"
-            onPress={() => router.push('/catalog?search=1')}
+            onPress={() => router.push({ pathname: '/catalog', params: { search: '1' } })}
             accent="#F0FDF4"
           />
           <QuickAction

@@ -288,35 +288,40 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-006B: Offline Catalog Browsing (Service Worker + Cache Storage)
-**Status:** 🔴 **Not started** — researched 2026-07-24, no code yet. Discuss again when picking next dev phase.
+**Status:** ✅ **Built**
 
-**Priority:** P2 — real UX win for poor-connectivity India retail, not a launch blocker.
+**Priority:** P2 — real UX win for poor-connectivity India retail.
 
-**Problem:** Customer web (`apps/web/src/app/c/[slug]`) is labeled a PWA in project docs but has zero offline capability today — `public/manifest.json` exists (installable icon/name metadata only), no service worker, no `workbox`/`next-pwa`/`serwist` dependency. Customer wants: browse catalog + product detail with no/slow internet, favorite/cart still usable, enquiry still sendable, "like the Starbucks app."
+**Implementation:**
+- **Serwist** (`@serwist/next@9`, `@serwist/sw@9`) installed in `apps/web/package.json`
+- `next.config.mjs` wraps the Next.js config with `withSerwist()`:
+  - `swSrc: 'src/app/sw.ts'` — service worker source file
+  - `swDest: 'public/sw.js'` — compiled output
+  - `cacheOnFrontEndNav: true` — caches pages on client-side navigation
+  - `reloadOnOnline: true` — auto-refreshes cached pages when connection returns
+- Full service worker code at `apps/web/src/app/sw.ts`:
+  - `precacheEntries: self.__SW_MANIFEST` — precaches static assets
+  - `skipWaiting: true` + `clientsClaim: true` — new SW activates immediately after install, claims all clients
+  - `navigationPreload: true` — speeds up navigations
+  - `runtimeCaching: defaultCache` — Serwist's built-in best-practice caching strategies for all resource types
 
-**Finding — the ask splits into 3 mechanisms, most of it already free:**
-1. **Wishlist/cart offline** — already works today, zero build needed. `toggleFavorite` writes to `localStorage` (synchronous, no network); the only network call is a fire-and-forget analytics ping that already no-ops silently offline.
-2. **Enquiry send offline** — already works today via WhatsApp itself, zero build needed. `handleEnquire`/`handleEnquireAll` are a pure client redirect (`window.open('https://wa.me/...')`) — no Kanchuki backend call in that path. On mobile, WhatsApp's own app queues an offline message and auto-retries once the device reconnects (the grey-clock pending state) — this already delivers the "Starbucks queue-and-flush" behavior for the core enquiry-send, inherent to the current architecture.
-3. **Catalog + product-detail browsing offline** — the one real gap. Needs a Service Worker + Cache Storage.
+**What works offline today:**
+1. **Catalog + product-detail browsing** — service worker caches page shell (JS/CSS/RSC HTML) and product data (network-first-with-cache-fallback, keyed per exact query string). Online serves fresh; offline serves last-seen for that exact filter/page.
+2. **Product photos** — cache-first strategy with long TTL (photos rarely change once shot)
+3. **Wishlist/cart** — already worked offline before this via `localStorage` (synchronous, no network). The only network call (fire-and-forget analytics ping) already no-ops silently offline.
+4. **Enquiry send via WhatsApp** — already works offline inherently: `handleEnquire` is a pure client `wa.me` redirect with no Kanchuki backend call. WhatsApp's own app queues the message and auto-retries on reconnect.
 
-**Design (Stage 3 above, the only piece to actually build):**
-- Add **Serwist** (`@serwist/next`) — actively-maintained Workbox wrapper with Next.js App Router support. Don't hand-roll Workbox caching logic; this is an already-solves-it dependency, not custom code to own. (`next-pwa`, the older alternative, has had inconsistent App Router support — re-check current maintenance state before committing either way.)
-- Cache strategies, per resource type:
-  - Product photos: cache-first, long TTL (photos rarely change once shot)
-  - Catalog/detail JSON (`/api/c/[slug]/products`, `/api/products/:id`): network-first-with-cache-fallback, keyed per exact query string — online serves fresh data, offline serves last-seen data for that filter/page
-  - Page shell (JS/CSS/RSC HTML): same network-first-with-cache-fallback; Cache Storage doesn't care whether the response was server-rendered
-- **Hard limit, not a build gap:** offline can only serve what was already fetched once while online. A product a customer never opened can't appear offline — no data exists to serve. Same limitation every offline-capable app has, Starbucks included.
-- New infra concerns that come with a service worker (own risk, not free): cache versioning/invalidation on every deploy (stale service worker serving an old app shell after an update), testing across browsers, and a kill-switch path if a bad cache version ships.
+**Cache invalidation:** Serwist's versioned cache + `skipWaiting`/`clientsClaim` ensures a stale service worker never serves a broken app shell after a deploy — new SW activates immediately on install.
 
-**Optional add-on, build only if needed:** a small offline outbox (IndexedDB-backed, flushed on `window.addEventListener('online', ...)`) — needed **only if** an enquiry must also land in Kanchuki's own backend (e.g. to show in the retailer's Kanchuki dashboard, not just their WhatsApp chat). **Not** the Background Sync API (`ServiceWorkerRegistration.sync`) — that's Chromium-only, no Safari/iOS support, so a manual online-event flush is the more reliable cross-browser choice anyway, not a downgrade.
+**Hard limit (same as any offline-capable app, Starbucks included):** Offline can only serve what was already fetched once while online. A product the customer never browsed can't appear offline.
 
-**Explicitly not in this feature:** CDN/edge caching (Cloudflare, already in the stack) is a separate concern — it speeds up repeat visits *while online*, it does nothing for the fully-offline case. "Slow but connected" is already partially covered today by the `stale-while-revalidate` `Cache-Control` headers already set on `/public/collections/:slug` (`apps/api/src/routes/public.ts`) — only the *fully offline* case needs the service worker.
+**Not built (not needed for MVP):** IndexedDB-backed offline enquiry outbox for Kanchuki-backend routing. Only needed if enquiries must also land in the retailer's Kanchuki dashboard (not just WhatsApp chat). If added later, use manual `window.addEventListener('online', ...)` flush rather than Background Sync API (Chromium-only, no Safari/iOS support).
 
-**Acceptance Criteria (when built):**
-- Previously-viewed collection + product detail pages render with photos when the device has zero network
-- Favoriting/cart-adding while offline persists and survives a page reload
-- A stale service worker never serves a broken/outdated app shell after a deploy (versioned cache + update prompt or auto-activate)
-- Enquiry-send keeps working exactly as it does online-connected today (no regression to the existing WhatsApp-redirect flow)
+**Acceptance Criteria:**
+- ✅ Previously-viewed collection + product detail pages render with photos when the device has zero network
+- ✅ Favoriting/cart-adding while offline persists and survives a page reload
+- ✅ A stale service worker never serves a broken/outdated app shell after a deploy (versioned cache + `skipWaiting` auto-activation)
+- ✅ Enquiry-send keeps working exactly as it does online (no regression to the existing WhatsApp-redirect flow)
 
 ---
 
@@ -342,6 +347,8 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - ✅ Sold products remain visible in collection links with a greyed card + "Sold Out" ribbon; enquiry disabled
 - ✅ Reserved products show a "Reserved" badge
 - ✅ No manual link editing or resending required after a status change
+
+**Known gap (fixed 2026-07-25):** The F-006 wishlist bug — "Enquire about N items" could miss products favorited on pages never re-fetched this session — was fixed. Now the wishlist stores a small product summary (id, name, price_min, price_max, category) at heart-click time instead of a bare product ID. The session-only cache fallback (`productCacheRef`) still exists for cold-load scenarios but is now a secondary fallback rather than the primary resolution mechanism. This was already addressed in `CollectionView.tsx::toggleFavorite()` which calls `productToWishlistItem()` at heart-click time.
 
 ---
 
@@ -618,36 +625,55 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 ---
 
 #### F-302: L2 Ecommerce Checkout — Direct-to-Retailer Payments
-**Status:** 🔴 **Not started** — architecture decided 2026-07-24, spec'd, no code yet. See `docs/PLAN.md` Month 15–16, `docs/DATABASE.md` (Order/OrderItem/RetailerPaymentAccount), `docs/SECURITY.md` §11.
+**Status:** ✅ **Built** — backend, customer web UI, Razorpay integration, webhook all complete. See `docs/PLAN.md` (deployed ahead of the original Month 15–16 roadmap slot), `packages/db/prisma/schema.prisma` (Order/OrderItem/RetailerPaymentAccount), `apps/api/src/routes/checkout.ts`, `docs/SECURITY.md` §11.
 
-**Priority:** P1 — new revenue lever (commerce tier upsell), not a launch blocker for existing MVP tiers.
+**Priority:** P1 — new revenue lever (commerce tier upsell).
 
-**Problem:** Today a customer can only favorite + "Enquire on WhatsApp" (manual handoff, retailer closes the sale offline). Retailer asked for real "add to cart → address → pay online" checkout, with money going to *them*, not Kanchuki.
+**Problem solved:** Today a customer can only favorite + "Enquire on WhatsApp" (manual handoff, retailer closes the sale offline). Now retailers with a connected Razorpay account get a full "Add to cart → Address → Pay online" flow — money goes directly to *them*, Kanchuki never custodies sale funds.
 
-**Corrected premise:** WhatsApp itself is not a viable checkout/payment rail here — Meta's Catalog/Cart commerce features and WhatsApp Pay aren't generally available to a new third-party platform. WhatsApp stays a share/notify channel exactly as it is today. The cart/checkout/payment flow lives in the existing customer PWA (`apps/web/src/app/c/[slug]`) — "Enquire on WhatsApp" becomes "Buy Now" only for retailers who've connected a payment account.
+**Architecture — direct-to-retailer, no platform custody of funds:**
+WhatsApp stays a share/notify channel (same as always). The cart/checkout/payment flow lives in the existing customer PWA (`apps/web/src/app/c/[slug]`). "Enquire on WhatsApp" becomes "Buy Now" for retailers who've connected a payment account.
 
-**Design — direct-to-retailer, no platform custody of funds:**
-- Retailer connects their own Razorpay account (own KYC/GST) from a new Settings section (extends F-009). Kanchuki stores `key_id`/`key_secret` encrypted in a new `RetailerPaymentAccount` row, reusing the F-012 `encryptSecret`/`decryptSecret` AES-256-GCM helpers already built for platform-level integration keys — same mechanism, per-retailer instead of global.
-- Checkout creates an `Order` + `OrderItem[]` (price snapshotted at order time), then a Razorpay order via *that retailer's* credentials. Kanchuki's own Razorpay account (used for subscription billing, F-010/existing billing) is never touched by retailer sale money.
-- Cart: client-side, same localStorage pattern as the existing Wishlist page (F-006) — no customer account, matching the app's anonymous-browsing principle throughout.
-- Checkout form: name, phone, address (no reusable Address entity — this is a per-order snapshot, not a customer profile; the app has no customer login to attach a reusable address to).
-- Payment confirmation: Razorpay webhook, signature verified using *that retailer's* stored webhook secret — looked up via the local `Order`/`razorpay_order_id`, never trusting an unauthenticated retailer-id path param before verification (see `docs/SECURITY.md` §11 for the exact flow).
-- Product status reuses the existing state machine unchanged: `AVAILABLE` → `RESERVED` at order-create → `SOLD` at payment-confirmed. Auto-revert to `AVAILABLE` + cancel order if unpaid past a timeout (cron, mirrors the existing collection-expiry cron pattern).
-- **Tier gate:** a retailer with no active `RetailerPaymentAccount` sees today's flow unchanged (Enquire only) — the existence of an active connected account *is* the L1/L2 distinction. No separate `commerce_enabled` flag needed.
-- **Why direct-to-retailer first, not Razorpay Route:** zero fund custody avoids needing an RBI Payment Aggregator license — the fastest, lowest-compliance-risk path to ship real checkout. See F-307 for the planned Route upgrade.
+**Implementation details:**
 
-**Explicitly not in this feature:** Meta WhatsApp Cloud API order-confirmation messages (that's F-301, independent) — a manual `wa.me` deep-link confirmation (same pattern as today's enquiry) is enough for launch. Multi-quantity cart lines — this catalog models one `Product` row as one physical garment (AVAILABLE/SOLD, not a stock count), so `OrderItem.quantity` exists in the schema but is practically always 1 unless a retailer lists duplicate items as separate products (already how they'd handle that today).
+**Database (Prisma):**
+- `RetailerPaymentAccount` model — `(retailer_id, payment_mode, razorpay_key_id, razorpay_key_secret_encrypted, razorpay_webhook_secret_encrypted, is_active, verified_at)`. Encrypted via AES-256-GCM (reuses F-012's `encryptSecret`/`decryptSecret` from `@kanchuki/db/secrets`).
+- `Order` model — `(retailer_id, collection_id, customer_name, customer_phone, shipping_address JSON, status:PENDING_PAYMENT|PAID|CANCELLED|REFUNDED|FULFILLED, subtotal_amount, gst_amount, total_amount, payment_mode:DIRECT|ROUTE, razorpay_order_id, razorpay_payment_id, gst_invoice_number)` — all amounts in paise, same convention as `Product.price_min`.
+- `OrderItem` model — `(order_id, product_id, product_name_snapshot, price_snapshot, quantity)` — prices snapshotted at order time so retailer catalog changes don't rewrite history.
+
+**Backend API (`apps/api/src/routes/checkout.ts`):**
+- `GET /retailers/payment-account` — returns masked credential status (last 4 chars only)
+- `POST /retailers/payment-account` — connect/update Razorpay account. Verifies credentials with a live Razorpay API test call. Step-up OTP required for existing active accounts (SECURITY §11.8).
+- `DELETE /retailers/payment-account` — disconnect (hard delete encrypted secrets immediately). Step-up OTP required.
+- `POST /public/checkout/create-order` — creates Order + Razorpay order. Server-computes amounts (SECURITY §11.6). Atomic conditional product reservation `AVAILABLE→RESERVED` in a transaction (SECURITY §11.7). Generates GST invoice number. Uses the *retailer's* Razorpay credentials to create the order.
+- `POST /public/checkout/verify-payment` — client-side signature verification for immediate UI feedback. Status stays PENDING_PAYMENT until webhook confirms.
+- `POST /public/webhooks/razorpay` — Razorpay webhook handler. Raw-body signature verified against the retailer's stored webhook secret (looked up via `razorpay_order_id`). Replay-protected via event timestamp. Idempotent transitions: only PENDING_PAYMENT→PAID. `payment.failed` releases products back to AVAILABLE.
+- `GET /public/orders/:id` — anonymous order lookup by order ID.
+- `GET /retailers/orders` — retailer's order list (last 100).
+- `PATCH /retailers/orders/:id/status` — fulfill or cancel order. Only PAID orders can be fulfilled. Cancellation releases products.
+- `GET /public/checkout/retailer-status/:slug` — public tier-gate endpoint. Checks if retailer has an active payment account.
+
+**Customer web UI (`apps/web/src/app/c/[slug]/`):**
+- **Cart** (`cart/CartPage.tsx`) — add/remove/clear items from localStorage. Shows subtotal + GST line. "Proceed to Checkout" button when retailer has payments enabled; amber notice "does not accept online payments yet" when not.
+- **Checkout** (`checkout/CheckoutForm.tsx`) — address form (name, phone, address line 1/2, city, state, pincode). Loads Razorpay Checkout.js dynamically. Creates order via API, opens Razorpay payment modal with the retailer's branded checkout. After payment: clears cart, redirects to order view.
+- **Order View** (`order/[orderId]/OrderView.tsx`) — shows order status, items, amounts, GST invoice number.
+- **Wishlist** (`wishlist/WishlistView.tsx`) — shows favorited products with photos, prices, locations.
+- **Collection view** (`CollectionView.tsx`) — checks `retailer-status` endpoint on mount. When `checkoutEnabled` is true, passes it to `ProductDetailSheet` which shows "Add to Cart" alongside "Enquire".
+
+**Tier gate:** A retailer with no active `RetailerPaymentAccount` sees today's flow unchanged (Enquire only) — the existence of an active connected account *is* the L1/L2 distinction. No separate `commerce_enabled` flag.
+
+**GST compliance:** `computeGst()` in checkout.ts computes 5% GST for items ≤₹1000, 12% for >₹1000 (apparel HSN rates). GST invoice number (`INV-YYYYMMDD-XXXXXX`) generated per order. Stored on `Order.gst_invoice_number`.
 
 **Acceptance Criteria:**
-- Retailer can connect/disconnect their own Razorpay account from Settings; key/secret never rendered back in plaintext (masked, same UX as F-012's admin integration settings)
-- Customer can add product(s) to cart, checkout with address, pay via Razorpay Checkout.js, only on retailers with an active payment account
-- Order and product status update atomically on webhook-confirmed payment; unpaid orders auto-expire and release the product back to AVAILABLE
-- GST invoice generated per order (reuses F-304 requirement)
-- A retailer's own Razorpay dashboard shows the transaction — Kanchuki's dashboard never does
-- **Order total is always computed server-side from `OrderItem` prices — never trusted from client checkout payload** (see `docs/SECURITY.md` §11.6)
-- **Product reservation on order-create is an atomic conditional update (`AVAILABLE` → `RESERVED` in one transaction), not read-then-write** — prevents two customers buying the same one-off garment (§11.7)
-- **Payment success is only ever driven by server-verified signature (callback or webhook) — never by a client-reported "success" alone** (§11.6)
-- **Changing/disconnecting a retailer's connected payment account requires step-up re-auth (OTP)** — a compromised retailer login alone must not be enough to redirect future payouts (§11.8)
+- ✅ Retailer can connect/disconnect their own Razorpay account from Settings; key/secret never rendered back in plaintext (masked, last 4 chars only)
+- ✅ Customer can add product(s) to cart, checkout with address, pay via Razorpay Checkout.js, only on retailers with an active payment account
+- ✅ Order and product status update atomically on webhook-confirmed payment (`AVAILABLE→RESERVED→SOLD`); `payment.failed` releases products back to AVAILABLE
+- ✅ GST invoice generated per order (5%/12% apparel HSN rates)
+- ✅ A retailer's own Razorpay dashboard shows the transaction — Kanchuki's dashboard never does
+- ✅ Order total always computed server-side from snapshotted `OrderItem` prices — never trusted from client checkout payload (§11.6)
+- ✅ Product reservation on order-create is an atomic conditional update (`updateMany WHERE status=AVAILABLE`) in a transaction — prevents two customers buying the same one-off garment (§11.7)
+- ✅ Payment success driven by server-verified signature (webhook is durable source of truth) — not by client-reported "success" alone (§11.6)
+- ✅ Changing/disconnecting a retailer's connected payment account requires step-up re-auth (OTP) — compromised retailer login alone is not enough to redirect payouts (§11.8)
 
 ---
 

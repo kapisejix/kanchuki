@@ -2,6 +2,7 @@ import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
+import { handleExpirePendingOrders } from './expire-pending-orders.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
 import type { MeasurementJobData } from './extract-measurement.js';
 import { handleExtractSpinFrames } from './extract-spin-frames.js';
@@ -35,6 +36,7 @@ let embeddingQueue: Queue | null = null;
 let measurementQueue: Queue | null = null;
 let tryOnQueue: Queue | null = null;
 let cleanupQueue: Queue | null = null;
+let orderExpiryQueue: Queue | null = null;
 let fashionDNAQueue: Queue | null = null;
 let spinFrameQueue: Queue | null = null;
 
@@ -61,6 +63,11 @@ function getTryOnQueue(): Queue {
 function getCleanupQueue(): Queue {
   cleanupQueue ??= new Queue(QUEUES.CLEANUP, { connection: getRedis() });
   return cleanupQueue;
+}
+
+function getOrderExpiryQueue(): Queue {
+  orderExpiryQueue ??= new Queue(QUEUES.ORDER_EXPIRY, { connection: getRedis() });
+  return orderExpiryQueue;
 }
 
 function getFashionDNAQueue(): Queue {
@@ -216,6 +223,15 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 1 },
   );
 
+  // Pending-order expiry worker (concurrency 1 — lightweight DB query, runs every 5 min)
+  const orderExpiryWorker = new Worker(
+    QUEUES.ORDER_EXPIRY,
+    async () => {
+      await handleExpirePendingOrders();
+    },
+    { connection: redis, concurrency: 1 },
+  );
+
   // Schedule the cleanup to run daily at 2:00 AM UTC (add is idempotent —
   // BullMQ deduplicates by job name + repeat key, so multiple restarts
   // don't create duplicate schedules).
@@ -224,6 +240,17 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 2 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Schedule pending-order expiry every 5 minutes
+  await getOrderExpiryQueue().add(
+    'expire-pending-orders',
+    {},
+    {
+      repeat: { pattern: '*/5 * * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -255,5 +282,9 @@ export async function startWorkers(): Promise<void> {
 
   cleanupWorker.on('failed', (job, err) => {
     console.error(`[jobs] cleanup-training-data failed ${job?.id}:`, err.message);
+  });
+
+  orderExpiryWorker.on('failed', (job, err) => {
+    console.error(`[jobs] expire-pending-orders failed ${job?.id}:`, err.message);
   });
 }

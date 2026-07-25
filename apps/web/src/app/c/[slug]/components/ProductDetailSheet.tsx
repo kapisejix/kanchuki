@@ -42,6 +42,9 @@ export function ProductDetailSheet({
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [showSpinModal, setShowSpinModal] = useState(false)
 
+  // Related products — same category, same retailer, excluding current
+  const [relatedProducts, setRelatedProducts] = useState<PublicProduct[]>([])
+
   // Grid/card view only has the thin summary — photos, spin frames, variants,
   // fabric, and tags are fetched here on open instead of shipping with every
   // product in the list response.
@@ -52,6 +55,13 @@ export function ProductDetailSheet({
       .then((res) => (res.ok ? res.json() : null))
       .then((json: { data: PublicProductDetail } | null) => {
         if (!cancelled && json) setDetail(json.data)
+      })
+      .catch(() => undefined)
+    // Fetch related products in parallel
+    fetch(`/api/products/${product.id}/related`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((json: { data: PublicProduct[] } | null) => {
+        if (!cancelled && json?.data) setRelatedProducts(json.data)
       })
       .catch(() => undefined)
     return () => {
@@ -624,6 +634,58 @@ export function ProductDetailSheet({
               <ShoppingCart size={20} />
               {isReserved ? 'Reserved' : 'Add to Cart'}
             </button>
+          </div>
+        )}
+
+        {/* Related Products — same category from same retailer */}
+        {relatedProducts.length > 0 && (
+          <div className="px-4 pb-2">
+            <div className="border-t border-gray-100 pt-4 mb-3">
+              <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <ShoppingCart size={14} className="text-cyan-600" />
+                More {product.category ?? 'in this category'}
+              </h3>
+            </div>
+            <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
+              {relatedProducts.map((rp) => (
+                <button
+                  key={rp.id}
+                  onClick={() => {
+                    // Close current sheet, open the related product — triggers
+                    // a full re-render with the new product's data.
+                    onClose()
+                  }}
+                  className="flex-shrink-0 w-28 snap-start group"
+                >
+                  <div className="relative w-28 h-36 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 group-hover:border-cyan-200 group-hover:shadow-soft transition-all">
+                    {rp.primary_photo_url ? (
+                      <Image
+                        src={rp.primary_photo_url}
+                        alt={rp.name ?? rp.category ?? 'Product'}
+                        fill
+                        sizes="112px"
+                        className="object-cover group-hover:scale-[1.05] transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <ShoppingCart size={20} className="text-gray-300" />
+                      </div>
+                    )}
+                    {rp.status === 'SOLD' && (
+                      <div className="absolute top-1 left-1 bg-red-500 text-white text-[8px] font-bold uppercase px-1.5 py-0.5 rounded-full">
+                        Sold
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs font-medium text-gray-900 mt-1.5 truncate">
+                    {formatPriceRange(rp.price_min, rp.price_max)}
+                  </p>
+                  {rp.primary_color && (
+                    <p className="text-[10px] text-gray-500 truncate">{rp.primary_color}</p>
+                  )}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

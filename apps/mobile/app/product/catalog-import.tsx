@@ -673,7 +673,7 @@ export default function CatalogImportScreen() {
           <TouchableOpacity
             onPress={() => {
               void queryClient.invalidateQueries({ queryKey: ['products'] })
-              router.replace('/(tabs)')
+              router.replace('/')
             }}
             className="py-4 rounded-2xl items-center bg-cyan-600"
             activeOpacity={0.8}

@@ -3,34 +3,34 @@
 export const PLAN_LIMITS = {
   STARTER: {
     max_products: 500,
-    max_customers: Infinity,
+    max_customers: Number.POSITIVE_INFINITY,
     max_collection_links_per_month: 50,
     try_on_credits: 0,
     whatsapp_api: false,
   },
   GROWTH: {
     max_products: 2000,
-    max_customers: Infinity,
-    max_collection_links_per_month: Infinity,
+    max_customers: Number.POSITIVE_INFINITY,
+    max_collection_links_per_month: Number.POSITIVE_INFINITY,
     try_on_credits: 100,
     whatsapp_api: false,
   },
   PRO: {
-    max_products: Infinity,
-    max_customers: Infinity,
-    max_collection_links_per_month: Infinity,
+    max_products: Number.POSITIVE_INFINITY,
+    max_customers: Number.POSITIVE_INFINITY,
+    max_collection_links_per_month: Number.POSITIVE_INFINITY,
     try_on_credits: 500,
     whatsapp_api: true,
   },
-} as const
+} as const;
 
 // ─── Plan Pricing (paise) ─────────────────────────────────────────
 
 export const PLAN_PRICING = {
-  STARTER: { monthly: 99900, annual: 999900 },   // ₹999/mo, ₹9999/yr
-  GROWTH:  { monthly: 249900, annual: 2499900 },  // ₹2499/mo, ₹24999/yr
-  PRO:     { monthly: 499900, annual: 4999900 },  // ₹4999/mo, ₹49999/yr
-} as const
+  STARTER: { monthly: 99900, annual: 999900 }, // ₹999/mo, ₹9999/yr
+  GROWTH: { monthly: 249900, annual: 2499900 }, // ₹2499/mo, ₹24999/yr
+  PRO: { monthly: 499900, annual: 4999900 }, // ₹4999/mo, ₹49999/yr
+} as const;
 
 // ─── Indian Ethnic Wear Categories ───────────────────────────────
 
@@ -47,7 +47,7 @@ export const PRODUCT_CATEGORIES = [
   'Kids Ethnic Wear',
   'Readymade Suit',
   'Other',
-] as const
+] as const;
 
 // Categories where a retailer can tag separate upper/lower garment photos so
 // try-on chains two V-Tone calls (tops → bottoms) instead of treating the
@@ -59,13 +59,9 @@ export const PIECE_TAGGABLE_CATEGORIES = [
   'Readymade Suit',
   "Men's Kurta Pajama",
   'Lehenga',
-] as const
+] as const;
 
-export const PRODUCT_TYPES = [
-  'Unstitched',
-  'Semi-Stitched',
-  'Readymade',
-] as const
+export const PRODUCT_TYPES = ['Unstitched', 'Semi-Stitched', 'Readymade'] as const;
 
 export const FABRIC_TYPES = [
   'Cotton',
@@ -82,7 +78,7 @@ export const FABRIC_TYPES = [
   'Cotton-Silk Blend',
   'Cotton-Poly Blend',
   'Satin',
-] as const
+] as const;
 
 export const PATTERN_TYPES = [
   'Plain',
@@ -95,7 +91,7 @@ export const PATTERN_TYPES = [
   'Woven',
   'Checked',
   'Striped',
-] as const
+] as const;
 
 export const EMBELLISHMENT_TYPES = [
   'Zari Work',
@@ -107,7 +103,7 @@ export const EMBELLISHMENT_TYPES = [
   'Resham Embroidery',
   'Thread Work',
   'None',
-] as const
+] as const;
 
 export const OCCASION_TYPES = [
   'Casual',
@@ -120,7 +116,7 @@ export const OCCASION_TYPES = [
   'Pooja',
   'Daily Wear',
   'Special Occasion',
-] as const
+] as const;
 
 // ─── Hindi → English Search Mapping ──────────────────────────────
 
@@ -156,7 +152,7 @@ export const HINDI_TO_ENGLISH: Record<string, string> = {
   office: 'office wear',
   casual: 'casual daily wear',
   party: 'party wear',
-}
+};
 
 // ─── R2 Storage Paths ─────────────────────────────────────────────
 
@@ -181,7 +177,7 @@ export const R2_PATHS = {
   backgroundImage: (filename: string) => `admin/background-images/${filename}`,
   categoryImage: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/categories/${filename}`,
-} as const
+} as const;
 
 // ─── Integration Settings (F-012) ──────────────────────────────────
 // Canonical catalog of third-party credentials the super admin can manage
@@ -198,13 +194,17 @@ export const INTEGRATION_KEYS = [
   { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },
   { key_name: 'RAZORPAY_WEBHOOK_SECRET', category: 'PAYMENT', label: 'Razorpay Webhook Secret' },
   { key_name: 'R2_ACCESS_KEY_ID', category: 'STORAGE', label: 'Cloudflare R2 Access Key ID' },
-  { key_name: 'R2_SECRET_ACCESS_KEY', category: 'STORAGE', label: 'Cloudflare R2 Secret Access Key' },
+  {
+    key_name: 'R2_SECRET_ACCESS_KEY',
+    category: 'STORAGE',
+    label: 'Cloudflare R2 Secret Access Key',
+  },
   { key_name: 'R2_BUCKET_NAME', category: 'STORAGE', label: 'Cloudflare R2 Bucket Name' },
   { key_name: 'META_APP_SECRET', category: 'WHATSAPP', label: 'Meta App Secret (WhatsApp API)' },
   { key_name: 'META_VERIFY_TOKEN', category: 'WHATSAPP', label: 'Meta Webhook Verify Token' },
-] as const
+] as const;
 
-export type IntegrationKeyName = (typeof INTEGRATION_KEYS)[number]['key_name']
+export type IntegrationKeyName = (typeof INTEGRATION_KEYS)[number]['key_name'];
 
 // ─── BullMQ Queue Names ───────────────────────────────────────────
 
@@ -213,24 +213,25 @@ export const QUEUES = {
   EMBEDDINGS: 'kanchuki-embeddings',
   TRY_ON: 'kanchuki-try-on',
   CLEANUP: 'kanchuki-cleanup',
+  ORDER_EXPIRY: 'kanchuki-order-expiry',
   MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
   FASHION_DNA: 'kanchuki-fashion-dna',
   SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
-} as const
+} as const;
 
 // ─── Cache TTLs (seconds) ─────────────────────────────────────────
 
 export const CACHE_TTL = {
-  AI_TAG_RESULT: 86400,       // 24h — same image = same tags
-  SESSION: 900,               // 15min
-  COLLECTION_VIEWS: 300,      // 5min — flush to DB
-  RATE_LIMIT_WINDOW: 60,      // 1min
-} as const
+  AI_TAG_RESULT: 86400, // 24h — same image = same tags
+  SESSION: 900, // 15min
+  COLLECTION_VIEWS: 300, // 5min — flush to DB
+  RATE_LIMIT_WINDOW: 60, // 1min
+} as const;
 
 // ─── Collection Slug Config ───────────────────────────────────────
 
-export const COLLECTION_SLUG_LENGTH = 8
-export const COLLECTION_DEFAULT_EXPIRY_DAYS = 30
+export const COLLECTION_SLUG_LENGTH = 8;
+export const COLLECTION_DEFAULT_EXPIRY_DAYS = 30;
 
 // ─── Public Collection Price Buckets (paise) ─────────────────────
 // Shared by the public API filter query and the web FilterBar so labels
@@ -241,15 +242,40 @@ export const PUBLIC_PRICE_BUCKETS = [
   { label: '₹1000–2500', min: 100_000, max: 250_000 },
   { label: '₹2500–5000', min: 250_000, max: 500_000 },
   { label: 'Above ₹5000', min: 500_000 },
-] as const satisfies { label: string; min?: number; max?: number }[]
+] as const satisfies { label: string; min?: number; max?: number }[];
 
 // ─── Indian States ────────────────────────────────────────────────
 
 export const INDIAN_STATES = [
-  'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh',
-  'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka',
-  'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Manipur', 'Meghalaya',
-  'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
-  'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand',
-  'West Bengal', 'Delhi', 'Jammu & Kashmir', 'Ladakh',
-] as const
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal',
+  'Delhi',
+  'Jammu & Kashmir',
+  'Ladakh',
+] as const;

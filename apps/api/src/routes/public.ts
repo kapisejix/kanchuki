@@ -562,6 +562,53 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // ─── GET /public/products/:productId/related ─────────────────────
+  // Related products: same category, same retailer, excluding current product.
+  // Returns up to 6 PublicProduct summaries (thin shape with primary photo).
+  server.get(
+    '/products/:productId/related',
+    {
+      config: {
+        cacheControl: 'public, max-age=600, s-maxage=600, stale-while-revalidate=3600',
+      },
+    },
+    async (request, reply) => {
+      const { productId } = request.params as { productId: string };
+
+      const product = await prisma.product.findFirst({
+        where: { id: productId, deleted_at: null },
+        select: { category: true, retailer_id: true },
+      });
+      if (!product || !product.category) return { data: [] };
+
+      const related = await prisma.product.findMany({
+        where: {
+          retailer_id: product.retailer_id,
+          category: product.category,
+          id: { not: productId },
+          deleted_at: null,
+          status: 'AVAILABLE',
+        },
+        orderBy: { created_at: 'desc' },
+        take: 6,
+        include: {
+          photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
+          section: { select: { name: true } },
+          _count: { select: { spin_frames: true } },
+        },
+      });
+
+      const publicProducts = await Promise.all(related.map((r) => toPublicProductSummary(r)));
+
+      reply.header(
+        'Cache-Control',
+        'public, max-age=600, s-maxage=600, stale-while-revalidate=3600',
+      );
+
+      return { data: publicProducts };
+    },
+  );
+
   // ─── POST /public/retailers/:slug/leads ──────────────────────────
   // QR profile contact gate: Name, Phone, Gender, mandatory consent.
   // Upserts a Customer row under this retailer, same as retailer-manual-entry.

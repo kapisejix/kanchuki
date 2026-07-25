@@ -79,4 +79,38 @@ One file, update at end of each work session: what's done, what's next, what's b
 - Phase 1+: Fashion DNA, Remote VTO, Auto-Personalized Collections
 - F-302: L2 Ecommerce Checkout
 
+---
+
+## 2026-07-25 — Docs Sync: F-006B Offline PWA & F-302 Ecommerce Checkout marked as Built
+
+### What was already built (not previously logged in docs)
+
+#### F-006B: Offline Catalog Browsing (PWA) — ✅ Already built
+- Serwist (`@serwist/next@9`, `@serwist/sw@9`) installed and configured
+- `next.config.mjs` wraps config with `withSerwist()` — cache on front-end nav, reload on online
+- Full service worker at `apps/web/src/app/sw.ts` — precaching, runtime caching, skipWaiting, clientsClaim
+- Product photos: cache-first (long TTL)
+- Catalog/detail JSON: network-first-with-cache-fallback
+- Wishlist/cart already offline via localStorage; enquiry already offline via WhatsApp's own queue
+
+#### F-302: L2 Ecommerce Checkout — ✅ Already built
+- Full Prisma schema: `RetailerPaymentAccount`, `Order`, `OrderItem` models
+- Backend: `apps/api/src/routes/checkout.ts` — connect/disconnect payment account, create order, verify payment, Razorpay webhook with signature verification and replay protection, retailer order management
+- Customer web UI: Cart page (`cart/CartPage.tsx`), Checkout form with Razorpay Checkout.js (`checkout/CheckoutForm.tsx`), Order view (`order/[orderId]/OrderView.tsx`)
+- Tier gate: `GET /public/checkout/retailer-status/:slug` — active payment account = L2 enabled
+- Server-side amount computation, atomic product reservation, webhook-driven status transitions
+- GST invoice generation (5%/12% apparel HSN rates)
+- Step-up OTP re-auth for payment account changes (SECURITY §11.8)
+
+### Docs updated
+- **PRO-REQUIREMENTS.md**: F-006B → ✅ Built (was 🔴 Not started). F-302 → ✅ Built (was 🔴 Not started). F-006 wishlist bug → noted as fixed.
+- **PLAN.md**: Updated Month 4b to include F-006B and F-302 as completed. Updated Month 15-16 to show Stage A as built, Stage B as future.
+- **PROGRESS.md**: This entry.
+- **progress.md**: Updated.
+
+**Still pending from the plan:**
+- Phase 0.5: SupportTicket routing (schema only), manager rollup reporting, staff Expo mode
+- Phase 1+: Fashion DNA, Remote VTO auto-personalized collections
+- Onboarding tutorial improvements (10-retailer pilot feedback)
+
 **Next session:** First pending item to pick up.

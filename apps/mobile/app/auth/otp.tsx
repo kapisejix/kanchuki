@@ -40,7 +40,7 @@ export default function OtpScreen() {
       await setItem('retailer_id', result.retailer.id)
 
       // New retailer → onboarding, existing → home
-      router.replace(result.is_new ? '/onboarding' : '/(tabs)')
+      router.replace(result.is_new ? '/onboarding' : '/')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid OTP'
       Alert.alert('Incorrect OTP', message)

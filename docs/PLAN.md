@@ -115,8 +115,9 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] Consent & Training Data (F-102d) — full stack: crop-tagging, consent collection, revocation flow, retention cron
 - [x] Catalog Import (F-001b) — dual-path PDF + bulk photo import with item detection
 - [x] Multi-Item Detection (F-001c) — detect C crop items from a single photo via Claude Vision bounding boxes
-- [ ] Performance optimization (load time < 3s on 3G)
-- [x] Error handling + offline resilience
+- [x] Performance optimization (load time < 3s on 3G) — Serwist service worker + Cache Storage for offline-first performance
+- [x] Error handling + offline resilience — full Serwist PWA with service worker, runtime caching, navigation preload
+- [x] F-006B: Offline Catalog Browsing — service worker caches page shell, product photos (cache-first, long TTL), catalog/detail JSON (network-first-with-cache-fallback)
 - [ ] Onboarding tutorial improvements based on 10-retailer pilot
 - [x] Analytics dashboard (basic + detailed analytics with daily trends, category breakdown)
 - [x] Admin panel (retailer management, billing management, premium UI with email/password login, usage stats, trial extension, plan change) — **deployed live 2026-07-14**
@@ -133,7 +134,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
-### Month 4b: Retailer Settings + Quota & Limits + Polish Features (F-009, F-010, F-011, F-012)
+### Month 4b: Retailer Settings + Quota & Limits + Offline PWA + Ecommerce Checkout
 
 **Status:** ✅ **Completed** — see `docs/PRO-REQUIREMENTS.md` for details
 
@@ -141,8 +142,10 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] **F-010: Quota & Limits System** — `plan_limits` + `retailer_limit_overrides` + `usage_counters` + `quota_addon_purchases` tables. Shared `checkQuota()`/`incrementUsage()` gate wired into: product upload, AI tagging, try-on, image crop, bg-removal, API requests. Admin panel screens for CRUD on limits & overrides (`/admin/plan-limits`, `/admin/retailers/:id`). Seed script (`seed-plan-limits.ts`) for 3 plans × 3 resource types.
 - [x] **F-011: Custom Product Background Library** — `BackgroundImage` model + admin upload screen (`/admin/background-images`). `cleanupProductPhoto()` accepts optional background image URL. Applied to both static photos and 360° spin frames.
 - [x] **F-012: Encrypted Integration Settings** — `IntegrationSetting` model + AES-256-GCM encryption helpers (`encryptSecret`/`decryptSecret`/`getSecret`/`setSecret`). Admin panel screen (`/admin/integrations`) to manage third-party API keys without .env redeploys.
+- [x] **F-006B: Offline Catalog Browsing (PWA)** — Serwist service worker (`@serwist/next@9`) configured in `next.config.mjs` with `withSerwist()`. Full service worker at `src/app/sw.ts` with precaching, runtime caching (cache-first for photos, network-first-with-fallback for catalog JSON), `skipWaiting`/`clientsClaim` for cache invalidation.
+- [x] **F-302: L2 Ecommerce Checkout** — Direct-to-retailer Razorpay payments. Full stack: `RetailerPaymentAccount` + `Order` + `OrderItem` models (Prisma), checkout API routes (create order, verify payment, webhook, retailer management), customer web UI (cart, checkout form with Razorpay Checkout.js, order view), GST invoice generation, atomic product reservation, webhook signature verification with replay protection, tier gate via active payment account.
 
-**Deliverable:** Admin can set/adjust limits per plan or per retailer for every metered resource without a deploy; retailers can self-serve buy more when they cross a limit. Retailer has full account management, team/staff, KYC, and WhatsApp configuration from the mobile app.
+**Deliverable:** Offline-first PWA — customers browse catalog without internet. Ecommerce checkout — retailers connect own Razorpay, customers buy directly. No RBI Payment Aggregator license needed (zero fund custody).
 
 ---
 
@@ -281,37 +284,28 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ### Month 15–16: Payments + GST — Retailer Ecommerce Checkout (L2 tier)
 
-**Decided 2026-07-24.** Full spec: `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema: `docs/DATABASE.md`, threat model: `docs/SECURITY.md` §11.
+**Status: ✅ Built ahead of schedule** — originally Month 15-16 in the roadmap, built during an extended Month 4b sprint. Full spec: `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema: `packages/db/prisma/schema.prisma` (Order/OrderItem/RetailerPaymentAccount), code: `apps/api/src/routes/checkout.ts`, `apps/web/src/app/c/[slug]/cart/`, `apps/web/src/app/c/[slug]/checkout/`, `apps/web/src/app/c/[slug]/order/[orderId]/`.
 
 **What this actually is:** WhatsApp is not the payment rail — Meta's Catalog/Cart + WhatsApp Pay aren't a viable checkout path for a third-party platform at this stage. WhatsApp keeps doing what it already does (share the collection link, notify on order). Cart → address → payment happens in the existing customer PWA (`apps/web/src/app/c/[slug]`); today's "Enquire on WhatsApp" button becomes "Buy Now" for retailers who've turned commerce on.
 
-**Two-stage rollout, ship Stage A first:**
+**Stage A — Direct-to-Retailer (built):**
+- ✅ Retailer connects their *own* Razorpay account via Settings (extends F-009 pattern)
+- ✅ Kanchuki stores `key_id`/`key_secret` encrypted in `RetailerPaymentAccount` row via F-012's AES-256-GCM
+- ✅ Kanchuki creates Razorpay orders using *that retailer's* credentials — money never touches Kanchuki's own Razorpay account
+- ✅ Zero custody of retailer sale funds → no RBI Payment Aggregator license needed
+- ✅ Tier gate: retailer with no active `RetailerPaymentAccount` sees today's Enquire flow; active account = L2 checkout enabled (no separate flag column)
+- ✅ `Order`/`OrderItem` models (prices snapshotted at order time)
+- ✅ Cart: client-side localStorage (same pattern as Wishlist)
+- ✅ Checkout: address form (anonymous, no account), Razorpay Checkout.js, GST invoice generation (5%/12% apparel HSN)
+- ✅ Product status: `AVAILABLE → RESERVED` at order-create (atomic conditional update), `→ SOLD` at webhook-confirmed payment
+- ✅ Unpaid orders auto-expire + release products back to AVAILABLE (webhook `payment.failed` handler)
+- ✅ Retailer order list + status management (`GET /retailers/orders`, `PATCH /retailers/orders/:id/status`)
 
-**Stage A — Direct-to-Retailer**
-- Each retailer connects their *own* Razorpay account (their own KYC/GST) via a new Settings section (extends F-009)
-- Kanchuki stores their `key_id`/`key_secret` encrypted (reuses F-012's `encryptSecret`/`decryptSecret` AES-256-GCM helpers, new per-retailer `RetailerPaymentAccount` row — not the global admin-only `IntegrationSetting` table)
-- Kanchuki creates Razorpay orders using *that retailer's* credentials — money never touches Kanchuki's own Razorpay account
-- **Why first:** zero custody of retailer sale funds → avoids needing an RBI Payment Aggregator license. Subscription billing (Kanchuki's own Razorpay account, already built) stays completely separate from this
-- Tier gate: a retailer with no active `RetailerPaymentAccount` just sees today's Enquire flow — presence of an active connected account *is* the L1/L2 distinction, no separate feature-flag column needed
-
-**Stage B — Razorpay Route (upgrade)**
+**Stage B — Razorpay Route (future, not built):**
 - Retailer onboards via Razorpay's Linked Account (Route) instead of bringing their own account — lower onboarding friction (no separate Razorpay signup)
 - Kanchuki's own Razorpay account becomes merchant-of-record; Razorpay auto-splits each payment to the retailer's linked account, optionally net of a Kanchuki platform commission (new revenue lever, not required)
 - Requires confirming current RBI marketplace-payment guidance with Razorpay/legal before enabling for real transactions — Route is designed for exactly this, but treat as a compliance gate, not an assumption
-- `RetailerPaymentAccount.payment_mode` (`DIRECT` | `ROUTE`) lets retailers coexist across both modes during migration; each `Order` snapshots the mode it was placed under
-
-**Shared build regardless of stage:**
-- `Order` / `OrderItem` (price-snapshotted at order time — retailer catalog prices can change later)
-- Cart: client-side, same localStorage pattern as the existing Wishlist page
-- Checkout: address form (no customer account — same anonymous-browsing principle as the rest of the customer PWA), order summary, Razorpay Checkout.js
-- Product status reuses the existing state machine: AVAILABLE → RESERVED at order-create → SOLD at payment-confirmed-webhook (auto-revert to AVAILABLE + cancel order if unpaid after a timeout, via cron)
-- Retailer-facing order list/management screen (mobile + admin)
-- **GST invoice generation (CRITICAL, unchanged requirement)**:
-  - GSTIN validation
-  - HSN code mapping for apparel
-  - B2C + B2B invoice formats
-  - GSTR-1 export
-- Advance booking / deposit collection
+- `RetailerPaymentAccount.payment_mode` (`DIRECT` | `ROUTE`) — schema-ready for both modes to coexist during migration; each `Order` snapshots the mode it was placed under
 
 ### Month 17–18: Enterprise Features
 

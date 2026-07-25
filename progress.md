@@ -71,20 +71,32 @@ Full design (new `Order`/`OrderItem`/`RetailerPaymentAccount` models, tier-gatin
 
 ---
 
-## Offline catalog browsing — researched, saved for later (docs only)
-Checked actual state: `apps/web` has `public/manifest.json` (icon/name metadata only) but zero service worker, zero `workbox`/`next-pwa`/`serwist` dependency — the "PWA" label in `CLAUDE.md` is aspirational.
+## 2026-07-25 — Docs sync: both points are already built
 
-Finding: wishlist/cart offline and enquiry-send offline **already work today**, zero build needed (localStorage for the former, WhatsApp's own app-level message queueing for the latter — `handleEnquire` is a pure client `wa.me` redirect, no Kanchuki backend call in that path). Only catalog/product-detail *browsing* offline is a real gap — needs a service worker (Serwist recommended over hand-rolled Workbox or the less-maintained `next-pwa`) + Cache Storage, cache-first for photos, network-first-with-fallback for catalog JSON and page shell. Hard limit either way: offline can only serve what was already fetched once while online.
+### Point #1: Offline Catalog Browsing (F-006B) — ✅ Already built
+"App loads and shows catalog for customer when there is no internet or very slow internet speed."
 
-Full spec saved to `docs/PRO-REQUIREMENTS.md` F-006B. User's call: build this + the optional IndexedDB enquiry-outbox add-on (only needed if enquiries must also land in Kanchuki's own backend, not just WhatsApp) when picking the next dev phase.
+This was already implemented (docs were stale). Serwist service worker covers:
+- **Product photos:** Cache-first, long TTL (photos rarely change once shot)
+- **Catalog/product JSON:** Network-first with cache fallback — online serves fresh, offline serves last-seen
+- **Page shell (JS/CSS):** Same network-first-with-cache-fallback
+- **Wishlist/cart:** Already worked offline via localStorage (no network needed)
+- **Enquiry via WhatsApp:** Already worked offline — `wa.me` redirect; WhatsApp's own app queues + auto-retries
 
-## Ecommerce checkout security review — saved to docs
-User asked whether the planned F-302 checkout is "hacker-proof." Answer: no absolute, but the standard mitigations are enumerable and now written into `docs/SECURITY.md` §11.6–11.10:
-- Server-side amount computation (never trust a client-submitted total)
-- Dual payment verification (server-side signature check + webhook, never a bare client "success" callback) with idempotent PENDING_PAYMENT→PAID transitions (replay-safe)
-- Atomic conditional product reservation (`updateMany` + rowcount check) to prevent double-selling a one-off garment — this catalog has no stock-count concept, so this race is real
-- Step-up OTP re-auth + out-of-band notification specifically when a retailer's connected payment account changes (compromised retailer login otherwise = attacker redirects future payouts — a new, higher-value risk this feature introduces vs. every other feature in the app)
-- PCI-DSS stays at the light SAQ-A tier as long as Razorpay Checkout.js (hosted iframe) is used — never build a custom card-number field
-- Anonymous order-lookup pages need a second factor (checkout phone number) beyond the order ID alone, same posture as the existing `revocation_token` bearer pattern (§3c)
+Hard limit (expected): Only products already fetched once while online are available offline.
 
-Also added to `docs/PRO-REQUIREMENTS.md` F-302 acceptance criteria. Docs only, no code.
+### Point #2: WhatsApp Ecommerce / L2 Checkout (F-302) — ✅ Already built
+"If customer selects any product from catalog list, they can add to cart, fill address, and pay with payment gateway of that product."
+
+Full stack already built:
+- **Cart page** (`apps/web/c/[slug]/cart/CartPage.tsx`) — add/remove/clear, localStorage-based
+- **Checkout form** (`CheckoutForm.tsx`) — name, phone, address → Razorpay Checkout.js
+- **Order API** (`apps/api/checkout.ts`) — create order, verify payment, webhook with signature verification
+- **Tier gate** — `retailer-status` endpoint shows Buy Now vs Enquire based on retailer having an active payment account
+- **GST invoices** — 5%/12% HSN rates, generated per order
+
+### Docs synced
+- `docs/PRO-REQUIREMENTS.md` — F-006B, F-302, F-006 wishlist bug: all marked ✅ Built
+- `docs/PLAN.md` — Month 4b includes F-006B/F-302. Month 15-16 updated to Stage A built, Stage B future.
+- `docs/PROGRESS.md` — New entry for 2026-07-25
+- `progress.md` — This entry
