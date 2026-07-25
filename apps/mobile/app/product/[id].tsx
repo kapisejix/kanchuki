@@ -147,6 +147,16 @@ export default function ProductDetailScreen() {
   const panStartRef = useRef({ x: 0, y: 0 })
   const panStartOffsetRef = useRef({ x: 0, y: 0 })
 
+  // ── Fullscreen image viewer ──────────────────────────────────────
+  const [fullscreenOpen, setFullscreenOpen] = useState(false)
+  const fullscreenRef = useRef<ScrollView>(null)
+  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => {
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
+    }
+  }, [])
+
   // Get all displayable images (product photos + variant preview appended)
   const displayPhotos = (() => {
     const base = product?.photos ?? []
@@ -203,6 +213,16 @@ export default function ProductDetailScreen() {
       }
     }
   }, [variantPreviewUrl]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync the fullscreen viewer's scroll position to whichever photo is
+  // currently selected every time it opens.
+  useEffect(() => {
+    if (fullscreenOpen) {
+      requestAnimationFrame(() => {
+        fullscreenRef.current?.scrollTo({ x: selectedPhotoIndex * SCREEN_WIDTH, animated: false })
+      })
+    }
+  }, [fullscreenOpen]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset zoom when carousel navigates to a different photo
   useEffect(() => {
@@ -299,7 +319,11 @@ export default function ProductDetailScreen() {
     if (changed && changed.length === 1) {
       const now = Date.now()
       if (now - lastTapRef.current < 300) {
-        // Double-tap detected
+        // Double-tap detected — cancel the pending single-tap fullscreen open
+        if (singleTapTimeoutRef.current) {
+          clearTimeout(singleTapTimeoutRef.current)
+          singleTapTimeoutRef.current = null
+        }
         lastTapRef.current = 0
         if (currentScaleRef.current > 1) {
           // Zoom out
@@ -325,6 +349,12 @@ export default function ProductDetailScreen() {
         return
       }
       lastTapRef.current = now
+      // Single tap — wait to see if a second tap turns this into a double-tap
+      // zoom before opening the fullscreen viewer.
+      singleTapTimeoutRef.current = setTimeout(() => {
+        singleTapTimeoutRef.current = null
+        if (currentScaleRef.current <= 1) setFullscreenOpen(true)
+      }, 300)
     }
   }, [scaleAnim, panXAnim, panYAnim])
 
@@ -1285,6 +1315,89 @@ export default function ProductDetailScreen() {
             </View>
           )
         })()}
+      </Modal>
+
+      {/* Fullscreen image viewer — tap main photo to open, swipe left/right
+          between photos (no arrow buttons), back arrow to close. */}
+      <Modal
+        visible={fullscreenOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFullscreenOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'black' }}>
+          <TouchableOpacity
+            onPress={() => setFullscreenOpen(false)}
+            hitSlop={8}
+            style={{
+              position: 'absolute',
+              top: insets.top + 12,
+              left: 16,
+              zIndex: 20,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ChevronLeft size={26} color="white" />
+          </TouchableOpacity>
+
+          <ScrollView
+            ref={fullscreenRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            style={{ flex: 1 }}
+            onMomentumScrollEnd={(e) => {
+              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH)
+              const clamped = Math.max(0, Math.min(idx, displayPhotos.length - 1))
+              setSelectedPhotoIndex(clamped)
+            }}
+          >
+            {displayPhotos.map((photo) => (
+              <View
+                key={`fs-${photo.id}`}
+                style={{ width: SCREEN_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Image
+                  source={{ uri: displayUrl(photo) }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="contain"
+                />
+              </View>
+            ))}
+          </ScrollView>
+
+          {displayPhotos.length > 1 && (
+            <View
+              style={{
+                position: 'absolute',
+                bottom: insets.bottom + 20,
+                left: 0,
+                right: 0,
+                flexDirection: 'row',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              {displayPhotos.map((_, idx) => (
+                <View
+                  key={idx}
+                  style={{
+                    width: idx === selectedPhotoIndex ? 16 : 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: idx === selectedPhotoIndex ? 'white' : 'rgba(255,255,255,0.4)',
+                  }}
+                />
+              ))}
+            </View>
+          )}
+        </View>
       </Modal>
     </View>
   )

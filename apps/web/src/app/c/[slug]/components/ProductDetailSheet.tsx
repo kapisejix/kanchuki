@@ -85,6 +85,17 @@ export function ProductDetailSheet({
   const panStartOffsetRef = useRef({ x: 0, y: 0 })
   const currentScaleRef = useRef(1)
 
+  // ── Fullscreen image viewer ─────────────────────────────────────
+  const [fullscreenOpen, setFullscreenOpen] = useState(false)
+  const fsTouchStartX = useRef<number | null>(null)
+  const recentTouchRef = useRef(0)
+  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    return () => {
+      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
+    }
+  }, [])
+
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
 
@@ -131,6 +142,7 @@ export function ProductDetailSheet({
     // arrow taps were being misread as a double-tap, zooming in and hiding
     // the arrows).
     if ((e.target as HTMLElement).closest('button')) return
+    recentTouchRef.current = Date.now()
     if (e.touches.length === 2) {
       // Pinch start — store initial distance and center
       const dx = e.touches[0].clientX - e.touches[1].clientX
@@ -205,7 +217,11 @@ export function ProductDetailSheet({
       if (Math.abs(delta) < 10) {
         const now = Date.now()
         if (now - lastTapRef.current < 300) {
-          // Double-tap detected
+          // Double-tap detected — cancel the pending single-tap fullscreen open
+          if (singleTapTimeoutRef.current) {
+            clearTimeout(singleTapTimeoutRef.current)
+            singleTapTimeoutRef.current = null
+          }
           lastTapRef.current = 0
           if (currentScaleRef.current > 1) {
             // Zoom out
@@ -228,6 +244,12 @@ export function ProductDetailSheet({
           return
         }
         lastTapRef.current = now
+        // Single tap — wait to see if a second tap turns this into a
+        // double-tap zoom before opening the fullscreen viewer.
+        singleTapTimeoutRef.current = setTimeout(() => {
+          singleTapTimeoutRef.current = null
+          if (currentScaleRef.current <= 1 && !isSpinSlide) setFullscreenOpen(true)
+        }, 300)
       }
     }
     // Regular swipe detection
@@ -242,7 +264,7 @@ export function ProductDetailSheet({
       }
     }
     touchStartX.current = null
-  }, [photoIndex, totalSlides, goTo])
+  }, [photoIndex, totalSlides, goTo, isSpinSlide])
 
   // Variant click handler: show variant photo in carousel
   const handleVariantClick = useCallback((color: string, photoUrl: string | null) => {
@@ -310,6 +332,14 @@ export function ProductDetailSheet({
           onTouchStart={isSpinSlide ? undefined : handleTouchStart}
           onTouchMove={isSpinSlide ? undefined : handleTouchMove}
           onTouchEnd={isSpinSlide ? undefined : handleTouchEnd}
+          onClick={(e) => {
+            if (isSpinSlide) return
+            if ((e.target as HTMLElement).closest('button')) return
+            // Touch taps are already handled by the single/double-tap timer
+            // above — only act here for a genuine mouse click.
+            if (Date.now() - recentTouchRef.current < 500) return
+            if (!isZoomed) setFullscreenOpen(true)
+          }}
         >
           {isSpinSlide ? (
             <Product360Viewer
@@ -733,6 +763,67 @@ export function ProductDetailSheet({
               frames={spinFrames}
               alt={product.name ?? product.category ?? 'Product'}
             />
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen image viewer — click/tap main photo to open, swipe
+          left/right between photos (no arrow buttons), back arrow to close. */}
+      {fullscreenOpen && (
+        <div
+          className="fixed inset-0 z-[60] bg-black flex items-center justify-center"
+          onClick={() => setFullscreenOpen(false)}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setFullscreenOpen(false)
+            }}
+            className="absolute top-4 left-4 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center z-10
+                       transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+            aria-label="Close fullscreen image"
+          >
+            <ArrowLeft size={20} className="text-white" />
+          </button>
+          <div
+            className="relative w-full h-full"
+            onClick={(e) => e.stopPropagation()}
+            onTouchStart={(e) => {
+              fsTouchStartX.current = e.touches[0]?.clientX ?? null
+            }}
+            onTouchEnd={(e) => {
+              if (fsTouchStartX.current === null) return
+              const delta = (e.changedTouches[0]?.clientX ?? fsTouchStartX.current) - fsTouchStartX.current
+              const SWIPE_THRESHOLD = 50
+              if (Math.abs(delta) > SWIPE_THRESHOLD) {
+                if (delta < 0 && photoIndex < totalPhotos - 1) goTo(photoIndex + 1)
+                else if (delta > 0 && photoIndex > 0) goTo(photoIndex - 1)
+              }
+              fsTouchStartX.current = null
+            }}
+          >
+            {currentPhoto && (
+              <Image
+                src={currentPhoto}
+                alt={product.name ?? product.category ?? 'Product'}
+                fill
+                sizes="100vw"
+                className="object-contain"
+                priority
+              />
+            )}
+            {totalPhotos > 1 && (
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-1.5">
+                {Array.from({ length: totalPhotos }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`rounded-full transition-all ${
+                      i === photoIndex ? 'w-5 h-2 bg-white' : 'w-2 h-2 bg-white/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
