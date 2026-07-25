@@ -158,7 +158,7 @@ Full design (new `Order`/`OrderItem`/`RetailerPaymentAccount` models, tier-gatin
 
 #### F-006B: Offline Catalog Browsing (PWA) — ✅ Already built
 - Serwist (`@serwist/next@9`, `@serwist/sw@9`) installed and configured
-- `next.config.mjs` wraps config with `withSerwist()` — cache on front-end nav, reload on online
+- `next.config.mjs` wraps config with `withSerwist()` — cache on navigation, reload on online
 - Full service worker at `apps/web/src/app/sw.ts` — precaching, runtime caching, skipWaiting, clientsClaim
 - Product photos: cache-first (long TTL)
 - Catalog/detail JSON: network-first-with-cache-fallback
@@ -180,6 +180,106 @@ Full design (new `Order`/`OrderItem`/`RetailerPaymentAccount` models, tier-gatin
 - **progress.md**: (root) Updated. Now consolidated into this file.
 
 **Still pending from the plan:**
+- Phase 0.5: SupportTicket routing (schema only), manager rollup reporting, staff Expo mode
+- Phase 1+: Fashion DNA, Remote VTO auto-personalized collections
+- Onboarding tutorial improvements (10-retailer pilot feedback)
+
+## 2026-07-25 — F-010 Quota & Limits Audit: System Fully Built & Operational
+
+### Context
+User asked about setting per-plan limits for storage, AI tagging, try-on, etc., with admin tracking and self-serve "buy more" option. I (Buffy) initially assumed this was a new feature request, but upon reading the actual codebase, the entire F-010 system is **already fully implemented and wired into every endpoint**. This entry documents what was found.
+
+### What's Built (F-010 Quota & Limits System)
+
+#### Backend (`apps/api/src/lib/quota.ts`)
+| Function | Purpose |
+|----------|---------|
+| `checkQuota(retailerId, resourceType, amount?)` | Gates any metered action — checks `UsageCounter` against `RetailerLimitOverride` → `PlanLimit`, throws `planLimitExceeded()` (402) if over limit. Fails open (returns) when no `PlanLimit` row exists. |
+| `incrementUsage(retailerId, resourceType, amount?)` | Upserts `UsageCounter` row after successful action. Handles DAY/MONTH/LIFETIME period boundaries. |
+| `effectiveLimit(retailerId, resourceType)` | Checks overrides first, then plan defaults, returns `null` for unlimited. |
+
+#### Wired Into All Metered Endpoints
+| Endpoint | Resource Checked | Usage Incremented |
+|----------|-----------------|-------------------|
+| `POST /products` | `PRODUCT_UPLOAD` | ✅ `incrementUsage()` after create |
+| `POST /products/:id/photos/:photoId/cleanup` | `BG_REMOVAL` | ✅ |
+| `PATCH /products/:id/background` | `BG_REMOVAL` | ✅ |
+| `POST /try-on/initiate` | `TRY_ON` | ✅ |
+| `POST /try-on/remote` | `TRY_ON` | ✅ |
+| `POST /catalog-import/detect-items` | `IMAGE_CROP` + `AI_TAGGING_CALL` | ✅ (batch, by detected count) |
+| `POST /catalog-import/import-pdf` | `IMAGE_CROP` + `AI_TAGGING_CALL` | ✅ (batch, by detected count) |
+| `POST /catalog-import/bulk-create-products` | `PRODUCT_UPLOAD` | ✅ (batch) |
+
+#### Admin API (`apps/api/src/routes/admin.ts`)
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /admin/plan-limits` | List all plan×resource rows |
+| `PUT /admin/plan-limits` | Upsert a limit (with audit log: before/after state) |
+| `GET /admin/retailers/:id/overrides` | List per-retailer overrides |
+| `POST /admin/retailers/:id/overrides` | Create/update override (with audit log) |
+| `DELETE /admin/retailers/:id/overrides/:id` | Remove override (with audit log, falls back to plan default) |
+
+#### Admin UI (Fully Built)
+| Page | What it shows |
+|------|---------------|
+| `/admin/plan-limits` | Editable grid: rows=resource types (PRODUCT_UPLOAD, AI_TAGGING_CALL, etc.), columns=plans (STARTER/GROWTH/PRO). Inline number input + period selector + save button per cell. Blank = unlimited (no row). |
+| `/admin/retailers/:id` | Full retailer detail with Plan Limits card (progress bars: products/customers/staff/credits), Overrides section with add/remove CRUD, subscription management, KYC docs, product list, usage stats |
+
+#### Retailer-Facing
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /retailers/me/usage` | Returns usage vs limit for all 6 resource types, with source (`plan`/`override`/`unlimited`) |
+| Mobile settings | Color-coded progress bars (green/amber/red at 80%/100%) shown under Usage section |
+
+#### Seed Data (`seed-plan-limits.ts`)
+| Resource | STARTER | GROWTH | PRO | Period |
+|----------|---------|--------|-----|--------|
+| PRODUCT_UPLOAD | 500 | 2,000 | -1 (∞) | LIFETIME |
+| AI_TAGGING_CALL | 575 | 2,300 | -1 (∞) | LIFETIME |
+| TRY_ON | 0 | 100 | 500 | MONTHLY |
+
+### NOT Built (what's actually missing)
+1. **QuotaAddonPurchase API** — Self-serve "buy more" checkout flow. Table exists (`quota_addon_purchases` with `razorpay_order_id`/`razorpay_payment_id`), but no API endpoints to create a Razorpay order for addon units, verify payment, or credit the `UsageCounter` after purchase.
+2. **Mobile "Buy More" UI** — When a retailer hits a limit, the 402 error shows "upgrade" messaging but no in-app link to purchase additional units.
+
+### Phase 3 Built — Self-Serve Overage Purchases (2026-07-25)
+
+**Status:** ✅ **Built**
+
+Added the complete "Buy More" flow — retailers can now purchase extra units of metered resources directly from the mobile billing screen.
+
+#### What was built
+
+**Shared constants:**
+- `ADDON_PRICING` in `packages/shared/src/constants/index.ts` — packs for 6 resource types (PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST) with prices in paise
+
+**API endpoints (`apps/api/src/routes/billing.ts`):**
+- `GET /v1/billing/addon-pricing` — returns available addon packs
+- `POST /v1/billing/addon-checkout` — creates Razorpay Payment Link + pending `QuotaAddonPurchase` record, returns `checkout_url` for browser redirection
+- `GET /v1/billing/addon-callback` — handles Razorpay Payment Link redirect after successful payment, verifies HMAC-SHA256 signature, credits `UsageCounter` by decrementing count (negative = credit), redirects to success page
+
+**Mobile (`apps/mobile/app/billing.tsx`):**
+- "Need More?" section showing usage bars per resource (color-coded at 80%/100%)
+- Pack purchase buttons per resource type (up to 2 packs)
+- `Linking.openURL` for Razorpay checkout (same pattern as subscriptions — no WebView/native modules needed)
+- Auto-refreshes usage data after returning from checkout
+
+**Mobile API (`apps/mobile/src/lib/api.ts`):**
+- `billingApi.getAddonPricing()` and `billingApi.addonCheckout()` methods
+
+#### Fixes applied alongside
+- Upgraded all `@fastify/*` packages to Fastify v5-compatible versions (FST_ERR_PLUGIN_VERSION_MISMATCH on `@fastify/cors`, `@fastify/rate-limit`, etc.)
+- Mobile port 8081 freed
+- Serwist `cacheOnFrontEndNav` → `cacheOnNavigation` fix committed
+
+#### Typecheck status
+| Package | Errors |
+|---------|--------|
+| `@kanchuki/shared` | 0 ✅ |
+| `@kanchuki/api` | 0 ✅ |
+| `@kanchuki/mobile` | 0 ✅ |
+
+### Still pending
 - Phase 0.5: SupportTicket routing (schema only), manager rollup reporting, staff Expo mode
 - Phase 1+: Fashion DNA, Remote VTO auto-personalized collections
 - Onboarding tutorial improvements (10-retailer pilot feedback)

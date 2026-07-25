@@ -208,6 +208,37 @@ export const INTEGRATION_KEYS = [
 
 export type IntegrationKeyName = (typeof INTEGRATION_KEYS)[number]['key_name'];
 
+// ─── Addon Pricing (F-010 self-serve overage) ──────────────────────
+// Each pack gives the retailer additional units of a metered resource.
+// Pricing in paise (₹).
+
+export const ADDON_PRICING: Record<
+  string,
+  { label: string; unit_label: string; pack_size: number; price_paise: number }[]
+> = {
+  PRODUCT_UPLOAD: [
+    { label: 'Extra 100 products', unit_label: 'products', pack_size: 100, price_paise: 9900 },
+    { label: 'Extra 500 products', unit_label: 'products', pack_size: 500, price_paise: 39900 },
+  ],
+  AI_TAGGING_CALL: [
+    { label: 'Extra 100 AI tags', unit_label: 'tags', pack_size: 100, price_paise: 14900 },
+    { label: 'Extra 500 AI tags', unit_label: 'tags', pack_size: 500, price_paise: 59900 },
+  ],
+  TRY_ON: [
+    { label: 'Extra 10 try-ons', unit_label: 'try-ons', pack_size: 10, price_paise: 9900 },
+    { label: 'Extra 50 try-ons', unit_label: 'try-ons', pack_size: 50, price_paise: 39900 },
+  ],
+  IMAGE_CROP: [
+    { label: 'Extra 100 crops', unit_label: 'crops', pack_size: 100, price_paise: 9900 },
+  ],
+  BG_REMOVAL: [
+    { label: 'Extra 100 bg removals', unit_label: 'removals', pack_size: 100, price_paise: 9900 },
+  ],
+  API_REQUEST: [
+    { label: 'Extra 1,000 API calls', unit_label: 'calls', pack_size: 1000, price_paise: 9900 },
+  ],
+} as const;
+
 // ─── BullMQ Queue Names ───────────────────────────────────────────
 
 export const QUEUES = {

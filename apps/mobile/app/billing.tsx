@@ -2,8 +2,17 @@ import { useState } from 'react'
 import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator } from 'react-native'
 import { Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, CreditCard, XCircle, ShieldAlert } from 'lucide-react-native'
-import { billingApi } from '../src/lib/api'
+import { Check, CreditCard, XCircle, ShieldAlert, ShoppingCart } from 'lucide-react-native'
+import { billingApi, retailerApi } from '../src/lib/api'
+
+const RESOURCE_LABELS: Record<string, string> = {
+  PRODUCT_UPLOAD: 'Product uploads',
+  AI_TAGGING_CALL: 'AI tagging calls',
+  TRY_ON: 'Try-ons',
+  IMAGE_CROP: 'Image crops',
+  BG_REMOVAL: 'Background removals',
+  API_REQUEST: 'API requests',
+}
 
 const PLAN_FEATURES: Record<string, string[]> = {
   STARTER: ['500 products', 'Unlimited customers', '50 collection links/month'],
@@ -13,6 +22,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 
 export default function BillingScreen() {
   const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly')
+  const [buyingResource, setBuyingResource] = useState<string | null>(null)
   const queryClient = useQueryClient()
 
   const { data: plansData, isLoading } = useQuery({
@@ -22,6 +32,16 @@ export default function BillingScreen() {
   const { data: subData } = useQuery({
     queryKey: ['billing', 'subscription'],
     queryFn: () => billingApi.getSubscription(),
+  })
+
+  const { data: usageData } = useQuery({
+    queryKey: ['retailer', 'usage'],
+    queryFn: () => retailerApi.getUsage(),
+  })
+
+  const { data: addonPricingData } = useQuery({
+    queryKey: ['billing', 'addon-pricing'],
+    queryFn: () => billingApi.getAddonPricing(),
   })
 
   const subscribe = useMutation({
@@ -42,6 +62,31 @@ export default function BillingScreen() {
     },
     onError: (err: Error) => {
       Alert.alert('Error', err.message || 'Could not cancel. Please contact support.')
+    },
+  })
+
+  const addonCheckout = useMutation({
+    mutationFn: ({
+      resourceType,
+      packIndex,
+    }: {
+      resourceType: string
+      packIndex: number
+    }) => billingApi.addonCheckout(resourceType, packIndex),
+    onSuccess: async (res) => {
+      setBuyingResource(null)
+      // Open Razorpay Payment Link in browser
+      if (res.data.checkout_url) {
+        await Linking.openURL(res.data.checkout_url)
+        // After returning from browser, refresh usage data
+        setTimeout(async () => {
+          await queryClient.invalidateQueries({ queryKey: ['retailer', 'usage'] })
+        }, 2000)
+      }
+    },
+    onError: (err: Error) => {
+      setBuyingResource(null)
+      Alert.alert('Purchase failed', err.message || 'Could not start addon checkout')
     },
   })
 
@@ -212,6 +257,80 @@ export default function BillingScreen() {
             </Text>
           </TouchableOpacity>
         )}
+
+        {/* ─── Buy More Addons ───────────────────────────────── */}
+        <View className="mt-6 mb-4">
+          <View className="flex-row items-center gap-2 mb-3">
+            <ShoppingCart size={18} color="#0891B2" />
+            <Text className="text-base font-bold text-gray-900">Need More?</Text>
+          </View>
+          <Text className="text-xs text-gray-500 mb-3">
+            Purchase extra credits if you&apos;ve hit your plan limits.
+          </Text>
+
+          {usageData?.data?.map((resource: {
+            resource_type: string
+            limit: number
+            used: number
+            period: string
+            source: string
+          }) => {
+            const limit = resource.limit
+            const used = resource.used
+            const pct = limit > 0 ? Math.round((used / limit) * 100) : 0
+            const isNearLimit = pct >= 80
+            const isAtLimit = pct >= 100
+
+            if (resource.source === 'unlimited' || limit === -1) return null
+
+            const packs = addonPricingData?.data?.[resource.resource_type]
+            if (!packs || packs.length === 0) return null
+
+            return (
+              <View key={resource.resource_type} className="bg-white rounded-xl p-4 mb-2 border border-gray-100">
+                <View className="flex-row justify-between items-center mb-2">
+                  <Text className="text-sm font-medium text-gray-700">
+                    {RESOURCE_LABELS[resource.resource_type] ?? resource.resource_type}
+                  </Text>
+                  <Text className={`text-xs font-medium ${isAtLimit ? 'text-red-500' : isNearLimit ? 'text-amber-500' : 'text-gray-400'}`}>
+                    {used}/{limit === 999999 ? '∞' : limit}
+                  </Text>
+                </View>
+                {/* Progress bar */}
+                <View className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
+                  <View
+                    className={`h-full rounded-full ${isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-400' : 'bg-cyan-400'}`}
+                    style={{ width: `${Math.min(pct, 100)}%` }}
+                  />
+                </View>
+                {/* Pack buttons */}
+                <View className="flex-row gap-2">
+                  {packs.slice(0, 2).map((pack, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      onPress={() => {
+                        setBuyingResource(resource.resource_type)
+                        addonCheckout.mutate({
+                          resourceType: resource.resource_type,
+                          packIndex: idx,
+                        })
+                      }}
+                      disabled={addonCheckout.isPending && buyingResource === resource.resource_type}
+                      className="flex-1 py-2 px-3 rounded-lg bg-cyan-50 border border-cyan-200 items-center"
+                    >
+                      <Text className="text-xs font-semibold text-cyan-700">
+                        {pack.label}
+                      </Text>
+                      <Text className="text-xs font-bold text-cyan-600 mt-0.5">
+                        ₹{(pack.price_paise / 100).toLocaleString('en-IN')}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )
+          })}
+        </View>
 
         <Text className="text-xs text-gray-400 text-center mt-4 mb-10">
           Secure payments via Razorpay · UPI, Cards & Netbanking · Prices include GST

@@ -765,6 +765,30 @@ export const billingApi = {
     request<{ data: { plan_status: string; cancelled_at: string } }>('/v1/billing/cancel', {
       method: 'POST',
     }),
+
+  /** F-010: Get addon pricing packs for all resource types */
+  getAddonPricing: () =>
+    request<{
+      data: Record<
+        string,
+        { label: string; unit_label: string; pack_size: number; price_paise: number }[]
+      >
+    }>('/v1/billing/addon-pricing', { getCacheTtlMs: 300_000 }),
+
+  /** F-010: Create a Razorpay Payment Link for an addon purchase */
+  addonCheckout: (resourceType: string, packIndex: number) =>
+    request<{
+      data: {
+        checkout_url: string
+        resource_type: string
+        quantity: number
+        label: string
+        amount_paise: number
+      }
+    }>('/v1/billing/addon-checkout', {
+      method: 'POST',
+      body: JSON.stringify({ resource_type: resourceType, pack_index: packIndex }),
+    }),
 }
 
 // ─── Catalog Import (F-001b / F-001c) ────────────────────────────

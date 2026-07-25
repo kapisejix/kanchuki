@@ -1,0 +1,18 @@
+feat: F-010 Phase 3 self-serve addon purchases + server fixes
+
+Phase 3 — Self-serve overage purchases (QuotaAddonPurchase):
+- ADDON_PRICING in shared constants (6 resource types × 1-2 packs)
+- GET /v1/billing/addon-pricing — returns available addon packs
+- POST /v1/billing/addon-checkout — creates Razorpay Payment Link + pending QuotaAddonPurchase, returns checkout_url for browser checkout
+- GET /v1/billing/addon-callback — handles Payment Link redirect, HMAC-SHA256 signature verification, credits UsageCounter via decrement (negative = headroom), redirects to success page
+- Mobile "Buy More" UI in billing screen — usage bars per resource (color-coded), pack purchase buttons, Linking.openURL checkout (same pattern as subscriptions, no native modules)
+- 16 unit tests covering addon-checkout and addon-callback (all passing)
+- Dead /addon-verify endpoint removed
+
+Fix: @fastify/* package upgrades for Fastify v5 compatibility:
+- @fastify/cors ^9.0.1 → ^10.0.0
+- @fastify/helmet ^12.0.0 → ^12.0.1
+- @fastify/multipart ^8.3.0 → ^9.0.0
+- @fastify/rate-limit ^9.1.0 → ^10.0.0
+- @fastify/cookie ^11.1.2 → ^10.0.0
+- @fastify/swagger ^8.14.0 → ^9.0.0
