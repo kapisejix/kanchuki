@@ -8,7 +8,7 @@ const withSerwist = withSerwistInit({
   swSrc: 'src/app/sw.ts',
   swDest: 'public/sw.js',
   // Cache product photos aggressively (photos rarely change once shot)
-  cacheOnFrontEndNav: true,
+  cacheOnNavigation: true,
   reloadOnOnline: true,
 })
 

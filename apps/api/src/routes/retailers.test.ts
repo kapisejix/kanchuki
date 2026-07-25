@@ -9,6 +9,11 @@ const { mockRetailerFindUnique, mockRetailerUpdate, mockCollectionFindFirst } = 
   mockCollectionFindFirst: vi.fn(),
 }));
 
+const { mockGetUploadPresignedUrl, mockPublicUrl } = vi.hoisted(() => ({
+  mockGetUploadPresignedUrl: vi.fn(),
+  mockPublicUrl: vi.fn(),
+}));
+
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     retailer: { findUnique: mockRetailerFindUnique, update: mockRetailerUpdate },
@@ -18,6 +23,11 @@ vi.mock('@kanchuki/db', () => ({
     storeSection: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn() },
   },
   Prisma: {},
+}));
+
+vi.mock('@kanchuki/ai', () => ({
+  getUploadPresignedUrl: mockGetUploadPresignedUrl,
+  publicUrl: mockPublicUrl,
 }));
 
 const RETAILER_ID = 'retailer_1';
@@ -114,6 +124,147 @@ describe('PATCH /retailers/me/storefront', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockCollectionFindFirst).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /retailers/me/banner-upload-url', () => {
+  beforeEach(() => {
+    mockGetUploadPresignedUrl.mockReset();
+    mockPublicUrl.mockReset();
+  });
+
+  it('returns a presigned upload URL for a valid JPEG banner', async () => {
+    mockGetUploadPresignedUrl.mockResolvedValue('https://r2.example.com/upload/test.jpg');
+    mockPublicUrl.mockReturnValue('https://cdn.example.com/retailers/r1/banner/test.jpg');
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: {
+        filename: 'summer-collection.jpg',
+        content_type: 'image/jpeg',
+        size_bytes: 2_500_000,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json().data;
+    expect(body).toHaveProperty('upload_url', 'https://r2.example.com/upload/test.jpg');
+    expect(body).toHaveProperty('r2_key');
+    expect(body.r2_key).toContain('banner/');
+    expect(body).toHaveProperty('public_url', 'https://cdn.example.com/retailers/r1/banner/test.jpg');
+    expect(body).toHaveProperty('expires_in', 300);
+
+    expect(mockGetUploadPresignedUrl).toHaveBeenCalledOnce();
+    expect(mockPublicUrl).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it('accepts PNG and WebP content types', async () => {
+    mockGetUploadPresignedUrl.mockResolvedValue('https://r2.example.com/upload/banner.png');
+    mockPublicUrl.mockReturnValue('https://cdn.example.com/banner.png');
+
+    const app = await buildApp();
+    for (const ct of ['image/png', 'image/webp'] as const) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/v1/retailers/me/banner-upload-url',
+        payload: { filename: 'banner', content_type: ct, size_bytes: 1_000_000 },
+      });
+      expect(res.statusCode).toBe(200);
+
+      const ext = ct === 'image/png' ? 'png' : 'webp';
+      expect(res.json().data.r2_key).toMatch(new RegExp(`\.${ext}$`));
+    }
+    expect(mockGetUploadPresignedUrl).toHaveBeenCalledTimes(2);
+    await app.close();
+  });
+
+  it('rejects an unsupported content type', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: 'banner.gif', content_type: 'image/gif', size_bytes: 1_000 },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(mockGetUploadPresignedUrl).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an empty filename', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: '', content_type: 'image/jpeg', size_bytes: 1_000 },
+    });
+
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('rejects a zero-byte banner', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', size_bytes: 0 },
+    });
+
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('rejects a banner larger than 10MB', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', size_bytes: 11_000_001 },
+    });
+
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('returns a user-friendly error when R2 storage is not configured', async () => {
+    mockGetUploadPresignedUrl.mockRejectedValue(new Error('R2 not configured'));
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: 'banner.jpg', content_type: 'image/jpeg', size_bytes: 1_000_000 },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.message).toContain('storage is not configured');
+    await app.close();
+  });
+
+  it('generates a unique R2 key each time (random ID via createId)', async () => {
+    mockGetUploadPresignedUrl.mockResolvedValue('https://r2.example.com/upload/banner');
+    mockPublicUrl.mockReturnValue('https://cdn.example.com/banner');
+
+    const app = await buildApp();
+    const res1 = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: 'a.jpg', content_type: 'image/jpeg', size_bytes: 500_000 },
+    });
+    const res2 = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/banner-upload-url',
+      payload: { filename: 'b.jpg', content_type: 'image/jpeg', size_bytes: 500_000 },
+    });
+
+    expect(res1.statusCode).toBe(200);
+    expect(res2.statusCode).toBe(200);
+    expect(res1.json().data.r2_key).not.toBe(res2.json().data.r2_key);
     await app.close();
   });
 });
