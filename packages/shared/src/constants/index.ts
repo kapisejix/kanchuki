@@ -177,6 +177,8 @@ export const R2_PATHS = {
   backgroundImage: (filename: string) => `admin/background-images/${filename}`,
   categoryImage: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/categories/${filename}`,
+  retailerBanner: (retailerId: string, filename: string) =>
+    `retailers/${retailerId}/banner/${filename}`,
 } as const;
 
 // ─── Integration Settings (F-012) ──────────────────────────────────

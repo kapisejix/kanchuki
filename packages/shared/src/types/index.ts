@@ -181,6 +181,8 @@ export interface PublicCollection {
     shop_name: string
     city: string
     phone: string  // for WhatsApp enquiry
+    logo_url: string | null
+    banner_url: string | null
   }
   title: string
   description: string | null

@@ -9,6 +9,8 @@ export interface RetailerProfile {
   address_line1: string | null
   address_line2: string | null
   categories: string[]
+  logo_url: string | null
+  banner_url: string | null
   storefront_slug: string | null
 }
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import type { RetailerProfile } from '../page'
@@ -83,7 +84,30 @@ export function ContactGate({ slug, profile }: Props) {
         onSubmit={(e) => void handleSubmit(e)}
         className="bg-white rounded-3xl border border-gray-100 p-6 max-w-sm w-full"
       >
-        <h1 className="text-lg font-bold text-gray-900 mb-1">{profile.shop_name}</h1>
+        {/* Store Logo + Name */}
+        <div className="flex items-center gap-3 mb-4">
+          {profile.logo_url ? (
+            <Image
+              src={profile.logo_url}
+              alt={profile.shop_name}
+              width={48}
+              height={48}
+              className="w-12 h-12 rounded-2xl object-cover border border-gray-100"
+            />
+          ) : (
+            <div className="w-12 h-12 rounded-2xl bg-cyan-100 flex items-center justify-center">
+              <span className="text-xl font-bold text-cyan-700">
+                {profile.shop_name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          )}
+          <div>
+            <h1 className="text-lg font-bold text-gray-900">{profile.shop_name}</h1>
+            {profile.city && (
+              <p className="text-xs text-gray-500">{profile.city}</p>
+            )}
+          </div>
+        </div>
         <p className="text-xs text-gray-500 mb-5">
           Share your details to view this store&apos;s catalog.
         </p>

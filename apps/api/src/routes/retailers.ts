@@ -23,6 +23,8 @@ const UpdateRetailerSchema = z.object({
   pincode: z.string().max(10).optional(),
   logo_url: z.string().max(500).optional(),
   logo_r2_key: z.string().max(500).optional(),
+  banner_url: z.string().max(500).optional(),
+  banner_r2_key: z.string().max(500).optional(),
   gstin: z
     .string()
     .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format')
@@ -85,6 +87,35 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     });
 
     return { data: updated };
+  });
+
+  // ─── POST /retailers/me/banner-upload-url ────────────────────────
+  // Store banner image shown as a hero section on customer-facing pages.
+  server.post('/me/banner-upload-url', async (request, reply) => {
+    const body = z
+      .object({
+        filename: z.string().min(1).max(255),
+        content_type: z.enum(['image/jpeg', 'image/png', 'image/webp']),
+        size_bytes: z.number().int().min(1).max(10_000_000), // 10MB — banners are large
+      })
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    const { content_type } = body.data;
+    const ext =
+      content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
+    const r2Key = R2_PATHS.retailerBanner(request.retailerId, `${createId()}.${ext}`);
+
+    let uploadUrl: string;
+    try {
+      uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
+    } catch {
+      throw validationError('Banner storage is not configured. Please contact support.');
+    }
+
+    return reply.status(200).send({
+      data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },
+    });
   });
 
   // ─── POST /retailers/me/logo-upload-url ─────────────────────────

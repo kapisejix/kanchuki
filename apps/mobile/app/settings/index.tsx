@@ -40,6 +40,9 @@ function ProfileEditModal({
   const [logoUrl, setLogoUrl] = useState<string | null>(null)
   const [logoR2Key, setLogoR2Key] = useState<string | null>(null)
   const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [bannerUrl, setBannerUrl] = useState<string | null>(null)
+  const [bannerR2Key, setBannerR2Key] = useState<string | null>(null)
+  const [uploadingBanner, setUploadingBanner] = useState(false)
 
   useEffect(() => {
     if (retailer) {
@@ -51,6 +54,8 @@ function ProfileEditModal({
       setGstin(retailer.gstin ?? '')
       setLogoUrl(retailer.logo_url ?? null)
       setLogoR2Key(retailer.logo_r2_key ?? null)
+      setBannerUrl(retailer.banner_url ?? null)
+      setBannerR2Key(retailer.banner_r2_key ?? null)
     }
   }, [retailer])
 
@@ -81,6 +86,31 @@ function ProfileEditModal({
     }
   }
 
+  const handlePickBanner = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+      allowsEditing: true,
+      aspect: [16, 5],
+    })
+    if (result.canceled || !result.assets[0]) return
+
+    setUploadingBanner(true)
+    try {
+      const uri = result.assets[0].uri
+      const blob = await readLocalImage(uri)
+      const uploadResult = await retailerApi.getBannerUploadUrl('image/jpeg', blob.size)
+      const info = uploadResult.data
+      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      setBannerUrl(info.public_url)
+      setBannerR2Key(info.r2_key)
+    } catch (err) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upload banner')
+    } finally {
+      setUploadingBanner(false)
+    }
+  }
+
   const handleSave = async () => {
     if (!canSave) return
     setSaving(true)
@@ -92,7 +122,9 @@ function ProfileEditModal({
         state: stateVal.trim() || undefined,
         address_line1: addressLine1.trim(),
         gstin: gstin.trim() || undefined,
-        ...(logoUrl ? { logo_url: logoUrl, logo_r2_key: logoR2Key } : {}),
+        ...(logoUrl ? { logo_url: logoUrl, logo_r2_key: logoR2Key } : { logo_url: null, logo_r2_key: null }),
+        banner_url: bannerUrl ?? null,
+        banner_r2_key: bannerR2Key ?? null,
       })
       onSaved()
       onClose()
@@ -136,6 +168,37 @@ function ProfileEditModal({
               <Text className="text-[10px] text-gray-400 mt-1.5">
                 {logoUrl ? 'Tap to change logo' : 'Add store logo (optional)'}
               </Text>
+            </View>
+
+            {/* Banner — optional hero image */}
+            <View className="items-center mb-2">
+              <TouchableOpacity
+                onPress={() => void handlePickBanner()}
+                disabled={uploadingBanner}
+                className="w-full h-28 rounded-2xl bg-gray-50 border border-gray-200 items-center justify-center overflow-hidden"
+              >
+                {uploadingBanner ? (
+                  <ActivityIndicator color="#0891B2" />
+                ) : bannerUrl ? (
+                  <Image source={{ uri: bannerUrl }} style={{ width: '100%', height: 112 }} resizeMode="cover" />
+                ) : (
+                  <View className="items-center">
+                    <ImagePlus size={22} color="#9CA3AF" />
+                    <Text className="text-[10px] text-gray-400 mt-1">Tap to add store banner</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+              {bannerUrl && (
+                <TouchableOpacity
+                  onPress={() => {
+                    setBannerUrl(null)
+                    setBannerR2Key(null)
+                  }}
+                  className="mt-1"
+                >
+                  <Text className="text-[10px] text-red-500">Remove banner</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             <Field label="Shop Name *" value={shopName} onChange={setShopName} />

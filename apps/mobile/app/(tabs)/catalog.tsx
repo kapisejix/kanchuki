@@ -7,13 +7,18 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Image,
+  Dimensions,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
-import { productApi } from '../../src/lib/api'
+import { productApi, retailerApi } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
+
+const SCREEN_WIDTH = Dimensions.get('window').width
+const BANNER_HEIGHT = SCREEN_WIDTH * 0.35 // 16:5.6 aspect ratio
 
 type Product = {
   id: string
@@ -140,6 +145,15 @@ const CatalogCard = memo(function CatalogCard({
 // ── Catalog Screen ─────────────────────────────────────────────────
 
 export default function CatalogScreen() {
+  // Fetch retailer profile for banner
+  const { data: retailerData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+    staleTime: 60_000,
+  })
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
+  const bannerUrl = retailerProfile?.banner_url as string | undefined
+
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Product[] | null>(null)
@@ -312,6 +326,44 @@ export default function CatalogScreen() {
 
   return (
     <View className="flex-1 bg-cyan-50">
+      {/* Hero Banner with text overlay */}
+      {bannerUrl ? (
+        <View style={{ width: SCREEN_WIDTH, height: BANNER_HEIGHT }} className="relative">
+          <Image
+            source={{ uri: bannerUrl }}
+            style={{ width: SCREEN_WIDTH, height: BANNER_HEIGHT }}
+            resizeMode="cover"
+          />
+          {/* Dark gradient overlay at bottom for text readability */}
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: BANNER_HEIGHT * 0.5,
+              backgroundColor: 'rgba(0,0,0,0.45)',
+            }}
+          />
+          {/* Shop name overlay */}
+          <View
+            style={{
+              position: 'absolute',
+              bottom: 14,
+              left: 16,
+              right: 16,
+            }}
+          >
+            <Text className="text-white/80 text-xs font-semibold uppercase tracking-wider" numberOfLines={1}>
+              {retailerProfile?.shop_name ?? 'My Store'}
+            </Text>
+            <Text className="text-white text-lg font-bold leading-tight" numberOfLines={1}>
+              Product Catalog
+            </Text>
+          </View>
+        </View>
+      ) : null}
+
       {/* Search Bar */}
       <View className="bg-white px-4 py-3 border-b border-gray-100">
         <View className="flex-row items-center gap-2">

@@ -155,7 +155,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
           title: true,
           description: true,
           expires_at: true,
-          retailer: { select: { shop_name: true, city: true, phone: true } },
+          retailer: { select: { shop_name: true, city: true, phone: true, logo_url: true, banner_url: true } },
         },
       });
 
@@ -484,7 +484,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
 
     const retailer = await prisma.retailer.findFirst({
       where: { public_slug: slug, deleted_at: null },
-      select: { id: true, shop_name: true, city: true, phone: true },
+      select: { id: true, shop_name: true, city: true, phone: true, logo_url: true, banner_url: true },
     });
     if (!retailer) throw notFound('Retailer');
 
@@ -525,7 +525,13 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
 
     return {
       data: {
-        retailer: { shop_name: retailer.shop_name, city: retailer.city, phone: retailer.phone },
+        retailer: {
+          shop_name: retailer.shop_name,
+          city: retailer.city,
+          phone: retailer.phone,
+          logo_url: retailer.logo_url ?? null,
+          banner_url: retailer.banner_url ?? null,
+        },
         title: category.name,
         description: null,
         expires_at: null,
@@ -553,6 +559,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
         address_line1: true,
         address_line2: true,
         categories: true,
+        logo_url: true,
+        banner_url: true,
         storefront_collection_id: true,
       },
     });
@@ -573,6 +581,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
         address_line1: retailer.address_line1,
         address_line2: retailer.address_line2,
         categories: retailer.categories,
+        logo_url: retailer.logo_url ?? null,
+        banner_url: retailer.banner_url ?? null,
         storefront_slug: storefront?.slug ?? null,
       },
     };

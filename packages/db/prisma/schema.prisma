@@ -146,6 +146,8 @@ model Retailer {
   // Store branding — optional
   logo_url    String?
   logo_r2_key String?
+  banner_url    String?
+  banner_r2_key String?
 
   // KYC verification (F-009) — GST certificate + Aadhar front/back for identity proof
   kyc_status              KycStatus @default(NOT_SUBMITTED)

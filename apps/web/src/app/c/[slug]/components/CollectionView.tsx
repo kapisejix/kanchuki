@@ -211,17 +211,44 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
     }
   }, [collection.title]);
 
+  const bannerUrl = collection.retailer.banner_url;
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
+      {/* ── Hero Banner ── */}
+      {bannerUrl && (
+        <div className="relative w-full h-48 md:h-56 overflow-hidden bg-gray-100">
+          <Image
+            src={bannerUrl}
+            alt={`${collection.retailer.shop_name} banner`}
+            fill
+            className="object-cover"
+            priority
+            sizes="100vw"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+          <div className="absolute bottom-3 left-4 right-4">
+            <p className="text-white text-xs font-semibold uppercase tracking-wider drop-shadow">
+              {collection.retailer.shop_name} · {collection.retailer.city}
+            </p>
+            <h1 className="text-white text-xl font-bold drop-shadow leading-tight">
+              {collection.title}
+            </h1>
+          </div>
+        </div>
+      )}
+
       {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
+      <header className={`sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 ${bannerUrl ? '' : ''}`}>
         <div className="max-w-md mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] text-cyan-700/80 font-semibold uppercase tracking-wider truncate">
-                {collection.retailer.shop_name} · {collection.retailer.city}
-              </p>
-              <h1 className="font-display text-lg font-bold text-gray-900 leading-tight tracking-tight truncate">
+              {!bannerUrl && (
+                <p className="text-[11px] text-cyan-700/80 font-semibold uppercase tracking-wider truncate">
+                  {collection.retailer.shop_name} · {collection.retailer.city}
+                </p>
+              )}
+              <h1 className={`font-bold leading-tight tracking-tight truncate ${bannerUrl ? 'text-sm text-gray-700' : 'font-display text-lg text-gray-900'}`}>
                 {collection.title}
               </h1>
             </div>
