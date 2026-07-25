@@ -1,3 +1,5 @@
+import { randomBytes } from 'node:crypto';
+import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
@@ -99,6 +101,7 @@ const ADMIN_KEY = 'test-admin-key-12345';
 async function buildApp() {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
+  await app.register(cookie, { secret: 'test-cookie-secret' });
   await app.register(adminRoutes, { prefix: '/v1/admin' });
   await app.ready();
   return app;
@@ -108,8 +111,18 @@ function authedHeaders() {
   return { 'x-admin-key': ADMIN_KEY };
 }
 
-function jsonHeaders() {
-  return { ...authedHeaders(), 'content-type': 'application/json' };
+/** Generate CSRF headers for mutating admin requests (POST/PUT/PATCH/DELETE).
+ *  Sets both the csrf-token cookie and x-csrf-token header to the same random
+ *  value so the server's CSRF check (cookie === header) passes.
+ */
+function csrfHeaders() {
+  const token = randomBytes(16).toString('hex');
+  return {
+    ...authedHeaders(),
+    'x-csrf-token': token,
+    cookie: `csrf-token=${token}`,
+    'content-type': 'application/json',
+  };
 }
 
 const fakeRetailer = {
@@ -329,7 +342,7 @@ describe('DELETE /admin/retailers', () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/v1/admin/retailers',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { ids: ['retailer_1', 'retailer_2'] },
     });
 
@@ -349,7 +362,7 @@ describe('DELETE /admin/retailers', () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/v1/admin/retailers',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { ids: [] },
     });
 
@@ -494,7 +507,7 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/extend-trial',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { days: 14 },
     });
 
@@ -516,7 +529,7 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/extend-trial',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { days: 7 },
     });
 
@@ -536,7 +549,7 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/nonexistent/extend-trial',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { days: 14 },
     });
 
@@ -551,7 +564,7 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
     const res1 = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/extend-trial',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { days: 0 },
     });
     expect(res1.statusCode).toBe(422);
@@ -559,7 +572,7 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
     const res2 = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/extend-trial',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { days: 100 },
     });
     expect(res2.statusCode).toBe(422);
@@ -572,7 +585,7 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/extend-trial',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: {},
     });
 
@@ -592,7 +605,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/change-plan',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { plan: 'STARTER', status: 'ACTIVE' },
     });
 
@@ -619,7 +632,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/change-plan',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { plan: 'PRO', status: 'ACTIVE' },
     });
 
@@ -643,7 +656,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/change-plan',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { plan: 'GROWTH', status: 'TRIAL', extend_trial_days: 30 },
     });
 
@@ -665,7 +678,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/nonexistent/change-plan',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { plan: 'STARTER', status: 'ACTIVE' },
     });
 
@@ -678,7 +691,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/change-plan',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { plan: 'ULTIMATE', status: 'ACTIVE' },
     });
 
@@ -691,7 +704,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/retailers/retailer_1/change-plan',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       body: { plan: 'GROWTH', status: 'UNKNOWN' },
     });
 
@@ -784,7 +797,7 @@ describe('Admin integrations', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/integrations',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       payload: { key_name: 'RAZORPAY_KEY_SECRET', value: 'rzp_live_supersecretvalue' },
     });
 
@@ -809,7 +822,7 @@ describe('Admin integrations', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/integrations',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       payload: { key_name: 'NOT_A_REAL_KEY', value: 'whatever' },
     });
     expect(res.statusCode).toBe(422);
@@ -823,7 +836,7 @@ describe('Admin integrations', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/admin/integrations',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       payload: { key_name: 'ANTHROPIC_API_KEY', value: 'sk-ant-new' },
     });
     expect(res.statusCode).toBe(422);
@@ -841,7 +854,7 @@ describe('Admin integrations', () => {
     const res = await app.inject({
       method: 'PATCH',
       url: '/v1/admin/integrations/int_1',
-      headers: jsonHeaders(),
+      headers: csrfHeaders(),
       payload: { value: 'sk-new-rotated-key' },
     });
 
@@ -863,7 +876,8 @@ describe('Admin integrations', () => {
     const res = await app.inject({
       method: 'DELETE',
       url: '/v1/admin/integrations/int_1',
-      headers: authedHeaders(),
+      headers: csrfHeaders(),
+      body: {},
     });
 
     expect(res.statusCode).toBe(204);
