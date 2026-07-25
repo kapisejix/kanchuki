@@ -542,7 +542,7 @@ export default function TeamMembersPage() {
                     >
                       <Users size={40} className="mx-auto mb-3 text-gray-300" />
                       <p className="text-sm font-medium">No team members found</p>
-                      <p className="text-xs mt-1 text-gray-400">Click "Add Member" to create the first one</p>
+                      <p className="text-xs mt-1 text-gray-400">Click {'"'}Add Member{'"'} to create the first one</p>
                     </motion.div>
                   </td>
                 </tr>

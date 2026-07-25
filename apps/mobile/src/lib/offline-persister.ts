@@ -81,7 +81,7 @@ function ensureCacheDir(): void {
 }
 
 /** Get a File handle for the cache file (does NOT create the file). */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function cacheFile(): any {
   const FileClass = getFileClass()
   ensureCacheDir()
@@ -96,7 +96,7 @@ function cacheFile(): any {
  * Filters to only queries that still have gcTime remaining.
  * Errors are non-fatal — silently logged.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function persistQueryCache(queryClient: any): void {
   try {
     const allQueries = queryClient.getQueryCache().getAll()
@@ -160,7 +160,7 @@ export function persistQueryCache(queryClient: any): void {
  * Called once on app start before screens render.
  * Returns true if data was restored, false if no cache was found.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export async function restoreQueryCache(queryClient: any): Promise<boolean> {
   try {
     const file = cacheFile()

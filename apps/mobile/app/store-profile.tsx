@@ -86,7 +86,7 @@ export default function StoreProfileScreen() {
         <View className="bg-white rounded-3xl p-6 border border-gray-100 items-center">
           {qrError ? (
             <View className="w-56 h-56 items-center justify-center px-4">
-              <Text className="text-sm text-gray-500 text-center mb-3">Couldn't load QR code</Text>
+              <Text className="text-sm text-gray-500 text-center mb-3">{"Couldn't load QR code"}</Text>
               <TouchableOpacity
                 onPress={() => void refetchQr()}
                 className="bg-cyan-600 rounded-full px-4 py-2"

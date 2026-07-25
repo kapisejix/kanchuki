@@ -97,7 +97,7 @@ export default function SpinVideoScreen() {
         </View>
         <Text className="text-white text-center text-base mb-1">Spin video captured</Text>
         <Text className="text-white/50 text-center text-sm mb-8">
-          We'll extract 24 frames for the 360° viewer
+          {"We'll extract 24 frames for the 360° viewer"}
         </Text>
         <TouchableOpacity
           onPress={() => void handleUpload()}

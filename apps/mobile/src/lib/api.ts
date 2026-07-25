@@ -271,13 +271,13 @@ export const retailerApi = {
   /** F-010: Get usage vs limits for all metered resources */
   getUsage: () =>
     request<{
-      data: Array<{
+      data: {
         resource_type: string
         limit: number
         used: number
         period: string
         source: 'plan' | 'override' | 'unlimited'
-      }>
+      }[]
     }>('/v1/retailers/me/usage', { getCacheTtlMs: 30_000 }),
 }
 
@@ -638,7 +638,7 @@ export const customerApi = {
     if (params?.price_max) qs.set('price_max', String(params.price_max))
     return request<{
       data: {
-        products: Array<Record<string, unknown>>
+        products: Record<string, unknown>[]
         dna_used: boolean
         dna_confidence: number
       }
@@ -695,7 +695,7 @@ export type SizeChartRow = {
 
 export const sizeChartApi = {
   list: () =>
-    request<{ data: Array<{ id: string; category: SizeChartCategory; rows: SizeChartRow[] }> }>(
+    request<{ data: { id: string; category: SizeChartCategory; rows: SizeChartRow[] }[] }>(
       '/v1/size-charts',
       { getCacheTtlMs: 30_000 },
     ),
@@ -826,7 +826,7 @@ export const catalogImportApi = {
         source_type: 'pdf'
         total_items: number
         total_pages: number
-        page_dimensions?: Array<{ width: number; height: number }>
+        page_dimensions?: { width: number; height: number }[]
         items: CatalogDetectedItem[]
         render_required?: boolean
         max_page_images?: number
@@ -844,7 +844,7 @@ export const catalogImportApi = {
    * Save reviewed items as real products in one batch.
    */
   bulkCreateProducts: (
-    items: Array<{
+    items: {
       cropped_r2_key: string
       cropped_url: string
       category?: string | null
@@ -857,14 +857,14 @@ export const catalogImportApi = {
       price_max?: number | null
       section_id?: string | null
       phash?: string | null
-    }>,
+    }[],
     default_section_id?: string | null,
   ) =>
     request<{
       data: {
         total_requested: number
         total_created: number
-        products: Array<{ id: string; cropped_url: string }>
+        products: { id: string; cropped_url: string }[]
       }
     }>('/v1/catalog-import/bulk-create-products', {
       method: 'POST',

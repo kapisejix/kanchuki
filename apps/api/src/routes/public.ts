@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getDownloadPresignedUrl } from '@kanchuki/ai';
-import { prisma, type Prisma } from '@kanchuki/db';
-import { buildEnquiryMessage, normalizeIndianPhone, PUBLIC_PRICE_BUCKETS } from '@kanchuki/shared';
+import { type Prisma, prisma } from '@kanchuki/db';
+import { PUBLIC_PRICE_BUCKETS, buildEnquiryMessage, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../plugins/error-handler.js';
@@ -84,11 +84,17 @@ async function toPublicProductSummary(p: {
 // Distinct filter-chip options — always computed from the full unfiltered
 // product set for the collection/category so picking one filter doesn't
 // shrink the options for the others (matches prior client-side behavior).
-function buildFacets(products: { category: string | null; occasions: string[]; primary_color: string | null }[]) {
+function buildFacets(
+  products: { category: string | null; occasions: string[]; primary_color: string | null }[],
+) {
   return {
-    categories: Array.from(new Set(products.map((p) => p.category).filter((c): c is string => c !== null))),
+    categories: Array.from(
+      new Set(products.map((p) => p.category).filter((c): c is string => c !== null)),
+    ),
     occasions: Array.from(new Set(products.flatMap((p) => p.occasions))),
-    colors: Array.from(new Set(products.map((p) => p.primary_color).filter((c): c is string => c !== null))),
+    colors: Array.from(
+      new Set(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),
+    ),
   };
 }
 
@@ -196,14 +202,18 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
             },
           },
         }),
-        prisma.collectionProduct.count({ where: { collection_id: collection.id, product: productWhere } }),
+        prisma.collectionProduct.count({
+          where: { collection_id: collection.id, product: productWhere },
+        }),
         prisma.product.findMany({
           where: { deleted_at: null, collection_items: { some: { collection_id: collection.id } } },
           select: { category: true, occasions: true, primary_color: true },
         }),
       ]);
 
-      const publicProducts = await Promise.all(rows.map((cp) => toPublicProductSummary(cp.product)));
+      const publicProducts = await Promise.all(
+        rows.map((cp) => toPublicProductSummary(cp.product)),
+      );
 
       return {
         data: {
@@ -270,10 +280,16 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
           occasions: p.occasions,
           search_tags: p.search_tags,
           location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
-          primary_photo_url: primaryPhoto ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key) : '',
+          primary_photo_url: primaryPhoto
+            ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)
+            : '',
           has_360: p.spin_frames.length > 0,
-          photos: await Promise.all(p.photos.map(async (ph) => await displayUrl(ph.url, ph.r2_key))),
-          spin_frames: await Promise.all(p.spin_frames.map(async (f) => await displayUrl(f.url, f.r2_key))),
+          photos: await Promise.all(
+            p.photos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
+          ),
+          spin_frames: await Promise.all(
+            p.spin_frames.map(async (f) => await displayUrl(f.url, f.r2_key)),
+          ),
           variants: await Promise.all(
             availableVariants.map(async (v) => ({
               color: v.color,

@@ -320,7 +320,11 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /billing/webhook (Razorpay → server, no JWT) ──────────
   server.post('/webhook', async (request, reply) => {
     const signature = request.headers['x-razorpay-signature'] as string | undefined;
-    if (!signature || !request.rawBody || !(await verifyWebhookSignature(request.rawBody, signature))) {
+    if (
+      !signature ||
+      !request.rawBody ||
+      !(await verifyWebhookSignature(request.rawBody, signature))
+    ) {
       return reply.status(401).send({ error: { code: 'INVALID_SIGNATURE', status: 401 } });
     }
 
@@ -380,9 +384,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
               plan_status: 'ACTIVE',
               plan_expires_at: end,
               max_products: Number.isFinite(limits.max_products) ? limits.max_products : 999999,
-              max_customers: Number.isFinite(limits.max_customers)
-                ? limits.max_customers
-                : 999999,
+              max_customers: Number.isFinite(limits.max_customers) ? limits.max_customers : 999999,
               try_on_credits: limits.try_on_credits,
             },
           }),

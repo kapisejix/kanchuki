@@ -152,7 +152,11 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError('Provide 1-200 product ids');
 
     const result = await prisma.product.updateMany({
-      where: { id: { in: body.data.product_ids }, retailer_id: request.retailerId, deleted_at: null },
+      where: {
+        id: { in: body.data.product_ids },
+        retailer_id: request.retailerId,
+        deleted_at: null,
+      },
       data: { category_id: id },
     });
 

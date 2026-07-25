@@ -506,13 +506,17 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     );
 
     const sent = results.filter((r) => r.status === 'fulfilled').length;
-    const failed = results
-      .map((r, i) => ({ r, customer: customers[i]! }))
-      .filter((x) => x.r.status === 'rejected')
-      .map((x) => ({
-        customer_id: x.customer.id,
-        error: x.r.status === 'rejected' ? String((x.r as PromiseRejectedResult).reason) : '',
-      }));
+    const failed = results.flatMap((r, i) => {
+      if (r.status !== 'rejected') return [];
+      const customer = customers[i];
+      if (!customer) return [];
+      return [
+        {
+          customer_id: customer.id,
+          error: String((r as PromiseRejectedResult).reason),
+        },
+      ];
+    });
 
     return reply.status(200).send({ data: { sent, failed_count: failed.length, failed } });
   });

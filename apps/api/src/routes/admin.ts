@@ -118,7 +118,15 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.query);
     const { cursor, limit, search, city, state, plan, status } = query.success
       ? query.data
-      : { cursor: undefined, limit: 50, search: undefined, city: undefined, state: undefined, plan: undefined, status: undefined };
+      : {
+          cursor: undefined,
+          limit: 50,
+          search: undefined,
+          city: undefined,
+          state: undefined,
+          plan: undefined,
+          status: undefined,
+        };
 
     const retailers = await prisma.retailer.findMany({
       where: {
@@ -680,11 +688,16 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     const ext = body.content_type.split('/')[1];
     const r2Key = R2_PATHS.backgroundImage(
-      `${createHash('sha256').update(body.filename + Date.now()).digest('hex').slice(0, 16)}.${ext}`,
+      `${createHash('sha256')
+        .update(body.filename + Date.now())
+        .digest('hex')
+        .slice(0, 16)}.${ext}`,
     );
     const uploadUrl = await getUploadPresignedUrl(r2Key, body.content_type, 300);
 
-    return { data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 } };
+    return {
+      data: { upload_url: uploadUrl, r2_key: r2Key, public_url: publicUrl(r2Key), expires_in: 300 },
+    };
   });
 
   // ─── POST /admin/background-images ───────────────────────────────
@@ -744,7 +757,16 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
             updated_at: row.updated_at,
             configured: true,
           }
-        : { id: null, key_name, category, label, masked_preview: null, is_active: false, updated_at: null, configured: false };
+        : {
+            id: null,
+            key_name,
+            category,
+            label,
+            masked_preview: null,
+            is_active: false,
+            updated_at: null,
+            configured: false,
+          };
     });
 
     return { data: catalog };

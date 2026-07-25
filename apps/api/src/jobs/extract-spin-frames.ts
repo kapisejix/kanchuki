@@ -3,7 +3,13 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { cleanupProductPhoto, deleteObject, downloadBuffer, publicUrl, uploadBuffer } from '@kanchuki/ai';
+import {
+  cleanupProductPhoto,
+  deleteObject,
+  downloadBuffer,
+  publicUrl,
+  uploadBuffer,
+} from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 
@@ -68,8 +74,9 @@ export async function handleExtractSpinFrames(data: SpinFrameJobData): Promise<v
       where: { id: product_id },
       include: { background_image: true },
     });
-    const bgUrl =
-      product?.background_image?.is_active ? product.background_image.image_url : undefined;
+    const bgUrl = product?.background_image?.is_active
+      ? product.background_image.image_url
+      : undefined;
 
     const uploaded = await Promise.all(
       frameFiles.map(async (file, i) => {

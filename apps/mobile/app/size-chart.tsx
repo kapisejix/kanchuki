@@ -11,7 +11,7 @@ const CATEGORIES: { value: SizeChartCategory; label: string }[] = [
   { value: 'LOWER', label: 'Pants / Palazzos / Skirts' },
 ]
 
-const AXES_BY_CATEGORY: Record<SizeChartCategory, Array<{ key: 'bust' | 'waist' | 'hip' | 'length'; label: string }>> = {
+const AXES_BY_CATEGORY: Record<SizeChartCategory, { key: 'bust' | 'waist' | 'hip' | 'length'; label: string }[]> = {
   UPPER: [
     { key: 'bust', label: 'Bust' },
     { key: 'waist', label: 'Waist' },
@@ -108,7 +108,7 @@ export default function SizeChartScreen() {
       ) : (
         <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 24 }}>
           <Text className="text-xs text-gray-500 mb-3">
-            One row per size (S, M, L...). Leave a field blank if that measurement isn't tracked.
+            One row per size (S, M, L...). {"Leave a field blank if that measurement isn't tracked."}
           </Text>
 
           {rows.map((row, index) => (

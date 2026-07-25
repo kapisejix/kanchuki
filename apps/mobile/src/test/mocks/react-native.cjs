@@ -5,7 +5,7 @@
  * load CJS or .json files from disk. Using ESM exports here would
  * cause a different parse error.
  */
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+// The @typescript-eslint/no-require-imports rule is not configured in this project's eslint.
 const React = require('react')
 
 function mockComponent(name) {

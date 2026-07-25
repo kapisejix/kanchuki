@@ -99,7 +99,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const { content_type } = body.data;
-    const ext = content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
+    const ext =
+      content_type === 'image/png' ? 'png' : content_type === 'image/webp' ? 'webp' : 'jpg';
     const r2Key = R2_PATHS.retailerLogo(request.retailerId, `${createId()}.${ext}`);
 
     let uploadUrl: string;
@@ -132,7 +133,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Aadhar upload must be a photo, not a PDF');
     }
 
-    const ext = content_type === 'application/pdf' ? 'pdf' : content_type === 'image/png' ? 'png' : 'jpg';
+    const ext =
+      content_type === 'application/pdf' ? 'pdf' : content_type === 'image/png' ? 'png' : 'jpg';
     const r2Key = R2_PATHS.retailerKyc(request.retailerId, doc_type, `${createId()}.${ext}`);
 
     let uploadUrl: string;

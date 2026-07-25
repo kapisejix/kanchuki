@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Image as ImageIcon, Upload, Loader2, Eye, EyeOff } from 'lucide-react'
+import Image from 'next/image'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -144,11 +145,12 @@ export default function BackgroundImagesPage() {
             key={row.id}
             className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
           >
-            <div className="aspect-square bg-gray-100">
-              <img
+            <div className="aspect-square bg-gray-100 relative">
+              <Image
                 src={row.thumbnail_url ?? row.image_url}
                 alt={row.name}
-                className={`w-full h-full object-cover ${row.is_active ? '' : 'opacity-40'}`}
+                fill
+                className={`object-cover ${row.is_active ? '' : 'opacity-40'}`}
               />
             </div>
             <div className="p-3 flex items-center justify-between gap-2">

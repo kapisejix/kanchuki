@@ -107,7 +107,7 @@ export default function InStoreTryOnScreen() {
         setSelectedProductLoading(false)
         setStep('select')
       })
-  }, [preselectedProductId, products]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [preselectedProductId, products])  
   // products in deps so the find() retries after the list loads
 
   // ── Capture customer photo ───────────────────────────────────

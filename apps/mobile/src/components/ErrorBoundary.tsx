@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
             Something went wrong
           </Text>
           <Text className="text-sm text-gray-500 text-center mb-6 leading-5">
-            An unexpected error occurred. This doesn't affect your data — it's all safe in the cloud.
+            {"An unexpected error occurred. This doesn't affect your data — it's all safe in the cloud."}
           </Text>
           {this.state.error && (
             <Text

@@ -639,7 +639,7 @@ function UsageSection() {
     queryFn: () => retailerApi.getUsage(),
   })
 
-  const resources = (usageData as { data: Array<{ resource_type: string; limit: number; used: number; period: string; source: string }> } | undefined)?.data ?? []
+  const resources = (usageData as { data: { resource_type: string; limit: number; used: number; period: string; source: string }[] } | undefined)?.data ?? []
 
   if (isLoading || resources.length === 0) return null
 

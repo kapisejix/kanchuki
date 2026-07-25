@@ -56,7 +56,7 @@ type Product = {
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 
-const STATUS_OPTIONS: Array<{ value: Product['status']; label: string }> = [
+const STATUS_OPTIONS: { value: Product['status']; label: string }[] = [
   { value: 'AVAILABLE', label: 'Available' },
   { value: 'RESERVED', label: 'Reserved' },
   { value: 'SOLD', label: 'Sold' },
@@ -151,7 +151,7 @@ export default function ProductDetailScreen() {
     if (variantPreviewUrl) {
       const alreadyInBase = base.some((p) => p.url === variantPreviewUrl)
       if (!alreadyInBase) {
-        const result: Array<Photo & { is_variant_preview: boolean; variant_color: string | null }> = [
+        const result: (Photo & { is_variant_preview: boolean; variant_color: string | null })[] = [
           ...base.map((p) => ({ ...p, is_variant_preview: false, variant_color: null })),
           {
             id: 'variant-preview',
@@ -730,7 +730,7 @@ export default function ProductDetailScreen() {
       {isPieceTaggable(product.category) && (
         <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
           <Text className="text-cyan-700 text-xs">
-            Tag one photo "Upper piece" and one "Lower piece" for a better try-on match on this 2-piece outfit.
+            Tag one photo {'"'}Upper piece{'"'} and one {'"'}Lower piece{'"'} for a better try-on match on this 2-piece outfit.
           </Text>
         </View>
       )}

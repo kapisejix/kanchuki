@@ -6,10 +6,8 @@
  * package (which has ESM dependencies Node.js v22 can't parse).
  */
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const React = require('react')
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const renderer = require('react-test-renderer')
+import React from 'react'
+import renderer from 'react-test-renderer'
 
 /**
  * Render a React element and return a testing utility object.
@@ -47,7 +45,7 @@ function render(ui, options = {}) {
     })
   }
 
-  // eslint-disable-next-line prefer-const
+   
   let result = {
     toJSON,
     toTree,

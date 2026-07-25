@@ -389,7 +389,7 @@ export default function OnboardingScreen() {
       case 2:
         return (
           <View className="pt-6">
-            <Text className="text-2xl font-bold text-gray-900">Where's your shop?</Text>
+            <Text className="text-2xl font-bold text-gray-900">{"Where's your shop?"}</Text>
             <Text className="text-gray-500 text-base mt-2">
               Customers use this to find your store
             </Text>
@@ -505,7 +505,7 @@ export default function OnboardingScreen() {
                 maxLength={6}
               />
               <Text className="text-xs text-gray-400 mt-2 px-1">
-                Over ~100 items? We'll offer a faster rack-by-rack bulk upload instead of one photo at a time.
+                {"Over ~100 items? We'll offer a faster rack-by-rack bulk upload instead of one photo at a time."}
               </Text>
             </View>
           </View>
@@ -618,10 +618,10 @@ export default function OnboardingScreen() {
             </View>
 
             <Text className="text-2xl font-bold text-gray-900 text-center">
-              You're all set!
+              {"You're all set!"}
             </Text>
             <Text className="text-gray-500 text-base mt-2 text-center">
-              Your store is ready to go. Here's what to do next:
+              {"Your store is ready to go. Here's what to do next:"}
             </Text>
 
             <View className="mt-6 w-full gap-3">
@@ -760,7 +760,7 @@ export default function OnboardingScreen() {
             {saving ? (
               <ActivityIndicator color="white" />
             ) : showConfetti ? (
-              <Text className="text-white font-bold text-base">🎉 You're in!</Text>
+              <Text className="text-white font-bold text-base">{"🎉 You're in!"}</Text>
             ) : (
               <Text
                 className={`font-bold text-base ${
