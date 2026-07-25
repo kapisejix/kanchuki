@@ -29,6 +29,7 @@ import {
   UsersRound,
   Ticket,
   BarChart3,
+  ShoppingCart,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
   { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
 ]
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'

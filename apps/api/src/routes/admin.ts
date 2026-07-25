@@ -841,6 +841,94 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     return reply.status(204).send();
   });
 
+  // ─── GET /admin/addon-purchases ────────────────────────────────
+  // F-010 Phase 3: monitoring for self-serve addon purchases.
+  // Returns completed purchases with retailer info, total revenue,
+  // top buyers, and breakdown by resource type.
+  server.get('/addon-purchases', async () => {
+    const [completedPurchases, revenueAgg, topBuyers, resourceBreakdown] = await Promise.all([
+      // All completed purchases with retailer info, last 90 days
+      prisma.quotaAddonPurchase.findMany({
+        where: {
+          status: 'COMPLETED',
+          created_at: { gte: new Date(Date.now() - 90 * 86400000) },
+        },
+        orderBy: { created_at: 'desc' },
+        take: 200,
+        include: {
+          retailer: {
+            select: { id: true, shop_name: true, city: true, phone: true, plan: true },
+          },
+        },
+      }),
+      // Total revenue from all completed addon purchases
+      prisma.quotaAddonPurchase.aggregate({
+        where: { status: 'COMPLETED' },
+        _sum: { amount_inr: true },
+        _count: true,
+      }),
+      // Top buyers (group by retailer)
+      prisma.quotaAddonPurchase.groupBy({
+        by: ['retailer_id'],
+        where: { status: 'COMPLETED' },
+        _sum: { amount_inr: true, quantity: true },
+        _count: true,
+        orderBy: { _sum: { amount_inr: 'desc' } },
+        take: 20,
+      }),
+      // Breakdown by resource type
+      prisma.quotaAddonPurchase.groupBy({
+        by: ['resource_type'],
+        where: { status: 'COMPLETED' },
+        _sum: { amount_inr: true, quantity: true },
+        _count: true,
+        orderBy: { _sum: { amount_inr: 'desc' } },
+      }),
+    ]);
+
+    // Enrich top buyers with retailer info
+    const buyerRetailerIds = topBuyers.map((b) => b.retailer_id);
+    const buyerRetailers = await prisma.retailer.findMany({
+      where: { id: { in: buyerRetailerIds } },
+      select: { id: true, shop_name: true, city: true, phone: true, plan: true },
+    });
+    const retailerMap = new Map(buyerRetailers.map((r) => [r.id, r]));
+
+    const enrichedTopBuyers = topBuyers.map((b) => ({
+      retailer_id: b.retailer_id,
+      retailer: retailerMap.get(b.retailer_id) ?? null,
+      total_spent_inr: b._sum.amount_inr ?? 0,
+      total_quantity: b._sum.quantity ?? 0,
+      purchase_count: b._count,
+    }));
+
+    return {
+      data: {
+        recent_purchases: completedPurchases.map((p) => ({
+          id: p.id,
+          retailer_id: p.retailer_id,
+          retailer: p.retailer,
+          resource_type: p.resource_type,
+          quantity: p.quantity,
+          amount_inr: p.amount_inr,
+          completed_at: p.completed_at,
+          created_at: p.created_at,
+        })),
+        summary: {
+          total_revenue_inr: revenueAgg._sum.amount_inr ?? 0,
+          total_purchases: revenueAgg._count,
+        },
+        top_buyers: enrichedTopBuyers,
+        resource_breakdown: resourceBreakdown.map((r) => ({
+          resource_type: r.resource_type,
+          total_revenue_inr: r._sum.amount_inr ?? 0,
+          total_quantity: r._sum.quantity ?? 0,
+          purchase_count: r._count,
+        })),
+      },
+    };
+  });
+
   // ─── GET /admin/usage ──────────────────────────────────────────
   // Platform-wide usage stats including try-on and revenue.
   server.get('/usage', async () => {
