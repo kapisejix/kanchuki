@@ -1,12 +1,15 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { verifySync } from 'otplib';
+import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { encryptSecret, getSecret, invalidateSecret, maskSecret, prisma } from '@kanchuki/db';
+import { encryptSecret, getSecret, getReplicaPrisma, invalidateSecret, maskSecret, prisma } from '@kanchuki/db';
 import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
 
 type IntegrationKeyEntry = (typeof INTEGRATION_KEYS)[number];
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
+import { verifyPassword } from '../plugins/team-auth.js';
 
 export function validAdminKey(provided: string | undefined): boolean {
   const expected = process.env.ADMIN_API_KEY ?? '';
@@ -81,17 +84,24 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /admin/login ───────────────────────────────────────────
-  // Authenticate with email + password, returns admin API key for subsequent requests.
+  // Authenticate with email + password (scrypt) + optional TOTP.
+  // SECURITY §8: email + password + TOTP (when TOTP_SECRET is configured).
   server.post('/login', async (request, reply) => {
     const body = z
       .object({
         email: z.string().email('Invalid email'),
         password: z.string().min(1, 'Password is required').max(128),
+        totp_code: z
+          .string()
+          .length(6)
+          .regex(/^\d{6}$/, 'TOTP code must be 6 digits')
+          .optional(),
       })
       .parse(request.body);
 
     const expectedEmail = process.env.ADMIN_EMAIL;
     const expectedHash = process.env.ADMIN_PASSWORD_HASH;
+    const totpSecret = process.env.ADMIN_TOTP_SECRET;
 
     if (!expectedEmail || !expectedHash) {
       request.log.error('ADMIN_EMAIL or ADMIN_PASSWORD_HASH not configured');
@@ -103,15 +113,43 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       throw forbidden('Invalid credentials');
     }
 
-    // Compare password hash using timingSafeEqual
-    const providedHash = createHmac('sha256', 'admin-password').update(body.password).digest();
-    const expectedHashBuf = Buffer.from(expectedHash, 'hex');
+    // Compare password hash — support both scrypt (salt:hash) and legacy HMAC-SHA256 format
+    // SECURITY: scrypt is the only format for new deployments; legacy HMAC is deprecated.
+    const hashIncludesColon = expectedHash.includes(':');
+    let passwordValid: boolean;
 
-    if (
-      providedHash.length !== expectedHashBuf.length ||
-      !timingSafeEqual(providedHash, expectedHashBuf)
-    ) {
+    if (hashIncludesColon) {
+      // scrypt format (salt:hash) — same as team-auth.ts
+      passwordValid = verifyPassword(body.password, expectedHash);
+    } else {
+      // Legacy HMAC-SHA256 format — deprecated, scrypt preferred
+      // Log a warning so ops knows to upgrade
+      request.log.warn(
+        'ADMIN_PASSWORD_HASH appears to be legacy HMAC-SHA256 format. ' +
+          'Generate a scrypt hash using scripts/generate-admin-hash.ts and update the env var.',
+      );
+      const providedHash = createHmac('sha256', 'admin-password').update(body.password).digest();
+      const expectedHashBuf = Buffer.from(expectedHash, 'hex');
+      passwordValid =
+        providedHash.length === expectedHashBuf.length &&
+        timingSafeEqual(providedHash, expectedHashBuf);
+    }
+
+    if (!passwordValid) {
       throw forbidden('Invalid credentials');
+    }
+
+    // TOTP verification (SECURITY §8)
+    // If ADMIN_TOTP_SECRET is set, require valid totp_code on every login.
+    if (totpSecret) {
+      if (!body.totp_code) {
+        throw validationError('TOTP code is required. Check your authenticator app.');
+      }
+
+      const totpResult = verifySync({ token: body.totp_code, secret: totpSecret });
+      if (!totpResult.valid) {
+        throw forbidden('Invalid TOTP code');
+      }
     }
 
     request.log.info('Admin login successful');
@@ -131,6 +169,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         token: process.env.ADMIN_API_KEY,
         csrf_token: csrfToken,
         email: body.email,
+        totp_enabled: !!totpSecret,
       },
     };
   });
@@ -1064,6 +1103,323 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     return { data: row };
   });
 
+  // ─── GET /admin/audit-logs ───────────────────────────────────
+  // SECURITY §18: View the audit trail with filtering and pagination.
+  // Returns most recent entries first. Filters are optional.
+  server.get('/audit-logs', async (request) => {
+    const query = z
+      .object({
+        cursor: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        action: z.string().max(100).optional(),
+        actor_type: z.string().max(50).optional(),
+        actor_id: z.string().optional(),
+        resource_type: z.string().max(100).optional(),
+        resource_id: z.string().optional(),
+        ip_address: z.string().max(50).optional(),
+        date_from: z.string().optional(), // ISO date string
+        date_to: z.string().optional(),   // ISO date string
+      })
+      .safeParse(request.query);
+
+    const {
+      cursor, limit, action, actor_type, actor_id,
+      resource_type, resource_id, ip_address, date_from, date_to,
+    } = query.success
+      ? query.data
+      : { cursor: undefined, limit: 50, action: undefined, actor_type: undefined,
+          actor_id: undefined, resource_type: undefined, resource_id: undefined,
+          ip_address: undefined, date_from: undefined, date_to: undefined };
+
+    const where: Record<string, unknown> = {};
+    if (cursor) where.id = { lt: cursor };
+    if (action) where.action = { contains: action, mode: 'insensitive' as const };
+    if (actor_type) where.actor_type = { equals: actor_type, mode: 'insensitive' as const };
+    if (actor_id) where.actor_id = actor_id;
+    if (resource_type) where.resource_type = { equals: resource_type, mode: 'insensitive' as const };
+    if (resource_id) where.resource_id = resource_id;
+    if (ip_address) where.ip_address = { contains: ip_address };
+    if (date_from || date_to) {
+      const created_at: Record<string, Date> = {};
+      if (date_from) created_at.gte = new Date(date_from);
+      if (date_to) created_at.lte = new Date(date_to);
+      where.created_at = created_at;
+    }
+
+    const logs = await prisma.auditLog.findMany({
+      where,
+      orderBy: { created_at: 'desc' },
+      take: limit + 1,
+    });
+
+    const hasMore = logs.length > limit;
+    const page = hasMore ? logs.slice(0, limit) : logs;
+
+    return {
+      data: page,
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+      },
+    };
+  });
+
+  // ─── POST /admin/query ─────────────────────────────────────────────
+  // SECURITY §14: Admin read-only SQL query console. Runs against the
+  // read-replica (DATABASE_URL_REPLICA) — NEVER against the primary DB.
+  // Only SELECT, EXPLAIN, and WITH queries are permitted.
+  // All queries are logged to the audit trail.
+  server.post('/query', async (request) => {
+    const body = z
+      .object({ query: z.string().min(1).max(10000) })
+      .parse(request.body);
+
+    const sql = body.query.trim();
+
+    // ── Read-only enforcement ─────────────────────────────────────
+    // Strip leading SQL comments (-- and /* */)
+    const stripped = sql.replace(/^\s*(--[^\n]*\n|\/\*[\s\S]*?\*\/)*\s*/m, '').trim();
+    const firstWord = stripped.split(/[\s(]/)[0]?.toUpperCase() ?? '';
+
+    const READ_ONLY_STATEMENTS = ['SELECT', 'EXPLAIN', 'WITH'];
+    if (!READ_ONLY_STATEMENTS.includes(firstWord)) {
+      throw validationError(
+        `Only SELECT, EXPLAIN, and WITH queries are allowed (got "${firstWord}")`,
+      );
+    }
+
+    // Block multi-statement queries (semicolons outside string literals)
+    // Simple heuristic: count semicolons that aren't inside quotes
+    const strippedQuotes = sql.replace(/'[^']*'/g, '').replace(/"[^"]*"/g, '');
+    const semicolonCount = (strippedQuotes.match(/;/g) ?? []).length;
+    if (semicolonCount > 1) {
+      throw validationError('Multi-statement queries are not allowed');
+    }
+
+    // ── Execute on replica ─────────────────────────────────────────
+    const replica = getReplicaPrisma();
+    const start = performance.now();
+
+    let rows: unknown[];
+    try {
+      // Timeout via Promise.race — 30 seconds max
+      // Timer is cleaned up via .finally() to avoid dangling timeout handles
+      let timer: NodeJS.Timeout | undefined;
+      const timerPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('Query timed out after 30 seconds')), 30000);
+      });
+      const result = (await Promise.race([
+        replica.$queryRawUnsafe(sql),
+        timerPromise,
+      ]).finally(() => clearTimeout(timer))) as unknown[];
+
+      rows = Array.isArray(result) ? result : [result];
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Query execution failed';
+      request.log.warn({ query: sql.slice(0, 200) }, 'Admin query failed: ' + message);
+
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          action: 'QUERY_ERROR',
+          resource_type: 'DatabaseQuery',
+          metadata: {
+            query_preview: sql.slice(0, 500),
+            error: message.slice(0, 500),
+            execution_time_ms: Math.round(performance.now() - start),
+          },
+          ip_address: request.ip,
+        },
+      });
+
+      return {
+        data: {
+          error: message,
+          execution_time_ms: Math.round(performance.now() - start),
+        },
+      };
+    }
+
+    const elapsed = Math.round(performance.now() - start);
+    const MAX_ROWS = 1000;
+    const truncated = rows.length > MAX_ROWS;
+    const displayRows = truncated ? rows.slice(0, MAX_ROWS) : rows;
+    const columns =
+      displayRows.length > 0
+        ? Object.keys(displayRows[0] as Record<string, unknown>)
+        : [];
+
+    // ── Audit log ──────────────────────────────────────────────────
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'QUERY',
+        resource_type: 'DatabaseQuery',
+        metadata: {
+          query_preview: sql.slice(0, 500),
+          row_count: rows.length,
+          truncated,
+          execution_time_ms: elapsed,
+          column_count: columns.length,
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ row_count: rows.length, elapsed }, 'Admin query executed');
+
+    return {
+      data: {
+        columns,
+        rows: displayRows,
+        row_count: rows.length,
+        truncated,
+        execution_time_ms: elapsed,
+      },
+    };
+  });
+
+  // ─── GET /admin/schema ─────────────────────────────────────────────
+  // Fetch database schema (tables, columns, types) from information_schema.
+  // Used by the Query Console's Schema Explorer sidebar.
+  server.get('/schema', async (_request) => {
+    const replica = getReplicaPrisma();
+
+    interface SchemaRow {
+      table_schema: string;
+      table_name: string;
+      table_type: string;
+      column_name: string | null;
+      data_type: string | null;
+      is_nullable: string | null;
+      column_default: string | null;
+      is_primary_key: boolean;
+      ordinal_position: number | null;
+      character_maximum_length: number | null;
+      numeric_precision: number | null;
+    }
+
+    const rows = await replica.$queryRawUnsafe<SchemaRow[]>(`
+      SELECT
+        t.table_schema,
+        t.table_name,
+        t.table_type,
+        c.column_name,
+        c.data_type,
+        c.is_nullable,
+        c.column_default,
+        (pk.column_name IS NOT NULL) AS is_primary_key,
+        c.ordinal_position,
+        c.character_maximum_length,
+        c.numeric_precision
+      FROM information_schema.tables t
+      LEFT JOIN information_schema.columns c
+        ON c.table_schema = t.table_schema
+        AND c.table_name = t.table_name
+      LEFT JOIN (
+        SELECT ku.table_schema, ku.table_name, ku.column_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage ku
+          ON ku.constraint_name = tc.constraint_name
+          AND ku.table_schema = tc.table_schema
+          AND ku.table_name = tc.table_name
+        WHERE tc.constraint_type = 'PRIMARY KEY'
+      ) pk
+        ON pk.table_schema = t.table_schema
+        AND pk.table_name = t.table_name
+        AND pk.column_name = c.column_name
+      WHERE t.table_schema NOT IN ('pg_catalog', 'information_schema')
+        AND t.table_type = 'BASE TABLE'
+      ORDER BY t.table_schema, t.table_name, c.ordinal_position
+    `);
+
+    // Group by schema → table → columns
+    const schemaMap = new Map<string, {
+      schema_name: string;
+      tables: Map<string, {
+        table_name: string;
+        table_type: string;
+        columns: Array<{
+          column_name: string;
+          data_type: string | null;
+          is_nullable: boolean;
+          column_default: string | null;
+          is_primary_key: boolean;
+          ordinal_position: number | null;
+          character_maximum_length: number | null;
+          numeric_precision: number | null;
+        }>;
+        column_count: number;
+      }>;
+      table_count: number;
+    }>();
+
+    for (const row of rows) {
+      if (!row.table_schema || !row.table_name) continue;
+
+      if (!schemaMap.has(row.table_schema)) {
+        schemaMap.set(row.table_schema, {
+          schema_name: row.table_schema,
+          tables: new Map(),
+          table_count: 0,
+        });
+      }
+      const schemaEntry = schemaMap.get(row.table_schema)!;
+
+      if (!schemaEntry.tables.has(row.table_name)) {
+        schemaEntry.tables.set(row.table_name, {
+          table_name: row.table_name,
+          table_type: row.table_type ?? 'BASE TABLE',
+          columns: [],
+          column_count: 0,
+        });
+      }
+      const tableEntry = schemaEntry.tables.get(row.table_name)!;
+
+      if (row.column_name) {
+        tableEntry.columns.push({
+          column_name: row.column_name,
+          data_type: row.data_type,
+          is_nullable: row.is_nullable === 'YES',
+          column_default: row.column_default,
+          is_primary_key: row.is_primary_key,
+          ordinal_position: row.ordinal_position,
+          character_maximum_length: row.character_maximum_length,
+          numeric_precision: row.numeric_precision,
+        });
+        tableEntry.column_count = tableEntry.columns.length;
+      }
+    }
+
+    // Convert maps to plain arrays for JSON serialization
+    const schemas = Array.from(schemaMap.values())
+      .map((s) => ({
+        ...s,
+        tables: Array.from(s.tables.values())
+          .map((t) => ({
+            ...t,
+            columns: t.columns.sort((a, b) => (a.ordinal_position ?? 0) - (b.ordinal_position ?? 0)),
+          }))
+          .sort((a, b) => a.table_name.localeCompare(b.table_name)),
+      }))
+      .sort((a, b) => a.schema_name.localeCompare(b.schema_name));
+
+    const total_tables = schemas.reduce((sum, s) => sum + s.table_count, 0);
+    const total_columns = schemas.reduce((sum, s) =>
+      sum + s.tables.reduce((tsum, t) => tsum + t.column_count, 0), 0);
+
+    return {
+      data: {
+        schemas,
+        summary: {
+          total_schemas: schemas.length,
+          total_tables,
+          total_columns,
+        },
+      },
+    };
+  });
+
   // ─── GET /admin/integrations ─────────────────────────────────────
   // F-012: super-admin-only credential vault. Values are never returned —
   // only masked_preview. Every catalog key not yet configured here is
@@ -1215,5 +1571,240 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     request.log.info({ key_name: existing.key_name }, 'Integration setting deleted');
     return reply.status(204).send();
+  });
+
+  // ─── Backup Management ─────────────────────────────────────────────
+  // SECURITY §13: Backups are stored in R2 under the `backups/` prefix.
+  // Each backup has a .sql.gz file and a companion .meta.json file.
+  //
+  // Because pg_dump requires Docker (not available in the Railway runtime),
+  // actual backup/restore execution happens via the CLI scripts:
+  //   pnpm db:backup
+  //   pnpm db:restore --backup-key <key>
+  // The API endpoints manage listing, metadata, and audit logging.
+
+  /** Helper: create an S3 client for R2 using env vars (same pattern as scripts/). */
+  function createBackupR2Client(): S3Client {
+    const accountId = process.env['R2_ACCOUNT_ID'];
+    if (!accountId) throw validationError('R2_ACCOUNT_ID not configured');
+    return new S3Client({
+      region: 'auto',
+      endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+      credentials: {
+        accessKeyId: process.env['R2_ACCESS_KEY_ID'] ?? '',
+        secretAccessKey: process.env['R2_SECRET_ACCESS_KEY'] ?? '',
+      },
+    });
+  }
+
+  /** Helper: read a JSON object from R2. */
+  async function getR2Json(key: string): Promise<Record<string, unknown> | null> {
+    const r2 = createBackupR2Client();
+    const bucket = process.env['R2_BUCKET_NAME'] ?? 'kanchuki-prod';
+    try {
+      const response = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      const body = await response.Body?.transformToString();
+      return body ? (JSON.parse(body) as Record<string, unknown>) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Helper: format bytes to human-readable string */
+  function formatBytes(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  }
+
+  // ─── GET /admin/backups ──────────────────────────────────────────
+  // SECURITY §13: List all backups stored in R2 with metadata.
+  server.get('/backups', async (_request) => {
+    const r2 = createBackupR2Client();
+    const bucket = process.env['R2_BUCKET_NAME'] ?? 'kanchuki-prod';
+
+    // Paginate through all objects (S3/R2 returns max 1000 per page)
+    const allObjects: { Key?: string; Size?: number; LastModified?: Date }[] = [];
+    let continuationToken: string | undefined;
+    do {
+      const response = await r2.send(new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: 'backups/',
+        ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
+      }));
+      if (response.Contents) allObjects.push(...response.Contents);
+      continuationToken = response.NextContinuationToken;
+    } while (continuationToken);
+
+    const objects = allObjects;
+
+    // Group objects by backup (each backup has .sql.gz + .meta.json)
+    const backupMap = new Map<string, {
+      sql_gz: { key: string; size: number; last_modified: Date | undefined } | null
+      meta: Record<string, unknown> | null
+    }>();
+
+    for (const obj of objects) {
+      const key = obj.Key ?? '';
+      if (key.endsWith('.meta.json')) {
+        // Extract backup prefix (remove .meta.json)
+        const prefix = key.slice(0, -'.meta.json'.length);
+        if (!backupMap.has(prefix)) {
+          backupMap.set(prefix, { sql_gz: null, meta: null });
+        }
+        const existing = backupMap.get(prefix)!;
+        // Try to read the metadata content
+        const meta = await getR2Json(key);
+        existing.meta = meta;
+      } else if (key.endsWith('.sql.gz')) {
+        const prefix = key.slice(0, -'.sql.gz'.length);
+        if (!backupMap.has(prefix)) {
+          backupMap.set(prefix, { sql_gz: null, meta: null });
+        }
+        const existing = backupMap.get(prefix)!;
+        existing.sql_gz = {
+          key,
+          size: obj.Size ?? 0,
+          last_modified: obj.LastModified,
+        };
+      }
+    }
+
+    // Build backup list sorted by timestamp (newest first)
+    const backups = Array.from(backupMap.entries())
+      .filter(([, v]) => v.sql_gz !== null) // Only include entries with actual backup files
+      .map(([prefix, v]) => ({
+        prefix,
+        key: v.sql_gz!.key,
+        size: v.sql_gz!.size,
+        size_formatted: formatBytes(v.sql_gz!.size),
+        last_modified: v.sql_gz!.last_modified?.toISOString() ?? null,
+        metadata: v.meta,
+        has_metadata: v.meta !== null,
+      }))
+      .sort((a, b) => (b.last_modified ?? '').localeCompare(a.last_modified ?? ''));
+
+    // Calculate summary stats
+    const total_size = backups.reduce((sum, b) => sum + b.size, 0);
+    const latest_backup = backups.length > 0 ? backups[0] : null;
+
+    return {
+      data: {
+        backups,
+        summary: {
+          total_count: backups.length,
+          total_size,
+          total_size_formatted: formatBytes(total_size),
+          latest_backup: latest_backup
+            ? {
+                key: latest_backup.key,
+                size_formatted: latest_backup.size_formatted,
+                last_modified: latest_backup.last_modified,
+                has_metadata: latest_backup.has_metadata,
+              }
+            : null,
+        },
+        environment: {
+          docker_available: false, // Always false in Railway runtime
+          backup_command: 'pnpm db:backup',
+          restore_command: 'pnpm db:restore --backup-key <key>',
+        },
+      },
+    };
+  });
+
+  // ─── POST /admin/backup/create ────────────────────────────────────
+  // SECURITY §13: Trigger a backup. Logs the intent to the audit trail.
+  // Actual execution requires the Docker-based CLI script.
+  server.post('/backup/create', async (request) => {
+    const body = z
+      .object({ label: z.string().max(100).optional() })
+      .safeParse(request.body);
+    const label = body.success && body.data.label ? body.data.label : undefined;
+
+    // Log to audit trail
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'BACKUP_CREATE',
+        resource_type: 'Database',
+        metadata: {
+          label: label ?? null,
+          triggered_from: 'admin-ui',
+          note: 'Backup requires Docker runtime. Run the CLI script manually: pnpm db:backup',
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ label }, 'Backup triggered from admin UI');
+
+    return {
+      data: {
+        status: 'logged',
+        message: 'Backup request logged. Execute the backup via CLI:',
+        commands: [
+          `pnpm db:backup${label ? ` --label "${label}"` : ''}`,
+          '# Or with custom env: npx tsx scripts/backup-database.ts',
+        ],
+        cli_command: `pnpm db:backup${label ? ` --label "${label}"` : ''}`,
+        audit_logged: true,
+      },
+    };
+  });
+
+  // ─── POST /admin/backups/:key/restore ─────────────────────────────
+  // SECURITY §13: Trigger a restore from backup. Logs the intent.
+  server.post('/backups/restore', async (request) => {
+    const body = z
+      .object({ key: z.string().min(1), target: z.string().optional() })
+      .parse(request.body);
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'BACKUP_RESTORE',
+        resource_type: 'Database',
+        metadata: {
+          backup_key: body.key,
+          target: body.target ?? 'primary',
+          note: 'Restore requires Docker runtime. Run the CLI script manually: pnpm db:restore',
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ backup_key: body.key }, 'Restore triggered from admin UI');
+
+    return {
+      data: {
+        status: 'logged',
+        message: 'Restore request logged. Execute the restore via CLI:',
+        commands: [
+          `pnpm db:restore --backup-key "${body.key}"`,
+          '# Or with custom target: pnpm db:restore --backup-key "' + body.key + '" --target "<db-url>"',
+        ],
+        cli_command: `pnpm db:restore --backup-key "${body.key}"`,
+        audit_logged: true,
+      },
+    };
+  });
+
+  // ─── GET /admin/backups/:key/metadata ─────────────────────────────
+  // Fetch the .meta.json file for a specific backup.
+  server.get('/backups/:key/metadata', async (request) => {
+    const { key } = z.object({ key: z.string() }).parse(request.params);
+    // The key is the .sql.gz path — derive the .meta.json path
+    const metaKey = key.endsWith('.sql.gz')
+      ? key.slice(0, -'.sql.gz'.length) + '.meta.json'
+      : key + '.meta.json';
+
+    const meta = await getR2Json(metaKey);
+    if (!meta) {
+      return { data: { key: metaKey, metadata: null } };
+    }
+
+    return { data: { key: metaKey, metadata: meta } };
   });
 };

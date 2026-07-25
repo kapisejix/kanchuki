@@ -97,6 +97,7 @@ export default function RootLayout() {
                 <Stack.Screen name="product/[id]" />
                 <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
                 <Stack.Screen name="tryon/in-store" options={{ presentation: 'fullScreenModal' }} />
+                <Stack.Screen name="orders/[id]" />
               </Stack>
             </View>
           </ErrorBoundary>

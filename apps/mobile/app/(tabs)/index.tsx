@@ -1,8 +1,8 @@
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Search, Eye, MessageCircle, Package, Ruler, QrCode, Settings } from 'lucide-react-native'
-import { retailerApi } from '../../src/lib/api'
+import { Camera, Users, Link2, Search, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings } from 'lucide-react-native'
+import { ordersApi, retailerApi } from '../../src/lib/api'
 
 type RankedProduct = {
   product: { id: string; category: string | null; primary_color: string | null; photo_url: string | null }
@@ -35,8 +35,17 @@ export default function HomeScreen() {
     queryFn: () => retailerApi.getStats(),
   })
 
+  const { data: ordersData } = useQuery({
+    queryKey: ['orders'],
+    queryFn: () => ordersApi.list(),
+  })
+
   const me = (meData as { data: RetailerMe } | undefined)?.data
   const stats = (statsData as { data: Stats } | undefined)?.data
+  const allOrders = ordersData?.data ?? []
+  const pendingOrders = allOrders.filter(
+    (o) => o.status === 'PENDING_PAYMENT' || o.status === 'PAID',
+  ).length
   const isLoading = meLoading || statsLoading
 
   return (
@@ -166,6 +175,13 @@ export default function HomeScreen() {
             sublabel="Share on WhatsApp"
             onPress={() => router.push('/collection/new')}
             accent="#EFF6FF"
+          />
+          <QuickAction
+            icon={<ShoppingBag size={22} color="#F97316" />}
+            label="Orders"
+            sublabel={`${pendingOrders} pending · Manage fulfillment`}
+            onPress={() => router.push('/(tabs)/orders')}
+            accent="#FFF7ED"
           />
           <QuickAction
             icon={<Ruler size={22} color="#8B5CF6" />}

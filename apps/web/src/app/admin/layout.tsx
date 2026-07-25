@@ -30,6 +30,9 @@ import {
   Ticket,
   BarChart3,
   ShoppingCart,
+  History,
+  Terminal,
+  HardDrive,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -44,6 +47,9 @@ const NAV_ITEMS = [
   { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
+  { label: 'Audit Log', href: '/admin/audit-log', icon: History },
+  { label: 'Query Console', href: '/admin/database/query', icon: Terminal },
+  { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
 ]
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'

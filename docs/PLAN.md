@@ -1,7 +1,7 @@
 # Kanchuki — Project Roadmap & Build Plan
 
-**Version:** 1.0  
-**Date:** June 2026  
+**Version:** 1.1  
+**Date:** July 2026  
 **Total Timeline:** 18 months (MVP → Full Platform)
 
 ---
@@ -11,6 +11,7 @@
 ```
 Phase 0: MVP           Month 1–4    Digitize store + WhatsApp collections
 Phase 0.5: Internal Team  (post-MVP)  Admin/marketing/support staff logins + territory routing
+Phase S: Security       Month 4–5    Governance, backup DB, admin control center  ← NEW
 Phase 1: AI Core       Month 5–8    Fashion DNA + Virtual Try-On
 Phase 2: B2B Network   Month 9–12   Wholesaler/Manufacturer layer
 Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + multi-store
@@ -25,151 +26,129 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 **Team:** 2 developers, 1 designer, 1 founder doing sales
 
 ### Month 1: Foundation
+**Week 1–2: Infrastructure Setup** — ✅ Complete
+**Week 3–4: Auth + Onboarding** — ✅ Complete
 
-**Week 1–2: Infrastructure Setup**
-- [x] PostgreSQL 16 + pgvector on Railway/Supabase
-- [x] Redis for cache + job queue (BullMQ + ioredis wired in API)
-- [x] Cloudflare R2 bucket for images (presigned upload/download in @kanchuki/ai)
-- [x] Supabase Auth (phone OTP)
-- [x] Node.js + Fastify API scaffold
-- [x] Next.js 14 customer web scaffold
-- [x] React Native (Expo) retailer app scaffold
-- [x] CI/CD pipeline — CI (`.github/workflows/ci.yml`: lint/typecheck/test/build) + CD to Railway (`.github/workflows/deploy.yml`) — **both operational, API + Web deployed live**
-- [x] Environment config (.env structure, secrets management)
-- [x] Basic logging (Pino)
-
-**Week 3–4: Auth + Onboarding**
-- [x] Phone OTP login for retailers (Supabase Auth)
-- [x] Retailer registration: shop name, city, category, GSTIN
-- [x] Store structure setup (racks/shelves — customizable)
-- [x] Onboarding flow (guided 6-step setup)
-- [x] Basic retailer dashboard shell
-
-**Deliverable:** Retailer can create account and set up store structure
+### Month 2: Product Catalog — ✅ Complete
+### Month 3: Customer CRM + Collection Links — ✅ Complete
+### Month 4: AI Search + Polish + Launch — ✅ Complete
+### Month 4b: Retailer Settings + Quota & Limits + Offline PWA + Ecommerce Checkout — ✅ Complete
 
 ---
 
-### Month 2: Product Catalog
+## Phase S: Security Infrastructure & Admin Control (NEW — Month 4–5)
 
-**Week 5–6: Photo Upload + AI Tagging**
-- [x] Camera + gallery upload in React Native
-- [x] Image compression (client-side, < 500KB)
-- [x] Upload to Cloudflare R2 via presigned URL
-- [x] Claude Vision API call for auto-tagging
-- [x] AI tag review + edit UI
-- [x] Product save to PostgreSQL
+**Status:** 🆕 Planned — July 2026  
+**Goal:** Give the admin full control over every operation. Database backups, query console, deployment gates, approval workflows. No automated operation runs without human permission.
 
-**AI Tagging Prompt Design:**
-- Extract: category, type, primary_color, secondary_colors[], fabric_estimate, pattern, embellishments[], neck_style, sleeve_type, occasion[], price_range_visible, design_notes, search_tags[]
-- Must understand Indian ethnic wear vocabulary
-- Return structured JSON
+**Prerequisites:** Phase 0 MVP live, admin panel deployed, scrypt + TOTP auth implemented.
 
-**Week 7–8: Catalog Features**
-- [x] Product list view (grid + list toggle)
-- [x] Product detail view
-- [x] Store location assignment (Floor → Section → Rack → Shelf)
-- [x] Product status (Available / Sold / Reserved)
-- [x] Basic search by tag (client-side filter for MVP)
-- [x] Bulk photo import (multiple images)
-- [x] Multi-item detection & splitting from one photo (F-001c) — built 2026-07-13
-- [x] PDF / printed-catalog bulk import (F-001b) — built 2026-07-13; dual-path: client-side + server-side page rasterization
-- [x] Guided bulk onboarding wizard for large stores, 500–3000+ SKUs (F-001d) — rack/shelf batch capture with location inherited per-photo (reuses F-001c) + supplier PDF catalog reuse surfaced in onboarding (reuses F-001b) + unified review queue with running counter + duplicate-crop warning via perceptual-hash
+### Month S1: Database Backup System
 
-**Deliverable:** Retailer can build full digital catalog with AI assistance
+**Week 1–2: Backup Infrastructure**
+- [ ] **Provision backup database** — second PostgreSQL instance (independent from Supabase, e.g., Railway Postgres or Hetzner VPS)
+- [ ] **Add `BACKUP_DATABASE_URL` env var** — wired into `.env.example`, `.env`, and all deployment environments
+- [ ] **Backup script** — `scripts/backup-database.ts` using `pg_dump` with:
+  - Full schema + data dump
+  - Compressed output
+  - Timestamped filenames
+  - Upload to Cloudflare R2 backup bucket
+  - Save metadata (size, checksum, table list) to `backup_metadata` table or JSON
+- [ ] **Restore script** — `scripts/restore-database.ts` with:
+  - List available backups
+  - Restore to a target database
+  - Verification step (row count sanity check)
+- [ ] **Manual backup trigger** — admin dashboard page with "Create Backup" button
+- [ ] **Manual restore trigger** — admin dashboard with confirmation dialog and audit log
 
----
+**Week 3–4: Scheduled Backups + Monitoring**
+- [ ] **Daily backup cron** — BullMQ job or system cron, runs every 24h
+- [ ] **Weekly backup cron** — Sunday full backup to cold storage
+- [ ] **Backup integrity check** — automated: restore to a temporary database, run row count checks, drop temp database
+- [ ] **Backup status page** — admin dashboard showing: last backup time, next backup time, status (success/failed), size, retention
+- [ ] **Backup alerts** — email/SMS notification on backup failure
 
-### Month 3: Customer CRM + Collection Links
+### Month S2: Admin Query Console + Database Management
 
-**Week 9–10: Customer Module**
-- [x] Add customer (name, phone, preferences)
-- [x] Customer list + search
-- [x] Customer profile with preference tags
-- [x] Purchase history (manual entry)
+**Week 1–2: SQL Query Runner**
+- [ ] **Backend: `POST /admin/query`** endpoint that:
+  - Connects to the replica database ONLY (never primary)
+  - Enforces read-only: blocks INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE/CREATE
+  - Sets statement timeout (30s), row limit (1000)
+  - Logs every query: admin identity, timestamp, SQL text, duration, row count
+  - Returns results as JSON array with column metadata
+- [ ] **Backend: `GET /admin/query/history`** endpoint listing recent queries
+- [ ] **Admin page: Query Console** — `/admin/database/query` with:
+  - SQL editor with syntax highlighting (Monaco or CodeMirror)
+  - Run button + clear button
+  - Results table with sortable columns
+  - Query history sidebar
+  - Export results to CSV
+  - Warning banner: "READ ONLY — queries run against replica database"
+- [ ] **Admin page: Database Status** — `/admin/database/status` showing:
+  - Primary DB: connection status, size, version, table count, active connections
+  - Replica DB: connection status, replication lag, size
+  - Backup DB: last backup time, total backups, storage used
 
-**Week 11–12: WhatsApp Collection Links**
-- [x] Product selection UI (checkboxes on catalog)
-- [x] Collection creation: title, description, expiry
-- [x] Collection page (Next.js SSG/ISR) — unique URL per collection
-- [x] Collection view: product grid, filter, sort
-- [x] Favorite (heart) button — stored in localStorage, no login needed
-- [x] Enquiry button → pre-filled WhatsApp deep link to retailer
-- [x] Retailer view: collection analytics (views, enquiries)
+**Week 3–4: Audit Log Viewer**
+- [ ] **Backend: `GET /admin/audit-logs`** endpoint with filtering:
+  - Filter by: action type, actor, resource, date range, IP address
+  - Pagination with cursor-based navigation
+  - Expandable rows showing before/after metadata
+- [ ] **Admin page: Audit Log** — `/admin/audit-log` with:
+  - Filterable table with columns: timestamp, action, actor, resource, IP
+  - Click-to-expand showing full metadata JSON
+  - Export to CSV for compliance
+  - Retention notice: "Logs retained for 3 years"
 
-**Deliverable:** Retailer can share product collections via WhatsApp link
+### Month S3: Deployment Control + Operations Center
 
----
+**Week 1–2: Deployment Approval Gates**
+- [ ] **CI/CD pipeline update** — split build from deploy:
+  - Build & test runs automatically on every PR/merge to main
+  - Deploy step requires manual approval in Railway dashboard
+  - Add deployment log collection (who deployed, what commit, when)
+- [ ] **Deployment dashboard** — `/admin/operations/deployments` showing:
+  - Recent deployments with status (pending/approved/rejected/rolling)
+  - Commit hash, author, date, deployment duration
+  - Rollback button for last successful deployment
+- [ ] **Slack/email notification** on pending deploys requiring approval
 
-### Month 4: AI Search + Polish + Launch
-
-**Week 13–14: In-Store AI Search**
-- [x] Generate pgvector embeddings on product save (background job)
-- [x] Semantic search endpoint (cosine similarity on product embeddings)
-- [x] Natural language query → structured + semantic hybrid search
-- [x] Results ranked by relevance + price filter
-- [x] Hindi transliteration support (basic — map common words)
-
-**Week 15–16: Polish + MVP Launch**
-- [x] Filters on catalog (Category → Occasion → Price → Color) — mobile + web, client-side
-- [x] Size Charts (F-102c) — full stack: schema, API, mobile UI, lookup logic (5 tests), recommend endpoint
-- [x] Consent & Training Data (F-102d) — full stack: crop-tagging, consent collection, revocation flow, retention cron
-- [x] Catalog Import (F-001b) — dual-path PDF + bulk photo import with item detection
-- [x] Multi-Item Detection (F-001c) — detect C crop items from a single photo via Claude Vision bounding boxes
-- [x] Performance optimization (load time < 3s on 3G) — Serwist service worker + Cache Storage for offline-first performance
-- [x] Error handling + offline resilience — full Serwist PWA with service worker, runtime caching, navigation preload
-- [x] F-006B: Offline Catalog Browsing — service worker caches page shell, product photos (cache-first, long TTL), catalog/detail JSON (network-first-with-cache-fallback)
-- [ ] Onboarding tutorial improvements based on 10-retailer pilot
-- [x] Analytics dashboard (basic + detailed analytics with daily trends, category breakdown)
-- [x] Admin panel (retailer management, billing management, premium UI with email/password login, usage stats, trial extension, plan change) — **deployed live 2026-07-14**
-- [x] Razorpay subscription integration (14-day trial) — **code-complete, deferred until production deploy**
-    - Backend: cancel, create-order, verify-payment, webhook handler, setup-plans
-    - Mobile: billing screen with plan cards, cancel subscription
-    - Admin: plan management, setup-plans endpoint, extend-trial, change-plan
-    - Blocked: needs live Razorpay credentials + webhook endpoint registered in Razorpay dashboard
-- [x] Public landing page (Next.js)
-- [x] CI/CD pipeline — CI (`.github/workflows/ci.yml`) + CD to Railway (`.github/workflows/deploy.yml`) — **both operational, API + Web deployed live**
-- [ ] Pilot with 10 retailers, collect feedback, fix critical issues
-
-**Deliverable:** MVP live, 50 retailer target
-
----
-
-### Month 4b: Retailer Settings + Quota & Limits + Offline PWA + Ecommerce Checkout
-
-**Status:** ✅ **Completed** — see `docs/PRO-REQUIREMENTS.md` for details
-
-- [x] **F-009: Retailer Account & Team Settings** — full settings screen (`apps/mobile/app/settings/index.tsx`): profile edit with store logo, subscription view, KYC document upload (GST cert + Aadhar), WhatsApp number config with 10-digit validation, WhatsApp Business API bring-your-own-credentials, soft-delete account with confirmation. Team/staff management (`apps/mobile/app/settings/staff.tsx`) — add/remove shop staff with role assignment.
-- [x] **F-010: Quota & Limits System** — `plan_limits` + `retailer_limit_overrides` + `usage_counters` + `quota_addon_purchases` tables. Shared `checkQuota()`/`incrementUsage()` gate wired into: product upload, AI tagging, try-on, image crop, bg-removal, API requests. Admin panel screens for CRUD on limits & overrides (`/admin/plan-limits`, `/admin/retailers/:id`). Seed script (`seed-plan-limits.ts`) for 3 plans × 3 resource types.
-- [x] **F-011: Custom Product Background Library** — `BackgroundImage` model + admin upload screen (`/admin/background-images`). `cleanupProductPhoto()` accepts optional background image URL. Applied to both static photos and 360° spin frames.
-- [x] **F-012: Encrypted Integration Settings** — `IntegrationSetting` model + AES-256-GCM encryption helpers (`encryptSecret`/`decryptSecret`/`getSecret`/`setSecret`). Admin panel screen (`/admin/integrations`) to manage third-party API keys without .env redeploys.
-- [x] **F-006B: Offline Catalog Browsing (PWA)** — Serwist service worker (`@serwist/next@9`) configured in `next.config.mjs` with `withSerwist()`. Full service worker at `src/app/sw.ts` with precaching, runtime caching (cache-first for photos, network-first-with-fallback for catalog JSON), `skipWaiting`/`clientsClaim` for cache invalidation.
-- [x] **F-302: L2 Ecommerce Checkout** — Direct-to-retailer Razorpay payments. Full stack: `RetailerPaymentAccount` + `Order` + `OrderItem` models (Prisma), checkout API routes (create order, verify payment, webhook, retailer management), customer web UI (cart, checkout form with Razorpay Checkout.js, order view), GST invoice generation, atomic product reservation, webhook signature verification with replay protection, tier gate via active payment account.
-
-**Deliverable:** Offline-first PWA — customers browse catalog without internet. Ecommerce checkout — retailers connect own Razorpay, customers buy directly. No RBI Payment Aggregator license needed (zero fund custody).
+**Week 3–4: Operations Approval Center**
+- [ ] **Admin page: Pending Approvals** — `/admin/operations/pending` showing:
+  - All operations awaiting admin approval
+  - Type: deploy, migration, backup-restore, bulk-action, config-change
+  - Requested by, timestamp, details
+  - Approve / Reject buttons with audit logging
+- [ ] **Admin page: Rate Limits** — `/admin/settings/rate-limits` with:
+  - Live rate limit values per endpoint
+  - Adjust without redeploy (persisted to DB not env vars)
+  - Current usage stats per rate limit window
+- [ ] **Admin page: AI Model Config** — `/admin/settings/ai-config` with:
+  - Select AI model per operation type (tagging, embedding, try-on)
+  - Set temperature, max tokens, timeout
+  - Test connection button
 
 ---
 
-### Backlog (Planned, Not Yet Scheduled)
+## Phase 0.5: Internal Team Management
 
-- [ ] **F-001e: Ghost-Mannequin AI Generation** — packed/flat-lay garment photo → full catalog image (hollow-body worn look) via Snappyit API. Retailer unpacks once per design; catalog image reused for all restocked units. Evaluated 2026-07-25 (~$0.10/image, $6.90–8.20/mo plans). Full spec: `docs/PRO-REQUIREMENTS.md` F-001e.
+**Status:** ✅ Partially implemented — see `docs/PRO-REQUIREMENTS.md` Section 10
 
----
+### Completed
+- [x] TeamMember login (POST /v1/team/login, scrypt + JWT)
+- [x] Territory CRUD (POST/GET/PATCH /v1/team/territories)
+- [x] TeamMemberTerritory assignment + over_capacity flag
+- [x] Retailer territory auto-derivation from pincode at signup
+- [x] Marketing Agent onboarding flow endpoint
+- [x] SupportTicket endpoints (POST/GET/PATCH /v1/team/tickets)
+- [x] Manager reporting endpoints (agents, coverage-gaps, activation funnel)
 
-## Phase 0.5: Internal Team Management (Admin / Marketing / Support)
-
-**Goal:** Move off single shared admin login to per-user staff accounts with territory-based access, so the marketing team can onboard retailers in-person and support can be routed by location. See `docs/PRO-REQUIREMENTS.md` Section 10, `docs/DATABASE.md` `TeamMember`/`Territory`/`SupportTicket` models.
-**Prerequisite:** Phase 0 MVP live and stable (admin panel, retailer/product/collection flows).
-
-- [x] Real per-user staff login (`TeamMember` table, hashed passwords) — API built (`POST /v1/team/login`, scrypt + JWT). Old admin-key login kept as a Super Admin bootstrap path, not yet retired.
-- [x] `Territory` table (State → City → Zone hierarchy) + API CRUD (`/v1/team/territories`). No admin UI yet to build it visually.
-- [x] `TeamMemberTerritory` assignment + `max_retailers` soft-cap flag — API done (`over_capacity` on `GET /v1/team/members`). No dashboard UI yet.
-- [x] Retailer `territory_id` auto-derived from pincode at signup, `onboarded_by_id` / `support_owner_id` attribution — API done (`POST /v1/team/retailers`)
-- [~] Marketing Agent onboarding flow — API endpoint done (`POST /v1/team/retailers`, scoped by role), no admin-panel UI surface yet (Phase A per §10.7)
-- [ ] `SupportTicket` entity + hybrid routing (visit-required → nearest territory agent; backend-manageable → open pool within region) — schema/migration only, no routing logic or endpoints
-- [ ] Manager rollup reporting: retailers onboarded per agent, coverage-gap view (zones with 0 assigned agent)
-- [ ] Staff mode inside the Expo retailer app, for offline-friendly field onboarding
-
-**Deliverable:** Marketing/support teams manage retailers through their own scoped logins instead of the shared admin key
+### Remaining
+- [ ] SupportTicket routing logic (visit-required → nearest agent; backend-manageable → pool)
+- [ ] Manager rollup reporting dashboard UI
+- [ ] Staff mode inside the Expo retailer app (for field onboarding)
+- [ ] 10-retailer pilot + onboarding tutorial iteration
 
 ---
 
@@ -178,169 +157,13 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 **Goal:** Add Fashion DNA + Virtual Try-On, reach ₹3L MRR  
 **Prerequisite:** 3+ months of retailer + customer behavior data from Phase 0
 
-### Month 5–6: Fashion DNA Engine
-
-**Customer Behavior Collection (retroactive from Phase 0 data):**
-- Products favorited from collection links
-- Products enquired about
-- Dwell time on product (link analytics)
-- Explicit preferences (from CRM)
-
-**Fashion DNA Model:**
-- Preference vector per customer: color affinities, style affinities, budget range, occasion matrix
-- Vector stored in pgvector (1536-dim)
-- Updated on every interaction
-
-**AI Matching Features:**
-- "Products this customer will love" — retailer can view for any customer
-- Auto-suggest collection: AI picks best 12 products for specific customer
-- "Customers who might like this product" — reverse matching
-
-### Month 7–8: Virtual Try-On (Self-Hosted)
-
-**Tech Choice:**
-- **Fashion V-Tone v1.5 (self-hosted)** — Apache 2.0, maskless, CPU-capable, ~$0.0003/try-on on CPU
-- **Strategy:** Deploy V-Tone as sole engine. No GPU needed. CatVTON removed 2026-07-16.
-- Quality gate: 80% acceptance rate on 50-sample ethnic wear test panel
-
-**CatVTON specs:**
-| Metric | Value |
-|--------|-------|
-| Cost per try-on | $0.0003 on CPU (~₹0.025), $0.003 on L4 GPU (~₹0.25) |
-| License | Apache 2.0 |
-| GPU Required | No — runs on CPU |
-| Architecture | MMDiT (maskless) |
-| Install | `pip install fashn-vton` |
-| GPU needed | 8GB+ VRAM (RTX 3060) |
-| Latency | ~35s |
-| Indian wear quality | Good (improves with fine-tuning) |
-| Monthly cost (1000 try-ons) | ~$5 |
-
-**VTO Flow (Phase 1 — In-Store):**
-1. Retailer selects product(s) customer wants to try
-2. Customer takes selfie on retailer's tablet
-3. AI generates try-on (~35 seconds)
-4. Result shown on tablet/external display (TV mode)
-5. Customer can save/share result image
-
-**VTO Flow (Phase 1 — Remote via WhatsApp Manual):**
-1. Customer receives collection link
-2. Selects product, sees "Try This On" button
-3. Uploads their photo (with consent modal)
-4. AI generates result (queued job, < 1 min)
-5. Result delivered via page + WhatsApp notification to retailer who forwards it
-
-**Cost control:**
-- Try-on credits system (bundled in plans)
-- Real-time credit count shown to retailer
-- Low-credit warning at 20% remaining
-
-**Deploy V-Tone service:**
-1. Python/FastAPI microservice in `services/fashion-vtone/` wraps `fashn-vton`
-2. Runs on CPU alongside API server, or GPU for faster inference
-3. Models auto-download from Hugging Face on first run (~2.3 GB)
-4. Set `VTONE_API_URL` env var pointing to the service
-5. Test end-to-end with sample products
-
-**Future fine-tuning for Indian ethnic wear (deferred):**
-1. Collect paired training data via F-102d consent flow
-2. Fine-tune with LoRA on V-Tone architecture
-3. Swap model weights — no app code changes needed
-4. Retest with sarees, lehengas, unstitched suits
-
-**Product/customer photo quality gate:**
-- V-Tone is maskless — no bg-removal preprocessing needed
-- Enforce ghost-mannequin/flat-lay product photo capture + plain-bg customer photo (see `docs/PRO-REQUIREMENTS.md` F-102)
-- Multi-piece ethnic sets (kameez+salwar+dupatta): sequential tops → bottoms calls, dupatta excluded for MVP
-
-**Deferred (not Phase 1 scope):** Measurement-driven body-shape rendering (SMPL/STAR 3D body model + pose-conditioned diffusion) — cost gap vs V-Tone still significant even at CPU pricing. Revisit post-MVP if margin allows. Decision + numbers: `docs/adrs/ADR-006-defer-3d-parametric-vto.md` (updated 2026-07-16 with V-Tone swap). Height/weight/measurements still used for size recommendation (F-102c, simple chart lookup, no GPU) — different feature, ships independently.
+### Month 5–6: Fashion DNA Engine — Planned
+### Month 7–8: Virtual Try-On (Self-Hosted) — Planned
 
 ---
 
-## Phase 2: B2B Supply Network (Month 9–12)
-
-### Month 9–10: Wholesaler Module
-
-- Wholesaler account type (separate onboarding)
-- Bulk catalog upload (ZIP, CSV, PDF)
-- Retailer network management (invite/accept)
-- Catalog sharing with price override capability
-- Order interest tracking (retailer marks interest → wholesaler notified)
-
-### Month 11–12: Manufacturer Module
-
-- Manufacturer account type
-- Master catalog upload with design numbers
-- Design popularity analytics (which designs viewed/ordered most)
-- Access control: share only with approved wholesalers
-- Catalog watermarking (prevent unauthorized distribution)
-
----
-
-## Phase 3: Full Commerce (Month 13–18)
-
-### Month 13–14: WhatsApp Business API Automation
-
-- Meta Cloud API integration
-- Automated collection delivery (retailer schedules, system sends)
-- Automated follow-up messages
-- Customer opt-in/opt-out management
-- Conversation inbox for retailer
-- Meta conversation fee pass-through billing
-
-### Month 15–16: Payments + GST — Retailer Ecommerce Checkout (L2 tier)
-
-**Status: ✅ Built ahead of schedule** — originally Month 15-16 in the roadmap, built during an extended Month 4b sprint. Full spec: `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema: `packages/db/prisma/schema.prisma` (Order/OrderItem/RetailerPaymentAccount), code: `apps/api/src/routes/checkout.ts`, `apps/web/src/app/c/[slug]/cart/`, `apps/web/src/app/c/[slug]/checkout/`, `apps/web/src/app/c/[slug]/order/[orderId]/`.
-
-**What this actually is:** WhatsApp is not the payment rail — Meta's Catalog/Cart + WhatsApp Pay aren't a viable checkout path for a third-party platform at this stage. WhatsApp keeps doing what it already does (share the collection link, notify on order). Cart → address → payment happens in the existing customer PWA (`apps/web/src/app/c/[slug]`); today's "Enquire on WhatsApp" button becomes "Buy Now" for retailers who've turned commerce on.
-
-**Stage A — Direct-to-Retailer (built):**
-- ✅ Retailer connects their *own* Razorpay account via Settings (extends F-009 pattern)
-- ✅ Kanchuki stores `key_id`/`key_secret` encrypted in `RetailerPaymentAccount` row via F-012's AES-256-GCM
-- ✅ Kanchuki creates Razorpay orders using *that retailer's* credentials — money never touches Kanchuki's own Razorpay account
-- ✅ Zero custody of retailer sale funds → no RBI Payment Aggregator license needed
-- ✅ Tier gate: retailer with no active `RetailerPaymentAccount` sees today's Enquire flow; active account = L2 checkout enabled (no separate flag column)
-- ✅ `Order`/`OrderItem` models (prices snapshotted at order time)
-- ✅ Cart: client-side localStorage (same pattern as Wishlist)
-- ✅ Checkout: address form (anonymous, no account), Razorpay Checkout.js, GST invoice generation (5%/12% apparel HSN)
-- ✅ Product status: `AVAILABLE → RESERVED` at order-create (atomic conditional update), `→ SOLD` at webhook-confirmed payment
-- ✅ Unpaid orders auto-expire + release products back to AVAILABLE (webhook `payment.failed` handler)
-- ✅ Retailer order list + status management (`GET /retailers/orders`, `PATCH /retailers/orders/:id/status`)
-
-**Stage B — Razorpay Route (future, not built):**
-- Retailer onboards via Razorpay's Linked Account (Route) instead of bringing their own account — lower onboarding friction (no separate Razorpay signup)
-- Kanchuki's own Razorpay account becomes merchant-of-record; Razorpay auto-splits each payment to the retailer's linked account, optionally net of a Kanchuki platform commission (new revenue lever, not required)
-- Requires confirming current RBI marketplace-payment guidance with Razorpay/legal before enabling for real transactions — Route is designed for exactly this, but treat as a compliance gate, not an assumption
-- `RetailerPaymentAccount.payment_mode` (`DIRECT` | `ROUTE`) — schema-ready for both modes to coexist during migration; each `Order` snapshots the mode it was placed under
-
-### Month 17–18: Enterprise Features
-
-- Multi-store management (1 retailer, multiple shop branches)
-- Multi-staff roles (owner / salesperson / admin)
-- Regional language UI: Hindi (priority), Gujarati, Punjabi
-- Advanced analytics: customer lifetime value, product performance, seasonal trends
-- API for third-party integrations (accounting tools, POS)
-
----
-
-## Technology Build Order
-
-```mermaid
-graph TD
-    A[Infrastructure + Auth] --> B[Photo Upload + AI Tagging]
-    B --> C[Product Catalog]
-    C --> D[Customer CRM]
-    D --> E[Collection Links]
-    C --> F[In-Store AI Search]
-    E --> G[Fashion DNA Engine]
-    G --> H[Virtual Try-On]
-    H --> I[Remote VTO via WhatsApp]
-    D --> J[Wholesaler Module]
-    J --> K[Manufacturer Module]
-    I --> L[WhatsApp API Automation]
-    L --> M[GST + Payments]
-    M --> N[Multi-store + Enterprise]
-```
+## Phase 2: B2B Supply Network (Month 9–12) — Planned
+## Phase 3: Full Commerce (Month 13–18) — Planned
 
 ---
 
@@ -354,6 +177,9 @@ graph TD
 | Collection link live | M3 | Customer opens link on mobile, enquires |
 | MVP beta | M4 | 10 pilot retailers, real feedback |
 | MVP public | M4 | 50 paying retailers |
+| **Backup system live** | **M4–5** | **Backup created, verified, and restorable from admin dashboard** |
+| **Query console live** | **M5** | **Admin runs read-only SQL against replica** |
+| **Deployment gates live** | **M5** | **All deploys require manual approval** |
 | V-Tone v1.5 deployed | M1 | Try-on working on 10 test products |
 | V-Tone fine-tuned for Indian wear | M6 | 80% quality on saree/lehenga test set |
 | Fashion DNA live | M7 | 1000+ customer behavior events, matching visible |
@@ -362,24 +188,6 @@ graph TD
 | WhatsApp automation | M14 | 100 retailers using automated sends |
 | GST compliance | M16 | GST invoice generated for every sale |
 | Regional languages | M18 | Hindi UI live, Gujarati in beta |
-
----
-
-## Resource Plan
-
-### Team (MVP — Month 1–4)
-- **1 Full-Stack Dev** — Backend API + DB (Node.js + PostgreSQL)
-- **1 Frontend Dev** — React Native app + Next.js customer web
-- **1 Designer** — UI/UX (Figma), mobile-first
-- **1 Founder** — Sales, retailer onboarding, product decisions
-
-### Team (Phase 1 — Month 5–8)
-- Add: **1 ML/AI Engineer** — Fashion DNA model, VTO integration
-- Add: **1 QA/DevOps** — Testing, monitoring, CI/CD
-
-### Team (Phase 2–3 — Month 9–18)
-- Add: **1 Backend Dev** — B2B supply chain, WhatsApp API
-- Add: **1 Business Dev** — Wholesaler/manufacturer partnerships
 
 ---
 
@@ -394,6 +202,9 @@ graph TD
 | Meta API pricing change | Decouple WhatsApp module behind feature flag; SMS/email always available |
 | Competitor replication | Speed to market + deep ethnic wear quality + retailer network effects |
 | Jio/Reliance entry | Focus on Tier 2–3 cities where distribution advantage is smaller |
+| **Database corruption** | **Separate backup database with automated daily backups + integrity verification** |
+| **Unauthorized deployment** | **Manual approval gate required for all production deploys** |
+| **Data loss** | **Cold backup with 7-year retention for GST compliance** |
 
 ---
 
@@ -407,6 +218,7 @@ graph TD
 | Developer salaries (2) | ₹2,00,000 | ₹8,00,000 |
 | Designer | ₹75,000 | ₹3,00,000 |
 | Marketing/Sales | ₹50,000 | ₹2,00,000 |
-| **Total** | **₹3,60,000** | **₹14,40,000** |
+| **Backup database (second PostgreSQL instance)** | **₹3,000** | **₹12,000** |
+| **Total** | **₹3,63,000** | **₹14,52,000** |
 
 **Break-even:** 145 Growth plan retailers (₹2,499 × 145 = ₹3,62,355/month)

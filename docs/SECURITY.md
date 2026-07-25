@@ -1,7 +1,7 @@
 # Kanchuki — Security Model
 
-**Version:** 1.0  
-**Date:** June 2026  
+**Version:** 1.1  
+**Date:** July 2026  
 **Standard:** OWASP Top 10, India PDPB (Personal Data Protection Bill)  
 **Skill reference:** `security-and-hardening`, `security-review`
 
@@ -14,6 +14,7 @@
 3. **Authentication** — phone OTP with rate limiting, no password guessing
 4. **AI cost abuse** — prevent malicious actors from triggering expensive AI calls
 5. **WhatsApp token security** — Meta API credentials must never be exposed
+6. **Operational control** — no automated operations without explicit admin approval
 
 ---
 
@@ -440,6 +441,8 @@ const validateWebhook = (payload: string, signature: string): boolean => {
 **`.env.example` in repo:**
 ```bash
 DATABASE_URL=postgresql://...
+DATABASE_URL_REPLICA=postgresql://...  # Read-replica / backup database
+BACKUP_DATABASE_URL=postgresql://...   # Cold backup / disaster recovery
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_KEY=eyJ...  # NEVER commit actual value
@@ -453,6 +456,12 @@ R2_SECRET_ACCESS_KEY=...     # NEVER commit actual value
 VTONE_API_URL=...           # Fashion V-Tone self-hosted endpoint
 META_APP_SECRET=...           # Phase 2
 META_VERIFY_TOKEN=...         # Phase 2
+ENCRYPTION_MASTER_KEY=...     # F-012 secrets encryption
+ADMIN_EMAIL=admin@kanchuki.com
+ADMIN_PASSWORD_HASH=...       # scrypt salt:hash format
+ADMIN_TOTP_SECRET=...         # Google Authenticator compatible
+ADMIN_API_KEY=...             # API key for admin endpoints
+ADMIN_IP_ALLOWLIST=...        # Comma-separated IPs/CIDRs
 ```
 
 ---
@@ -533,6 +542,8 @@ Before each major release:
 - [ ] Test JWT expiry: expired token → 401
 - [ ] Verify no secrets in git history (trufflehog scan)
 - [ ] Verify CSP headers on all pages
+- [ ] Run security test suite: `npx vitest run src/routes/security.test.ts`
+- [ ] Run admin login test suite: `npx vitest run src/routes/admin.login.test.ts`
 
 **Skill reference:** Use `security-bounty-hunter` skill for pre-launch audit.
 
@@ -577,47 +588,332 @@ If the `order_id` doesn't resolve to a local `Order`, or the signature check fai
 - Retention: same 7-year GST/IT compliance window as `SubscriptionPayment` (see `docs/DATABASE.md` retention table) — orders are financial records, not marketing data, so they don't get the shorter customer-interaction retention windows.
 - If a retailer disconnects their payment account, delete (not soft-delete) the encrypted key/secret columns immediately — a disconnected credential has no legitimate reason to persist, unlike business records which are soft-deleted by convention (§ Design Principles, `docs/DATABASE.md`).
 
-### 11.5 Open items (must resolve before this ships, not deferred silently)
+### 11.5 Resolved items (previously flagged as open, now implemented)
 
-- Rate limiting on `/v1/public/webhooks/razorpay` and the checkout-creation endpoint (prevent an attacker from spamming order creation to lock a product in RESERVED status — needs a per-IP or per-session limit plus the auto-expiry cron already planned in `docs/PLAN.md`)
-- Audit logging for payment-account connect/disconnect and for every order status transition (extends the existing `AuditLog` model, same as every other sensitive admin action in §8)
+- **Rate limiting on webhook/create-order** — ✅ **Implemented.**
+  - `POST /public/checkout/create-order`: per-IP rate limit (5/min).
+  - `POST /public/checkout/verify-payment`: per-IP rate limit (10/min).
+  - `POST /public/webhooks/razorpay`: per-IP rate limit (30/min).
+  - `GET /public/orders/:id`: per-IP rate limit (30/min).
+  - All checkout endpoints are gated.
+
+- **Audit logging for payment-account connect/disconnect** — ✅ **Implemented.**
+  - `CONNECT_PAYMENT_ACCOUNT` and `DISCONNECT_PAYMENT_ACCOUNT` logged with before-state, actor, IP.
+  - Order status transitions logged via `request.log.info` (structured logging).
+
+### 11.5b Open items (remain unresolved)
+
 - Legal review of the Stage B (Route) compliance posture before enabling it for any retailer
 
 ### 11.6 Payment integrity — never trust the client for money
 
-This is the section that answers "is it hacker-proof": no payment integration is "100% secure" as an absolute, but every known class of e-commerce payment attack below has a specific, standard mitigation. Skipping any one of these is how real breaches happen — this list is the actual bar, not a nice-to-have.
-
-- **Amount tampering.** The checkout POST body must never include a trusted `total_amount` field. Server recomputes the order total from `OrderItem` × the *snapshotted* product price (`Product.price_min` at add-to-cart time, same snapshot principle as `docs/DATABASE.md` `OrderItem.price_snapshot`) before creating the Razorpay order. A client that submits a manipulated total gets silently overridden by the server-computed figure, never trusted.
-- **Fake "success" callback.** Razorpay Checkout.js's client-side `handler` callback fires in the browser — a modified/scripted client could invoke it without a real payment ever happening. The client callback is allowed to update the UI optimistically ("confirming your payment…") but **must never by itself flip `Order.status` to `PAID`**. That transition only happens after either (a) the client-submitted `razorpay_payment_id`/`razorpay_order_id`/`razorpay_signature` triple is verified server-side via HMAC (Razorpay's documented payment-verification signature, distinct from the webhook signature in §11.3), or (b) the async webhook confirms it. Both paths converge on the same server-side verified transition — the webhook is the durable source of truth if the callback path is ever skipped (tab closed mid-payment, etc.).
-- **Webhook replay.** An attacker who somehow captures a valid webhook payload could resend it. Mitigation: the `Order` status transition is idempotent — only `PENDING_PAYMENT → PAID` is a valid transition; a webhook for an already-`PAID` order is a no-op, not a re-process. Additionally reject webhooks whose Razorpay timestamp is older than a few minutes, narrowing the replay window even further.
-- **Webhook source spoofing.** Signature verification (§11.3) is the primary control. Defense in depth: allowlist Razorpay's published webhook source IPs at the edge (Cloudflare, already in the stack) in addition to the signature check — belt and suspenders, not a substitute for the signature check.
+- **Amount tampering.** Server recomputes total from `OrderItem` × snapshotted `Product.price_min`. Client-submitted total is never trusted.
+- **Fake "success" callback.** Client-side handler must never flip `Order.status` to `PAID`. Only server-side HMAC verification or webhook can transition the status.
+- **Webhook replay.** Idempotent status transitions (only `PENDING_PAYMENT → PAID`). Webhooks with stale timestamps rejected.
+- **Webhook source spoofing.** Signature verification (§11.3) + allowlist of Razorpay source IPs at Cloudflare edge.
 
 ### 11.7 Inventory race condition (double-sell)
 
-This catalog models one `Product` row as one physical, one-off garment (`AVAILABLE`/`SOLD`, not a stock-count SKU) — so two customers checking out the same product at the same moment is a real double-sell risk, not a theoretical one. Order-creation must reserve the product with an atomic conditional update inside the same DB transaction as the `Order`/`OrderItem` insert:
+Atomic `updateMany` with `WHERE status = 'AVAILABLE'` inside a transaction. Read-then-write (TOCTOU) prevented by conditional update + rowcount check.
 
-```
-UPDATE products SET status = 'RESERVED' WHERE id = ? AND status = 'AVAILABLE'
--- Prisma: updateMany({ where: { id, status: 'AVAILABLE' }, data: { status: 'RESERVED' } })
--- then check result.count === 1 — if 0, someone else got there first, reject the checkout
-```
+### 11.8 Retailer account takeover
 
-A read-then-write (`findUnique` check status, then separately `update`) is the classic TOCTOU bug here — two concurrent requests can both pass the read check before either writes. The conditional `updateMany` + rowcount check closes that window.
-
-### 11.8 Retailer account takeover — a new risk this feature introduces
-
-Every other feature in this app, a compromised retailer login costs that retailer their own data. This feature is different: a compromised retailer login lets an attacker **redirect where that retailer's future sale money goes** — by changing the connected `RetailerPaymentAccount` to an attacker-controlled Razorpay account. This is a materially higher-value target than anything else in the platform today and needs its own controls, not just the existing OTP login (§1):
-
-- **Step-up re-authentication** (re-enter OTP) specifically on connect/change/disconnect of the payment account — not covered by an already-valid session token alone.
-- **Out-of-band notification** (SMS/WhatsApp) to the retailer's registered phone whenever the payment account changes — so a real retailer notices an attacker's change even if the attacker is mid-session.
-- **Audit log** every connect/change/disconnect with before/after state (extends existing `AuditLog`, §8) — already listed in §11.5, called out again here because it's the primary forensic trail for this specific risk.
+- Step-up OTP re-authentication on connect/change/disconnect of payment account.
+- Out-of-band SMS notification to retailer's registered phone on payment account change.
+- Audit log every connect/change/disconnect with before/after state.
 
 ### 11.9 PCI-DSS scope
 
-Using Razorpay Checkout.js (hosted modal/iframe) means **raw card numbers never touch Kanchuki's servers or JavaScript execution context** — card entry happens inside Razorpay's own iframe. This keeps Kanchuki in the lightest PCI-DSS tier (SAQ-A: "fully outsourced payment processing"), not the heavy SAQ-D tier that applies to anyone who handles card data directly.
-
-**This holds only as long as card entry stays inside Razorpay's hosted UI.** Never build a custom card-number/CVV input field — that would pull the platform into full PCI-DSS scope (network segmentation, quarterly ASV scans, annual audit) for no product benefit Razorpay's own hosted checkout doesn't already provide.
+Razorpay Checkout.js (hosted iframe) — raw card numbers never touch Kanchuki servers. SAQ-A tier maintained.
 
 ### 11.10 Anonymous order lookup (IDOR)
 
-Checkout has no customer account (§11.4), so an order-status/confirmation page is keyed by `Order.id` alone unless deliberately hardened. `Order.id` is a non-guessable cuid2 (same convention as every other ID in this app, §2), but relying on ID-secrecy alone is weak defense if a link ever leaks via browser history, analytics tooling, or a shared screenshot. Require the checkout phone number as a second factor before rendering address/payment details on any order-lookup page — same bearer-plus-verification posture as the existing `revocation_token` pattern (§3c), not full authentication, but not ID-alone either.
+Phone number required as second factor before rendering order details. Wrong phone → 404 (same error as "not found"). Phone not echoed in response. `timingSafeEqual` prevents response-time oracle attacks. ✅ **Tested (7 automated tests).**
+
+---
+
+## 12. Operational Governance — No Auto-Operations Without Approval
+
+**NEW — July 2026.** This section defines the governance model: no operation runs without explicit human approval.
+
+### 12.1 Principle
+
+Kanchuki follows a **human-in-the-loop** model for every operation that affects production data, deployment, or API credentials. Automated systems (cron jobs, CI/CD, AI agents) may propose actions but must never execute them without explicit approval from an authorized human.
+
+### 12.2 Operations Requiring Approval
+
+| Operation | Approval Gate | Mechanism |
+|-----------|---------------|-----------|
+| Deployment to production | ✅ Required | Manual `git push` to `main` + approval in Railway dashboard |
+| Database schema migration | ✅ Required | Manually run `prisma migrate deploy` via admin panel button |
+| Database backup | ✅ Required | Manually triggered from admin dashboard |
+| Database restore | ✅ Required | Manually triggered + confirmation dialog |
+| Delete retailer data | ✅ Required | Admin panel with confirmation + audit log |
+| Change payment credentials | ✅ Required | Step-up OTP + admin approval |
+| Add/modify admin users | ✅ Required | TOTP-authenticated admin + audit log |
+| Modify plan limits/pricing | ✅ Required | Admin panel with before/after logged |
+| Billing change (extend trial, change plan) | ✅ Required | Admin panel with audit log |
+| AI model configuration changes | ✅ Required | Admin panel (not via env vars alone) |
+| API key rotation | ✅ Required | Admin integrations screen |
+| Export customer/sales data | ✅ Required | Admin panel with audit log |
+| Trigger bulk notifications to retailers | ✅ Required | Admin panel with confirmation |
+| Send test emails/SMS | ✅ Required | Admin panel |
+
+### 12.3 Operations That Run Automatically (Approved)
+
+The following are stateless, non-destructive, or time-critical — they run without approval:
+
+| Operation | Why Auto |
+|-----------|----------|
+| VTO input photo deletion (after processing) | Privacy requirement, already consented |
+| 24h result expiry cleanup | Already consented at try-on time |
+| 180-day training-data retention cleanup | Already consented at opt-in time |
+| Cache invalidation / Redis TTL | Performance, no data impact |
+| Rate limit counters | Performance, no data impact |
+| Collection view analytics | Read-only aggregation |
+| Email/SMS delivery (system-generated) | Already consented at signup |
+
+---
+
+## 13. Database Backup & Disaster Recovery
+
+### 13.1 Architecture
+
+Kanchuki maintains **three database layers** for maximum safety:
+
+| Layer | Purpose | Provider | Access |
+|-------|---------|----------|--------|
+| **Primary** (Supabase) | Live runtime — all reads/writes | Supabase PostgreSQL 16 | API server, admin dashboard (read-only) |
+| **Replica / Warm Standby** | Read-replica for admin queries, analytics | Separate PostgreSQL instance (Railway/independent) | Admin dashboard (read-only) |
+| **Cold Backup** | Disaster recovery, point-in-time restore | Separate provider (e.g., independent VPS or backup service) | Admin dashboard (trigger restore) |
+
+### 13.2 Backup Schedule
+
+| Backup Type | Frequency | Retention | Target |
+|-------------|-----------|-----------|--------|
+| Continuous WAL archiving | Real-time | 7 days | Supabase built-in |
+| Daily full backup | Every 24h | 30 days | Replica database |
+| Weekly full backup | Every Sunday | 12 months | Cold backup database |
+| Monthly archive | 1st of month | 7 years | Cold backup (GST compliance) |
+| Manual backup | On demand | Permanent (until manually deleted) | Admin dashboard trigger |
+
+### 13.3 What's NOT Implemented Yet
+
+The following infrastructure must be built:
+
+- [ ] **`BACKUP_DATABASE_URL` env var** — second PostgreSQL connection for the backup target
+- [ ] **Backup automation script** — `scripts/backup-database.ts` that runs `pg_dump` and restores to the backup database
+- [ ] **Admin dashboard backup page** — UI to trigger, view status, and download backups
+- [ ] **Admin dashboard restore page** — UI to select a backup and restore (with confirmation)
+- [ ] **Admin query runner** — SQL console that runs read-only queries against the replica
+- [ ] **Scheduled backup cron** — BullMQ job or system cron for daily/weekly automated backups
+- [ ] **Backup integrity check** — automated restore verification on the replica
+- [ ] **Disaster recovery runbook** — step-by-step recovery procedure
+
+### 13.4 `.env` Changes Required
+
+```bash
+# Add to .env.example, .env, and all deployment environments:
+BACKUP_DATABASE_URL=postgresql://user:password@backup-host:5432/kanchuki_backup
+```
+
+---
+
+## 14. Admin Dashboard — Database Console & Backup Management
+
+### 14.1 Required Features (Not Built)
+
+The admin dashboard needs the following **new pages** and API endpoints:
+
+#### Backend API Endpoints (all under `/v1/admin/`)
+
+| Method | Endpoint | Purpose | Status |
+|--------|----------|---------|--------|
+| `POST` | `/admin/backup/create` | Trigger a full database backup | ❌ Not built |
+| `GET` | `/admin/backups` | List all available backups with metadata | ❌ Not built |
+| `POST` | `/admin/backups/:id/restore` | Restore database from a specific backup | ❌ Not built |
+| `DELETE` | `/admin/backups/:id` | Delete a specific backup | ❌ Not built |
+| `POST` | `/admin/query` | Run a read-only SQL query against the replica | ❌ Not built |
+| `GET` | `/admin/query/history` | List recent queries with results | ❌ Not built |
+| `GET` | `/admin/database/status` | Database connection status, size, table counts | ❌ Not built |
+
+#### Admin Dashboard Pages (Next.js)
+
+| Route | Purpose | Status |
+|-------|---------|--------|
+| `/admin/database` | Database management hub | ❌ Not built |
+| `/admin/database/backup` | Create and manage backups | ❌ Not built |
+| `/admin/database/query` | SQL query console (read-only) | ❌ Not built |
+| `/admin/database/status` | DB health, size, connection info | ❌ Not built |
+| `/admin/audit-log` | View audit log entries with filters | ❌ Not built |
+
+### 14.2 Query Runner Security
+
+The SQL query runner must:
+- Connect **only** to the replica/backup database, never to the primary
+- Enforce **read-only** mode — block `INSERT`, `UPDATE`, `DELETE`, `DROP`, `ALTER`, `TRUNCATE`, `CREATE`
+- Set a **statement timeout** (e.g., 30 seconds)
+- Set a **row limit** (e.g., 1000 rows returned)
+- Log every query with: admin identity, timestamp, SQL text (truncated to 500 chars), duration, row count
+- Never return raw `DATABASE_URL` or connection strings to the client
+
+---
+
+## 15. AI Agent & Automation Control
+
+### 15.1 Principle
+
+No AI agent (Claude, GPT, or any LLM) can execute destructive, mutating, or financially-impactful operations without explicit human authorization. This applies to:
+- The AI coding assistant editing this codebase
+- Any future AI agent integrated into the platform
+- Automated scripts and cron jobs
+- CI/CD pipeline actions
+
+### 15.2 Controlled Operations for AI Agents
+
+| Operation | Allowed? | Condition |
+|-----------|----------|-----------|
+| Read files | ✅ Yes | Always |
+| Search code | ✅ Yes | Always |
+| Propose code changes | ✅ Yes | Always |
+| **Apply code changes** | ⚠️ **Review Required** | Human must review diff before approving |
+| **Run database migrations** | ❌ **Never** | Only from admin dashboard with approval |
+| **Modify production env vars** | ❌ **Never** | Only through admin integrations screen |
+| **Trigger deployment** | ❌ **Never** | Manually via Railway dashboard |
+| **Modify CI/CD config** | ❌ **Never** | Requires PR review + merge |
+| Run tests | ✅ Yes | Read-only, no side effects |
+| Run typecheck | ✅ Yes | Read-only, no side effects |
+| Generate documentation | ✅ Yes | Read-only |
+| Answer questions | ✅ Yes | Read-only |
+| Start local dev server | ✅ Yes | Local only |
+| Install npm packages | ⚠️ **With oversight** | Must not modify lockfile without review |
+
+### 15.3 CLAUDE.md Policy
+
+The `CLAUDE.md` file at the project root contains the AI agent's operational instructions. It must always include:
+
+```markdown
+## AI Agent Operational Control
+- This AI agent MUST NOT modify production environment variables
+- This AI agent MUST NOT trigger deployments
+- This AI agent MUST NOT run database migrations
+- This AI agent MUST NOT execute terminal commands that modify the production database
+- This AI agent MUST present all code changes for human review before applying
+- THIS FILE (CLAUDE.md) must only be modified by a human or with explicit human approval
+```
+
+### 15.4 Enforcement
+
+Since AI agent compliance is **advisory** (agents follow instructions but can't be technically restricted from reading/writing files), the following technical controls complement the policy:
+
+- **Pre-commit hooks** — block commits containing hardcoded secrets or connection strings (via `.husky/pre-commit` or `.git/hooks/pre-commit`)
+- **CI pipeline** — separate build/test from deploy steps; deploy requires manual Railway approval
+- **Branch protection** — `main` branch requires PR review for all changes
+- **Secrets scanning** — automated scanning for secrets in commit history
+- **Environment separation** — production credentials never available in local development
+
+---
+
+## 16. Admin Control Center — Full Ownership
+
+### 16.1 What You (The Admin) Control
+
+| Resource | How You Control It | Status |
+|----------|-------------------|--------|
+| **Who can login** | Admin TOTP + IP allowlist | ✅ Implemented |
+| **Secrets & keys** | Admin integrations screen (encrypted) | ✅ Implemented |
+| **Plan limits & pricing** | Admin plan-limits screen | ✅ Implemented |
+| **Retailer limits** | Per-retailer overrides | ✅ Implemented |
+| **Retailer accounts** | View, extend trial, change plan, delete | ✅ Implemented |
+| **Background images** | Upload, toggle, delete | ✅ Implemented |
+| **Audit logs** | All admin actions logged | ✅ Implemented |
+| **--- Missing Below ---** | | |
+| **Database backups** | Manual trigger, schedule, restore | ❌ Needs build |
+| **Database queries** | Read-only SQL console | ❌ Needs build |
+| **Database health** | Connection status, size, replication lag | ❌ Needs build |
+| **Deployment control** | Manual approval gate for deploys | ❌ Needs build |
+| **Rate limit tuning** | Adjust rate limit parameters live | ❌ Needs build |
+| **AI model config** | Choose model, set temperature, etc. | ❌ Needs build |
+| **Notification center** | See and approve pending operations | ❌ Needs build |
+
+### 16.2 One Dashboard to Rule Everything
+
+The admin dashboard should eventually become a **single control center** with:
+
+```
+Admin Dashboard
+├── Overview (stats, recent activity, alerts)
+├── Retailers (list, detail, actions)
+├── Subscriptions (plans, billing, invoices)
+├── Database (NEW)
+│   ├── Status — connection health, size, table counts
+│   ├── Backup — create, list, restore
+│   └── Query Console — read-only SQL with history
+├── Operations (NEW)
+│   ├── Pending Approvals — operations awaiting your okay
+│   ├── Audit Log — all actions with filters
+│   └── Deployment Log — recent deploys with status
+├── Integrations (F-012)
+├── Plan Limits (F-010)
+├── Background Images (F-011)
+└── Settings (admin accounts, IP allowlist, TOTP config)
+```
+
+---
+
+## 17. Future Security Roadmap
+
+### Phase A (Next Sprint) — Foundation
+
+- [ ] **Backup database setup** — provision second PostgreSQL instance, wire `BACKUP_DATABASE_URL`
+- [ ] **Backup script** — `scripts/backup-database.ts` for manual and scheduled backups
+- [ ] **Admin database page** — `/admin/database` with status view
+- [ ] **Admin backup page** — create, list, download backups
+
+### Phase B (Month 2) — Query & Monitor
+
+- [ ] **Admin query runner** — read-only SQL console against replica
+- [ ] **Scheduled backup cron** — daily + weekly automated backups
+- [ ] **Backup integrity check** — automated verification
+- [ ] **Database status monitoring** — size, connections, replication lag
+
+### Phase C (Month 3) — Full Control
+
+- [ ] **Admin notification center** — pending operations requiring approval
+- [ ] **Deployment approval workflow** — manual gate in CI/CD
+- [ ] **Rate limit live tuning** — adjust without redeploy
+- [ ] **AI model config UI** — switch models, adjust parameters
+- [ ] **Disaster recovery runbook** — step-by-step documented procedure
+
+---
+
+## 18. Compliance & Audit
+
+### 18.1 Audit Log Schema
+
+The `AuditLog` model in Prisma already exists. All admin actions must log:
+
+| Field | Example |
+|-------|---------|
+| `actor_id` | `admin_001` |
+| `actor_type` | `admin` |
+| `action` | `CHANGE_PLAN` |
+| `resource_type` | `Retailer` |
+| `resource_id` | `retailer_abc` |
+| `metadata` | `{"before": {"plan": "STARTER"}, "after": {"plan": "GROWTH"}}` |
+| `ip_address` | `103.45.67.89` |
+| `created_at` | `2026-07-25T10:00:00Z` |
+
+### 18.2 Audit Log Viewer
+
+An audit log viewer page (`/admin/audit-log`) must be built with:
+- Filter by action type, actor, resource, date range
+- Expandable rows showing before/after metadata
+- Export to CSV for compliance reporting
+- Retention: 3 years minimum
+
+---
+
+**Document version:** 1.1  
+**Last updated:** July 25, 2026  
+**Next review:** October 2026 or before any major deployment

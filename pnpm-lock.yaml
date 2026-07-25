@@ -103,6 +103,9 @@ importers:
       jose:
         specifier: ^6.2.3
         version: 6.2.3
+      otplib:
+        specifier: ^13.4.1
+        version: 13.4.1
       pino:
         specifier: ^9.3.2
         version: 9.14.0
@@ -252,6 +255,9 @@ importers:
       '@kanchuki/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@monaco-editor/react':
+        specifier: ^4.7.0
+        version: 4.7.0(monaco-editor@0.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@serwist/next':
         specifier: '9'
         version: 9.5.12(next@14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
@@ -273,6 +279,9 @@ importers:
       lucide-react:
         specifier: ^0.414.0
         version: 0.414.0(react@18.3.1)
+      monaco-editor:
+        specifier: ^0.56.0
+        version: 0.56.0
       next:
         specifier: 14.2.35
         version: 14.2.35(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1799,6 +1808,16 @@ packages:
     resolution: {integrity: sha512-9I2Zn6+NJLfaGoz9jN3lpwDgAYvfGeNYdbAIjJOqzs4Tpc+VU3Jqq4IofSUBKajiDS8k9fZIg18/z13mpk1bsA==}
     engines: {node: '>=8'}
 
+  '@monaco-editor/loader@1.7.0':
+    resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
+
+  '@monaco-editor/react@4.7.0':
+    resolution: {integrity: sha512-cyzXQCtO47ydzxpQtCGSQGOC8Gk3ZUeBXFAxD+CWXYFo5OqZyZUonFl0DwUlTyAfRHntBfw2p3w4s9R6oe1eCA==}
+    peerDependencies:
+      monaco-editor: '>= 0.25.0 < 1'
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
     cpu: [arm64]
@@ -1969,6 +1988,10 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
+  '@noble/hashes@2.2.0':
+    resolution: {integrity: sha512-IYqDGiTXab6FniAgnSdZwgWbomxpy9FtYvLKs7wCUs2a8RkITG+DFGO1DM9cr+E3/RgADRpFjrKVaJ1z6sjtEg==}
+    engines: {node: '>= 20.19.0'}
+
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
     engines: {node: '>= 8'}
@@ -1984,6 +2007,24 @@ packages:
   '@nolyfill/is-core-module@1.0.39':
     resolution: {integrity: sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA==}
     engines: {node: '>=12.4.0'}
+
+  '@otplib/core@13.4.1':
+    resolution: {integrity: sha512-KIXgK1hNtWJEBMTastbe1bpmuais+3f+ATeO8TkMs2rNkfGO1FbQy8+/UWVEu3TR/iTJerU0idkPudaPmLP2BA==}
+
+  '@otplib/hotp@13.4.1':
+    resolution: {integrity: sha512-g9q04SwpG5ZtMnVkUcgcoAlwCH4YLROZN1qhyBwgkBzqYYVSYhpP6gSGaxGHwePLt1c+e6NqDlgIZN+e1/XPuA==}
+
+  '@otplib/plugin-base32-scure@13.4.1':
+    resolution: {integrity: sha512-Fs/r5qisC05SRhT6xWXaypB6PVC0vgWf6zztmi0J5RnQ09OJiPDWCJFH6cDm6ANsrdvB9di7X+Jb7L13BoEbUA==}
+
+  '@otplib/plugin-crypto-noble@13.4.1':
+    resolution: {integrity: sha512-PJfVW8/1hdS6CfxLheKPZSLTwDq4TijZbN4yRjxlv0ODdzmxpM+wGwWr1JXMdy0xJPxLziydQD5gdVqrR4/gAg==}
+
+  '@otplib/totp@13.4.1':
+    resolution: {integrity: sha512-QOkBVPrf6AM4qZaReZPSk9/I8ATVdZpIISJz115MqeVtcrbcr5llPZ0J7804tpnjnp1vCRkI5Qjd47HhgVteBQ==}
+
+  '@otplib/uri@13.4.1':
+    resolution: {integrity: sha512-xaIm7bvICMhoB2rZIR5luiaMdssWR5nY5nXnR1fdezUgZuEO58D6zrGzLp7pQuBmlpmL0HagnscDQFoskp9yiA==}
 
   '@oxc-project/types@0.139.0':
     resolution: {integrity: sha512-r9gHphtCs+1M7J0pw6Sn/hh/Wpa/iQrOOkrNAlVLF/gHq+/CJmHIWKKUUhdWjcD6CIa8idarspCsASiXCXvFUw==}
@@ -2494,6 +2535,9 @@ packages:
 
   '@rushstack/eslint-patch@1.16.1':
     resolution: {integrity: sha512-TvZbIpeKqGQQ7X0zSCvPH9riMSFQFSggnfBjFZ1mEoILW+UuXCKwOoPcgjMwiUtRqFZ8jWhPJc4um14vC6I4ag==}
+
+  '@scure/base@2.2.0':
+    resolution: {integrity: sha512-b8XEupJibegiXV+tDUseI8oLQc8ei3d/4Jkb2RpbHh3MfE054ov3uIz2dhFkB3FI8iwYkEh0gGCApkrYggkPNg==}
 
   '@serwist/build@9.5.12':
     resolution: {integrity: sha512-U2UkA9BjdpniZkXDIG6NQRBEbXccRvqewzL3hfNEQERvM2bL6ezKvsVF9359akUWP8BxV950Kkq9LKGFmOR8Uw==}
@@ -3818,6 +3862,9 @@ packages:
   domhandler@5.0.3:
     resolution: {integrity: sha512-cgwlv/1iFQiFnU96XXgROh8xTeetsnJiDsTc7TYCLFd9+/WNkIqPTxiM/8pSd8VIrhXGTf1Ny1q1hquVqDJB5w==}
     engines: {node: '>= 4'}
+
+  dompurify@3.4.8:
+    resolution: {integrity: sha512-yb1cEmaOum7wFvOCSQxyfgVlv5D47Rc30iZWoMpbDIWTnJ6grDDQyu2KFJzB2k7u0pMuJcQ1zphH//fFnw2tjQ==}
 
   domutils@3.2.2:
     resolution: {integrity: sha512-6kZKyUajlDuqlHKVX1w7gyslj9MPIXzIFiz/rGu35uC1wMi+kMhQwGhl4lt9unC9Vb9INnY9Z3/ZA3+FhASLaw==}
@@ -5178,6 +5225,11 @@ packages:
   makeerror@1.0.12:
     resolution: {integrity: sha512-JmqCvUhmt43madlpFzG4BQzG2Z3m6tvQDNKdClZnO3VbIudJYmxsT0FNJMeiB2+JTSlTQTSbU8QdesVmwJcmLg==}
 
+  marked@14.0.0:
+    resolution: {integrity: sha512-uIj4+faQ+MgHgwUW1l2PsPglZLOLOT1uErt06dAPtx2kjteLAkbsd/0FiYg/MGS+i7ZKLb7w2WClxHkzOOuryQ==}
+    engines: {node: '>= 18'}
+    hasBin: true
+
   marky@1.3.0:
     resolution: {integrity: sha512-ocnPZQLNpvbedwTy9kNrQEsknEfgvcLMvOtz3sFeWApDq1MXH1TqkCIx58xlpESsfwQOnuBO9beyQuNGzVvuhQ==}
 
@@ -5384,6 +5436,9 @@ packages:
 
   mnemonist@0.40.0:
     resolution: {integrity: sha512-kdd8AFNig2AD5Rkih7EPCXhu/iMvwevQFX/uEiGhZyPZi7fHqOoF4V4kHLpCfysxXMgQ4B52kdPMCwARshKvEg==}
+
+  monaco-editor@0.56.0:
+    resolution: {integrity: sha512-sXboRm3BeBeLm938eaiyLMe0OxzfXIlZvbv4ir/jVgQy1zDhWjgmny0WoN45fuDKhCCQsYMbBJrv/A6jd8aCUg==}
 
   motion-dom@11.18.1:
     resolution: {integrity: sha512-g76KvA001z+atjfxczdRtw/RXOM3OMSdd1f4DL77qCTF/+avrRJiawSG4yDibEQ215sr9kpinSlX2pCTJ9zbhw==}
@@ -5636,6 +5691,9 @@ packages:
   ora@3.4.0:
     resolution: {integrity: sha512-eNwHudNbO1folBP3JsZ19v9azXWtQZjICdr3Q0TDPIaeBQ3mXLrh54wM+er0+hSp+dWKf+Z8KM58CYzEyIYxYg==}
     engines: {node: '>=6'}
+
+  otplib@13.4.1:
+    resolution: {integrity: sha512-o5CxfDw6bh7hoDv0NUUIcc0RqzJ9ipfUrzeKheKJ+vs4rXZnDlA9n4a/7R1cDjpmLjKLix4BgNVRmoDkm5rLSQ==}
 
   own-keys@1.0.1:
     resolution: {integrity: sha512-qFOyK5PjiWZd+QQIh+1jhdb9LpxTF0qs7Pm8o5QHYZ0M3vKqSqzsZaEB6oWlxZ+q2sJBMI/Ktgd2N5ZwQoRHfg==}
@@ -6424,6 +6482,9 @@ packages:
 
   standard-navigation@0.0.7:
     resolution: {integrity: sha512-NCGLCNyuXrFOkGHxdNZFnpsehGtiq1oXbPhKl7ZuxFO5J//H2evqqOchmD4YwEUJnkjO4kH9Xp4hQX6hdAYCKQ==}
+
+  state-local@1.0.7:
+    resolution: {integrity: sha512-HTEHMNieakEnoe33shBYcZ7NX83ACUjCu8c40iOGEZsngj9zRnkqS9j1pqQPXwobB0ZcVTk27REb7COQ0UR59w==}
 
   statuses@1.5.0:
     resolution: {integrity: sha512-OpZ3zP+jT1PI7I8nemJX4AKmAX070ZkYPVWV/AaKTJl+tXCTGyVdC1a4SL8RUQYEwk/f34ZX8UTykN68FwrqAA==}
@@ -8974,6 +9035,17 @@ snapshots:
 
   '@lukeed/ms@2.0.2': {}
 
+  '@monaco-editor/loader@1.7.0':
+    dependencies:
+      state-local: 1.0.7
+
+  '@monaco-editor/react@4.7.0(monaco-editor@0.56.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)':
+    dependencies:
+      '@monaco-editor/loader': 1.7.0
+      monaco-editor: 0.56.0
+      react: 18.3.1
+      react-dom: 18.3.1(react@18.3.1)
+
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     optional: true
 
@@ -9089,6 +9161,8 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
+  '@noble/hashes@2.2.0': {}
+
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
       '@nodelib/fs.stat': 2.0.5
@@ -9102,6 +9176,33 @@ snapshots:
       fastq: 1.20.1
 
   '@nolyfill/is-core-module@1.0.39': {}
+
+  '@otplib/core@13.4.1': {}
+
+  '@otplib/hotp@13.4.1':
+    dependencies:
+      '@otplib/core': 13.4.1
+      '@otplib/uri': 13.4.1
+
+  '@otplib/plugin-base32-scure@13.4.1':
+    dependencies:
+      '@otplib/core': 13.4.1
+      '@scure/base': 2.2.0
+
+  '@otplib/plugin-crypto-noble@13.4.1':
+    dependencies:
+      '@noble/hashes': 2.2.0
+      '@otplib/core': 13.4.1
+
+  '@otplib/totp@13.4.1':
+    dependencies:
+      '@otplib/core': 13.4.1
+      '@otplib/hotp': 13.4.1
+      '@otplib/uri': 13.4.1
+
+  '@otplib/uri@13.4.1':
+    dependencies:
+      '@otplib/core': 13.4.1
 
   '@oxc-project/types@0.139.0': {}
 
@@ -9675,6 +9776,8 @@ snapshots:
   '@rtsao/scc@1.1.0': {}
 
   '@rushstack/eslint-patch@1.16.1': {}
+
+  '@scure/base@2.2.0': {}
 
   '@serwist/build@9.5.12(browserslist@4.28.6)(typescript@5.9.3)':
     dependencies:
@@ -11109,6 +11212,10 @@ snapshots:
   domhandler@5.0.3:
     dependencies:
       domelementtype: 2.3.0
+
+  dompurify@3.4.8:
+    optionalDependencies:
+      '@types/trusted-types': 2.0.7
 
   domutils@3.2.2:
     dependencies:
@@ -12795,6 +12902,8 @@ snapshots:
     dependencies:
       tmpl: 1.0.5
 
+  marked@14.0.0: {}
+
   marky@1.3.0: {}
 
   math-intrinsics@1.1.0: {}
@@ -13224,6 +13333,11 @@ snapshots:
     dependencies:
       obliterator: 2.0.5
 
+  monaco-editor@0.56.0:
+    dependencies:
+      dompurify: 3.4.8
+      marked: 14.0.0
+
   motion-dom@11.18.1:
     dependencies:
       motion-utils: 11.18.1
@@ -13491,6 +13605,15 @@ snapshots:
       log-symbols: 2.2.0
       strip-ansi: 5.2.0
       wcwidth: 1.0.1
+
+  otplib@13.4.1:
+    dependencies:
+      '@otplib/core': 13.4.1
+      '@otplib/hotp': 13.4.1
+      '@otplib/plugin-base32-scure': 13.4.1
+      '@otplib/plugin-crypto-noble': 13.4.1
+      '@otplib/totp': 13.4.1
+      '@otplib/uri': 13.4.1
 
   own-keys@1.0.1:
     dependencies:
@@ -14402,6 +14525,8 @@ snapshots:
   standard-as-callback@2.1.0: {}
 
   standard-navigation@0.0.7: {}
+
+  state-local@1.0.7: {}
 
   statuses@1.5.0: {}
 

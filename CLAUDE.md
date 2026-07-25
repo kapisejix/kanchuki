@@ -105,6 +105,36 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 
 ---
 
+## ⚠️ AI Agent Operational Control Policy
+
+**IMPORTANT: This section defines what this AI agent CAN and CANNOT do.**
+
+### Always Allowed (Read-Only)
+- Read any file in the codebase
+- Search code with ripgrep
+- Propose code changes (present as diffs for review)
+- Run tests, typecheck, lints
+- Answer questions about the codebase
+- Generate documentation
+- Start local development server
+- Install npm packages (with review)
+
+### Requires Human Approval
+- **Apply code changes** — present diff, wait for approval
+- **Modify CLAUDE.md** — this file must only be changed with explicit human approval
+- **Modify SECURITY.md §12-18** — governance sections require human review
+
+### NEVER Allowed
+- **Modify production environment variables**
+- **Trigger deployments** — manual only via Railway dashboard
+- **Run database migrations** — only from admin dashboard with approval
+- **Execute commands that modify the production database directly**
+- **Modify CI/CD pipeline configuration**
+- **Access production secrets or connection strings**
+- **Run destructive commands** (e.g., `DROP`, `DELETE` without WHERE clause, `TRUNCATE`, etc.)
+
+---
+
 ## Planned: L2 Ecommerce Checkout (WhatsApp stays messaging-only)
 
 **Decided 2026-07-24** — full spec `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema `docs/DATABASE.md`, threat model `docs/SECURITY.md` §11, roadmap slot `docs/PLAN.md` Month 15–16.
@@ -140,7 +170,7 @@ A retailer having an *active connected payment account* is itself the L1 (catalo
 | `docs/DESIGN.md` | UI/UX design system, screens, flows |
 | `docs/DATABASE.md` | PostgreSQL schema, indexes, relationships |
 | `docs/API.md` | REST API contracts, endpoints, auth |
-| `docs/SECURITY.md` | Security model, OWASP, data privacy |
+| `docs/SECURITY.md` | Security model, OWASP, data privacy, governance |
 | `docs/MEMORY.md` | AI agent context and prompting strategy |
 | `docs/SKILLS-AND-MCP.md` | Claude Code skills and MCP tools in use |
 | `docs/final-research.md` | Market research foundation |
@@ -152,8 +182,10 @@ A retailer having an *active connected payment account* is itself the L1 (catalo
 When working in this repo:
 1. **Always check `docs/PRO-REQUIREMENTS.md`** before adding any feature
 2. **Always check `docs/DATABASE.md`** before writing schema migrations
-3. **Always check `docs/SECURITY.md`** before handling user data or photos
-4. **Use RTK prefix** for all bash commands (`rtk cargo build`, `rtk git status`)
-5. **Photo data is sensitive** — follow consent/deletion rules in SECURITY.md
-6. **GST compliance is non-negotiable** — every sale needs GST invoice support
-7. **Target INR pricing** — never hardcode USD anywhere
+3. **Always check `docs/SECURITY.md`** before handling user data or photos, especially §12-18 (governance)
+4. **Photo data is sensitive** — follow consent/deletion rules in SECURITY.md
+5. **GST compliance is non-negotiable** — every sale needs GST invoice support
+6. **Target INR pricing** — never hardcode USD anywhere
+7. **Operational control** — follow AI Agent Operational Control Policy above. No auto-operations without human approval.
+8. **Security tests** — after any checkout or auth changes, run: `npx vitest run src/routes/security.test.ts`
+9. **Admin login tests** — after any admin auth changes, run: `npx vitest run src/routes/admin.login.test.ts`

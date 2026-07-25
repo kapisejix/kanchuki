@@ -1,7 +1,7 @@
 # Kanchuki — AI Memory & Context System
 
-**Version:** 1.0  
-**Date:** June 2026  
+**Version:** 1.1  
+**Date:** July 2026  
 **Purpose:** How AI agents, prompts, and context work across the Kanchuki platform
 
 ---
@@ -408,4 +408,80 @@ Always check DATABASE.md before schema changes.
 Always check SECURITY.md before handling photos or customer data.
 AI API costs money — never make Claude/OpenAI calls synchronously in request handlers.
 Always use BullMQ job queue for AI operations.
+
+⚠️ Human-in-the-Loop: This AI assistant MUST NOT modify production env vars,
+run database migrations, trigger deployments, or execute any destructive
+operations without explicit human approval. See CLAUDE.md 'AI Agent
+Operational Control Policy' section.
+```
+
+---
+
+## 8. Approval Gate Protocol for AI Operations
+
+When the AI assistant needs to perform an operation requiring human approval:
+
+### 8.1 Code Changes
+1. **Propose** — Present the diff with explanation
+2. **Wait** — Do not apply until user explicitly says "apply" or "go ahead"
+3. **Apply** — Only after explicit approval
+
+### 8.2 Database-Related
+1. **Never modify production schema directly**
+2. Migration proposals must include: the Prisma schema change, the generated SQL, rollback plan
+3. Only apply after human approval
+
+### 8.3 Environment Variables
+1. Never read or write production `.env` files
+2. Propose changes to `.env.example` as documentation
+3. Only the human operator sets production env vars
+
+### 8.4 Security-Critical Operations
+The following automatically pause for human verification:
+- Any change to: `admin.ts`, `checkout.ts`, `authPlugin`, `team-auth.ts`
+- Any change to: `CLAUDE.md`, `docs/SECURITY.md`, `docs/MEMORY.md`
+- Any change touching: payment flows, PII handling, API credentials
+
+---
+
+## 9. Development Environment
+
+### Required Env Vars for Local Dev
+```bash
+DATABASE_URL=postgresql://...
+SUPABASE_URL=...
+SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_KEY=...
+CLAUDE_API_KEY=...
+R2_ACCOUNT_ID=...
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+ENCRYPTION_MASTER_KEY=...
+ADMIN_EMAIL=admin@kanchuki.com
+ADMIN_API_KEY=...
+ADMIN_PASSWORD_HASH=...
+ADMIN_TOTP_SECRET=...
+```
+
+### Quick Start
+```bash
+pnpm install
+pnpm --filter @kanchuki/db exec prisma migrate dev
+pnpm --filter @kanchuki/db exec prisma db seed
+pnpm dev
+```
+
+### Testing
+```bash
+# Run all tests
+pnpm --filter @kanchuki/api test
+
+# Security tests specifically
+npx vitest run src/routes/security.test.ts --reporter=verbose
+
+# Admin login tests
+npx vitest run src/routes/admin.login.test.ts --reporter=verbose
+
+# Typecheck
+pnpm --filter @kanchuki/api typecheck
 ```

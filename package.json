@@ -20,7 +20,12 @@
     "db:generate": "turbo db:generate",
     "db:migrate": "pnpm --filter @kanchuki/db migrate:dev",
     "db:studio": "pnpm --filter @kanchuki/db studio",
-    "db:push": "pnpm --filter @kanchuki/db db:push"
+    "db:push": "pnpm --filter @kanchuki/db db:push",
+    "db:backup": "tsx scripts/backup-database.ts",
+    "db:backup:local": "tsx scripts/backup-database.ts --local-only",
+    "db:restore": "tsx scripts/restore-database.ts",
+    "db:restore:latest": "tsx scripts/restore-database.ts --latest",
+    "db:backup:list": "tsx scripts/restore-database.ts --list"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.8.0",

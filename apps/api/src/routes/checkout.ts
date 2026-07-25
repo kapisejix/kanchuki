@@ -608,7 +608,10 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
   );
 
   // ── GET /public/orders/:id ──────────────────────────────────────
-  // Check order status (customer-facing, no auth — uses order ID)
+  // Check order status (customer-facing, no auth — uses order ID + phone)
+  // SECURITY §11.10: Phone number is required as a second factor to prevent
+  // IDOR — anyone with the order ID (leaked via browser history/screenshot)
+  // cannot see order details without also knowing the customer's phone.
   server.get(
     '/public/orders/:id',
     {
@@ -622,6 +625,16 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
     },
     async (request) => {
       const { id } = request.params as { id: string };
+      const query = z
+        .object({
+          phone: z.string().min(10).max(15),
+        })
+        .safeParse(request.query);
+
+      if (!query.success) {
+        throw validationError('Phone number is required to look up an order');
+      }
+
       const order = await prisma.order.findUnique({
         where: { id },
         select: {
@@ -632,6 +645,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
           subtotal_amount: true,
           gst_invoice_number: true,
           customer_name: true,
+          customer_phone: true,
           paid_at: true,
           created_at: true,
           items: {
@@ -647,7 +661,21 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       });
       if (!order) throw notFound('Order');
 
-      return { data: order };
+      // SECURITY §11.10: Verify phone number — use timing-safe comparison
+      // to prevent response-time oracle attacks (always the same code path).
+      const phoneBuffer = Buffer.from(query.data.phone);
+      const expectedPhoneBuffer = Buffer.from(order.customer_phone);
+      if (
+        phoneBuffer.length !== expectedPhoneBuffer.length ||
+        !timingSafeEqual(phoneBuffer, expectedPhoneBuffer)
+      ) {
+        throw notFound('Order');
+      }
+
+      // Strip phone from response — don't echo it back
+      const { customer_phone: _, ...safeOrder } = order;
+
+      return { data: safeOrder };
     },
   );
 
@@ -860,6 +888,55 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
     });
 
     return { data: orders };
+  });
+
+  // ── GET /retailers/orders/:id ────────────────────────────────────
+  // Full order detail including shipping_address, payment mode, and
+  // Razorpay identifiers — for the order detail screen.
+  server.get('/retailers/orders/:id', async (request) => {
+    const { id } = request.params as { id: string };
+
+    const order = await prisma.order.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        retailer_id: true,
+        customer_name: true,
+        customer_phone: true,
+        shipping_address: true,
+        status: true,
+        total_amount: true,
+        subtotal_amount: true,
+        gst_amount: true,
+        payment_mode: true,
+        gst_invoice_number: true,
+        razorpay_order_id: true,
+        razorpay_payment_id: true,
+        collection_id: true,
+        paid_at: true,
+        created_at: true,
+        updated_at: true,
+        cancelled_at: true,
+        items: {
+          select: {
+            id: true,
+            product_name_snapshot: true,
+            price_snapshot: true,
+            quantity: true,
+            product_id: true,
+          },
+        },
+      },
+    });
+
+    if (!order) throw notFound('Order');
+    if (order.retailer_id !== request.retailerId) {
+      throw forbidden('Not your order');
+    }
+
+    // Strip internal fields from response
+    const { retailer_id: _, ...safeOrder } = order;
+    return { data: safeOrder };
   });
 
   // ── PATCH /retailers/orders/:id/status ──────────────────────────
