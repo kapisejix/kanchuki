@@ -1,0 +1,26 @@
+{
+  "cli": {
+    "version": ">= 12.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://supportive-love-production-9d37.up.railway.app"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://supportive-love-production-9d37.up.railway.app"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}
