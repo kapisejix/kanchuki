@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
 import { encryptSecret, getSecret, invalidateSecret, maskSecret, prisma } from '@kanchuki/db';
 import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
@@ -16,18 +16,73 @@ export function validAdminKey(provided: string | undefined): boolean {
   return timingSafeEqual(h(provided), h(expected));
 }
 
+// ─── IP Allowlist (SECURITY §8) ──────────────────────────────────────
+// ADMIN_IP_ALLOWLIST env var: comma-separated IPs and/or CIDR ranges.
+// Empty/unset = all IPs allowed (dev mode). Production should restrict to
+// office/static IPs, e.g. "103.45.67.89/32,203.0.113.0/24".
+
+// IPv4 CIDR matcher (SECURITY §8). Supports single IPs ("192.168.1.1") and
+// CIDR ranges ("103.45.67.0/24"). Does NOT support IPv6 — office networks in
+// India overwhelmingly use IPv4, and IPv6 requests will safely fail-closed.
+export function ipInCidr(ip: string, cidr: string): boolean {
+  try {
+    const ipInt = ip.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
+    if (cidr.includes('/')) {
+      const slashIdx = cidr.indexOf('/');
+      const cidrIp = cidr.slice(0, slashIdx);
+      const prefix = Number.parseInt(cidr.slice(slashIdx + 1), 10);
+      if (prefix < 0 || prefix > 32) return false;
+      const mask = (~(2 ** (32 - prefix) - 1)) >>> 0;
+      const cidrInt = cidrIp.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
+      return (ipInt & mask) === (cidrInt & mask);
+    }
+    const cidrInt = cidr.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
+    return ipInt === cidrInt;
+  } catch {
+    return false; // Malformed entry never matches — fail closed
+  }
+}
+
+/** Check if an IP is allowlisted. Pass `undefined` when request.ip may be missing (trustProxy off). */
+export function isIpAllowlisted(ip: string | undefined): boolean {
+  if (!ip) return true; // No IP info = allow (trustProxy may be off in dev)
+  const raw = process.env.ADMIN_IP_ALLOWLIST ?? '';
+  if (!raw.trim()) return true; // No allowlist configured = all IPs permitted (dev/localhost)
+  return raw.split(',').some((entry) => ipInCidr(ip, entry.trim()));
+}
+
 export const adminRoutes: FastifyPluginAsync = async (server) => {
-  server.addHook('preHandler', async (request, _reply) => {
+  server.addHook('preHandler', async (request, reply) => {
+    // IP allowlist check (SECURITY §8) — applies to ALL admin routes including login
+    // to prevent reconnaissance from non-allowlisted IPs.
+    if (!isIpAllowlisted(request.ip)) throw forbidden('Access denied — IP not allowlisted');
+
     // Skip auth for login endpoint — use request.url (raw URL) for reliability
     if (request.url === '/v1/admin/login') return;
 
     const key = request.headers['x-admin-key'] as string | undefined;
     if (!validAdminKey(key)) throw forbidden('Invalid admin key');
+
+    // CSRF protection (SECURITY §4):
+    // The admin uses header-based auth (x-admin-key), which is inherently
+    // CSRF-safe because custom headers cannot be sent cross-origin without
+    // CORS preflight. As defense-in-depth, we also require a SameSite cookie
+    // CSRF token on mutating requests (POST, PUT, PATCH, DELETE).
+    //
+    // GET/HEAD/OPTIONS are idempotent — no CSRF risk.
+    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method.toUpperCase())) {
+      const csrfCookie = request.cookies['csrf-token'];
+      const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
+
+      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+        throw forbidden('Invalid CSRF token — include x-csrf-token header matching csrf-token cookie');
+      }
+    }
   });
 
   // ─── POST /admin/login ───────────────────────────────────────────
   // Authenticate with email + password, returns admin API key for subsequent requests.
-  server.post('/login', async (request) => {
+  server.post('/login', async (request, reply) => {
     const body = z
       .object({
         email: z.string().email('Invalid email'),
@@ -61,9 +116,20 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     request.log.info('Admin login successful');
 
+    // Generate CSRF token and set as SameSite cookie (defense-in-depth)
+    const csrfToken = randomBytes(32).toString('hex');
+    reply.setCookie('csrf-token', csrfToken, {
+      path: '/v1/admin',
+      sameSite: 'strict',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 86400, // 24 hours
+    });
+
     return {
       data: {
         token: process.env.ADMIN_API_KEY,
+        csrf_token: csrfToken,
         email: body.email,
       },
     };
@@ -193,6 +259,12 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   server.delete('/retailers', async (request) => {
     const body = z.object({ ids: z.array(z.string()).min(1).max(100) }).parse(request.body);
 
+    // Capture before-state for audit log
+    const retailersBefore = await prisma.retailer.findMany({
+      where: { id: { in: body.ids }, deleted_at: null },
+      select: { id: true, shop_name: true, city: true, plan: true, plan_status: true },
+    });
+
     await prisma.$transaction([
       prisma.retailer.updateMany({
         where: { id: { in: body.ids }, deleted_at: null },
@@ -207,6 +279,25 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         data: { is_active: false },
       }),
     ]);
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'BULK_DELETE',
+        resource_type: 'Retailer',
+        metadata: {
+          count: body.ids.length,
+          before: retailersBefore.map((r) => ({
+            id: r.id,
+            shop_name: r.shop_name,
+            city: r.city,
+            plan: r.plan,
+            plan_status: r.plan_status,
+          })),
+        },
+        ip_address: request.ip,
+      },
+    });
 
     request.log.info({ retailer_ids: body.ids }, 'Bulk retailer delete');
     return { data: { deleted: body.ids.length } };
@@ -467,6 +558,21 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       data: { trial_ends_at: newEnd, plan_status: 'TRIAL' },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'EXTEND_TRIAL',
+        resource_type: 'Retailer',
+        resource_id: id,
+        metadata: {
+          days_added: body.days,
+          before: { trial_ends_at: retailer.trial_ends_at?.toISOString() ?? null },
+          after: { trial_ends_at: newEnd.toISOString(), plan_status: 'TRIAL' },
+        },
+        ip_address: request.ip,
+      },
+    });
+
     request.log.info({ retailer_id: id, days: body.days, new_trial_end: newEnd }, 'Trial extended');
 
     return { data: { trial_ends_at: newEnd.toISOString(), plan_status: 'TRIAL' } };
@@ -512,9 +618,42 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     await prisma.retailer.update({ where: { id }, data: updateData });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'CHANGE_PLAN',
+        resource_type: 'Retailer',
+        resource_id: id,
+        metadata: {
+          before: {
+            plan: retailer.plan,
+            plan_status: retailer.plan_status,
+            trial_ends_at: retailer.trial_ends_at?.toISOString() ?? null,
+          },
+          after: updateData as Record<string, string | number | boolean | null>,
+        },
+        ip_address: request.ip,
+      },
+    });
+
     request.log.info({ retailer_id: id, plan: body.plan, status: body.status }, 'Plan changed');
 
     return { data: { plan: body.plan, plan_status: body.status, ...updateData } };
+  });
+
+  // ─── GET /admin/csrf-token ────────────────────────────────────
+  // Returns a fresh CSRF token (set as cookie + response body) for the admin
+  // panel to include as x-csrf-token header on mutating requests.
+  server.get('/csrf-token', async (_request, reply) => {
+    const csrfToken = randomBytes(32).toString('hex');
+    reply.setCookie('csrf-token', csrfToken, {
+      path: '/v1/admin',
+      sameSite: 'strict',
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 86400,
+    });
+    return { data: { csrf_token: csrfToken } };
   });
 
   // ─── GET /admin/plan-limits ─────────────────────────────────────
@@ -549,10 +688,31 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       })
       .parse(request.body);
 
+    // Capture before-state for audit log
+    const prevPlanLimit = await prisma.planLimit.findUnique({
+      where: { plan_resource_type: { plan: body.plan, resource_type: body.resource_type } },
+    });
+
     const row = await prisma.planLimit.upsert({
       where: { plan_resource_type: { plan: body.plan, resource_type: body.resource_type } },
       create: body,
       update: { limit_per_period: body.limit_per_period, period: body.period },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: prevPlanLimit ? 'UPDATE' : 'CREATE',
+        resource_type: 'PlanLimit',
+        resource_id: `${body.plan}_${body.resource_type}`,
+        metadata: {
+          before: prevPlanLimit
+            ? { limit_per_period: prevPlanLimit.limit_per_period, period: prevPlanLimit.period }
+            : null,
+          after: { limit_per_period: body.limit_per_period, period: body.period },
+        },
+        ip_address: request.ip,
+      },
     });
 
     request.log.info({ plan: body.plan, resource_type: body.resource_type }, 'Plan limit updated');
@@ -598,12 +758,43 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } });
     if (!retailer) throw notFound('Retailer');
 
+    // Capture before-state for audit log
+    const prevOverride = await prisma.retailerLimitOverride.findUnique({
+      where: { retailer_id_resource_type: { retailer_id: id, resource_type: body.resource_type } },
+    });
+
     const override = await prisma.retailerLimitOverride.upsert({
       where: {
         retailer_id_resource_type: { retailer_id: id, resource_type: body.resource_type },
       },
       create: { retailer_id: id, ...body },
       update: { limit_per_period: body.limit_per_period, period: body.period, reason: body.reason },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: prevOverride ? 'UPDATE' : 'CREATE',
+        resource_type: 'RetailerLimitOverride',
+        resource_id: override.id,
+        metadata: {
+          retailer_id: id,
+          before: prevOverride
+            ? {
+                limit_per_period: prevOverride.limit_per_period,
+                period: prevOverride.period,
+                reason: prevOverride.reason,
+              }
+            : null,
+          after: {
+            resource_type: body.resource_type,
+            limit_per_period: body.limit_per_period,
+            period: body.period,
+            reason: body.reason ?? null,
+          },
+        },
+        ip_address: request.ip,
+      },
     });
 
     request.log.info({ retailer_id: id, resource_type: body.resource_type }, 'Override set');
@@ -623,6 +814,25 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) throw notFound('Override');
 
     await prisma.retailerLimitOverride.delete({ where: { id: overrideId } });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'DELETE',
+        resource_type: 'RetailerLimitOverride',
+        resource_id: overrideId,
+        metadata: {
+          retailer_id: id,
+          before: {
+            resource_type: existing.resource_type,
+            limit_per_period: existing.limit_per_period,
+            period: existing.period,
+            reason: existing.reason,
+          },
+        },
+        ip_address: request.ip,
+      },
+    });
 
     request.log.info(
       { retailer_id: id, resource_type: existing.resource_type },
@@ -712,6 +922,18 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       .parse(request.body);
 
     const row = await prisma.backgroundImage.create({ data: body });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'CREATE',
+        resource_type: 'BackgroundImage',
+        resource_id: row.id,
+        metadata: { name: row.name, image_url: row.image_url },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: row };
   });
 
@@ -733,6 +955,24 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) throw notFound('Background image');
 
     const row = await prisma.backgroundImage.update({ where: { id }, data: body });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UPDATE',
+        resource_type: 'BackgroundImage',
+        resource_id: id,
+        metadata: {
+          before: { name: existing.name, is_active: existing.is_active },
+          after: {
+            ...(body.name ? { name: body.name } : {}),
+            ...(body.is_active !== undefined ? { is_active: body.is_active } : {}),
+          },
+        },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: row };
   });
 

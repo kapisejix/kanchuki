@@ -9,6 +9,7 @@ declare module 'fastify' {
   interface FastifyRequest {
     retailerId: string;
     retailerAuthUserId: string;
+    staffRole: string | null;
   }
 }
 
@@ -144,6 +145,7 @@ async function verifySupabaseJwt(token: string): Promise<{ sub: string } | null>
 export const authPlugin: FastifyPluginAsync = fp(async (server) => {
   server.decorateRequest('retailerId', '');
   server.decorateRequest('retailerAuthUserId', '');
+  server.decorateRequest('staffRole', null);
 
   server.addHook('preHandler', async (request: FastifyRequest, reply) => {
     // Skip auth for public routes
@@ -178,23 +180,37 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
       });
     }
 
-    // Load retailer from DB
+    // Load retailer from DB (staff and owners both need retailer context)
     const retailer = await prisma.retailer.findUnique({
       where: { auth_user_id: claims.sub, deleted_at: null },
       select: { id: true, auth_user_id: true, plan_status: true },
     });
 
-    if (!retailer) {
-      return reply.status(403).send({
-        error: {
-          code: 'RETAILER_NOT_FOUND',
-          message: 'Retailer account not found. Please complete registration.',
-          status: 403,
-        },
+    if (retailer) {
+      // Retailer owner — standard flow
+      request.retailerId = retailer.id;
+      request.retailerAuthUserId = claims.sub;
+      request.staffRole = null;
+    } else {
+      // Not a retailer — check if this is a staff member
+      const staff = await prisma.staff.findFirst({
+        where: { auth_user_id: claims.sub, is_active: true },
+        select: { id: true, role: true, retailer_id: true },
       });
-    }
 
-    request.retailerId = retailer.id;
-    request.retailerAuthUserId = claims.sub;
+      if (!staff) {
+        return reply.status(403).send({
+          error: {
+            code: 'RETAILER_NOT_FOUND',
+            message: 'Account not found. Please complete registration.',
+            status: 403,
+          },
+        });
+      }
+
+      request.retailerId = staff.retailer_id;
+      request.retailerAuthUserId = claims.sub;
+      request.staffRole = staff.role;
+    }
   });
 });

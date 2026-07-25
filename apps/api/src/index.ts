@@ -1,10 +1,12 @@
+import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { createClient } from '@supabase/supabase-js';
+import { createHmac } from 'node:crypto';
 import Fastify from 'fastify';
 
-import { startWorkers } from './jobs/index.js';
+import { getRedis, startWorkers } from './jobs/index.js';
 import { authPlugin } from './plugins/auth.js';
 import { errorHandler } from './plugins/error-handler.js';
 import { adminRoutes } from './routes/admin.js';
@@ -27,6 +29,9 @@ import { tryOnRoutes } from './routes/tryon.js';
 
 const server = Fastify({
   logger: process.env.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : true,
+  // Trust Railway's internal proxy so request.ip returns the real client IP
+  // in audit logs instead of the proxy's internal address (10.x.x.x).
+  trustProxy: process.env.NODE_ENV === 'production',
 });
 
 // ─── Global Supabase Client (for auth verification) ──────────────
@@ -56,11 +61,21 @@ await server.register(cors, {
   credentials: true,
 });
 
+// ─── Cookie Plugin (for admin CSRF protection) ────────────────────
+await server.register(cookie, {
+  secret: process.env.COOKIE_SECRET ?? createHmac('sha256', 'kanchuki-cookie')
+    .update(Date.now().toString())
+    .digest('hex'),
+});
+
+// ─── Rate Limiting (global + per-route) ───────────────────────────
+// Backend: BullMQ's Redis connection (startWorkers called at startup,
+// so getRedis() returns the same ioredis instance used by job queues).
 await server.register(rateLimit, {
   global: true,
   max: 200,
   timeWindow: '1 minute',
-  redis: undefined, // will add Redis after connecting
+  redis: getRedis(),
   keyGenerator: (request) => (request.headers['x-retailer-id'] as string | undefined) ?? request.ip,
 });
 

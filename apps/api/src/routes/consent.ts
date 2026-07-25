@@ -73,6 +73,21 @@ export const consentRoutes: FastifyPluginAsync = async (server) => {
         }
       }
 
+      // Log the revocation before deleting the row
+      await prisma.auditLog.create({
+        data: {
+          action: 'REVOKE_TRAINING_CONSENT',
+          resource_type: 'TrainingPhotoConsent',
+          resource_id: consent.id,
+          metadata: {
+            consent_version: consent.consent_version,
+            source: consent.source,
+            r2_keys_deleted: r2Results.filter((r) => r.status === 'fulfilled').length,
+          },
+          ip_address: request.ip,
+        },
+      });
+
       // Delete the consent row from the database
       await prisma.trainingPhotoConsent.delete({
         where: { id: consent.id },

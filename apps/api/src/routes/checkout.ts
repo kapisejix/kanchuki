@@ -251,6 +251,18 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_id: request.retailerId,
+        actor_type: 'retailer',
+        action: 'CONNECT_PAYMENT_ACCOUNT',
+        resource_type: 'RetailerPaymentAccount',
+        resource_id: account.id,
+        metadata: { payment_mode: account.payment_mode },
+        ip_address: request.ip,
+      },
+    });
+
     request.log.info({ retailer_id: request.retailerId }, 'Payment account connected');
 
     return {
@@ -298,6 +310,18 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
     // Delete the encrypted secrets immediately (not soft-delete — SECURITY §11.4)
     await prisma.retailerPaymentAccount.delete({
       where: { retailer_id: request.retailerId },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_id: request.retailerId,
+        actor_type: 'retailer',
+        action: 'DISCONNECT_PAYMENT_ACCOUNT',
+        resource_type: 'RetailerPaymentAccount',
+        resource_id: existing.id,
+        metadata: { payment_mode: existing.payment_mode },
+        ip_address: request.ip,
+      },
     });
 
     request.log.info({ retailer_id: request.retailerId }, 'Payment account disconnected');

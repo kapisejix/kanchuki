@@ -37,10 +37,19 @@ export default function OtpScreen() {
       const { data: result } = await authApi.verifyOtp(phone, code)
       await setToken(result.access_token)
       await setItem('refresh_token', result.refresh_token)
-      await setItem('retailer_id', result.retailer.id)
 
-      // New retailer → onboarding, existing → home
-      router.replace(result.is_new ? '/onboarding' : '/')
+      if (result.is_staff && result.staff) {
+        // Staff login — store staff context and redirect to home (scoped view)
+        await setItem('staff_role', result.staff.role)
+        await setItem('staff_name', result.staff.name)
+        await setItem('staff_retailer_id', result.staff.retailer_id)
+        await setItem('retailer_id', result.staff.retailer_id)
+        router.replace('/')
+      } else if (result.retailer) {
+        // Retailer owner login — existing flow
+        await setItem('retailer_id', result.retailer.id)
+        router.replace(result.is_new ? '/onboarding' : '/')
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Invalid OTP'
       Alert.alert('Incorrect OTP', message)

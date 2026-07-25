@@ -1,0 +1,16 @@
+feat: staff mode login, admin audit logging, IP allowlist, CSRF, docs consolidation
+
+- **Staff Mode (Expo App):** API detects staff by phone during OTP verify,
+  returns staff session (bypasses retailer upsert). Auth plugin resolves
+  Staff records to set request.retailerId — all existing API routes work.
+  Mobile app handles staff login flow (stores role/name in storage).
+
+- **Security:** IP allowlist for admin (CIDR matcher, ADMIN_IP_ALLOWLIST env var),
+  CSRF double-submit cookie pattern on admin mutating endpoints,
+  admin audit logging with before/after state on all 8 mutating endpoints,
+  Redis backing for rate limits (survives restart), trustProxy for accurate IPs.
+
+- **Audit logging:** payment-account connect/disconnect (checkout.ts),
+  consent revocation (consent.ts), integration CRUD + all admin mutations.
+
+- **Docs:** consolidated progress.md into docs/PROGRESS.md, deleted root duplicate.

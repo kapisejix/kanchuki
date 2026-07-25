@@ -82,6 +82,50 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
 
     const { user, session } = authData;
 
+    // ── Staff Login Detection ────────────────────────────────────────
+    // Before treating this as a retailer login, check if the phone belongs
+    // to a Staff member of an existing retailer. Staff login is scoped to
+    // the retailer they belong to (does not create a new Retailer record).
+    const staffMember = await prisma.staff.findFirst({
+      where: { phone, is_active: true },
+      select: {
+        id: true,
+        name: true,
+        role: true,
+        retailer_id: true,
+        auth_user_id: true,
+        retailer: { select: { id: true, shop_name: true, city: true } },
+      },
+    });
+
+    if (staffMember) {
+      // Link the Supabase auth user to this staff member if not already linked
+      if (!staffMember.auth_user_id) {
+        await prisma.staff.update({
+          where: { id: staffMember.id },
+          data: { auth_user_id: user.id },
+        });
+      }
+
+      return reply.status(200).send({
+        data: {
+          access_token: session.access_token,
+          refresh_token: session.refresh_token,
+          expires_in: session.expires_in,
+          is_staff: true,
+          staff: {
+            id: staffMember.id,
+            name: staffMember.name,
+            role: staffMember.role,
+            retailer_id: staffMember.retailer_id,
+            retailer_shop_name: staffMember.retailer.shop_name,
+            retailer_city: staffMember.retailer.city,
+          },
+        },
+      });
+    }
+
+    // ── Retailer Login (existing flow) ───────────────────────────────
     // A marketing agent may have pre-created this retailer in person (see
     // team.ts POST /retailers) before the retailer ever logs in themselves —
     // that row has a placeholder `pending:<id>` auth_user_id since no real
@@ -124,6 +168,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
         access_token: session.access_token,
         refresh_token: session.refresh_token,
         expires_in: session.expires_in,
+        is_staff: false,
         retailer,
         is_new: retailer.shop_name === '', // no shop name = new retailer
       },

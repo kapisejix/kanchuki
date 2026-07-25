@@ -168,14 +168,17 @@ export const authApi = {
   /**
    * Verify OTP and get session tokens.
    * Same 30s timeout — Supabase token exchange can be slow on cold start.
+   * Returns is_staff=true if the phone belongs to a staff member instead of a retailer owner.
    */
   verifyOtp: (phone: string, otp: string) =>
     request<{
       data: {
         access_token: string
         refresh_token: string
-        retailer: { id: string }
-        is_new: boolean
+        is_staff: boolean
+        retailer?: { id: string; shop_name?: string; city?: string; plan?: string; plan_status?: string; onboarding_completed?: boolean; onboarding_step?: number }
+        staff?: { id: string; name: string; role: string; retailer_id: string; retailer_shop_name: string; retailer_city: string }
+        is_new?: boolean
       }
     }>('/v1/auth/otp/verify', {
       method: 'POST',

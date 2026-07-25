@@ -18,7 +18,7 @@ import type { FashionDNAJobData } from './update-fashion-dna.js';
 
 let connection: Redis | null = null;
 
-function getRedis(): Redis {
+export function getRedis(): Redis {
   if (!connection) {
     connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: null, // required by BullMQ
