@@ -22,6 +22,7 @@ import {
   readLocalImage,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
+import { showError, logError } from '../../src/lib/errors'
 
 // F-001d: guided bulk onboarding — Path A (rack/shelf batch capture).
 // Reuses the same detect/tag/crop pipeline as F-001c/F-001b (catalog-import.ts);
@@ -87,7 +88,7 @@ export default function BulkOnboardScreen() {
       setNewSectionName('')
       setAddingSection(false)
     } catch (err) {
-      Alert.alert('Could not add location', err instanceof Error ? err.message : 'Try again.')
+      showError(err, 'Try again.', 'Could not add location')
     }
   }, [newSectionName])
 
@@ -99,7 +100,7 @@ export default function BulkOnboardScreen() {
       if (result.canceled || !result.assets[0]) return
       await runPhoto(result.assets[0].uri)
     } catch (err) {
-      Alert.alert('Camera Error', err instanceof Error ? err.message : 'Could not take that photo.')
+      showError(err, 'Could not take that photo.', 'Camera Error')
     }
   }, [])
 
@@ -109,7 +110,7 @@ export default function BulkOnboardScreen() {
       if (result.canceled || !result.assets[0]) return
       await runPhoto(result.assets[0].uri)
     } catch (err) {
-      Alert.alert('Photo Error', err instanceof Error ? err.message : 'Could not pick that photo.')
+      showError(err, 'Could not pick that photo.', 'Photo Error')
     }
   }, [])
 
@@ -139,7 +140,8 @@ export default function BulkOnboardScreen() {
       )
       setStep('reviewing')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
+      logError(err)
+      setError('Something went wrong. Try again.')
       setStep('location')
     }
   }, [selectedSectionId])
@@ -176,7 +178,7 @@ export default function BulkOnboardScreen() {
       setStep('location')
     } catch (err) {
       setStep('reviewing')
-      Alert.alert('Save failed', err instanceof Error ? err.message : 'Could not save products.')
+      showError(err, 'Could not save products.', 'Save failed')
     }
   }, [items, selectedSectionId, queryClient])
 

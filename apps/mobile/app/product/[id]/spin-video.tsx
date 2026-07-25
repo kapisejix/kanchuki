@@ -5,6 +5,7 @@ import { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { productApi, readLocalImage, uploadImageToR2 } from '../../../src/lib/api';
+import { showError } from '../../../src/lib/errors';
 
 type Step = 'camera' | 'recording' | 'preview' | 'uploading';
 
@@ -35,10 +36,7 @@ export default function SpinVideoScreen() {
       setStep('preview');
     } catch (err) {
       setStep('camera');
-      Alert.alert(
-        'Recording Error',
-        err instanceof Error ? err.message : 'Could not record spin video',
-      );
+      showError(err, 'Could not record spin video', 'Recording Error');
     }
   };
 
@@ -64,10 +62,7 @@ export default function SpinVideoScreen() {
       ]);
     } catch (err) {
       setStep('preview');
-      Alert.alert(
-        'Upload Error',
-        err instanceof Error ? err.message : 'Could not upload spin video',
-      );
+      showError(err, 'Could not upload spin video', 'Upload Error');
     }
   };
 

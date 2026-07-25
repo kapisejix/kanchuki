@@ -80,7 +80,15 @@ export default function RootLayout() {
           <ErrorBoundary>
             <View className="flex-1">
               <NetworkBanner />
-              <Stack screenOptions={{ headerShown: false }}>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  headerStyle: { backgroundColor: '#ffffff' },
+                  headerTintColor: '#111827',
+                  headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+                  headerShadowVisible: false,
+                }}
+              >
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
                 <Stack.Screen name="auth/otp" options={{ headerShown: false }} />

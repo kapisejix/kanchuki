@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { authApi } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 
 export default function PhoneScreen() {
   const [phone, setPhone] = useState('')
@@ -25,8 +26,7 @@ export default function PhoneScreen() {
       await authApi.sendOtp(phone)
       router.push({ pathname: '/auth/otp', params: { phone } })
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to send OTP'
-      Alert.alert('Error', message)
+      showError(err, 'Failed to send OTP')
     } finally {
       setLoading(false)
     }

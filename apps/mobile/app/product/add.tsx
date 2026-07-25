@@ -21,6 +21,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { showError, logError } from '../../src/lib/errors'
 import { OCCASION_TYPES, PRODUCT_CATEGORIES } from '@kanchuki/shared'
 
 type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
@@ -129,10 +130,7 @@ export default function AddProductScreen() {
       setPhoto(compressed.uri)
       setStep('preview')
     } catch (err) {
-      Alert.alert(
-        'Photo Error',
-        err instanceof Error ? err.message : 'Could not process that photo. Try again.',
-      )
+      showError(err, 'Could not process that photo. Try again.', 'Photo Error')
     }
   }
 
@@ -170,7 +168,7 @@ export default function AddProductScreen() {
       setScanSelected([best.uri])
       setStep('scan_review')
     } catch (err) {
-      Alert.alert('Scan Error', err instanceof Error ? err.message : 'Could not scan product. Try again.')
+      showError(err, 'Could not scan product. Try again.', 'Scan Error')
     } finally {
       setIsScanning(false)
     }
@@ -271,7 +269,8 @@ export default function AddProductScreen() {
       setStep('edit')
     } catch (err) {
       spinnerRotate.stopAnimation()
-      setAiError(err instanceof Error ? err.message : 'Upload failed')
+      logError(err)
+      setAiError('Upload failed')
       setStep('preview')
     }
   }
@@ -333,7 +332,7 @@ export default function AddProductScreen() {
       )
     } catch (err) {
       setStep('edit')
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save product')
+      showError(err, 'Failed to save product')
     }
   }
 
@@ -828,7 +827,7 @@ export default function AddProductScreen() {
             <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
               Category
             </Text>
-            <TouchableOpacity onPress={() => router.push('/category')}>
+            <TouchableOpacity onPress={() => router.push('/category/new')}>
               <Text className="text-cyan-600 text-xs font-semibold">Manage</Text>
             </TouchableOpacity>
           </View>

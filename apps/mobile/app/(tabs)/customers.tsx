@@ -1,9 +1,10 @@
 import { useState, useCallback, memo } from 'react'
-import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native'
+import { View, Text, FlatList, TextInput, TouchableOpacity } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, ChevronRight, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
+import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { formatPrice } from '@kanchuki/shared'
 
 type Customer = {
@@ -150,7 +151,7 @@ export default function CustomersScreen() {
       </View>
 
       {isLoading && customers.length === 0 ? (
-        <ActivityIndicator className="mt-16" color="#0891B2" />
+        <CustomerListSkeleton />
       ) : (
         <FlatList
           data={customers}

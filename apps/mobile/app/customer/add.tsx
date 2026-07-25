@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 
 export default function AddCustomerScreen() {
   const insets = useSafeAreaInsets()
@@ -36,7 +37,7 @@ export default function AddCustomerScreen() {
       const created = (res as { data: { id: string } }).data
       router.replace(`/customer/${created.id}`)
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to create customer')
+      showError(err, 'Failed to create customer')
     } finally {
       setSaving(false)
     }

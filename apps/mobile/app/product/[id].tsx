@@ -19,6 +19,8 @@ import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { DetailScreenSkeleton } from '../../src/components/Skeleton'
+import { showError } from '../../src/lib/errors'
 import {
   OCCASION_TYPES,
   PRODUCT_CATEGORIES,
@@ -367,7 +369,7 @@ export default function ProductDetailScreen() {
       invalidate()
       Alert.alert('Saved', 'Product updated.')
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save')
+      showError(err, 'Failed to save')
     } finally {
       setSaving(false)
     }
@@ -381,7 +383,7 @@ export default function ProductDetailScreen() {
       invalidate()
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update status')
+      showError(err, 'Failed to update status')
     } finally {
       setStatusUpdating(false)
     }
@@ -399,7 +401,7 @@ export default function ProductDetailScreen() {
       await productApi.setPhotoPieceType(product.id, photoId, next)
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to tag photo')
+      showError(err, 'Failed to tag photo')
     }
   }
 
@@ -411,7 +413,7 @@ export default function ProductDetailScreen() {
       setPhotoCacheBust((prev) => ({ ...prev, [photoId]: Date.now() }))
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to clean up photo')
+      showError(err, 'Failed to clean up photo')
     } finally {
       setCleaningPhotoId(null)
     }
@@ -449,7 +451,7 @@ export default function ProductDetailScreen() {
       setSplitFraction(0.5)
       setCropDraft({ uri: asset.uri, width: asset.width, height: asset.height, piece })
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to open photo')
+      showError(err, 'Failed to open photo')
     } finally {
       setCropping(null)
     }
@@ -486,7 +488,7 @@ export default function ProductDetailScreen() {
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
       setCropDraft(null)
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to crop photo')
+      showError(err, 'Failed to crop photo')
     } finally {
       setCropSaving(false)
     }
@@ -506,7 +508,7 @@ export default function ProductDetailScreen() {
             invalidate()
             router.back()
           } catch (err) {
-            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete product')
+            showError(err, 'Failed to delete product')
             setDeleting(false)
           }
         },
@@ -515,11 +517,7 @@ export default function ProductDetailScreen() {
   }
 
   if (isLoading || !product) {
-    return (
-      <View className="flex-1 bg-cyan-50 items-center justify-center">
-        <ActivityIndicator color="#0891B2" />
-      </View>
-    )
+    return <DetailScreenSkeleton />
   }
 
   return (

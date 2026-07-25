@@ -26,6 +26,7 @@ import {
 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { productApi, tryOnApi, retailerApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { showError, logError } from '../../src/lib/errors'
 import { PLAN_LIMITS } from '@kanchuki/shared'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
@@ -122,7 +123,7 @@ export default function InStoreTryOnScreen() {
       }
       await processPhoto(photo.uri)
     } catch (err) {
-      Alert.alert('Camera Error', err instanceof Error ? err.message : 'Could not capture photo')
+      showError(err, 'Could not capture photo', 'Camera Error')
     }
   }
 
@@ -145,7 +146,7 @@ export default function InStoreTryOnScreen() {
       }
       await processPhoto(result.assets[0].uri)
     } catch (err) {
-      Alert.alert('Gallery Error', err instanceof Error ? err.message : 'Could not open gallery')
+      showError(err, 'Could not open gallery', 'Gallery Error')
     }
   }
 
@@ -242,7 +243,8 @@ export default function InStoreTryOnScreen() {
         }
       }, 2000)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Try-on failed')
+      logError(err)
+      setError('Try-on failed')
       setStep('preview')
     }
   }

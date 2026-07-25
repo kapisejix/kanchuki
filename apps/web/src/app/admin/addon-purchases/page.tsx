@@ -92,8 +92,8 @@ export default function AddonPurchasesPage() {
         const res = await fetch(`${API_URL}/v1/admin/addon-purchases`, { headers: getHeaders() })
         const json = await res.json()
         setData(json.data)
-      } catch (err) {
-        console.error('Failed to load addon purchases', err)
+      } catch {
+        // generic loading fallback below handles this; no raw error to the browser console
       } finally {
         setLoading(false)
       }

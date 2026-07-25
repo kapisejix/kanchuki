@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import ProductCard from '../../../src/components/ProductCard'
 import { productApi, categoryApi } from '../../../src/lib/api'
+import { showError } from '../../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
 
 type Product = {
@@ -45,7 +46,7 @@ export default function AddProductsToCategoryScreen() {
       await queryClient.invalidateQueries({ queryKey: ['categories'] })
       router.back()
     },
-    onError: (err: Error) => Alert.alert('Could not assign products', err.message),
+    onError: (err: Error) => showError(err, 'Please try again.', 'Could not assign products'),
   })
 
   const canAssign = selected.size > 0 && !assign.isPending

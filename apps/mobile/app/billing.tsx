@@ -4,6 +4,7 @@ import { Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Check, CreditCard, XCircle, ShieldAlert, ShoppingCart } from 'lucide-react-native'
 import { billingApi, retailerApi } from '../src/lib/api'
+import { showError } from '../src/lib/errors'
 
 const RESOURCE_LABELS: Record<string, string> = {
   PRODUCT_UPLOAD: 'Product uploads',
@@ -50,7 +51,7 @@ export default function BillingScreen() {
       await Linking.openURL(res.data.checkout_url)
     },
     onError: (err: Error) => {
-      Alert.alert('Could not start subscription', err.message)
+      showError(err, 'Please try again.', 'Could not start subscription')
     },
   })
 
@@ -61,7 +62,7 @@ export default function BillingScreen() {
       Alert.alert('Cancelled', 'Subscription cancelled. You keep access until period end.')
     },
     onError: (err: Error) => {
-      Alert.alert('Error', err.message || 'Could not cancel. Please contact support.')
+      showError(err, 'Could not cancel. Please contact support.')
     },
   })
 
@@ -86,7 +87,7 @@ export default function BillingScreen() {
     },
     onError: (err: Error) => {
       setBuyingResource(null)
-      Alert.alert('Purchase failed', err.message || 'Could not start addon checkout')
+      showError(err, 'Could not start addon checkout', 'Purchase failed')
     },
   })
 

@@ -8,6 +8,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
+import { showError } from '../../../src/lib/errors'
 
 type Step = 'camera' | 'preview' | 'saving'
 
@@ -106,7 +107,7 @@ export default function AddColorVariantScreen() {
       router.back()
     } catch (err) {
       setStep('preview')
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to add color')
+      showError(err, 'Failed to add color')
     }
   }
 

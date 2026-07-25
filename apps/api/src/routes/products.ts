@@ -178,7 +178,8 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     let uploadUrl: string;
     try {
       uploadUrl = await getUploadPresignedUrl(r2Key, content_type, 300);
-    } catch {
+    } catch (err) {
+      console.error('R2 presigned URL generation failed:', err);
       throw validationError(
         'Photo storage is not configured. Please contact support to enable photo uploads.',
       );

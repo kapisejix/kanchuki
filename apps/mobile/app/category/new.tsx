@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, Image } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
-import { ImagePlus } from 'lucide-react-native'
+import { ImagePlus, Check } from 'lucide-react-native'
+import { PRODUCT_CATEGORIES } from '@kanchuki/shared'
 import { categoryApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 
 export default function NewCategoryScreen() {
   const [name, setName] = useState('')
@@ -32,7 +34,7 @@ export default function NewCategoryScreen() {
       setImageUrl(info.public_url)
       setImageR2Key(info.r2_key)
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upload image')
+      showError(err, 'Failed to upload image')
     } finally {
       setUploading(false)
     }
@@ -45,11 +47,11 @@ export default function NewCategoryScreen() {
         image_url: imageUrl ?? undefined,
         image_r2_key: imageR2Key ?? undefined,
       }),
-    onSuccess: async (res) => {
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['categories'] })
-      router.replace(`/category/${res.data.id}`)
+      router.back()
     },
-    onError: (err: Error) => Alert.alert('Could not create category', err.message),
+    onError: (err: Error) => showError(err, 'Please try again.', 'Could not create category'),
   })
 
   const canCreate = name.trim().length > 0 && !uploading && !create.isPending
@@ -89,6 +91,31 @@ export default function NewCategoryScreen() {
             className="bg-white px-4 py-3 rounded-xl text-sm text-gray-900 border border-gray-100"
             maxLength={100}
           />
+        </View>
+
+        <View>
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            Suggestions
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {PRODUCT_CATEGORIES.map((cat) => {
+              const selected = name.trim() === cat
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setName(cat)}
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    {cat}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         </View>
 
         <TouchableOpacity

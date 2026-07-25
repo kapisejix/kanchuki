@@ -293,7 +293,8 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
         getUploadPresignedUrl(front_r2_key, 'image/jpeg', 300),
         getUploadPresignedUrl(back_r2_key, 'image/jpeg', 300),
       ]);
-    } catch {
+    } catch (err) {
+      console.error('R2 presigned URL generation failed:', err);
       // Clean up the measurement row if presigned URL generation fails
       await prisma.customerMeasurement.delete({ where: { id: measurement.id } }).catch(() => {});
       throw validationError('Photo storage is not configured. Please contact support.');

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import { logError } from '../../src/lib/errors'
 
 // Retries a flaky network step up to `attempts` times with a short backoff.
 // Bulk import fires many sequential requests back-to-back — a single
@@ -175,10 +176,10 @@ export default function BulkImportScreen() {
         doneCount++
         setCompleted(doneCount)
       } catch (err) {
-        const message = err instanceof Error ? err.message : 'Import failed'
+        logError(err)
         setStatuses((prev) => {
           const next = [...prev]
-          next[i] = { state: 'failed', error: message }
+          next[i] = { state: 'failed', error: 'Import failed' }
           return next
         })
         failCount++

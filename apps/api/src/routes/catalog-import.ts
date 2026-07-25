@@ -151,7 +151,8 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     let upload_url: string;
     try {
       upload_url = await getUploadPresignedUrl(r2Key, content_type);
-    } catch {
+    } catch (err) {
+      console.error('R2 presigned URL generation failed:', err);
       throw validationError(
         'Photo storage is not configured. Please contact support to enable catalog imports.',
       );

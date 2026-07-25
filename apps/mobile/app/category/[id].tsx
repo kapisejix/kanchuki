@@ -7,6 +7,7 @@ import { Plus, Trash2, Pencil, X, ImagePlus } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
+import { showError } from '../../src/lib/errors'
 
 type Product = {
   id: string
@@ -62,7 +63,7 @@ function EditCategoryModal({
       setImageUrl(info.public_url)
       setImageR2Key(info.r2_key)
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upload image')
+      showError(err, 'Failed to upload image')
     } finally {
       setUploading(false)
     }
@@ -79,7 +80,7 @@ function EditCategoryModal({
       onSaved()
       onClose()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update category')
+      showError(err, 'Failed to update category')
     } finally {
       setSaving(false)
     }
@@ -178,7 +179,7 @@ export default function CategoryDetailScreen() {
               await queryClient.invalidateQueries({ queryKey: ['categories'] })
               router.back()
             } catch (err) {
-              Alert.alert('Delete failed', err instanceof Error ? err.message : 'Try again.')
+              showError(err, 'Try again.', 'Delete failed')
               setDeleting(false)
             }
           },

@@ -14,7 +14,9 @@ import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Search, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
+import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -269,7 +271,7 @@ export default function CatalogScreen() {
               clearSelection()
               void queryClient.invalidateQueries({ queryKey: ['products'] })
             } catch (err) {
-              Alert.alert('Delete failed', err instanceof Error ? err.message : 'Try again.')
+              showError(err, 'Try again.', 'Delete failed')
             } finally {
               setDeleting(false)
             }
@@ -442,7 +444,7 @@ export default function CatalogScreen() {
 
       {/* Product Grid */}
       {listLoading && products.length === 0 ? (
-        <ActivityIndicator className="mt-16" color="#0891B2" />
+        <ProductGridSkeleton />
       ) : (
         <FlatList
           data={products}

@@ -14,6 +14,7 @@ import {
   FolderKanban,
 } from 'lucide-react-native'
 import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 
 type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back'
 
@@ -80,7 +81,7 @@ function ProfileEditModal({
       setLogoUrl(info.public_url)
       setLogoR2Key(info.r2_key)
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upload logo')
+      showError(err, 'Failed to upload logo')
     } finally {
       setUploadingLogo(false)
     }
@@ -105,7 +106,7 @@ function ProfileEditModal({
       setBannerUrl(info.public_url)
       setBannerR2Key(info.r2_key)
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upload banner')
+      showError(err, 'Failed to upload banner')
     } finally {
       setUploadingBanner(false)
     }
@@ -129,7 +130,7 @@ function ProfileEditModal({
       onSaved()
       onClose()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update profile')
+      showError(err, 'Failed to update profile')
     } finally {
       setSaving(false)
     }
@@ -295,7 +296,7 @@ function WhatsAppModal({
       onSaved()
       onClose()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update')
+      showError(err, 'Failed to update')
     } finally {
       setSaving(false)
     }
@@ -367,7 +368,7 @@ function KycDocRow({
       await retailerApi.submitKycDoc(type, info.r2_key, info.public_url)
       onUploaded()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to upload document')
+      showError(err, 'Failed to upload document')
     } finally {
       setUploading(false)
     }
@@ -519,7 +520,7 @@ function WhatsAppApiModal({
       onSaved()
       onClose()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save WhatsApp API config')
+      showError(err, 'Failed to save WhatsApp API config')
     } finally {
       setSaving(false)
     }
@@ -621,7 +622,7 @@ function DeleteAccountModal({
       await retailerApi.delete()
       onDeleted()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete account')
+      showError(err, 'Failed to delete account')
       setDeleting(false)
     }
   }

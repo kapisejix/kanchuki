@@ -4,6 +4,8 @@ import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2 } from 'lucide-react-native'
 import { collectionApi } from '../../src/lib/api'
+import { CollectionListSkeleton } from '../../src/components/Skeleton'
+import { showError } from '../../src/lib/errors'
 
 type Collection = {
   id: string
@@ -70,7 +72,7 @@ function EditCollectionModal({
       onSaved()
       onClose()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update')
+      showError(err, 'Failed to update')
     } finally {
       setSaving(false)
     }
@@ -268,7 +270,7 @@ export default function CollectionsScreen() {
               await collectionApi.delete(collection.id)
               void queryClient.invalidateQueries({ queryKey: ['collections'] })
             } catch (err) {
-              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete')
+              showError(err, 'Failed to delete')
             }
           },
         },
@@ -318,7 +320,7 @@ export default function CollectionsScreen() {
   return (
     <View className="flex-1 bg-cyan-50">
       {isLoading && collections.length === 0 ? (
-        <ActivityIndicator className="mt-16" color="#0891B2" />
+        <CollectionListSkeleton />
       ) : (
         <FlatList
           data={collections}

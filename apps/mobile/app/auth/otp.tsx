@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { authApi, setToken } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 import { setItem } from '../../src/lib/storage'
 
 export default function OtpScreen() {
@@ -51,8 +52,7 @@ export default function OtpScreen() {
         router.replace(result.is_new ? '/onboarding' : '/')
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Invalid OTP'
-      Alert.alert('Incorrect OTP', message)
+      showError(err, 'Invalid OTP', 'Incorrect OTP')
       setOtp('')
       inputRef.current?.focus()
     } finally {

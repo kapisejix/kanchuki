@@ -149,6 +149,12 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
+### Backlog (Planned, Not Yet Scheduled)
+
+- [ ] **F-001e: Ghost-Mannequin AI Generation** — packed/flat-lay garment photo → full catalog image (hollow-body worn look) via Snappyit API. Retailer unpacks once per design; catalog image reused for all restocked units. Evaluated 2026-07-25 (~$0.10/image, $6.90–8.20/mo plans). Full spec: `docs/PRO-REQUIREMENTS.md` F-001e.
+
+---
+
 ## Phase 0.5: Internal Team Management (Admin / Marketing / Support)
 
 **Goal:** Move off single shared admin login to per-user staff accounts with territory-based access, so the marketing team can onboard retailers in-person and support can be routed by location. See `docs/PRO-REQUIREMENTS.md` Section 10, `docs/DATABASE.md` `TeamMember`/`Territory`/`SupportTicket` models.

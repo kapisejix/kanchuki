@@ -7,6 +7,7 @@ import { X, Share2, Check, Download } from 'lucide-react-native'
 import QRCode from 'react-native-qrcode-svg'
 import { Paths, writeAsStringAsync } from 'expo-file-system'
 import { retailerApi, collectionApi } from '../src/lib/api'
+import { showError } from '../src/lib/errors'
 
 type QrSlug = { public_slug: string; profile_url: string }
 type RetailerMe = { storefront_collection_id: string | null }
@@ -60,7 +61,7 @@ export default function StoreProfileScreen() {
         message: `Here's my store QR code — scan to view my catalog!`,
       })
     } catch (err) {
-      Alert.alert('Export failed', err instanceof Error ? err.message : 'Could not export QR code')
+      showError(err, 'Could not export QR code', 'Export failed')
     } finally {
       setExporting(false)
     }

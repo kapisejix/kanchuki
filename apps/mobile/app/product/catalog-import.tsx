@@ -31,6 +31,7 @@ import {
   readLocalImage,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
+import { showError, logError } from '../../src/lib/errors'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -103,10 +104,7 @@ export default function CatalogImportScreen() {
       // catalog) — detect on each, merge into one review/select queue below.
       await uploadAndDetectMultiple(result.assets.map((a) => a.uri))
     } catch (err) {
-      Alert.alert(
-        'Photo Error',
-        err instanceof Error ? err.message : 'Could not pick those photos.',
-      )
+      showError(err, 'Could not pick those photos.', 'Photo Error')
     }
   }, [])
 
@@ -169,7 +167,8 @@ export default function CatalogImportScreen() {
       )
       setStep('reviewing')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed. Try again.')
+      logError(err)
+      setError('Upload failed. Try again.')
       setStep('source')
     }
   }, [])
@@ -199,9 +198,8 @@ export default function CatalogImportScreen() {
       // Now run detection
       await runDetection(info.public_url)
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Upload failed. Try again.',
-      )
+      logError(err)
+      setError('Upload failed. Try again.')
       setStep('source')
     }
   }, [])
@@ -233,9 +231,8 @@ export default function CatalogImportScreen() {
 
       setStep('reviewing')
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : 'Detection failed. Try again.',
-      )
+      logError(err)
+      setError('Detection failed. Try again.')
       setStep('source')
     }
   }, [])
@@ -326,10 +323,7 @@ export default function CatalogImportScreen() {
       setStep('done')
     } catch (err) {
       setStep('reviewing')
-      Alert.alert(
-        'Save failed',
-        err instanceof Error ? err.message : 'Could not save products.',
-      )
+      showError(err, 'Could not save products.', 'Save failed')
     }
   }, [items, queryClient])
 

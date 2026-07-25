@@ -9,6 +9,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, Ruler, Check } from 'lucide-react-native'
 import { customerApi, uploadImageToR2 } from '../../../src/lib/api'
+import { logError } from '../../../src/lib/errors'
 
 type Slot = 'front' | 'back'
 type Step = 'height' | 'camera' | 'preview' | 'uploading' | 'done'
@@ -97,8 +98,8 @@ export default function MeasurementCaptureScreen() {
       void queryClient.invalidateQueries({ queryKey: ['customers', id, 'measurements'] })
       setStep('done')
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed'
-      setError(message)
+      logError(err)
+      setError('Upload failed')
       setStep('preview')
     }
   }

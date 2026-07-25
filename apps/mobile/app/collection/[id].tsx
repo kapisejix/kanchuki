@@ -5,6 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check } from 'lucide-react-native'
 import { normalizeIndianPhone } from '@kanchuki/shared'
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 
 type CollectionDetail = {
   id: string
@@ -80,7 +81,7 @@ function EditModal({
       onSaved()
       onClose()
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to update')
+      showError(err, 'Failed to update')
     } finally {
       setSaving(false)
     }
@@ -226,7 +227,7 @@ function ShareModal({
       setBulkResult({ sent: res.data.sent, failed_count: res.data.failed_count })
       setSelected(new Set())
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Bulk send failed')
+      showError(err, 'Bulk send failed')
     } finally {
       setBulkSending(false)
     }
@@ -390,7 +391,7 @@ export default function CollectionDetailScreen() {
               await collectionApi.delete(collection.id)
               void queryClient.invalidateQueries({ queryKey: ['collections'] })
             } catch (err) {
-              Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete')
+              showError(err, 'Failed to delete')
             }
           },
         },

@@ -76,6 +76,11 @@ function verifyHs256Jwt(token: string): { sub: string } | null {
   return { sub: payload.sub };
 }
 
+// Created once and reused — createRemoteJWKSet caches the key set internally
+// (with a cooldown between refetches). Recreating it per-call defeats that
+// cache and adds a JWKS network round-trip to every authenticated request.
+let jwks: ReturnType<typeof import('jose').createRemoteJWKSet> | null = null;
+
 /**
  * Verify a Supabase-issued ES256 JWT using the JWKS endpoint.
  * New Supabase projects use ES256 (ECDSA) by default, which requires
@@ -88,9 +93,11 @@ async function verifyEs256Jwt(token: string): Promise<{ sub: string } | null> {
     const supabaseUrl = process.env.SUPABASE_URL;
     if (!supabaseUrl) return null;
 
-    const JWKS = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+    if (!jwks) {
+      jwks = createRemoteJWKSet(new URL(`${supabaseUrl}/auth/v1/.well-known/jwks.json`));
+    }
 
-    const { payload } = await jwtVerify(token, JWKS, {
+    const { payload } = await jwtVerify(token, jwks, {
       algorithms: ['ES256'],
     });
 

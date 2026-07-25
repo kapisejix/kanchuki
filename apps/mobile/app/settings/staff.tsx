@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
 import { staffApi, type StaffMember } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 
 // ─── Add Staff Modal ───────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ function AddStaffModal({
       setPhone('')
     },
     onError: (err: Error) => {
-      Alert.alert('Error', err.message || 'Failed to add team member')
+      showError(err, 'Failed to add team member')
     },
   })
 
@@ -134,7 +135,7 @@ export default function StaffScreen() {
                 await staffApi.delete(member.id)
                 void queryClient.invalidateQueries({ queryKey: ['staff'] })
               } catch (err) {
-                Alert.alert('Error', err instanceof Error ? err.message : 'Failed to remove')
+                showError(err, 'Failed to remove')
               }
             },
           },

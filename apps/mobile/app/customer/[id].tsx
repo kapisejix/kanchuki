@@ -16,7 +16,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
 import { customerApi, sizeChartApi, collectionApi } from '../../src/lib/api'
+import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
+import { showError } from '../../src/lib/errors'
 
 const STYLE_OPTIONS = ['Casual', 'Party', 'Office', 'Wedding', 'Festive']
 
@@ -170,7 +172,7 @@ export default function CustomerDetailScreen() {
       setManualInseam('')
       Alert.alert('Saved', 'Manual measurements recorded.')
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save measurements')
+      showError(err, 'Failed to save measurements')
     } finally {
       setSavingManual(false)
     }
@@ -224,7 +226,7 @@ export default function CustomerDetailScreen() {
       void queryClient.invalidateQueries({ queryKey: ['customers'] })
       Alert.alert('Saved', 'Customer updated.')
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to save')
+      showError(err, 'Failed to save')
     } finally {
       setSaving(false)
     }
@@ -243,7 +245,7 @@ export default function CustomerDetailScreen() {
             void queryClient.invalidateQueries({ queryKey: ['customers'] })
             router.back()
           } catch (err) {
-            Alert.alert('Error', err instanceof Error ? err.message : 'Failed to delete customer')
+            showError(err, 'Failed to delete customer')
           }
         },
       },
@@ -269,18 +271,14 @@ export default function CustomerDetailScreen() {
         Alert.alert('Not enough data', "We need more customer preferences and product interactions to suggest a collection. Add their color/style/fabric preferences and record their activity.")
       }
     } catch (err) {
-      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to generate collection')
+      showError(err, 'Failed to generate collection')
     } finally {
       setGeneratingCollection(false)
     }
   }
 
   if (isLoading || !customer) {
-    return (
-      <View className="flex-1 bg-cyan-50 items-center justify-center">
-        <ActivityIndicator color="#0891B2" />
-      </View>
-    )
+    return <DetailScreenSkeleton withPhoto={false} />
   }
 
   return (

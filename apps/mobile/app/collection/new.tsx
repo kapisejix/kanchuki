@@ -5,7 +5,6 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
@@ -13,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import ProductCard from '../../src/components/ProductCard'
 import { productApi, collectionApi } from '../../src/lib/api'
+import { showError } from '../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
 
 type Product = {
@@ -51,7 +51,7 @@ export default function NewCollectionScreen() {
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
       router.replace(`/collection/${res.data.id as string}`)
     },
-    onError: (err: Error) => Alert.alert('Could not create collection', err.message),
+    onError: (err: Error) => showError(err, 'Please try again.', 'Could not create collection'),
   })
 
   const toggle = (id: string) => {

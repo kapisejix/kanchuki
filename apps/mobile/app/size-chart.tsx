@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Plus, Trash2, Check } from 'lucide-react-native'
 import { sizeChartApi, type SizeChartCategory, type SizeChartRow } from '../src/lib/api'
+import { showError } from '../src/lib/errors'
 
 const CATEGORIES: { value: SizeChartCategory; label: string }[] = [
   { value: 'UPPER', label: 'Kurtas / Tops / Dresses' },
@@ -56,7 +57,7 @@ export default function SizeChartScreen() {
       Alert.alert('Saved', `${CATEGORIES.find((c) => c.value === category)?.label} size chart updated.`)
     },
     onError: (err) => {
-      Alert.alert('Save failed', err instanceof Error ? err.message : 'Something went wrong')
+      showError(err, 'Something went wrong', 'Save failed')
     },
   })
 
