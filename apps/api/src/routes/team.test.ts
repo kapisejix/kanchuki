@@ -12,9 +12,16 @@ const {
   mockTeamMemberTerritoryFindMany,
   mockTerritoryFindFirst,
   mockTerritoryFindMany,
+  mockTerritoryFindUnique,
   mockRetailerUpsert,
   mockRetailerCount,
   mockRetailerFindMany,
+  mockRetailerFindUnique,
+  mockSupportTicketCreate,
+  mockSupportTicketFindMany,
+  mockSupportTicketFindUnique,
+  mockSupportTicketUpdate,
+  mockSupportTicketCount,
 } = vi.hoisted(() => ({
   mockTeamMemberFindUnique: vi.fn(),
   mockTeamMemberFindMany: vi.fn(),
@@ -23,9 +30,16 @@ const {
   mockTeamMemberTerritoryFindMany: vi.fn(),
   mockTerritoryFindFirst: vi.fn(),
   mockTerritoryFindMany: vi.fn(),
+  mockTerritoryFindUnique: vi.fn(),
   mockRetailerUpsert: vi.fn(),
   mockRetailerCount: vi.fn(),
   mockRetailerFindMany: vi.fn(),
+  mockRetailerFindUnique: vi.fn(),
+  mockSupportTicketCreate: vi.fn(),
+  mockSupportTicketFindMany: vi.fn(),
+  mockSupportTicketFindUnique: vi.fn(),
+  mockSupportTicketUpdate: vi.fn(),
+  mockSupportTicketCount: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -40,6 +54,7 @@ vi.mock('@kanchuki/db', () => ({
     territory: {
       findFirst: mockTerritoryFindFirst,
       findMany: mockTerritoryFindMany,
+      findUnique: mockTerritoryFindUnique,
       create: vi.fn(),
       update: vi.fn(),
     },
@@ -47,6 +62,14 @@ vi.mock('@kanchuki/db', () => ({
       upsert: mockRetailerUpsert,
       count: mockRetailerCount,
       findMany: mockRetailerFindMany,
+      findUnique: mockRetailerFindUnique,
+    },
+    supportTicket: {
+      create: mockSupportTicketCreate,
+      findMany: mockSupportTicketFindMany,
+      findUnique: mockSupportTicketFindUnique,
+      update: mockSupportTicketUpdate,
+      count: mockSupportTicketCount,
     },
   },
   Prisma: {},
@@ -274,6 +297,432 @@ describe('GET /team/members — capacity flag', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data[0].over_capacity).toBe(true);
     expect(res.json().data[0].retailer_count).toBe(5);
+    await app.close();
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════
+//  Support Tickets — POST, GET, PATCH, Stats, Routing
+// ═════════════════════════════════════════════════════════════════
+
+function ticketHeaders() {
+  return { 'x-admin-key': 'test-admin-key', 'content-type': 'application/json' };
+}
+
+const MOCK_RETAILER = { id: 'retailer_1', territory_id: 'zone_1' };
+const MOCK_AGENT_1 = { id: 'support_1', name: 'Agent One', role: 'SUPPORT_AGENT' };
+const MOCK_AGENT_2 = { id: 'support_2', name: 'Agent Two', role: 'SUPPORT_AGENT' };
+const MOCK_CITY = { id: 'city_1', parent_id: 'state_1' };
+const MOCK_STATE = { id: 'state_1', parent_id: null };
+
+describe('POST /team/tickets — auto-routing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset new mocks to clear persistent implementations from other describe blocks
+    mockSupportTicketCount.mockReset();
+    mockSupportTicketCreate.mockReset();
+    mockSupportTicketUpdate.mockReset();
+    mockTeamMemberTerritoryFindMany.mockReset();
+    mockTerritoryFindUnique.mockReset();
+    mockRetailerFindUnique.mockReset();
+    // PreHandler accepts admin key
+    mockTeamMemberFindUnique.mockResolvedValue(null);
+    // Retailer lookup for ticket creation
+    mockRetailerFindUnique.mockResolvedValue(MOCK_RETAILER);
+    // Territory lookup for regionScopeId: zone -> city parent
+    mockTerritoryFindUnique.mockResolvedValue({ parent_id: 'city_1' });
+  });
+
+  it('auto-routes a backend-manageable ticket to the least-loaded agent', async () => {
+    mockSupportTicketCreate.mockResolvedValue({
+      id: 'ticket_1',
+      retailer_id: 'retailer_1',
+      requires_visit: false,
+      region_scope_id: 'city_1',
+      status: 'OPEN',
+      note: null,
+      created_at: new Date().toISOString(),
+    });
+    // Territory assignments: both agents belong to city_1
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([
+      { team_member: MOCK_AGENT_1, territory_id: 'city_1' },
+      { team_member: MOCK_AGENT_2, territory_id: 'city_1' },
+    ]);
+    // Agent 2 has fewer tickets (1) vs Agent 1 (3) — should pick Agent 2
+    mockSupportTicketCount
+      .mockResolvedValueOnce(3) // agent 1 load
+      .mockResolvedValueOnce(1); // agent 2 load
+    mockSupportTicketUpdate.mockResolvedValue({});
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets',
+      headers: ticketHeaders(),
+      payload: { retailer_id: 'retailer_1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const data = res.json().data;
+    expect(data.status).toBe('ASSIGNED');
+    expect(data.assigned_to_id).toBe('support_2'); // least-loaded agent
+    expect(data.region_scope_id).toBe('city_1');
+
+    // Verify the update was called with the correct agent
+    expect(mockSupportTicketUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: { assigned_to_id: 'support_2', status: 'ASSIGNED' },
+      }),
+    );
+    await app.close();
+  });
+
+  it('falls back to SUPPORT_MANAGER when no SUPPORT_AGENT available', async () => {
+    mockSupportTicketCreate.mockResolvedValue({
+      id: 'ticket_2',
+      retailer_id: 'retailer_1',
+      requires_visit: false,
+      region_scope_id: 'city_1',
+      status: 'OPEN',
+      note: null,
+      created_at: new Date().toISOString(),
+    });
+    // Only a SUPPORT_MANAGER is assigned to the territory
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([
+      { team_member: { id: 'mgr_1', name: 'Mgr', role: 'SUPPORT_MANAGER' }, territory_id: 'city_1' },
+    ]);
+    mockSupportTicketCount.mockResolvedValueOnce(0); // manager load
+    mockSupportTicketUpdate.mockResolvedValue({});
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets',
+      headers: ticketHeaders(),
+      payload: { retailer_id: 'retailer_1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.assigned_to_id).toBe('mgr_1');
+    await app.close();
+  });
+
+  it('leaves ticket OPEN when no agents are available in the territory', async () => {
+    mockSupportTicketCreate.mockResolvedValue({
+      id: 'ticket_3',
+      retailer_id: 'retailer_1',
+      requires_visit: false,
+      region_scope_id: 'city_1',
+      status: 'OPEN',
+      note: null,
+      created_at: new Date().toISOString(),
+    });
+    // No team members assigned to this territory
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets',
+      headers: ticketHeaders(),
+      payload: { retailer_id: 'retailer_1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe('OPEN');
+    expect(res.json().data.assigned_to_id).toBeNull();
+    expect(mockSupportTicketUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('routes visit-required tickets by traversing territory hierarchy', async () => {
+    mockSupportTicketCreate.mockResolvedValue({
+      id: 'ticket_4',
+      retailer_id: 'retailer_1',
+      requires_visit: true,
+      region_scope_id: null,
+      status: 'OPEN',
+      note: null,
+      created_at: new Date().toISOString(),
+    });
+    // Territory hierarchy: zone_1 -> city_1 -> state_1 -> null
+    // No agents at zone_1 or city_1, but one at state_1
+    mockTerritoryFindUnique
+      .mockResolvedValueOnce({ parent_id: 'city_1' }) // zone_1 -> city_1
+      .mockResolvedValueOnce({ parent_id: 'state_1' }) // city_1 -> state_1
+      .mockResolvedValueOnce({ parent_id: null }); // state_1 -> null
+    // routeTicket collects ALL candidate territories [zone_1, city_1, state_1]
+    // then makes ONE findMany call with all 3 IDs — NOT one call per level
+    const stateAgent = { team_member: { id: 'state_agent', name: 'State Agent', role: 'SUPPORT_AGENT' }, territory_id: 'state_1' };
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([stateAgent]);
+    mockSupportTicketCount.mockResolvedValueOnce(0);
+    mockSupportTicketUpdate.mockResolvedValue({});
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets',
+      headers: ticketHeaders(),
+      payload: { retailer_id: 'retailer_1', requires_visit: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.assigned_to_id).toBe('state_agent');
+    expect(res.json().data.requires_visit).toBe(true);
+    // Should have traversed 3 territories
+    expect(mockTerritoryFindUnique).toHaveBeenCalledTimes(3);
+    await app.close();
+  });
+
+  it('returns 404 when retailer is not found', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets',
+      headers: ticketHeaders(),
+      payload: { retailer_id: 'nonexistent' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe('POST /team/tickets/route-all — batch routing', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Reset new mocks
+    mockSupportTicketFindMany.mockReset();
+    mockSupportTicketUpdate.mockReset();
+    mockSupportTicketCount.mockReset();
+    mockTeamMemberTerritoryFindMany.mockReset();
+    mockTerritoryFindUnique.mockReset();
+    mockTeamMemberFindUnique.mockReset();
+    mockTeamMemberFindUnique.mockResolvedValue(null);
+  });
+
+  it('routes all unassigned open tickets and returns count', async () => {
+    mockSupportTicketFindMany.mockResolvedValue([
+      { id: 't_a', requires_visit: false, region_scope_id: 'city_1', retailer: { territory_id: 'zone_1' } },
+      { id: 't_b', requires_visit: true, region_scope_id: null, retailer: { territory_id: 'zone_1' } },
+    ]);
+    // T_a (backend-manageable): uses regionScopeId directly, no territory.findUnique
+    // T_b (visit-required): traverses hierarchy zone_1 -> city_1 -> state_1 -> null
+    mockTerritoryFindUnique
+      .mockResolvedValueOnce({ parent_id: 'city_1' }) // t_b: zone_1 -> city_1
+      .mockResolvedValueOnce({ parent_id: 'state_1' }) // t_b: city_1 -> state_1
+      .mockResolvedValueOnce({ parent_id: null }); // t_b: state_1 -> null
+    // routeTicket makes ONE findMany call per ticket (not per territory level)
+    const agentA = { team_member: { id: 'support_a', name: 'A', role: 'SUPPORT_AGENT' }, territory_id: 'city_1' };
+    const agentB = { team_member: { id: 'support_b', name: 'B', role: 'SUPPORT_AGENT' }, territory_id: 'state_1' };
+    mockTeamMemberTerritoryFindMany
+      .mockResolvedValueOnce([agentA]) // t_a: query for [city_1]
+      .mockResolvedValueOnce([agentB]); // t_b: query for [zone_1, city_1, state_1]
+    mockSupportTicketCount.mockResolvedValue(0);
+    mockSupportTicketUpdate.mockResolvedValue({});
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets/route-all',
+      headers: { 'x-admin-key': 'test-admin-key', 'content-type': 'application/json' },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.routed).toBe(2);
+    expect(res.json().data.total).toBe(2);
+    await app.close();
+  });
+
+  it('rejects non-manager roles', async () => {
+    mockTeamMemberFindUnique.mockReset();
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'marketing_1',
+      role: 'MARKETING_AGENT',
+      is_active: true,
+    });
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([]);
+
+    const token = await signTeamToken({ sub: 'marketing_1', role: 'MARKETING_AGENT' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets/route-all',
+      headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+});
+
+describe('GET /team/tickets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSupportTicketFindMany.mockReset();
+    mockTeamMemberFindUnique.mockResolvedValue(null);
+  });
+
+  it('lists tickets for super admin', async () => {
+    const now = new Date().toISOString();
+    mockSupportTicketFindMany.mockResolvedValue([
+      {
+        id: 't_1',
+        retailer_id: 'retailer_1',
+        requires_visit: false,
+        region_scope_id: 'city_1',
+        assigned_to_id: 'support_1',
+        status: 'ASSIGNED',
+        note: 'Test ticket',
+        created_at: now,
+        resolved_at: null,
+        assigned_to: { id: 'support_1', name: 'Support One' },
+        retailer: { id: 'retailer_1', shop_name: 'Shop 1', city: 'Jaipur', phone: '+919999999999' },
+      },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/team/tickets',
+      headers: { 'x-admin-key': 'test-admin-key' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toHaveLength(1);
+    expect(res.json().data[0].status).toBe('ASSIGNED');
+    expect(res.json().data[0].retailer.shop_name).toBe('Shop 1');
+    await app.close();
+  });
+});
+
+describe('PATCH /team/tickets/:id', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSupportTicketFindUnique.mockReset();
+    mockSupportTicketUpdate.mockReset();
+    mockTeamMemberFindUnique.mockReset();
+    mockTeamMemberFindUnique.mockResolvedValue(null);
+  });
+
+  it('updates ticket status', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({
+      id: 't_1',
+      status: 'OPEN',
+      assigned_to_id: null,
+      region_scope_id: 'city_1',
+      retailer: { territory_id: 'zone_1' },
+    });
+    mockSupportTicketUpdate.mockResolvedValue({
+      id: 't_1',
+      retailer_id: 'retailer_1',
+      requires_visit: false,
+      assigned_to_id: null,
+      status: 'RESOLVED',
+      note: null,
+      created_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/team/tickets/t_1',
+      headers: ticketHeaders(),
+      payload: { status: 'RESOLVED' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe('RESOLVED');
+    expect(res.json().data.resolved_at).toBeTruthy();
+    await app.close();
+  });
+
+  it('reassigns ticket to a valid support agent', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({
+      id: 't_1',
+      status: 'OPEN',
+      assigned_to_id: null,
+      region_scope_id: 'city_1',
+      retailer: { territory_id: 'zone_1' },
+    });
+    // Admin key skips preHandler's findUnique; this mock is for the
+    // PATCH handler's assignee-validity check
+    mockTeamMemberFindUnique.mockResolvedValue({ role: 'SUPPORT_AGENT', is_active: true });
+    mockSupportTicketUpdate.mockResolvedValue({
+      id: 't_1',
+      retailer_id: 'retailer_1',
+      requires_visit: false,
+      assigned_to_id: 'new_agent',
+      status: 'ASSIGNED',
+      note: null,
+      created_at: new Date().toISOString(),
+      resolved_at: null,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/team/tickets/t_1',
+      headers: ticketHeaders(),
+      payload: { assigned_to_id: 'new_agent' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.assigned_to_id).toBe('new_agent');
+    await app.close();
+  });
+
+  it('returns 404 for nonexistent ticket', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/team/tickets/nonexistent',
+      headers: ticketHeaders(),
+      payload: { status: 'CLOSED' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe('GET /team/tickets/stats', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSupportTicketCount.mockReset();
+    mockTeamMemberFindUnique.mockResolvedValue(null);
+  });
+
+  it('returns aggregate ticket statistics', async () => {
+    mockSupportTicketCount
+      .mockResolvedValueOnce(5)  // open
+      .mockResolvedValueOnce(3)  // assigned
+      .mockResolvedValueOnce(10) // resolved
+      .mockResolvedValueOnce(2)  // closed
+      .mockResolvedValueOnce(1); // visit_required
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/team/tickets/stats',
+      headers: { 'x-admin-key': 'test-admin-key' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const stats = res.json().data;
+    expect(stats.open).toBe(5);
+    expect(stats.assigned).toBe(3);
+    expect(stats.resolved).toBe(10);
+    expect(stats.closed).toBe(2);
+    expect(stats.total).toBe(20);
+    expect(stats.requires_visit).toBe(1);
     await app.close();
   });
 });

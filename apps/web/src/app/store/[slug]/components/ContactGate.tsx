@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
+import { motion } from 'framer-motion'
 import type { RetailerProfile } from '../page'
 
 interface Props {
@@ -73,7 +74,12 @@ export function ContactGate({ slug, profile }: Props) {
   }
 
   return (
-    <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 relative">
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+      className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 relative"
+    >
       <Link
         href="/"
         className="absolute top-4 left-4 text-sm text-cyan-700/70 hover:text-cyan-700 flex items-center gap-1"
@@ -181,6 +187,6 @@ export function ContactGate({ slug, profile }: Props) {
           {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Continue'}
         </button>
       </form>
-    </div>
+    </motion.div>
   )
 }

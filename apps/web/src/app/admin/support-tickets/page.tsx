@@ -17,6 +17,7 @@ import {
   X,
   Save,
   RefreshCw,
+  Navigation,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -267,6 +268,22 @@ export default function SupportTicketsPage() {
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
+  const [routing, setRouting] = useState(false)
+
+  const handleRouteAll = async () => {
+    setRouting(true)
+    try {
+      await fetch(`${API_URL}/v1/team/tickets/route-all`, {
+        method: 'POST',
+        headers: getHeaders(),
+      })
+      await loadData()
+    } catch {
+      // ignore
+    } finally {
+      setRouting(false)
+    }
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -328,15 +345,32 @@ export default function SupportTicketsPage() {
           </div>
           <p className="text-sm text-gray-500">Manage retailer support requests and field agent tasks</p>
         </div>
-        <motion.button
-          onClick={loadData}
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          className="p-2.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all cursor-pointer"
-          title="Refresh"
-        >
-          <RefreshCw size={18} />
-        </motion.button>
+        <div className="flex items-center gap-2">
+          <motion.button
+            onClick={handleRouteAll}
+            disabled={routing}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="flex items-center gap-1.5 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-400 hover:to-indigo-400 text-white text-sm font-semibold rounded-xl transition-all shadow-lg shadow-purple-500/25 disabled:opacity-60 cursor-pointer"
+            title="Route all unassigned tickets"
+          >
+            {routing ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : (
+              <Navigation size={15} />
+            )}
+            {routing ? 'Routing...' : 'Route All'}
+          </motion.button>
+          <motion.button
+            onClick={loadData}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="p-2.5 text-gray-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-xl transition-all cursor-pointer"
+            title="Refresh"
+          >
+            <RefreshCw size={18} />
+          </motion.button>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -391,7 +425,8 @@ export default function SupportTicketsPage() {
                   <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Retailer</th>
                   <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                   <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Assigned To</th>
-                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Visit</th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider">Route</th>
                   <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Created</th>
                   <th className="px-4 py-3.5 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider" />
                 </tr>
@@ -462,6 +497,25 @@ export default function SupportTicketsPage() {
                           <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
                             <MapPin size={11} />
                             Visit
+                          </span>
+                        ) : t.assigned_to ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-cyan-600 bg-cyan-50 px-2 py-0.5 rounded-full">
+                            <Navigation size={11} />
+                            Pool
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3.5 text-center">
+                        {t.assigned_to ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                            <Navigation size={10} />
+                            Routed
+                          </span>
+                        ) : t.status === 'OPEN' ? (
+                          <span className="inline-flex items-center gap-1 text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                            Pending
                           </span>
                         ) : (
                           <span className="text-xs text-gray-300">—</span>

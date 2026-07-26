@@ -453,8 +453,117 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     note: z.string().max(2000).optional(),
   });
 
+  // ── Helpers: Ticket Routing ────────────────────────────────────────
+
+  /** Find the best support agent to assign a ticket to, or null if none available. */
+  async function routeTicket(
+    ticketId: string,
+    requiresVisit: boolean,
+    retailerTerritoryId: string | null,
+    regionScopeId: string | null,
+    log: { info: (obj: object, msg?: string) => void },
+  ): Promise<string | null> {
+    if (!retailerTerritoryId) return null;
+
+    let candidateTerritoryIds: string[] = [];
+
+    if (!requiresVisit && regionScopeId) {
+      // ── Backend-manageable pool ───────────────────────────────────
+      // Ticket is routable within the CITY-level region scope.
+      candidateTerritoryIds = [regionScopeId];
+    } else if (requiresVisit) {
+      // ── Visit-required: traverse territory hierarchy ─────────────
+      // Start at the retailer's ZONE territory, go up to CITY, then STATE.
+      const visited = new Set<string>();
+      let currentId: string | null = retailerTerritoryId;
+
+      while (currentId && !visited.has(currentId)) {
+        visited.add(currentId);
+        candidateTerritoryIds.push(currentId);
+
+        // Fetch parent
+        const parentTerritory: { parent_id: string | null } | null = await prisma.territory.findUnique({
+          where: { id: currentId },
+          select: { parent_id: true },
+        });
+        currentId = parentTerritory?.parent_id ?? null;
+      }
+    } else {
+      // Fallback: just use the retailer's direct territory
+      candidateTerritoryIds = [retailerTerritoryId];
+    }
+
+    // Find SUPPORT_AGENT members assigned to any of the candidate territories
+    const assignments = await prisma.teamMemberTerritory.findMany({
+      where: {
+        territory_id: { in: candidateTerritoryIds },
+        team_member: {
+          is_active: true,
+          role: { in: ['SUPPORT_AGENT', 'SUPPORT_MANAGER', 'SUPER_ADMIN'] },
+        },
+      },
+      include: {
+        team_member: {
+          select: { id: true, name: true, role: true },
+        },
+      },
+    });
+
+    if (assignments.length === 0) {
+      log.info({ ticket_id: ticketId }, 'No support agents available in territory for routing');
+      return null;
+    }
+
+    // Deduplicate by team_member_id (an agent can be in multiple territories)
+    const uniqueMembers = new Map<string, { id: string; name: string; role: string }>();
+    for (const a of assignments) {
+      if (!uniqueMembers.has(a.team_member.id)) {
+        uniqueMembers.set(a.team_member.id, a.team_member);
+      }
+    }
+
+    // Prefer SUPPORT_AGENT over SUPPORT_MANAGER over SUPER_ADMIN
+    const memberList = [...uniqueMembers.values()];
+    const preferred = memberList.filter((m) => m.role === 'SUPPORT_AGENT');
+    const backup = memberList.filter((m) => m.role !== 'SUPPORT_AGENT');
+    const ordered = preferred.length > 0 ? preferred : backup;
+
+    // Least-loaded scheduling: count open+assigned tickets per candidate
+    const agentsWithLoad = await Promise.all(
+      ordered.map(async (member) => {
+        const openCount = await prisma.supportTicket.count({
+          where: {
+            assigned_to_id: member.id,
+            status: { in: ['OPEN', 'ASSIGNED'] },
+          },
+        });
+        return { id: member.id, name: member.name, load: openCount };
+      }),
+    );
+
+    // Pick the agent with the fewest active tickets
+    agentsWithLoad.sort((a, b) => a.load - b.load);
+    const bestAgent = agentsWithLoad[0];
+
+    if (!bestAgent) return null;
+
+    log.info(
+      {
+        ticket_id: ticketId,
+        assigned_to_id: bestAgent.id,
+        agent_load: bestAgent.load,
+        candidate_count: candidateTerritoryIds.length,
+        requires_visit: requiresVisit,
+      },
+      'Ticket auto-routed',
+    );
+
+    return bestAgent.id;
+  }
+
   // ── POST /team/tickets ───────────────────────────────────────────
   // Create a support ticket for a retailer. Any team member can create one.
+  // Tickets are automatically routed to the best available support agent.
   server.post('/tickets', async (request) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
@@ -506,12 +615,41 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    // ── Auto-route the newly created ticket ────────────────────
+    let assignedTo: string | null = null;
+    try {
+      assignedTo = await routeTicket(
+        ticket.id,
+        body.data.requires_visit,
+        retailer.territory_id,
+        regionScopeId,
+        request.log,
+      );
+
+      if (assignedTo) {
+        await prisma.supportTicket.update({
+          where: { id: ticket.id },
+          data: { assigned_to_id: assignedTo, status: 'ASSIGNED' },
+        });
+        ticket.status = 'ASSIGNED';
+      }
+    } catch (err) {
+      request.log.error(
+        { err, ticket_id: ticket.id },
+        'Auto-routing failed, ticket left unassigned',
+      );
+    }
+
     request.log.info(
-      { ticket_id: ticket.id, retailer_id: body.data.retailer_id },
+      {
+        ticket_id: ticket.id,
+        retailer_id: body.data.retailer_id,
+        assigned_to: assignedTo ?? 'unassigned',
+      },
       'Support ticket created',
     );
 
-    return { data: ticket };
+    return { data: { ...ticket, assigned_to_id: assignedTo } };
   });
 
   // ── GET /team/tickets ────────────────────────────────────────────
@@ -564,6 +702,62 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     });
 
     return { data: tickets };
+  });
+
+  // ── POST /team/tickets/route-all ─────────────────────────────────
+  // Batch re-route all unassigned OPEN tickets. Returns the count routed.
+  server.post('/tickets/route-all', async (request) => {
+    const tm = request.teamMember;
+    if (!tm) throw forbidden('Not authenticated');
+    if (tm.role !== 'SUPER_ADMIN' && tm.role !== 'SUPPORT_MANAGER') {
+      throw forbidden('Only managers and admins can re-route all tickets');
+    }
+
+    const unassigned = await prisma.supportTicket.findMany({
+      where: {
+        status: 'OPEN',
+        assigned_to_id: null,
+        ...(tm.isSuperAdmin
+          ? {}
+          : { retailer: { territory_id: { in: tm.territoryIds } } }),
+      },
+      select: {
+        id: true,
+        requires_visit: true,
+        region_scope_id: true,
+        retailer: { select: { territory_id: true } },
+      },
+    });
+
+    let routed = 0;
+    for (const ticket of unassigned) {
+      try {
+        const assignedTo = await routeTicket(
+          ticket.id,
+          ticket.requires_visit,
+          ticket.retailer.territory_id,
+          ticket.region_scope_id,
+          request.log,
+        );
+
+        if (assignedTo) {
+          await prisma.supportTicket.update({
+            where: { id: ticket.id },
+            data: { assigned_to_id: assignedTo, status: 'ASSIGNED' },
+          });
+          routed++;
+        }
+      } catch (err) {
+        request.log.error(
+          { err, ticket_id: ticket.id },
+          'Routing failed for individual ticket, skipping',
+        );
+      }
+    }
+
+    request.log.info({ total: unassigned.length, routed }, 'Batch re-route completed');
+
+    return { data: { total: unassigned.length, routed } };
   });
 
   // ── PATCH /team/tickets/:id ──────────────────────────────────────

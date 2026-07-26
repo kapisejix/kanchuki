@@ -1,6 +1,7 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { handleBackupDatabase } from './backup-database.js';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
 import { handleExpirePendingOrders } from './expire-pending-orders.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
@@ -8,6 +9,8 @@ import type { MeasurementJobData } from './extract-measurement.js';
 import { handleExtractSpinFrames } from './extract-spin-frames.js';
 import type { SpinFrameJobData } from './extract-spin-frames.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
+import { handleGhostMannequin } from './ghost-mannequin.js';
+import type { GhostMannequinJobData } from './ghost-mannequin.js';
 import { handleProcessTryOn } from './process-tryon.js';
 import type { TryOnJobData } from './process-tryon.js';
 import { handleTagProduct } from './tag-product.js';
@@ -39,6 +42,8 @@ let cleanupQueue: Queue | null = null;
 let orderExpiryQueue: Queue | null = null;
 let fashionDNAQueue: Queue | null = null;
 let spinFrameQueue: Queue | null = null;
+let backupQueue: Queue | null = null;
+let ghostMannequinQueue: Queue | null = null;
 
 function getTaggingQueue(): Queue {
   taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() });
@@ -78,6 +83,16 @@ function getFashionDNAQueue(): Queue {
 function getSpinFrameQueue(): Queue {
   spinFrameQueue ??= new Queue(QUEUES.SPIN_FRAME_EXTRACTION, { connection: getRedis() });
   return spinFrameQueue;
+}
+
+function getBackupQueue(): Queue {
+  backupQueue ??= new Queue(QUEUES.DATABASE_BACKUP, { connection: getRedis() });
+  return backupQueue;
+}
+
+function getGhostMannequinQueue(): Queue {
+  ghostMannequinQueue ??= new Queue(QUEUES.GHOST_MANNEQUIN, { connection: getRedis() });
+  return ghostMannequinQueue;
 }
 
 // ─── Job Producers ────────────────────────────────────────────────
@@ -146,6 +161,15 @@ export async function addSpinFrameJob(data: SpinFrameJobData): Promise<void> {
     backoff: { type: 'exponential', delay: 5000 },
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 50 },
+  });
+}
+
+export async function addGhostMannequinJob(data: GhostMannequinJobData): Promise<void> {
+  await getGhostMannequinQueue().add('ghost-mannequin', data, {
+    attempts: 2,
+    backoff: { type: 'exponential', delay: 10_000 },
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 20 },
   });
 }
 
@@ -232,6 +256,27 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 1 },
   );
 
+  // Ghost-mannequin worker (concurrency 2 — Snappyit API calls are network-bound)
+  const ghostMannequinWorker = new Worker(
+    QUEUES.GHOST_MANNEQUIN,
+    async (job) => {
+      const data = job.data as GhostMannequinJobData;
+      await handleGhostMannequin(data);
+    },
+    { connection: redis, concurrency: 2 },
+  );
+
+  // Database backup worker (concurrency 1 — I/O bound, only one backup at a time)
+  // The job data may include a `type` field: 'daily' (default) or 'weekly'.
+  const backupWorker = new Worker(
+    QUEUES.DATABASE_BACKUP,
+    async (job) => {
+      const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
+      await handleBackupDatabase(data.type ?? 'daily');
+    },
+    { connection: redis, concurrency: 1 },
+  );
+
   // Schedule the cleanup to run daily at 2:00 AM UTC (add is idempotent —
   // BullMQ deduplicates by job name + repeat key, so multiple restarts
   // don't create duplicate schedules).
@@ -240,6 +285,28 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 2 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Schedule database backup to run daily at 3:00 AM UTC
+  await getBackupQueue().add(
+    'backup-database-daily',
+    { type: 'daily' },
+    {
+      repeat: { pattern: '0 3 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Schedule weekly backup to run Sunday at 4:00 AM UTC (staggered 1h after daily)
+  await getBackupQueue().add(
+    'backup-database-weekly',
+    { type: 'weekly' },
+    {
+      repeat: { pattern: '0 4 * * 0', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -286,5 +353,13 @@ export async function startWorkers(): Promise<void> {
 
   orderExpiryWorker.on('failed', (job, err) => {
     console.error(`[jobs] expire-pending-orders failed ${job?.id}:`, err.message);
+  });
+
+  ghostMannequinWorker.on('failed', (job, err) => {
+    console.error(`[jobs] ghost-mannequin failed ${job?.id}:`, err.message);
+  });
+
+  backupWorker.on('failed', (job, err) => {
+    console.error(`[jobs] backup-database failed ${job?.id}:`, err.message);
   });
 }

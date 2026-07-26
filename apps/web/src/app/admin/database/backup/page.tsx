@@ -18,6 +18,10 @@ import {
   Terminal,
   Trash2,
   Server,
+  ShieldCheck,
+  ShieldAlert,
+  Bell,
+  Calendar,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'

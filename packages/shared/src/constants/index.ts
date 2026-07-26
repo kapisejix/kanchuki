@@ -179,6 +179,8 @@ export const R2_PATHS = {
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/banner/${filename}`,
+  ghostMannequin: (retailerId: string, productId: string) =>
+    `retailers/${retailerId}/products/${productId}/ghost-mannequin.jpg`,
 } as const;
 
 // ─── Integration Settings (F-012) ──────────────────────────────────
@@ -204,6 +206,7 @@ export const INTEGRATION_KEYS = [
   { key_name: 'R2_BUCKET_NAME', category: 'STORAGE', label: 'Cloudflare R2 Bucket Name' },
   { key_name: 'META_APP_SECRET', category: 'WHATSAPP', label: 'Meta App Secret (WhatsApp API)' },
   { key_name: 'META_VERIFY_TOKEN', category: 'WHATSAPP', label: 'Meta Webhook Verify Token' },
+  { key_name: 'SNAPPYIT_API_KEY', category: 'AI', label: 'Snappyit API Key (ghost mannequin generation)' },
 ] as const;
 
 export type IntegrationKeyName = (typeof INTEGRATION_KEYS)[number]['key_name'];
@@ -250,6 +253,8 @@ export const QUEUES = {
   MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
   FASHION_DNA: 'kanchuki-fashion-dna',
   SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
+  DATABASE_BACKUP: 'kanchuki-database-backup',
+  GHOST_MANNEQUIN: 'kanchuki-ghost-mannequin',
 } as const;
 
 // ─── Cache TTLs (seconds) ─────────────────────────────────────────

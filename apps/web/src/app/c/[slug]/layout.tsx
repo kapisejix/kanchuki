@@ -1,14 +1,40 @@
-import { Bricolage_Grotesque } from 'next/font/google'
+'use client'
 
-// Scoped to the customer collection route only — the rest of the app
-// (admin panel, landing page) keeps the root layout's Inter body font.
-// This adds a display face for headings/prices without touching global type.
+import { Bricolage_Grotesque } from 'next/font/google'
+import { usePathname } from 'next/navigation'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ReactNode, Suspense } from 'react'
+
+// Scoped display font for the customer collection route.
+// next/font/google in a client component works fine — the CSS is compiled at
+// build time and the className/variable strings are the same either way.
 const display = Bricolage_Grotesque({
   subsets: ['latin'],
   variable: '--font-display',
   display: 'swap',
 })
 
-export default function CollectionLayout({ children }: { children: React.ReactNode }) {
-  return <div className={display.variable}>{children}</div>
+interface Props {
+  children: ReactNode
+}
+
+export default function CollectionLayout({ children }: Props) {
+  const pathname = usePathname()
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={pathname}
+        initial={{ opacity: 0, y: 20, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.97, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] } }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className={`min-h-screen ${display.variable}`}
+      >
+        <Suspense fallback={null}>
+          {children}
+        </Suspense>
+      </motion.div>
+    </AnimatePresence>
+  )
 }

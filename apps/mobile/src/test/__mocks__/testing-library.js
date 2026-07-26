@@ -3,7 +3,11 @@
  *
  * Uses react-test-renderer to render React Native components into a
  * snapshot-compatible tree without loading the real @testing-library
- * package (which has ESM dependencies Node.js v22 can't parse).
+ * package (which has ESM deps Node.js v22 can't parse).
+ *
+ * NOTE: Must use ESM exports (export/export default), not CJS
+ * (module.exports), because vitest processes mock files through its
+ * ESM transform pipeline where `module` is not defined.
  */
 
 import React from 'react'
@@ -45,8 +49,7 @@ function render(ui, options = {}) {
     })
   }
 
-   
-  let result = {
+  const result = {
     toJSON,
     toTree,
     rerender,
@@ -86,4 +89,4 @@ function render(ui, options = {}) {
   return result
 }
 
-module.exports = { render }
+export { render }

@@ -376,6 +376,11 @@ model ProductPhoto {
   // See packages/ai/src/phash.ts.
   phash String?
 
+  // F-001e: ghost-mannequin generation provenance and other photo-level
+  // metadata. JSON for flexible expansion — stores provider name,
+  // generated_at, error messages, original photo URL on failure, etc.
+  metadata Json?
+
   sort_order Int      @default(0)
   created_at DateTime @default(now())
 

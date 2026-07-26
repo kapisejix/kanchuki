@@ -15,6 +15,7 @@ import {
   wishlistKey,
 } from '../lib/wishlist';
 import { FilterBar } from './FilterBar';
+import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
 // The components include image carousels, forms, and heavy lucide icons that
@@ -214,6 +215,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
   const bannerUrl = collection.retailer.banner_url;
 
   return (
+    <PageTransitionWrapper>
     <div className="min-h-screen bg-gray-50 font-sans">
       {/* ── Hero Banner ── */}
       {bannerUrl && (
@@ -419,6 +421,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
       {/* Bottom padding for sticky bar */}
       <div className="h-20" />
     </div>
+    </PageTransitionWrapper>
   );
 }
 
