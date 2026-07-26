@@ -89,8 +89,9 @@ async function ensureCsrfToken(): Promise<string> {
     })
     if (!res.ok) throw new Error(`CSRF token fetch failed: HTTP ${res.status}`)
     const json = await res.json()
-    cachedCsrfToken = json.data.csrf_token
-    return cachedCsrfToken
+    const token = json.data.csrf_token as string
+    cachedCsrfToken = token
+    return token
   })()
 
   return csrfFetchPromise
@@ -167,12 +168,14 @@ const itemVariants = {
 export default function DatabaseBackupPage() {
   const [backups, setBackups] = useState<BackupEntry[]>([])
   const [summary, setSummary] = useState<BackupSummary | null>(null)
-  const [environment, setEnvironment] = useState<{ backup_command: string; restore_command: string } | null>(null)
+  const [environment, setEnvironment] = useState<{ backup_command: string; restore_command: string; docker_available: boolean } | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState('')
 
-
+  // Trigger backup state
+  const [triggering, setTriggering] = useState(false)
+  const [triggerResult, setTriggerResult] = useState<ActionResponse['data'] | null>(null)
 
   // Restore state
   const [restoringKey, setRestoringKey] = useState<string | null>(null)

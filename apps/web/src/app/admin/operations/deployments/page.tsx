@@ -12,6 +12,7 @@ import {
   Clock,
   RotateCcw,
   ExternalLink,
+  type LucideIcon,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -41,7 +42,7 @@ const STATUS_COLORS: Record<string, string> = {
   rolled_back: 'text-purple-600 bg-purple-50 border-purple-200',
 }
 
-const STATUS_ICONS: Record<string, React.ComponentType<{ size?: number }>> = {
+const STATUS_ICONS: Record<string, LucideIcon> = {
   success: CheckCircle2,
   failed: XCircle,
   running: Loader2,

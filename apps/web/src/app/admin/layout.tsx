@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import dynamic from 'next/dynamic'
+import nextDynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, Shield } from 'lucide-react'
 import { PageLoader } from '@/components/PageLoader'
@@ -10,12 +10,12 @@ import { RouteProgress } from '@/components/RouteProgress'
 
 // ── Lazy-loaded admin components ──────────────────────────────────
 
-const FloatingOrbs = dynamic(() => import('./components/FloatingOrbs'), {
+const FloatingOrbs = nextDynamic(() => import('./components/FloatingOrbs'), {
   ssr: false,
   loading: () => null,
 })
 
-const LoginScreen = dynamic(() => import('./components/LoginScreen'), {
+const LoginScreen = nextDynamic(() => import('./components/LoginScreen'), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
@@ -24,12 +24,12 @@ const LoginScreen = dynamic(() => import('./components/LoginScreen'), {
   ),
 })
 
-const Sidebar = dynamic(() => import('./components/Sidebar'), {
+const Sidebar = nextDynamic(() => import('./components/Sidebar'), {
   ssr: false,
   loading: () => null,
 })
 
-const NotificationBell = dynamic(() => import('./components/NotificationBell'), {
+const NotificationBell = nextDynamic(() => import('./components/NotificationBell'), {
   ssr: false,
   loading: () => (
     <div className="w-9 h-9 rounded-xl bg-gray-100 animate-pulse" />
@@ -45,7 +45,7 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 // Force dynamic rendering — framer-motion client components can't be statically prerendered
 export const dynamic = 'force-dynamic'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const [authed, setAuthed] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)

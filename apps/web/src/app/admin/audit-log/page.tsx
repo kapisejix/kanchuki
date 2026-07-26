@@ -108,11 +108,13 @@ function FilterBar({
   filters,
   onChange,
   onSearch,
+  onClear,
   loading,
 }: {
   filters: Record<string, string>
   onChange: (key: string, value: string) => void
   onSearch: () => void
+  onClear: () => void
   loading: boolean
 }) {
   return (
@@ -176,13 +178,7 @@ function FilterBar({
           <span className="text-[10px] text-gray-400 ml-2">Results limited to 200 entries</span>
         </div>
         <motion.button
-          onClick={() => {
-            setFilterInputs({ action: '', actor_type: '', resource_type: '', ip_address: '', date_from: '', date_to: '' })
-            setCommittedFilters({})
-            setCursorStack([])
-            setCurrentCursor(undefined)
-            fetchLogs(undefined)
-          }}
+          onClick={onClear}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
@@ -366,6 +362,14 @@ export default function AuditLogPage() {
     setCurrentCursor(undefined)
   }
 
+  const handleClear = () => {
+    setFilterInputs({ action: '', actor_type: '', resource_type: '', ip_address: '', date_from: '', date_to: '' })
+    setCommittedFilters({})
+    setCursorStack([])
+    setCurrentCursor(undefined)
+    fetchLogs(undefined)
+  }
+
   // When committed filters change (after Search click), fetch with new filters
   useEffect(() => {
     if (Object.keys(committedFilters).length > 0 || logs.length > 0) {
@@ -465,9 +469,10 @@ export default function AuditLogPage() {
 
       {/* Filters */}
       <FilterBar
-        filters={filters}
+        filters={filterInputs}
         onChange={(key, value) => setFilterInputs((prev) => ({ ...prev, [key]: value }))}
         onSearch={handleSearch}
+        onClear={handleClear}
         loading={loading}
       />
 
