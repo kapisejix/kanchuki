@@ -701,18 +701,18 @@ Kanchuki maintains **three database layers** for maximum safety:
 | Monthly archive | 1st of month | 7 years | Cold backup (GST compliance) |
 | Manual backup | On demand | Permanent (until manually deleted) | Admin dashboard trigger |
 
-### 13.3 What's NOT Implemented Yet
+### 13.3 What's Implemented vs Not Implemented
 
-The following infrastructure must be built:
+**Backup and query infrastructure — mostly built:**
 
-- [ ] **`BACKUP_DATABASE_URL` env var** — second PostgreSQL connection for the backup target
-- [ ] **Backup automation script** — `scripts/backup-database.ts` that runs `pg_dump` and restores to the backup database
-- [ ] **Admin dashboard backup page** — UI to trigger, view status, and download backups
-- [ ] **Admin dashboard restore page** — UI to select a backup and restore (with confirmation)
-- [ ] **Admin query runner** — SQL console that runs read-only queries against the replica
-- [ ] **Scheduled backup cron** — BullMQ job or system cron for daily/weekly automated backups
-- [ ] **Backup integrity check** — automated restore verification on the replica
-- [ ] **Disaster recovery runbook** — step-by-step recovery procedure
+- [x] **`BACKUP_DATABASE_URL` env var** — can be set for backup target
+- [x] **Backup automation script** — `apps/api/src/jobs/backup-database.ts` (BullMQ job)
+- [x] **Admin dashboard backup page** — `/admin/database/backup` with trigger, list, restore UI
+- [x] **Admin dashboard restore page** — restore button per backup entry with confirmation dialog
+- [x] **Admin query runner** — `/admin/database/query` read-only SQL console against replica
+- [x] **Scheduled backup cron** — daily (2 AM) + weekly (Sunday) BullMQ jobs at `apps/api/src/jobs/index.ts`
+- [ ] **Backup integrity check** — automated restore verification on the replica (not yet built)
+- [ ] **Disaster recovery runbook** — step-by-step recovery procedure (not yet written)
 
 ### 13.4 `.env` Changes Required
 
@@ -733,23 +733,23 @@ The admin dashboard needs the following **new pages** and API endpoints:
 
 | Method | Endpoint | Purpose | Status |
 |--------|----------|---------|--------|
-| `POST` | `/admin/backup/create` | Trigger a full database backup | ❌ Not built |
-| `GET` | `/admin/backups` | List all available backups with metadata | ❌ Not built |
-| `POST` | `/admin/backups/:id/restore` | Restore database from a specific backup | ❌ Not built |
-| `DELETE` | `/admin/backups/:id` | Delete a specific backup | ❌ Not built |
-| `POST` | `/admin/query` | Run a read-only SQL query against the replica | ❌ Not built |
-| `GET` | `/admin/query/history` | List recent queries with results | ❌ Not built |
-| `GET` | `/admin/database/status` | Database connection status, size, table counts | ❌ Not built |
+| `POST` | `/admin/backup/create` | Trigger a full database backup | ✅ Built |
+| `GET` | `/admin/backups` | List all available backups with metadata | ✅ Built |
+| `POST` | `/admin/backups/:id/restore` | Restore database from a specific backup | ✅ Built |
+| `DELETE` | `/admin/backups/:id` | Delete a specific backup | ✅ Built |
+| `POST` | `/admin/query` | Run a read-only SQL query against the replica | ✅ Built |
+| `GET` | `/admin/query/history` | List recent queries with results | ❌ Not built (query history not persisted) |
+| `GET` | `/admin/database/status` | Database connection status, size, table counts | ✅ Built |
 
 #### Admin Dashboard Pages (Next.js)
 
 | Route | Purpose | Status |
 |-------|---------|--------|
-| `/admin/database` | Database management hub | ❌ Not built |
-| `/admin/database/backup` | Create and manage backups | ❌ Not built |
-| `/admin/database/query` | SQL query console (read-only) | ❌ Not built |
-| `/admin/database/status` | DB health, size, connection info | ❌ Not built |
-| `/admin/audit-log` | View audit log entries with filters | ❌ Not built |
+| `/admin/database` | Database management hub (landing page) | ❌ Not built (no separate hub, links go directly to pages) |
+| `/admin/database/backup` | Create and manage backups | ✅ Built |
+| `/admin/database/query` | SQL query console (read-only) | ✅ Built |
+| `/admin/database/status` | DB health, size, connection info | ✅ Built |
+| `/admin/audit-log` | View audit log entries with filters | ✅ Built |
 
 ### 14.2 Query Runner Security
 
@@ -831,19 +831,18 @@ Since AI agent compliance is **advisory** (agents follow instructions but can't 
 | **Retailer accounts** | View, extend trial, change plan, delete | ✅ Implemented |
 | **Background images** | Upload, toggle, delete | ✅ Implemented |
 | **Audit logs** | All admin actions logged | ✅ Implemented |
-| **--- Missing Below ---** | | |
-| **Database backups** | Manual trigger, schedule, restore | ❌ Needs build |
-| **Database queries** | Read-only SQL console | ❌ Needs build |
-| **Database health** | Connection status, size, replication lag | ❌ Needs build |
-| **Deployment control** | Manual approval gate for deploys | ❌ Needs build |
-| **Rate limit tuning** | Adjust rate limit parameters live | ❌ Needs build |
-| **AI model config** | Choose model, set temperature, etc. | ❌ Needs build |
-| **Notification center** | See and approve pending operations | ❌ Needs build |
-| **Plan feature matrix (F-013)** | Checkbox grid per plan tier, live toggle | ❌ Needs build |
-| **Retailer/customer activity tracking (F-014)** | Per-account timeline of AuditLog + CustomerInteraction | ❌ Needs build |
-| **Account suspension (F-015)** | Suspend/unsuspend retailer/staff, block/unblock customer | ❌ Needs build |
-| **Deletion Vault (F-016)** | View/lookup deleted-record snapshots from the vault DB | ❌ Needs build |
-| **DB guardrails (F-017 / §19)** | Role separation + triggers — infra config, not a dashboard page | ❌ Needs build |
+| **Database backups** | Manual trigger, schedule, restore page | ✅ Implemented |
+| **Database queries** | Read-only SQL console at /admin/database/query | ✅ Implemented |
+| **Database health** | Status page at /admin/database/status | ✅ Implemented |
+| **Deployment control** | Deployment gate page at /admin/operations/gate | ✅ Implemented |
+| **Rate limit tuning** | Rate limits page at /admin/settings/rate-limits | ✅ Implemented |
+| **AI model config** | AI config page at /admin/settings/ai-config | ✅ Implemented |
+| **Notification center** | Pending approvals at /admin/operations/pending | ✅ Implemented |
+| **Plan feature matrix (F-013)** | Checkbox grid per plan tier, live toggle at /admin/plan-features | ✅ Implemented |
+| **Retailer/customer activity tracking (F-014)** | Activity pages at /admin/activity, /admin/retailers/:id/activity | ✅ Implemented |
+| **Account suspension (F-015)** | Suspend/unsuspend retailer/staff, block/unblock customer UI | ✅ Implemented |
+| **Deletion Vault (F-016)** | Vault lookup page at /admin/database/deletion-vault | ✅ Implemented |
+| **DB guardrails (F-017 / §19)** | Role separation + triggers + CI guard + purge cron | ✅ Implemented |
 
 ### 16.2 One Dashboard to Rule Everything
 

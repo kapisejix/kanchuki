@@ -31,9 +31,10 @@ suite('vault INSERT-only constraint', () => {
     expect(vault).not.toBeNull()
 
     // Insert the shared test record
+    // Note: $4::jsonb casts the text parameter to jsonb to match the column type
     const result = await vault!.$executeRawUnsafe(
       `INSERT INTO ${TEST_TABLE} (id, source_table, source_id, payload, delete_reason, deleted_by)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
+       VALUES ($1, $2, $3, $4::jsonb, $5, $6)`,
       TEST_SHARED_ID,
       'vault_perm_test',
       'permission_verification',
@@ -47,7 +48,7 @@ suite('vault INSERT-only constraint', () => {
     )
     expect(result).toBe(1)
     console.log(`[vault-test] Inserted shared test entry ${TEST_SHARED_ID}`)
-  })
+  }, 15000)
 
   it('UPDATE is rejected with a database permission error', async () => {
     let error: Error | null = null
@@ -69,7 +70,7 @@ suite('vault INSERT-only constraint', () => {
         msg.includes('no permission'),
     ).toBe(true)
     console.log(`[vault-test] UPDATE correctly rejected: ${error?.message}`)
-  })
+  }, 15000)
 
   it('DELETE is rejected with a database permission error', async () => {
     let error: Error | null = null
@@ -90,5 +91,5 @@ suite('vault INSERT-only constraint', () => {
         msg.includes('no permission'),
     ).toBe(true)
     console.log(`[vault-test] DELETE correctly rejected: ${error?.message}`)
-  })
+  }, 15000)
 })

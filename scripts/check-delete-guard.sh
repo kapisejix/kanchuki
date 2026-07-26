@@ -138,6 +138,13 @@ done < <(grep -rn "\.deleteMany(" --include="*.ts" $BUILD_EXCLUDE apps/ packages
 echo ""
 echo -e "${YELLOW}🔍 F-017 Guardrail check: scanning for raw destructive SQL outside migrations...${NC}"
 
+# Allowlisted .sql files that intentionally reference destructive operations
+# (e.g., setup scripts that GRANT/REVOKE DELETE permissions)
+SQL_ALLOWLIST=(
+  "scripts/setup-role-separation.sql"
+  "scripts/setup-vault-db.sql"
+)
+
 while IFS= read -r line; do
   if [ -z "$line" ]; then
     continue
@@ -147,6 +154,18 @@ while IFS= read -r line; do
 
   # Skip migration files
   if echo "$file" | grep -q "prisma/migrations/"; then
+    continue
+  fi
+
+  # Skip allowlisted setup scripts
+  allowed_sql=false
+  for allowed_file in "${SQL_ALLOWLIST[@]}"; do
+    if [ "$file" = "$allowed_file" ]; then
+      allowed_sql=true
+      break
+    fi
+  done
+  if [ "$allowed_sql" = true ]; then
     continue
   fi
 

@@ -2313,4 +2313,221 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       },
     };
   });
+
+  // ─── GET /admin/database/status ───────────────────────────────────
+  // Database Health Dashboard — shows primary DB stats, replica lag,
+  // backup info, and vault DB status. All queries are read-only and
+  // run against the primary or replica as appropriate.
+  server.get('/database/status', async (_request) => {
+    // ── Primary DB stats ──────────────────────────────────────────
+    interface DbStat {
+      server_version: string
+      active_connections: bigint
+      max_connections: bigint
+      database_size: string
+      cache_hit_ratio: number
+      uptime_seconds: bigint
+      xact_total: bigint
+      xact_commit: bigint
+      xact_rollback: bigint
+      deadlocks: bigint
+      temp_files: bigint
+      temp_bytes: string
+    }
+
+    let primary: DbStat | null = null
+    let primaryError: string | null = null
+
+    try {
+      const result = await prisma.$queryRawUnsafe<DbStat[]>(`
+        SELECT
+          version() AS server_version,
+          (SELECT count(*) FROM pg_stat_activity WHERE state = 'active') AS active_connections,
+          (SELECT setting::bigint FROM pg_settings WHERE name = 'max_connections') AS max_connections,
+          pg_size_pretty(pg_database_size(current_database())) AS database_size,
+          (
+            SELECT round(
+              (1 - (blks_read::numeric / NULLIF(COALESCE(blks_hit, 0) + COALESCE(blks_read, 0), 0))) * 100,
+              2
+            )
+            FROM pg_stat_database
+            WHERE datname = current_database()
+          ) AS cache_hit_ratio,
+          extract(epoch FROM now() - pg_postmaster_start_time())::bigint AS uptime_seconds,
+          (SELECT xact_commit + xact_rollback FROM pg_stat_database WHERE datname = current_database()) AS xact_total,
+          (SELECT xact_commit FROM pg_stat_database WHERE datname = current_database()) AS xact_commit,
+          (SELECT xact_rollback FROM pg_stat_database WHERE datname = current_database()) AS xact_rollback,
+          (SELECT deadlocks FROM pg_stat_database WHERE datname = current_database()) AS deadlocks,
+          (SELECT temp_files FROM pg_stat_database WHERE datname = current_database()) AS temp_files,
+          pg_size_pretty((SELECT COALESCE(temp_bytes, 0) FROM pg_stat_database WHERE datname = current_database())) AS temp_bytes
+        FROM pg_stat_bgwriter
+        LIMIT 1
+      `)
+      primary = result[0] ?? null
+    } catch (err) {
+      primaryError = err instanceof Error ? err.message : 'Unknown error querying primary DB'
+    }
+
+    // ── Replica lag ───────────────────────────────────────────────
+    let replica: { connected: boolean; lag_bytes: bigint | null; lag_seconds: number | null; error: string | null } | null = null
+
+    try {
+      const replicaPrisma = getReplicaPrisma()
+      const result = await replicaPrisma.$queryRawUnsafe<
+        { application_name: string; state: string; write_lag: number | null; flush_lag: number | null; replay_lag: number | null }[]
+      >(`
+        SELECT
+          application_name,
+          state,
+          write_lag,
+          flush_lag,
+          replay_lag
+        FROM pg_stat_replication
+        LIMIT 5
+      `)
+
+      if (result.length > 0) {
+        const wal = result[0]!
+        // Use the largest lag value in seconds, or null
+        const lagSeconds = Math.max(
+          wal.write_lag ?? 0,
+          wal.flush_lag ?? 0,
+          wal.replay_lag ?? 0,
+        )
+        replica = {
+          connected: wal.state === 'streaming',
+          lag_bytes: null, // not directly available from pg_stat_replication
+          lag_seconds: lagSeconds > 0 ? lagSeconds : null,
+          error: null,
+        }
+      } else {
+        // No replicas configured — this is normal for a single-instance setup
+        replica = { connected: false, lag_bytes: null, lag_seconds: null, error: null }
+      }
+    } catch (err) {
+      replica = {
+        connected: false,
+        lag_bytes: null,
+        lag_seconds: null,
+        error: err instanceof Error ? err.message : 'Unknown replica error',
+      }
+    }
+
+    // ── Backup info ───────────────────────────────────────────────
+    // Read from R2 if possible, otherwise report unknown
+    let backup: { latest_key: string | null; latest_age_hours: number | null; total_count: number; total_size_formatted: string } | null = null
+
+    try {
+      // First try to read from the backup metadata if we have an S3 client
+      const r2 = new S3Client({
+        region: 'auto',
+        endpoint: `https://${process.env['CLOUDFLARE_R2_ACCOUNT_ID'] ?? ''}.r2.cloudflarestorage.com`,
+        credentials: {
+          accessKeyId: process.env['CLOUDFLARE_R2_ACCESS_KEY_ID'] ?? '',
+          secretAccessKey: process.env['CLOUDFLARE_R2_SECRET_ACCESS_KEY'] ?? '',
+        },
+      })
+
+      const bucket = process.env['CLOUDFLARE_R2_BUCKET_NAME'] ?? 'kanchuki-backups'
+
+      // TODO: MaxKeys=100 will under-report count/size if 100+ backup files exist.
+      // Increase or implement pagination once the project has many backups.
+      const listResult = await r2.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: 'backups/',
+          MaxKeys: 100,
+        }),
+      )
+
+      const objects = (listResult.Contents ?? [])
+        .filter((obj) => obj.Key?.endsWith('.sql.gz'))
+        .sort((a, b) => {
+          const aTime = a.LastModified?.getTime() ?? 0
+          const bTime = b.LastModified?.getTime() ?? 0
+          return bTime - aTime
+        })
+
+      const totalSizeBytes = objects.reduce((sum, obj) => sum + (obj.Size ?? 0), 0)
+      const latestBackup = objects[0] ?? null
+
+      backup = {
+        latest_key: latestBackup?.Key?.split('/').pop()?.replace('.sql.gz', '') ?? null,
+        latest_age_hours: latestBackup?.LastModified
+          ? (Date.now() - latestBackup.LastModified.getTime()) / (1000 * 60 * 60)
+          : null,
+        total_count: objects.length,
+        total_size_formatted: totalSizeBytes > 0
+          ? totalSizeBytes >= 1073741824
+            ? `${(totalSizeBytes / 1073741824).toFixed(1)} GB`
+            : `${(totalSizeBytes / 1048576).toFixed(0)} MB`
+          : '0 MB',
+      }
+    } catch {
+      // R2 not configured or unavailable — report backup status as unknown
+      backup = null
+    }
+
+    // ── Vault DB status ───────────────────────────────────────────
+    let vaultStatus: { connected: boolean; record_count: number } = { connected: false, record_count: 0 }
+
+    try {
+      const vault = await getVaultPrisma()
+      if (vault) {
+        const count = await vault.deletedRecord.count()
+        vaultStatus = { connected: true, record_count: count }
+      }
+    } catch {
+      vaultStatus = { connected: false, record_count: 0 }
+    }
+
+    // ── Guardrail migration status ────────────────────────────────
+    let guardrailsActive = false
+    try {
+      const result = await prisma.$queryRawUnsafe<
+        { trigger_name: string; event_manipulation: string; event_object_table: string }[]
+      >(`
+        SELECT trigger_name, event_manipulation, event_object_table
+        FROM information_schema.triggers
+        WHERE trigger_name = 'prevent_hard_delete'
+        LIMIT 1
+      `)
+      guardrailsActive = result.length > 0
+    } catch {
+      guardrailsActive = false
+    }
+
+    return {
+      data: {
+        primary: primary
+          ? {
+              server_version: primary.server_version.split(' ')[0] ?? primary.server_version,
+              active_connections: Number(primary.active_connections),
+              max_connections: Number(primary.max_connections),
+              connection_usage_pct: Math.round(
+                (Number(primary.active_connections) / Number(primary.max_connections)) * 100,
+              ),
+              database_size: primary.database_size,
+              cache_hit_ratio: Number(primary.cache_hit_ratio),
+              uptime_seconds: Number(primary.uptime_seconds),
+              transactions: {
+                committed: Number(primary.xact_commit),
+                rolled_back: Number(primary.xact_rollback),
+                total: Number(primary.xact_total),
+              },
+              deadlocks: Number(primary.deadlocks),
+              temp_files: Number(primary.temp_files),
+              temp_bytes: primary.temp_bytes,
+              healthy: Number(primary.active_connections) < Number(primary.max_connections) * 0.8,
+            }
+          : { error: primaryError },
+        replica,
+        backup,
+        vault: vaultStatus,
+        guardrails: {
+          active: guardrailsActive,
+        },
+      },
+    }
+  });
 };

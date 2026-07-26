@@ -58,6 +58,7 @@ const NAV_ITEMS = [
   { label: 'Audit Log', href: '/admin/audit-log', icon: History },
   { label: 'Query Console', href: '/admin/database/query', icon: Terminal },
   { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
+  { label: 'Database Health', href: '/admin/database/status', icon: Activity },
   { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive },
 ]
 

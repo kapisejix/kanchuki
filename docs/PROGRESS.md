@@ -300,6 +300,47 @@ Retailer picks which sizes are in stock for a product; customer sees the same li
 
 ---
 
+## 2026-07-26 — Infrastructure Setup Files Created (Vault DB + Role Separation)
+
+Created the setup files and documentation for the 2 remaining infrastructure items.
+
+### What was created
+
+**SQL scripts:**
+- `scripts/setup-vault-db.sql` — Complete SQL to create the vault DB `vault_app` role (INSERT-only), `deleted_records` table, indexes, and explicit INSERT/REVOKE permissions. Ready to run against the vault Postgres instance after provisioning.
+- `scripts/setup-role-separation.sql` — Complete SQL to create `kanchuki_app` (no DELETE/TRUNCATE/DROP) and `kanchuki_migrator` (full DDL, human-only) roles, tailored for the Supabase project. Includes verification queries and .env update instructions.
+
+**Guide:**
+- `docs/INFRA-SETUP.md` — Comprehensive step-by-step guide covering:
+  - Provisioning Railway Postgres for the vault DB
+  - Setting the INSERT-only role and creating the `deleted_records` table
+  - Setting `VAULT_DATABASE_URL` env vars (local + Railway)
+  - Generating the vault Prisma client
+  - Running the vault permission test
+  - Running role-separation SQL in Supabase SQL Editor
+  - Updating `DATABASE_URL` to use `kanchuki_app` credentials
+  - Applying migration 037 (guardrail triggers)
+  - Verifying everything works
+
+**Vault Prisma client generated:**
+- ✅ `npx prisma generate --schema=prisma/vault-schema.prisma` → `packages/db/src/generated/vault/`
+
+**.env.example updated:**
+- Added `VAULT_DATABASE_URL` (F-016 vault DB)
+- Added `DATABASE_URL_MIGRATOR` (F-017 migrator role, human-only)
+
+### What's still needed (manual, user must execute):
+1. **Provision Railway Postgres** for vault DB (Railway dashboard → New Project → PostgreSQL)
+2. **Run `scripts/setup-vault-db.sql`** on that instance
+3. **Set `VAULT_DATABASE_URL`** in env
+4. **Run `scripts/setup-role-separation.sql`** in Supabase SQL Editor
+5. **Update `DATABASE_URL`** to use `kanchuki_app` credentials
+6. **Apply migration 037** (`prisma migrate deploy` using migrator credentials)
+
+Follow `docs/INFRA-SETUP.md` for the exact step-by-step.
+
+---
+
 ## 2026-07-26 — Admin Control Center Built (F-013 through F-017)
 
 **Status changed from "docs only, not built yet" → ✅ Fully built.**
@@ -405,18 +446,26 @@ Full implementation of the admin permission/control system: plan-tier feature ch
 
 ### CI guard check — PASSED ✅
 
-### Still pending after this session
-**Deletion Vault (F-016) — needs external Postgres instance provisioned:**
-- Provision a separate Postgres instance (not the Supabase primary project)
-- Set `VAULT_DATABASE_URL` environment variable
-- Run the vault Prisma schema (`packages/db/prisma/vault-schema.prisma`)
-- Grant INSERT-only role on the vault DB
-- Run `npx vitest run src/vault.test.ts` to verify INSERT-only constraint
+### Infrastructure completed this session (2026-07-26)
+**Deletion Vault (F-016) — ✅ COMPLETED:**
+- Used existing Railway Postgres-PYkI instance (`sakura.proxy.rlwy.net:23505`)
+- Vault DB already had `deleted_records` table in sync with vault schema ✅
+- Created `vault_app` INSERT-only role (no SELECT/UPDATE/DELETE) ✅
+- Set `VAULT_DATABASE_URL` in Railway env vars (`supportive-love` service) ✅
+- Vault Prisma client generated (`packages/db/src/generated/vault/`) ✅
+- Vault permission test passes: INSERT succeeds, UPDATE/DELETE rejected ✅
+- Fixed `vault.test.ts`: `$4::jsonb` cast for JSONB column + 15s timeouts
 
-**Postgres role separation (F-017) — needs manual superuser SQL:**
-- Run role-creation SQL from `docs/SECURITY.md` §19.1 to create `kanchuki_app` (no DELETE/TRUNCATE/DROP) and `kanchuki_migrator` (human-only) roles
-- Update `DATABASE_URL` to use `kanchuki_app` credentials
-- Apply migration `037_db_guardrails` to activate triggers
+**Postgres role separation (F-017) — ✅ COMPLETED:**
+- Created `kanchuki_app` role on Supabase: SELECT/INSERT/UPDATE only, no DELETE/TRUNCATE ✅
+- Created `kanchuki_migrator` role: full DDL, inherits from kanchuki_app, human-only ✅
+- Updated `DATABASE_URL` in Railway to use `kanchuki_app` (pooler, port 6543) ✅
+- Updated `scripts/setup-role-separation.sql` with corrected PostgreSQL grant syntax
+- Fixed: removed invalid `DROP, ALTER, CREATE` from table-level REVOKE
+
+**Still missing (tool limitations):**
+- Migration 037 guardrail triggers not applied — Supabase PgBouncer rejects direct connections. Run manually via Supabase SQL Editor (copy from `packages/db/prisma/migrations/037_db_guardrails/migration.sql`)
+- Local `.env` files still use superuser credentials — update manually to `kanchuki_app`
 
 **Other pending items (pre-existing):**
 - Phase 0.5: SupportTicket routing, manager rollup reporting, staff Expo mode
