@@ -16,6 +16,7 @@ import {
 import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { SettingsSkeleton } from '../../src/components/Skeleton'
+import { getItem, deleteItem } from '../../src/lib/storage'
 
 type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back'
 
@@ -772,6 +773,14 @@ export default function SettingsScreen() {
   })
   const retailer = (meData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
 
+  // Team members (Staff rows added by the owner) only get product/category/
+  // collection/size-chart/QR access server-side (see apps/api plugins/auth.ts
+  // staffCanAccess) — hide owner-only rows here so staff don't tap into a 403.
+  const [isStaff, setIsStaff] = useState(false)
+  useEffect(() => {
+    void getItem('staff_role').then((role) => setIsStaff(!!role))
+  }, [])
+
   const [showProfileEdit, setShowProfileEdit] = useState(false)
   const [showWhatsApp, setShowWhatsApp] = useState(false)
   const [showKyc, setShowKyc] = useState(false)
@@ -786,6 +795,14 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await clearToken()
+          // Clear staff context too — otherwise the next login on this device
+          // (e.g. the owner, on a shared shop tablet) would inherit a stale
+          // staff_role and get incorrectly restricted.
+          await Promise.all([
+            deleteItem('staff_role'),
+            deleteItem('staff_name'),
+            deleteItem('staff_retailer_id'),
+          ])
           router.replace('/auth/phone')
         },
       },
@@ -825,49 +842,53 @@ export default function SettingsScreen() {
           <Text className="text-sm text-gray-500 mt-0.5">{retailer?.city ?? ''} · {retailer?.plan ?? 'STARTER'}</Text>
         </View>
 
-        {/* F-010: Usage section */}
-        <UsageSection />
+        {/* F-010: Usage section — owner-only endpoint */}
+        {!isStaff && <UsageSection />}
 
         {/* Sections */}
         <View className="gap-2.5">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Account</Text>
+          {!isStaff && (
+            <>
+              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Account</Text>
 
-          <SettingsRow
-            icon={<User size={18} color="#3B82F6" />}
-            label="Edit Profile"
-            subtitle={retailer?.shop_name ?? ''}
-            onPress={() => setShowProfileEdit(true)}
-          />
+              <SettingsRow
+                icon={<User size={18} color="#3B82F6" />}
+                label="Edit Profile"
+                subtitle={retailer?.shop_name ?? ''}
+                onPress={() => setShowProfileEdit(true)}
+              />
 
-          <SettingsRow
-            icon={<CreditCard size={18} color="#10B981" />}
-            label="Plans & Billing"
-            subtitle={`${retailer?.plan ?? 'STARTER'} · ${retailer?.plan_status ?? 'TRIAL'}`}
-            onPress={() => router.push('/billing')}
-          />
+              <SettingsRow
+                icon={<CreditCard size={18} color="#10B981" />}
+                label="Plans & Billing"
+                subtitle={`${retailer?.plan ?? 'STARTER'} · ${retailer?.plan_status ?? 'TRIAL'}`}
+                onPress={() => router.push('/billing')}
+              />
 
-          <SettingsRow
-            icon={<Smartphone size={18} color="#8B5CF6" />}
-            label="WhatsApp Number"
-            subtitle={whatsapp}
-            onPress={() => setShowWhatsApp(true)}
-          />
+              <SettingsRow
+                icon={<Smartphone size={18} color="#8B5CF6" />}
+                label="WhatsApp Number"
+                subtitle={whatsapp}
+                onPress={() => setShowWhatsApp(true)}
+              />
 
-          <SettingsRow
-            icon={<ShieldCheck size={18} color="#0891B2" />}
-            label="Identity Verification (KYC)"
-            subtitle={(KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED'] ?? KYC_STATUS_LABEL['NOT_SUBMITTED'])!.label}
-            onPress={() => setShowKyc(true)}
-          />
+              <SettingsRow
+                icon={<ShieldCheck size={18} color="#0891B2" />}
+                label="Identity Verification (KYC)"
+                subtitle={(KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED'] ?? KYC_STATUS_LABEL['NOT_SUBMITTED'])!.label}
+                onPress={() => setShowKyc(true)}
+              />
 
-          <SettingsRow
-            icon={<MessageCircle size={18} color="#10B981" />}
-            label="WhatsApp Business API"
-            subtitle={retailer?.whatsapp_api_configured ? 'Connected — bulk send enabled' : 'Not connected — one-by-one only'}
-            onPress={() => setShowWhatsAppApi(true)}
-          />
+              <SettingsRow
+                icon={<MessageCircle size={18} color="#10B981" />}
+                label="WhatsApp Business API"
+                subtitle={retailer?.whatsapp_api_configured ? 'Connected — bulk send enabled' : 'Not connected — one-by-one only'}
+                onPress={() => setShowWhatsAppApi(true)}
+              />
 
-          <View className="h-2" />
+              <View className="h-2" />
+            </>
+          )}
 
           <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Store</Text>
 
@@ -878,12 +899,14 @@ export default function SettingsScreen() {
             onPress={() => router.push('/category')}
           />
 
-          <SettingsRow
-            icon={<Users size={18} color="#F59E0B" />}
-            label="Team Members"
-            subtitle="Manage shop staff"
-            onPress={() => router.push('/settings/staff')}
-          />
+          {!isStaff && (
+            <SettingsRow
+              icon={<Users size={18} color="#F59E0B" />}
+              label="Team Members"
+              subtitle="Manage shop staff"
+              onPress={() => router.push('/settings/staff')}
+            />
+          )}
 
           <SettingsRow
             icon={<QrCode size={18} color="#0891B2" />}
@@ -891,6 +914,15 @@ export default function SettingsScreen() {
             subtitle="QR profile & storefront"
             onPress={() => router.push('/store-profile')}
           />
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<Trash2 size={18} color="#DC2626" />}
+              label="Recently Deleted"
+              subtitle="Restore or permanently remove products"
+              onPress={() => router.push('/settings/deleted-products')}
+            />
+          )}
 
           <View className="h-2" />
 
@@ -902,12 +934,14 @@ export default function SettingsScreen() {
             onPress={handleLogout}
           />
 
-          <SettingsRow
-            icon={<Trash2 size={18} color="#DC2626" />}
-            label="Delete Account"
-            destructive
-            onPress={() => setShowDelete(true)}
-          />
+          {!isStaff && (
+            <SettingsRow
+              icon={<Trash2 size={18} color="#DC2626" />}
+              label="Delete Account"
+              destructive
+              onPress={() => setShowDelete(true)}
+            />
+          )}
         </View>
       </ScrollView>
 

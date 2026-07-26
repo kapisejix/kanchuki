@@ -357,6 +357,17 @@ export const productApi = {
       body: JSON.stringify({ ids }),
     }),
 
+  /** Owner-only "Recently Deleted" tab — see products.ts GET /deleted */
+  listDeleted: () => request<{ data: unknown[] }>('/v1/products/deleted', { getCacheTtlMs: 0 }),
+
+  /** Owner-only — undo a soft delete (staff or owner) */
+  restore: (id: string) =>
+    request<{ data: unknown }>(`/v1/products/${id}/restore`, { method: 'PATCH' }),
+
+  /** Owner-only — permanent removal; fails with a clear message if the
+   * product is referenced by a past order or collection. */
+  purge: (id: string) => request<void>(`/v1/products/${id}/purge`, { method: 'DELETE' }),
+
   search: (query: string, filters?: Record<string, unknown>, limit = 12) =>
     request<{ data: unknown[]; query_interpretation: unknown }>('/v1/search', {
       method: 'POST',

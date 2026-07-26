@@ -21,10 +21,10 @@ const UpdateRetailerSchema = z.object({
   address_line1: z.string().max(200).optional(),
   address_line2: z.string().max(200).optional(),
   pincode: z.string().max(10).optional(),
-  logo_url: z.string().max(500).optional(),
-  logo_r2_key: z.string().max(500).optional(),
-  banner_url: z.string().max(500).optional(),
-  banner_r2_key: z.string().max(500).optional(),
+  logo_url: z.string().max(500).nullable().optional(),
+  logo_r2_key: z.string().max(500).nullable().optional(),
+  banner_url: z.string().max(500).nullable().optional(),
+  banner_r2_key: z.string().max(500).nullable().optional(),
   gstin: z
     .string()
     .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format')

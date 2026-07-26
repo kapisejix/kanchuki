@@ -143,6 +143,32 @@ async function verifySupabaseJwt(token: string): Promise<{ sub: string } | null>
   return null;
 }
 
+// ─── Staff access control ──────────────────────────────────────────
+// A Staff row (shop team member added by the retailer, see staff.ts) gets a
+// retailer-scoped token but must NOT reach owner-only surfaces (billing,
+// KYC, WhatsApp API config, staff management itself, account deletion, ...).
+// Single allowlist here — not scattered per-route checks — so every new
+// route is owner-only by default and has to opt in for staff access.
+type StaffRule = { method: string; path: string; exact?: boolean };
+
+const STAFF_ALLOWED_ROUTES: StaffRule[] = [
+  { method: '*', path: '/v1/products' }, // add/edit/delete products
+  { method: '*', path: '/v1/categories' },
+  { method: '*', path: '/v1/collections' }, // create/manage collections to share
+  { method: '*', path: '/v1/size-charts' },
+  { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only — no list/edit/delete
+  { method: 'GET', path: '/v1/retailers/me', exact: true }, // read-only shop info (name shown in app header)
+  { method: 'POST', path: '/v1/retailers/me/qr-slug', exact: true }, // Store QR code
+];
+
+export function staffCanAccess(method: string, routeUrl: string): boolean {
+  return STAFF_ALLOWED_ROUTES.some((rule) => {
+    if (rule.method !== '*' && rule.method !== method) return false;
+    if (rule.exact) return routeUrl === rule.path;
+    return routeUrl === rule.path || routeUrl.startsWith(`${rule.path}/`);
+  });
+}
+
 // ─── Plugin ───────────────────────────────────────────────────────
 
 /**
@@ -218,6 +244,17 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
       request.retailerId = staff.retailer_id;
       request.retailerAuthUserId = claims.sub;
       request.staffRole = staff.role;
+
+      const routeUrl = request.routeOptions.url ?? request.url;
+      if (!staffCanAccess(request.method, routeUrl)) {
+        return reply.status(403).send({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'Your team account does not have access to this section',
+            status: 403,
+          },
+        });
+      }
     }
   });
 });

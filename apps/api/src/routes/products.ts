@@ -7,7 +7,7 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, detectColor } from '@kanchuki/ai';
-import { type Prisma, prisma } from '@kanchuki/db';
+import { Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
@@ -538,6 +538,64 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: { deleted_at: new Date() },
     });
+    return reply.status(204).send();
+  });
+
+  // ─── GET /products/deleted — owner-only trash tab ────────────────
+  // Any staff member can soft-delete (DELETE /:id above); only the retailer
+  // owner can see the removed list and restore or permanently purge from it.
+  server.get('/deleted', async (request) => {
+    if (request.staffRole !== null) throw forbidden('Only the shop owner can view deleted products');
+
+    const products = await prisma.product.findMany({
+      where: { retailer_id: request.retailerId, deleted_at: { not: null } },
+      include: { photos: { where: { is_primary: true }, take: 1 } },
+      orderBy: { deleted_at: 'desc' },
+      take: 200,
+    });
+    return { data: products };
+  });
+
+  // ─── PATCH /products/:id/restore — owner-only ─────────────────────
+  server.patch('/:id/restore', async (request) => {
+    if (request.staffRole !== null) throw forbidden('Only the shop owner can restore products');
+    const { id } = request.params as { id: string };
+
+    const existing = await prisma.product.findFirst({
+      where: { id, retailer_id: request.retailerId, deleted_at: { not: null } },
+    });
+    if (!existing) throw notFound('Product');
+
+    const restored = await prisma.product.update({
+      where: { id },
+      data: { deleted_at: null },
+    });
+    return { data: restored };
+  });
+
+  // ─── DELETE /products/:id/purge — owner-only, permanent ───────────
+  server.delete('/:id/purge', async (request, reply) => {
+    if (request.staffRole !== null) throw forbidden('Only the shop owner can permanently delete products');
+    const { id } = request.params as { id: string };
+
+    const existing = await prisma.product.findFirst({
+      where: { id, retailer_id: request.retailerId, deleted_at: { not: null } },
+    });
+    if (!existing) throw notFound('Product');
+
+    try {
+      await prisma.product.delete({ where: { id } });
+    } catch (err) {
+      // Products referenced by a past order or a shared collection can't be
+      // hard-deleted (FK constraint) — it's already off the catalog via
+      // deleted_at, which is as final as order/collection history allows.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+        throw validationError(
+          'This product is part of a past order or collection and can only be removed from the catalog, not permanently deleted',
+        );
+      }
+      throw err;
+    }
     return reply.status(204).send();
   });
 

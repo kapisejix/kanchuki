@@ -48,6 +48,29 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
+describe('PUT /retailers/me', () => {
+  it('accepts null logo/banner fields (clearing an image)', async () => {
+    mockRetailerUpdate.mockResolvedValue({ shop_name: 'Test Shop', logo_url: null, banner_url: null });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: {
+        shop_name: 'Test Shop',
+        logo_url: null,
+        logo_r2_key: null,
+        banner_url: null,
+        banner_r2_key: null,
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockRetailerUpdate).toHaveBeenCalledOnce();
+    await app.close();
+  });
+});
+
 describe('POST /retailers/me/qr-slug', () => {
   it('returns the existing slug without generating a new one', async () => {
     mockRetailerFindUnique.mockResolvedValue({

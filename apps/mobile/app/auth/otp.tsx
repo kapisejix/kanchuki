@@ -12,7 +12,7 @@ import {
 import { router, useLocalSearchParams } from 'expo-router'
 import { authApi, setToken } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { setItem } from '../../src/lib/storage'
+import { setItem, deleteItem } from '../../src/lib/storage'
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>()
@@ -47,7 +47,14 @@ export default function OtpScreen() {
         await setItem('retailer_id', result.staff.retailer_id)
         router.replace('/')
       } else if (result.retailer) {
-        // Retailer owner login — existing flow
+        // Retailer owner login — existing flow. Clear any staff context left
+        // behind by a previous team-member session on this device (shared
+        // shop tablet), so the owner isn't shown the restricted staff UI.
+        await Promise.all([
+          deleteItem('staff_role'),
+          deleteItem('staff_name'),
+          deleteItem('staff_retailer_id'),
+        ])
         await setItem('retailer_id', result.retailer.id)
         router.replace(result.is_new ? '/onboarding' : '/')
       }
