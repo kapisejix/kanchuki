@@ -28,6 +28,14 @@ export function planLimitExceeded(resource: string): AppError {
   );
 }
 
+export function featureUnavailable(featureName: string): AppError {
+  return new AppError(
+    'FEATURE_UNAVAILABLE',
+    `"${featureName}" is not available on your current plan. Please upgrade to a plan that includes this feature.`,
+    402,
+  );
+}
+
 export function validationError(message: string, field?: string): AppError {
   return new AppError('VALIDATION_ERROR', message, 422, field);
 }

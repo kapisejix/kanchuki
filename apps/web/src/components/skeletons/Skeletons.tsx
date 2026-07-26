@@ -863,7 +863,134 @@ export function BackgroundImagesSkeleton() {
   )
 }
 
-// ─── 22. Integrations ────────────────────────────────────────────
+// ─── 23. Plan Features (F-013) ─────────────────────────────────
+
+export function PlanFeaturesSkeleton() {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div>
+        <HeaderSkeleton />
+        <P className="h-3 w-96 mt-1 rounded" />
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="px-5 py-4"><P className="h-3 w-20 rounded" /></th>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <th key={i} className="px-4 py-4 text-center"><P className="h-3 w-16 rounded mx-auto" /></th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 13 }).map((_, i) => (
+              <tr key={i} className="border-b border-gray-50">
+                <td className="px-5 py-4">
+                  <P className="h-4 w-40 rounded" />
+                  <P className="h-3 w-56 mt-0.5 rounded" />
+                </td>
+                {Array.from({ length: 3 }).map((_, j) => (
+                  <td key={j} className="px-4 py-4 text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <P className="h-6 w-6 rounded-lg" />
+                      <P className="h-6 w-6 rounded-lg" />
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── 24. Activity Feed (F-014) ──────────────────────────────────
+
+export function ActivitySkeleton() {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div className="flex items-center gap-3">
+        <P className="h-10 w-10 rounded-xl" />
+        <div>
+          <P className="h-6 w-40 rounded-lg" />
+          <P className="h-3 w-56 mt-0.5 rounded" />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        <P className="h-10 flex-1 min-w-[200px] rounded-xl" />
+        <P className="h-10 w-36 rounded-xl" />
+        <P className="h-10 w-24 rounded-xl" />
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+        <div className="space-y-1 p-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 py-3 px-3">
+              <P className="h-8 w-8 rounded-xl shrink-0" />
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <P className="h-4 w-20 rounded-md" />
+                  <P className="h-3 w-16 rounded" />
+                  <P className="h-3 w-12 rounded hidden sm:block" />
+                </div>
+                <P className="h-3 w-40 rounded" />
+              </div>
+              <div className="text-right space-y-0.5">
+                <P className="h-3 w-12 rounded" />
+                <P className="h-2 w-8 rounded ml-auto" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+export function RetailerActivitySkeleton() {
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 max-w-4xl">
+      <div className="flex items-center gap-3">
+        <P className="h-9 w-9 rounded-xl" />
+        <P className="h-10 w-10 rounded-xl" />
+        <div>
+          <div className="flex items-center gap-2">
+            <P className="h-6 w-40 rounded-lg" />
+            <P className="h-3 w-16 rounded" />
+          </div>
+          <P className="h-3 w-32 mt-0.5 rounded" />
+        </div>
+      </div>
+
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+        <div className="space-y-0 p-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-start gap-3 py-3">
+              <div className="flex flex-col items-center">
+                <P className="h-6 w-6 rounded-lg shrink-0" />
+                {i < 5 && <div className="w-px h-full bg-gray-100 min-h-[24px]" />}
+              </div>
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center gap-2">
+                  <P className="h-4 w-20 rounded-md" />
+                  <P className="h-3 w-12 rounded" />
+                </div>
+                <P className="h-3 w-32 rounded" />
+              </div>
+              <P className="h-3 w-16 rounded" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ─── 25. Integrations ────────────────────────────────────────────
 
 export function IntegrationsSkeleton() {
   return (

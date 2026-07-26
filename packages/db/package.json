@@ -6,11 +6,12 @@
   "main": "./dist/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "postinstall": "prisma generate",
     "migrate:dev": "prisma migrate dev",
     "migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
+    "db:generate:vault": "prisma generate --schema=prisma/vault-schema.prisma",
+    "postinstall": "prisma generate && node -e \"process.env.VAULT_DATABASE_URL ? require('child_process').execSync('prisma generate --schema=prisma/vault-schema.prisma', { stdio: 'inherit' }) : console.log('[vault] VAULT_DATABASE_URL not set — skipping vault client generation')\"",
     "db:seed": "prisma db seed",
     "db:seed:plan-limits": "tsx prisma/seed-plan-limits.ts",
     "studio": "prisma studio",

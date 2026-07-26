@@ -160,8 +160,18 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
         plan_status: true,
         onboarding_completed: true,
         onboarding_step: true,
+        is_suspended: true,
       },
     });
+
+    // F-015: Block suspended retailers from logging in
+    if (retailer.is_suspended) {
+      throw new AppError(
+        'ACCOUNT_SUSPENDED',
+        'This account has been suspended. Please contact support for assistance.',
+        403,
+      );
+    }
 
     return reply.status(200).send({
       data: {

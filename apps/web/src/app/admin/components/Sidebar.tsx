@@ -26,6 +26,9 @@ import {
   GitBranch,
   Cpu,
   Activity,
+  CheckSquare,
+  ActivitySquare,
+  Archive,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -34,6 +37,7 @@ const NAV_ITEMS = [
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
   { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
+  { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare },
   { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
   { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
   { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
@@ -50,9 +54,11 @@ const NAV_ITEMS = [
   { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge },
   { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu },
   { separator: true } as const,
+  { label: 'Activity Feed', href: '/admin/activity', icon: ActivitySquare },
   { label: 'Audit Log', href: '/admin/audit-log', icon: History },
   { label: 'Query Console', href: '/admin/database/query', icon: Terminal },
   { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
+  { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive },
 ]
 
 type NavItem =

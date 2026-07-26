@@ -71,6 +71,9 @@ type RetailerDetail = {
     this_month: { count: number; cost_usd: number }
     total: { count: number; cost_usd: number }
   }
+  is_suspended: boolean
+  suspended_at: string | null
+  suspended_reason: string | null
   recent_products: Array<{
     id: string
     name: string | null
@@ -113,6 +116,11 @@ export default function RetailerDetailPage() {
   const [showOverrideForm, setShowOverrideForm] = useState(false)
   const [overrideForm, setOverrideForm] = useState({ resource_type: 'PRODUCT_UPLOAD', limit_per_period: '', period: 'MONTH', reason: '' })
   const [overrideSaving, setOverrideSaving] = useState(false)
+  // F-015: suspension state
+  const [isSuspended, setIsSuspended] = useState(false)
+  const [suspendedReason, setSuspendedReason] = useState('')
+  const [showSuspendDialog, setShowSuspendDialog] = useState(false)
+  const [suspendReasonInput, setSuspendReasonInput] = useState('')
 
   useEffect(() => {
     async function load() {
@@ -124,6 +132,8 @@ export default function RetailerDetailPage() {
         if (!retailerRes.ok) throw new Error('Retailer not found')
         const retailerJson = await retailerRes.json()
         setRetailer(retailerJson.data)
+        setIsSuspended(retailerJson.data.is_suspended ?? false)
+        setSuspendedReason(retailerJson.data.suspended_reason ?? '')
         if (overridesRes.ok) {
           const overridesJson = await overridesRes.json()
           setOverrides(overridesJson.data ?? [])
@@ -449,7 +459,126 @@ export default function RetailerDetailPage() {
                   {new Date(retailer.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </span>
               </div>
+              <div className="flex justify-between items-center py-1.5">
+                <span className="text-gray-500">Status</span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isSuspended ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                  {isSuspended ? 'Suspended' : 'Active'}
+                </span>
+              </div>
             </div>
+
+            <hr className="my-4 border-gray-100" />
+
+            {/* F-015: Suspend/Unsuspend */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Account</label>
+              {isSuspended ? (
+                <motion.button
+                  onClick={async () => {
+                    setActionMsg('')
+                    setActionLoading(true)
+                    try {
+                      const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/unsuspend`, {
+                        method: 'POST',
+                        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                      })
+                      if (!res.ok) throw new Error('Failed to unsuspend')
+                      setIsSuspended(false)
+                      setSuspendedReason('')
+                      setActionMsg('Retailer unsuspended — they can now log in and their collection links are active again')
+                    } catch (err) {
+                      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                    } finally {
+                      setActionLoading(false)
+                    }
+                  }}
+                  disabled={actionLoading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-green-500 hover:bg-green-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-60"
+                >
+                  {actionLoading ? 'Unsuspending...' : '🔓 Unsuspend Account'}
+                </motion.button>
+              ) : (
+                <motion.button
+                  onClick={() => { setShowSuspendDialog(true); setSuspendReasonInput('') }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-red-500 hover:bg-red-400 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+                >
+                  🚫 Suspend Account
+                </motion.button>
+              )}
+              {suspendedReason && (
+                <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+                  Reason: {suspendedReason}
+                </p>
+              )}
+            </div>
+
+            {/* F-015: Suspend confirmation dialog */}
+            {showSuspendDialog && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+                onClick={() => setShowSuspendDialog(false)}
+              >
+                <motion.div
+                  initial={{ scale: 0.95, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4"
+                >
+                  <h3 className="text-lg font-bold text-gray-900">Suspend Account</h3>
+                  <p className="text-sm text-gray-500">
+                    This will prevent the retailer from logging in and hide their collection links.
+                    This action is reversible.
+                  </p>
+                  <textarea
+                    value={suspendReasonInput}
+                    onChange={(e) => setSuspendReasonInput(e.target.value)}
+                    placeholder="Reason for suspension (required)"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40 min-h-[80px]"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowSuspendDialog(false)}
+                      className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition-all"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!suspendReasonInput.trim()) return
+                        setActionMsg('')
+                        setActionLoading(true)
+                        try {
+                          const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/suspend`, {
+                            method: 'POST',
+                            headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: suspendReasonInput.trim() }),
+                          })
+                          if (!res.ok) throw new Error('Failed to suspend')
+                          setIsSuspended(true)
+                          setSuspendedReason(suspendReasonInput.trim())
+                          setShowSuspendDialog(false)
+                          setActionMsg('Retailer suspended — they can no longer log in and their collection links show as unavailable')
+                        } catch (err) {
+                          setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                        } finally {
+                          setActionLoading(false)
+                        }
+                      }}
+                      disabled={actionLoading || !suspendReasonInput.trim()}
+                      className="flex-1 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50 transition-all"
+                    >
+                      {actionLoading ? 'Suspending...' : 'Confirm Suspension'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
 
             <hr className="my-4 border-gray-100" />
 

@@ -49,6 +49,19 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     const staff = await prisma.staff.create({
       data: { retailer_id: retailerId, ...body.data, phone: normalizedPhone },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'create',
+        resource_type: 'Staff',
+        resource_id: staff.id,
+        metadata: { name: staff.name, role: staff.role },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(201).send({ data: staff });
   });
 
@@ -69,6 +82,19 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
       : body.data;
 
     const updated = await prisma.staff.update({ where: { id }, data });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Staff',
+        resource_id: id,
+        metadata: { name: updated.name, updated_fields: Object.keys(body.data) },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
@@ -83,6 +109,19 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     if (!existing) throw notFound('Staff');
 
     await prisma.staff.update({ where: { id }, data: { is_active: false } });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Staff',
+        resource_id: id,
+        metadata: { name: existing.name, role: existing.role },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 };

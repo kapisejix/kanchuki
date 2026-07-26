@@ -155,11 +155,30 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
           title: true,
           description: true,
           expires_at: true,
-          retailer: { select: { shop_name: true, city: true, phone: true, logo_url: true, banner_url: true } },
+          retailer: { select: { shop_name: true, city: true, phone: true, logo_url: true, banner_url: true, is_suspended: true } },
         },
       });
 
       if (!collection) throw notFound('Collection');
+
+      // F-015: If the retailer is suspended, show "temporarily unavailable"
+      // instead of 404 to avoid leaking suspension as a customer-visible error.
+      if (collection.retailer.is_suspended) {
+        return reply.status(200).send({
+          data: {
+            suspended: true,
+            retailer: { shop_name: collection.retailer.shop_name },
+            title: collection.title,
+            description: 'This store is temporarily unavailable via this link. Please contact the store directly for assistance.',
+            expires_at: null,
+            products: [],
+            total: 0,
+            page: 1,
+            page_size: 0,
+            filters: { categories: [], occasions: [], colors: [] },
+          },
+        });
+      }
 
       // Check expiry
       if (collection.expires_at && collection.expires_at < new Date()) {
@@ -373,7 +392,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const collection = await prisma.collection.findFirst({
-      where: { slug, status: 'ACTIVE', deleted_at: null },
+      where: { slug, status: 'ACTIVE', deleted_at: null, retailer: { is_suspended: false } },
       select: {
         id: true,
         retailer_id: true,
@@ -444,15 +463,18 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/retailers/:slug/categories ──────────────────────
   // Customer-facing category picker — shown after the QR contact gate.
   server.get('/retailers/:slug/categories', async (request) => {
-    const { slug } = request.params as { slug: string };
+    const { slug } = request.params as { slug: string };      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: slug, deleted_at: null },
+        select: { id: true, is_suspended: true },
+      });
+      if (!retailer) throw notFound('Retailer');
 
-    const retailer = await prisma.retailer.findFirst({
-      where: { public_slug: slug, deleted_at: null },
-      select: { id: true },
-    });
-    if (!retailer) throw notFound('Retailer');
+      // F-015: Hide categories for suspended retailers
+      if (retailer.is_suspended) {
+        return { data: [] };
+      }
 
-    const categories = await prisma.productCategory.findMany({
+      const categories = await prisma.productCategory.findMany({
       where: { retailer_id: retailer.id },
       include: {
         _count: {
@@ -485,9 +507,26 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
 
     const retailer = await prisma.retailer.findFirst({
       where: { public_slug: slug, deleted_at: null },
-      select: { id: true, shop_name: true, city: true, phone: true, logo_url: true, banner_url: true },
+      select: { id: true, shop_name: true, city: true, phone: true, logo_url: true, banner_url: true, is_suspended: true },
     });
     if (!retailer) throw notFound('Retailer');
+
+    // F-015: Hide products for suspended retailers
+    if (retailer.is_suspended) {
+      return {
+        data: {
+          retailer: { shop_name: retailer.shop_name, city: retailer.city, phone: retailer.phone, logo_url: null, banner_url: null },
+          title: null,
+          description: 'This store is temporarily unavailable.',
+          expires_at: null,
+          products: [],
+          total: 0,
+          page: 1,
+          page_size: 0,
+          filters: { categories: [], occasions: [], colors: [] },
+        },
+      };
+    }
 
     const category = await prisma.productCategory.findFirst({
       where: { id: categoryId, retailer_id: retailer.id },
@@ -563,9 +602,28 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
         logo_url: true,
         banner_url: true,
         storefront_collection_id: true,
+        is_suspended: true,
       },
     });
     if (!retailer) throw notFound('Retailer');
+
+    // F-015: Suspended retailer profile shows minimal info
+    if (retailer.is_suspended) {
+      return {
+        data: {
+          shop_name: retailer.shop_name,
+          city: null,
+          state: null,
+          address_line1: null,
+          address_line2: null,
+          categories: [],
+          logo_url: null,
+          banner_url: null,
+          storefront_slug: null,
+          suspended: true,
+        },
+      };
+    }
 
     const storefront = retailer.storefront_collection_id
       ? await prisma.collection.findFirst({
@@ -644,9 +702,14 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
 
     const retailer = await prisma.retailer.findFirst({
       where: { public_slug: slug, deleted_at: null },
-      select: { id: true },
+      select: { id: true, is_suspended: true },
     });
     if (!retailer) throw notFound('Retailer');
+
+    // F-015: Block lead capture for suspended retailers
+    if (retailer.is_suspended) {
+      throw notFound('Retailer');
+    }
 
     const body = z
       .object({

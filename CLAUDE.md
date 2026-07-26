@@ -3,7 +3,7 @@
 
 **Project Name:** Kanchuki  
 **Domain:** AI-powered fashion retail SaaS for Indian SMB clothing stores  
-**Status:** Pre-development (June 2026)  
+**Status:** Active development (July 2026)  
 **Research Source:** `docs/final-research.md`, `docs/AI Fashion Sales Assistant - Phase 1.md`
 
 ---
@@ -44,7 +44,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - Basic in-store AI search ("cotton pink suits under ₹2000")
 - Product sizes (S/M/L/XL/XXL/XXXL checkboxes on add/edit product, same list shown on customer product detail page) — built 2026-07-26, see `docs/PROGRESS.md`
 - Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, planned): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — see `docs/PRO-REQUIREMENTS.md`
-- Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009, planned) + generalized quota/limits system across upload/AI-tagging/try-on/crop/bg-removal/API with admin-set per-plan limits and self-serve overage purchase (F-010, planned) — see `docs/PRO-REQUIREMENTS.md`
+- Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009) + generalized quota/limits system (F-010) — see `docs/PRO-REQUIREMENTS.md`
 - Ghost-mannequin AI catalog image generation for packed/unopened stock, via Snappyit API (F-001e, planned) — retailer unpacks once per design, AI generates full worn catalog image reused across all restocked units — see `docs/PRO-REQUIREMENTS.md`
 
 **NOT in MVP:** VTO, WhatsApp API automation, Fashion DNA AI matching, Manufacturer/Wholesaler layer, UPI payment tracking
@@ -133,6 +133,78 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 - **Modify CI/CD pipeline configuration**
 - **Access production secrets or connection strings**
 - **Run destructive commands** (e.g., `DROP`, `DELETE` without WHERE clause, `TRUNCATE`, etc.)
+
+---
+
+## Built: Admin Control Center — Permission Matrix, Trust & Safety, Deletion Vault, DB Guardrails
+
+**Built 2026-07-26** — full feature set F-013 through F-017. Spec: `docs/PRO-REQUIREMENTS.md` §12. Schema & guardrail design: `docs/DATABASE.md`, `docs/SECURITY.md` §19. Roadmap: `docs/PLAN.md` Phase S Month S4.
+
+### F-013: Plan Feature Matrix (Admin-Configurable Checkbox Grid)
+
+Admin-editable boolean feature grid per plan tier — the on/off twin of the numeric F-010 `plan_limits` system.
+
+| Layer | Files | Summary |
+|-------|-------|---------|
+| **DB model** | `packages/db/prisma/schema.prisma` | `PlanFeature` table + `PlanFeatureKey` enum (14 features) |
+| **Backend lib** | `apps/api/src/lib/features.ts` | `hasFeature()`, `hasFeatureForPlan()`, `getEnabledFeatures()`, `setFeature()` — **fails closed** (opposite of `checkQuota`'s fail-open) |
+| **Error helper** | `apps/api/src/plugins/error-handler.ts` | `featureUnavailable()` AppError → HTTP 402 `FEATURE_UNAVAILABLE` |
+| **Admin API** | `apps/api/src/routes/admin.ts` | `GET/PUT /admin/plan-features` endpoints (mirrors plan-limits pattern) |
+| **Feature gates** | `products.ts`, `checkout.ts`, `retailers.ts`, `collections.ts` | SPIN_360, CUSTOM_BACKGROUND_LIBRARY, CHECKOUT_CART, WHATSAPP_BUSINESS_API gated behind `hasFeature()` |
+| **Admin UI** | `apps/web/src/app/admin/plan-features/page.tsx` | Checkbox grid, mirrors plan-limits numeric grid |
+
+### F-014: Retailer & Customer Activity Tracking (Admin Visibility)
+
+Closes the gap in AuditLog wiring across mutation routes, plus admin-facing activity views.
+
+| Layer | Files | Summary |
+|-------|-------|---------|
+| **AuditLog wiring** | `apps/api/src/routes/admin.ts` | `AuditLog.create()` calls added to product/customer/collection CRUD, settings changes, staff management |
+| **Platform feed** | `apps/web/src/app/admin/activity/page.tsx` | Platform-wide activity feed, filterable by actor type/retailer/date |
+| **Per-retailer timeline** | `apps/web/src/app/admin/retailers/[id]/activity/page.tsx` | Per-retailer activity timeline (AuditLog entries + login history) |
+
+### F-015: Account Suspension (Admin-Controlled)
+
+Reversible suspension for retailers, block/unblock for customers (customers have no login — "block" = reject enquiries/checkout).
+
+| Layer | Files | Summary |
+|-------|-------|---------|
+| **DB fields** | `packages/db/prisma/schema.prisma` | `Retailer.is_suspended/suspended_at/suspended_reason/suspended_by_id`, `Customer.is_blocked/blocked_at/blocked_reason` |
+| **Admin API** | `apps/api/src/routes/admin.ts` | `POST /admin/retailers/:id/suspend`, `unsuspend`, `POST /admin/customers/:id/block`, `unblock`. Suspension filter on retailers list |
+| **Auth block** | `apps/api/src/routes/auth.ts` | Suspended retailers blocked at login ("account suspended, contact support") |
+| **Collection degradation** | `apps/api/src/routes/public.ts` | Suspended retailer collection links show "temporarily unavailable" (not 404). Products/categories/lead capture all gracefully degraded |
+| **Admin UI — retailers** | `apps/web/src/app/admin/retailers/page.tsx` | Suspended filter dropdown, visual badge on list |
+| **Admin UI — detail** | `apps/web/src/app/admin/retailers/[id]/page.tsx` | Suspend/unsuspend with reason required, visual status badge |
+| **Admin UI — customers** | `apps/web/src/app/admin/customers/page.tsx` | Block status badge, block/unblock with reason dialog |
+
+### F-016: Deletion Vault — Secondary Database for Deleted Data
+
+A genuinely separate Postgres instance for full-payload snapshots of every soft-deleted record. INSERT-only credentials — not even the app can UPDATE/DELETE vault entries.
+
+| Layer | Files | Summary |
+|-------|-------|---------|
+| **Vault helper** | `packages/db/src/vault.ts` | `vaultDelete()` (fire-and-forget, never blocks primary op), `getVaultPrisma()` (read access for admin). Graceful skip when `VAULT_DATABASE_URL` unset |
+| **Permission test** | `packages/db/src/vault.test.ts` | Conditional suite (skips when vault unconfigured). Tests: INSERT succeeds, UPDATE rejected, DELETE rejected — verifies INSERT-only constraint |
+| **Soft-delete wiring** | `retailers.ts`, `products.ts` (3 sites), `customers.ts`, `collections.ts`, `admin.ts` (2 sites) | `vaultDelete()` called in every soft-delete path |
+| **Admin API** | `apps/api/src/routes/admin.ts` | `GET /admin/deletion-vault` — paginated, filterable by `source_table`/`source_id`/`retailer_id` |
+| **Admin UI** | `apps/web/src/app/admin/database/deletion-vault/page.tsx` | Filter bar, expandable rows with payload preview + full JSON, load-more pagination, vault-not-configured warning |
+
+### F-017: Database Guardrails — Preventing AI-Agent/Application Delete Access
+
+Four layers of defense: role separation (infra) → DB triggers (migration) → CI grep guard → Deletion Vault backstop.
+
+| Layer | Files | Summary |
+|-------|-------|---------|
+| **DB triggers** | `packages/db/prisma/migrations/037_db_guardrails/migration.sql` | `prevent_hard_delete()` PL/pgSQL function. 8 `BEFORE DELETE OR TRUNCATE` triggers on `products`, `customers`, `retailers`, `collections`, `staff`, `orders`, `order_items`, `product_variants`. Bypass via `SET app.allow_hard_delete = 'true'` |
+| **CI grep guard** | `scripts/check-delete-guard.sh` | 3 checks: (1) raw `.delete()` on 7 business models outside allowlist, (2) empty-where `deleteMany()` danger detection, (3) destructive SQL outside migrations. Runs in CI |
+| **CI workflow** | `.github/workflows/ci.yml` | Added `bash scripts/check-delete-guard.sh` step |
+| **Role separation docs** | `docs/SECURITY.md` §19 | Updated to [x] Phase D checklist + §19.6 build table. Role-creation SQL in §19.1: `kanchuki_app` (no DELETE/TRUNCATE/DROP) vs `kanchuki_migrator` (human-only, never in `.env`) |
+| **Purge cron** | `apps/api/src/jobs/purge-soft-deleted.ts` | Daily cron (1:30 AM UTC). Batch-purges soft-deleted records >30 days old. Uses `SET app.allow_hard_delete = 'true'` to bypass triggers. Cursor-based batching, FK-safe order (children before parents). Writes audit log |
+| **Purge registration** | `apps/api/src/jobs/index.ts`, `packages/shared/src/constants/index.ts` | PURGE_SOFT_DELETED queue, worker (concurrency 1), daily schedule, queue name constant |
+
+### Deletion Vault DB setup (future — needs provisioned instance)
+
+The vault DB is a separate Postgres instance (not the Supabase primary project). Its role must be granted INSERT-only. Once provisioned, set `VAULT_DATABASE_URL` and run the vault Prisma schema. See full spec: `docs/DATABASE.md` (Deletion Vault section), `docs/SECURITY.md` §19.6.
 
 ---
 

@@ -3,7 +3,8 @@ import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
-import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
+import { hasFeature } from '../lib/features.js';
+import { featureUnavailable, forbidden, notFound, validationError } from '../plugins/error-handler.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -131,7 +132,11 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
 
   // ── GET /retailers/payment-account ──────────────────────────────
   // Returns payment account status with masked credentials.
+  // F-013: gated behind CHECKOUT_CART feature.
   server.get('/retailers/payment-account', async (request) => {
+    if (!(await hasFeature(request.retailerId, 'CHECKOUT_CART'))) {
+      return { data: null };
+    }
     const account = await prisma.retailerPaymentAccount.findUnique({
       where: { retailer_id: request.retailerId },
       select: {
@@ -163,7 +168,11 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
 
   // ── POST /retailers/payment-account ─────────────────────────────
   // Connect or update Razorpay account. Step-up OTP required for updates.
+  // F-013: gated behind CHECKOUT_CART feature.
   server.post('/retailers/payment-account', async (request) => {
+    if (!(await hasFeature(request.retailerId, 'CHECKOUT_CART'))) {
+      throw featureUnavailable('Shopping Cart / Checkout');
+    }
     const body = ConnectPaymentAccountSchema.safeParse(request.body);
     if (!body.success) {
       throw validationError(body.error.issues[0]?.message ?? 'Invalid input');
@@ -275,7 +284,11 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
 
   // ── DELETE /retailers/payment-account ───────────────────────────
   // Disconnect Razorpay account. Step-up OTP required.
+  // F-013: gated behind CHECKOUT_CART feature.
   server.delete('/retailers/payment-account', async (request) => {
+    if (!(await hasFeature(request.retailerId, 'CHECKOUT_CART'))) {
+      throw featureUnavailable('Shopping Cart / Checkout');
+    }
     const existing = await prisma.retailerPaymentAccount.findUnique({
       where: { retailer_id: request.retailerId },
     });
@@ -383,7 +396,12 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
         );
       }
 
-      // 3. Check retailer has an active payment account (L2 tier gate)
+      // 3. F-013: Check CHECKOUT_CART feature is enabled for the retailer
+      if (!(await hasFeature(retailerId, 'CHECKOUT_CART'))) {
+        throw validationError('This retailer does not accept online payments yet');
+      }
+
+      // 4. Check retailer has an active payment account (L2 tier gate)
       const paymentAccount = await prisma.retailerPaymentAccount.findUnique({
         where: { retailer_id: retailerId, is_active: true },
         select: {
@@ -1000,6 +1018,7 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
   // ── GET /public/checkout/retailer-status/:slug ──────────────────
   // Public endpoint: check if a retailer has online checkout enabled.
   // Used by the customer PWA to show/hide "Buy Now" buttons.
+  // F-013: Returns false if CHECKOUT_CART is not enabled for this retailer.
   server.get('/public/checkout/retailer-status/:slug', async (request) => {
     const { slug } = request.params as { slug: string };
 
@@ -1044,6 +1063,12 @@ export const checkoutRoutes: FastifyPluginAsync = async (server) => {
       )?.retailer_id;
 
     if (!retailerId) {
+      return { data: { checkout_enabled: false } };
+    }
+
+    // F-013: Check plan feature first
+    const checkoutEnabled = await hasFeature(retailerId, 'CHECKOUT_CART');
+    if (!checkoutEnabled) {
       return { data: { checkout_enabled: false } };
     }
 

@@ -96,6 +96,24 @@ enum TicketStatus {
   CLOSED
 }
 
+// ─── PLAN FEATURE MATRIX (F-013) ─────────────────────────────────
+
+enum PlanFeatureKey {
+  BULK_ONBOARDING_IMPORT
+  CUSTOM_BACKGROUND_LIBRARY
+  SPIN_360
+  VIRTUAL_TRY_ON
+  WHATSAPP_BUSINESS_API
+  CHECKOUT_CART
+  DATA_EXPORT_CSV
+  CUSTOM_BRANDING
+  GHOST_MANNEQUIN_AI
+  RAZORPAY_ROUTE
+  API_ACCESS
+  PRIORITY_AI_QUEUE
+  MULTI_STORE
+}
+
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
 
 enum QuotaResourceType {
@@ -204,6 +222,12 @@ model Retailer {
   onboarding_completed Boolean @default(false)
   onboarding_step      Int     @default(0)
 
+  // Suspension (F-015) — reversible, distinct from deleted_at (soft-delete)
+  is_suspended     Boolean  @default(false)
+  suspended_at     DateTime?
+  suspended_reason String?
+  suspended_by_id  String?  // TeamMember.id
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -224,6 +248,7 @@ model Retailer {
   territory             Territory?              @relation(fields: [territory_id], references: [id])
   onboarded_by          TeamMember?             @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
   support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
+  suspended_by          TeamMember?             @relation("SuspendedRetailers", fields: [suspended_by_id], references: [id])
   support_tickets       SupportTicket[]
   payment_account       RetailerPaymentAccount?
   orders                Order[]
@@ -231,6 +256,7 @@ model Retailer {
   @@index([phone])
   @@index([city])
   @@index([territory_id])
+  @@index([is_suspended])
   @@map("retailers")
 }
 
@@ -489,6 +515,12 @@ model Customer {
   total_purchases Int       @default(0)
   total_spent     Int       @default(0) // paise
 
+  // Blocked status (F-015) — customers have no login (Section 2.2 PRO-REQUIREMENTS),
+  // so "block" means blocking new enquiries/checkout, not an account lock.
+  is_blocked     Boolean  @default(false)
+  blocked_at     DateTime?
+  blocked_reason String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -719,6 +751,7 @@ model TeamMember {
   territories         TeamMemberTerritory[]
   onboarded_retailers Retailer[]            @relation("OnboardedRetailers")
   supported_retailers Retailer[]            @relation("SupportedRetailers")
+  suspended_retailers Retailer[]            @relation("SuspendedRetailers")
   assigned_tickets    SupportTicket[]
 
   @@index([email])
@@ -958,6 +991,24 @@ model PlanLimit {
 
   @@unique([plan, resource_type])
   @@map("plan_limits")
+}
+
+// ─── PLAN FEATURE MATRIX (F-013) ─────────────────────────────────
+// Boolean twin of plan_limits — controls which features are enabled
+// per plan tier. Admin-editable checkbox grid. hasFeature() fails
+// CLOSED (opposite of checkQuota's fail-open) — missing row = feature OFF.
+
+model PlanFeature {
+  id           String          @id @default(cuid())
+  plan         SubscriptionPlan
+  feature_key  PlanFeatureKey
+  enabled      Boolean         @default(false)
+
+  updated_at   DateTime  @updatedAt
+  updated_by_id String?  // TeamMember.id — who last toggled this
+
+  @@unique([plan, feature_key])
+  @@map("plan_features")
 }
 
 model RetailerLimitOverride {

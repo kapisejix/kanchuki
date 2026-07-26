@@ -469,6 +469,18 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
       request.log.error({ err, retailer_id: retailerId }, 'Failed to record product-upload usage');
     });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: retailerId,
+        action: 'create',
+        resource_type: 'Product',
+        resource_id: `bulk_import:${request.id}`,
+        metadata: { total_requested: items.length, total_created: created.length, product_ids: created.map(c => c.id) },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(201).send({
       data: {
         total_requested: items.length,

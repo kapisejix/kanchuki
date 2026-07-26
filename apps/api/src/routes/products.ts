@@ -7,14 +7,16 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, detectColor } from '@kanchuki/ai';
-import { Prisma, prisma } from '@kanchuki/db';
+import { Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import { R2_PATHS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addSpinFrameJob, addTaggingJob } from '../jobs/index.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { hasFeature } from '../lib/features.js';
 import {
+  featureUnavailable,
   forbidden,
   notFound,
   planLimitExceeded,
@@ -148,7 +150,11 @@ async function photoUrlToDisplay(
 export const productRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /products/background-images ─────────────────────────────
   // F-011: retailer-facing picker — active, admin-curated backgrounds only.
-  server.get('/background-images', async () => {
+  // F-013: gated behind CUSTOM_BACKGROUND_LIBRARY feature.
+  server.get('/background-images', async (request) => {
+    if (!(await hasFeature(request.retailerId, 'CUSTOM_BACKGROUND_LIBRARY'))) {
+      return { data: [] }; // return empty — feature is not on this plan
+    }
     const rows = await prisma.backgroundImage.findMany({
       where: { is_active: true },
       orderBy: { created_at: 'desc' },
@@ -252,6 +258,21 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     // that already succeeded.
     incrementUsage(retailerId, 'PRODUCT_UPLOAD').catch((err) => {
       request.log.error({ err, product_id: product.id }, 'Failed to record product-upload usage');
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: retailerId,
+        action: 'create',
+        resource_type: 'Product',
+        resource_id: product.id,
+        metadata: {
+          category: product.category,
+          primary_color: product.primary_color,
+        },
+        ip_address: request.ip,
+      },
     });
 
     // Fire-and-forget: if Redis/BullMQ is down the tagging job won't block
@@ -483,6 +504,18 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       });
     }
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Product',
+        resource_id: id,
+        metadata: { updated_fields: Object.keys(body.data) },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
@@ -507,6 +540,18 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
 
     void revalidateCollectionsForProduct(id);
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Product',
+        resource_id: id,
+        metadata: { previous_status: existing.status, new_status: body.data.status },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
@@ -517,9 +562,40 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body);
     if (!body.success) throw validationError('Provide 1-100 product ids');
 
+    // Fetch products before delete for vault snapshot
+    const productsToDelete = await prisma.product.findMany({
+      where: { id: { in: body.data.ids }, retailer_id: request.retailerId, deleted_at: null },
+    });
+
     const result = await prisma.product.updateMany({
       where: { id: { in: body.data.ids }, retailer_id: request.retailerId, deleted_at: null },
       data: { deleted_at: new Date() },
+    });
+
+    // F-016: Vault snapshot each deleted product (fire-and-forget, concurrent)
+    Promise.allSettled(
+      productsToDelete.map((p) =>
+        vaultDelete({
+          source_table: 'products',
+          source_id: p.id,
+          retailer_id: request.retailerId,
+          payload: p as unknown as Record<string, unknown>,
+          delete_reason: 'user_delete',
+          deleted_by: request.retailerId,
+        }),
+      ),
+    );
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Product',
+        resource_id: `bulk:${body.data.ids.join(',')}`,
+        metadata: { deleted_count: result.count, product_ids: body.data.ids },
+        ip_address: request.ip,
+      },
     });
 
     return reply.status(200).send({ data: { deleted_count: result.count } });
@@ -538,6 +614,29 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: { deleted_at: new Date() },
     });
+
+    // F-016: Vault snapshot of the deleted product (fire-and-forget)
+    vaultDelete({
+      source_table: 'products',
+      source_id: id,
+      retailer_id: request.retailerId,
+      payload: existing as unknown as Record<string, unknown>,
+      delete_reason: 'user_delete',
+      deleted_by: request.retailerId,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Product',
+        resource_id: id,
+        metadata: { previous_status: existing.status },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 
@@ -570,6 +669,18 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: { deleted_at: null },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'restore',
+        resource_type: 'Product',
+        resource_id: id,
+        ip_address: request.ip,
+      },
+    });
+
     return { data: restored };
   });
 
@@ -582,6 +693,16 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       where: { id, retailer_id: request.retailerId, deleted_at: { not: null } },
     });
     if (!existing) throw notFound('Product');
+
+    // F-016: Vault snapshot before permanent deletion
+    vaultDelete({
+      source_table: 'products',
+      source_id: id,
+      retailer_id: request.retailerId,
+      payload: existing as unknown as Record<string, unknown>,
+      delete_reason: 'purge',
+      deleted_by: request.retailerId,
+    });
 
     try {
       await prisma.product.delete({ where: { id } });
@@ -596,6 +717,19 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       }
       throw err;
     }
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Product',
+        resource_id: id,
+        metadata: { permanent: true, previous_status: existing.status },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 
@@ -667,8 +801,12 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   // backdrop. Spin frames pick up the selection on their next
   // extraction (extract-spin-frames.ts reads background_image_id at
   // generation time) — not retroactively reprocessed here.
+  // F-013: gated behind CUSTOM_BACKGROUND_LIBRARY feature.
   server.patch('/:id/background', async (request, reply) => {
     const { id } = request.params as { id: string };
+    if (!(await hasFeature(request.retailerId, 'CUSTOM_BACKGROUND_LIBRARY'))) {
+      throw featureUnavailable('Custom Background Library');
+    }
     const body = z.object({ background_image_id: z.string().nullable() }).parse(request.body);
 
     const product = await prisma.product.findFirst({
@@ -706,8 +844,13 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /products/:id/spin-video/upload-url ─────────────────────
+  // F-013: gated behind SPIN_360 feature.
   server.post('/:id/spin-video/upload-url', async (request, reply) => {
     const { id } = request.params as { id: string };
+
+    if (!(await hasFeature(request.retailerId, 'SPIN_360'))) {
+      throw featureUnavailable('360° Product Spin');
+    }
 
     const existing = await prisma.product.findFirst({
       where: { id, retailer_id: request.retailerId, deleted_at: null },
@@ -739,8 +882,13 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── POST /products/:id/spin-video ────────────────────────────────
   // Confirms the video finished uploading to R2 and queues frame extraction.
+  // F-013: gated behind SPIN_360 feature.
   server.post('/:id/spin-video', async (request, reply) => {
     const { id } = request.params as { id: string };
+
+    if (!(await hasFeature(request.retailerId, 'SPIN_360'))) {
+      throw featureUnavailable('360° Product Spin');
+    }
 
     const existing = await prisma.product.findFirst({
       where: { id, retailer_id: request.retailerId, deleted_at: null },
@@ -817,6 +965,18 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         is_ai_preview: false,
       },
     });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'create',
+        resource_type: 'ProductVariant',
+        resource_id: variant.id,
+        metadata: { product_id: id, color: variant.color },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(201).send({ data: variant });
   });
 
@@ -876,6 +1036,19 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     if (!variant) throw notFound('Variant');
 
     await prisma.productVariant.delete({ where: { id: variantId } });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'ProductVariant',
+        resource_id: variantId,
+        metadata: { product_id: id, color: variant.color },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 };

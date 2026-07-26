@@ -2,7 +2,7 @@ import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypt
 import { verifySync } from 'otplib';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { encryptSecret, getSecret, getReplicaPrisma, invalidateSecret, maskSecret, prisma } from '@kanchuki/db';
+import { encryptSecret, getSecret, getReplicaPrisma, getVaultPrisma, invalidateSecret, maskSecret, prisma, vaultDelete } from '@kanchuki/db';
 import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
 
 type IntegrationKeyEntry = (typeof INTEGRATION_KEYS)[number];
@@ -219,9 +219,10 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         state: z.string().max(100).optional(),
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
         status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']).optional(),
+        suspended: z.coerce.boolean().optional(),
       })
       .safeParse(request.query);
-    const { cursor, limit, search, city, state, plan, status } = query.success
+    const { cursor, limit, search, city, state, plan, status, suspended } = query.success
       ? query.data
       : {
           cursor: undefined,
@@ -231,6 +232,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           state: undefined,
           plan: undefined,
           status: undefined,
+          suspended: undefined,
         };
 
     const retailers = await prisma.retailer.findMany({
@@ -241,6 +243,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         ...(state ? { state: { equals: state, mode: 'insensitive' as const } } : {}),
         ...(plan ? { plan } : {}),
         ...(status ? { plan_status: status } : {}),
+        ...(suspended !== undefined ? { is_suspended: suspended } : {}),
         ...(search
           ? {
               OR: [
@@ -262,6 +265,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         trial_ends_at: true,
         created_at: true,
         onboarding_completed: true,
+        is_suspended: true,
         _count: {
           select: {
             products: { where: { deleted_at: null } },
@@ -298,10 +302,12 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   server.delete('/retailers', async (request) => {
     const body = z.object({ ids: z.array(z.string()).min(1).max(100) }).parse(request.body);
 
-    // Capture before-state for audit log
+    // Capture full before-state for vault snapshots + audit log
     const retailersBefore = await prisma.retailer.findMany({
       where: { id: { in: body.ids }, deleted_at: null },
-      select: { id: true, shop_name: true, city: true, plan: true, plan_status: true },
+    });
+    const collectionsBefore = await prisma.collection.findMany({
+      where: { retailer_id: { in: body.ids }, deleted_at: null },
     });
 
     await prisma.$transaction([
@@ -318,6 +324,33 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         data: { is_active: false },
       }),
     ]);
+
+    // F-016: Vault snapshot each deleted retailer (fire-and-forget)
+    Promise.allSettled(
+      retailersBefore.map((r) =>
+        vaultDelete({
+          source_table: 'retailers',
+          source_id: r.id,
+          retailer_id: r.id,
+          payload: r as unknown as Record<string, unknown>,
+          delete_reason: 'admin_bulk_delete',
+          deleted_by: 'admin',
+        }),
+      ),
+    );
+    // F-016: Vault snapshot each archived collection (fire-and-forget)
+    Promise.allSettled(
+      collectionsBefore.map((c) =>
+        vaultDelete({
+          source_table: 'collections',
+          source_id: c.id,
+          retailer_id: c.retailer_id,
+          payload: c as unknown as Record<string, unknown>,
+          delete_reason: 'admin_bulk_delete',
+          deleted_by: 'admin',
+        }),
+      ),
+    );
 
     await prisma.auditLog.create({
       data: {
@@ -375,6 +408,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         phone: true,
         gender: true,
         consent_given: true,
+        is_blocked: true,
+        blocked_at: true,
+        blocked_reason: true,
         created_at: true,
         retailer: { select: { id: true, shop_name: true, city: true } },
         _count: { select: { measurements: true } },
@@ -506,6 +542,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         max_customers: true,
         try_on_credits: true,
         max_staff_seats: true,
+        is_suspended: true,
+        suspended_at: true,
+        suspended_reason: true,
         _count: {
           select: {
             products: { where: { deleted_at: null } },
@@ -757,6 +796,286 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     request.log.info({ plan: body.plan, resource_type: body.resource_type }, 'Plan limit updated');
 
     return { data: row };
+  });
+
+  // ─── GET /admin/plan-features ────────────────────────────────────
+  // F-013: List all plan feature toggles across all plans.
+  // Returns all rows, including F-010-style "missing means OFF" convention.
+  server.get('/plan-features', async () => {
+    const rows = await prisma.planFeature.findMany({
+      orderBy: [{ plan: 'asc' }, { feature_key: 'asc' }],
+    });
+    return { data: rows };
+  });
+
+  // ─── PUT /admin/plan-features ────────────────────────────────────
+  // F-013: Upsert one (plan, feature_key) toggle. Creates it if missing.
+  // Fails CLOSED — a missing row means OFF, so this is how admin turns a
+  // feature on for the first time.
+  server.put('/plan-features', async (request) => {
+    const body = z
+      .object({
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
+        feature_key: z.enum([
+          'BULK_ONBOARDING_IMPORT',
+          'CUSTOM_BACKGROUND_LIBRARY',
+          'SPIN_360',
+          'VIRTUAL_TRY_ON',
+          'WHATSAPP_BUSINESS_API',
+          'CHECKOUT_CART',
+          'DATA_EXPORT_CSV',
+          'CUSTOM_BRANDING',
+          'GHOST_MANNEQUIN_AI',
+          'RAZORPAY_ROUTE',
+          'API_ACCESS',
+          'PRIORITY_AI_QUEUE',
+          'MULTI_STORE',
+        ]),
+        enabled: z.boolean(),
+        updated_by_id: z.string().optional(),
+      })
+      .parse(request.body);
+
+    // Capture before-state for audit log
+    const prev = await prisma.planFeature.findUnique({
+      where: { plan_feature_key: { plan: body.plan, feature_key: body.feature_key } },
+    });
+
+    const row = await prisma.planFeature.upsert({
+      where: { plan_feature_key: { plan: body.plan, feature_key: body.feature_key } },
+      create: {
+        plan: body.plan,
+        feature_key: body.feature_key,
+        enabled: body.enabled,
+        updated_by_id: body.updated_by_id,
+      },
+      update: {
+        enabled: body.enabled,
+        updated_by_id: body.updated_by_id,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: prev ? 'UPDATE' : 'CREATE',
+        resource_type: 'PlanFeature',
+        resource_id: `${body.plan}_${body.feature_key}`,
+        metadata: {
+          before: prev ? { enabled: prev.enabled } : null,
+          after: { enabled: body.enabled, feature_key: body.feature_key },
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ plan: body.plan, feature_key: body.feature_key, enabled: body.enabled }, 'Plan feature updated');
+
+    return { data: row };
+  });
+
+  // ─── GET /admin/plan-features/summary ────────────────────────────
+  // F-013: Returns a summary of all features enabled per plan, grouped
+  // by feature key with plan-enabled status. Useful for the frontend grid.
+  server.get('/plan-features/summary', async () => {
+    const rows = await prisma.planFeature.findMany({
+      orderBy: [{ feature_key: 'asc' }, { plan: 'asc' }],
+    });
+
+    const byFeature = new Map<string, Record<string, boolean>>();
+    for (const row of rows) {
+      if (!byFeature.has(row.feature_key)) {
+        byFeature.set(row.feature_key, {});
+      }
+      byFeature.get(row.feature_key)![row.plan] = row.enabled;
+    }
+
+    const summary = Array.from(byFeature.entries()).map(([feature_key, plans]) => ({
+      feature_key,
+      STARTER: plans['STARTER'] ?? false,
+      GROWTH: plans['GROWTH'] ?? false,
+      PRO: plans['PRO'] ?? false,
+    }));
+
+    return { data: summary };
+  });
+
+  // ─── GET /admin/retailers/:id/activity ──────────────────────────
+  // F-014: AuditLog entries for a specific retailer, most recent first.
+  // Includes both retailer actions and admin actions on this retailer.
+  server.get('/retailers/:id/activity', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const query = z
+      .object({ cursor: z.string().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) })
+      .safeParse(request.query);
+    const { cursor, limit } = query.success ? query.data : { cursor: undefined, limit: 30 };
+
+    const [logs, totalCount] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: {
+          OR: [
+            { resource_type: 'Retailer', resource_id: id },
+            { resource_id: id },
+          ],
+          ...(cursor ? { id: { lt: cursor } } : {}),
+        },
+        orderBy: { created_at: 'desc' },
+        take: limit + 1,
+      }),
+      prisma.auditLog.count({
+        where: {
+          OR: [
+            { resource_type: 'Retailer', resource_id: id },
+            { resource_id: id },
+          ],
+        },
+      }),
+    ]);
+
+    const hasMore = logs.length > limit;
+    const page = hasMore ? logs.slice(0, limit) : logs;
+
+    return {
+      data: page,
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+        total: totalCount,
+      },
+    };
+  });
+
+  // ─── GET /admin/retailers/:id/customers/:customerId/activity ─────
+  // F-014: CustomerInteraction timeline for a specific customer.
+  // Reuses existing F-008 data — no new schema needed.
+  server.get('/retailers/:id/customers/:customerId/activity', async (request) => {
+    const { id, customerId } = z
+      .object({ id: z.string(), customerId: z.string() })
+      .parse(request.params);
+    const query = z
+      .object({ cursor: z.string().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) })
+      .safeParse(request.query);
+    const { cursor, limit } = query.success ? query.data : { cursor: undefined, limit: 30 };
+
+    const customer = await prisma.customer.findFirst({
+      where: { id: customerId, retailer_id: id, deleted_at: null },
+      select: { id: true, name: true, phone: true },
+    });
+    if (!customer) throw notFound('Customer');
+
+    const [interactions, totalCount] = await Promise.all([
+      prisma.customerInteraction.findMany({
+        where: {
+          customer_id: customerId,
+          retailer_id: id,
+          ...(cursor ? { id: { lt: cursor } } : {}),
+        },
+        orderBy: { created_at: 'desc' },
+        take: limit + 1,
+        include: {
+          product: { select: { id: true, name: true, category: true, price_min: true } },
+        },
+      }),
+      prisma.customerInteraction.count({
+        where: { customer_id: customerId, retailer_id: id },
+      }),
+    ]);
+
+    const hasMore = interactions.length > limit;
+    const page = hasMore ? interactions.slice(0, limit) : interactions;
+
+    return {
+      data: {
+        customer,
+        interactions: page,
+      },
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+        total: totalCount,
+      },
+    };
+  });
+
+  // ─── GET /admin/activity ────────────────────────────────────────
+  // F-014: Platform-wide activity feed with burst detection.
+  // Shows recent AuditLog entries across all resources with a simple
+  // threshold check: if the same action/resource_type pair from the
+  // same actor appears >20 times in the last hour, it's flagged as a burst.
+  server.get('/activity', async (request) => {
+    const query = z
+      .object({
+        cursor: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(200).default(50),
+        actor_type: z.string().max(50).optional(),
+        action: z.string().max(100).optional(),
+        resource_type: z.string().max(100).optional(),
+        date_from: z.string().optional(),
+        date_to: z.string().optional(),
+      })
+      .safeParse(request.query);
+
+    const { cursor, limit, actor_type, action, resource_type, date_from, date_to } = query.success
+      ? query.data
+      : { cursor: undefined, limit: 50, actor_type: undefined, action: undefined,
+          resource_type: undefined, date_from: undefined, date_to: undefined };
+
+    const where: Record<string, unknown> = {};
+    if (cursor) where.id = { lt: cursor };
+    if (actor_type) where.actor_type = { equals: actor_type, mode: 'insensitive' as const };
+    if (action) where.action = action;
+    if (resource_type) where.resource_type = { equals: resource_type, mode: 'insensitive' as const };
+    if (date_from || date_to) {
+      const created_at: Record<string, Date> = {};
+      if (date_from) created_at.gte = new Date(date_from);
+      if (date_to) created_at.lte = new Date(date_to);
+      where.created_at = created_at;
+    }
+
+    // Burst detection: count grouped by (action, resource_type, actor_type) in the last hour
+    const oneHourAgo = new Date(Date.now() - 3600000);
+    const [burstGroups, logs, totalCount] = await Promise.all([
+      prisma.auditLog.groupBy({
+        by: ['action', 'resource_type', 'actor_type'],
+        where: { created_at: { gte: oneHourAgo } },
+        _count: true,
+        orderBy: { _count: { id: 'desc' } },
+        take: 10,
+      }),
+      prisma.auditLog.findMany({
+        where,
+        orderBy: { created_at: 'desc' },
+        take: limit + 1,
+      }),
+      prisma.auditLog.count({ where }),
+    ]);
+
+    const hasMore = logs.length > limit;
+    const page = hasMore ? logs.slice(0, limit) : logs;
+
+    // Flag bursts: when the same (action, resource_type, actor_type) appears >20 times in the last hour
+    const bursts = burstGroups
+      .filter((g) => g._count > 20)
+      .map((g) => ({
+        action: g.action,
+        resource_type: g.resource_type,
+        actor_type: g.actor_type,
+        count: g._count,
+        threshold: 20,
+        flagged: g._count > 20,
+      }));
+
+    return {
+      data: {
+        logs: page,
+        bursts,
+      },
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+        total: totalCount,
+      },
+    };
   });
 
   // ─── GET /admin/retailers/:id/overrides ─────────────────────────
@@ -1806,5 +2125,192 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     }
 
     return { data: { key: metaKey, metadata: meta } };
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  // F-015: ACCOUNT SUSPENSION
+  // ═══════════════════════════════════════════════════════════════
+
+  // ─── POST /admin/retailers/:id/suspend ──────────────────────────
+  // Suspend a retailer account. Reason required.
+  server.post('/retailers/:id/suspend', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+    const body = z.object({ reason: z.string().min(1).max(500) }).parse(request.body);
+
+    const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } });
+    if (!retailer) throw notFound('Retailer');
+    if (retailer.is_suspended) throw validationError('Retailer is already suspended');
+
+    await prisma.retailer.update({
+      where: { id },
+      data: { is_suspended: true, suspended_at: new Date(), suspended_reason: body.reason },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'SUSPEND',
+        resource_type: 'Retailer',
+        resource_id: id,
+        metadata: { reason: body.reason, shop_name: retailer.shop_name },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ retailer_id: id, reason: body.reason }, 'Retailer suspended');
+    return { data: { is_suspended: true, suspended_at: new Date().toISOString(), suspended_reason: body.reason } };
+  });
+
+  // ─── POST /admin/retailers/:id/unsuspend ────────────────────────
+  server.post('/retailers/:id/unsuspend', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+
+    const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } });
+    if (!retailer) throw notFound('Retailer');
+    if (!retailer.is_suspended) throw validationError('Retailer is not suspended');
+
+    await prisma.retailer.update({
+      where: { id },
+      data: { is_suspended: false, suspended_at: null, suspended_reason: null, suspended_by_id: null },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UNSUSPEND',
+        resource_type: 'Retailer',
+        resource_id: id,
+        metadata: { shop_name: retailer.shop_name, was_reason: retailer.suspended_reason },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ retailer_id: id }, 'Retailer unsuspended');
+    return { data: { is_suspended: false } };
+  });
+
+  // ─── POST /admin/customers/:customerId/block ────────────────────
+  server.post('/customers/:customerId/block', async (request) => {
+    const { customerId } = z.object({ customerId: z.string() }).parse(request.params);
+    const body = z.object({ reason: z.string().min(1).max(500) }).parse(request.body);
+
+    const customer = await prisma.customer.findUnique({ where: { id: customerId, deleted_at: null } });
+    if (!customer) throw notFound('Customer');
+    if (customer.is_blocked) throw validationError('Customer is already blocked');
+
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { is_blocked: true, blocked_at: new Date(), blocked_reason: body.reason },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'BLOCK_CUSTOMER',
+        resource_type: 'Customer',
+        resource_id: customerId,
+        metadata: { reason: body.reason, customer_name: customer.name, retailer_id: customer.retailer_id },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ customer_id: customerId, reason: body.reason }, 'Customer blocked');
+    return { data: { is_blocked: true, blocked_at: new Date().toISOString(), blocked_reason: body.reason } };
+  });
+
+  // ─── POST /admin/customers/:customerId/unblock ──────────────────
+  server.post('/customers/:customerId/unblock', async (request) => {
+    const { customerId } = z.object({ customerId: z.string() }).parse(request.params);
+
+    const customer = await prisma.customer.findUnique({ where: { id: customerId, deleted_at: null } });
+    if (!customer) throw notFound('Customer');
+    if (!customer.is_blocked) throw validationError('Customer is not blocked');
+
+    await prisma.customer.update({
+      where: { id: customerId },
+      data: { is_blocked: false, blocked_at: null, blocked_reason: null },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UNBLOCK_CUSTOMER',
+        resource_type: 'Customer',
+        resource_id: customerId,
+        metadata: { customer_name: customer.name },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ customer_id: customerId }, 'Customer unblocked');
+    return { data: { is_blocked: false } };
+  });
+
+  // ─── GET /admin/deletion-vault ───────────────────────────────────
+  // F-016: View vault entries (read-only). Searchable by source_table,
+  // source_id, or retailer_id. Paginated with cursor-based pagination.
+  // Returns vault entries sorted by deleted_at descending.
+  server.get('/deletion-vault', async (request) => {
+    const query = z
+      .object({
+        cursor: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(50),
+        source_table: z.string().max(100).optional(),
+        source_id: z.string().max(100).optional(),
+        retailer_id: z.string().max(100).optional(),
+      })
+      .safeParse(request.query);
+
+    const { cursor, limit, source_table, source_id, retailer_id } = query.success
+      ? query.data
+      : { cursor: undefined, limit: 50, source_table: undefined, source_id: undefined, retailer_id: undefined };
+
+    // Build where clause dynamically
+    const where: Record<string, unknown> = {};
+    if (source_table) where.source_table = { equals: source_table, mode: 'insensitive' as const };
+    if (source_id) where.source_id = { contains: source_id, mode: 'insensitive' as const };
+    if (retailer_id) where.retailer_id = { equals: retailer_id, mode: 'insensitive' as const };
+    if (cursor) where.id = { lt: cursor };
+
+    // Query the vault database (separate Postgres instance)
+    const vault = await getVaultPrisma();
+    if (!vault) {
+      return {
+        data: { entries: [], total_count: 0, vault_configured: false },
+      };
+    }
+
+    const [entries, totalCount] = await Promise.all([
+      vault.deletedRecord.findMany({
+        where,
+        orderBy: { deleted_at: 'desc' },
+        take: limit + 1,
+      }),
+      vault.deletedRecord.count({ where }),
+    ]);
+
+    const hasMore = entries.length > limit;
+    const page = hasMore ? entries.slice(0, limit) : entries;
+
+    return {
+      data: {
+        entries: page.map((entry: Record<string, unknown>) => ({
+          id: entry.id,
+          source_table: entry.source_table,
+          source_id: entry.source_id,
+          retailer_id: entry.retailer_id,
+          payload: entry.payload,
+          delete_reason: entry.delete_reason,
+          deleted_by: entry.deleted_by,
+          deleted_at: entry.deleted_at,
+        })),
+        total_count: totalCount,
+        vault_configured: true,
+      },
+      pagination: {
+        cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
+        has_more: hasMore,
+      },
+    };
   });
 };

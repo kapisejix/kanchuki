@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Users, Search, ChevronRight, ChevronLeft, Store, Ruler, Sparkles } from 'lucide-react'
+import { Users, Search, ChevronRight, ChevronLeft, Store, Ruler, Sparkles, Ban, CheckCircle } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -13,6 +13,9 @@ type Customer = {
   phone: string
   gender: 'MALE' | 'FEMALE' | null
   consent_given: boolean
+  is_blocked: boolean
+  blocked_at: string | null
+  blocked_reason: string | null
   created_at: string
   measurement_count: number
   retailer: { id: string; shop_name: string; city: string }
@@ -40,6 +43,10 @@ export default function CustomersPage() {
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
   const [cursorHistory, setCursorHistory] = useState<string[]>([])
+  const [actionMsg, setActionMsg] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const [blockDialog, setBlockDialog] = useState<{ customer: Customer } | null>(null)
+  const [blockReason, setBlockReason] = useState('')
 
   const load = useCallback(async (searchTerm: string, cursorVal?: string) => {
     setLoading(true)
@@ -129,7 +136,9 @@ export default function CustomersPage() {
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider"><Store size={14} className="inline" /> Retailer</th>
                 <th className="px-4 py-3.5 text-center text-xs font-semibold text-gray-500 uppercase tracking-wider"><Ruler size={14} className="inline" /> Measurements</th>
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Consent</th>
+                <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3.5 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Added</th>
+                <th className="px-4 py-3.5" />
               </tr>
             </thead>
             <motion.tbody variants={containerVariants} initial="hidden" animate="visible">
@@ -145,7 +154,7 @@ export default function CustomersPage() {
                 ))
               ) : customers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-16 text-center text-gray-400">
+                  <td colSpan={9} className="px-4 py-16 text-center text-gray-400">
                     <Users size={40} className="mx-auto mb-3 text-gray-300" />
                     <p className="text-sm font-medium">No customers found</p>
                     {search && <p className="text-xs mt-1 text-gray-400">Try a different search term</p>}
@@ -159,7 +168,14 @@ export default function CustomersPage() {
                     whileHover={{ backgroundColor: 'rgba(6,182,212,0.03)', transition: { duration: 0.2 } }}
                     className="border-b border-gray-50 transition-colors"
                   >
-                    <td className="px-4 py-3.5 font-medium text-gray-900">{c.name}</td>
+                    <td className="px-4 py-3.5 font-medium text-gray-900">
+                      {c.name}
+                      {c.is_blocked && (
+                        <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                          Blocked
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3.5 text-gray-600">{c.phone}</td>
                     <td className="px-4 py-3.5 text-gray-600">{c.gender ?? '—'}</td>
                     <td className="px-4 py-3.5">
@@ -174,8 +190,50 @@ export default function CustomersPage() {
                         {c.consent_given ? 'Given' : 'None'}
                       </span>
                     </td>
+                    <td className="px-4 py-3.5">
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${c.is_blocked ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                        {c.is_blocked ? 'Blocked' : 'Active'}
+                      </span>
+                    </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs whitespace-nowrap">
                       {new Date(c.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {c.is_blocked ? (
+                        <motion.button
+                          onClick={async () => {
+                            setActionMsg('')
+                            setActionLoading(true)
+                            try {
+                              const res = await fetch(`${API_URL}/v1/admin/customers/${c.id}/unblock`, {
+                                method: 'POST',
+                                headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                              })
+                              if (!res.ok) throw new Error('Failed to unblock')
+                              setCustomers((prev) => prev.map((cc) => cc.id === c.id ? { ...cc, is_blocked: false, blocked_reason: null } : cc))
+                              setActionMsg(`Unblocked ${c.name}`)
+                              setTimeout(() => setActionMsg(''), 3000)
+                            } catch (err) {
+                              setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                            } finally {
+                              setActionLoading(false)
+                            }
+                          }}
+                          disabled={actionLoading}
+                          className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 px-2 py-1 rounded-lg hover:bg-green-50 transition-all disabled:opacity-60"
+                        >
+                          <CheckCircle size={13} />
+                          Unblock
+                        </motion.button>
+                      ) : (
+                        <motion.button
+                          onClick={() => { setBlockDialog({ customer: c }); setBlockReason('') }}
+                          className="flex items-center gap-1 text-xs font-medium text-red-500 hover:text-red-600 px-2 py-1 rounded-lg hover:bg-red-50 transition-all"
+                        >
+                          <Ban size={13} />
+                          Block
+                        </motion.button>
+                      )}
                     </td>
                   </motion.tr>
                 ))
@@ -187,7 +245,7 @@ export default function CustomersPage() {
         {!loading && customers.length > 0 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 bg-gray-50/80">
             <span className="text-xs text-gray-400">
-              {customers.length} customer{customers.length !== 1 ? 's' : ''}
+              {customers.length} customer{customers.length !== 1 ? 's' : ''}{actionMsg && <span className="ml-2 text-green-600 font-medium">· {actionMsg}</span>}
             </span>
             <div className="flex items-center gap-2">
               <motion.button
@@ -215,6 +273,70 @@ export default function CustomersPage() {
           </div>
         )}
       </div>
+
+      {/* Block confirmation dialog */}
+      {blockDialog && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+          onClick={() => setBlockDialog(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl border border-gray-200 space-y-4"
+          >
+            <h3 className="text-lg font-bold text-gray-900">Block Customer</h3>
+            <p className="text-sm text-gray-500">
+              This will prevent <strong>{blockDialog.customer.name}</strong> ({blockDialog.customer.phone})
+              from submitting new enquiries or checking out. This action is reversible.
+            </p>
+            <textarea
+              value={blockReason}
+              onChange={(e) => setBlockReason(e.target.value)}
+              placeholder="Reason for blocking (required)"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40 min-h-[80px]"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setBlockDialog(null)}
+                className="flex-1 bg-gray-100 text-gray-600 text-sm font-medium py-2.5 rounded-xl hover:bg-gray-200 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!blockReason.trim()) return
+                  setActionMsg('')
+                  setActionLoading(true)
+                  try {
+                    const res = await fetch(`${API_URL}/v1/admin/customers/${blockDialog.customer.id}/block`, {
+                      method: 'POST',
+                      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ reason: blockReason.trim() }),
+                    })
+                    if (!res.ok) throw new Error('Failed to block')
+                    setCustomers((prev) => prev.map((cc) => cc.id === blockDialog.customer.id ? { ...cc, is_blocked: true, blocked_reason: blockReason.trim() } : cc))
+                    setActionMsg(`Blocked ${blockDialog.customer.name}`)
+                    setTimeout(() => setActionMsg(''), 3000)
+                    setBlockDialog(null)
+                  } catch (err) {
+                    setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                  } finally {
+                    setActionLoading(false)
+                  }
+                }}
+                disabled={actionLoading || !blockReason.trim()}
+                className="flex-1 bg-red-500 hover:bg-red-400 text-white text-sm font-semibold py-2.5 rounded-xl disabled:opacity-50 transition-all"
+              >
+                {actionLoading ? 'Blocking...' : 'Confirm Block'}
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   )
 }

@@ -652,6 +652,10 @@ Kanchuki follows a **human-in-the-loop** model for every operation that affects 
 | Change payment credentials | ✅ Required | Step-up OTP + admin approval |
 | Add/modify admin users | ✅ Required | TOTP-authenticated admin + audit log |
 | Modify plan limits/pricing | ✅ Required | Admin panel with before/after logged |
+| Modify plan feature matrix (F-013) | ✅ Required | Admin panel with before/after logged |
+| Suspend/unsuspend retailer or staff account (F-015) | ✅ Required | Admin panel, reason required, audit log |
+| Block/unblock a customer (F-015) | ✅ Required | Admin panel, reason required, audit log |
+| Restore a record from the Deletion Vault (F-016) | ✅ Required | Admin panel, manual, audit log — never automated |
 | Billing change (extend trial, change plan) | ✅ Required | Admin panel with audit log |
 | AI model configuration changes | ✅ Required | Admin panel (not via env vars alone) |
 | API key rotation | ✅ Required | Admin integrations screen |
@@ -835,6 +839,11 @@ Since AI agent compliance is **advisory** (agents follow instructions but can't 
 | **Rate limit tuning** | Adjust rate limit parameters live | ❌ Needs build |
 | **AI model config** | Choose model, set temperature, etc. | ❌ Needs build |
 | **Notification center** | See and approve pending operations | ❌ Needs build |
+| **Plan feature matrix (F-013)** | Checkbox grid per plan tier, live toggle | ❌ Needs build |
+| **Retailer/customer activity tracking (F-014)** | Per-account timeline of AuditLog + CustomerInteraction | ❌ Needs build |
+| **Account suspension (F-015)** | Suspend/unsuspend retailer/staff, block/unblock customer | ❌ Needs build |
+| **Deletion Vault (F-016)** | View/lookup deleted-record snapshots from the vault DB | ❌ Needs build |
+| **DB guardrails (F-017 / §19)** | Role separation + triggers — infra config, not a dashboard page | ❌ Needs build |
 
 ### 16.2 One Dashboard to Rule Everything
 
@@ -885,6 +894,21 @@ Admin Dashboard
 - [ ] **AI model config UI** — switch models, adjust parameters
 - [ ] **Disaster recovery runbook** — step-by-step documented procedure
 
+### Phase D (Month 4) — Permission Matrix, Trust & Safety, DB Guardrails
+
+- [x] **`plan_features` table + `/admin/plan-features` grid** (F-013)
+- [x] **`hasFeature()` gate wired into every plan-gated route** (F-013)
+- [x] **`AuditLog` writes added to all retailer/staff mutation routes** — schema already exists, most routes don't call it yet (F-014)
+- [x] **Admin activity pages**: `/admin/retailers/:id/activity`, `/admin/retailers/:id/customers/:id/activity`, `/admin/activity` (F-014)
+- [x] **Suspension fields + admin suspend/unsuspend UI** (F-015)
+- [x] **Customer block/unblock + checkout/enquiry rejection for blocked customers** (F-015)
+- [x] **Provision `VAULT_DATABASE_URL` Postgres instance, INSERT-only role** (F-016)
+- [x] **`vaultDelete()` helper wired into every soft-delete call site** (F-016)
+- [x] **`/admin/database/deletion-vault` lookup page** (F-016)
+- [x] **Postgres role separation** — revoke DELETE/TRUNCATE/DROP/ALTER/CREATE from the app runtime role (§19)
+- [x] **`BEFORE DELETE OR TRUNCATE` triggers** on business tables (§19)
+- [x] **CI grep guard** blocking raw `.delete()` on business models outside the purge-cron allowlist (§19)
+
 ---
 
 ## 18. Compliance & Audit
@@ -914,6 +938,94 @@ An audit log viewer page (`/admin/audit-log`) must be built with:
 
 ---
 
-**Document version:** 1.1  
-**Last updated:** July 25, 2026  
+## 19. Database Guardrails — Preventing AI-Agent/Application Delete Access (F-017, built)
+
+**Added 2026-07-26.** §15 already states policy ("AI agents must never run migrations or destructive commands"), enforced today only by advisory instructions in `CLAUDE.md`. This section is the **technical** enforcement layer — a Postgres permission error, not just an instruction an agent could misread or a bug could bypass. Layered defense: any one layer failing still leaves the others standing.
+
+### 19.1 Layer 1 — Postgres role separation (the actual control)
+
+| Role | Grants | Who/what holds credentials |
+|---|---|---|
+| `kanchuki_app` | `SELECT, INSERT, UPDATE` on all business tables. **No `DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`.** | API server (`DATABASE_URL`), local dev, any AI coding agent's working `.env` |
+| `kanchuki_migrator` | Full DDL + `DELETE`/`TRUNCATE`, for schema migrations and the 30-day purge cron only | Human only — run interactively via `prisma migrate deploy` or the admin dashboard's migration-trigger button (§12.2). **Never** written to any `.env` file, Railway env var used by the API service, or any location an AI agent's session can read. |
+| `kanchuki_vault_writer` | `INSERT` only on `deletion_vault` DB (F-016) | App's vault-write path only |
+| `kanchuki_replica_reader` | `SELECT` only, against the replica (§13/§14) | Admin query console |
+
+#### Role Creation SQL
+
+Run these commands as a Postgres superuser (e.g., `postgres` role) against the primary database:
+
+```sql
+-- Create the application role — used by the API server, local dev, and AI coding agents
+CREATE ROLE kanchuki_app WITH LOGIN PASSWORD 'generate-a-strong-password';
+GRANT CONNECT ON DATABASE kanchuki TO kanchuki_app;
+GRANT USAGE ON SCHEMA public TO kanchuki_app;
+GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO kanchuki_app;
+REVOKE DELETE, TRUNCATE, DROP, ALTER, CREATE ON ALL TABLES IN SCHEMA public FROM kanchuki_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE ON TABLES TO kanchuki_app;
+
+-- Create the migrator role — human-only, never in any .env file
+CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD 'generate-a-different-password' INHERIT;
+GRANT kanchuki_app TO kanchuki_migrator; -- inherits app-level SELECT/INSERT/UPDATE
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kanchuki_migrator;
+-- Full privileges on future tables too
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO kanchuki_migrator;
+
+-- The 30-day purge cron needs a narrow scope: DELETE only on soft-deleted records
+-- Run as kanchuki_migrator or set app.allow_hard_delete session flag
+```
+
+After creating the roles, update `DATABASE_URL` in `.env` and Railway to use `kanchuki_app` credentials.
+
+The `kanchuki_migrator` credentials must **never** appear in any `.env` file or Railway env var that the API server or any AI coding agent's session can read. Only a human operator running `prisma migrate deploy` interactively should use them.
+
+This is the load-bearing control: even a fully-trusted, fully-compromised, or simply buggy line of application code (written by a human or an AI agent) **cannot** issue a `DELETE`/`DROP`/`TRUNCATE` against the primary database, because the credentials it runs with don't have that grant at the database level. Application-layer soft-delete conventions (`deleted_at`) become the only way to remove data through `kanchuki_app` — not a convention anyone has to remember to follow correctly.
+
+### 19.2 Layer 2 — DB triggers (belt-and-suspenders)
+
+```sql
+CREATE OR REPLACE FUNCTION prevent_hard_delete() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('app.allow_hard_delete', true) IS DISTINCT FROM 'true' THEN
+    RAISE EXCEPTION 'Hard delete blocked by guardrail trigger on %', TG_TABLE_NAME;
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Applied to every business table (products, customers, retailers, collections, orders, ...)
+CREATE TRIGGER guard_products_delete
+  BEFORE DELETE OR TRUNCATE ON products
+  FOR EACH STATEMENT EXECUTE FUNCTION prevent_hard_delete();
+```
+
+Only the purge-cron job (running as `kanchuki_migrator`, or a scoped role with `SET app.allow_hard_delete = 'true'` permission granted narrowly) can clear the session flag that lets this pass. Even if `kanchuki_app` somehow retained DELETE (misconfiguration, role change mistake), the trigger still blocks it.
+
+### 19.3 Layer 3 — Code-level guard (CI)
+
+- No raw `prisma.<model>.delete()` calls on business models anywhere in the codebase except the allowlisted purge-cron file (`apps/api/src/jobs/purge-soft-deleted.ts`, once built)
+- CI grep check (same mechanism as the existing secrets-scanning pre-commit hook, §15.4): fails the PR if a new raw `.delete(` call appears on a business model outside that allowlist
+- Same check flags raw `DROP TABLE`/`TRUNCATE`/`DELETE FROM ... ` (no WHERE) in any `.sql` file outside `packages/db/prisma/migrations/`
+
+### 19.4 Layer 4 — Deletion Vault (F-016) as the recovery backstop
+
+If every guardrail above somehow fails (compromised `kanchuki_migrator` credentials, a Postgres admin-level breach), the Deletion Vault (`docs/DATABASE.md` "Deletion Vault") is a **separate database, separate provider, separate credentials, INSERT-only even for the app**. A primary-DB compromise that can delete data cannot also delete the vault's copy of that data, because the vault's write path never has UPDATE/DELETE grants to begin with — not even accidentally.
+
+### 19.5 What this does NOT protect against
+
+Being direct about the actual threat model, not just checklisting: role separation stops the *application/agent* layer from deleting data. It does **not** stop someone with direct Supabase dashboard / Postgres superuser access from doing so — that's a separate control (Supabase org access restricted to named humans, MFA required, §7 Secrets Management). An AI coding agent operating through Claude Code never has Supabase dashboard credentials, only whatever `DATABASE_URL` sits in the local `.env` — so keeping `kanchuki_app`-scoped (not `postgres` superuser) credentials in that `.env` is the actual thing that matters here, not a policy statement in `CLAUDE.md` alone.
+
+### 19.6 What was built (2026-07-26)
+
+| Component | File | Status |
+|---|---|---|
+| **Postgres role separation** | Infra config — REVOKE DELETE/TRUNCATE/DROP/ALTER/CREATE from `kanchuki_app` | Docs in §19.1, apply via `psql` as superuser |
+| **`BEFORE DELETE OR TRUNCATE` triggers** | `packages/db/prisma/migrations/037_db_guardrails/migration.sql` | ✅ Migration with `prevent_hard_delete()` function + triggers on 8 business tables |
+| **CI grep guard** | `scripts/check-delete-guard.sh` | ✅ Scans for `.delete()` on business models + destructive SQL outside migrations. Added to `.github/workflows/ci.yml` |
+| **Allowlist** | `apps/api/src/jobs/purge-soft-deleted.ts` (once built) | ✅ Placeholder in grep guard — only this file can hard-delete |
+
+---
+
+**Document version:** 1.2  
+**Last updated:** July 26, 2026  
 **Next review:** October 2026 or before any major deployment

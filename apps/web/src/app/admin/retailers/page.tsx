@@ -39,6 +39,7 @@ type Retailer = {
   trial_ends_at: string | null
   created_at: string
   onboarding_completed: boolean
+  is_suspended: boolean
   product_count: number
   customer_count: number
   collection_count: number
@@ -66,12 +67,12 @@ const rowVariants = {
   },
 }
 
-type Filters = { search: string; city: string; plan: string; status: string; state: string }
+type Filters = { search: string; city: string; plan: string; status: string; state: string; suspended: string }
 
 function RetailersContent() {
   const searchParams = useSearchParams()
   const [retailers, setRetailers] = useState<Retailer[]>([])
-  const [filters, setFilters] = useState<Filters>({ search: '', city: '', plan: '', status: '', state: '' })
+  const [filters, setFilters] = useState<Filters>({ search: '', city: '', plan: '', status: '', state: '', suspended: '' })
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -88,6 +89,7 @@ function RetailersContent() {
       if (f.plan) params.set('plan', f.plan)
       if (f.status) params.set('status', f.status)
       if (f.state) params.set('state', f.state)
+      if (f.suspended) params.set('suspended', f.suspended)
       if (cursorVal) params.set('cursor', cursorVal)
       params.set('limit', '20')
 
@@ -244,6 +246,15 @@ function RetailersContent() {
           <option value="PAST_DUE">Past Due</option>
           <option value="CANCELLED">Cancelled</option>
         </select>
+        <select
+          value={filters.suspended}
+          onChange={(e) => setFilters((f) => ({ ...f, suspended: e.target.value }))}
+          className={selectClass}
+        >
+          <option value="">All Accounts</option>
+          <option value="false">Active Only</option>
+          <option value="true">Suspended Only</option>
+        </select>
         <motion.button
           type="submit"
           whileHover={{ scale: 1.02 }}
@@ -352,6 +363,11 @@ function RetailersContent() {
                           className="font-medium text-gray-900 hover:text-cyan-600 transition-colors"
                         >
                           {r.shop_name}
+                          {r.is_suspended && (
+                            <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                              Suspended
+                            </span>
+                          )}
                           {!r.onboarding_completed && (
                             <span className="ml-2 text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
                               Setup

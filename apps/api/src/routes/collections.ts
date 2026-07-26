@@ -1,10 +1,11 @@
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { prisma, vaultDelete } from '@kanchuki/db';
 import { Prisma } from '@kanchuki/db';
 import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { notFound, validationError } from '../plugins/error-handler.js';
+import { hasFeature } from '../lib/features.js';
+import { featureUnavailable, notFound, validationError } from '../plugins/error-handler.js';
 
 const CreateCollectionSchema = z.object({
   title: z.string().min(1).max(200),
@@ -70,6 +71,18 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
             },
           },
         },
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: retailerId,
+        action: 'create',
+        resource_type: 'Collection',
+        resource_id: collection.id,
+        metadata: { title, product_count: product_ids.length, customer_id },
+        ip_address: request.ip,
       },
     });
 
@@ -354,6 +367,18 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: retailerId,
+        action: 'create',
+        resource_type: 'Collection',
+        resource_id: collection.id,
+        metadata: { title: collectionTitle, type: 'auto-suggest', dna_used },
+        ip_address: request.ip,
+      },
+    });
+
     const webUrl = `${process.env.WEB_URL ?? ''}/c/${slug}`;
     return reply.status(201).send({
       data: {
@@ -399,6 +424,18 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Collection',
+        resource_id: id,
+        metadata: { title: updated.title, updated_fields: Object.keys(body.data) },
+        ip_address: request.ip,
+      },
+    });
+
     const webBase = process.env.WEB_URL ?? '';
     return {
       data: {
@@ -422,6 +459,29 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: { deleted_at: new Date(), status: 'ARCHIVED' },
     });
+
+    // F-016: Vault snapshot of the deleted collection (fire-and-forget)
+    vaultDelete({
+      source_table: 'collections',
+      source_id: id,
+      retailer_id: request.retailerId,
+      payload: existing as unknown as Record<string, unknown>,
+      delete_reason: 'user_delete',
+      deleted_by: request.retailerId,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Collection',
+        resource_id: id,
+        metadata: { title: existing.title },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 
@@ -431,7 +491,11 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
   // /retailers/me/whatsapp-api). Requires a pre-approved message template
   // with exactly one body variable — we fill it with the full personalized
   // message, same text the one-by-one wa.me flow sends.
+  // F-013: gated behind WHATSAPP_BUSINESS_API feature.
   server.post('/:id/bulk-send', async (request, reply) => {
+    if (!(await hasFeature(request.retailerId, 'WHATSAPP_BUSINESS_API'))) {
+      throw featureUnavailable('WhatsApp Business API');
+    }
     const { id } = request.params as { id: string };
     const body = z
       .object({ customer_ids: z.array(z.string()).min(1).max(100) })

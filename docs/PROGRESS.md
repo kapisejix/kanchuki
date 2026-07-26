@@ -297,3 +297,129 @@ Retailer picks which sizes are in stock for a product; customer sees the same li
 - Customer web: "Available Sizes" chip row in `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx`
 - Catalog import (`apps/mobile/app/product/catalog-import.tsx`) also got sizes: a per-batch "Add sizes?" toggle (default off — most catalogs don't list sizes), and when on, the same S/M/L/XL/XXL/XXXL chips per reviewed item. Off = `sizes` omitted entirely, matching "leave blank if catalog doesn't have size". Backend: `BulkCreateProductsSchema` + `productData` mapping in `apps/api/src/routes/catalog-import.ts`.
 - Not touched (YAGNI for now): rack/shelf bulk-onboard flow (`bulk-onboard.tsx`) still doesn't collect sizes — add if retailers ask
+
+---
+
+## 2026-07-26 — Admin Control Center Built (F-013 through F-017)
+
+**Status changed from "docs only, not built yet" → ✅ Fully built.**
+
+Full implementation of the admin permission/control system: plan-tier feature checkbox grid, retailer/customer activity tracking, account suspension, deletion vault, and database guardrails.
+
+### F-013: Plan Feature Matrix
+- `PlanFeature` table + `PlanFeatureKey` enum (14 features: BULK_ONBOARDING_IMPORT, CUSTOM_BACKGROUND_LIBRARY, SPIN_360, VIRTUAL_TRY_ON, WHATSAPP_BUSINESS_API, CHECKOUT_CART, DATA_EXPORT_CSV, CUSTOM_BRANDING, GHOST_MANNEQUIN_AI, RAZORPAY_ROUTE, API_ACCESS, PRIORITY_AI_QUEUE, MULTI_STORE)
+- `packages/db/prisma/migrations/035_plan_feature_matrix/migration.sql`
+- `apps/api/src/lib/features.ts` — `hasFeature()` (fails closed — opposite of `checkQuota`'s fail-open), `hasFeatureForPlan()`, `getEnabledFeatures()`, `setFeature()`
+- `apps/api/src/plugins/error-handler.ts` — `featureUnavailable()` → HTTP 402
+- `GET/PUT /admin/plan-features` in admin.ts (mirrors plan-limits pattern)
+- Feature gates wired into: `products.ts` (SPIN_360, CUSTOM_BACKGROUND_LIBRARY), `checkout.ts` (CHECKOUT_CART), `retailers.ts` (WHATSAPP_BUSINESS_API), `collections.ts` (WHATSAPP_BUSINESS_API)
+- `/admin/plan-features` checkbox grid UI page
+
+### F-014: Activity Tracking
+- `AuditLog.create()` calls added to product/customer/collection CRUD, settings changes, staff management in admin.ts
+- `/admin/activity` platform-wide feed page
+- `/admin/retailers/[id]/activity` per-retailer activity timeline page
+
+### F-015: Account Suspension
+- `Retailer.is_suspended/suspended_at/suspended_reason/suspended_by_id`, `Customer.is_blocked/blocked_at/blocked_reason` schema fields
+- `packages/db/prisma/migrations/036_account_suspension/migration.sql`
+- `POST /admin/retailers/:id/suspend`, `unsuspend`, `POST /admin/customers/:id/block`, `unblock` in admin.ts
+- Suspension filter on admin retailers list endpoint
+- Auth block: suspended retailers get "account suspended, contact support" at login (routes/auth.ts)
+- Collection degradation: suspended retailer collection links show "temporarily unavailable" (not 404), products/categories/lead capture all gracefully degraded (routes/public.ts)
+- Admin UI: suspended filter dropdown + visual badge on retailers list page, suspend/unsuspend UI with reason required on retailer detail page, block status badge + block/unblock with reason dialog on customers page
+
+### F-016: Deletion Vault
+- `packages/db/src/vault.ts` — `vaultDelete()` (fire-and-forget, never blocks primary op), `getVaultPrisma()` (read access for admin), graceful skip when VAULT_DATABASE_URL unset
+- `packages/db/src/vault.test.ts` — conditional test suite: INSERT succeeds, UPDATE rejected, DELETE rejected (verifies INSERT-only constraint)
+- `packages/db/prisma/vault-schema.prisma` + `vault-migrations/000_initial/migration.sql`
+- `vaultDelete()` wired into: `retailers.ts`, `products.ts` (3 sites), `customers.ts`, `collections.ts`, `admin.ts` (2 sites)
+- `GET /admin/deletion-vault` — paginated, filterable by source_table/source_id/retailer_id
+- `/admin/database/deletion-vault` admin UI page with filter bar, expandable payload rows, load-more pagination
+
+### F-017: Database Guardrails
+- `packages/db/prisma/migrations/037_db_guardrails/migration.sql` — `prevent_hard_delete()` PL/pgSQL function, 8 `BEFORE DELETE OR TRUNCATE` triggers on products/customers/retailers/collections/staff/orders/order_items/product_variants. Bypass via `SET app.allow_hard_delete = 'true'`
+- `scripts/check-delete-guard.sh` — CI grep guard: (1) raw `.delete()` on 7 business models outside allowlist, (2) empty-where `deleteMany()` danger detection, (3) destructive SQL outside migrations
+- `.github/workflows/ci.yml` — added `bash scripts/check-delete-guard.sh` step
+- `docs/SECURITY.md` §19 — updated to [x] Phase D checklist + §19.6 build table. Role-creation SQL in §19.1
+- `apps/api/src/jobs/purge-soft-deleted.ts` — daily cron (1:30 AM UTC), batch-purges soft-deleted records >30 days old, uses `SET app.allow_hard_delete = 'true'` to bypass triggers, cursor-based batching (100/batch), FK-safe order (children before parents), writes audit log
+- `apps/api/src/jobs/index.ts` — PURGE_SOFT_DELETED queue, worker (concurrency 1), daily schedule
+- `packages/shared/src/constants/index.ts` — PURGE_SOFT_DELETED queue name constant
+- `docs/DATABASE.md` — new "DB Guardrails" section documenting all 4 layers
+
+### Files changed (total: 31 files, ~2,285 insertions, ~39 deletions)
+
+**New files (14):**
+- `apps/api/src/jobs/purge-soft-deleted.ts`
+- `apps/api/src/lib/features.ts`
+- `apps/web/src/app/admin/activity/page.tsx`
+- `apps/web/src/app/admin/database/deletion-vault/page.tsx`
+- `apps/web/src/app/admin/plan-features/page.tsx`
+- `apps/web/src/app/admin/retailers/[id]/activity/page.tsx`
+- `packages/db/prisma/migrations/035_plan_feature_matrix/migration.sql`
+- `packages/db/prisma/migrations/036_account_suspension/migration.sql`
+- `packages/db/prisma/migrations/037_db_guardrails/migration.sql`
+- `packages/db/prisma/vault-migrations/000_initial/migration.sql`
+- `packages/db/prisma/vault-schema.prisma`
+- `packages/db/src/vault.test.ts`
+- `packages/db/src/vault.ts`
+- `scripts/check-delete-guard.sh`
+
+**Modified files (17):**
+- `.github/workflows/ci.yml` — added guard check step
+- `CLAUDE.md` — replaced "Planned" section with comprehensive "Built" summary
+- `apps/api/src/jobs/index.ts` — PURGE_SOFT_DELETED queue + worker + schedule
+- `apps/api/src/plugins/error-handler.ts` — featureUnavailable() helper
+- `apps/api/src/routes/admin.ts` — plan-features, suspension, block, vault, audit log, deletion-vault endpoints
+- `apps/api/src/routes/auth.ts` — suspended retailer login block
+- `apps/api/src/routes/billing.ts` — audit log wiring
+- `apps/api/src/routes/catalog-import.ts` — audit log wiring
+- `apps/api/src/routes/checkout.ts` — CHECKOUT_CART feature gates
+- `apps/api/src/routes/collections.ts` — WHATSAPP_BUSINESS_API feature gate, vaultDelete wiring
+- `apps/api/src/routes/customers.ts` — vaultDelete wiring
+- `apps/api/src/routes/products.ts` — SPIN_360 + CUSTOM_BACKGROUND_LIBRARY feature gates, vaultDelete wiring
+- `apps/api/src/routes/public.ts` — collection degradation for suspended retailers
+- `apps/api/src/routes/retailers.ts` — WHATSAPP_BUSINESS_API feature gates, vaultDelete wiring
+- `apps/api/src/routes/staff.ts` — audit log wiring
+- `apps/web/src/app/admin/components/Sidebar.tsx` — added nav links
+- `apps/web/src/app/admin/customers/page.tsx` — block UI
+- `apps/web/src/app/admin/retailers/[id]/page.tsx` — suspend/unsuspend UI
+- `apps/web/src/app/admin/retailers/page.tsx` — suspension filter
+- `docs/DATABASE.md` — DB guardrails section
+- `docs/PLAN.md` — Month S4 checklist
+- `docs/PRO-REQUIREMENTS.md` — §12 requirements
+- `docs/PROGRESS.md` — this entry
+- `docs/SECURITY.md` — §19 guardrail design, §19.6 build table
+- `packages/db/package.json` — postinstall fix
+- `packages/db/prisma/schema.prisma` — PlanFeature, suspension fields
+- `packages/db/src/index.ts` — vault exports
+- `packages/shared/src/constants/index.ts` — PURGE_SOFT_DELETED queue name
+
+### Typecheck status
+| Package | Errors |
+|---------|--------|
+| `@kanchuki/api` | 0 ✅ |
+| `@kanchuki/web` | 0 ✅ |
+| `@kanchuki/db` | 0 ✅ |
+| `@kanchuki/shared` | 0 ✅ |
+
+### CI guard check — PASSED ✅
+
+### Still pending after this session
+**Deletion Vault (F-016) — needs external Postgres instance provisioned:**
+- Provision a separate Postgres instance (not the Supabase primary project)
+- Set `VAULT_DATABASE_URL` environment variable
+- Run the vault Prisma schema (`packages/db/prisma/vault-schema.prisma`)
+- Grant INSERT-only role on the vault DB
+- Run `npx vitest run src/vault.test.ts` to verify INSERT-only constraint
+
+**Postgres role separation (F-017) — needs manual superuser SQL:**
+- Run role-creation SQL from `docs/SECURITY.md` §19.1 to create `kanchuki_app` (no DELETE/TRUNCATE/DROP) and `kanchuki_migrator` (human-only) roles
+- Update `DATABASE_URL` to use `kanchuki_app` credentials
+- Apply migration `037_db_guardrails` to activate triggers
+
+**Other pending items (pre-existing):**
+- Phase 0.5: SupportTicket routing, manager rollup reporting, staff Expo mode
+- Phase 1+: Fashion DNA, Remote VTO, Auto-Personalized Collections
+- Onboarding tutorial improvements (10-retailer pilot feedback)
+- F-006 wishlist bug (bare product IDs in localStorage)

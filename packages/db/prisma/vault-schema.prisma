@@ -1,0 +1,39 @@
+// F-016 Deletion Vault — separate database for retailer-deleted data.
+// Written at soft-delete time, INSERT-only from the application layer.
+// The DB role behind VAULT_DATABASE_URL grants only INSERT — no UPDATE,
+// no DELETE, not even for the app itself.
+//
+// See docs/DATABASE.md "Deletion Vault — Secondary Database" and
+// docs/PRO-REQUIREMENTS.md §12.4 for full requirements.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/vault"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("VAULT_DATABASE_URL")
+}
+
+// One row per delete event. Payload is the full row as JSON at time of
+// deletion — enough to reconstruct the record if it needs to be restored.
+model DeletedRecord {
+  id            String   @id @default(cuid())
+  source_table  String   // e.g. "products", "customers", "collections", "retailers"
+  source_id     String   // original row's primary key
+  retailer_id   String?
+
+  // Full JSON snapshot of the row at deletion time. Contains every column
+  // that was in the record — enough for admin to inspect or manually restore.
+  payload       Json
+
+  delete_reason String?  // "user_delete" | "admin_bulk_delete" | "purge" | null
+  deleted_by    String?  // actor id (retailer/staff/admin id)
+
+  deleted_at    DateTime @default(now())
+
+  @@index([source_table, source_id])
+  @@index([retailer_id])
+  @@map("deleted_records")
+}

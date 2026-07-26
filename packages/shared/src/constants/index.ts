@@ -257,6 +257,7 @@ export const QUEUES = {
   SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
   DATABASE_BACKUP: 'kanchuki-database-backup',
   GHOST_MANNEQUIN: 'kanchuki-ghost-mannequin',
+  PURGE_SOFT_DELETED: 'kanchuki-purge-soft-deleted',
 } as const;
 
 // ─── Cache TTLs (seconds) ─────────────────────────────────────────

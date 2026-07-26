@@ -181,7 +181,13 @@ model Retailer {
   // Onboarding
   onboarding_completed Boolean @default(false)
   onboarding_step      Int     @default(0)
-  
+
+  // Suspension (F-015, planned) — reversible, distinct from deleted_at (soft-delete)
+  is_suspended     Boolean  @default(false)
+  suspended_at     DateTime?
+  suspended_reason String?
+  suspended_by_id  String?  // TeamMember.id
+
   // Timestamps
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -198,10 +204,12 @@ model Retailer {
   onboarded_by   TeamMember?  @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
   support_owner  TeamMember?  @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
   support_tickets SupportTicket[]
+  suspended_by   TeamMember?  @relation("SuspendedRetailers", fields: [suspended_by_id], references: [id])
   
   @@index([phone])
   @@index([city])
   @@index([territory_id])
+  @@index([is_suspended])
   @@map("retailers")
 }
 
@@ -381,7 +389,13 @@ model Customer {
   last_visit_at   DateTime?
   total_purchases Int @default(0)
   total_spent     Decimal @default(0)
-  
+
+  // Abuse flag (F-015, planned) — customers have no login (Section 2.2 PRO-REQUIREMENTS),
+  // so "suspend" means blocking new enquiries/checkout, not an account lock
+  is_blocked     Boolean  @default(false)
+  blocked_at     DateTime?
+  blocked_reason String?
+
   // Timestamps
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
@@ -624,6 +638,7 @@ model TeamMember {
   onboarded_retailers Retailer[] @relation("OnboardedRetailers")
   supported_retailers Retailer[] @relation("SupportedRetailers")
   assigned_tickets    SupportTicket[]
+  suspended_retailers Retailer[] @relation("SuspendedRetailers")
 
   @@index([email])
   @@map("team_members")
@@ -773,6 +788,44 @@ model TryOnJob {
   @@index([retailer_id])
   @@index([status])
   @@map("try_on_jobs")
+}
+
+// ─────────────────────────────────────────────
+// PLAN FEATURE MATRIX (F-013, planned)
+// Boolean twin of the numeric plan_limits table (F-010, already built —
+// see PRO-REQUIREMENTS.md F-010). plan_limits handles counts (products,
+// try-ons); PlanFeature handles on/off (360 spin, checkout, API access).
+// Same admin-grid pattern, same fail behavior philosophy inverted:
+// checkQuota() fails OPEN on a missing row, hasFeature() fails CLOSED.
+// ─────────────────────────────────────────────
+
+enum PlanFeatureKey {
+  BULK_ONBOARDING_IMPORT
+  CUSTOM_BACKGROUND_LIBRARY
+  SPIN_360
+  VIRTUAL_TRY_ON
+  WHATSAPP_BUSINESS_API
+  CHECKOUT_CART
+  DATA_EXPORT_CSV
+  CUSTOM_BRANDING
+  GHOST_MANNEQUIN_AI
+  RAZORPAY_ROUTE
+  API_ACCESS
+  PRIORITY_AI_QUEUE
+  MULTI_STORE
+}
+
+model PlanFeature {
+  id           String          @id @default(cuid())
+  plan         SubscriptionPlan
+  feature_key  PlanFeatureKey
+  enabled      Boolean         @default(false)
+
+  updated_at   DateTime @updatedAt
+  updated_by_id String? // TeamMember.id — who last toggled this
+
+  @@unique([plan, feature_key])
+  @@map("plan_features")
 }
 
 // ─────────────────────────────────────────────
@@ -969,6 +1022,12 @@ ALTER TABLE collections ENABLE ROW LEVEL SECURITY;
 CREATE POLICY public_collection_read ON collections
   FOR SELECT TO anon
   USING (status = 'ACTIVE' AND deleted_at IS NULL);
+
+-- plan_features (F-013, planned): same deny-all-except-admin pattern as
+-- plan_limits and background_images — no retailer-facing policy at all,
+-- read via a service-role admin API endpoint only.
+ALTER TABLE plan_features ENABLE ROW LEVEL SECURITY;
+-- (no policies defined = default deny for authenticated/anon roles)
 ```
 
 ---
@@ -987,6 +1046,151 @@ CREATE POLICY public_collection_read ON collections
 | Soft-deleted records | 30 days then hard delete | Cron cleanup |
 | Orders (F-302, planned) | 7 years | Same GST/IT compliance window as SubscriptionPayment |
 | Retailer Razorpay keys (F-302, planned) | Until retailer disconnects the account | Deleted, not soft-deleted — see `docs/SECURITY.md` §11 |
+| Deletion Vault records (F-016, planned) | Indefinite by default | Written at soft-delete time; hard-purge only via manual audited admin action, never automatic |
+
+---
+
+## Deletion Vault — Secondary Database (F-016, planned)
+
+**Not part of this `schema.prisma`.** A genuinely separate Postgres instance (own provider, own credentials — NOT another schema/dataset on the same Supabase project), connected via a new `VAULT_DATABASE_URL`. Full requirements in `docs/PRO-REQUIREMENTS.md` §12.4; guardrail rationale in `docs/SECURITY.md` §19.
+
+```prisma
+// packages/db/prisma/vault-schema.prisma (separate Prisma schema, separate DB)
+
+model DeletedRecord {
+  id            String   @id @default(cuid())
+  source_table  String   // "products" | "customers" | "collections" | "retailers"
+  source_id     String
+  retailer_id   String?
+  payload       Json     // full row snapshot at time of deletion
+  delete_reason String?
+  deleted_by    String?  // actor id (retailer/staff/admin)
+  deleted_at    DateTime @default(now())
+
+  @@index([source_table, source_id])
+  @@index([retailer_id])
+}
+```
+
+The DB role behind `VAULT_DATABASE_URL` is granted `INSERT` only — no `UPDATE`, no `DELETE`, not even for the application. Once a `DeletedRecord` row is written, application code has no path to alter or remove it. This is the property that makes the vault meaningfully independent of "trust the app got the delete right" — see `docs/SECURITY.md` §19 for the full role-separation design shared with the primary DB's guardrails.
+
+---
+
+## DB Guardrails — Hard-Delete Protection (F-017, built 2026-07-26)
+
+A 4-layer guardrail system prevents accidental or malicious hard-deletes of
+business data. Application-layer soft-delete (`deleted_at = now()`) is the only
+way to remove data through normal API paths. Full rationale:
+`docs/SECURITY.md` §19.
+
+### Layer 1 — Postgres Role Separation (infra config)
+
+The app's runtime Postgres role (`kanchuki_app`) has `DELETE`/`TRUNCATE`/`DROP`/
+`ALTER`/`CREATE` revoked entirely. A separate `kanchuki_migrator` role holds
+those privileges and is **never** present in any `.env` file — human-only, via
+`prisma migrate deploy`. Role-creation SQL:
+`docs/SECURITY.md` §19.1.
+
+### Layer 2 — BEFORE DELETE OR TRUNCATE Triggers (migration 037)
+
+Even if `kanchuki_app` somehow retained DELETE privileges (misconfiguration,
+role-change mistake), DB-level triggers block hard deletes as a second barrier.
+
+**Migration:** `packages/db/prisma/migrations/037_db_guardrails/migration.sql`
+
+**Trigger function:**
+```sql
+CREATE OR REPLACE FUNCTION prevent_hard_delete() RETURNS trigger AS $$
+BEGIN
+  IF current_setting('app.allow_hard_delete', true) IS DISTINCT FROM 'true' THEN
+    RAISE EXCEPTION 'Hard delete blocked by guardrail trigger on % (F-017).
+      Use soft-delete (deleted_at) or SET app.allow_hard_delete = ''true''
+      for the purge cron.', TG_TABLE_NAME;
+  END IF;
+  RETURN OLD;
+END;
+$$ LANGUAGE plpgsql;
+```
+
+**How it works:**
+- `current_setting('app.allow_hard_delete', true)` reads a Postgres session-level
+  custom variable. The second argument (`true`) means "return empty string if the
+  setting is not set" instead of raising an error.
+- `IS DISTINCT FROM 'true'` evaluates to `TRUE` (block the delete) when the
+  setting is anything other than the literal string `'true'` — including unset
+  (returns `''`), misconfigured, or set to `'false'`.
+- When the setting IS `'true'`, the condition evaluates to `FALSE`, the
+  `RAISE EXCEPTION` is skipped, and the trigger returns `OLD` — allowing the
+  DELETE or TRUNCATE to proceed normally.
+- The trigger uses `FOR EACH STATEMENT` (not per-row) — this is required for
+  `TRUNCATE` compatibility, since `TRUNCATE` operates at the statement level
+  and cannot fire row-level triggers.
+
+**Tables protected (8 triggers):**
+
+| Table | Trigger Name | Purpose |
+|-------|-------------|---------|
+| `products` | `guard_products_delete` | Protect product catalog — use `deleted_at` instead |
+| `customers` | `guard_customers_delete` | Protect retailer CRM data — use `deleted_at` instead |
+| `retailers` | `guard_retailers_delete` | Protect account records — use `deleted_at` instead |
+| `collections` | `guard_collections_delete` | Protect collection links — use `deleted_at` instead |
+| `staff` | `guard_staff_delete` | Protect staff accounts — use `is_active = false` instead |
+| `orders` | `guard_orders_delete` | Protect order history (GST compliance) |
+| `order_items` | `guard_order_items_delete` | Protect order line items |
+| `product_variants` | `guard_product_variants_delete` | Protect color variants — use soft-delete instead |
+
+**To apply the migration:**
+```bash
+cd packages/db
+prisma migrate deploy
+```
+
+**To bypass for the 30-day purge cron:**
+```sql
+SET app.allow_hard_delete = 'true';
+-- Now DELETE/TRUNCATE work for this session only
+-- The setting lasts only as long as the DB connection
+```
+
+### Layer 3 — CI Grep Guard (`scripts/check-delete-guard.sh`)
+
+A CI script that scans for raw `.delete()` calls on business Prisma models
+outside an allowlist of known-safe paths. Runs in CI (`.github/workflows/ci.yml`)
+and locally. Blocks PRs that introduce:
+
+1. `prisma.<model>.delete()` or `prisma.<model>.deleteMany()` calls in
+   application code outside the allowlist (purge-cron, seed.ts, product purge
+   endpoint)
+2. Empty-args `deleteMany({})` (would delete ALL rows — flagged as DANGER)
+3. Raw `DELETE FROM` / `DROP TABLE` / `TRUNCATE` SQL outside migration files
+
+Allowlisted paths:
+- `apps/api/src/jobs/purge-soft-deleted.ts` — 30-day purge cron (once built)
+- `apps/api/src/routes/products.ts` — deliberate single-record hard-delete via
+  `DELETE /products/:id/purge` (retailer-triggered, owner-only)
+- `packages/db/prisma/seed.ts` — dev-only seed cleanup (never runs in production)
+
+### Layer 4 — Deletion Vault (F-016, independent recovery backstop)
+
+If all three layers above somehow fail (compromised `kanchuki_migrator`
+credentials, a Postgres admin-level breach), the Deletion Vault at
+`docs/DATABASE.md` "Deletion Vault" provides an independent copy of every
+soft-deleted record in a separate database that even the application cannot
+UPDATE or DELETE from.
+
+### Applying Guardrails to New Tables
+
+When adding a new business table:
+1. Add a `BEFORE DELETE OR TRUNCATE` trigger in the migration:
+   ```sql
+   CREATE TRIGGER guard_<table_name>_delete
+     BEFORE DELETE OR TRUNCATE ON <table_name>
+     FOR EACH STATEMENT EXECUTE FUNCTION prevent_hard_delete();
+   ```
+2. Add the Prisma model name to the `BUSINESS_MODELS` array in
+   `scripts/check-delete-guard.sh`
+3. Expose only soft-delete (`deleted_at`) at the API layer — never expose
+   hard-delete endpoints
 
 ---
 

@@ -966,3 +966,150 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 - Advanced analytics / BI
 - API for third-party integrations
 - POS / billing terminal
+
+---
+
+## 12. Admin Control Center — Plan Permission Matrix, Trust & Safety, Deletion Vault
+
+**Status:** Approved requirement (decided 2026-07-26), not yet built. Extends `docs/SECURITY.md` §12–18 (already-planned admin governance/backup infrastructure) rather than replacing it. Reuses the F-010 admin-grid pattern (`plan_limits` table + `/admin/plan-limits` UI) for the new boolean feature matrix instead of inventing a second admin-config system.
+
+### 12.1 F-013: Plan Feature Matrix (Admin-Configurable Checkbox Grid)
+
+**Priority:** P1 — needed before Growth/Pro tiers are marketed as functionally different from Starter, not just quota-different.
+
+**Problem:** F-010 already lets admin set *numeric* limits per plan (products, AI tagging calls, try-ons) with zero-deploy edits. There is no equivalent for *boolean* features — today every plan can technically use 360° spin, custom backgrounds, checkout, etc.; the pricing table in Section 6 implies differentiation that isn't enforced anywhere.
+
+**Design:** A second admin grid, same shape as `plan_limits`, boolean instead of numeric:
+
+| Feature | Starter | Growth | Pro |
+|---|:---:|:---:|:---:|
+| Product catalog + AI auto-tagging (F-001) | ✅ | ✅ | ✅ |
+| WhatsApp collection links (F-005/F-006) | ✅ | ✅ | ✅ |
+| In-store AI search (F-004) | ✅ | ✅ | ✅ |
+| Regional language UI (F-306) | ✅ | ✅ | ✅ |
+| Bulk/guided onboarding import (F-001d) | ❌ | ✅ | ✅ |
+| Custom background library (F-011) | ❌ | ✅ | ✅ |
+| 360° product spin view | ❌ | ✅ | ✅ |
+| Virtual try-on (F-102) | ❌ | ✅ | ✅ |
+| WhatsApp Business API, bring-your-own (F-009 §5) | ❌ | ✅ | ✅ |
+| Shopping cart / online checkout (F-302) | ❌ | ✅ | ✅ |
+| Data export (CSV) | ❌ | ✅ | ✅ |
+| Custom branding on collection page | ❌ | ✅ | ✅ |
+| Ghost-mannequin AI catalog generation (F-001e) | ❌ | ❌ | ✅ |
+| Razorpay Route split-payments (F-307) | ❌ | ❌ | ✅ |
+| API access (external integrations) | ❌ | ❌ | ✅ |
+| Priority AI tagging queue | ❌ | ❌ | ✅ |
+| Multi-store management (F-305) | ❌ | ❌ | ✅ |
+
+Defaults above are a starting proposal — admin edits every cell live, no deploy, same as `plan_limits`. Two more resources join F-010's *numeric* `QuotaResourceType` enum rather than this boolean table, since they're counts, not on/off: `TEAM_SEATS` (Starter 1 / Growth 3 / Pro 10, over-cap via existing ₹199/mo add-on) and `STORAGE_MB` (Starter 2GB / Growth 10GB / Pro 50GB, aggregate R2 usage across products/backgrounds/spin frames).
+
+**Implementation shape (build time):**
+- `PlanFeature` table: `(plan, feature_key, enabled, updated_at, updated_by_id)` — see `docs/DATABASE.md`
+- `PlanFeatureKey` enum — one entry per row above
+- `GET/PUT /admin/plan-features` — mirrors `GET/PUT /admin/plan-limits`
+- `/admin/plan-features` web page — checkbox grid, mirrors `/admin/plan-limits` numeric grid
+- `hasFeature(retailerId, featureKey)` helper (mirrors `checkQuota`) — **fails closed** (feature OFF) when no row exists, opposite of `checkQuota`'s fail-open, since an unconfigured feature should not silently unlock
+- Gate every plan-gated route/screen behind `hasFeature()` at the API layer (never trust a client-side plan check alone)
+
+**Acceptance Criteria:**
+- Admin can toggle any feature for any plan without a deploy
+- A Starter retailer hitting a Growth+ feature gets a clear "upgrade to unlock" response, not a silent failure
+- `hasFeature()` fails closed on missing config (unlike `checkQuota`'s fail-open) — a new feature ships disabled everywhere until admin explicitly turns it on
+
+---
+
+### 12.2 F-014: Retailer & Customer Activity Tracking (Admin Visibility)
+
+**Priority:** P1
+
+**Problem:** Retailer-side mutations are only partially logged (`AuditLog` schema exists but few routes actually write to it — see `docs/SECURITY.md` §18 gap). Customer behavior (views/favorites/enquiries) is already captured per-retailer via `CustomerInteraction` (F-008's analytics source) but has no cross-retailer admin view — today an admin can't see "what is retailer X doing" or "what is customer Y doing" in one place.
+
+**Design — reuse existing data, add the missing admin surface, don't invent a second tracking system:**
+- **Retailer/staff activity** — every mutating admin-relevant action (login, product create/edit/delete, settings change, payment account change, plan change) writes to the existing `AuditLog` with `actor_type: "retailer"|"staff"`. Today most routes don't call this — closing that gap is the actual build work, not new schema.
+- **Customer behavior** — already collected in `CustomerInteraction` (view/favorite/enquiry/purchase/try_on) per F-008. No new table needed.
+- **New admin pages only:**
+  - `/admin/retailers/:id/activity` — timeline of that retailer's `AuditLog` entries + login history
+  - `/admin/retailers/:id/customers/:customerId/activity` — that customer's `CustomerInteraction` timeline (views, favorites, enquiries) across all of that retailer's collections
+  - `/admin/activity` — platform-wide feed, filterable by actor type/retailer/date, for anomaly spotting (e.g., one retailer suddenly deleting 200 products)
+
+**Acceptance Criteria:**
+- Every product/customer/collection/settings mutation by a retailer or staff member is visible in `/admin/retailers/:id/activity` within seconds
+- Admin can see a specific customer's full interaction history without querying the DB directly
+- Platform-wide activity feed flags high-volume delete/edit bursts (simple threshold, not ML — e.g., >20 deletes/hour from one retailer)
+
+---
+
+### 12.3 F-015: Account Suspension (Admin-Controlled)
+
+**Priority:** P1 — currently the only account-disable path is soft-delete (F-009), which is permanent-leaning and customer-facing collection links go dark immediately. Suspension needs to be reversible and distinct from delete.
+
+**Design:**
+- `Retailer.is_suspended` + `suspended_at` + `suspended_reason` + `suspended_by_id` (FK `TeamMember`) — see `docs/DATABASE.md`
+- Suspended retailer: API login blocked (clear "account suspended, contact support" message, not a generic auth error), all their collection links show a "temporarily unavailable" page instead of 404 (avoids leaking suspension as a customer-visible error), mobile app shows a suspended-state screen instead of the normal dashboard
+- Reversible — admin can unsuspend, `AuditLog` records both actions with reason
+- Same mechanism for `TeamMember` (internal staff) reusing existing `is_active` flag, with `suspended_reason`/`suspended_by_id` added for audit parity
+- Customers have no login in this app (Section 2.2) — "suspend a customer" instead means **block/flag** for abuse (e.g., enquiry spam, fraudulent order attempts on F-302 checkout): `Customer.is_blocked` + `blocked_reason`. A blocked customer's enquiries/checkout attempts are rejected server-side; existing retailer-owned CRM data is untouched (retailer still sees the customer record, sees the block flag).
+
+**Acceptance Criteria:**
+- Admin can suspend/unsuspend any retailer or staff account from the admin panel, reason required, logged to `AuditLog`
+- A suspended retailer cannot log in; their live collection links degrade gracefully (no 404, no data leak)
+- A blocked customer cannot submit new enquiries or checkout on F-302, without affecting the retailer's own view of that customer's history
+
+---
+
+### 12.4 F-016: Deletion Vault — Secondary Database for Retailer-Deleted Data
+
+**Priority:** P1 — distinct from the already-planned Cold Backup (`docs/SECURITY.md` §13, whole-DB periodic dumps). This is a **per-delete-event** copy, triggered the moment something is soft-deleted, not a periodic snapshot.
+
+**Problem:** Today soft-deleted rows (`deleted_at` set) live in the same primary Supabase DB and a cron purges them after 30 days (`docs/DATABASE.md` Data Retention Policy). If the primary DB is compromised, mis-migrated, or a retailer disputes a deletion after the 30-day window, there's no independent copy.
+
+**Design — a genuinely separate database, not a second schema on the same instance:**
+- New Postgres instance (Railway/Hetzner/Neon — provider TBD at build time, must NOT be the same Supabase project as primary), connection via a new `VAULT_DATABASE_URL`
+- Single generic table, not a 1:1 mirror of every model — one row per delete event: `DeletedRecord (id, source_table, source_id, retailer_id, payload JSONB, delete_reason, deleted_by, deleted_at)` — `payload` is the full row as JSON at time of deletion
+- Written by the same application code path that sets `deleted_at` on the primary — one shared `vaultDelete()` helper wraps every soft-delete call site, so it can't be forgotten per-route
+- **The DB role behind `VAULT_DATABASE_URL` has INSERT-only grants — no UPDATE, no DELETE, not even for the app itself.** A vault entry, once written, cannot be altered or removed by application code at all — only a human with direct DB admin access could purge it. This is what makes it meaningfully independent of "trust the app got it right."
+- Retention: indefinite by default (it's small — one row per delete, not per active record); admin can hard-purge a specific retailer's vault entries only via a manual, audited, human-triggered action (e.g., GST-compliance-driven right-to-erasure request), never automatically
+
+**Acceptance Criteria:**
+- Every soft-delete of a Product/Customer/Collection/Retailer writes a full-payload snapshot to the vault DB before or atomically with the primary-DB soft-delete
+- Vault DB credentials used by the app grant INSERT only — verified by attempting an UPDATE/DELETE against the vault connection and confirming it's rejected at the DB permission level, not just application logic
+- Admin can look up and restore a specific deleted record's payload from `/admin/database/deletion-vault` (view-only in v1; restore-to-primary is a manual admin action, not automated)
+- 30-day primary-DB purge cron is unaffected — the vault entry already exists independently before the cron ever runs
+
+---
+
+### 12.5 F-017: Database Guardrails — Preventing AI-Agent/Application Delete Access
+
+**Priority:** P0 — this is the direct answer to "how do I stop an AI coding agent or a code bug from deleting anything," not a nice-to-have. Full technical design in `docs/SECURITY.md` new §19 — this entry is the requirements summary.
+
+**Problem:** `docs/SECURITY.md` §15 already states AI agents "must never" run migrations or destructive commands — but that's a written policy, not a technical control. An agent (or a careless PR) with the same `DATABASE_URL` as the API server *can* physically issue `DELETE`/`DROP`/`TRUNCATE` today; nothing at the database level stops it.
+
+**What closes the gap (see SECURITY.md §19 for full detail):**
+1. **Postgres role separation** — the app's runtime role (used by the API server, local dev, and any AI coding agent's `DATABASE_URL`) has its `DELETE`/`TRUNCATE`/`DROP`/`ALTER`/`CREATE` grants revoked entirely. A separate migrator role, with those privileges, is never present in any `.env` the app or an agent reads — only used interactively by a human running `prisma migrate deploy`.
+2. **`BEFORE DELETE OR TRUNCATE` DB triggers** on every business table, raising an exception unless a session flag only the 30-day purge cron sets — belt-and-suspenders even if the app role somehow retained DELETE.
+3. **No raw `.delete()` in application code for business models** — enforced by a CI grep check (parallel to the existing secrets-scanning pre-commit hook in §15.4), allowlisting only the purge-cron file.
+4. **F-016's Deletion Vault** as the actual recovery path if every other layer somehow fails.
+5. **Env separation already partially stated in §15.4, now made concrete**: production `DATABASE_URL`/`VAULT_DATABASE_URL` never appear in any file an AI coding agent's working directory can read; local/agent dev points at a local or branched dev database only.
+
+**Acceptance Criteria:**
+- Running `DELETE FROM products;` (no WHERE) with the app's runtime DB credentials fails with a Postgres permission error, independent of any application-code guard
+- CI fails a PR that introduces a raw `.delete()` call on a business Prisma model outside the allowlisted purge-cron file
+- The migrator role's credentials do not appear in `.env.example`, `.env`, Railway env vars used by the API service, or anywhere an AI coding agent's session would read them
+
+---
+
+### 12.6 Other Admin Controls — Suggestions (Not Yet Scoped as Features)
+
+Beyond retailer/customer management, permission matrix, and DB guardrails, worth admin control per this domain (SaaS platform ops for Indian SMB retail):
+
+- **Maintenance mode / platform-wide banner** — take the customer PWA into a read-only or "back soon" state during a migration, without a deploy
+- **Fraud/abuse thresholds** — auto-flag (not auto-block) unusual patterns: one retailer creating 500 products in an hour, one customer hitting checkout on 20 different retailers in a day, repeated failed OTP attempts
+- **AI cost budget alerts** — per Key Risk #4 (CLAUDE.md) — admin-set monthly ₹ ceiling on Claude Vision/try-on spend with email alert at 80%/100%, since margin is already tight at ₹999/month
+- **Uploaded-photo content moderation** — spot-check or auto-flag queue for inappropriate uploads (product photos are public on collection links)
+- **Retailer impersonation / "view as"** for support — admin can see exactly what a retailer sees, logged, time-limited, without knowing their password
+- **Terms of Service / consent-copy version tracking** — F-102d already needs legal review of consent text; admin should be able to publish a new version and see which retailers/customers accepted which version
+- **Geographic/IP blocking** — block signups or requests from specific regions/IP ranges if abuse concentrates there
+- **Webhook/integration health monitor** — Razorpay webhook failures (F-302), WhatsApp API errors — surfaced to admin instead of silently failing in logs
+- **Notification template management** — the SMS/email/WhatsApp template copy sent to retailers, editable without a deploy
+
+These are backlog candidates, not committed features — flag to user for prioritization before building.

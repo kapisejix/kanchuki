@@ -1,11 +1,12 @@
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { prisma, vaultDelete } from '@kanchuki/db';
 import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
 import { R2_PATHS, generateCollectionSlug } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { notFound, validationError } from '../plugins/error-handler.js';
+import { hasFeature } from '../lib/features.js';
+import { featureUnavailable, notFound, validationError } from '../plugins/error-handler.js';
 
 function periodStart(period: QuotaPeriod, now = new Date()): Date {
   if (period === 'DAY') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -84,6 +85,18 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
       data: body.data,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { updated_fields: Object.keys(body.data) },
+        ip_address: request.ip,
+      },
     });
 
     return { data: updated };
@@ -222,6 +235,18 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       kyc_status = submitted.kyc_status;
     }
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { kyc_update: doc_type },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: { kyc_status } };
   });
 
@@ -229,7 +254,11 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   // When configured, collection bulk-send (POST /collections/:id/bulk-send)
   // uses this instead of the one-by-one wa.me flow.
 
+  // F-013: gated behind WHATSAPP_BUSINESS_API feature.
   server.get('/me/whatsapp-api', async (request) => {
+    if (!(await hasFeature(request.retailerId, 'WHATSAPP_BUSINESS_API'))) {
+      return { data: null };
+    }
     const retailer = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
       select: {
@@ -245,7 +274,11 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
+  // F-013: gated behind WHATSAPP_BUSINESS_API feature.
   server.patch('/me/whatsapp-api', async (request) => {
+    if (!(await hasFeature(request.retailerId, 'WHATSAPP_BUSINESS_API'))) {
+      throw featureUnavailable('WhatsApp Business API');
+    }
     const body = z
       .object({
         phone_number_id: z.string().min(1).max(100),
@@ -277,10 +310,26 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       },
       select: { whatsapp_api_phone_number_id: true, whatsapp_api_configured_at: true },
     });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { whatsapp_api: 'configured' },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: { ...updated, configured: true } };
   });
 
+  // F-013: gated behind WHATSAPP_BUSINESS_API feature.
   server.delete('/me/whatsapp-api', async (request, reply) => {
+    if (!(await hasFeature(request.retailerId, 'WHATSAPP_BUSINESS_API'))) {
+      throw featureUnavailable('WhatsApp Business API');
+    }
     await prisma.retailer.update({
       where: { id: request.retailerId },
       data: {
@@ -291,6 +340,18 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         whatsapp_api_configured_at: null,
       },
     });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { whatsapp_api: 'disconnected' },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 
@@ -518,6 +579,19 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       },
       select: { onboarding_step: true, onboarding_completed: true },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { onboarding_step: body.data.step, completed: body.data.completed ?? false },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
@@ -550,6 +624,18 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       data: { public_slug: slug },
       select: { public_slug: true },
     });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { public_slug_created: true, slug: updated.public_slug },
+        ip_address: request.ip,
+      },
+    });
+
     return {
       data: {
         public_slug: updated.public_slug,
@@ -577,6 +663,18 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       data: { storefront_collection_id: body.data.collection_id },
       select: { storefront_collection_id: true },
     });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { storefront_collection_id: body.data.collection_id },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
@@ -674,6 +772,11 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!existing) throw notFound('Retailer');
 
+    // Fetch collections before archiving for vault snapshots
+    const collectionsBeforeDelete = await prisma.collection.findMany({
+      where: { retailer_id: retailerId, deleted_at: null },
+    });
+
     // Soft-delete retailer + archive all collections + deactivate staff
     await Promise.all([
       prisma.retailer.update({
@@ -689,6 +792,41 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
         data: { is_active: false },
       }),
     ]);
+
+    // F-016: Vault snapshot of the deleted retailer (fire-and-forget)
+    vaultDelete({
+      source_table: 'retailers',
+      source_id: retailerId,
+      retailer_id: retailerId,
+      payload: existing as unknown as Record<string, unknown>,
+      delete_reason: 'user_delete',
+      deleted_by: retailerId,
+    });
+    // F-016: Vault snapshot of each archived collection (fire-and-forget)
+    Promise.allSettled(
+      collectionsBeforeDelete.map((c) =>
+        vaultDelete({
+          source_table: 'collections',
+          source_id: c.id,
+          retailer_id: retailerId,
+          payload: c as unknown as Record<string, unknown>,
+          delete_reason: 'user_delete',
+          deleted_by: retailerId,
+        }),
+      ),
+    );
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Retailer',
+        resource_id: retailerId,
+        metadata: { soft_delete: true },
+        ip_address: request.ip,
+      },
+    });
 
     return reply.status(204).send();
   });
@@ -710,6 +848,19 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     const section = await prisma.storeSection.create({
       data: { retailer_id: request.retailerId, ...body.data },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'create',
+        resource_type: 'StoreSection',
+        resource_id: section.id,
+        metadata: { name: section.name, type: section.type },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(201).send({ data: section });
   });
 
@@ -727,11 +878,29 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: body.data,
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'StoreSection',
+        resource_id: id,
+        metadata: { name: updated.name, updated_fields: Object.keys(body.data) },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
   server.delete('/me/sections/:id', async (request, reply) => {
     const { id } = request.params as { id: string };
+
+    const existing = await prisma.storeSection.findFirst({
+      where: { id, retailer_id: request.retailerId },
+    });
+    if (!existing) throw notFound('Section');
 
     const inUse = await prisma.product.count({
       where: { section_id: id, retailer_id: request.retailerId, deleted_at: null },
@@ -741,6 +910,19 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
     }
 
     await prisma.storeSection.delete({ where: { id } });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'StoreSection',
+        resource_id: id,
+        metadata: { name: existing.name },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 };

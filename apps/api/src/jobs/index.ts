@@ -2,6 +2,7 @@ import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { handleBackupDatabase } from './backup-database.js';
+import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
 import { handleExpirePendingOrders } from './expire-pending-orders.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
@@ -44,6 +45,7 @@ let fashionDNAQueue: Queue | null = null;
 let spinFrameQueue: Queue | null = null;
 let backupQueue: Queue | null = null;
 let ghostMannequinQueue: Queue | null = null;
+let purgeQueue: Queue | null = null;
 
 function getTaggingQueue(): Queue {
   taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() });
@@ -93,6 +95,11 @@ function getBackupQueue(): Queue {
 function getGhostMannequinQueue(): Queue {
   ghostMannequinQueue ??= new Queue(QUEUES.GHOST_MANNEQUIN, { connection: getRedis() });
   return ghostMannequinQueue;
+}
+
+function getPurgeQueue(): Queue {
+  purgeQueue ??= new Queue(QUEUES.PURGE_SOFT_DELETED, { connection: getRedis() });
+  return purgeQueue;
 }
 
 // ─── Job Producers ────────────────────────────────────────────────
@@ -256,6 +263,15 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 1 },
   );
 
+  // Purge-soft-deleted worker (concurrency 1 — DB-bound, runs daily)
+  const purgeWorker = new Worker(
+    QUEUES.PURGE_SOFT_DELETED,
+    async () => {
+      await handlePurgeSoftDeleted();
+    },
+    { connection: redis, concurrency: 1 },
+  );
+
   // Ghost-mannequin worker (concurrency 2 — Snappyit API calls are network-bound)
   const ghostMannequinWorker = new Worker(
     QUEUES.GHOST_MANNEQUIN,
@@ -264,6 +280,17 @@ export async function startWorkers(): Promise<void> {
       await handleGhostMannequin(data);
     },
     { connection: redis, concurrency: 2 },
+  );
+
+  // Schedule purge-soft-deleted to run daily at 1:30 AM UTC (before cleanup at 2:00 AM)
+  await getPurgeQueue().add(
+    'purge-soft-deleted',
+    {},
+    {
+      repeat: { pattern: '30 1 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
   );
 
   // Database backup worker (concurrency 1 — I/O bound, only one backup at a time)
@@ -357,6 +384,10 @@ export async function startWorkers(): Promise<void> {
 
   ghostMannequinWorker.on('failed', (job, err) => {
     console.error(`[jobs] ghost-mannequin failed ${job?.id}:`, err.message);
+  });
+
+  purgeWorker.on('failed', (job, err) => {
+    console.error(`[jobs] purge-soft-deleted failed ${job?.id}:`, err.message);
   });
 
   backupWorker.on('failed', (job, err) => {

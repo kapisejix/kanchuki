@@ -194,6 +194,18 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       }),
     ]);
 
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'create',
+        resource_type: 'Subscription',
+        resource_id: rzpSub.id,
+        metadata: { plan, billing_period },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(201).send({
       data: { razorpay_subscription_id: rzpSub.id, checkout_url: rzpSub.short_url },
     });
@@ -240,6 +252,18 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     ]);
 
     request.log.info({ retailer_id: request.retailerId }, 'Subscription cancelled');
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Subscription',
+        resource_id: request.retailerId,
+        metadata: { cancelled: true },
+        ip_address: request.ip,
+      },
+    });
 
     return { data: { plan_status: 'CANCELLED', cancelled_at: new Date().toISOString() } };
   });
@@ -327,7 +351,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     });
 
     // Create pending QuotaAddonPurchase record
-    await prisma.quotaAddonPurchase.create({
+    const addonPurchase = await prisma.quotaAddonPurchase.create({
       data: {
         retailer_id: request.retailerId,
         resource_type: body.resource_type as QuotaResourceType,
@@ -335,6 +359,18 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
         amount_inr: pack.price_paise,
         status: 'PENDING',
         razorpay_order_id: paymentLink.id,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'create',
+        resource_type: 'QuotaAddonPurchase',
+        resource_id: addonPurchase.id,
+        metadata: { resource_type: body.resource_type, quantity: pack.pack_size },
+        ip_address: request.ip,
       },
     });
 

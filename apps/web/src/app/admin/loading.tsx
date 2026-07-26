@@ -12,6 +12,7 @@ import {
   AuditLogSkeleton,
   AddonPurchasesSkeleton,
   PlanLimitsSkeleton,
+  PlanFeaturesSkeleton,
   RetailerDetailSkeleton,
   BackupSkeleton,
   QuerySkeleton,
@@ -25,6 +26,8 @@ import {
   BackgroundImagesSkeleton,
   IntegrationsSkeleton,
   TeamMembersSkeleton,
+  ActivitySkeleton,
+  RetailerActivitySkeleton,
 } from '@/components/skeletons/Skeletons'
 
 function AdminLoading() {
@@ -41,6 +44,7 @@ function AdminLoading() {
     if (pathname.startsWith('/admin/support-tickets')) return <SupportTicketsSkeleton />
     if (pathname.startsWith('/admin/audit-log')) return <AuditLogSkeleton />
     if (pathname.startsWith('/admin/addon-purchases')) return <AddonPurchasesSkeleton />
+    if (pathname.startsWith('/admin/plan-features')) return <PlanFeaturesSkeleton />
     if (pathname.startsWith('/admin/plan-limits')) return <PlanLimitsSkeleton />
     if (pathname.startsWith('/admin/database/backup')) return <BackupSkeleton />
     if (pathname.startsWith('/admin/database/query')) return <QuerySkeleton />
@@ -51,6 +55,8 @@ function AdminLoading() {
     if (pathname.startsWith('/admin/operations/pending')) return <PendingApprovalsSkeleton />
     if (pathname.startsWith('/admin/operations/deployments')) return <DeploymentsSkeleton />
     if (pathname.startsWith('/admin/operations')) return <OperationsSkeleton />
+    if (pathname === '/admin/activity') return <ActivitySkeleton />
+    if (pathname.startsWith('/admin/retailers') && pathname.endsWith('/activity')) return <RetailerActivitySkeleton />
     if (pathname.startsWith('/admin/background-images')) return <BackgroundImagesSkeleton />
     if (pathname.startsWith('/admin/integrations')) return <IntegrationsSkeleton />
     if (pathname.startsWith('/admin/team-members')) return <TeamMembersSkeleton />

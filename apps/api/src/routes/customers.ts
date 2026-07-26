@@ -5,7 +5,7 @@ import {
   MIN_CONFIDENCE_FOR_MATCHING,
   formatPreferenceVector,
 } from '@kanchuki/ai';
-import { Prisma, prisma } from '@kanchuki/db';
+import { Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import { R2_PATHS, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -73,6 +73,19 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
         phone_hash,
       },
     });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: retailerId,
+        action: 'create',
+        resource_type: 'Customer',
+        resource_id: customer.id,
+        metadata: { name: customer.name },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(201).send({ data: customer });
   });
 
@@ -168,6 +181,19 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       : body.data;
 
     const updated = await prisma.customer.update({ where: { id }, data });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'update',
+        resource_type: 'Customer',
+        resource_id: id,
+        metadata: { name: updated.name, updated_fields: Object.keys(body.data) },
+        ip_address: request.ip,
+      },
+    });
+
     return { data: updated };
   });
 
@@ -184,6 +210,29 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: { deleted_at: new Date() },
     });
+
+    // F-016: Vault snapshot of the deleted customer (fire-and-forget)
+    vaultDelete({
+      source_table: 'customers',
+      source_id: id,
+      retailer_id: request.retailerId,
+      payload: existing as unknown as Record<string, unknown>,
+      delete_reason: 'user_delete',
+      deleted_by: request.retailerId,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Customer',
+        resource_id: id,
+        metadata: { name: existing.name },
+        ip_address: request.ip,
+      },
+    });
+
     return reply.status(204).send();
   });
 
