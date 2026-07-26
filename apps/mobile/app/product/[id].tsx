@@ -27,6 +27,7 @@ import {
   FABRIC_TYPES,
   PATTERN_TYPES,
   PIECE_TAGGABLE_CATEGORIES,
+  SIZE_OPTIONS,
   formatPriceRange,
 } from '@kanchuki/shared'
 
@@ -41,6 +42,7 @@ type Product = {
   fabric_estimate: string | null
   pattern: string | null
   occasions: string[]
+  sizes: string[]
   price_min: number | null
   price_max: number | null
   status: 'AVAILABLE' | 'SOLD' | 'RESERVED' | 'NOT_SURE'
@@ -96,6 +98,7 @@ export default function ProductDetailScreen() {
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -364,6 +367,7 @@ export default function ProductDetailScreen() {
     setLocation(product.location_notes ?? '')
     setNotes(product.notes ?? '')
     setSelectedOccasions(product.occasions ?? [])
+    setSelectedSizes(product.sizes ?? [])
     setEditedCategory(product.category)
     setEditedColor(product.primary_color ?? '')
     setEditedFabric(product.fabric_estimate)
@@ -395,6 +399,7 @@ export default function ProductDetailScreen() {
         location_notes: location || undefined,
         notes: notes || undefined,
         occasions: selectedOccasions,
+        sizes: selectedSizes,
       })
       invalidate()
       Alert.alert('Saved', 'Product updated.')
@@ -1163,6 +1168,36 @@ export default function ProductDetailScreen() {
             className="text-sm text-gray-900"
             placeholderTextColor="#9CA3AF"
           />
+        </View>
+
+        {/* Sizes */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Sizes
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {SIZE_OPTIONS.map((size) => {
+              const selected = selectedSizes.includes(size)
+              return (
+                <TouchableOpacity
+                  key={size}
+                  onPress={() =>
+                    setSelectedSizes((prev) =>
+                      selected ? prev.filter((s) => s !== size) : [...prev, size],
+                    )
+                  }
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    {size}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         </View>
 
         {/* Occasion */}

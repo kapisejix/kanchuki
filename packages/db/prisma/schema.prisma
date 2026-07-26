@@ -301,6 +301,9 @@ model Product {
   occasions        String[]
   search_tags      String[]
 
+  // Retailer-selected sizes available for this item (S, M, L, XL, XXL, XXXL)
+  sizes String[] @default([])
+
   // Flexible extra metadata
   metadata Json?
   notes    String?

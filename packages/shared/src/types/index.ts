@@ -219,6 +219,7 @@ export interface PublicProductDetail extends PublicProduct {
   secondary_colors: string[]
   fabric_estimate: string | null
   search_tags: string[]
+  sizes: string[]
   photos: string[]
   spin_frames: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]

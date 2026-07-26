@@ -42,6 +42,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - WhatsApp collection link generator
 - Customer mobile web page (view, favorite, enquire)
 - Basic in-store AI search ("cotton pink suits under ₹2000")
+- Product sizes (S/M/L/XL/XXL/XXXL checkboxes on add/edit product, same list shown on customer product detail page) — built 2026-07-26, see `docs/PROGRESS.md`
 - Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, planned): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — see `docs/PRO-REQUIREMENTS.md`
 - Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009, planned) + generalized quota/limits system across upload/AI-tagging/try-on/crop/bg-removal/API with admin-set per-plan limits and self-serve overage purchase (F-010, planned) — see `docs/PRO-REQUIREMENTS.md`
 - Ghost-mannequin AI catalog image generation for packed/unopened stock, via Snappyit API (F-001e, planned) — retailer unpacks once per design, AI generates full worn catalog image reused across all restocked units — see `docs/PRO-REQUIREMENTS.md`

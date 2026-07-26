@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
-import { OCCASION_TYPES, PRODUCT_CATEGORIES } from '@kanchuki/shared'
+import { OCCASION_TYPES, PRODUCT_CATEGORIES, SIZE_OPTIONS } from '@kanchuki/shared'
 
 type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
 type CaptureMode = 'photo' | 'scan'
@@ -95,6 +95,7 @@ export default function AddProductScreen() {
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
+  const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [autoCleanup, setAutoCleanup] = useState(false)
   const [backgroundImages, setBackgroundImages] = useState<
@@ -294,6 +295,7 @@ export default function AddProductScreen() {
         fabric_estimate: aiTags?.fabric_estimate ?? undefined,
         occasions: selectedOccasions.length > 0 ? selectedOccasions : (aiTags?.occasions ?? []),
         search_tags: aiTags?.search_tags ?? [],
+        sizes: selectedSizes,
         category_id: categoryId ?? undefined,
         location_notes: location || undefined,
         notes: notes || undefined,
@@ -856,6 +858,36 @@ export default function AddProductScreen() {
               })}
             </View>
           )}
+        </View>
+
+        {/* Sizes */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            Sizes
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {SIZE_OPTIONS.map((size) => {
+              const selected = selectedSizes.includes(size)
+              return (
+                <TouchableOpacity
+                  key={size}
+                  onPress={() =>
+                    setSelectedSizes((prev) =>
+                      selected ? prev.filter((s) => s !== size) : [...prev, size],
+                    )
+                  }
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    {size}
+                  </Text>
+                </TouchableOpacity>
+              )
+            })}
+          </View>
         </View>
 
         {/* Occasion tags */}

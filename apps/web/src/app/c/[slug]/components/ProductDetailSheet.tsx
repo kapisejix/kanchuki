@@ -103,6 +103,7 @@ export function ProductDetailSheet({
   const variants = detail?.variants ?? []
   const fabricEstimate = detail?.fabric_estimate ?? null
   const searchTags = detail?.search_tags ?? []
+  const sizes = detail?.sizes ?? []
 
   // Build photos array: detail photos (once loaded) + optionally a variant
   // photo — falls back to just the grid thumbnail until detail arrives.
@@ -553,6 +554,23 @@ export function ProductDetailSheet({
             {fabricEstimate && <Chip label={fabricEstimate} />}
             {product.occasions.slice(0, 2).map((o) => <Chip key={o} label={o} />)}
           </div>
+
+          {/* Sizes */}
+          {sizes.length > 0 && (
+            <div>
+              <p className="text-xs text-gray-500 font-medium mb-2">Available Sizes</p>
+              <div className="flex flex-wrap gap-2">
+                {sizes.map((size) => (
+                  <span
+                    key={size}
+                    className="text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-full"
+                  >
+                    {size}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Color variants — clickable to show in carousel */}
           {variants.length > 0 && (

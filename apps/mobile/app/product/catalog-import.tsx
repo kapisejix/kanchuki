@@ -8,6 +8,7 @@ import {
   Dimensions,
   TextInput,
   Alert,
+  Switch,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
@@ -32,6 +33,7 @@ import {
   type CatalogDetectedItem,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
+import { SIZE_OPTIONS } from '@kanchuki/shared'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -48,6 +50,7 @@ type ReviewItem = {
     pattern: string
     occasions: string
     search_tags: string
+    sizes: string[]
     price: string
   }
 }
@@ -68,6 +71,8 @@ export default function CatalogImportScreen() {
   const [sourceR2Key, setSourceR2Key] = useState(params.sourceR2Key ?? '')
   const [items, setItems] = useState<ReviewItem[]>([])
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  // Asked once per import batch — most catalogs don't list sizes, so default off.
+  const [wantSizes, setWantSizes] = useState(false)
   const [batchResult, setBatchResult] = useState<{
     requested: number
     created: number
@@ -161,6 +166,7 @@ export default function CatalogImportScreen() {
             pattern: item.tags.pattern ?? '',
             occasions: (item.tags.occasions ?? []).join(', '),
             search_tags: (item.tags.search_tags ?? []).join(', '),
+            sizes: [],
             price: '',
           },
         })),
@@ -224,6 +230,7 @@ export default function CatalogImportScreen() {
             pattern: item.tags.pattern ?? '',
             occasions: (item.tags.occasions ?? []).join(', '),
             search_tags: (item.tags.search_tags ?? []).join(', '),
+            sizes: [],
             price: '',
           },
         })),
@@ -276,6 +283,20 @@ export default function CatalogImportScreen() {
     [],
   )
 
+  // ── Toggle a size checkbox for one item ─────────────────────────
+
+  const toggleItemSize = useCallback((index: number, size: string) => {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== index) return item
+        const sizes = item.edits.sizes.includes(size)
+          ? item.edits.sizes.filter((s) => s !== size)
+          : [...item.edits.sizes, size]
+        return { ...item, edits: { ...item.edits, sizes } }
+      }),
+    )
+  }, [])
+
   // ── Save selected items ───────────────────────────────────────
 
   const handleSaveSelected = useCallback(async () => {
@@ -308,6 +329,7 @@ export default function CatalogImportScreen() {
                 .map((s) => s.trim())
                 .filter(Boolean)
             : undefined,
+          sizes: wantSizes && item.edits.sizes.length > 0 ? item.edits.sizes : undefined,
           ...(item.edits.price
             ? { price_min: Math.round(parseFloat(item.edits.price) * 100) }
             : {}),
@@ -325,7 +347,7 @@ export default function CatalogImportScreen() {
       setStep('reviewing')
       showError(err, 'Could not save products.', 'Save failed')
     }
-  }, [items, queryClient])
+  }, [items, queryClient, wantSizes])
 
   // ── Render Source Selection ───────────────────────────────────
 
@@ -479,6 +501,17 @@ export default function CatalogImportScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Ask once per batch — most catalogs don't list sizes */}
+        <View className="bg-white rounded-2xl border border-gray-100 p-3 mb-3 flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-sm font-semibold text-gray-900">Add sizes?</Text>
+            <Text className="text-xs text-gray-500 mt-0.5">
+              Turn on to pick S/M/L/XL/XXL/XXXL for each item below. Leave off if the catalog doesn't list sizes.
+            </Text>
+          </View>
+          <Switch value={wantSizes} onValueChange={setWantSizes} />
+        </View>
+
         {items.map((item, index) => (
           <View
             key={`${item.original.description}-${index}`}
@@ -569,6 +602,30 @@ export default function CatalogImportScreen() {
                   onChange={(v) => updateEdit(index, 'price', v)}
                   keyboardType="numeric"
                 />
+                {wantSizes && (
+                  <View>
+                    <Text className="text-xs font-medium text-gray-500 mb-1">Sizes</Text>
+                    <View className="flex-row flex-wrap gap-2">
+                      {SIZE_OPTIONS.map((size) => {
+                        const selected = item.edits.sizes.includes(size)
+                        return (
+                          <TouchableOpacity
+                            key={size}
+                            onPress={() => toggleItemSize(index, size)}
+                            className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                              selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                            }`}
+                          >
+                            {selected && <Check size={12} color="white" />}
+                            <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                              {size}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
+                  </View>
+                )}
                 <TouchableOpacity
                   onPress={() => setEditingIndex(null)}
                   className="bg-gray-100 py-2.5 rounded-xl items-center mt-1"

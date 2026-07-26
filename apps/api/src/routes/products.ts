@@ -8,7 +8,7 @@ import {
 } from '@kanchuki/ai';
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, detectColor } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
-import { R2_PATHS } from '@kanchuki/shared';
+import { R2_PATHS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -82,6 +82,7 @@ const CreateProductSchema = z.object({
   sleeve_type: z.string().max(100).optional(),
   occasions: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),
+  sizes: z.array(z.enum(SIZE_OPTIONS)).max(SIZE_OPTIONS.length).optional(),
   section_id: z.string().optional(),
   category_id: z.string().nullable().optional(),
   location_notes: z.string().max(200).optional(),

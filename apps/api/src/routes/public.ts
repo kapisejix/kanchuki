@@ -279,6 +279,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
           fabric_estimate: p.fabric_estimate,
           occasions: p.occasions,
           search_tags: p.search_tags,
+          sizes: p.sizes,
           location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
           primary_photo_url: primaryPhoto
             ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)

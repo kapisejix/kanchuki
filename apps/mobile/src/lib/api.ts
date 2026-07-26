@@ -890,6 +890,7 @@ export const catalogImportApi = {
       pattern?: string | null
       occasions?: string[]
       search_tags?: string[]
+      sizes?: string[]
       price_min?: number | null
       price_max?: number | null
       section_id?: string | null

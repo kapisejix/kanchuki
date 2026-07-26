@@ -8,7 +8,7 @@ import {
   publicUrl,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { PLAN_LIMITS } from '@kanchuki/shared';
+import { PLAN_LIMITS, SIZE_OPTIONS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
@@ -69,6 +69,7 @@ const BulkCreateProductsSchema = z.object({
         pattern: z.string().nullable().optional(),
         occasions: z.array(z.string()).optional(),
         search_tags: z.array(z.string()).optional(),
+        sizes: z.array(z.enum(SIZE_OPTIONS)).optional(),
         price_min: z.number().int().nullable().optional(),
         price_max: z.number().int().nullable().optional(),
         section_id: z.string().nullable().optional(),
@@ -420,6 +421,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
       pattern: item.pattern ?? undefined,
       occasions: item.occasions ?? undefined,
       search_tags: item.search_tags ?? undefined,
+      sizes: item.sizes ?? undefined,
       price_min: item.price_min ?? undefined,
       price_max: item.price_max ?? undefined,
       section_id: resolveSectionId(item.section_id),

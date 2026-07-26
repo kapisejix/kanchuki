@@ -105,6 +105,8 @@ export const EMBELLISHMENT_TYPES = [
   'None',
 ] as const;
 
+export const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
+
 export const OCCASION_TYPES = [
   'Casual',
   'Office Wear',

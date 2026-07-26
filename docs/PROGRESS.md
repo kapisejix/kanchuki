@@ -283,3 +283,17 @@ Added the complete "Buy More" flow — retailers can now purchase extra units of
 - Phase 0.5: SupportTicket routing (schema only), manager rollup reporting, staff Expo mode
 - Phase 1+: Fashion DNA, Remote VTO auto-personalized collections
 - Onboarding tutorial improvements (10-retailer pilot feedback)
+
+---
+
+## 2026-07-26 — Product Sizes (S/M/L/XL/XXL/XXXL)
+
+Retailer picks which sizes are in stock for a product; customer sees the same list on the product detail page.
+
+- Schema: `Product.sizes String[] @default([])` — migration `034_product_sizes` (not yet applied to any DB, needs `prisma migrate deploy`/dashboard run)
+- Shared: `SIZE_OPTIONS` constant (`packages/shared/src/constants/index.ts`), `PublicProductDetail.sizes` type
+- API: `sizes` added to `CreateProductSchema`/`UpdateProductSchema` in `apps/api/src/routes/products.ts` (zod enum, reuses existing `...rest` spread into Prisma — no handler change needed); `GET /public/products/:id` now returns `sizes` (`apps/api/src/routes/public.ts`)
+- Retailer mobile: checkbox chips in `apps/mobile/app/product/add.tsx` (create) and `apps/mobile/app/product/[id].tsx` (edit), same visual pattern as the existing Occasion chips
+- Customer web: "Available Sizes" chip row in `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx`
+- Catalog import (`apps/mobile/app/product/catalog-import.tsx`) also got sizes: a per-batch "Add sizes?" toggle (default off — most catalogs don't list sizes), and when on, the same S/M/L/XL/XXL/XXXL chips per reviewed item. Off = `sizes` omitted entirely, matching "leave blank if catalog doesn't have size". Backend: `BulkCreateProductsSchema` + `productData` mapping in `apps/api/src/routes/catalog-import.ts`.
+- Not touched (YAGNI for now): rack/shelf bulk-onboard flow (`bulk-onboard.tsx`) still doesn't collect sizes — add if retailers ask
