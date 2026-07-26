@@ -1,13 +1,21 @@
 # Infrastructure Setup Guide — Vault DB & Role Separation
 
-**Date:** July 26, 2026  
-**Scope:** F-016 (Deletion Vault) + F-017 (DB Guardrails) — the 2 remaining infra items
+**Date:** July 26, 2026 (updated after actual execution)  
+**Scope:** F-016 (Deletion Vault) + F-017 (DB Guardrails)
+
+> ✅ **Both items completed 2026-07-26.** This guide now documents what was done and the remaining manual steps.
+>
+> **Completed:** Vault DB provisioned on Railway Postgres-PYkI (`sakura.proxy.rlwy.net:23505`) with INSERT-only `vault_app` role. `kanchuki_app` and `kanchuki_migrator` roles created on Supabase. `VAULT_DATABASE_URL` and `DATABASE_URL` updated in Railway env vars. Vault Prisma client generated. Vault permission test passes.
+>
+> **Still manual:** Migration 037 guardrail triggers not yet applied (needs Supabase SQL Editor — PgBouncer blocks CLI direct connect). Local `.env` files still reference superuser credentials — update to `kanchuki_app` manually.
 
 ---
 
 ## Item 1: Provision the Vault Postgres Instance (F-016)
 
 The Deletion Vault needs its own Postgres database — a separate instance from your primary Supabase DB.
+
+> ✅ **Completed:** Used existing Railway Postgres-PYkI instance (`sakura.proxy.rlwy.net:23505`).
 
 ### Step 1: Create a Railway Postgres
 

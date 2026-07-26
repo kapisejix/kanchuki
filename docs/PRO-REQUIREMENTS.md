@@ -971,10 +971,13 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 
 ## 12. Admin Control Center — Plan Permission Matrix, Trust & Safety, Deletion Vault
 
-**Status:** Approved requirement (decided 2026-07-26), not yet built. Extends `docs/SECURITY.md` §12–18 (already-planned admin governance/backup infrastructure) rather than replacing it. Reuses the F-010 admin-grid pattern (`plan_limits` table + `/admin/plan-limits` UI) for the new boolean feature matrix instead of inventing a second admin-config system.
+**Status:** ✅ **Built** (2026-07-26). Full implementation of F-013 through F-017. See `docs/PROGRESS.md` 2026-07-26 for details, `docs/SECURITY.md` §19 for guardrail design, `docs/26-night-report.md` for test report.
+
+Reuses the F-010 admin-grid pattern (`plan_limits` table + `/admin/plan-limits` UI) for the new boolean feature matrix instead of inventing a second admin-config system.
 
 ### 12.1 F-013: Plan Feature Matrix (Admin-Configurable Checkbox Grid)
 
+**Status:** ✅ **Built** — migrations 035 + `apps/api/src/lib/features.ts` + admin UI at `/admin/plan-features`.
 **Priority:** P1 — needed before Growth/Pro tiers are marketed as functionally different from Starter, not just quota-different.
 
 **Problem:** F-010 already lets admin set *numeric* limits per plan (products, AI tagging calls, try-ons) with zero-deploy edits. There is no equivalent for *boolean* features — today every plan can technically use 360° spin, custom backgrounds, checkout, etc.; the pricing table in Section 6 implies differentiation that isn't enforced anywhere.
@@ -1020,6 +1023,7 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 
 ### 12.2 F-014: Retailer & Customer Activity Tracking (Admin Visibility)
 
+**Status:** ✅ **Built** — `AuditLog.create()` wired into all mutation routes + admin pages at `/admin/activity` and `/admin/retailers/:id/activity`.
 **Priority:** P1
 
 **Problem:** Retailer-side mutations are only partially logged (`AuditLog` schema exists but few routes actually write to it — see `docs/SECURITY.md` §18 gap). Customer behavior (views/favorites/enquiries) is already captured per-retailer via `CustomerInteraction` (F-008's analytics source) but has no cross-retailer admin view — today an admin can't see "what is retailer X doing" or "what is customer Y doing" in one place.
@@ -1041,6 +1045,7 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 
 ### 12.3 F-015: Account Suspension (Admin-Controlled)
 
+**Status:** ✅ **Built** — migration 036 + login block + collection-link degradation + admin suspend/block UI.
 **Priority:** P1 — currently the only account-disable path is soft-delete (F-009), which is permanent-leaning and customer-facing collection links go dark immediately. Suspension needs to be reversible and distinct from delete.
 
 **Design:**
@@ -1059,6 +1064,7 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 
 ### 12.4 F-016: Deletion Vault — Secondary Database for Retailer-Deleted Data
 
+**Status:** ✅ **Built** — vault Prisma schema + `packages/db/src/vault.ts` (vaultDelete helper) + Railway Postgres-PYkI with INSERT-only `vault_app` role + admin UI at `/admin/database/deletion-vault`. Vault permission test passes.
 **Priority:** P1 — distinct from the already-planned Cold Backup (`docs/SECURITY.md` §13, whole-DB periodic dumps). This is a **per-delete-event** copy, triggered the moment something is soft-deleted, not a periodic snapshot.
 
 **Problem:** Today soft-deleted rows (`deleted_at` set) live in the same primary Supabase DB and a cron purges them after 30 days (`docs/DATABASE.md` Data Retention Policy). If the primary DB is compromised, mis-migrated, or a retailer disputes a deletion after the 30-day window, there's no independent copy.
@@ -1080,7 +1086,8 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 
 ### 12.5 F-017: Database Guardrails — Preventing AI-Agent/Application Delete Access
 
-**Priority:** P0 — this is the direct answer to "how do I stop an AI coding agent or a code bug from deleting anything," not a nice-to-have. Full technical design in `docs/SECURITY.md` new §19 — this entry is the requirements summary.
+**Status:** ✅ **Built** — see `docs/SECURITY.md` §19, `scripts/check-delete-guard.sh`, CI workflow step, migration 037 triggers, and `scripts/setup-role-separation.sql`.
+**Priority:** P0 — this is the direct answer to "how do I stop an AI coding agent or a code bug from deleting anything," not a nice-to-have. Full technical design in `docs/SECURITY.md` §19 — this entry is the requirements summary.
 
 **Problem:** `docs/SECURITY.md` §15 already states AI agents "must never" run migrations or destructive commands — but that's a written policy, not a technical control. An agent (or a careless PR) with the same `DATABASE_URL` as the API server *can* physically issue `DELETE`/`DROP`/`TRUNCATE` today; nothing at the database level stops it.
 

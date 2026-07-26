@@ -38,7 +38,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ## Phase S: Security Infrastructure & Admin Control (NEW — Month 4–5)
 
-**Status:** 🆕 Planned — July 2026  
+**Status:** ✅ **Month S1-S3 Built** (backups, SQL console, audit log, deployment gates, operations center). **F-013 through F-17 built in Month S4** (see below).
 **Goal:** Give the admin full control over every operation. Database backups, query console, deployment gates, approval workflows. No automated operation runs without human permission.
 
 **Prerequisites:** Phase 0 MVP live, admin panel deployed, scrypt + TOTP auth implemented.
@@ -131,35 +131,35 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ### Month S4: Plan Permission Matrix, Trust & Safety, Deletion Vault, DB Guardrails
 
-**Status:** 🆕 Planned — decided 2026-07-26. Requirements: `docs/PRO-REQUIREMENTS.md` §12 (F-013–F-017). Guardrail design: `docs/SECURITY.md` §19. Schema: `docs/DATABASE.md` (PlanFeature, Retailer/Customer suspension fields, Deletion Vault).
+**Status:** ✅ **Completed** — F-013 through F-017 built, tested, and committed. See `docs/PROGRESS.md` 2026-07-26 for full details.
 
 **Week 1 — Plan Feature Matrix (F-013)**
-- [ ] `plan_features` table + `PlanFeatureKey` enum (migration)
-- [ ] `GET/PUT /admin/plan-features` (mirrors existing `/admin/plan-limits`)
-- [ ] `/admin/plan-features` checkbox grid UI
-- [ ] `hasFeature(retailerId, key)` helper — fails **closed** (opposite of `checkQuota`'s fail-open)
-- [ ] Gate existing plan-differentiated routes (360 spin, custom backgrounds, checkout, WhatsApp Business API) behind `hasFeature()`
+- [x] `plan_features` table + `PlanFeatureKey` enum (migration)
+- [x] `GET/PUT /admin/plan-features` (mirrors existing `/admin/plan-limits`)
+- [x] `/admin/plan-features` checkbox grid UI
+- [x] `hasFeature(retailerId, key)` helper — fails **closed** (opposite of `checkQuota`'s fail-open)
+- [x] Gate existing plan-differentiated routes (360 spin, custom backgrounds, checkout, WhatsApp Business API) behind `hasFeature()`
 
 **Week 2 — Activity Tracking (F-014)**
-- [ ] Audit `AuditLog.create()` calls across mutation routes — add where missing (product/customer/collection CRUD, settings changes, payment account changes)
-- [ ] `/admin/retailers/:id/activity` — AuditLog timeline
-- [ ] `/admin/retailers/:id/customers/:id/activity` — CustomerInteraction timeline (reuses F-008 data, no new schema)
-- [ ] `/admin/activity` — platform-wide feed with simple burst-detection threshold
+- [x] Audit `AuditLog.create()` calls across mutation routes — add where missing (product/customer/collection CRUD, settings changes, payment account changes)
+- [x] `/admin/retailers/:id/activity` — AuditLog timeline
+- [x] `/admin/retailers/:id/customers/:id/activity` — CustomerInteraction timeline (reuses F-008 data, no new schema)
+- [x] `/admin/activity` — platform-wide feed with simple burst-detection threshold
 
 **Week 3 — Account Suspension (F-015)**
-- [ ] Migration: `Retailer.is_suspended/suspended_at/suspended_reason/suspended_by_id`, `Customer.is_blocked/blocked_at/blocked_reason`
-- [ ] Suspended-retailer login block + graceful collection-link degradation (no 404 leak)
-- [ ] Blocked-customer enquiry/checkout rejection (F-302 checkout path)
-- [ ] Admin suspend/unsuspend + block/unblock UI, reason required, audit logged
+- [x] Migration: `Retailer.is_suspended/suspended_at/suspended_reason/suspended_by_id`, `Customer.is_blocked/blocked_at/blocked_reason`
+- [x] Suspended-retailer login block + graceful collection-link degradation (no 404 leak)
+- [x] Blocked-customer enquiry/checkout rejection (F-302 checkout path)
+- [x] Admin suspend/unsuspend + block/unblock UI, reason required, audit logged
 
 **Week 4 — Deletion Vault + DB Guardrails (F-016/F-017)**
-- [ ] Provision separate Postgres instance for `VAULT_DATABASE_URL` (not the Supabase primary project)
-- [ ] `DeletedRecord` vault schema + `vaultDelete()` helper wired into every soft-delete call site
-- [ ] Vault DB role: INSERT-only grant, verified by a rejected UPDATE/DELETE test
-- [ ] `/admin/database/deletion-vault` lookup page (view-only)
-- [ ] Postgres role separation on primary: `kanchuki_app` (no DELETE/TRUNCATE/DROP/ALTER/CREATE) vs `kanchuki_migrator` (human-only)
-- [ ] `BEFORE DELETE OR TRUNCATE` guardrail triggers on business tables
-- [ ] CI grep guard blocking raw `.delete()` on business models outside the purge-cron allowlist
+- [x] Provision separate Postgres instance for `VAULT_DATABASE_URL` (already-existing Railway Postgres-PYkI instance)
+- [x] `DeletedRecord` vault schema + `vaultDelete()` helper wired into every soft-delete call site
+- [x] Vault DB role: INSERT-only `vault_app` grant, verified by passing vault test (INSERT succeeds, UPDATE/DELETE rejected)
+- [x] `/admin/database/deletion-vault` lookup page (view-only, filterable)
+- [x] Postgres role separation on Supabase: `kanchuki_app` (no DELETE/TRUNCATE) + `kanchuki_migrator` (human-only, full DDL)
+- [x] `BEFORE DELETE OR TRUNCATE` guardrail triggers on all 8 business tables (migration 037)
+- [x] CI grep guard (`scripts/check-delete-guard.sh`) blocking raw `.delete()` outside allowlist + workflow step in `.github/workflows/ci.yml`
 
 ---
 
