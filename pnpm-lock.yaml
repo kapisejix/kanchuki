@@ -263,7 +263,7 @@ importers:
         version: 9.5.12(next@14.2.35(@babel/core@7.29.7)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       '@serwist/sw':
         specifier: '9'
-        version: 9.5.12(browserslist@4.28.6)(typescript@5.9.3)
+        version: 9.5.12(browserslist@4.28.4)(typescript@5.9.3)
       '@tailwindcss/typography':
         specifier: ^0.5.13
         version: 0.5.20(tailwindcss@3.4.19(tsx@4.22.4)(yaml@2.9.0))
@@ -10118,13 +10118,17 @@ snapshots:
     transitivePeerDependencies:
       - webpack
 
-  '@serwist/sw@9.5.12(browserslist@4.28.6)(typescript@5.9.3)':
+  '@serwist/sw@9.5.12(browserslist@4.28.4)(typescript@5.9.3)':
     dependencies:
-      serwist: 9.5.12(browserslist@4.28.6)(typescript@5.9.3)
+      serwist: 9.5.12(browserslist@4.28.4)(typescript@5.9.3)
     optionalDependencies:
       typescript: 5.9.3
     transitivePeerDependencies:
       - browserslist
+
+  '@serwist/utils@9.5.12(browserslist@4.28.4)':
+    optionalDependencies:
+      browserslist: 4.28.4
 
   '@serwist/utils@9.5.12(browserslist@4.28.6)':
     optionalDependencies:
@@ -14816,6 +14820,15 @@ snapshots:
       - supports-color
 
   server-only@0.0.1: {}
+
+  serwist@9.5.12(browserslist@4.28.4)(typescript@5.9.3):
+    dependencies:
+      '@serwist/utils': 9.5.12(browserslist@4.28.4)
+      idb: 8.0.3
+    optionalDependencies:
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - browserslist
 
   serwist@9.5.12(browserslist@4.28.6)(typescript@5.9.3):
     dependencies:

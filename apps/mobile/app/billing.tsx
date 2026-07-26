@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert, ActivityIndicator } from 'react-native'
-import { Stack } from 'expo-router'
+import { View, Text, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native'
+import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Check, CreditCard, XCircle, ShieldAlert, ShoppingCart } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Check, CreditCard, XCircle, ShieldAlert, ShoppingCart, ChevronLeft } from 'lucide-react-native'
 import { billingApi, retailerApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
+import { BillingSkeleton } from '../src/components/Skeleton'
 
 const RESOURCE_LABELS: Record<string, string> = {
   PRODUCT_UPLOAD: 'Product uploads',
@@ -22,6 +24,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 }
 
 export default function BillingScreen() {
+  const insets = useSafeAreaInsets()
   const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly')
   const [buyingResource, setBuyingResource] = useState<string | null>(null)
   const queryClient = useQueryClient()
@@ -109,16 +112,20 @@ export default function BillingScreen() {
   const isCancelled = current?.plan_status === 'CANCELLED'
 
   if (isLoading) {
-    return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#0891B2" />
-      </View>
-    )
+    return <BillingSkeleton />
   }
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Plans & Billing', headerShown: true }} />
+    <View className="flex-1 bg-gray-50">
+      <View
+        className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={24} color="#374151" />
+        </TouchableOpacity>
+        <Text className="text-base font-bold text-gray-900 ml-3">Plans & Billing</Text>
+      </View>
       <ScrollView className="flex-1 bg-gray-50 px-4 pt-4">
         {/* Current plan banner */}
         {current && (
@@ -337,6 +344,6 @@ export default function BillingScreen() {
           Secure payments via Razorpay · UPI, Cards & Netbanking · Prices include GST
         </Text>
       </ScrollView>
-    </>
+    </View>
   )
 }

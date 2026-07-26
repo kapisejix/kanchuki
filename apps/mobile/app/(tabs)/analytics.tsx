@@ -4,7 +4,6 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -19,6 +18,7 @@ import {
   Store,
 } from 'lucide-react-native'
 import { analyticsApi, retailerApi } from '../../src/lib/api'
+import { AnalyticsSkeleton } from '../../src/components/Skeleton'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -267,11 +267,7 @@ export default function AnalyticsScreen() {
   const analytics = (data as { data: Analytics } | undefined)?.data
 
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-cyan-50 items-center justify-center">
-        <ActivityIndicator color="#0891B2" />
-      </View>
-    )
+    return <AnalyticsSkeleton />
   }
 
   const trends = analytics?.daily_trends ?? []

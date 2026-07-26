@@ -1,11 +1,14 @@
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { Stack, router } from 'expo-router'
+import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Plus } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Plus, ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
+import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { categoryApi, type ProductCategory } from '../../src/lib/api'
 
 export default function CategoryListScreen() {
+  const insets = useSafeAreaInsets()
   const { data, isLoading } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
@@ -14,10 +17,19 @@ export default function CategoryListScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Categories', headerShown: true }} />
       <View className="flex-1 bg-cyan-50">
+        {/* Icon-only header — no title text (native Stack header showed
+            the previous screen's route name as the back-button label). */}
+        <View
+          className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+          style={{ paddingTop: insets.top + 12 }}
+        >
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <ChevronLeft size={24} color="#374151" />
+          </TouchableOpacity>
+        </View>
         {isLoading ? (
-          <ActivityIndicator className="mt-16" color="#0891B2" />
+          <ProductGridSkeleton />
         ) : (
           <FlatList
             data={categories}

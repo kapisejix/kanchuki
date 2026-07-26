@@ -80,7 +80,7 @@ const CustomerCard = memo(function CustomerCard({
                 <Text className="text-cyan-700 text-xs">{tag}</Text>
               </View>
             ))}
-            {item.budget_max && (
+            {!!item.budget_max && (
               <View className="bg-green-50 px-2 py-0.5 rounded-full">
                 <Text className="text-green-700 text-xs">≤{formatPrice(item.budget_max)}</Text>
               </View>

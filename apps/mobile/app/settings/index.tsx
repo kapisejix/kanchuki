@@ -15,6 +15,7 @@ import {
 } from 'lucide-react-native'
 import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { SettingsSkeleton } from '../../src/components/Skeleton'
 
 type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back'
 
@@ -799,11 +800,7 @@ export default function SettingsScreen() {
   const whatsapp = retailer?.whatsapp_number ?? phone
 
   if (isLoading) {
-    return (
-      <View className="flex-1 bg-cyan-50 items-center justify-center">
-        <ActivityIndicator color="#0891B2" />
-      </View>
-    )
+    return <SettingsSkeleton />
   }
 
   return (

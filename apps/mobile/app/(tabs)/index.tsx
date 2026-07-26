@@ -1,8 +1,9 @@
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Search, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings } from 'lucide-react-native'
-import { ordersApi, retailerApi } from '../../src/lib/api'
+import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban } from 'lucide-react-native'
+import { ordersApi, retailerApi, categoryApi } from '../../src/lib/api'
+import { HomeScreenSkeleton } from '../../src/components/Skeleton'
 
 type RankedProduct = {
   product: { id: string; category: string | null; primary_color: string | null; photo_url: string | null }
@@ -40,13 +41,23 @@ export default function HomeScreen() {
     queryFn: () => ordersApi.list(),
   })
 
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories', 'list'],
+    queryFn: () => categoryApi.list(),
+  })
+
   const me = (meData as { data: RetailerMe } | undefined)?.data
   const stats = (statsData as { data: Stats } | undefined)?.data
   const allOrders = ordersData?.data ?? []
   const pendingOrders = allOrders.filter(
     (o) => o.status === 'PENDING_PAYMENT' || o.status === 'PAID',
   ).length
+  const categories = categoriesData?.data ?? []
   const isLoading = meLoading || statsLoading
+
+  if (isLoading) {
+    return <HomeScreenSkeleton />
+  }
 
   return (
     <ScrollView
@@ -156,11 +167,11 @@ export default function HomeScreen() {
             accent="#ECFEFF"
           />
           <QuickAction
-            icon={<Search size={22} color="#22C55E" />}
-            label="Search Products"
-            sublabel="Natural language"
-            onPress={() => router.push({ pathname: '/catalog', params: { search: '1' } })}
-            accent="#F0FDF4"
+            icon={<FolderKanban size={22} color="#0891B2" />}
+            label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
+            sublabel="Add Category"
+            onPress={() => router.push('/category')}
+            accent="#ECFEFF"
           />
           <QuickAction
             icon={<Users size={22} color="#F59E0B" />}

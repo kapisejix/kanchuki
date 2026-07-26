@@ -5,12 +5,13 @@ import {
   FlatList,
   TextInput,
   TouchableOpacity,
-  ActivityIndicator,
 } from 'react-native'
-import { Stack, router } from 'expo-router'
+import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
+import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
@@ -66,9 +67,17 @@ export default function NewCollectionScreen() {
   const canCreate = title.trim().length > 0 && selected.size > 0 && !create.isPending
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'New Collection', headerShown: true }} />
-      <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-cyan-50">
+      <View
+        className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={24} color="#374151" />
+        </TouchableOpacity>
+        <Text className="text-base font-bold text-gray-900 ml-3">New Collection</Text>
+      </View>
+      <View className="flex-1">
         <View className="bg-white px-4 py-3 border-b border-gray-100 gap-3">
           <TextInput
             value={title}
@@ -102,7 +111,7 @@ export default function NewCollectionScreen() {
         </View>
 
         {isLoading ? (
-          <ActivityIndicator className="mt-16" color="#0891B2" />
+          <ProductGridSkeleton />
         ) : (
           <FlatList
             data={products}
@@ -170,6 +179,6 @@ export default function NewCollectionScreen() {
           )}
         </View>
       </View>
-    </>
+    </View>
   )
 }

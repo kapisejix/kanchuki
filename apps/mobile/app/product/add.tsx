@@ -23,6 +23,7 @@ import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-nati
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
 import { OCCASION_TYPES, PRODUCT_CATEGORIES, SIZE_OPTIONS } from '@kanchuki/shared'
+import { ProductAddSkeleton } from '../../src/components/Skeleton'
 
 type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
 type CaptureMode = 'photo' | 'scan'
@@ -110,7 +111,7 @@ export default function AddProductScreen() {
       .catch(() => {}) // ponytail: best-effort — picker just stays empty (white-only)
   }, [])
 
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
   })
@@ -711,6 +712,10 @@ export default function AddProductScreen() {
   }
 
   // ── Edit / Confirm step ───────────────────────────────────────────
+
+  if (step === 'edit' && categoriesLoading) {
+    return <ProductAddSkeleton />
+  }
 
   return (
     <View className="flex-1 bg-cyan-50">

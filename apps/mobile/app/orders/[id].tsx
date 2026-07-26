@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import {
   ChevronLeft,
   PackageCheck,
@@ -183,11 +184,7 @@ export default function OrderDetailScreen() {
   }
 
   if (isLoading || !order) {
-    return (
-      <View className="flex-1 items-center justify-center bg-gray-50">
-        <ActivityIndicator size="large" color="#0891B2" />
-      </View>
-    )
+    return <DetailScreenSkeleton />
   }
 
   const config = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING_PAYMENT

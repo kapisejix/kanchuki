@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Check, X } from 'lucide-react-native';
-import { useRef, useState } from 'react';
+import { Check, X, Zap, ZapOff } from 'lucide-react-native';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { productApi, readLocalImage, uploadImageToR2 } from '../../../src/lib/api';
@@ -18,8 +18,36 @@ export default function SpinVideoScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const [videoUri, setVideoUri] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [flashMode, setFlashMode] = useState<'off' | 'on'>('off');
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [uploadPercent, setUploadPercent] = useState(0);
   const cameraRef = useRef<CameraView>(null);
+  const recordingStartedAt = useRef(0);
+  const cameraRetryCount = useRef(0);
+
+  // ponytail: some devices never fire onCameraReady over the RN bridge —
+  // fall back to ready after 5s so the shutter doesn't hang forever.
+  useEffect(() => {
+    if (step !== 'camera' || isCameraReady || cameraError) return;
+    const t = setTimeout(() => {
+      // Only mark ready if no error surfaced — camera might still work
+      // even if onCameraReady was silently dropped.
+      setIsCameraReady(true);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [step, isCameraReady, cameraError]);
+
+  // If camera never initialises within 12s, show a "Camera unavailable"
+  // state so the user isn't staring at a black screen forever.
+  useEffect(() => {
+    if (step !== 'camera' || cameraError) return;
+    const t = setTimeout(() => {
+      if (!isCameraReady) {
+        setCameraError('Camera initialisation timed out. Tap Retry to try again.');
+      }
+    }, 12000);
+    return () => clearTimeout(t);
+  }, [step, isCameraReady, cameraError]);
 
   const handleRecord = async () => {
     // Starting a recording session before the native camera has finished
@@ -27,6 +55,7 @@ export default function SpinVideoScreen() {
     // devices — recordAsync still resolves, so wait for onCameraReady first.
     if (!cameraRef.current || !isCameraReady) return;
     setStep('recording');
+    recordingStartedAt.current = Date.now();
     try {
       const video = await cameraRef.current.recordAsync({
         maxDuration: MAX_DURATION_SECONDS,
@@ -41,6 +70,10 @@ export default function SpinVideoScreen() {
   };
 
   const handleStop = () => {
+    // stopRecording before the native encoder has produced a frame throws
+    // "Recording was stopped before any data could be produced" — ignore
+    // stop taps in that dead window, recordAsync's own maxDuration still caps it.
+    if (Date.now() - recordingStartedAt.current < 1000) return;
     cameraRef.current?.stopRecording();
   };
 
@@ -132,20 +165,50 @@ export default function SpinVideoScreen() {
   return (
     <View className="flex-1 bg-black">
       <CameraView
+        key={cameraRetryCount.current}
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
         facing="back"
         mode="video"
         mute
-        onCameraReady={() => setIsCameraReady(true)}
+        flash={flashMode}
+        autofocus="on"
+        onCameraReady={() => {
+          setCameraError(null);
+          setIsCameraReady(true);
+        }}
+        onMountError={(event) => {
+          const msg =
+            typeof event === 'object' && event !== null
+              ? (event as { nativeEvent?: { message?: string } }).nativeEvent?.message ??
+                'Camera failed to initialise'
+              : 'Camera failed to initialise';
+          setCameraError(msg);
+        }}
       />
 
+      {/* Top bar — close left, torch right */}
       <TouchableOpacity
         onPress={() => router.back()}
         className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
         style={{ top: insets.top + 8 }}
       >
         <X size={20} color="white" />
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => setFlashMode((prev) => (prev === 'off' ? 'on' : 'off'))}
+        disabled={step === 'recording' || !!cameraError}
+        className={`absolute right-4 w-10 h-10 rounded-full items-center justify-center ${
+          step === 'recording' ? 'opacity-30' : ''
+        } ${flashMode === 'on' ? 'bg-yellow-400' : 'bg-black/50'}`}
+        style={{ top: insets.top + 8 }}
+      >
+        {flashMode === 'on' ? (
+          <Zap size={20} color="black" />
+        ) : (
+          <ZapOff size={20} color="white" />
+        )}
       </TouchableOpacity>
 
       <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
@@ -161,32 +224,48 @@ export default function SpinVideoScreen() {
       </View>
 
       <View className="items-center gap-4" style={{ paddingBottom: 48 + insets.bottom }}>
-        <TouchableOpacity
-          onPress={() => (step === 'recording' ? handleStop() : void handleRecord())}
-          disabled={step !== 'recording' && !isCameraReady}
-          className={`w-20 h-20 rounded-full border-4 items-center justify-center ${
-            step === 'recording' ? 'border-red-500' : 'border-white'
-          } ${!isCameraReady && step !== 'recording' ? 'opacity-40' : ''}`}
-        >
-          {!isCameraReady && step !== 'recording' ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <View
-              className={
-                step === 'recording'
-                  ? 'w-8 h-8 bg-red-500 rounded-md'
-                  : 'w-14 h-14 bg-white rounded-full'
-              }
-            />
-          )}
-        </TouchableOpacity>
-        <Text className="text-white/50 text-xs">
-          {step === 'recording'
-            ? 'Tap to stop early'
-            : isCameraReady
-              ? 'Tap to start recording'
-              : 'Preparing camera...'}
-        </Text>
+        {cameraError && !isCameraReady ? (
+          <TouchableOpacity
+            onPress={() => {
+              // Increment retry count to force CameraView remount via key prop
+              cameraRetryCount.current += 1;
+              setCameraError(null);
+              setIsCameraReady(false);
+            }}
+            className="bg-cyan-600 px-6 py-3 rounded-xl"
+          >
+            <Text className="text-white font-semibold">Retry Camera</Text>
+          </TouchableOpacity>
+        ) : (
+          <>
+            <TouchableOpacity
+              onPress={() => (step === 'recording' ? handleStop() : void handleRecord())}
+              disabled={step !== 'recording' && !isCameraReady}
+              className={`w-20 h-20 rounded-full border-4 items-center justify-center ${
+                step === 'recording' ? 'border-red-500' : 'border-white'
+              } ${!isCameraReady && step !== 'recording' ? 'opacity-40' : ''}`}
+            >
+              {!isCameraReady && step !== 'recording' ? (
+                <ActivityIndicator color="white" />
+              ) : (
+                <View
+                  className={
+                    step === 'recording'
+                      ? 'w-8 h-8 bg-red-500 rounded-md'
+                      : 'w-14 h-14 bg-white rounded-full'
+                  }
+                />
+              )}
+            </TouchableOpacity>
+            <Text className="text-white/50 text-xs">
+              {step === 'recording'
+                ? 'Tap to stop early'
+                : isCameraReady
+                  ? 'Tap to start recording'
+                  : 'Preparing camera...'}
+            </Text>
+          </>
+        )}
       </View>
     </View>
   );

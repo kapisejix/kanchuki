@@ -1,9 +1,11 @@
 import { useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native'
-import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../../src/components/ProductCard'
+import { ProductGridSkeleton } from '../../../src/components/Skeleton'
 import { productApi, categoryApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
@@ -52,11 +54,18 @@ export default function AddProductsToCategoryScreen() {
   const canAssign = selected.size > 0 && !assign.isPending
 
   return (
-    <>
-      <Stack.Screen options={{ title: 'Add Products', headerShown: true }} />
-      <View className="flex-1 bg-cyan-50">
-        {isLoading ? (
-          <ActivityIndicator className="mt-16" color="#0891B2" />
+    <View className="flex-1 bg-cyan-50">
+      <View
+        className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={24} color="#374151" />
+        </TouchableOpacity>
+        <Text className="text-base font-bold text-gray-900 ml-3">Add Products</Text>
+      </View>
+      {isLoading ? (
+          <ProductGridSkeleton />
         ) : (
           <FlatList
             data={products}
@@ -110,7 +119,6 @@ export default function AddProductsToCategoryScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-      </View>
-    </>
+    </View>
   )
 }

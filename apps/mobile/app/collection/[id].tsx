@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { View, Text, ScrollView, FlatList, TouchableOpacity, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
-import { Stack, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check } from 'lucide-react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check, ChevronLeft } from 'lucide-react-native'
 import { normalizeIndianPhone } from '@kanchuki/shared'
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
 
 type CollectionDetail = {
   id: string
@@ -357,6 +359,7 @@ function ShareModal({
 }
 
 export default function CollectionDetailScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [showEditModal, setShowEditModal] = useState(false)
@@ -370,11 +373,7 @@ export default function CollectionDetailScreen() {
   const collection = (data as { data: CollectionDetail } | undefined)?.data
 
   if (isLoading || !collection) {
-    return (
-      <View className="flex-1 items-center justify-center bg-cyan-50">
-        <ActivityIndicator color="#0891B2" />
-      </View>
-    )
+    return <CollectionDetailSkeleton />
   }
 
   const handleDelete = () => {
@@ -405,29 +404,29 @@ export default function CollectionDetailScreen() {
   }
 
   return (
-    <>
-      <Stack.Screen
-        options={{
-          title: collection.title,
-          headerShown: true,
-          headerRight: () => (
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => setShowEditModal(true)}
-                className="w-9 h-9 bg-blue-50 rounded-full items-center justify-center"
-              >
-                <Edit size={16} color="#2563EB" />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleDelete}
-                className="w-9 h-9 bg-red-50 rounded-full items-center justify-center"
-              >
-                <Trash2 size={16} color="#DC2626" />
-              </TouchableOpacity>
-            </View>
-          ),
-        }}
-      />
+    <View className="flex-1 bg-cyan-50">
+      <View
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        style={{ paddingTop: insets.top + 12 }}
+      >
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <ChevronLeft size={24} color="#374151" />
+        </TouchableOpacity>
+        <View className="flex-row gap-2">
+          <TouchableOpacity
+            onPress={() => setShowEditModal(true)}
+            className="w-9 h-9 bg-blue-50 rounded-full items-center justify-center"
+          >
+            <Edit size={16} color="#2563EB" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleDelete}
+            className="w-9 h-9 bg-red-50 rounded-full items-center justify-center"
+          >
+            <Trash2 size={16} color="#DC2626" />
+          </TouchableOpacity>
+        </View>
+      </View>
       <ScrollView className="flex-1 bg-cyan-50">
         {/* Stats */}
         <View className="flex-row flex-wrap px-4 pt-4 gap-3">
@@ -533,7 +532,7 @@ export default function CollectionDetailScreen() {
         collection={collection}
         onClose={() => setShowShareModal(false)}
       />
-    </>
+    </View>
   )
 }
 

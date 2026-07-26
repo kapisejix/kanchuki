@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
 import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Alert, Image, Modal } from 'react-native'
-import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
-import { Plus, Trash2, Pencil, X, ImagePlus } from 'lucide-react-native'
+import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
+import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
@@ -145,6 +147,7 @@ function EditCategoryModal({
 }
 
 export default function CategoryDetailScreen() {
+  const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
   const [deleting, setDeleting] = useState(false)
@@ -189,32 +192,32 @@ export default function CategoryDetailScreen() {
   }
 
   if (catLoading || !category) {
-    return (
-      <View className="flex-1 bg-cyan-50 items-center justify-center">
-        <ActivityIndicator color="#0891B2" />
-      </View>
-    )
+    return <DetailScreenSkeleton withPhoto={false} />
   }
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: category.name,
-          headerShown: true,
-          headerRight: () => (
-            <View className="flex-row items-center gap-4">
-              <TouchableOpacity onPress={() => setShowEdit(true)} hitSlop={8}>
-                <Pencil size={18} color="#0891B2" />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleDelete} disabled={deleting} hitSlop={8}>
-                {deleting ? <ActivityIndicator size="small" color="#DC2626" /> : <Trash2 size={20} color="#DC2626" />}
-              </TouchableOpacity>
-            </View>
-          ),
-        }}
-      />
       <View className="flex-1 bg-cyan-50">
+        {/* Icon-only header — no title text, matches the rest of the app's
+            custom headers instead of the native Stack header (which showed
+            the previous screen's title as the back-button label). */}
+        <View
+          className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+          style={{ paddingTop: insets.top + 12 }}
+        >
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+            <ChevronLeft size={24} color="#374151" />
+          </TouchableOpacity>
+          <View className="flex-row items-center gap-4">
+            <TouchableOpacity onPress={() => setShowEdit(true)} hitSlop={8}>
+              <Pencil size={18} color="#0891B2" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleDelete} disabled={deleting} hitSlop={8}>
+              {deleting ? <ActivityIndicator size="small" color="#DC2626" /> : <Trash2 size={20} color="#DC2626" />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center gap-3">
           <View className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden items-center justify-center">
             {category.image_url ? (
@@ -232,7 +235,7 @@ export default function CategoryDetailScreen() {
         </View>
 
         {productsLoading ? (
-          <ActivityIndicator className="mt-16" color="#0891B2" />
+          <ProductGridSkeleton />
         ) : (
           <FlatList
             data={products}

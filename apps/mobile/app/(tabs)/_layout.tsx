@@ -70,6 +70,7 @@ export default function TabsLayout() {
         options={{
           title: 'Catalog',
           tabBarIcon: ({ color, size }) => <Grid3X3 color={color} size={size} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen

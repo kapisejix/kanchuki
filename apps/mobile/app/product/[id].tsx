@@ -31,6 +31,9 @@ import {
   formatPriceRange,
 } from '@kanchuki/shared'
 
+// ponytail: Try-On feature not finished yet — flip to true when ready.
+const TRY_ON_ENABLED = false
+
 type Photo = { id: string; url: string; is_primary: boolean; piece_type: 'upper' | 'lower' | null }
 type Variant = { id: string; color: string; photo_url: string | null }
 type Product = {
@@ -158,6 +161,36 @@ export default function ProductDetailScreen() {
     return () => {
       if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
     }
+  }, [])
+
+  // ── 360° spin viewer — drag-to-rotate through spin_frames, mirrors the
+  // web customer PWA's Product360Viewer (apps/web/.../Product360Viewer.tsx) ─
+  const [spinViewerOpen, setSpinViewerOpen] = useState(false)
+  const [spinFrameIndex, setSpinFrameIndex] = useState(0)
+  const spinDragStartX = useRef<number | null>(null)
+  const spinDragStartFrame = useRef(0)
+  const SPIN_PX_PER_FRAME = 8
+
+  const handleSpinTouchStart = useCallback((e: { nativeEvent: { touches?: { pageX: number }[] } }) => {
+    const t = e.nativeEvent.touches?.[0]
+    if (!t) return
+    spinDragStartX.current = t.pageX
+    spinDragStartFrame.current = spinFrameIndex
+  }, [spinFrameIndex])
+
+  const handleSpinTouchMove = useCallback((e: { nativeEvent: { touches?: { pageX: number }[] } }) => {
+    const t = e.nativeEvent.touches?.[0]
+    if (!t || spinDragStartX.current === null || !product) return
+    const total = product.spin_frames.length
+    if (total === 0) return
+    const delta = t.pageX - spinDragStartX.current
+    const framesDelta = Math.round(delta / SPIN_PX_PER_FRAME)
+    const next = (((spinDragStartFrame.current - framesDelta) % total) + total) % total
+    setSpinFrameIndex(next)
+  }, [product])
+
+  const handleSpinTouchEnd = useCallback(() => {
+    spinDragStartX.current = null
   }, [])
 
   // Get all displayable images (product photos + variant preview appended)
@@ -692,6 +725,22 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
+        {/* 360° spin icon — opens the same frames fullscreen, drag to rotate */}
+        {product.spin_status === 'ready' && product.spin_frames.length > 0 && (
+          <View className="px-4 pt-3">
+            <TouchableOpacity
+              onPress={() => {
+                setSpinFrameIndex(0)
+                setSpinViewerOpen(true)
+              }}
+              className="flex-row items-center justify-center gap-2 bg-cyan-50 py-2.5 rounded-xl"
+            >
+              <RotateCw size={16} color="#0891B2" />
+              <Text className="text-cyan-700 text-sm font-semibold">View 360°</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Thumbnail strip — synced with carousel */}
         {displayPhotos.length > 1 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
@@ -789,7 +838,7 @@ export default function ProductDetailScreen() {
                   <Scissors size={14} color="#0891B2" />
                 )}
                 <Text className="text-cyan-700 text-xs font-medium capitalize">
-                  Crop {piece} piece from a photo
+                  Crop {piece}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -836,16 +885,98 @@ export default function ProductDetailScreen() {
 
       <View className="px-4 py-4 gap-4">
         {/* Try-On */}
-        <TouchableOpacity
-          onPress={() =>
-            router.push({ pathname: '/tryon/in-store', params: { productId: product.id } })
-          }
-          className="flex-row items-center justify-center gap-2 bg-cyan-600 py-3.5 rounded-2xl"
-          activeOpacity={0.8}
-        >
-          <Sparkles size={18} color="white" />
-          <Text className="text-white font-bold">Try-On with Customer Photo</Text>
-        </TouchableOpacity>
+        {TRY_ON_ENABLED && (
+          <TouchableOpacity
+            onPress={() =>
+              router.push({ pathname: '/tryon/in-store', params: { productId: product.id } })
+            }
+            className="flex-row items-center justify-center gap-2 bg-cyan-600 py-3.5 rounded-2xl"
+            activeOpacity={0.8}
+          >
+            <Sparkles size={18} color="white" />
+            <Text className="text-white font-bold">Try-On with Customer Photo</Text>
+          </TouchableOpacity>
+        )}
+
+        {/* Color variants — tapped variant shows in gallery preview */}
+        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              Colors · Same Design
+            </Text>
+            <TouchableOpacity
+              onPress={() => router.push(`/product/${product.id}/add-color`)}
+              className="bg-cyan-50 px-2.5 py-1 rounded-full flex-row items-center gap-1"
+            >
+              <Plus size={12} color="#0891B2" />
+              <Text className="text-cyan-700 text-xs font-semibold">Add Color</Text>
+            </TouchableOpacity>
+          </View>
+
+          {product.variants.length === 0 ? (
+            <View className="bg-gray-50 rounded-xl px-4 py-3">
+              <Text className="text-xs text-gray-400 text-center">
+                No color variants yet. Add photos of the same design in different colors.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row gap-3">
+                {product.variants.map((variant) => {
+                  const isActive = variantPreviewUrl === variant.photo_url
+                  return (
+                    <TouchableOpacity
+                      key={variant.id}
+                      onPress={() => {
+                        if (variant.photo_url) {
+                          if (isActive) {
+                            // Deselect — go back to product photos at index 0
+                            setVariantPreviewUrl(null)
+                            setVariantPreviewColor(null)
+                            goToPhoto(0)
+                          } else {
+                            // Set variant preview + scroll carousel to last position
+                            setVariantPreviewUrl(variant.photo_url)
+                            setVariantPreviewColor(variant.color)
+                            // After state update, the displayPhotos includes the variant
+                            // as the last item. Scroll to it smoothly.
+                            const variantIndex = displayPhotos.length // will be last position
+                            requestAnimationFrame(() => goToPhoto(variantIndex))
+                          }
+                        }
+                      }}
+                      className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
+                    >
+                      <View
+                        className={`w-20 h-24 rounded-xl overflow-hidden bg-gray-100 border-2 ${
+                          isActive ? 'border-cyan-600' : 'border-gray-200'
+                        }`}
+                      >
+                        {variant.photo_url ? (
+                          <Image
+                            source={{ uri: variant.photo_url }}
+                            style={{ width: '100%', height: '100%' }}
+                            contentFit="cover"
+                          />
+                        ) : (
+                          <View className="flex-1 items-center justify-center">
+                            <Text className="text-gray-300 text-lg">?</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="flex-row items-center gap-1">
+                        {isActive && <Check size={10} color="#0891B2" />}
+                        <Text className={`text-xs font-medium ${isActive ? 'text-cyan-700' : 'text-gray-500'}`}>
+                          {variant.color}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </ScrollView>
+          )}
+        </View>
 
         {/* AI-read attributes (read-only summary) */}
         <View className="bg-white rounded-2xl p-4 border border-gray-100">
@@ -1029,86 +1160,6 @@ export default function ProductDetailScreen() {
               </Text>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* Color variants — tapped variant shows in gallery preview */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              Colors · Same Design
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push(`/product/${product.id}/add-color`)}
-              className="bg-cyan-50 px-2.5 py-1 rounded-full flex-row items-center gap-1"
-            >
-              <Plus size={12} color="#0891B2" />
-              <Text className="text-cyan-700 text-xs font-semibold">Add Color</Text>
-            </TouchableOpacity>
-          </View>
-
-          {product.variants.length === 0 ? (
-            <View className="bg-gray-50 rounded-xl px-4 py-3">
-              <Text className="text-xs text-gray-400 text-center">
-                No color variants yet. Add photos of the same design in different colors.
-              </Text>
-            </View>
-          ) : (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-3">
-                {product.variants.map((variant) => {
-                  const isActive = variantPreviewUrl === variant.photo_url
-                  return (
-                    <TouchableOpacity
-                      key={variant.id}
-                      onPress={() => {
-                        if (variant.photo_url) {
-                          if (isActive) {
-                            // Deselect — go back to product photos at index 0
-                            setVariantPreviewUrl(null)
-                            setVariantPreviewColor(null)
-                            goToPhoto(0)
-                          } else {
-                            // Set variant preview + scroll carousel to last position
-                            setVariantPreviewUrl(variant.photo_url)
-                            setVariantPreviewColor(variant.color)
-                            // After state update, the displayPhotos includes the variant
-                            // as the last item. Scroll to it smoothly.
-                            const variantIndex = displayPhotos.length // will be last position
-                            requestAnimationFrame(() => goToPhoto(variantIndex))
-                          }
-                        }
-                      }}
-                      className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
-                    >
-                      <View
-                        className={`w-20 h-24 rounded-xl overflow-hidden bg-gray-100 border-2 ${
-                          isActive ? 'border-cyan-600' : 'border-gray-200'
-                        }`}
-                      >
-                        {variant.photo_url ? (
-                          <Image
-                            source={{ uri: variant.photo_url }}
-                            style={{ width: '100%', height: '100%' }}
-                            contentFit="cover"
-                          />
-                        ) : (
-                          <View className="flex-1 items-center justify-center">
-                            <Text className="text-gray-300 text-lg">?</Text>
-                          </View>
-                        )}
-                      </View>
-                      <View className="flex-row items-center gap-1">
-                        {isActive && <Check size={10} color="#0891B2" />}
-                        <Text className={`text-xs font-medium ${isActive ? 'text-cyan-700' : 'text-gray-500'}`}>
-                          {variant.color}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  )
-                })}
-              </View>
-            </ScrollView>
-          )}
         </View>
 
         {/* Status */}
@@ -1432,6 +1483,65 @@ export default function ProductDetailScreen() {
               ))}
             </View>
           )}
+        </View>
+      </Modal>
+
+      {/* Fullscreen 360° spin viewer — drag left/right to rotate through frames */}
+      <Modal
+        visible={spinViewerOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSpinViewerOpen(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'black' }}>
+          <TouchableOpacity
+            onPress={() => setSpinViewerOpen(false)}
+            hitSlop={8}
+            style={{
+              position: 'absolute',
+              top: insets.top + 12,
+              left: 16,
+              zIndex: 20,
+              width: 40,
+              height: 40,
+              borderRadius: 20,
+              backgroundColor: 'rgba(255,255,255,0.15)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <ChevronLeft size={26} color="white" />
+          </TouchableOpacity>
+
+          <View
+            style={{ flex: 1 }}
+            onTouchStart={handleSpinTouchStart}
+            onTouchMove={handleSpinTouchMove}
+            onTouchEnd={handleSpinTouchEnd}
+          >
+            {product.spin_frames.map((frame, i) => (
+              <Image
+                key={frame.id}
+                source={{ uri: frame.url }}
+                style={{ position: 'absolute', width: '100%', height: '100%', opacity: i === spinFrameIndex ? 1 : 0 }}
+                contentFit="contain"
+              />
+            ))}
+          </View>
+
+          <View
+            style={{
+              position: 'absolute',
+              bottom: insets.bottom + 24,
+              left: 0,
+              right: 0,
+              alignItems: 'center',
+            }}
+          >
+            <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
+              <Text style={{ color: 'white', fontSize: 11, fontWeight: '600' }}>Drag to rotate · 360°</Text>
+            </View>
+          </View>
         </View>
       </Modal>
     </View>

@@ -5,7 +5,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Alert,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -23,6 +22,7 @@ import {
 } from 'lucide-react-native'
 import { ordersApi, type Order } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { OrdersListSkeleton } from '../../src/components/Skeleton'
 
 const STATUS_CONFIG: Record<
   string,
@@ -183,9 +183,10 @@ export default function OrdersScreen() {
 
       {/* Orders list */}
       {isLoading ? (
-        <View className="flex-1 items-center justify-center pt-20">
-          <ActivityIndicator size="large" color="#0891B2" />
-        </View>
+        <OrdersListSkeleton
+          refreshing={isLoading}
+          onRefresh={() => void refetch()}
+        />
       ) : orders.length === 0 ? (
         <View className="flex-1 items-center justify-center px-4 pt-20">
           <PackageCheck size={48} color="#D1D5DB" />

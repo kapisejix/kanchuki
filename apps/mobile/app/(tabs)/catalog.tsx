@@ -3,7 +3,7 @@ import {
   View,
   Text,
   FlatList,
-  TextInput,
+  ScrollView,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Search, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
+import { Plus, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi } from '../../src/lib/api'
@@ -89,7 +89,6 @@ function ChipRow({
   )
 }
 
-type SearchResult = { data: Product[]; query_interpretation: unknown }
 type ListResult = { data: Product[]; pagination: { cursor: string | null; has_more: boolean } }
 
 // ── Memoized Product Card Wrap ──────────────────────────────────────
@@ -156,10 +155,6 @@ export default function CatalogScreen() {
   const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
   const bannerUrl = retailerProfile?.banner_url as string | undefined
 
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isSearching, setIsSearching] = useState(false)
-  const [searchResults, setSearchResults] = useState<Product[] | null>(null)
-
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectionMode = selectedIds.size > 0
   const [deleting, setDeleting] = useState(false)
@@ -174,14 +169,11 @@ export default function CatalogScreen() {
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: ['products', 'list', { is_new_arrival: filterNewArrival }],
     queryFn: () => productApi.list({ limit: 50, ...(filterNewArrival ? { is_new_arrival: true } : {}) }),
-    enabled: !isSearching,
     staleTime: 30_000,
     gcTime: 300_000,
   })
 
-  const unfilteredProducts: Product[] = isSearching && searchResults
-    ? searchResults
-    : ((listData as ListResult | undefined)?.data ?? [])
+  const unfilteredProducts: Product[] = (listData as ListResult | undefined)?.data ?? []
 
   const categoryOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.category).filter((c): c is string => !!c)),
@@ -191,6 +183,13 @@ export default function CatalogScreen() {
     new Set(unfilteredProducts.map((p) => p.primary_color).filter((c): c is string => !!c)),
   )
   const activeFilterCount = [filterCategory, filterOccasion, filterPrice, filterColor, filterNewArrival ? 'New Arrivals' : null].filter(Boolean).length
+
+  // Category shortcut row — one circle per category, thumbnail borrowed from
+  // that category's first photographed product (no separate icon asset needed).
+  const categoryImages = categoryOptions.map((cat) => ({
+    category: cat,
+    photoUrl: unfilteredProducts.find((p) => p.category === cat && p.primary_photo_url)?.primary_photo_url ?? null,
+  }))
 
   const products = unfilteredProducts.filter((p) => {
     if (filterCategory && p.category !== filterCategory) return false
@@ -212,28 +211,6 @@ export default function CatalogScreen() {
     setFilterOccasion(null)
     setFilterPrice(null)
     setFilterColor(null)
-  }, [])
-
-  const handleSearch = useCallback(async (query: string) => {
-    setSearchQuery(query)
-    if (query.trim().length < 2) {
-      setIsSearching(false)
-      setSearchResults(null)
-      return
-    }
-    setIsSearching(true)
-    try {
-      const result = (await productApi.search(query)) as SearchResult
-      setSearchResults(result.data)
-    } catch {
-      setSearchResults([])
-    }
-  }, [])
-
-  const clearSearch = useCallback(() => {
-    setSearchQuery('')
-    setIsSearching(false)
-    setSearchResults(null)
   }, [])
 
   const queryClient = useQueryClient()
@@ -302,18 +279,14 @@ export default function CatalogScreen() {
     () => (
       <View className="items-center py-16">
         <Text className="text-gray-400 text-sm">
-          {isSearching
-            ? 'No matching products'
-            : activeFilterCount > 0
-              ? 'No products match the filter'
-              : 'No products yet'}
+          {activeFilterCount > 0 ? 'No products match the filter' : 'No products yet'}
         </Text>
-        {!isSearching && activeFilterCount > 0 && (
+        {activeFilterCount > 0 && (
           <TouchableOpacity onPress={clearFilters} className="mt-2">
             <Text className="text-cyan-600 text-xs font-medium underline">Clear filters</Text>
           </TouchableOpacity>
         )}
-        {!isSearching && activeFilterCount === 0 && (
+        {activeFilterCount === 0 && (
           <TouchableOpacity
             onPress={() => router.push('/product/add')}
             className="mt-3 bg-cyan-600 px-5 py-2.5 rounded-xl"
@@ -323,7 +296,7 @@ export default function CatalogScreen() {
         )}
       </View>
     ),
-    [isSearching, activeFilterCount, clearFilters],
+    [activeFilterCount, clearFilters],
   )
 
   return (
@@ -359,90 +332,23 @@ export default function CatalogScreen() {
             <Text className="text-white/80 text-xs font-semibold uppercase tracking-wider" numberOfLines={1}>
               {retailerProfile?.shop_name ?? 'My Store'}
             </Text>
-            <Text className="text-white text-lg font-bold leading-tight" numberOfLines={1}>
-              Product Catalog
-            </Text>
           </View>
         </View>
       ) : null}
 
-      {/* Search Bar */}
-      <View className="bg-white px-4 py-3 border-b border-gray-100">
-        <View className="flex-row items-center gap-2">
-          <View className="flex-1 flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2">
-            <Search size={16} color="#9CA3AF" />
-            <TextInput
-              value={searchQuery}
-              onChangeText={(text) => void handleSearch(text)}
-              placeholder="Pink cotton wedding suit under ₹2500..."
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 text-sm text-gray-900"
-              returnKeyType="search"
-            />
-            {isSearching && searchQuery.length > 0 && (
-              <TouchableOpacity onPress={clearSearch}>
-                <Text className="text-cyan-600 text-xs font-medium">Clear</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-          <TouchableOpacity
-            onPress={() => setShowFilters((v) => !v)}
-            className={`w-10 h-10 rounded-xl items-center justify-center border ${
-              activeFilterCount > 0 ? 'bg-cyan-600 border-cyan-600' : 'bg-gray-100 border-gray-100'
-            }`}
-          >
-            <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#6B7280'} />
-          </TouchableOpacity>
-        </View>
-        {isSearching && (
-          <Text className="text-xs text-cyan-600 mt-1.5 px-1">
-            AI search — try natural language
-          </Text>
-        )}
-
-        {/* Filter panel — Category, Occasion, Price, Color, then the list below */}
-        {showFilters && (
-          <View className="mt-3 pt-3 border-t border-gray-100">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filters</Text>
-              <View className="flex-row items-center gap-3">
-                {activeFilterCount > 0 && (
-                  <TouchableOpacity onPress={clearFilters}>
-                    <Text className="text-cyan-600 text-xs font-medium">Clear all</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity onPress={() => setShowFilters(false)}>
-                  <X size={16} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-            </View>
-            <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
-            <ChipRow label="Occasion" options={occasionOptions} selected={filterOccasion} onSelect={setFilterOccasion} />            <ChipRow label="Price"
-              options={PRICE_BUCKETS.map((b) => b.label)}
-              selected={filterPrice}
-              onSelect={setFilterPrice}
-            />
-            <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
-            {/* New Arrivals — derived flag, no cron, auto-expires at 30 days */}
-            <View className="mb-2.5">
-              <Text className="text-xs text-gray-500 mb-1.5">Age</Text>
-              <TouchableOpacity
-                onPress={() => setFilterNewArrival((v) => !v)}
-                className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
-                  filterNewArrival ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
-                }`}
-              >
-                {filterNewArrival && <Text className="text-white text-xs font-medium">✓ </Text>}
-                <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-gray-600'}`}>
-                  New Arrivals (30d)
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
+      {/* Header — filter icon only, top right */}
+      <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center justify-end">
+        <TouchableOpacity
+          onPress={() => setShowFilters((v) => !v)}
+          className={`w-10 h-10 rounded-xl items-center justify-center border ${
+            activeFilterCount > 0 ? 'bg-cyan-600 border-cyan-600' : 'bg-gray-100 border-gray-100'
+          }`}
+        >
+          <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#6B7280'} />
+        </TouchableOpacity>
       </View>
 
-      {/* Product Grid */}
+      {/* Product Grid — category shortcuts + filter panel scroll away with it, not sticky */}
       {listLoading && products.length === 0 ? (
         <ProductGridSkeleton />
       ) : (
@@ -454,6 +360,92 @@ export default function CatalogScreen() {
           columnWrapperStyle={{ gap: 12 }}
           contentContainerStyle={{ padding: 12, gap: 12, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
+          ListHeaderComponent={
+            (categoryImages.length > 0 || showFilters) ? (
+              <View className="bg-white rounded-2xl px-4 py-3 mb-3">
+                {/* Category shortcuts — medium circles, horizontal scroll */}
+                {categoryImages.length > 0 && (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
+                    <View className="flex-row gap-4">
+                      {categoryImages.map(({ category, photoUrl }) => {
+                        const isActive = filterCategory === category
+                        return (
+                          <TouchableOpacity
+                            key={category}
+                            onPress={() => setFilterCategory(isActive ? null : category)}
+                            className="items-center gap-1"
+                            style={{ width: 64 }}
+                          >
+                            <View
+                              className={`w-16 h-16 rounded-full overflow-hidden bg-gray-100 border-2 ${
+                                isActive ? 'border-cyan-600' : 'border-gray-200'
+                              }`}
+                            >
+                              {photoUrl ? (
+                                <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                              ) : (
+                                <View className="flex-1 items-center justify-center">
+                                  <Text className="text-gray-300 text-xl">👗</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text
+                              className={`text-[10px] text-center ${isActive ? 'text-cyan-700 font-semibold' : 'text-gray-600'}`}
+                              numberOfLines={1}
+                            >
+                              {category}
+                            </Text>
+                          </TouchableOpacity>
+                        )
+                      })}
+                    </View>
+                  </ScrollView>
+                )}
+
+                {/* Filter panel — Category, Occasion, Price, Color */}
+                {showFilters && (
+                  <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-gray-100' : ''}>
+                    <View className="flex-row items-center justify-between mb-2">
+                      <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filters</Text>
+                      <View className="flex-row items-center gap-3">
+                        {activeFilterCount > 0 && (
+                          <TouchableOpacity onPress={clearFilters}>
+                            <Text className="text-cyan-600 text-xs font-medium">Clear all</Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => setShowFilters(false)}>
+                          <X size={16} color="#9CA3AF" />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
+                    <ChipRow label="Occasion" options={occasionOptions} selected={filterOccasion} onSelect={setFilterOccasion} />
+                    <ChipRow label="Price"
+                      options={PRICE_BUCKETS.map((b) => b.label)}
+                      selected={filterPrice}
+                      onSelect={setFilterPrice}
+                    />
+                    <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
+                    {/* New Arrivals — derived flag, no cron, auto-expires at 30 days */}
+                    <View className="mb-2.5">
+                      <Text className="text-xs text-gray-500 mb-1.5">Age</Text>
+                      <TouchableOpacity
+                        onPress={() => setFilterNewArrival((v) => !v)}
+                        className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
+                          filterNewArrival ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        {filterNewArrival && <Text className="text-white text-xs font-medium">✓ </Text>}
+                        <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-gray-600'}`}>
+                          New Arrivals (30d)
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            ) : null
+          }
           // ── Performance props ──
           windowSize={7}
           maxToRenderPerBatch={10}

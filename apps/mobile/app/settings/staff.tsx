@@ -7,6 +7,7 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
+import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { staffApi, type StaffMember } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 
@@ -185,7 +186,7 @@ export default function StaffScreen() {
 
       <View className="flex-1 px-4 pt-4">
         {isLoading ? (
-          <ActivityIndicator className="mt-16" color="#0891B2" />
+          <CustomerListSkeleton />
         ) : staff.length === 0 ? (
           <View className="items-center py-16">
             <User size={40} color="#D1D5DB" />
