@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:crypto'
+import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'node:crypto'
 import { prisma } from './client.js'
 
 // F-012: encrypted, admin-managed replacement for .env third-party
@@ -6,11 +6,16 @@ import { prisma } from './client.js'
 // decrypts everything stored here, so it can never live in the table it
 // unlocks (see schema.prisma comment on IntegrationSetting).
 
+// S-008: fixed (not secret) salt — only for domain separation. scrypt's cost
+// factor is what matters: it makes brute-forcing a weak passphrase expensive,
+// unlike the previous plain SHA-256 derivation. Must stay constant forever —
+// changing it would make every previously-encrypted secret undecryptable.
+const MASTER_KEY_SALT = 'kanchuki-encryption-master-key-v1'
+
 function masterKey(): Buffer {
   const raw = process.env['ENCRYPTION_MASTER_KEY']
   if (!raw) throw new Error('ENCRYPTION_MASTER_KEY not configured')
-  // SHA-256 so any passphrase length works, not just a raw 32-byte secret.
-  return createHash('sha256').update(raw).digest()
+  return scryptSync(raw, MASTER_KEY_SALT, 32)
 }
 
 /** AES-256-GCM. Output: base64(iv).base64(authTag).base64(ciphertext) */

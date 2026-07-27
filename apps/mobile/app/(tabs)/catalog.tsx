@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react'
+import { useState, useCallback, useEffect, memo } from 'react'
 import {
   View,
   Text,
@@ -17,6 +17,8 @@ import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { prefetchProductImages } from '../../src/lib/image-prefetch'
+import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
 import { formatPriceRange } from '@kanchuki/shared'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -169,11 +171,19 @@ export default function CatalogScreen() {
   const { data: listData, isLoading: listLoading } = useQuery({
     queryKey: ['products', 'list', { is_new_arrival: filterNewArrival }],
     queryFn: () => productApi.list({ limit: 50, ...(filterNewArrival ? { is_new_arrival: true } : {}) }),
-    staleTime: 30_000,
-    gcTime: 300_000,
+    // A-2: catalog is stable — favor offline browsing over refetch churn
+    staleTime: 10 * 60_000,
+    gcTime: 24 * 60 * 60_000,
   })
 
   const unfilteredProducts: Product[] = (listData as ListResult | undefined)?.data ?? []
+
+  // A-4: warm expo-image's disk cache so photos render offline after first load
+  useEffect(() => {
+    if (unfilteredProducts.length) {
+      prefetchProductImages(unfilteredProducts).catch(() => {})
+    }
+  }, [unfilteredProducts])
 
   const categoryOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.category).filter((c): c is string => !!c)),
@@ -216,8 +226,20 @@ export default function CatalogScreen() {
   const queryClient = useQueryClient()
 
   const handleMarkSold = useCallback(async (productId: string) => {
-    await productApi.updateStatus(productId, 'SOLD')
-    void queryClient.invalidateQueries({ queryKey: ['products'] })
+    try {
+      await productApi.updateStatus(productId, 'SOLD')
+      void queryClient.invalidateQueries({ queryKey: ['products'] })
+    } catch {
+      // A-5: offline (or a transient failure) — queue for replay on reconnect
+      // and patch the cached list so the retailer sees the change now instead
+      // of a silent no-op.
+      await enqueueStatusMutation(productId, 'SOLD')
+      queryClient.setQueriesData<ListResult>({ queryKey: ['products', 'list'] }, (old) =>
+        old
+          ? { ...old, data: old.data.map((p) => (p.id === productId ? { ...p, status: 'SOLD' } : p)) }
+          : old,
+      )
+    }
   }, [queryClient])
 
   const toggleSelect = useCallback((id: string) => {

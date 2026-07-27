@@ -15,12 +15,14 @@ const { mockGetUploadPresignedUrl, mockPublicUrl } = vi.hoisted(() => ({
 }));
 
 vi.mock('@kanchuki/db', () => ({
+  vaultDelete: vi.fn(),
   prisma: {
     retailer: { findUnique: mockRetailerFindUnique, update: mockRetailerUpdate },
     collection: { findFirst: mockCollectionFindFirst },
     product: { count: vi.fn(), findMany: vi.fn() },
     customer: { count: vi.fn() },
     storeSection: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn() },
+    auditLog: { create: vi.fn() },
   },
   Prisma: {},
 }));

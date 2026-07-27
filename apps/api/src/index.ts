@@ -28,6 +28,14 @@ import { staffRoutes } from './routes/staff.js';
 import { teamRoutes } from './routes/team.js';
 import { tryOnRoutes } from './routes/tryon.js';
 
+// Fail fast at boot instead of 500ing the first request that touches
+// encrypted secrets (F-012) — previously masterKey() only threw inside
+// request handlers when this was missing.
+if (!process.env.ENCRYPTION_MASTER_KEY) {
+  console.error('[startup] ENCRYPTION_MASTER_KEY not set — required to decrypt IntegrationSetting rows (F-012). Exiting.');
+  process.exit(1);
+}
+
 const server = Fastify({
   logger: process.env.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : true,
   // Trust Railway's internal proxy so request.ip returns the real client IP

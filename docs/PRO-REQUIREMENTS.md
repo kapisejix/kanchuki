@@ -314,24 +314,22 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 **Priority:** P2 — real UX win for poor-connectivity India retail.
 
-**Implementation:**
-- **Serwist** (`@serwist/next@9`, `@serwist/sw@9`) installed in `apps/web/package.json`
-- `next.config.mjs` wraps the Next.js config with `withSerwist()`:
-  - `swSrc: 'src/app/sw.ts'` — service worker source file
-  - `swDest: 'public/sw.js'` — compiled output
-  - `cacheOnFrontEndNav: true` — caches pages on client-side navigation
-  - `reloadOnOnline: true` — auto-refreshes cached pages when connection returns
-- Full service worker code at `apps/web/src/app/sw.ts`:
-  - `precacheEntries: self.__SW_MANIFEST` — precaches static assets
-  - `skipWaiting: true` + `clientsClaim: true` — new SW activates immediately after install, claims all clients
-  - `navigationPreload: true` — speeds up navigations
-  - `runtimeCaching: defaultCache` — Serwist's built-in best-practice caching strategies for all resource types
+**Implementation (updated 2026-07-27 — runtime caching strategies added, was previously just Serwist defaults):**
+- **Serwist** (`@serwist/next@9`) installed in `apps/web/package.json`, wired via `withSerwist()` in `next.config.mjs` (`swSrc: 'src/app/sw.ts'`, `swDest: 'public/sw.js'`, `cacheOnNavigation: true`, `reloadOnOnline: true`)
+- `apps/web/src/app/sw.ts` — `skipWaiting`/`clientsClaim`/`navigationPreload`, plus explicit `runtimeCaching` rules ahead of Serwist's `defaultCache`:
+  - **R2 product images** (`*.r2.dev`, `*.r2.cloudflarestorage.com`, `*.cloudflare.com`) — `CacheFirst`, `ExpirationPlugin` (200 entries / 7 days)
+  - **`/api/c/*`** (the actual same-origin collection product-list route used for pagination) — `StaleWhileRevalidate`
+  - **`/c/*`** collection pages — `NetworkFirst`, 3s timeout before falling back to cache (handles slow 2G)
+  - **`/offline`** — precached at install time (`precacheEntries`), served via `fallbacks.entries` when a document request has no cache and no network
+- `apps/web/public/manifest.json` — `icons` array added (`icon-192.png`/`icon-512.png`, generated via `sharp`), fixes Android "Add to Home Screen"
+- `apps/web/src/app/offline/page.tsx` — branded offline fallback page
 
 **What works offline today:**
-1. **Catalog + product-detail browsing** — service worker caches page shell (JS/CSS/RSC HTML) and product data (network-first-with-cache-fallback, keyed per exact query string). Online serves fresh; offline serves last-seen for that exact filter/page.
-2. **Product photos** — cache-first strategy with long TTL (photos rarely change once shot)
+1. **Catalog + product-detail browsing** — `/c/*` pages NetworkFirst, `/api/c/*` product data StaleWhileRevalidate. Online serves fresh; offline serves last-seen for that exact filter/page.
+2. **Product photos** — CacheFirst, bounded 7-day/200-image expiry
 3. **Wishlist/cart** — already worked offline before this via `localStorage` (synchronous, no network). The only network call (fire-and-forget analytics ping) already no-ops silently offline.
-4. **Enquiry send via WhatsApp** — already works offline inherently: `handleEnquire` is a pure client `wa.me` redirect with no Kanchuki backend call. WhatsApp's own app queues the message and auto-retries on reconnect.
+4. **Enquiry send via WhatsApp** — already works offline inherently: `handleEnquire` is a pure client `wa.me` redirect with no Kanchuki backend call. WhatsApp's own app queues the message and auto-retries on reconnect. (Confirms the original review-doc assumption that this needed a localStorage retry queue was wrong — there's no `fetch()` in this path to fail.)
+5. **First-visit-without-network** — new: a branded `/offline` page instead of the browser's default error screen, precached at SW install.
 
 **Cache invalidation:** Serwist's versioned cache + `skipWaiting`/`clientsClaim` ensures a stale service worker never serves a broken app shell after a deploy — new SW activates immediately on install.
 
@@ -344,6 +342,23 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - ✅ Favoriting/cart-adding while offline persists and survives a page reload
 - ✅ A stale service worker never serves a broken/outdated app shell after a deploy (versioned cache + `skipWaiting` auto-activation)
 - ✅ Enquiry-send keeps working exactly as it does online (no regression to the existing WhatsApp-redirect flow)
+- ✅ A branded offline page renders instead of the browser default when there's no cache and no network
+
+---
+
+#### F-mobile-offline: Retailer App Offline Catalog Browsing + Mutation Queue
+**Status:** ✅ **Built (2026-07-27)** — companion to F-006B for the React Native retailer app.
+
+**Implementation:**
+- `apps/mobile/app/_layout.tsx` — React Query `networkMode: 'offlineFirst'` on queries and mutations (serves cache immediately when offline instead of pausing)
+- `apps/mobile/app/(tabs)/catalog.tsx` — catalog list query `staleTime: 10min` / `gcTime: 24h` (catalog data is stable; favors offline browsing over refetch churn)
+- `apps/mobile/src/lib/image-prefetch.ts` — `prefetchProductImages()` warms `expo-image`'s disk cache after the catalog list loads, so photos render offline after first view
+- `apps/mobile/src/hooks/useNetworkStatus.ts` — proactive online/offline state via React Query's `onlineManager` (no `@react-native-community/netinfo` dependency needed — `NetworkBanner.tsx` already had equivalent logic inline)
+- `apps/mobile/src/lib/mutation-queue.ts` + `apps/mobile/src/hooks/useSyncQueue.ts` — when "Mark Sold" fails while offline, the change is queued to disk (same `expo-file-system` JSON pattern as `offline-persister.ts`, not MMKV — MMKV isn't actually installed) and replayed automatically on reconnect; the cached product list is optimistically patched so the retailer sees the change immediately
+
+**Acceptance Criteria:**
+- ✅ Catalog browses (list, filter, photos) with zero network after first load
+- ✅ Marking a product SOLD while offline updates the UI immediately and syncs when connectivity returns
 
 ---
 

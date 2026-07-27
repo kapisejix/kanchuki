@@ -27,6 +27,7 @@ const {
 });
 
 vi.mock('@kanchuki/db', () => ({
+  vaultDelete: vi.fn(),
   prisma: {
     product: {
       findFirst: mockProductFindFirst,
@@ -36,6 +37,7 @@ vi.mock('@kanchuki/db', () => ({
       count: vi.fn(),
     },
     retailer: { findUniqueOrThrow: vi.fn() },
+    auditLog: { create: vi.fn() },
   },
   Prisma: { PrismaClientKnownRequestError: MockPrismaClientKnownRequestError },
 }));

@@ -40,12 +40,12 @@ export default function OtpScreen() {
       await setItem('refresh_token', result.refresh_token)
 
       if (result.is_staff && result.staff) {
-        // Staff login — store staff context and redirect to home (scoped view)
+        // Staff login — store staff context and redirect to staff dashboard
         await setItem('staff_role', result.staff.role)
         await setItem('staff_name', result.staff.name)
         await setItem('staff_retailer_id', result.staff.retailer_id)
         await setItem('retailer_id', result.staff.retailer_id)
-        router.replace('/')
+        router.replace('/staff')
       } else if (result.retailer) {
         // Retailer owner login — existing flow. Clear any staff context left
         // behind by a previous team-member session on this device (shared

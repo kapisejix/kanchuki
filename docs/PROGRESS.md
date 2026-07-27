@@ -121,8 +121,8 @@ Source: user's 8-item bug/feature list (product detail, collections, QR, etc).
 - PRO-REQUIREMENTS.md: Updated F-001d, F-009, F-010, F-011 status to ✅ Built with detailed implementation descriptions.
 - PROGRESS.md: This entry.
 
-**Still pending from the plan:**
-- F-006B: Offline Catalog Browsing — researched, no code
+**Still pending from the plan (at that time):**
+- F-006B: Offline Catalog Browsing
 - F-006 wishlist bug (bare product IDs in localStorage)
 - Phase 0.5: SupportTicket routing, manager rollup reporting, staff Expo mode
 - Phase 1+: Fashion DNA, Remote VTO, Auto-Personalized Collections
@@ -180,7 +180,7 @@ Full design (new `Order`/`OrderItem`/`RetailerPaymentAccount` models, tier-gatin
 - **progress.md**: (root) Updated. Now consolidated into this file.
 
 **Still pending from the plan:**
-- Phase 0.5: SupportTicket routing (schema only), manager rollup reporting, staff Expo mode
+- Phase 0.5: Staff Expo mode — *SupportTicket routing + manager report dashboard completed 2026-07-26*
 - Phase 1+: Fashion DNA, Remote VTO auto-personalized collections
 - Onboarding tutorial improvements (10-retailer pilot feedback)
 
@@ -468,7 +468,67 @@ Full implementation of the admin permission/control system: plan-tier feature ch
 - Local `.env` files still use superuser credentials — update manually to `kanchuki_app`
 
 **Other pending items (pre-existing):**
-- Phase 0.5: SupportTicket routing, manager rollup reporting, staff Expo mode
 - Phase 1+: Fashion DNA, Remote VTO, Auto-Personalized Collections
 - Onboarding tutorial improvements (10-retailer pilot feedback)
 - F-006 wishlist bug (bare product IDs in localStorage)
+
+## 2026-07-27 — Phase 0.5 Completed: Staff Mode + Docs Sync
+
+**Phase 0.5 is now fully code-complete.**
+
+### What was previously built (but not documented correctly)
+- SupportTicket routing logic — fully built in `team.ts` (territory hierarchy traversal, visit-required → nearest agent, backend-manageable → CITY-level pool, least-loaded scheduling, batch `/tickets/route-all`)
+- Manager rollup reporting dashboard — fully built at `/admin/reports` (Agent Performance, Coverage Gaps, Activation Funnel tabs, +3 backend endpoints)
+
+### What was built this session
+- **Staff mode in Expo retailer app** — field staff can log in via phone OTP, get redirected to `/staff` dashboard showing name/role/territory, retailer stats, territory-scoped retailer list, quick retailer onboard form, and support ticket summary. Built files:
+  - `apps/mobile/src/lib/team-api.ts` — Team API module with `getMe()`, `getRetailers()`, `onboardRetailer()`, `getTickets()`
+  - `apps/mobile/app/staff/_layout.tsx` — Stack navigator for staff screens
+  - `apps/mobile/app/staff/index.tsx` — Staff dashboard with stats, retailer list, ticket summary
+  - `apps/mobile/app/staff/retailer-onboard.tsx` — Quick field onboarding form
+  - `apps/mobile/app/auth/otp.tsx` — Updated redirect to `/staff` for staff users
+  - `apps/mobile/app/_layout.tsx` — Auth redirect checks `staff_role` for staff routing
+
+### Docs updated
+- **CLAUDE.md** — Added comprehensive Phase 0.5 section
+- **PLAN.md** — Full rewrite of Month S1-S3 checkboxes, Phase 0.5 staff mode marked [x]
+- **PROGRESS.md** — This entry. All "Still pending" references for Phase 0.5 removed
+
+## 2026-07-27 — OMP Review Follow-up: Security Fixes + Offline-First (F-006B / F-mobile-offline)
+
+Ran the full OMP AI review (`docs/omp-review.md`), verified each finding against actual code (several were stale — already fixed or based on wrong assumptions), fixed what was safely fixable without touching env vars/secrets/prod migrations, then built out the offline-first plan in review §15.
+
+### Security/code fixes (no env/secret/migration changes — those are blocked by the Operational Control Policy, listed as still-open in `docs/omp-review.md` §13)
+- **S-008**: `ENCRYPTION_MASTER_KEY` now derived via `scryptSync` instead of raw SHA-256 (`packages/db/src/secrets.ts`)
+- Startup validation added for `ENCRYPTION_MASTER_KEY` — fails fast at boot instead of 500ing mid-request (`apps/api/src/index.ts`)
+- **B-014**: local secret-commit guard — `scripts/check-secrets-guard.sh` + `.githooks/pre-commit` (opt-in via `git config core.hooksPath .githooks`)
+- **S-006**: `/v1/admin/login` now signs a short-lived (12h) session JWT instead of returning the permanent `ADMIN_API_KEY` in the response body
+- **B-013**: admin SQL query history now durable — reads from the existing `AuditLog` endpoint instead of `sessionStorage`
+
+### Offline-first build (review §15, both surfaces)
+**Web (Next.js PWA):**
+- `apps/web/src/app/sw.ts` — Serwist runtime caching: R2 product images (CacheFirst, 7-day/200-entry expiry), `/api/c/*` collection API (StaleWhileRevalidate), `/c/*` collection pages (NetworkFirst, 3s timeout)
+- `apps/web/public/manifest.json` + `apps/web/public/icons/` — PWA icons generated via `sharp` (already a dependency), fixes Android "Add to Home Screen"
+- `apps/web/src/app/offline/page.tsx` — branded offline fallback, precached at SW install
+
+**Mobile (Expo retailer app):**
+- `apps/mobile/app/_layout.tsx` — React Query `networkMode: 'offlineFirst'`
+- `apps/mobile/app/(tabs)/catalog.tsx` — catalog `staleTime` 10min / `gcTime` 24h, wired existing (unused) `prefetchProductImages()` in
+- `apps/mobile/src/hooks/useNetworkStatus.ts` — proactive online/offline hook
+- `apps/mobile/src/lib/mutation-queue.ts` + `apps/mobile/src/hooks/useSyncQueue.ts` — offline "Mark Sold" queue with reconnect replay
+
+**Corrected one review finding instead of building it as specified:** the review's B-4 (offline enquiry queue) assumed enquiry submission is a `fetch()` POST. It isn't — it's a `wa.me` WhatsApp deep link with no Kanchuki backend call, so there's nothing to queue. No file added for it.
+
+**Verified:** `pnpm --filter @kanchuki/web typecheck`, `pnpm --filter @kanchuki/web build` (SW bundled clean), `pnpm --filter @kanchuki/mobile typecheck`, mobile catalog test suite — all pass.
+
+### Docs updated
+- **CLAUDE.md** — Offline catalog browsing line updated from "researched, not built" to built, with summary
+- **docs/PRO-REQUIREMENTS.md** — F-006B updated to reflect actual runtime-caching implementation (was documented as done but only had Serwist defaults); new F-mobile-offline section added
+- **docs/omp-review.md** — Action-list checkboxes updated, §15 items marked built with implementation notes and the B-4 correction
+- **docs/PROGRESS.md** — This entry
+
+### Still open (unchanged from review, needs a human)
+- Credential rotation (Anthropic/OpenAI/Supabase/R2/Redis keys — all exposed in local `.env`)
+- ADMIN_TOTP_SECRET, VAULT_DATABASE_URL, TEAM_JWT_SECRET, REVALIDATION_SECRET — all missing env vars
+- Migration 037 guardrail triggers — not deployed to Supabase
+- admin.ts (2,545 lines) / checkout.ts (1,087 lines) — large mechanical refactor, not started

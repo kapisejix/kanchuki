@@ -29,7 +29,8 @@
     }
   },
   "dependencies": {
-    "@prisma/client": "^5.16.0"
+    "@prisma/client": "^5.16.0",
+    "pg": "^8.22.0"
   },
   "devDependencies": {
     "prisma": "^5.16.0",

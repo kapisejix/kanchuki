@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -57,7 +57,8 @@ function computeGst(subtotalPaise: number): number {
 /** Generate a simple GST invoice number (e.g., INV-20260724-XXXXXX) */
 function generateGstInvoiceNumber(): string {
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+  // B-011: use crypto.randomBytes for an unguessable, collision-resistant suffix
+  const suffix = randomBytes(4).toString('hex').toUpperCase().slice(0, 6);
   return `INV-${date}-${suffix}`;
 }
 

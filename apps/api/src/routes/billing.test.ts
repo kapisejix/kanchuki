@@ -31,6 +31,7 @@ const {
 // ─── Mock @kanchuki/db ───────────────────────────────────────────
 
 vi.mock('@kanchuki/db', () => ({
+  vaultDelete: vi.fn(),
   getSecret: vi.fn().mockResolvedValue('rzp_test_key_secret'),
   prisma: {
     retailer: { findUnique: mockRetailerFindUnique, findUniqueOrThrow: mockRetailerFindUnique },
@@ -42,6 +43,7 @@ vi.mock('@kanchuki/db', () => ({
     retailerLimitOverride: { findUnique: mockRetailerLimitOverrideFindUnique },
     planLimit: { findUnique: mockPlanLimitFindUnique },
     usageCounter: { upsert: mockUsageCounterUpsert },
+    auditLog: { create: vi.fn() },
     $transaction: mockTransaction,
   },
   Prisma: {},

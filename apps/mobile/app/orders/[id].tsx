@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { router, useLocalSearchParams, Stack } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import {
   ChevronLeft,

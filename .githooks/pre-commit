@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# B-014: local pre-commit secret guard. Enable once with:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+bash scripts/check-secrets-guard.sh

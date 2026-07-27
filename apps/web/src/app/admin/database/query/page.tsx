@@ -262,12 +262,37 @@ LIMIT 20;`)
   const resultRef = useRef<HTMLDivElement>(null)
   const runQueryRef = useRef<() => void>(() => {})
 
-  // ── Load history from session storage on mount ───────────────
+  // ── Load query history from the audit log on mount ───────────
+  // B-013: history used to live only in sessionStorage (gone on next
+  // device/session). Every query already writes a QUERY/QUERY_ERROR
+  // AuditLog row (resource_type: 'DatabaseQuery') — reuse the existing
+  // GET /admin/audit-logs endpoint instead of building a dedicated one.
   useEffect(() => {
-    try {
-      const saved = sessionStorage.getItem('admin_query_history')
-      if (saved) setHistory(JSON.parse(saved) as HistoryEntry[])
-    } catch { /* ignore */ }
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `${API_URL}/v1/admin/audit-logs?resource_type=DatabaseQuery&limit=50`,
+          { headers: getAdminHeaders() },
+        )
+        if (!res.ok) return
+        const json = (await res.json()) as {
+          data: Array<{
+            action: string
+            created_at: string
+            metadata: { query_preview?: string; row_count?: number; execution_time_ms?: number; error?: string } | null
+          }>
+        }
+        setHistory(
+          json.data.map((row) => ({
+            query: row.metadata?.query_preview ?? '',
+            timestamp: row.created_at,
+            execution_time_ms: row.metadata?.execution_time_ms,
+            row_count: row.metadata?.row_count,
+            error: row.action === 'QUERY_ERROR' ? (row.metadata?.error ?? 'Query failed') : undefined,
+          })),
+        )
+      } catch { /* fall back to whatever local history is already in state */ }
+    })()
     // Load saved queries from localStorage
     try {
       const saved = localStorage.getItem('admin_saved_queries')
@@ -300,15 +325,10 @@ LIMIT 20;`)
     }
   }, [schema])
 
-  // ── Save history to session storage ──────────────────────────
+  // ── Optimistic local prepend — the backend persists the same entry
+  // to AuditLog on every query, so no local storage write is needed here.
   const saveHistory = useCallback((entry: HistoryEntry) => {
-    setHistory((prev) => {
-      const updated = [entry, ...prev].slice(0, 50)
-      try {
-        sessionStorage.setItem('admin_query_history', JSON.stringify(updated))
-      } catch { /* ignore */ }
-      return updated
-    })
+    setHistory((prev) => [entry, ...prev].slice(0, 50))
   }, [])
 
   // ── Validate SQL (client-side) ───────────────────────────────
@@ -1085,10 +1105,9 @@ LIMIT 20;`)
                   </span>
                 </div>
                 <motion.button
-                  onClick={() => {
-                    setHistory([])
-                    sessionStorage.removeItem('admin_query_history')
-                  }}
+                  // Clears the local view only — the underlying AuditLog trail
+                  // is immutable by design (see F-017 guardrails) and reloads on next visit.
+                  onClick={() => setHistory([])}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-red-500 transition-colors"

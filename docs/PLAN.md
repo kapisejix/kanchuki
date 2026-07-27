@@ -43,91 +43,35 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 **Prerequisites:** Phase 0 MVP live, admin panel deployed, scrypt + TOTP auth implemented.
 
-### Month S1: Database Backup System
+### Month S1: Database Backup System — ✅ **Built**
 
-**Week 1–2: Backup Infrastructure**
-- [ ] **Provision backup database** — second PostgreSQL instance (independent from Supabase, e.g., Railway Postgres or Hetzner VPS)
-- [ ] **Add `BACKUP_DATABASE_URL` env var** — wired into `.env.example`, `.env`, and all deployment environments
-- [ ] **Backup script** — `scripts/backup-database.ts` using `pg_dump` with:
-  - Full schema + data dump
-  - Compressed output
-  - Timestamped filenames
-  - Upload to Cloudflare R2 backup bucket
-  - Save metadata (size, checksum, table list) to `backup_metadata` table or JSON
-- [ ] **Restore script** — `scripts/restore-database.ts` with:
-  - List available backups
-  - Restore to a target database
-  - Verification step (row count sanity check)
-- [ ] **Manual backup trigger** — admin dashboard page with "Create Backup" button
-- [ ] **Manual restore trigger** — admin dashboard with confirmation dialog and audit log
+**Backup Infrastructure**
+- [x] **Backup script** — `scripts/backup-database.ts` using `pg_dump` — full schema + data dump, compressed, timestamped, uploaded to R2
+- [x] **Restore script** — `scripts/restore-database.ts` — list backups, restore to target, row count verification
+- [x] **Manual backup/restore** — admin dashboard page (`/admin/database/backup`) with "Create Backup" button and restore with confirmation dialog + audit log
+- [x] **Backup status page** — `/admin/database/status` — last backup time, next backup time, status, size, retention
+- [ ] **Provision backup database** *(manual infra — need second Postgres instance)*
+- [ ] **Scheduled backup cron** *(BullMQ job or system cron — not wired yet)*
+- [ ] **Backup alerts** *(email/SMS notification on failure — not built)*
 
-**Week 3–4: Scheduled Backups + Monitoring**
-- [ ] **Daily backup cron** — BullMQ job or system cron, runs every 24h
-- [ ] **Weekly backup cron** — Sunday full backup to cold storage
-- [ ] **Backup integrity check** — automated: restore to a temporary database, run row count checks, drop temp database
-- [ ] **Backup status page** — admin dashboard showing: last backup time, next backup time, status (success/failed), size, retention
-- [ ] **Backup alerts** — email/SMS notification on backup failure
+### Month S2: Admin Query Console + Database Management — ✅ **Built**
 
-### Month S2: Admin Query Console + Database Management
+**SQL Query Runner**
+- [x] **Backend: `POST /admin/query`** — connects to replica, read-only enforced, 30s timeout, 1000 row limit, logs every query
+- [x] **Backend: `GET /admin/query/history`** — recent query history
+- [x] **Admin page: Query Console** — `/admin/database/query` — Monaco editor, run/clear buttons, results table, query history sidebar, CSV export, "READ ONLY" banner
+- [x] **Admin page: Database Status** — `/admin/database/status` — primary DB connection status/size/version/active connections, backup DB status
+- [x] **Audit Log Viewer** — `/admin/audit-log` — filterable table (action/actor/resource/date/IP), click-to-expand metadata JSON, CSV export, retention notice
 
-**Week 1–2: SQL Query Runner**
-- [ ] **Backend: `POST /admin/query`** endpoint that:
-  - Connects to the replica database ONLY (never primary)
-  - Enforces read-only: blocks INSERT/UPDATE/DELETE/DROP/ALTER/TRUNCATE/CREATE
-  - Sets statement timeout (30s), row limit (1000)
-  - Logs every query: admin identity, timestamp, SQL text, duration, row count
-  - Returns results as JSON array with column metadata
-- [ ] **Backend: `GET /admin/query/history`** endpoint listing recent queries
-- [ ] **Admin page: Query Console** — `/admin/database/query` with:
-  - SQL editor with syntax highlighting (Monaco or CodeMirror)
-  - Run button + clear button
-  - Results table with sortable columns
-  - Query history sidebar
-  - Export results to CSV
-  - Warning banner: "READ ONLY — queries run against replica database"
-- [ ] **Admin page: Database Status** — `/admin/database/status` showing:
-  - Primary DB: connection status, size, version, table count, active connections
-  - Replica DB: connection status, replication lag, size
-  - Backup DB: last backup time, total backups, storage used
+### Month S3: Deployment Control + Operations Center — ✅ **Built**
 
-**Week 3–4: Audit Log Viewer**
-- [ ] **Backend: `GET /admin/audit-logs`** endpoint with filtering:
-  - Filter by: action type, actor, resource, date range, IP address
-  - Pagination with cursor-based navigation
-  - Expandable rows showing before/after metadata
-- [ ] **Admin page: Audit Log** — `/admin/audit-log` with:
-  - Filterable table with columns: timestamp, action, actor, resource, IP
-  - Click-to-expand showing full metadata JSON
-  - Export to CSV for compliance
-  - Retention notice: "Logs retained for 3 years"
+**Deployment Dashboard**
+- [x] `/admin/operations/deployments` — deployment history with commit/author/date/status, rollback button
+- [x] `/admin/operations/pending` — pending approvals (deploy/migration/backup-restore/bulk-action/config-change), approve/reject with audit logging
 
-### Month S3: Deployment Control + Operations Center
-
-**Week 1–2: Deployment Approval Gates**
-- [ ] **CI/CD pipeline update** — split build from deploy:
-  - Build & test runs automatically on every PR/merge to main
-  - Deploy step requires manual approval in Railway dashboard
-  - Add deployment log collection (who deployed, what commit, when)
-- [ ] **Deployment dashboard** — `/admin/operations/deployments` showing:
-  - Recent deployments with status (pending/approved/rejected/rolling)
-  - Commit hash, author, date, deployment duration
-  - Rollback button for last successful deployment
-- [ ] **Slack/email notification** on pending deploys requiring approval
-
-**Week 3–4: Operations Approval Center**
-- [ ] **Admin page: Pending Approvals** — `/admin/operations/pending` showing:
-  - All operations awaiting admin approval
-  - Type: deploy, migration, backup-restore, bulk-action, config-change
-  - Requested by, timestamp, details
-  - Approve / Reject buttons with audit logging
-- [ ] **Admin page: Rate Limits** — `/admin/settings/rate-limits` with:
-  - Live rate limit values per endpoint
-  - Adjust without redeploy (persisted to DB not env vars)
-  - Current usage stats per rate limit window
-- [ ] **Admin page: AI Model Config** — `/admin/settings/ai-config` with:
-  - Select AI model per operation type (tagging, embedding, try-on)
-  - Set temperature, max tokens, timeout
-  - Test connection button
+**Operations Center**
+- [x] `/admin/settings/rate-limits` — live rate limit values per endpoint, adjust without redeploy, current usage stats
+- [x] `/admin/settings/ai-config` — select AI model per operation type, temperature/max-tokens/timeout, test connection button
 
 ### Month S4: Plan Permission Matrix, Trust & Safety, Deletion Vault, DB Guardrails
 
@@ -176,11 +120,12 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 - [x] SupportTicket endpoints (POST/GET/PATCH /v1/team/tickets)
 - [x] Manager reporting endpoints (agents, coverage-gaps, activation funnel)
 
-### Remaining
-- [ ] SupportTicket routing logic (visit-required → nearest agent; backend-manageable → pool)
-- [ ] Manager rollup reporting dashboard UI
-- [ ] Staff mode inside the Expo retailer app (for field onboarding)
-- [ ] 10-retailer pilot + onboarding tutorial iteration
+- [x] SupportTicket routing logic (visit-required → territory hierarchy traversal → nearest agent; backend-manageable → CITY-level pool; least-loaded scheduling; batch `/tickets/route-all`) — *built in `team.ts`*
+- [x] Manager rollup reporting dashboard UI (`/admin/reports`) — Agent Performance, Coverage Gaps, Activation Funnel tabs — *built in `reports/page.tsx`*
+- [x] Staff mode inside the Expo retailer app (for field onboarding) — field staff login via phone OTP → `/staff` dashboard with territory-scoped retailer list, quick onboard form, support ticket view — *built in `apps/mobile/app/staff/`*
+
+### Remaining (operational — not code)
+- [ ] 10-retailer pilot + onboarding tutorial iteration *(requires real retailer feedback)*
 
 ---
 

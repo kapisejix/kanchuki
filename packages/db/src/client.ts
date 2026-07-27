@@ -27,7 +27,14 @@ if (process.env['NODE_ENV'] !== 'production') globalForPrisma.prisma = prisma
 export function getReplicaPrisma(): PrismaClient {
   const replicaUrl = process.env['DATABASE_URL_REPLICA']
   if (!replicaUrl) {
-    // No replica configured — fall back to primary (with warning)
+    // B-002: No replica configured — falling back to primary.
+    // Admin queries will run against the production write database.
+    // Set DATABASE_URL_REPLICA to a read replica or standby to fix this.
+    console.warn(
+      '[db] DATABASE_URL_REPLICA is not set — admin queries are running against the PRIMARY database. ' +
+      'This adds unnecessary load and violates the security isolation intended by SECURITY §13. ' +
+      'Provision a read replica and set DATABASE_URL_REPLICA to fix this.',
+    )
     return prisma
   }
 

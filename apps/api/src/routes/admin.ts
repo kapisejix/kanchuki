@@ -1,5 +1,6 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { verifySync } from 'otplib';
+import { SignJWT, jwtVerify } from 'jose';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
 import { encryptSecret, getSecret, getReplicaPrisma, getVaultPrisma, invalidateSecret, maskSecret, prisma, vaultDelete } from '@kanchuki/db';
@@ -17,6 +18,33 @@ export function validAdminKey(provided: string | undefined): boolean {
   // Hash both sides so timingSafeEqual gets equal-length buffers
   const h = (s: string) => createHmac('sha256', 'admin-key').update(s).digest();
   return timingSafeEqual(h(provided), h(expected));
+}
+
+// S-006: login no longer hands the browser the permanent ADMIN_API_KEY.
+// It signs a short-lived session token instead, keyed off ADMIN_API_KEY
+// (no new env var to configure/rotate). validAdminKey() above still accepts
+// the raw static key too — scripts/tests/direct API callers are unaffected.
+function sessionSecret(): Uint8Array {
+  const key = process.env.ADMIN_API_KEY ?? '';
+  return new TextEncoder().encode(`admin-session:${key}`);
+}
+
+export async function signAdminSession(email: string): Promise<string> {
+  return new SignJWT({ email })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject('admin')
+    .setIssuedAt()
+    .setExpirationTime('12h')
+    .sign(sessionSecret());
+}
+
+export async function verifyAdminSession(token: string): Promise<boolean> {
+  try {
+    await jwtVerify(token, sessionSecret());
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 // ─── IP Allowlist (SECURITY §8) ──────────────────────────────────────
@@ -48,9 +76,14 @@ export function ipInCidr(ip: string, cidr: string): boolean {
 
 /** Check if an IP is allowlisted. Pass `undefined` when request.ip may be missing (trustProxy off). */
 export function isIpAllowlisted(ip: string | undefined): boolean {
-  if (!ip) return true; // No IP info = allow (trustProxy may be off in dev)
   const raw = process.env.ADMIN_IP_ALLOWLIST ?? '';
   if (!raw.trim()) return true; // No allowlist configured = all IPs permitted (dev/localhost)
+  if (!ip) {
+    // IP is undefined — trustProxy may be misconfigured (see SECURITY §8 / B-012).
+    // Fail CLOSED when an allowlist is set: unknown origin must not bypass it.
+    console.error('[admin] request.ip is undefined but ADMIN_IP_ALLOWLIST is set — denying access. Check trustProxy config.');
+    return false;
+  }
   return raw.split(',').some((entry) => ipInCidr(ip, entry.trim()));
 }
 
@@ -64,7 +97,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     if (request.url === '/v1/admin/login') return;
 
     const key = request.headers['x-admin-key'] as string | undefined;
-    if (!validAdminKey(key)) throw forbidden('Invalid admin key');
+    if (!key || !(validAdminKey(key) || (await verifyAdminSession(key)))) {
+      throw forbidden('Invalid admin key');
+    }
 
     // CSRF protection (SECURITY §4):
     // The admin uses header-based auth (x-admin-key), which is inherently
@@ -77,7 +112,13 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       const csrfCookie = request.cookies['csrf-token'];
       const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
 
-      if (!csrfCookie || !csrfHeader || csrfCookie !== csrfHeader) {
+      if (!csrfCookie || !csrfHeader) {
+        throw forbidden('Invalid CSRF token — include x-csrf-token header matching csrf-token cookie');
+      }
+      // Timing-safe comparison (S-004) — prevent oracle attacks via response-time variance
+      const a = Buffer.from(csrfCookie);
+      const b = Buffer.from(csrfHeader);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
         throw forbidden('Invalid CSRF token — include x-csrf-token header matching csrf-token cookie');
       }
     }
@@ -86,7 +127,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/login ───────────────────────────────────────────
   // Authenticate with email + password (scrypt) + optional TOTP.
   // SECURITY §8: email + password + TOTP (when TOTP_SECRET is configured).
-  server.post('/login', async (request, reply) => {
+  // S-003: strict per-route rate limit (5 attempts / 15 min per IP)
+  server.post('/login', { config: { rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 } } }, async (request, reply) => {
     const body = z
       .object({
         email: z.string().email('Invalid email'),
@@ -166,7 +208,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     return {
       data: {
-        token: process.env.ADMIN_API_KEY,
+        token: await signAdminSession(expectedEmail),
         csrf_token: csrfToken,
         email: body.email,
         totp_enabled: !!totpSecret,

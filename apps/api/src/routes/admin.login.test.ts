@@ -183,12 +183,24 @@ describe('POST /v1/admin/login', () => {
       body: { email: ADMIN_EMAIL, password: 'admin123', totp_code: totpCode },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json().data.token).toBe(ADMIN_KEY);
+    // S-006: login returns a signed session token, not the permanent ADMIN_API_KEY.
+    const token = res.json().data.token;
+    expect(token).toBeTruthy();
+    expect(token).not.toBe(ADMIN_KEY);
     expect(res.json().data.email).toBe(ADMIN_EMAIL);
     expect(res.json().data.totp_enabled).toBe(true);
     // CSRF cookie should be set
     const setCookieHeader = res.headers['set-cookie'];
     expect(setCookieHeader).toContain('csrf-token=');
+
+    // The returned session token must itself authenticate against a protected route.
+    const statsRes = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/stats',
+      headers: { 'x-admin-key': token },
+    });
+    expect(statsRes.statusCode).not.toBe(403);
+
     await app.close();
   });
 

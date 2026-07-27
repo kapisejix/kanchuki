@@ -208,6 +208,18 @@ The vault DB is a separate Postgres instance (not the Supabase primary project).
 
 ---
 
+## Phase 0.5: Internal Team Management — All Code Items Completed ✅
+
+**SupportTicket routing** — Built in `team.ts` with `routeTicket()`: territory hierarchy traversal (ZONE→CITY→STATE), visit-required routes to nearest agent, backend-manageable pools within CITY-level territory, least-loaded scheduling (fewest active tickets), batch `/tickets/route-all`, auto-routing on ticket creation.
+
+**Manager rollup reporting dashboard** — Built at `/admin/reports` with 3 tabs: Agent Performance (ranked by activation rate), Coverage Gaps (territories with retailers but no agents), Activation Funnel (bars + conversion rates). Backend endpoints: `/team/reporting/agents`, `/team/reporting/coverage-gaps`, `/team/reporting/retailer-activation`.
+
+**Staff Expo mode** — Built: field staff login via phone OTP → `/staff` dashboard with territory-scoped retailer list, quick retailer onboarding, staff identity display. Team API module in `mobile/src/lib/team-api.ts`.
+
+**Remaining (operational):** 10-retailer pilot + onboarding tutorial iteration — requires real retailer feedback.
+
+---
+
 ## Planned: L2 Ecommerce Checkout (WhatsApp stays messaging-only)
 
 **Decided 2026-07-24** — full spec `docs/PRO-REQUIREMENTS.md` F-302/F-307, schema `docs/DATABASE.md`, threat model `docs/SECURITY.md` §11, roadmap slot `docs/PLAN.md` Month 15–16.
@@ -220,7 +232,7 @@ A retailer having an *active connected payment account* is itself the L1 (catalo
 
 **Security note (2026-07-24):** no payment integration is "100% secure" — the required hardening (server-side amount computation, dual payment verification, atomic inventory reservation, step-up auth on payment-account changes, PCI SAQ-A via hosted Checkout.js, anonymous order-lookup IDOR protection) is fully written up in `docs/SECURITY.md` §11.6–11.10. Treat that as required scope for F-302, not optional polish.
 
-**Offline catalog browsing (2026-07-24, researched, not built):** customer PWA has no service worker today (`manifest.json` is icon-only metadata). Wishlist/cart and enquiry-send already work offline (localStorage + WhatsApp's own message queueing, respectively) — only catalog/detail *browsing* offline needs new work (Serwist + Cache Storage). Full writeup: `docs/PRO-REQUIREMENTS.md` F-006B.
+**Offline catalog browsing (built 2026-07-27):** F-006B done. Web: `apps/web/src/app/sw.ts` runtime caching (R2 images CacheFirst, `/api/c/*` collection API StaleWhileRevalidate, `/c/*` pages NetworkFirst) + `/offline` fallback + PWA manifest icons. Mobile: React Query `networkMode: 'offlineFirst'`, 10-min catalog `staleTime`, `expo-image` prefetch, and an offline mutation queue (`apps/mobile/src/lib/mutation-queue.ts`) for product status changes made while offline, replayed on reconnect. Full writeup: `docs/PRO-REQUIREMENTS.md` F-006B, build plan `docs/omp-review.md` §15.
 
 ---
 

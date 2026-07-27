@@ -6,23 +6,38 @@ import { AppState, Platform, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { getToken } from '../src/lib/api'
+import { getItem } from '../src/lib/storage'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { NetworkBanner } from '../src/components/NetworkBanner'
 import { restoreQueryCache, persistQueryCache } from '../src/lib/offline-persister'
+import { useSyncQueue } from '../src/hooks/useSyncQueue'
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // A-1: serve stale cache immediately when offline instead of pausing queries
+      networkMode: 'offlineFirst',
       // ── Reduce network churn on slow connections ──
-      staleTime: 60_000, // 1 min — don't refetch immediately on mount
-      gcTime: 300_000, // 5 min — keep data in cache after unmount
-      retry: 2, // retry twice before showing error
+      staleTime: 60_000,   // 1 min — don't refetch immediately on mount
+      gcTime: 24 * 60 * 60 * 1000, // 24h — survive background kill for offline use
+      retry: 2,
       retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 10_000),
       refetchOnWindowFocus: false, // mobile doesn't need this — AppState handles it
-      refetchOnReconnect: true, // refetch when network comes back
+      refetchOnReconnect: true,    // refetch when network comes back
+    },
+    mutations: {
+      // A-1: mutations queue (don't fail immediately) when offline
+      networkMode: 'offlineFirst',
     },
   },
 })
+
+// A-5: replay queued offline product-status mutations on reconnect.
+// Rendered inside QueryClientProvider so useQueryClient() resolves.
+function SyncQueueGate() {
+  useSyncQueue()
+  return null
+}
 
 export default function RootLayout() {
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -38,8 +53,16 @@ export default function RootLayout() {
   // ── Auth redirect ─────────────────────────────────────────────
   useEffect(() => {
     getToken()
-      .then((token) => {
-        if (!token) router.replace('/auth/phone')
+      .then(async (token) => {
+        if (!token) {
+          router.replace('/auth/phone')
+          return
+        }
+        // Check if this is a staff member — if so, redirect to staff dashboard
+        const staffRole = await getItem('staff_role').catch(() => null)
+        if (staffRole) {
+          router.replace('/staff')
+        }
       })
       .catch(() => {
         // SecureStore unavailable — treat as unauthenticated
@@ -77,6 +100,7 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
+          <SyncQueueGate />
           <ErrorBoundary>
             <View className="flex-1">
               <NetworkBanner />
