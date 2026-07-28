@@ -33,12 +33,13 @@ async function getVaultClient(): Promise<VaultClient | null> {
   }
 
   try {
-    // Dynamic import because the vault Prisma client is generated from a
-    // separate schema (vault-schema.prisma) into packages/db/src/generated/vault/.
-    // This avoids requiring VAULT_DATABASE_URL during the main prisma generate.
-    // The vault client is now generated (see postinstall or db:generate:vault),
-    // so TypeScript resolves it correctly — the @ts-expect-error is no longer needed.
-    const { PrismaClient } = await import('./generated/vault/index.js');
+    // Dynamic import via a non-literal specifier: the vault Prisma client is only
+    // generated when VAULT_DATABASE_URL is set (see postinstall), so a static
+    // './generated/vault/index.js' specifier makes tsc fail with "Cannot find
+    // module" wherever that env var is absent (e.g. CI). A non-literal specifier
+    // can't be statically resolved by tsc, so it types as `any` instead of erroring.
+    const vaultModulePath = './generated/vault/index.js';
+    const { PrismaClient } = await import(vaultModulePath);
     _vaultClient = new PrismaClient({
       datasources: { db: { url: process.env['VAULT_DATABASE_URL'] } },
       log: process.env['NODE_ENV'] === 'development' ? ['error', 'warn'] : ['error'],

@@ -8,6 +8,10 @@ on:
 jobs:
   quality:
     runs-on: ubuntu-latest
+    env:
+      # Dummy value so postinstall generates the vault Prisma client in CI
+      # (never connected to — vault.ts only reads this at runtime, not at generate time).
+      VAULT_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_vault_unused
     steps:
       - uses: actions/checkout@v7
 
