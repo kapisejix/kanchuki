@@ -236,14 +236,17 @@ A retailer having an *active connected payment account* is itself the L1 (catalo
 
 ---
 
-## Planned: Sales Referral Attribution + Paid On-Site Catalog Upload Service (F-018/F-019)
+## Built: Sales Referral Attribution + Paid On-Site Catalog Upload Service (F-018/F-019)
 
-**Decided 2026-07-28** — full spec `docs/PRO-REQUIREMENTS.md` §10.9–10.10, schema `docs/DATABASE.md`, roadmap slot `docs/PLAN.md` Phase 0.5. Nothing built yet — docs only.
+**Built 2026-07-28** — full spec `docs/PRO-REQUIREMENTS.md` §10.9–10.10, schema `docs/DATABASE.md`, roadmap slot `docs/PLAN.md` Phase 0.5. Committed in `e561541` ("F-018 referral attribution + F-019 paid catalog upload service, salesperson staff role").
 
-Both extend the existing Phase 0.5 internal-team system (`TeamMember`, `onboarded_by_id`, `SupportTicket`, `routeTicket()`) rather than adding new models where an existing one already fits:
+Both extend the existing Phase 0.5 internal-team system (`TeamMember`, `onboarded_by_id`, `SupportTicket`, `routeTicket()`) rather than adding new models:
 
-1. **F-018 — Referral code:** `TeamMember.referral_code` + one optional, skippable field in retailer self-serve onboarding (currently only agent-initiated onboarding via `POST /team/retailers` sets `onboarded_by_id` — self-serve OTP signup sets none). Valid code resolves to the same `onboarded_by_id` field, so it shows up in existing `/admin/reports` with zero new reporting code.
-2. **F-019 — Paid on-site catalog upload:** retailer requests help uploading a large catalog (skippable at onboarding, or anytime from their dashboard) → admin quotes a price (from an admin-editable item-count price tier table, same pattern as `plan_limits`) and proposes visit time slots → **retailer pays first, then picks a slot** → routes through the existing `routeTicket()` nearest-agent logic. Modeled as a new `SupportTicket.ticket_type` (`CATALOG_UPLOAD`), not a separate table.
+| Feature | Files | Summary |
+|---|---|---|
+| **F-018 referral code** | `packages/db/prisma/migrations/039_referral_attribution`, `apps/api/src/routes/team.ts` (`POST /members`), `apps/api/src/routes/retailers.ts` (`PUT /me`) | `TeamMember.referral_code` auto-generated for `MARKETING_AGENT`; optional/skippable code field in retailer onboarding resolves to `onboarded_by_id` — same field §10.4 already uses, zero new reporting code needed |
+| **F-019 catalog upload service** | `packages/db/prisma/migrations/040_catalog_upload_service`, `apps/api/src/routes/retailers.ts` (`POST/GET /me/catalog-upload-request`, `.../:id/pay`, `.../:id/verify-payment`, `.../:id/confirm-slot`), `apps/api/src/routes/team.ts` (`PATCH /tickets/:id` extended, `routeTicket()` reused), `apps/api/src/routes/admin.ts` (`GET/POST/PATCH/DELETE /admin/catalog-upload-tiers`) | `SupportTicket.ticket_type` (`GENERAL`/`CATALOG_UPLOAD`) + quote/slot/payment fields. Admin-editable `CatalogUploadPriceTier` grid (mirrors `plan_limits`). Retailer pays first (Razorpay, platform account, server-verified HMAC) before a visit slot confirms, then routes through existing nearest-agent logic |
+| **Tests** | `apps/api/src/routes/retailers.test.ts` | "F-018" and "F-019" describe blocks — referral resolution, payment signature verification, IDOR guard |
 
 Explicitly not in scope for these two: a generic non-catalog on-site maintenance charge and a standalone commission-per-sale engine were raised during scoping but not confirmed — treat as backlog, not implied by this entry.
 
@@ -287,3 +290,4 @@ When working in this repo:
 7. **Operational control** — follow AI Agent Operational Control Policy above. No auto-operations without human approval.
 8. **Security tests** — after any checkout or auth changes, run: `npx vitest run src/routes/security.test.ts`
 9. **Admin login tests** — after any admin auth changes, run: `npx vitest run src/routes/admin.login.test.ts`
+10. **Docs must track commits** — when a feature commit lands, update its status ("Planned"→"Built") + date in CLAUDE.md, `docs/PLAN.md`, and `docs/PRO-REQUIREMENTS.md` in the same session. Stale status here (F-018/F-019 sat marked "nothing built" after the build commit) caused a wrong status report on 2026-07-28 — check `git log` against doc status before trusting either.
