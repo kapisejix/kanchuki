@@ -116,7 +116,10 @@ describe('PATCH /products/:id/restore', () => {
     const app = await buildApp(null);
     const res = await app.inject({ method: 'PATCH', url: '/v1/products/p1/restore' });
     expect(res.statusCode).toBe(200);
-    expect(mockProductUpdate).toHaveBeenCalledWith({ where: { id: 'p1' }, data: { deleted_at: null } });
+    expect(mockProductUpdate).toHaveBeenCalledWith({
+      where: { id: 'p1' },
+      data: { deleted_at: null },
+    });
     await app.close();
   });
 

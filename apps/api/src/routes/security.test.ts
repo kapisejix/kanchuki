@@ -6,7 +6,6 @@
  * R2 cleanup, CSP headers) are verified for code presence rather
  * than live-tested.
  */
-import { randomBytes } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -18,10 +17,12 @@ import { checkoutRoutes } from './checkout.js';
 const mockOrderFindUnique = vi.hoisted(() => vi.fn());
 const mockOrderFindMany = vi.hoisted(() => vi.fn());
 const mockOrderUpdateMany = vi.hoisted(() => vi.fn());
-const mockTransaction = vi.hoisted(() => vi.fn((ops: unknown) => {
-  if (typeof ops === 'function') return ops();
-  return Promise.all(ops as unknown[]);
-}));
+const mockTransaction = vi.hoisted(() =>
+  vi.fn((ops: unknown) => {
+    if (typeof ops === 'function') return ops();
+    return Promise.all(ops as unknown[]);
+  }),
+);
 
 vi.mock('@kanchuki/db', () => ({
   encryptSecret: (plaintext: string) => `enc:${plaintext}`,
@@ -82,16 +83,6 @@ async function buildAdminApp() {
   await app.register(adminRoutes, { prefix: '/v1/admin' });
   await app.ready();
   return app;
-}
-
-function csrfHeaders() {
-  const token = randomBytes(16).toString('hex');
-  return {
-    'x-admin-key': ADMIN_KEY,
-    'x-csrf-token': token,
-    cookie: `csrf-token=${token}`,
-    'content-type': 'application/json',
-  };
 }
 
 // ─── Fixtures ────────────────────────────────────────────────────
@@ -246,7 +237,7 @@ describe('§10 — IDOR: GET /public/orders/:id', () => {
 describe('§10 — IDOR: GET /retailers/orders/:id (own order only)', () => {
   // Authenticated retailer endpoint — must only return their own orders
 
-  it('returns 403 when a retailer tries to access another retailer\'s order', async () => {
+  it("returns 403 when a retailer tries to access another retailer's order", async () => {
     mockOrderFindUnique.mockResolvedValue({ ...mockOrder, retailer_id: 'retailer_b' });
     const app = await buildCheckoutApp({ retailerId: 'retailer_a' });
     const res = await app.inject({

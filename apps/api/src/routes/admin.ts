@@ -1,10 +1,19 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { verifySync } from 'otplib';
-import { SignJWT, jwtVerify } from 'jose';
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { encryptSecret, getSecret, getReplicaPrisma, getVaultPrisma, invalidateSecret, maskSecret, prisma, vaultDelete } from '@kanchuki/db';
+import {
+  encryptSecret,
+  getReplicaPrisma,
+  getSecret,
+  getVaultPrisma,
+  invalidateSecret,
+  maskSecret,
+  prisma,
+  vaultDelete,
+} from '@kanchuki/db';
 import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
+import { SignJWT, jwtVerify } from 'jose';
+import { verifySync } from 'otplib';
 
 type IntegrationKeyEntry = (typeof INTEGRATION_KEYS)[number];
 import type { FastifyPluginAsync } from 'fastify';
@@ -63,8 +72,9 @@ export function ipInCidr(ip: string, cidr: string): boolean {
       const cidrIp = cidr.slice(0, slashIdx);
       const prefix = Number.parseInt(cidr.slice(slashIdx + 1), 10);
       if (prefix < 0 || prefix > 32) return false;
-      const mask = (~(2 ** (32 - prefix) - 1)) >>> 0;
-      const cidrInt = cidrIp.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
+      const mask = ~(2 ** (32 - prefix) - 1) >>> 0;
+      const cidrInt =
+        cidrIp.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
       return (ipInt & mask) === (cidrInt & mask);
     }
     const cidrInt = cidr.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
@@ -81,14 +91,16 @@ export function isIpAllowlisted(ip: string | undefined): boolean {
   if (!ip) {
     // IP is undefined — trustProxy may be misconfigured (see SECURITY §8 / B-012).
     // Fail CLOSED when an allowlist is set: unknown origin must not bypass it.
-    console.error('[admin] request.ip is undefined but ADMIN_IP_ALLOWLIST is set — denying access. Check trustProxy config.');
+    console.error(
+      '[admin] request.ip is undefined but ADMIN_IP_ALLOWLIST is set — denying access. Check trustProxy config.',
+    );
     return false;
   }
   return raw.split(',').some((entry) => ipInCidr(ip, entry.trim()));
 }
 
 export const adminRoutes: FastifyPluginAsync = async (server) => {
-  server.addHook('preHandler', async (request, reply) => {
+  server.addHook('preHandler', async (request, _reply) => {
     // IP allowlist check (SECURITY §8) — applies to ALL admin routes including login
     // to prevent reconnaissance from non-allowlisted IPs.
     if (!isIpAllowlisted(request.ip)) throw forbidden('Access denied — IP not allowlisted');
@@ -113,13 +125,17 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
 
       if (!csrfCookie || !csrfHeader) {
-        throw forbidden('Invalid CSRF token — include x-csrf-token header matching csrf-token cookie');
+        throw forbidden(
+          'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
+        );
       }
       // Timing-safe comparison (S-004) — prevent oracle attacks via response-time variance
       const a = Buffer.from(csrfCookie);
       const b = Buffer.from(csrfHeader);
       if (a.length !== b.length || !timingSafeEqual(a, b)) {
-        throw forbidden('Invalid CSRF token — include x-csrf-token header matching csrf-token cookie');
+        throw forbidden(
+          'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
+        );
       }
     }
   });
@@ -128,93 +144,97 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // Authenticate with email + password (scrypt) + optional TOTP.
   // SECURITY §8: email + password + TOTP (when TOTP_SECRET is configured).
   // S-003: strict per-route rate limit (5 attempts / 15 min per IP)
-  server.post('/login', { config: { rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 } } }, async (request, reply) => {
-    const body = z
-      .object({
-        email: z.string().email('Invalid email'),
-        password: z.string().min(1, 'Password is required').max(128),
-        totp_code: z
-          .string()
-          .length(6)
-          .regex(/^\d{6}$/, 'TOTP code must be 6 digits')
-          .optional(),
-      })
-      .parse(request.body);
+  server.post(
+    '/login',
+    { config: { rateLimit: { max: 5, timeWindow: 15 * 60 * 1000 } } },
+    async (request, reply) => {
+      const body = z
+        .object({
+          email: z.string().email('Invalid email'),
+          password: z.string().min(1, 'Password is required').max(128),
+          totp_code: z
+            .string()
+            .length(6)
+            .regex(/^\d{6}$/, 'TOTP code must be 6 digits')
+            .optional(),
+        })
+        .parse(request.body);
 
-    const expectedEmail = process.env.ADMIN_EMAIL;
-    const expectedHash = process.env.ADMIN_PASSWORD_HASH;
-    const totpSecret = process.env.ADMIN_TOTP_SECRET;
+      const expectedEmail = process.env.ADMIN_EMAIL;
+      const expectedHash = process.env.ADMIN_PASSWORD_HASH;
+      const totpSecret = process.env.ADMIN_TOTP_SECRET;
 
-    if (!expectedEmail || !expectedHash) {
-      request.log.error('ADMIN_EMAIL or ADMIN_PASSWORD_HASH not configured');
-      throw forbidden('Invalid credentials');
-    }
-
-    // Compare email (case-insensitive)
-    if (body.email.toLowerCase() !== expectedEmail.toLowerCase()) {
-      throw forbidden('Invalid credentials');
-    }
-
-    // Compare password hash — support both scrypt (salt:hash) and legacy HMAC-SHA256 format
-    // SECURITY: scrypt is the only format for new deployments; legacy HMAC is deprecated.
-    const hashIncludesColon = expectedHash.includes(':');
-    let passwordValid: boolean;
-
-    if (hashIncludesColon) {
-      // scrypt format (salt:hash) — same as team-auth.ts
-      passwordValid = verifyPassword(body.password, expectedHash);
-    } else {
-      // Legacy HMAC-SHA256 format — deprecated, scrypt preferred
-      // Log a warning so ops knows to upgrade
-      request.log.warn(
-        'ADMIN_PASSWORD_HASH appears to be legacy HMAC-SHA256 format. ' +
-          'Generate a scrypt hash using scripts/generate-admin-hash.ts and update the env var.',
-      );
-      const providedHash = createHmac('sha256', 'admin-password').update(body.password).digest();
-      const expectedHashBuf = Buffer.from(expectedHash, 'hex');
-      passwordValid =
-        providedHash.length === expectedHashBuf.length &&
-        timingSafeEqual(providedHash, expectedHashBuf);
-    }
-
-    if (!passwordValid) {
-      throw forbidden('Invalid credentials');
-    }
-
-    // TOTP verification (SECURITY §8)
-    // If ADMIN_TOTP_SECRET is set, require valid totp_code on every login.
-    if (totpSecret) {
-      if (!body.totp_code) {
-        throw validationError('TOTP code is required. Check your authenticator app.');
+      if (!expectedEmail || !expectedHash) {
+        request.log.error('ADMIN_EMAIL or ADMIN_PASSWORD_HASH not configured');
+        throw forbidden('Invalid credentials');
       }
 
-      const totpResult = verifySync({ token: body.totp_code, secret: totpSecret });
-      if (!totpResult.valid) {
-        throw forbidden('Invalid TOTP code');
+      // Compare email (case-insensitive)
+      if (body.email.toLowerCase() !== expectedEmail.toLowerCase()) {
+        throw forbidden('Invalid credentials');
       }
-    }
 
-    request.log.info('Admin login successful');
+      // Compare password hash — support both scrypt (salt:hash) and legacy HMAC-SHA256 format
+      // SECURITY: scrypt is the only format for new deployments; legacy HMAC is deprecated.
+      const hashIncludesColon = expectedHash.includes(':');
+      let passwordValid: boolean;
 
-    // Generate CSRF token and set as SameSite cookie (defense-in-depth)
-    const csrfToken = randomBytes(32).toString('hex');
-    reply.setCookie('csrf-token', csrfToken, {
-      path: '/v1/admin',
-      sameSite: 'strict',
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 86400, // 24 hours
-    });
+      if (hashIncludesColon) {
+        // scrypt format (salt:hash) — same as team-auth.ts
+        passwordValid = verifyPassword(body.password, expectedHash);
+      } else {
+        // Legacy HMAC-SHA256 format — deprecated, scrypt preferred
+        // Log a warning so ops knows to upgrade
+        request.log.warn(
+          'ADMIN_PASSWORD_HASH appears to be legacy HMAC-SHA256 format. ' +
+            'Generate a scrypt hash using scripts/generate-admin-hash.ts and update the env var.',
+        );
+        const providedHash = createHmac('sha256', 'admin-password').update(body.password).digest();
+        const expectedHashBuf = Buffer.from(expectedHash, 'hex');
+        passwordValid =
+          providedHash.length === expectedHashBuf.length &&
+          timingSafeEqual(providedHash, expectedHashBuf);
+      }
 
-    return {
-      data: {
-        token: await signAdminSession(expectedEmail),
-        csrf_token: csrfToken,
-        email: body.email,
-        totp_enabled: !!totpSecret,
-      },
-    };
-  });
+      if (!passwordValid) {
+        throw forbidden('Invalid credentials');
+      }
+
+      // TOTP verification (SECURITY §8)
+      // If ADMIN_TOTP_SECRET is set, require valid totp_code on every login.
+      if (totpSecret) {
+        if (!body.totp_code) {
+          throw validationError('TOTP code is required. Check your authenticator app.');
+        }
+
+        const totpResult = verifySync({ token: body.totp_code, secret: totpSecret });
+        if (!totpResult.valid) {
+          throw forbidden('Invalid TOTP code');
+        }
+      }
+
+      request.log.info('Admin login successful');
+
+      // Generate CSRF token and set as SameSite cookie (defense-in-depth)
+      const csrfToken = randomBytes(32).toString('hex');
+      reply.setCookie('csrf-token', csrfToken, {
+        path: '/v1/admin',
+        sameSite: 'strict',
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        maxAge: 86400, // 24 hours
+      });
+
+      return {
+        data: {
+          token: await signAdminSession(expectedEmail),
+          csrf_token: csrfToken,
+          email: body.email,
+          totp_enabled: !!totpSecret,
+        },
+      };
+    },
+  );
 
   // ─── GET /admin/stats ───────────────────────────────────────────
   server.get('/stats', async () => {
@@ -911,7 +931,10 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    request.log.info({ plan: body.plan, feature_key: body.feature_key, enabled: body.enabled }, 'Plan feature updated');
+    request.log.info(
+      { plan: body.plan, feature_key: body.feature_key, enabled: body.enabled },
+      'Plan feature updated',
+    );
 
     return { data: row };
   });
@@ -926,17 +949,19 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     const byFeature = new Map<string, Record<string, boolean>>();
     for (const row of rows) {
-      if (!byFeature.has(row.feature_key)) {
-        byFeature.set(row.feature_key, {});
+      let plans = byFeature.get(row.feature_key);
+      if (!plans) {
+        plans = {};
+        byFeature.set(row.feature_key, plans);
       }
-      byFeature.get(row.feature_key)![row.plan] = row.enabled;
+      plans[row.plan] = row.enabled;
     }
 
     const summary = Array.from(byFeature.entries()).map(([feature_key, plans]) => ({
       feature_key,
-      STARTER: plans['STARTER'] ?? false,
-      GROWTH: plans['GROWTH'] ?? false,
-      PRO: plans['PRO'] ?? false,
+      STARTER: plans.STARTER ?? false,
+      GROWTH: plans.GROWTH ?? false,
+      PRO: plans.PRO ?? false,
     }));
 
     return { data: summary };
@@ -977,7 +1002,11 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         action: 'CREATE',
         resource_type: 'CatalogUploadPriceTier',
         resource_id: tier.id,
-        metadata: { min_items: tier.min_items, max_items: tier.max_items, price_inr: tier.price_inr },
+        metadata: {
+          min_items: tier.min_items,
+          max_items: tier.max_items,
+          price_inr: tier.price_inr,
+        },
         ip_address: request.ip,
       },
     });
@@ -1007,7 +1036,11 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         action: 'UPDATE',
         resource_type: 'CatalogUploadPriceTier',
         resource_id: tier.id,
-        metadata: { min_items: tier.min_items, max_items: tier.max_items, price_inr: tier.price_inr },
+        metadata: {
+          min_items: tier.min_items,
+          max_items: tier.max_items,
+          price_inr: tier.price_inr,
+        },
         ip_address: request.ip,
       },
     });
@@ -1017,7 +1050,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── DELETE /admin/catalog-upload-tiers/:id ──────────────────────
   server.delete<{ Params: { id: string } }>('/catalog-upload-tiers/:id', async (request, reply) => {
-    await prisma.catalogUploadPriceTier.delete({ where: { id: request.params.id } }).catch(() => null);
+    await prisma.catalogUploadPriceTier
+      .delete({ where: { id: request.params.id } })
+      .catch(() => null);
     return reply.status(204).send();
   });
 
@@ -1027,17 +1062,17 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   server.get('/retailers/:id/activity', async (request) => {
     const { id } = z.object({ id: z.string() }).parse(request.params);
     const query = z
-      .object({ cursor: z.string().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) })
+      .object({
+        cursor: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(30),
+      })
       .safeParse(request.query);
     const { cursor, limit } = query.success ? query.data : { cursor: undefined, limit: 30 };
 
     const [logs, totalCount] = await Promise.all([
       prisma.auditLog.findMany({
         where: {
-          OR: [
-            { resource_type: 'Retailer', resource_id: id },
-            { resource_id: id },
-          ],
+          OR: [{ resource_type: 'Retailer', resource_id: id }, { resource_id: id }],
           ...(cursor ? { id: { lt: cursor } } : {}),
         },
         orderBy: { created_at: 'desc' },
@@ -1045,10 +1080,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       }),
       prisma.auditLog.count({
         where: {
-          OR: [
-            { resource_type: 'Retailer', resource_id: id },
-            { resource_id: id },
-          ],
+          OR: [{ resource_type: 'Retailer', resource_id: id }, { resource_id: id }],
         },
       }),
     ]);
@@ -1074,7 +1106,10 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       .object({ id: z.string(), customerId: z.string() })
       .parse(request.params);
     const query = z
-      .object({ cursor: z.string().optional(), limit: z.coerce.number().int().min(1).max(100).default(30) })
+      .object({
+        cursor: z.string().optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(30),
+      })
       .safeParse(request.query);
     const { cursor, limit } = query.success ? query.data : { cursor: undefined, limit: 30 };
 
@@ -1138,14 +1173,22 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     const { cursor, limit, actor_type, action, resource_type, date_from, date_to } = query.success
       ? query.data
-      : { cursor: undefined, limit: 50, actor_type: undefined, action: undefined,
-          resource_type: undefined, date_from: undefined, date_to: undefined };
+      : {
+          cursor: undefined,
+          limit: 50,
+          actor_type: undefined,
+          action: undefined,
+          resource_type: undefined,
+          date_from: undefined,
+          date_to: undefined,
+        };
 
     const where: Record<string, unknown> = {};
     if (cursor) where.id = { lt: cursor };
     if (actor_type) where.actor_type = { equals: actor_type, mode: 'insensitive' as const };
     if (action) where.action = action;
-    if (resource_type) where.resource_type = { equals: resource_type, mode: 'insensitive' as const };
+    if (resource_type)
+      where.resource_type = { equals: resource_type, mode: 'insensitive' as const };
     if (date_from || date_to) {
       const created_at: Record<string, Date> = {};
       if (date_from) created_at.gte = new Date(date_from);
@@ -1558,25 +1601,43 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         resource_id: z.string().optional(),
         ip_address: z.string().max(50).optional(),
         date_from: z.string().optional(), // ISO date string
-        date_to: z.string().optional(),   // ISO date string
+        date_to: z.string().optional(), // ISO date string
       })
       .safeParse(request.query);
 
     const {
-      cursor, limit, action, actor_type, actor_id,
-      resource_type, resource_id, ip_address, date_from, date_to,
+      cursor,
+      limit,
+      action,
+      actor_type,
+      actor_id,
+      resource_type,
+      resource_id,
+      ip_address,
+      date_from,
+      date_to,
     } = query.success
       ? query.data
-      : { cursor: undefined, limit: 50, action: undefined, actor_type: undefined,
-          actor_id: undefined, resource_type: undefined, resource_id: undefined,
-          ip_address: undefined, date_from: undefined, date_to: undefined };
+      : {
+          cursor: undefined,
+          limit: 50,
+          action: undefined,
+          actor_type: undefined,
+          actor_id: undefined,
+          resource_type: undefined,
+          resource_id: undefined,
+          ip_address: undefined,
+          date_from: undefined,
+          date_to: undefined,
+        };
 
     const where: Record<string, unknown> = {};
     if (cursor) where.id = { lt: cursor };
     if (action) where.action = { contains: action, mode: 'insensitive' as const };
     if (actor_type) where.actor_type = { equals: actor_type, mode: 'insensitive' as const };
     if (actor_id) where.actor_id = actor_id;
-    if (resource_type) where.resource_type = { equals: resource_type, mode: 'insensitive' as const };
+    if (resource_type)
+      where.resource_type = { equals: resource_type, mode: 'insensitive' as const };
     if (resource_id) where.resource_id = resource_id;
     if (ip_address) where.ip_address = { contains: ip_address };
     if (date_from || date_to) {
@@ -1610,9 +1671,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // Only SELECT, EXPLAIN, and WITH queries are permitted.
   // All queries are logged to the audit trail.
   server.post('/query', async (request) => {
-    const body = z
-      .object({ query: z.string().min(1).max(10000) })
-      .parse(request.body);
+    const body = z.object({ query: z.string().min(1).max(10000) }).parse(request.body);
 
     const sql = body.query.trim();
 
@@ -1648,15 +1707,14 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       const timerPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error('Query timed out after 30 seconds')), 30000);
       });
-      const result = (await Promise.race([
-        replica.$queryRawUnsafe(sql),
-        timerPromise,
-      ]).finally(() => clearTimeout(timer))) as unknown[];
+      const result = (await Promise.race([replica.$queryRawUnsafe(sql), timerPromise]).finally(() =>
+        clearTimeout(timer),
+      )) as unknown[];
 
       rows = Array.isArray(result) ? result : [result];
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Query execution failed';
-      request.log.warn({ query: sql.slice(0, 200) }, 'Admin query failed: ' + message);
+      request.log.warn({ query: sql.slice(0, 200) }, `Admin query failed: ${message}`);
 
       await prisma.auditLog.create({
         data: {
@@ -1685,9 +1743,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const truncated = rows.length > MAX_ROWS;
     const displayRows = truncated ? rows.slice(0, MAX_ROWS) : rows;
     const columns =
-      displayRows.length > 0
-        ? Object.keys(displayRows[0] as Record<string, unknown>)
-        : [];
+      displayRows.length > 0 ? Object.keys(displayRows[0] as Record<string, unknown>) : [];
 
     // ── Audit log ──────────────────────────────────────────────────
     await prisma.auditLog.create({
@@ -1774,47 +1830,51 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     `);
 
     // Group by schema → table → columns
-    const schemaMap = new Map<string, {
-      schema_name: string;
-      tables: Map<string, {
-        table_name: string;
-        table_type: string;
-        columns: Array<{
-          column_name: string;
-          data_type: string | null;
-          is_nullable: boolean;
-          column_default: string | null;
-          is_primary_key: boolean;
-          ordinal_position: number | null;
-          character_maximum_length: number | null;
-          numeric_precision: number | null;
-        }>;
-        column_count: number;
-      }>;
-      table_count: number;
-    }>();
+    const schemaMap = new Map<
+      string,
+      {
+        schema_name: string;
+        tables: Map<
+          string,
+          {
+            table_name: string;
+            table_type: string;
+            columns: Array<{
+              column_name: string;
+              data_type: string | null;
+              is_nullable: boolean;
+              column_default: string | null;
+              is_primary_key: boolean;
+              ordinal_position: number | null;
+              character_maximum_length: number | null;
+              numeric_precision: number | null;
+            }>;
+            column_count: number;
+          }
+        >;
+        table_count: number;
+      }
+    >();
 
     for (const row of rows) {
       if (!row.table_schema || !row.table_name) continue;
 
-      if (!schemaMap.has(row.table_schema)) {
-        schemaMap.set(row.table_schema, {
-          schema_name: row.table_schema,
-          tables: new Map(),
-          table_count: 0,
-        });
+      let schemaEntry = schemaMap.get(row.table_schema);
+      if (!schemaEntry) {
+        schemaEntry = { schema_name: row.table_schema, tables: new Map(), table_count: 0 };
+        schemaMap.set(row.table_schema, schemaEntry);
       }
-      const schemaEntry = schemaMap.get(row.table_schema)!;
 
-      if (!schemaEntry.tables.has(row.table_name)) {
-        schemaEntry.tables.set(row.table_name, {
+      let tableEntry = schemaEntry.tables.get(row.table_name);
+      if (!tableEntry) {
+        tableEntry = {
           table_name: row.table_name,
           table_type: row.table_type ?? 'BASE TABLE',
           columns: [],
           column_count: 0,
-        });
+        };
+        schemaEntry.tables.set(row.table_name, tableEntry);
       }
-      const tableEntry = schemaEntry.tables.get(row.table_name)!;
 
       if (row.column_name) {
         tableEntry.columns.push({
@@ -1838,15 +1898,19 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         tables: Array.from(s.tables.values())
           .map((t) => ({
             ...t,
-            columns: t.columns.sort((a, b) => (a.ordinal_position ?? 0) - (b.ordinal_position ?? 0)),
+            columns: t.columns.sort(
+              (a, b) => (a.ordinal_position ?? 0) - (b.ordinal_position ?? 0),
+            ),
           }))
           .sort((a, b) => a.table_name.localeCompare(b.table_name)),
       }))
       .sort((a, b) => a.schema_name.localeCompare(b.schema_name));
 
     const total_tables = schemas.reduce((sum, s) => sum + s.table_count, 0);
-    const total_columns = schemas.reduce((sum, s) =>
-      sum + s.tables.reduce((tsum, t) => tsum + t.column_count, 0), 0);
+    const total_columns = schemas.reduce(
+      (sum, s) => sum + s.tables.reduce((tsum, t) => tsum + t.column_count, 0),
+      0,
+    );
 
     return {
       data: {
@@ -2025,14 +2089,14 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
   /** Helper: create an S3 client for R2 using env vars (same pattern as scripts/). */
   function createBackupR2Client(): S3Client {
-    const accountId = process.env['R2_ACCOUNT_ID'];
+    const accountId = process.env.R2_ACCOUNT_ID;
     if (!accountId) throw validationError('R2_ACCOUNT_ID not configured');
     return new S3Client({
       region: 'auto',
       endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
       credentials: {
-        accessKeyId: process.env['R2_ACCESS_KEY_ID'] ?? '',
-        secretAccessKey: process.env['R2_SECRET_ACCESS_KEY'] ?? '',
+        accessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+        secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
       },
     });
   }
@@ -2040,7 +2104,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   /** Helper: read a JSON object from R2. */
   async function getR2Json(key: string): Promise<Record<string, unknown> | null> {
     const r2 = createBackupR2Client();
-    const bucket = process.env['R2_BUCKET_NAME'] ?? 'kanchuki-prod';
+    const bucket = process.env.R2_BUCKET_NAME ?? 'kanchuki-prod';
     try {
       const response = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
       const body = await response.Body?.transformToString();
@@ -2062,17 +2126,19 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // SECURITY §13: List all backups stored in R2 with metadata.
   server.get('/backups', async (_request) => {
     const r2 = createBackupR2Client();
-    const bucket = process.env['R2_BUCKET_NAME'] ?? 'kanchuki-prod';
+    const bucket = process.env.R2_BUCKET_NAME ?? 'kanchuki-prod';
 
     // Paginate through all objects (S3/R2 returns max 1000 per page)
     const allObjects: { Key?: string; Size?: number; LastModified?: Date }[] = [];
     let continuationToken: string | undefined;
     do {
-      const response = await r2.send(new ListObjectsV2Command({
-        Bucket: bucket,
-        Prefix: 'backups/',
-        ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
-      }));
+      const response = await r2.send(
+        new ListObjectsV2Command({
+          Bucket: bucket,
+          Prefix: 'backups/',
+          ...(continuationToken ? { ContinuationToken: continuationToken } : {}),
+        }),
+      );
       if (response.Contents) allObjects.push(...response.Contents);
       continuationToken = response.NextContinuationToken;
     } while (continuationToken);
@@ -2080,29 +2146,34 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const objects = allObjects;
 
     // Group objects by backup (each backup has .sql.gz + .meta.json)
-    const backupMap = new Map<string, {
-      sql_gz: { key: string; size: number; last_modified: Date | undefined } | null
-      meta: Record<string, unknown> | null
-    }>();
+    const backupMap = new Map<
+      string,
+      {
+        sql_gz: { key: string; size: number; last_modified: Date | undefined } | null;
+        meta: Record<string, unknown> | null;
+      }
+    >();
 
     for (const obj of objects) {
       const key = obj.Key ?? '';
       if (key.endsWith('.meta.json')) {
         // Extract backup prefix (remove .meta.json)
         const prefix = key.slice(0, -'.meta.json'.length);
-        if (!backupMap.has(prefix)) {
-          backupMap.set(prefix, { sql_gz: null, meta: null });
+        let existing = backupMap.get(prefix);
+        if (!existing) {
+          existing = { sql_gz: null, meta: null };
+          backupMap.set(prefix, existing);
         }
-        const existing = backupMap.get(prefix)!;
         // Try to read the metadata content
         const meta = await getR2Json(key);
         existing.meta = meta;
       } else if (key.endsWith('.sql.gz')) {
         const prefix = key.slice(0, -'.sql.gz'.length);
-        if (!backupMap.has(prefix)) {
-          backupMap.set(prefix, { sql_gz: null, meta: null });
+        let existing = backupMap.get(prefix);
+        if (!existing) {
+          existing = { sql_gz: null, meta: null };
+          backupMap.set(prefix, existing);
         }
-        const existing = backupMap.get(prefix)!;
         existing.sql_gz = {
           key,
           size: obj.Size ?? 0,
@@ -2113,16 +2184,21 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     // Build backup list sorted by timestamp (newest first)
     const backups = Array.from(backupMap.entries())
-      .filter(([, v]) => v.sql_gz !== null) // Only include entries with actual backup files
-      .map(([prefix, v]) => ({
-        prefix,
-        key: v.sql_gz!.key,
-        size: v.sql_gz!.size,
-        size_formatted: formatBytes(v.sql_gz!.size),
-        last_modified: v.sql_gz!.last_modified?.toISOString() ?? null,
-        metadata: v.meta,
-        has_metadata: v.meta !== null,
-      }))
+      .flatMap(([prefix, v]) => {
+        const sqlGz = v.sql_gz;
+        if (!sqlGz) return []; // Only include entries with actual backup files
+        return [
+          {
+            prefix,
+            key: sqlGz.key,
+            size: sqlGz.size,
+            size_formatted: formatBytes(sqlGz.size),
+            last_modified: sqlGz.last_modified?.toISOString() ?? null,
+            metadata: v.meta,
+            has_metadata: v.meta !== null,
+          },
+        ];
+      })
       .sort((a, b) => (b.last_modified ?? '').localeCompare(a.last_modified ?? ''));
 
     // Calculate summary stats
@@ -2158,9 +2234,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // SECURITY §13: Trigger a backup. Logs the intent to the audit trail.
   // Actual execution requires the Docker-based CLI script.
   server.post('/backup/create', async (request) => {
-    const body = z
-      .object({ label: z.string().max(100).optional() })
-      .safeParse(request.body);
+    const body = z.object({ label: z.string().max(100).optional() }).safeParse(request.body);
     const label = body.success && body.data.label ? body.data.label : undefined;
 
     // Log to audit trail
@@ -2223,7 +2297,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         message: 'Restore request logged. Execute the restore via CLI:',
         commands: [
           `pnpm db:restore --backup-key "${body.key}"`,
-          '# Or with custom target: pnpm db:restore --backup-key "' + body.key + '" --target "<db-url>"',
+          `# Or with custom target: pnpm db:restore --backup-key "${body.key}" --target "<db-url>"`,
         ],
         cli_command: `pnpm db:restore --backup-key "${body.key}"`,
         audit_logged: true,
@@ -2237,8 +2311,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const { key } = z.object({ key: z.string() }).parse(request.params);
     // The key is the .sql.gz path — derive the .meta.json path
     const metaKey = key.endsWith('.sql.gz')
-      ? key.slice(0, -'.sql.gz'.length) + '.meta.json'
-      : key + '.meta.json';
+      ? `${key.slice(0, -'.sql.gz'.length)}.meta.json`
+      : `${key}.meta.json`;
 
     const meta = await getR2Json(metaKey);
     if (!meta) {
@@ -2279,7 +2353,13 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     });
 
     request.log.info({ retailer_id: id, reason: body.reason }, 'Retailer suspended');
-    return { data: { is_suspended: true, suspended_at: new Date().toISOString(), suspended_reason: body.reason } };
+    return {
+      data: {
+        is_suspended: true,
+        suspended_at: new Date().toISOString(),
+        suspended_reason: body.reason,
+      },
+    };
   });
 
   // ─── POST /admin/retailers/:id/unsuspend ────────────────────────
@@ -2292,7 +2372,12 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     await prisma.retailer.update({
       where: { id },
-      data: { is_suspended: false, suspended_at: null, suspended_reason: null, suspended_by_id: null },
+      data: {
+        is_suspended: false,
+        suspended_at: null,
+        suspended_reason: null,
+        suspended_by_id: null,
+      },
     });
 
     await prisma.auditLog.create({
@@ -2315,7 +2400,9 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const { customerId } = z.object({ customerId: z.string() }).parse(request.params);
     const body = z.object({ reason: z.string().min(1).max(500) }).parse(request.body);
 
-    const customer = await prisma.customer.findUnique({ where: { id: customerId, deleted_at: null } });
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId, deleted_at: null },
+    });
     if (!customer) throw notFound('Customer');
     if (customer.is_blocked) throw validationError('Customer is already blocked');
 
@@ -2330,20 +2417,28 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         action: 'BLOCK_CUSTOMER',
         resource_type: 'Customer',
         resource_id: customerId,
-        metadata: { reason: body.reason, customer_name: customer.name, retailer_id: customer.retailer_id },
+        metadata: {
+          reason: body.reason,
+          customer_name: customer.name,
+          retailer_id: customer.retailer_id,
+        },
         ip_address: request.ip,
       },
     });
 
     request.log.info({ customer_id: customerId, reason: body.reason }, 'Customer blocked');
-    return { data: { is_blocked: true, blocked_at: new Date().toISOString(), blocked_reason: body.reason } };
+    return {
+      data: { is_blocked: true, blocked_at: new Date().toISOString(), blocked_reason: body.reason },
+    };
   });
 
   // ─── POST /admin/customers/:customerId/unblock ──────────────────
   server.post('/customers/:customerId/unblock', async (request) => {
     const { customerId } = z.object({ customerId: z.string() }).parse(request.params);
 
-    const customer = await prisma.customer.findUnique({ where: { id: customerId, deleted_at: null } });
+    const customer = await prisma.customer.findUnique({
+      where: { id: customerId, deleted_at: null },
+    });
     if (!customer) throw notFound('Customer');
     if (!customer.is_blocked) throw validationError('Customer is not blocked');
 
@@ -2384,7 +2479,13 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
     const { cursor, limit, source_table, source_id, retailer_id } = query.success
       ? query.data
-      : { cursor: undefined, limit: 50, source_table: undefined, source_id: undefined, retailer_id: undefined };
+      : {
+          cursor: undefined,
+          limit: 50,
+          source_table: undefined,
+          source_id: undefined,
+          retailer_id: undefined,
+        };
 
     // Build where clause dynamically
     const where: Record<string, unknown> = {};
@@ -2442,22 +2543,22 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   server.get('/database/status', async (_request) => {
     // ── Primary DB stats ──────────────────────────────────────────
     interface DbStat {
-      server_version: string
-      active_connections: bigint
-      max_connections: bigint
-      database_size: string
-      cache_hit_ratio: number
-      uptime_seconds: bigint
-      xact_total: bigint
-      xact_commit: bigint
-      xact_rollback: bigint
-      deadlocks: bigint
-      temp_files: bigint
-      temp_bytes: string
+      server_version: string;
+      active_connections: bigint;
+      max_connections: bigint;
+      database_size: string;
+      cache_hit_ratio: number;
+      uptime_seconds: bigint;
+      xact_total: bigint;
+      xact_commit: bigint;
+      xact_rollback: bigint;
+      deadlocks: bigint;
+      temp_files: bigint;
+      temp_bytes: string;
     }
 
-    let primary: DbStat | null = null
-    let primaryError: string | null = null
+    let primary: DbStat | null = null;
+    let primaryError: string | null = null;
 
     try {
       const result = await prisma.$queryRawUnsafe<DbStat[]>(`
@@ -2483,19 +2584,30 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           pg_size_pretty((SELECT COALESCE(temp_bytes, 0) FROM pg_stat_database WHERE datname = current_database())) AS temp_bytes
         FROM pg_stat_bgwriter
         LIMIT 1
-      `)
-      primary = result[0] ?? null
+      `);
+      primary = result[0] ?? null;
     } catch (err) {
-      primaryError = err instanceof Error ? err.message : 'Unknown error querying primary DB'
+      primaryError = err instanceof Error ? err.message : 'Unknown error querying primary DB';
     }
 
     // ── Replica lag ───────────────────────────────────────────────
-    let replica: { connected: boolean; lag_bytes: bigint | null; lag_seconds: number | null; error: string | null } | null = null
+    let replica: {
+      connected: boolean;
+      lag_bytes: bigint | null;
+      lag_seconds: number | null;
+      error: string | null;
+    } | null = null;
 
     try {
-      const replicaPrisma = getReplicaPrisma()
+      const replicaPrisma = getReplicaPrisma();
       const result = await replicaPrisma.$queryRawUnsafe<
-        { application_name: string; state: string; write_lag: number | null; flush_lag: number | null; replay_lag: number | null }[]
+        {
+          application_name: string;
+          state: string;
+          write_lag: number | null;
+          flush_lag: number | null;
+          replay_lag: number | null;
+        }[]
       >(`
         SELECT
           application_name,
@@ -2505,25 +2617,21 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           replay_lag
         FROM pg_stat_replication
         LIMIT 5
-      `)
+      `);
 
-      if (result.length > 0) {
-        const wal = result[0]!
+      const wal = result[0];
+      if (wal) {
         // Use the largest lag value in seconds, or null
-        const lagSeconds = Math.max(
-          wal.write_lag ?? 0,
-          wal.flush_lag ?? 0,
-          wal.replay_lag ?? 0,
-        )
+        const lagSeconds = Math.max(wal.write_lag ?? 0, wal.flush_lag ?? 0, wal.replay_lag ?? 0);
         replica = {
           connected: wal.state === 'streaming',
           lag_bytes: null, // not directly available from pg_stat_replication
           lag_seconds: lagSeconds > 0 ? lagSeconds : null,
           error: null,
-        }
+        };
       } else {
         // No replicas configured — this is normal for a single-instance setup
-        replica = { connected: false, lag_bytes: null, lag_seconds: null, error: null }
+        replica = { connected: false, lag_bytes: null, lag_seconds: null, error: null };
       }
     } catch (err) {
       replica = {
@@ -2531,25 +2639,30 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         lag_bytes: null,
         lag_seconds: null,
         error: err instanceof Error ? err.message : 'Unknown replica error',
-      }
+      };
     }
 
     // ── Backup info ───────────────────────────────────────────────
     // Read from R2 if possible, otherwise report unknown
-    let backup: { latest_key: string | null; latest_age_hours: number | null; total_count: number; total_size_formatted: string } | null = null
+    let backup: {
+      latest_key: string | null;
+      latest_age_hours: number | null;
+      total_count: number;
+      total_size_formatted: string;
+    } | null = null;
 
     try {
       // First try to read from the backup metadata if we have an S3 client
       const r2 = new S3Client({
         region: 'auto',
-        endpoint: `https://${process.env['CLOUDFLARE_R2_ACCOUNT_ID'] ?? ''}.r2.cloudflarestorage.com`,
+        endpoint: `https://${process.env.CLOUDFLARE_R2_ACCOUNT_ID ?? ''}.r2.cloudflarestorage.com`,
         credentials: {
-          accessKeyId: process.env['CLOUDFLARE_R2_ACCESS_KEY_ID'] ?? '',
-          secretAccessKey: process.env['CLOUDFLARE_R2_SECRET_ACCESS_KEY'] ?? '',
+          accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY_ID ?? '',
+          secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY ?? '',
         },
-      })
+      });
 
-      const bucket = process.env['CLOUDFLARE_R2_BUCKET_NAME'] ?? 'kanchuki-backups'
+      const bucket = process.env.CLOUDFLARE_R2_BUCKET_NAME ?? 'kanchuki-backups';
 
       // TODO: MaxKeys=100 will under-report count/size if 100+ backup files exist.
       // Increase or implement pagination once the project has many backups.
@@ -2559,18 +2672,18 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           Prefix: 'backups/',
           MaxKeys: 100,
         }),
-      )
+      );
 
       const objects = (listResult.Contents ?? [])
         .filter((obj) => obj.Key?.endsWith('.sql.gz'))
         .sort((a, b) => {
-          const aTime = a.LastModified?.getTime() ?? 0
-          const bTime = b.LastModified?.getTime() ?? 0
-          return bTime - aTime
-        })
+          const aTime = a.LastModified?.getTime() ?? 0;
+          const bTime = b.LastModified?.getTime() ?? 0;
+          return bTime - aTime;
+        });
 
-      const totalSizeBytes = objects.reduce((sum, obj) => sum + (obj.Size ?? 0), 0)
-      const latestBackup = objects[0] ?? null
+      const totalSizeBytes = objects.reduce((sum, obj) => sum + (obj.Size ?? 0), 0);
+      const latestBackup = objects[0] ?? null;
 
       backup = {
         latest_key: latestBackup?.Key?.split('/').pop()?.replace('.sql.gz', '') ?? null,
@@ -2578,32 +2691,36 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           ? (Date.now() - latestBackup.LastModified.getTime()) / (1000 * 60 * 60)
           : null,
         total_count: objects.length,
-        total_size_formatted: totalSizeBytes > 0
-          ? totalSizeBytes >= 1073741824
-            ? `${(totalSizeBytes / 1073741824).toFixed(1)} GB`
-            : `${(totalSizeBytes / 1048576).toFixed(0)} MB`
-          : '0 MB',
-      }
+        total_size_formatted:
+          totalSizeBytes > 0
+            ? totalSizeBytes >= 1073741824
+              ? `${(totalSizeBytes / 1073741824).toFixed(1)} GB`
+              : `${(totalSizeBytes / 1048576).toFixed(0)} MB`
+            : '0 MB',
+      };
     } catch {
       // R2 not configured or unavailable — report backup status as unknown
-      backup = null
+      backup = null;
     }
 
     // ── Vault DB status ───────────────────────────────────────────
-    let vaultStatus: { connected: boolean; record_count: number } = { connected: false, record_count: 0 }
+    let vaultStatus: { connected: boolean; record_count: number } = {
+      connected: false,
+      record_count: 0,
+    };
 
     try {
-      const vault = await getVaultPrisma()
+      const vault = await getVaultPrisma();
       if (vault) {
-        const count = await vault.deletedRecord.count()
-        vaultStatus = { connected: true, record_count: count }
+        const count = await vault.deletedRecord.count();
+        vaultStatus = { connected: true, record_count: count };
       }
     } catch {
-      vaultStatus = { connected: false, record_count: 0 }
+      vaultStatus = { connected: false, record_count: 0 };
     }
 
     // ── Guardrail migration status ────────────────────────────────
-    let guardrailsActive = false
+    let guardrailsActive = false;
     try {
       const result = await prisma.$queryRawUnsafe<
         { trigger_name: string; event_manipulation: string; event_object_table: string }[]
@@ -2612,10 +2729,10 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         FROM information_schema.triggers
         WHERE trigger_name = 'prevent_hard_delete'
         LIMIT 1
-      `)
-      guardrailsActive = result.length > 0
+      `);
+      guardrailsActive = result.length > 0;
     } catch {
-      guardrailsActive = false
+      guardrailsActive = false;
     }
 
     return {
@@ -2649,6 +2766,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           active: guardrailsActive,
         },
       },
-    }
+    };
   });
 };

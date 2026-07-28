@@ -57,7 +57,9 @@ function hasBackupPrerequisites(): boolean {
  * Handle a scheduled backup job.
  * @param backupType - 'daily' (default), 'weekly', or 'manual'
  */
-export async function handleBackupDatabase(backupType: 'daily' | 'weekly' | 'manual' = 'daily'): Promise<BackupJobResult> {
+export async function handleBackupDatabase(
+  backupType: 'daily' | 'weekly' | 'manual' = 'daily',
+): Promise<BackupJobResult> {
   const startTime = Date.now();
   const result: BackupJobResult = {
     success: false,
@@ -76,7 +78,9 @@ export async function handleBackupDatabase(backupType: 'daily' | 'weekly' | 'man
     if (!hasBackupPrerequisites()) {
       // Docker not available — this is expected in Railway runtime.
       // Create a metadata-only audit entry and rely on Supabase PITR.
-      console.warn('[backup] Docker not available — backup script cannot run. Supabase PITR is the active backup mechanism.');
+      console.warn(
+        '[backup] Docker not available — backup script cannot run. Supabase PITR is the active backup mechanism.',
+      );
       result.success = true; // Not a failure — expected in Railway
       result.duration_seconds = (Date.now() - startTime) / 1000;
 
@@ -127,7 +131,7 @@ export async function handleBackupDatabase(backupType: 'daily' | 'weekly' | 'man
       const backupDir = join(process.cwd(), '.backups');
       const dumpPath = result.r2_key ? join(backupDir, basename(result.r2_key)) : null;
 
-      if (dumpPath && process.env['BACKUP_DATABASE_URL']) {
+      if (dumpPath && process.env.BACKUP_DATABASE_URL) {
         const integrityOk = await performIntegrityCheck(dumpPath, result.table_count);
         if (integrityOk.restored_table_count !== null) {
           result.restored_table_count = integrityOk.restored_table_count;
@@ -143,8 +147,9 @@ export async function handleBackupDatabase(backupType: 'daily' | 'weekly' | 'man
 
     const auditAction = backupType === 'weekly' ? 'WEEKLY_BACKUP' : 'SCHEDULED_BACKUP';
     await logBackupAudit(auditAction, result, null);
-    console.log(`[backup] Scheduled backup completed: ${result.r2_key} (${result.duration_seconds.toFixed(1)}s)`);
-
+    console.info(
+      `[backup] Scheduled backup completed: ${result.r2_key} (${result.duration_seconds.toFixed(1)}s)`,
+    );
   } catch (err) {
     const errorMessage = err instanceof Error ? err.message : 'Unknown backup error';
     result.success = false;
@@ -152,7 +157,8 @@ export async function handleBackupDatabase(backupType: 'daily' | 'weekly' | 'man
     result.error = errorMessage;
 
     // Log failure with alert
-    const auditAction = backupType === 'weekly' ? 'WEEKLY_BACKUP_FAILED' : 'SCHEDULED_BACKUP_FAILED';
+    const auditAction =
+      backupType === 'weekly' ? 'WEEKLY_BACKUP_FAILED' : 'SCHEDULED_BACKUP_FAILED';
     await logBackupAudit(auditAction, result, errorMessage);
 
     // Track consecutive failures for alerting
@@ -217,25 +223,33 @@ async function performIntegrityCheck(
   dumpPath: string,
   sourceTableCount: number | null,
 ): Promise<{ restored_table_count: number | null; table_count_match: boolean }> {
-  const backupDbUrl = process.env['BACKUP_DATABASE_URL'];
+  const backupDbUrl = process.env.BACKUP_DATABASE_URL;
   if (!backupDbUrl) return { restored_table_count: null, table_count_match: false };
 
   try {
     // Restore to the backup database
     const restoreCmd = `npx tsx scripts/restore-database.ts --file "${dumpPath}" --target "${backupDbUrl}" --dry-run 2>&1`;
-    execSync(restoreCmd, { timeout: 120_000, maxBuffer: 1024 * 1024, encoding: 'utf-8', stdio: 'pipe' });
+    execSync(restoreCmd, {
+      timeout: 120_000,
+      maxBuffer: 1024 * 1024,
+      encoding: 'utf-8',
+      stdio: 'pipe',
+    });
 
     // Count tables in restored database
     const restoredCount = await countTablesInBackupDb(backupDbUrl);
 
     const match = sourceTableCount != null && restoredCount === sourceTableCount;
-    console.log(
+    console.info(
       `[backup] Integrity: source=${sourceTableCount} tables, restored=${restoredCount} tables → ${match ? '✅ MATCH' : '❌ MISMATCH'}`,
     );
 
     return { restored_table_count: restoredCount, table_count_match: match };
   } catch (err) {
-    console.warn('[backup] Integrity check failed (non-fatal):', err instanceof Error ? err.message : 'Unknown');
+    console.warn(
+      '[backup] Integrity check failed (non-fatal):',
+      err instanceof Error ? err.message : 'Unknown',
+    );
     return { restored_table_count: null, table_count_match: false };
   }
 }
@@ -256,16 +270,25 @@ async function countTablesInBackupDb(url: string): Promise<number | null> {
 }
 
 /** Validate a connection URL format (same as scripts/). */
-function parseConnectionUrl(url: string): { host: string; port: number; user: string; password: string; database: string } {
-  const pattern = /^postgres(?:ql)?:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)$/;
-  const match = url.match(pattern);
-  if (!match) throw new Error('Cannot parse database URL');
+function parseConnectionUrl(url: string): {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+} {
+  const pattern =
+    /^postgres(?:ql)?:\/\/(?<user>[^:]+):(?<password>[^@]+)@(?<host>[^:]+):(?<port>\d+)\/(?<database>.+)$/;
+  const { user, password, host, port, database } = url.match(pattern)?.groups ?? {};
+  if (!user || !password || !host || !port || !database) {
+    throw new Error('Cannot parse database URL');
+  }
   return {
-    user: decodeURIComponent(match[1]!),
-    password: decodeURIComponent(match[2]!),
-    host: match[3]!,
-    port: Number.parseInt(match[4]!, 10),
-    database: match[5]!,
+    user: decodeURIComponent(user),
+    password: decodeURIComponent(password),
+    host,
+    port: Number.parseInt(port, 10),
+    database,
   };
 }
 
@@ -281,7 +304,14 @@ export async function trackBackupFailure(
     // Count consecutive failures (backward from latest)
     const recentEntries = await prisma.auditLog.findMany({
       where: {
-        action: { in: ['SCHEDULED_BACKUP', 'SCHEDULED_BACKUP_FAILED', 'WEEKLY_BACKUP', 'WEEKLY_BACKUP_FAILED'] },
+        action: {
+          in: [
+            'SCHEDULED_BACKUP',
+            'SCHEDULED_BACKUP_FAILED',
+            'WEEKLY_BACKUP',
+            'WEEKLY_BACKUP_FAILED',
+          ],
+        },
         resource_type: 'DatabaseBackup',
       },
       orderBy: { created_at: 'desc' },
@@ -349,7 +379,14 @@ export async function getBackupStatus(): Promise<BackupStatus> {
   const [lastBackup, lastAlert, recentEntries] = await Promise.all([
     prisma.auditLog.findFirst({
       where: {
-        action: { in: ['SCHEDULED_BACKUP', 'SCHEDULED_BACKUP_FAILED', 'WEEKLY_BACKUP', 'WEEKLY_BACKUP_FAILED'] },
+        action: {
+          in: [
+            'SCHEDULED_BACKUP',
+            'SCHEDULED_BACKUP_FAILED',
+            'WEEKLY_BACKUP',
+            'WEEKLY_BACKUP_FAILED',
+          ],
+        },
         resource_type: 'DatabaseBackup',
       },
       orderBy: { created_at: 'desc' },
@@ -362,7 +399,14 @@ export async function getBackupStatus(): Promise<BackupStatus> {
     }),
     prisma.auditLog.findMany({
       where: {
-        action: { in: ['SCHEDULED_BACKUP', 'SCHEDULED_BACKUP_FAILED', 'WEEKLY_BACKUP', 'WEEKLY_BACKUP_FAILED'] },
+        action: {
+          in: [
+            'SCHEDULED_BACKUP',
+            'SCHEDULED_BACKUP_FAILED',
+            'WEEKLY_BACKUP',
+            'WEEKLY_BACKUP_FAILED',
+          ],
+        },
         resource_type: 'DatabaseBackup',
       },
       orderBy: { created_at: 'desc' },
@@ -402,4 +446,3 @@ export async function getBackupStatus(): Promise<BackupStatus> {
     last_alert: lastAlert?.created_at.toISOString() ?? null,
   };
 }
-

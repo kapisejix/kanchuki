@@ -13,8 +13,8 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addSpinFrameJob, addTaggingJob } from '../jobs/index.js';
-import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { hasFeature } from '../lib/features.js';
+import { checkQuota, incrementUsage } from '../lib/quota.js';
 import {
   featureUnavailable,
   forbidden,
@@ -644,7 +644,8 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   // Any staff member can soft-delete (DELETE /:id above); only the retailer
   // owner can see the removed list and restore or permanently purge from it.
   server.get('/deleted', async (request) => {
-    if (request.staffRole !== null) throw forbidden('Only the shop owner can view deleted products');
+    if (request.staffRole !== null)
+      throw forbidden('Only the shop owner can view deleted products');
 
     const products = await prisma.product.findMany({
       where: { retailer_id: request.retailerId, deleted_at: { not: null } },
@@ -686,7 +687,8 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── DELETE /products/:id/purge — owner-only, permanent ───────────
   server.delete('/:id/purge', async (request, reply) => {
-    if (request.staffRole !== null) throw forbidden('Only the shop owner can permanently delete products');
+    if (request.staffRole !== null)
+      throw forbidden('Only the shop owner can permanently delete products');
     const { id } = request.params as { id: string };
 
     const existing = await prisma.product.findFirst({

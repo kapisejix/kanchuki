@@ -305,7 +305,7 @@ describe('POST /v1/billing/addon-checkout', () => {
     globalThis.fetch = originalFetch;
 
     // Check Razorpay API was called with correct body
-    const callArg = JSON.parse((mockFetch.mock.calls[0]![1] as { body: string }).body);
+    const callArg = JSON.parse((mockFetch.mock.calls[0]?.[1] as { body: string }).body);
     expect(callArg.amount).toBe(9900);
     expect(callArg.currency).toBe('INR');
     expect(callArg.description).toBe('Extra 100 bg removals');
@@ -372,13 +372,17 @@ describe('GET /v1/billing/addon-callback', () => {
       where: { razorpay_order_id: VALID_LINK_ID, status: 'PENDING' },
     });
     expect(mockUsageCounterUpsert).toHaveBeenCalledOnce();
-    const upsertCall = mockUsageCounterUpsert.mock.calls[0]![0] as {
-      where: { retailer_id_resource_type_period_start: { retailer_id: string; resource_type: string } };
+    const upsertCall = mockUsageCounterUpsert.mock.calls[0]?.[0] as {
+      where: {
+        retailer_id_resource_type_period_start: { retailer_id: string; resource_type: string };
+      };
       create: { count: number };
       update: { count: { decrement: number } };
     };
     expect(upsertCall.where.retailer_id_resource_type_period_start.retailer_id).toBe(RETAILER_ID);
-    expect(upsertCall.where.retailer_id_resource_type_period_start.resource_type).toBe('AI_TAGGING_CALL');
+    expect(upsertCall.where.retailer_id_resource_type_period_start.resource_type).toBe(
+      'AI_TAGGING_CALL',
+    );
     expect(upsertCall.create.count).toBe(-100);
     expect(upsertCall.update.count.decrement).toBe(100);
     expect(mockQuotaAddonPurchaseUpdate).toHaveBeenCalledWith(
@@ -410,8 +414,7 @@ describe('GET /v1/billing/addon-callback', () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({ amount: 39900, status: 'captured' }),
+      json: () => Promise.resolve({ amount: 39900, status: 'captured' }),
     });
 
     const res = await app.inject({
@@ -503,8 +506,7 @@ describe('GET /v1/billing/addon-callback', () => {
     const originalFetch = globalThis.fetch;
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
-      json: () =>
-        Promise.resolve({ amount: 9900, status: 'captured' }),
+      json: () => Promise.resolve({ amount: 9900, status: 'captured' }),
     });
 
     const res = await app.inject({

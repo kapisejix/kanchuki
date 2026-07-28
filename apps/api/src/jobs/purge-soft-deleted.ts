@@ -45,11 +45,7 @@ interface PurgeResult {
  * Uses the same cursor-based pattern as cleanup-training-data.ts:
  * findMany to select the batch, then a single raw DELETE by IDs.
  */
-async function purgeTable(
-  table: string,
-  cutoff: Date,
-  extraWhere?: string,
-): Promise<number> {
+async function purgeTable(table: string, cutoff: Date, extraWhere?: string): Promise<number> {
   let total = 0;
   let cursor: string | undefined;
 
@@ -111,7 +107,9 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   const cutoff = new Date(Date.now() - PURGE_AFTER_DAYS * 24 * 60 * 60 * 1000);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
-  console.log(`[purge-soft-deleted] Starting purge of records soft-deleted before ${cutoff.toISOString()}...`);
+  console.log(
+    `[purge-soft-deleted] Starting purge of records soft-deleted before ${cutoff.toISOString()}...`,
+  );
 
   // ── 1. Purge products + children ──────────────────────────────
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging

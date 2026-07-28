@@ -73,7 +73,11 @@ beforeEach(() => {
 
 describe('PUT /retailers/me', () => {
   it('accepts null logo/banner fields (clearing an image)', async () => {
-    mockRetailerUpdate.mockResolvedValue({ shop_name: 'Test Shop', logo_url: null, banner_url: null });
+    mockRetailerUpdate.mockResolvedValue({
+      shop_name: 'Test Shop',
+      logo_url: null,
+      banner_url: null,
+    });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -338,7 +342,10 @@ describe('POST /retailers/me/banner-upload-url', () => {
     expect(body).toHaveProperty('upload_url', 'https://r2.example.com/upload/test.jpg');
     expect(body).toHaveProperty('r2_key');
     expect(body.r2_key).toContain('banner/');
-    expect(body).toHaveProperty('public_url', 'https://cdn.example.com/retailers/r1/banner/test.jpg');
+    expect(body).toHaveProperty(
+      'public_url',
+      'https://cdn.example.com/retailers/r1/banner/test.jpg',
+    );
     expect(body).toHaveProperty('expires_in', 300);
 
     expect(mockGetUploadPresignedUrl).toHaveBeenCalledOnce();

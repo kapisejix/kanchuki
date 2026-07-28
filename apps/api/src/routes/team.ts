@@ -133,10 +133,11 @@ export async function routeTicket(
       candidateTerritoryIds.push(currentId);
 
       // Fetch parent
-      const parentTerritory: { parent_id: string | null } | null = await prisma.territory.findUnique({
-        where: { id: currentId },
-        select: { parent_id: true },
-      });
+      const parentTerritory: { parent_id: string | null } | null =
+        await prisma.territory.findUnique({
+          where: { id: currentId },
+          select: { parent_id: true },
+        });
       currentId = parentTerritory?.parent_id ?? null;
     }
   } else {
@@ -297,7 +298,14 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     }
     const member = await prisma.teamMember.findUnique({
       where: { id: tm.id },
-      select: { id: true, name: true, email: true, role: true, max_retailers: true, referral_code: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        max_retailers: true,
+        referral_code: true,
+      },
     });
     if (!member) throw notFound('Team member');
     const territories = await prisma.territory.findMany({
@@ -754,9 +762,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       where: {
         status: 'OPEN',
         assigned_to_id: null,
-        ...(tm.isSuperAdmin
-          ? {}
-          : { retailer: { territory_id: { in: tm.territoryIds } } }),
+        ...(tm.isSuperAdmin ? {} : { retailer: { territory_id: { in: tm.territoryIds } } }),
       },
       select: {
         id: true,

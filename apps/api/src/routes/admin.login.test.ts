@@ -47,9 +47,7 @@ function generateTotpCode(secret: string, offset = 0): string {
   const counter = Math.floor(Date.now() / 1000 / 30) + offset;
   const counterBuf = Buffer.alloc(8);
   counterBuf.writeBigUInt64BE(BigInt(counter));
-  const hmac = createHmac('sha1', base32Decode(secret))
-    .update(counterBuf)
-    .digest();
+  const hmac = createHmac('sha1', base32Decode(secret)).update(counterBuf).digest();
   const idx = hmac.readUInt8(19) & 0xf;
   // RFC 4226 §5.4: dynamic truncation — safe because idx + 3 < 20 for SHA1
   // Use readUInt8 instead of indexed access to avoid TS strict-null issues on Buffer
@@ -240,9 +238,7 @@ describe('POST /v1/admin/login', () => {
 describe('Admin login — legacy HMAC backward compatibility', () => {
   beforeEach(() => {
     // Set a legacy HMAC-SHA256 hash (no colon = detected as legacy)
-    const legacyHash = createHmac('sha256', 'admin-password')
-      .update('admin123')
-      .digest('hex');
+    const legacyHash = createHmac('sha256', 'admin-password').update('admin123').digest('hex');
     process.env.ADMIN_PASSWORD_HASH = legacyHash;
   });
 
@@ -274,6 +270,7 @@ describe('Admin login — legacy HMAC backward compatibility', () => {
 
 describe('Admin login — TOTP optional (no ADMIN_TOTP_SECRET)', () => {
   beforeEach(() => {
+    // biome-ignore lint/performance/noDelete: must fully remove the key — assigning undefined stringifies to "undefined" on process.env, defeating this test
     delete process.env.ADMIN_TOTP_SECRET;
   });
 

@@ -87,7 +87,11 @@ vi.mock('@kanchuki/db', () => ({
       count: mockProductCount,
       findMany: mockProductFindMany,
     },
-    collection: { findMany: mockCollectionFindMany, count: mockCollectionCount, updateMany: mockCollectionUpdateMany },
+    collection: {
+      findMany: mockCollectionFindMany,
+      count: mockCollectionCount,
+      updateMany: mockCollectionUpdateMany,
+    },
     collectionView: { count: mockCollectionViewCount },
     collectionEnquiry: { count: mockCollectionEnquiryCount },
     staff: { updateMany: mockStaffUpdateMany },
@@ -340,8 +344,20 @@ describe('GET /admin/retailers', () => {
 describe('DELETE /admin/retailers', () => {
   it('bulk soft-deletes retailers and archives their collections/staff', async () => {
     mockRetailerFindMany.mockResolvedValue([
-      { id: 'retailer_1', shop_name: 'Shop 1', city: 'City 1', plan: 'STARTER', plan_status: 'TRIAL' },
-      { id: 'retailer_2', shop_name: 'Shop 2', city: 'City 2', plan: 'GROWTH', plan_status: 'ACTIVE' },
+      {
+        id: 'retailer_1',
+        shop_name: 'Shop 1',
+        city: 'City 1',
+        plan: 'STARTER',
+        plan_status: 'TRIAL',
+      },
+      {
+        id: 'retailer_2',
+        shop_name: 'Shop 2',
+        city: 'City 2',
+        plan: 'GROWTH',
+        plan_status: 'ACTIVE',
+      },
     ]);
     mockCollectionFindMany.mockResolvedValue([]);
     mockRetailerUpdateMany.mockResolvedValue({ count: 2 });

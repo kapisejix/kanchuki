@@ -9,10 +9,7 @@ import type { PlanFeatureKey, SubscriptionPlan } from '@kanchuki/db';
  * This ensures a newly shipped feature is disabled everywhere until an
  * admin explicitly enables it via the plan-features admin grid.
  */
-export async function hasFeature(
-  retailerId: string,
-  featureKey: PlanFeatureKey,
-): Promise<boolean> {
+export async function hasFeature(retailerId: string, featureKey: PlanFeatureKey): Promise<boolean> {
   const retailer = await prisma.retailer.findUniqueOrThrow({
     where: { id: retailerId },
     select: { plan: true },
@@ -42,9 +39,7 @@ export async function hasFeatureForPlan(
  * Get all enabled features for a retailer's plan.
  * Useful for returning a "plan capabilities" object to the frontend.
  */
-export async function getEnabledFeatures(
-  retailerId: string,
-): Promise<PlanFeatureKey[]> {
+export async function getEnabledFeatures(retailerId: string): Promise<PlanFeatureKey[]> {
   const retailer = await prisma.retailer.findUniqueOrThrow({
     where: { id: retailerId },
     select: { plan: true },

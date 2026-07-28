@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
-import { getSecret, prisma, type QuotaResourceType } from '@kanchuki/db';
+import { type QuotaResourceType, getSecret, prisma } from '@kanchuki/db';
 import { ADDON_PRICING, PLAN_LIMITS, PLAN_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
@@ -304,10 +304,10 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       .parse(request.body);
 
     const packs = ADDON_PRICING[body.resource_type];
-    if (!packs || !packs[body.pack_index]) {
+    const pack = packs?.[body.pack_index];
+    if (!pack) {
       throw validationError('Invalid resource_type or pack_index');
     }
-    const pack = packs[body.pack_index]!;
 
     // Get retailer info for the payment link customer
     const retailer = await prisma.retailer.findUnique({
@@ -416,7 +416,11 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     if (expected !== razorpay_signature) {
       request.log.warn({ razorpay_payment_link_id }, 'Payment link callback signature mismatch');
       return reply.status(401).send({
-        error: { code: 'INVALID_SIGNATURE', message: 'Payment link verification failed', status: 401 },
+        error: {
+          code: 'INVALID_SIGNATURE',
+          message: 'Payment link verification failed',
+          status: 401,
+        },
       });
     }
 
@@ -430,16 +434,22 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
 
     if (!purchase) {
       request.log.warn({ razorpay_payment_link_id }, 'No pending purchase found for payment link');
-      return reply.redirect(`${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=unknown`);
+      return reply.redirect(
+        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=unknown`,
+      );
     }
 
     // Fetch payment details from Razorpay to verify amount matches
-    let paymentAmount = 0;
     try {
       const payment = await razorpay<{ amount: number; status: string }>(
         `/payments/${razorpay_payment_id}`,
       );
-      paymentAmount = payment.amount;
+      if (payment.amount !== purchase.amount_inr) {
+        request.log.error(
+          { razorpay_payment_id, expected: purchase.amount_inr, actual: payment.amount },
+          'Payment amount mismatch on addon callback',
+        );
+      }
     } catch (err) {
       request.log.error({ razorpay_payment_id, err }, 'Failed to fetch payment details');
     }

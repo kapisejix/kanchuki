@@ -4,7 +4,12 @@ import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
 import { hasFeature } from '../lib/features.js';
-import { featureUnavailable, forbidden, notFound, validationError } from '../plugins/error-handler.js';
+import {
+  featureUnavailable,
+  forbidden,
+  notFound,
+  validationError,
+} from '../plugins/error-handler.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 

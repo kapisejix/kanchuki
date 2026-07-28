@@ -312,8 +312,6 @@ function ticketHeaders() {
 const MOCK_RETAILER = { id: 'retailer_1', territory_id: 'zone_1' };
 const MOCK_AGENT_1 = { id: 'support_1', name: 'Agent One', role: 'SUPPORT_AGENT' };
 const MOCK_AGENT_2 = { id: 'support_2', name: 'Agent Two', role: 'SUPPORT_AGENT' };
-const MOCK_CITY = { id: 'city_1', parent_id: 'state_1' };
-const MOCK_STATE = { id: 'state_1', parent_id: null };
 
 describe('POST /team/tickets — auto-routing', () => {
   beforeEach(() => {
@@ -389,7 +387,10 @@ describe('POST /team/tickets — auto-routing', () => {
     });
     // Only a SUPPORT_MANAGER is assigned to the territory
     mockTeamMemberTerritoryFindMany.mockResolvedValue([
-      { team_member: { id: 'mgr_1', name: 'Mgr', role: 'SUPPORT_MANAGER' }, territory_id: 'city_1' },
+      {
+        team_member: { id: 'mgr_1', name: 'Mgr', role: 'SUPPORT_MANAGER' },
+        territory_id: 'city_1',
+      },
     ]);
     mockSupportTicketCount.mockResolvedValueOnce(0); // manager load
     mockSupportTicketUpdate.mockResolvedValue({});
@@ -453,7 +454,10 @@ describe('POST /team/tickets — auto-routing', () => {
       .mockResolvedValueOnce({ parent_id: null }); // state_1 -> null
     // routeTicket collects ALL candidate territories [zone_1, city_1, state_1]
     // then makes ONE findMany call with all 3 IDs — NOT one call per level
-    const stateAgent = { team_member: { id: 'state_agent', name: 'State Agent', role: 'SUPPORT_AGENT' }, territory_id: 'state_1' };
+    const stateAgent = {
+      team_member: { id: 'state_agent', name: 'State Agent', role: 'SUPPORT_AGENT' },
+      territory_id: 'state_1',
+    };
     mockTeamMemberTerritoryFindMany.mockResolvedValue([stateAgent]);
     mockSupportTicketCount.mockResolvedValueOnce(0);
     mockSupportTicketUpdate.mockResolvedValue({});
@@ -505,8 +509,18 @@ describe('POST /team/tickets/route-all — batch routing', () => {
 
   it('routes all unassigned open tickets and returns count', async () => {
     mockSupportTicketFindMany.mockResolvedValue([
-      { id: 't_a', requires_visit: false, region_scope_id: 'city_1', retailer: { territory_id: 'zone_1' } },
-      { id: 't_b', requires_visit: true, region_scope_id: null, retailer: { territory_id: 'zone_1' } },
+      {
+        id: 't_a',
+        requires_visit: false,
+        region_scope_id: 'city_1',
+        retailer: { territory_id: 'zone_1' },
+      },
+      {
+        id: 't_b',
+        requires_visit: true,
+        region_scope_id: null,
+        retailer: { territory_id: 'zone_1' },
+      },
     ]);
     // T_a (backend-manageable): uses regionScopeId directly, no territory.findUnique
     // T_b (visit-required): traverses hierarchy zone_1 -> city_1 -> state_1 -> null
@@ -515,8 +529,14 @@ describe('POST /team/tickets/route-all — batch routing', () => {
       .mockResolvedValueOnce({ parent_id: 'state_1' }) // t_b: city_1 -> state_1
       .mockResolvedValueOnce({ parent_id: null }); // t_b: state_1 -> null
     // routeTicket makes ONE findMany call per ticket (not per territory level)
-    const agentA = { team_member: { id: 'support_a', name: 'A', role: 'SUPPORT_AGENT' }, territory_id: 'city_1' };
-    const agentB = { team_member: { id: 'support_b', name: 'B', role: 'SUPPORT_AGENT' }, territory_id: 'state_1' };
+    const agentA = {
+      team_member: { id: 'support_a', name: 'A', role: 'SUPPORT_AGENT' },
+      territory_id: 'city_1',
+    };
+    const agentB = {
+      team_member: { id: 'support_b', name: 'B', role: 'SUPPORT_AGENT' },
+      territory_id: 'state_1',
+    };
     mockTeamMemberTerritoryFindMany
       .mockResolvedValueOnce([agentA]) // t_a: query for [city_1]
       .mockResolvedValueOnce([agentB]); // t_b: query for [zone_1, city_1, state_1]
@@ -702,10 +722,10 @@ describe('GET /team/tickets/stats', () => {
 
   it('returns aggregate ticket statistics', async () => {
     mockSupportTicketCount
-      .mockResolvedValueOnce(5)  // open
-      .mockResolvedValueOnce(3)  // assigned
+      .mockResolvedValueOnce(5) // open
+      .mockResolvedValueOnce(3) // assigned
       .mockResolvedValueOnce(10) // resolved
-      .mockResolvedValueOnce(2)  // closed
+      .mockResolvedValueOnce(2) // closed
       .mockResolvedValueOnce(1); // visit_required
 
     const app = await buildApp();

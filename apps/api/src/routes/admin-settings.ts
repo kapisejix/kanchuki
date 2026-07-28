@@ -1,6 +1,6 @@
 /**
  * Phase S + Phase 0.5: Admin settings, operations center, and reporting endpoints.
- * 
+ *
  * Endpoints:
  *   GET/PUT /admin/settings/rate-limits    — Rate limit live tuning
  *   GET/PUT /admin/settings/ai-config      — AI model config per operation
@@ -13,7 +13,7 @@
  */
 
 import { execSync } from 'node:child_process';
-import { prisma, type Prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
@@ -23,30 +23,92 @@ import { forbidden, notFound, validationError } from '../plugins/error-handler.j
 // We use the existing prisma setup — but since there's no AdminSetting model,
 // we store configs as JSON in audit_log metadata and use env vars as defaults.
 
-const DEFAULT_RATE_LIMITS: Record<string, { window_ms: number; max_requests: number; description: string }> = {
-  'products:create': { window_ms: 60_000, max_requests: 60, description: 'Product creation per minute' },
-  'products:upload': { window_ms: 60_000, max_requests: 20, description: 'File upload URLs per minute' },
+const DEFAULT_RATE_LIMITS: Record<
+  string,
+  { window_ms: number; max_requests: number; description: string }
+> = {
+  'products:create': {
+    window_ms: 60_000,
+    max_requests: 60,
+    description: 'Product creation per minute',
+  },
+  'products:upload': {
+    window_ms: 60_000,
+    max_requests: 20,
+    description: 'File upload URLs per minute',
+  },
   'ai:tag': { window_ms: 3_600_000, max_requests: 200, description: 'AI tagging calls per hour' },
-  'collections:create': { window_ms: 60_000, max_requests: 30, description: 'Collection creation per minute' },
-  'tryon:initiate': { window_ms: 3_600_000, max_requests: 50, description: 'Try-on initiations per hour' },
-  'auth:otp': { window_ms: 900_000, max_requests: 3, description: 'OTP requests per 15min per phone' },
-  'checkout:create': { window_ms: 60_000, max_requests: 10, description: 'Order creation per minute' },
-  'webhook:razorpay': { window_ms: 60_000, max_requests: 30, description: 'Razorpay webhooks per minute' },
+  'collections:create': {
+    window_ms: 60_000,
+    max_requests: 30,
+    description: 'Collection creation per minute',
+  },
+  'tryon:initiate': {
+    window_ms: 3_600_000,
+    max_requests: 50,
+    description: 'Try-on initiations per hour',
+  },
+  'auth:otp': {
+    window_ms: 900_000,
+    max_requests: 3,
+    description: 'OTP requests per 15min per phone',
+  },
+  'checkout:create': {
+    window_ms: 60_000,
+    max_requests: 10,
+    description: 'Order creation per minute',
+  },
+  'webhook:razorpay': {
+    window_ms: 60_000,
+    max_requests: 30,
+    description: 'Razorpay webhooks per minute',
+  },
 };
 
 // In-memory cache (populated from audit log on first load)
-let cachedRateLimits: Record<string, { window_ms: number; max_requests: number; description: string }> | null = null;
+let cachedRateLimits: Record<
+  string,
+  { window_ms: number; max_requests: number; description: string }
+> | null = null;
 
 const RATE_LIMIT_SETTING_KEY = 'rate_limits';
 const AI_CONFIG_SETTING_KEY = 'ai_model_config';
 
-const DEFAULT_AI_CONFIG: Record<string, { model: string; temperature: number; max_tokens: number; timeout_ms: number }> = {
-  'product_tagging': { model: 'claude-3-5-sonnet-20241022', temperature: 0.1, max_tokens: 2000, timeout_ms: 30000 },
-  'embedding_generation': { model: 'text-embedding-3-small', temperature: 0, max_tokens: 0, timeout_ms: 15000 },
-  'try_on': { model: 'fashion-vtone-v1.5', temperature: 0, max_tokens: 0, timeout_ms: 120000 },
-  'color_detection': { model: 'claude-3-haiku-20240307', temperature: 0.1, max_tokens: 500, timeout_ms: 15000 },
-  'multi_item_detection': { model: 'claude-3-5-sonnet-20241022', temperature: 0.2, max_tokens: 3000, timeout_ms: 45000 },
-  'fashion_dna': { model: 'text-embedding-3-small', temperature: 0, max_tokens: 0, timeout_ms: 30000 },
+const DEFAULT_AI_CONFIG: Record<
+  string,
+  { model: string; temperature: number; max_tokens: number; timeout_ms: number }
+> = {
+  product_tagging: {
+    model: 'claude-3-5-sonnet-20241022',
+    temperature: 0.1,
+    max_tokens: 2000,
+    timeout_ms: 30000,
+  },
+  embedding_generation: {
+    model: 'text-embedding-3-small',
+    temperature: 0,
+    max_tokens: 0,
+    timeout_ms: 15000,
+  },
+  try_on: { model: 'fashion-vtone-v1.5', temperature: 0, max_tokens: 0, timeout_ms: 120000 },
+  color_detection: {
+    model: 'claude-3-haiku-20240307',
+    temperature: 0.1,
+    max_tokens: 500,
+    timeout_ms: 15000,
+  },
+  multi_item_detection: {
+    model: 'claude-3-5-sonnet-20241022',
+    temperature: 0.2,
+    max_tokens: 3000,
+    timeout_ms: 45000,
+  },
+  fashion_dna: {
+    model: 'text-embedding-3-small',
+    temperature: 0,
+    max_tokens: 0,
+    timeout_ms: 30000,
+  },
 };
 
 async function getSetting(key: string): Promise<Record<string, unknown> | null> {
@@ -86,9 +148,15 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
 
   server.get('/settings/rate-limits', async () => {
     const saved = await getSetting(RATE_LIMIT_SETTING_KEY);
-    const limits = saved as Record<string, { window_ms: number; max_requests: number; description: string }> | null;
+    const limits = saved as Record<
+      string,
+      { window_ms: number; max_requests: number; description: string }
+    > | null;
 
-    const merged: Record<string, { window_ms: number; max_requests: number; description: string; is_default: boolean }> = {};
+    const merged: Record<
+      string,
+      { window_ms: number; max_requests: number; description: string; is_default: boolean }
+    > = {};
     for (const [key, def] of Object.entries(DEFAULT_RATE_LIMITS)) {
       const savedVal = limits?.[key];
       merged[key] = {
@@ -122,7 +190,8 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Merge with defaults to preserve descriptions
-    const merged: Record<string, { window_ms: number; max_requests: number; description: string }> = {};
+    const merged: Record<string, { window_ms: number; max_requests: number; description: string }> =
+      {};
     for (const [key, def] of Object.entries(DEFAULT_RATE_LIMITS)) {
       if (body.limits[key]) {
         merged[key] = { ...body.limits[key], description: def.description };
@@ -162,9 +231,21 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
 
   server.get('/settings/ai-config', async () => {
     const saved = await getSetting(AI_CONFIG_SETTING_KEY);
-    const config = saved as Record<string, { model: string; temperature: number; max_tokens: number; timeout_ms: number }> | null;
+    const config = saved as Record<
+      string,
+      { model: string; temperature: number; max_tokens: number; timeout_ms: number }
+    > | null;
 
-    const merged: Record<string, { model: string; temperature: number; max_tokens: number; timeout_ms: number; is_default: boolean }> = {};
+    const merged: Record<
+      string,
+      {
+        model: string;
+        temperature: number;
+        max_tokens: number;
+        timeout_ms: number;
+        is_default: boolean;
+      }
+    > = {};
     for (const [key, def] of Object.entries(DEFAULT_AI_CONFIG)) {
       const savedVal = config?.[key];
       merged[key] = {
@@ -199,7 +280,10 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
-    const merged: Record<string, { model: string; temperature: number; max_tokens: number; timeout_ms: number }> = {};
+    const merged: Record<
+      string,
+      { model: string; temperature: number; max_tokens: number; timeout_ms: number }
+    > = {};
     for (const [key, def] of Object.entries(DEFAULT_AI_CONFIG)) {
       merged[key] = body.configs[key] ?? def;
     }
@@ -210,7 +294,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
     return { data: merged };
   });
 
-// ═══════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════
 
   // ═══════════════════════════════════════════════════════════════
   //  Operations Approval Center
@@ -242,7 +326,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
       data: pendingOps.map((op) => ({
         id: op.id,
         type: op.action.replace('PENDING_', ''),
-        description: (op.metadata as Record<string, unknown>)?.description as string ?? op.action,
+        description: ((op.metadata as Record<string, unknown>)?.description as string) ?? op.action,
         requested_by: op.actor_id ?? 'unknown',
         requested_at: op.created_at.toISOString(),
         metadata: op.metadata,
@@ -282,7 +366,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: {
         metadata: {
-          ...(pending.metadata as Record<string, unknown> ?? {}),
+          ...((pending.metadata as Record<string, unknown>) ?? {}),
           status: 'approved',
           approved_at: new Date().toISOString(),
           approved_by: request.ip,
@@ -324,7 +408,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
       where: { id },
       data: {
         metadata: {
-          ...(pending.metadata as Record<string, unknown> ?? {}),
+          ...((pending.metadata as Record<string, unknown>) ?? {}),
           status: 'rejected',
           rejected_at: new Date().toISOString(),
           rejected_by: request.ip,
@@ -380,7 +464,9 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
       })
       .safeParse(request.query);
 
-    const { cursor, limit, status } = query.success ? query.data : { cursor: undefined, limit: 50, status: undefined };
+    const { cursor, limit, status } = query.success
+      ? query.data
+      : { cursor: undefined, limit: 50, status: undefined };
 
     const where: Record<string, unknown> = {
       action: { startsWith: 'DEPLOY' },
@@ -445,7 +531,14 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
     const entry = await prisma.auditLog.create({
       data: {
         actor_type: 'admin',
-        action: body.status === 'pending' ? 'DEPLOY_PENDING' : body.status === 'success' ? 'DEPLOY_SUCCESS' : body.status === 'failed' ? 'DEPLOY_FAILED' : 'DEPLOY_RUNNING',
+        action:
+          body.status === 'pending'
+            ? 'DEPLOY_PENDING'
+            : body.status === 'success'
+              ? 'DEPLOY_SUCCESS'
+              : body.status === 'failed'
+                ? 'DEPLOY_FAILED'
+                : 'DEPLOY_RUNNING',
         resource_type: 'Deployment',
         metadata: {
           service: body.service,
@@ -512,13 +605,17 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
         name: 'pending_operations',
         description: 'No pending operations awaiting review',
         passed: pendingOps === 0,
-        details: pendingOps > 0 ? `${pendingOps} operation(s) pending review` : 'No pending operations',
+        details:
+          pendingOps > 0 ? `${pendingOps} operation(s) pending review` : 'No pending operations',
       },
       {
         name: 'no_recent_failures',
         description: 'No failed deployments in last 24h',
         passed: recentFailedDeployments === 0,
-        details: recentFailedDeployments > 0 ? `${recentFailedDeployments} failed deployment(s) in last 24h` : 'No recent failures',
+        details:
+          recentFailedDeployments > 0
+            ? `${recentFailedDeployments} failed deployment(s) in last 24h`
+            : 'No recent failures',
       },
       {
         name: 'recent_backup',
@@ -530,7 +627,10 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
         name: 'integrity_checks',
         description: 'No integrity failures in last 7 days',
         passed: integrityFailures === 0,
-        details: integrityFailures > 0 ? `${integrityFailures} integrity failure(s)` : 'All integrity checks passed',
+        details:
+          integrityFailures > 0
+            ? `${integrityFailures} integrity failure(s)`
+            : 'All integrity checks passed',
       },
     ];
 
@@ -660,14 +760,15 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
           count: a._count,
         })),
         by_day: Array.from(byDayMap.entries()).map(([date, count]) => ({ date, count })),
-        resolution_rate: totalTickets > 0
-          ? Math.round(
-              ((byStatus.find((s) => s.status === 'RESOLVED')?._count ?? 0) +
-                (byStatus.find((s) => s.status === 'CLOSED')?._count ?? 0)) /
-                totalTickets *
-                100,
-            )
-          : 0,
+        resolution_rate:
+          totalTickets > 0
+            ? Math.round(
+                (((byStatus.find((s) => s.status === 'RESOLVED')?._count ?? 0) +
+                  (byStatus.find((s) => s.status === 'CLOSED')?._count ?? 0)) /
+                  totalTickets) *
+                  100,
+              )
+            : 0,
       },
     };
   });
@@ -694,7 +795,11 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
         select: { action: true, created_at: true, metadata: true },
       }),
       prisma.auditLog.findFirst({
-        where: { action: 'SCHEDULED_BACKUP_FAILED', resource_type: 'DatabaseBackup', created_at: { gte: last7d } },
+        where: {
+          action: 'SCHEDULED_BACKUP_FAILED',
+          resource_type: 'DatabaseBackup',
+          created_at: { gte: last7d },
+        },
         orderBy: { created_at: 'desc' },
         select: { created_at: true, metadata: true },
       }),
@@ -725,7 +830,8 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
         last_failure: lastFailure
           ? {
               time: lastFailure.created_at.toISOString(),
-              error: ((lastFailure.metadata as Record<string, unknown>)?.error as string) ?? 'Unknown',
+              error:
+                ((lastFailure.metadata as Record<string, unknown>)?.error as string) ?? 'Unknown',
             }
           : null,
         docker_available: (() => {
@@ -783,13 +889,23 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
     // Fetch latest alert for dashboard context
     const [lastAlert, recentBackupEntries] = await Promise.all([
       prisma.auditLog.findFirst({
-        where: { action: { in: ['BACKUP_FAILURE_ALERT', 'INTEGRITY_FAILURE_ALERT'] }, resource_type: 'Notification' },
+        where: {
+          action: { in: ['BACKUP_FAILURE_ALERT', 'INTEGRITY_FAILURE_ALERT'] },
+          resource_type: 'Notification',
+        },
         orderBy: { created_at: 'desc' },
         select: { created_at: true, action: true, metadata: true },
       }),
       prisma.auditLog.findMany({
         where: {
-          action: { in: ['SCHEDULED_BACKUP', 'SCHEDULED_BACKUP_FAILED', 'WEEKLY_BACKUP', 'WEEKLY_BACKUP_FAILED'] },
+          action: {
+            in: [
+              'SCHEDULED_BACKUP',
+              'SCHEDULED_BACKUP_FAILED',
+              'WEEKLY_BACKUP',
+              'WEEKLY_BACKUP_FAILED',
+            ],
+          },
           resource_type: 'DatabaseBackup',
         },
         orderBy: { created_at: 'desc' },
@@ -825,7 +941,10 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
         backup_failure: z
           .object({
             enabled: z.boolean(),
-            channels: z.array(z.enum(['admin_bell', 'email'])).min(1).max(5),
+            channels: z
+              .array(z.enum(['admin_bell', 'email']))
+              .min(1)
+              .max(5),
           })
           .optional(),
         consecutive_failures: z
@@ -919,14 +1038,22 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
     });
 
     request.log.info('Test notification sent');
-    return { data: { status: 'logged', message: 'Test notification logged. Configure SMS/email provider for actual delivery.' } };
+    return {
+      data: {
+        status: 'logged',
+        message: 'Test notification logged. Configure SMS/email provider for actual delivery.',
+      },
+    };
   });
 };
 
 /**
  * Get cached rate limits for use by the rate limiter middleware.
  */
-export function getCachedRateLimits(): Record<string, { window_ms: number; max_requests: number; description: string }> {
+export function getCachedRateLimits(): Record<
+  string,
+  { window_ms: number; max_requests: number; description: string }
+> {
   return cachedRateLimits ?? DEFAULT_RATE_LIMITS;
 }
 

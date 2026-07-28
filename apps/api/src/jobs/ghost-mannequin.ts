@@ -54,9 +54,7 @@ export async function handleGhostMannequin(data: GhostMannequinJobData): Promise
       },
     });
 
-    console.log(
-      `[GhostMannequin] Generated for product ${product_id}: ${resultUrl}`,
-    );
+    console.info(`[GhostMannequin] Generated for product ${product_id}: ${resultUrl}`);
   } catch (err) {
     // F-001e: log + re-throw for BullMQ retry. This does NOT block product
     // save — the product was already created before this job was queued.
@@ -84,4 +82,4 @@ export async function handleGhostMannequin(data: GhostMannequinJobData): Promise
   }
 }
 
-export default handleGhostMannequin
+export default handleGhostMannequin;

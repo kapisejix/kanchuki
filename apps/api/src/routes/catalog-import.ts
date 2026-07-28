@@ -476,7 +476,11 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         action: 'create',
         resource_type: 'Product',
         resource_id: `bulk_import:${request.id}`,
-        metadata: { total_requested: items.length, total_created: created.length, product_ids: created.map(c => c.id) },
+        metadata: {
+          total_requested: items.length,
+          total_created: created.length,
+          product_ids: created.map((c) => c.id),
+        },
         ip_address: request.ip,
       },
     });

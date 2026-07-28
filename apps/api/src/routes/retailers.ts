@@ -6,7 +6,12 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../lib/features.js';
-import { featureUnavailable, forbidden, notFound, validationError } from '../plugins/error-handler.js';
+import {
+  featureUnavailable,
+  forbidden,
+  notFound,
+  validationError,
+} from '../plugins/error-handler.js';
 import { routeTicket } from './team.js';
 
 // F-019: platform's own Razorpay account (retailer pays Kanchuki), not the

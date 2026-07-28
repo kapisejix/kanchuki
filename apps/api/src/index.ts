@@ -1,16 +1,16 @@
+import { createHmac } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import { createClient } from '@supabase/supabase-js';
-import { createHmac } from 'node:crypto';
 import Fastify from 'fastify';
 
 import { getRedis, startWorkers } from './jobs/index.js';
 import { authPlugin } from './plugins/auth.js';
 import { errorHandler } from './plugins/error-handler.js';
-import { adminRoutes } from './routes/admin.js';
 import { adminSettingsRoutes } from './routes/admin-settings.js';
+import { adminRoutes } from './routes/admin.js';
 import { authRoutes } from './routes/auth.js';
 import { billingRoutes } from './routes/billing.js';
 import { catalogImportRoutes } from './routes/catalog-import.js';
@@ -32,7 +32,9 @@ import { tryOnRoutes } from './routes/tryon.js';
 // encrypted secrets (F-012) — previously masterKey() only threw inside
 // request handlers when this was missing.
 if (!process.env.ENCRYPTION_MASTER_KEY) {
-  console.error('[startup] ENCRYPTION_MASTER_KEY not set — required to decrypt IntegrationSetting rows (F-012). Exiting.');
+  console.error(
+    '[startup] ENCRYPTION_MASTER_KEY not set — required to decrypt IntegrationSetting rows (F-012). Exiting.',
+  );
   process.exit(1);
 }
 
@@ -72,9 +74,9 @@ await server.register(cors, {
 
 // ─── Cookie Plugin (for admin CSRF protection) ────────────────────
 await server.register(cookie, {
-  secret: process.env.COOKIE_SECRET ?? createHmac('sha256', 'kanchuki-cookie')
-    .update(Date.now().toString())
-    .digest('hex'),
+  secret:
+    process.env.COOKIE_SECRET ??
+    createHmac('sha256', 'kanchuki-cookie').update(Date.now().toString()).digest('hex'),
 });
 
 // ─── Rate Limiting (global + per-route) ───────────────────────────
