@@ -61,13 +61,21 @@ const CreateMemberSchema = z.object({
   ]),
   max_retailers: z.number().int().min(1).max(10000).optional(),
   territory_ids: z.array(z.string()).max(100).optional(),
+  referral_code: z.string().min(4).max(20).optional(), // F-018
 });
 
 const UpdateMemberSchema = z.object({
   is_active: z.boolean().optional(),
   max_retailers: z.number().int().min(1).max(10000).nullable().optional(),
   territory_ids: z.array(z.string()).max(100).optional(),
+  referral_code: z.string().min(4).max(20).nullable().optional(), // F-018
 });
+
+// F-018: short code a retailer can type at self-serve signup. Auto-generated
+// for marketing agents so every agent has one without a manual admin step.
+function generateReferralCode(): string {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
 
 const OnboardRetailerSchema = z.object({
   phone: z
@@ -92,6 +100,116 @@ async function deriveTerritoryFromPincode(pincode: string | undefined): Promise<
     select: { id: true },
   });
   return zone?.id ?? null;
+}
+
+// ── Ticket Routing ──────────────────────────────────────────────────
+// Exported so F-019's paid catalog-upload flow (retailers.ts) can route a
+// ticket the same way any other visit-required support ticket is routed.
+
+/** Find the best support agent to assign a ticket to, or null if none available. */
+export async function routeTicket(
+  ticketId: string,
+  requiresVisit: boolean,
+  retailerTerritoryId: string | null,
+  regionScopeId: string | null,
+  log: { info: (obj: object, msg?: string) => void },
+): Promise<string | null> {
+  if (!retailerTerritoryId) return null;
+
+  let candidateTerritoryIds: string[] = [];
+
+  if (!requiresVisit && regionScopeId) {
+    // ── Backend-manageable pool ───────────────────────────────────
+    // Ticket is routable within the CITY-level region scope.
+    candidateTerritoryIds = [regionScopeId];
+  } else if (requiresVisit) {
+    // ── Visit-required: traverse territory hierarchy ─────────────
+    // Start at the retailer's ZONE territory, go up to CITY, then STATE.
+    const visited = new Set<string>();
+    let currentId: string | null = retailerTerritoryId;
+
+    while (currentId && !visited.has(currentId)) {
+      visited.add(currentId);
+      candidateTerritoryIds.push(currentId);
+
+      // Fetch parent
+      const parentTerritory: { parent_id: string | null } | null = await prisma.territory.findUnique({
+        where: { id: currentId },
+        select: { parent_id: true },
+      });
+      currentId = parentTerritory?.parent_id ?? null;
+    }
+  } else {
+    // Fallback: just use the retailer's direct territory
+    candidateTerritoryIds = [retailerTerritoryId];
+  }
+
+  // Find SUPPORT_AGENT members assigned to any of the candidate territories
+  const assignments = await prisma.teamMemberTerritory.findMany({
+    where: {
+      territory_id: { in: candidateTerritoryIds },
+      team_member: {
+        is_active: true,
+        role: { in: ['SUPPORT_AGENT', 'SUPPORT_MANAGER', 'SUPER_ADMIN'] },
+      },
+    },
+    include: {
+      team_member: {
+        select: { id: true, name: true, role: true },
+      },
+    },
+  });
+
+  if (assignments.length === 0) {
+    log.info({ ticket_id: ticketId }, 'No support agents available in territory for routing');
+    return null;
+  }
+
+  // Deduplicate by team_member_id (an agent can be in multiple territories)
+  const uniqueMembers = new Map<string, { id: string; name: string; role: string }>();
+  for (const a of assignments) {
+    if (!uniqueMembers.has(a.team_member.id)) {
+      uniqueMembers.set(a.team_member.id, a.team_member);
+    }
+  }
+
+  // Prefer SUPPORT_AGENT over SUPPORT_MANAGER over SUPER_ADMIN
+  const memberList = [...uniqueMembers.values()];
+  const preferred = memberList.filter((m) => m.role === 'SUPPORT_AGENT');
+  const backup = memberList.filter((m) => m.role !== 'SUPPORT_AGENT');
+  const ordered = preferred.length > 0 ? preferred : backup;
+
+  // Least-loaded scheduling: count open+assigned tickets per candidate
+  const agentsWithLoad = await Promise.all(
+    ordered.map(async (member) => {
+      const openCount = await prisma.supportTicket.count({
+        where: {
+          assigned_to_id: member.id,
+          status: { in: ['OPEN', 'ASSIGNED'] },
+        },
+      });
+      return { id: member.id, name: member.name, load: openCount };
+    }),
+  );
+
+  // Pick the agent with the fewest active tickets
+  agentsWithLoad.sort((a, b) => a.load - b.load);
+  const bestAgent = agentsWithLoad[0];
+
+  if (!bestAgent) return null;
+
+  log.info(
+    {
+      ticket_id: ticketId,
+      assigned_to_id: bestAgent.id,
+      agent_load: bestAgent.load,
+      candidate_count: candidateTerritoryIds.length,
+      requires_visit: requiresVisit,
+    },
+    'Ticket auto-routed',
+  );
+
+  return bestAgent.id;
 }
 
 export const teamRoutes: FastifyPluginAsync = async (server) => {
@@ -179,7 +297,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     }
     const member = await prisma.teamMember.findUnique({
       where: { id: tm.id },
-      select: { id: true, name: true, email: true, role: true, max_retailers: true },
+      select: { id: true, name: true, email: true, role: true, max_retailers: true, referral_code: true },
     });
     if (!member) throw notFound('Team member');
     const territories = await prisma.territory.findMany({
@@ -242,6 +360,12 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     });
     if (existing) throw validationError('Email already in use', 'email');
 
+    // F-018: agents get a referral code automatically; other roles only if given one.
+    // ponytail: no collision retry — 36^6 code space vs. dozens of agents, not worth it.
+    const referralCode =
+      body.data.referral_code ??
+      (body.data.role === 'MARKETING_AGENT' ? generateReferralCode() : undefined);
+
     const member = await prisma.teamMember.create({
       data: {
         name: body.data.name,
@@ -249,6 +373,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         password_hash: hashPassword(body.data.password),
         role: body.data.role,
         max_retailers: body.data.max_retailers,
+        referral_code: referralCode,
         territories: body.data.territory_ids
           ? { create: body.data.territory_ids.map((territory_id) => ({ territory_id })) }
           : undefined,
@@ -260,6 +385,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         role: true,
         max_retailers: true,
         is_active: true,
+        referral_code: true,
       },
     });
     return { data: member };
@@ -283,6 +409,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         role: true,
         is_active: true,
         max_retailers: true,
+        referral_code: true,
         territories: { select: { territory: { select: { id: true, name: true, level: true } } } },
         _count: { select: { onboarded_retailers: true, supported_retailers: true } },
       },
@@ -302,6 +429,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
           role: m.role,
           is_active: m.is_active,
           max_retailers: m.max_retailers,
+          referral_code: m.referral_code,
           territories: m.territories.map((t) => t.territory),
           retailer_count: retailerCount,
           over_capacity: m.max_retailers != null && retailerCount > m.max_retailers,
@@ -347,6 +475,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
           role: true,
           is_active: true,
           max_retailers: true,
+          referral_code: true,
         },
       })
       .catch(() => null);
@@ -451,115 +580,10 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     status: z.enum(['OPEN', 'ASSIGNED', 'RESOLVED', 'CLOSED']).optional(),
     assigned_to_id: z.string().nullable().optional(),
     note: z.string().max(2000).optional(),
+    // F-019: admin reviewing a CATALOG_UPLOAD ticket sets these after quoting
+    quoted_price_inr: z.number().int().min(0).optional(),
+    proposed_slots: z.array(z.string().datetime()).max(10).optional(),
   });
-
-  // ── Helpers: Ticket Routing ────────────────────────────────────────
-
-  /** Find the best support agent to assign a ticket to, or null if none available. */
-  async function routeTicket(
-    ticketId: string,
-    requiresVisit: boolean,
-    retailerTerritoryId: string | null,
-    regionScopeId: string | null,
-    log: { info: (obj: object, msg?: string) => void },
-  ): Promise<string | null> {
-    if (!retailerTerritoryId) return null;
-
-    let candidateTerritoryIds: string[] = [];
-
-    if (!requiresVisit && regionScopeId) {
-      // ── Backend-manageable pool ───────────────────────────────────
-      // Ticket is routable within the CITY-level region scope.
-      candidateTerritoryIds = [regionScopeId];
-    } else if (requiresVisit) {
-      // ── Visit-required: traverse territory hierarchy ─────────────
-      // Start at the retailer's ZONE territory, go up to CITY, then STATE.
-      const visited = new Set<string>();
-      let currentId: string | null = retailerTerritoryId;
-
-      while (currentId && !visited.has(currentId)) {
-        visited.add(currentId);
-        candidateTerritoryIds.push(currentId);
-
-        // Fetch parent
-        const parentTerritory: { parent_id: string | null } | null = await prisma.territory.findUnique({
-          where: { id: currentId },
-          select: { parent_id: true },
-        });
-        currentId = parentTerritory?.parent_id ?? null;
-      }
-    } else {
-      // Fallback: just use the retailer's direct territory
-      candidateTerritoryIds = [retailerTerritoryId];
-    }
-
-    // Find SUPPORT_AGENT members assigned to any of the candidate territories
-    const assignments = await prisma.teamMemberTerritory.findMany({
-      where: {
-        territory_id: { in: candidateTerritoryIds },
-        team_member: {
-          is_active: true,
-          role: { in: ['SUPPORT_AGENT', 'SUPPORT_MANAGER', 'SUPER_ADMIN'] },
-        },
-      },
-      include: {
-        team_member: {
-          select: { id: true, name: true, role: true },
-        },
-      },
-    });
-
-    if (assignments.length === 0) {
-      log.info({ ticket_id: ticketId }, 'No support agents available in territory for routing');
-      return null;
-    }
-
-    // Deduplicate by team_member_id (an agent can be in multiple territories)
-    const uniqueMembers = new Map<string, { id: string; name: string; role: string }>();
-    for (const a of assignments) {
-      if (!uniqueMembers.has(a.team_member.id)) {
-        uniqueMembers.set(a.team_member.id, a.team_member);
-      }
-    }
-
-    // Prefer SUPPORT_AGENT over SUPPORT_MANAGER over SUPER_ADMIN
-    const memberList = [...uniqueMembers.values()];
-    const preferred = memberList.filter((m) => m.role === 'SUPPORT_AGENT');
-    const backup = memberList.filter((m) => m.role !== 'SUPPORT_AGENT');
-    const ordered = preferred.length > 0 ? preferred : backup;
-
-    // Least-loaded scheduling: count open+assigned tickets per candidate
-    const agentsWithLoad = await Promise.all(
-      ordered.map(async (member) => {
-        const openCount = await prisma.supportTicket.count({
-          where: {
-            assigned_to_id: member.id,
-            status: { in: ['OPEN', 'ASSIGNED'] },
-          },
-        });
-        return { id: member.id, name: member.name, load: openCount };
-      }),
-    );
-
-    // Pick the agent with the fewest active tickets
-    agentsWithLoad.sort((a, b) => a.load - b.load);
-    const bestAgent = agentsWithLoad[0];
-
-    if (!bestAgent) return null;
-
-    log.info(
-      {
-        ticket_id: ticketId,
-        assigned_to_id: bestAgent.id,
-        agent_load: bestAgent.load,
-        candidate_count: candidateTerritoryIds.length,
-        requires_visit: requiresVisit,
-      },
-      'Ticket auto-routed',
-    );
-
-    return bestAgent.id;
-  }
 
   // ── POST /team/tickets ───────────────────────────────────────────
   // Create a support ticket for a retailer. Any team member can create one.
@@ -660,6 +684,10 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     const tm = request.teamMember;
     if (!tm) throw forbidden('Not authenticated');
 
+    const query = z
+      .object({ ticket_type: z.enum(['GENERAL', 'CATALOG_UPLOAD']).optional() })
+      .safeParse(request.query);
+
     let where: Record<string, unknown> = {};
     if (!tm.isSuperAdmin) {
       if (tm.role === 'SUPPORT_AGENT') {
@@ -683,7 +711,10 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const tickets = await prisma.supportTicket.findMany({
-      where,
+      where: {
+        ...where,
+        ...(query.success && query.data.ticket_type ? { ticket_type: query.data.ticket_type } : {}),
+      },
       select: {
         id: true,
         retailer_id: true,
@@ -694,6 +725,12 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         note: true,
         created_at: true,
         resolved_at: true,
+        ticket_type: true,
+        item_count_requested: true,
+        quoted_price_inr: true,
+        proposed_slots: true,
+        confirmed_slot: true,
+        paid_at: true,
         assigned_to: { select: { id: true, name: true } },
         retailer: { select: { id: true, shop_name: true, city: true, phone: true } },
       },
@@ -822,6 +859,12 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     if (body.data.note !== undefined) {
       update.note = body.data.note;
     }
+    if (body.data.quoted_price_inr !== undefined) {
+      update.quoted_price_inr = body.data.quoted_price_inr;
+    }
+    if (body.data.proposed_slots !== undefined) {
+      update.proposed_slots = body.data.proposed_slots;
+    }
 
     const ticket = await prisma.supportTicket.update({
       where: { id: request.params.id },
@@ -833,6 +876,12 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         assigned_to_id: true,
         status: true,
         note: true,
+        ticket_type: true,
+        item_count_requested: true,
+        quoted_price_inr: true,
+        proposed_slots: true,
+        confirmed_slot: true,
+        paid_at: true,
         created_at: true,
         resolved_at: true,
       },

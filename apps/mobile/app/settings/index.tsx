@@ -11,7 +11,7 @@ import {
   ChevronRight, ChevronLeft, User, CreditCard, Smartphone,
   Users, QrCode, Trash2, LogOut, Check, X, Package,
   BarChart2, AlertTriangle, ShieldCheck, ImagePlus, FileText, MessageCircle,
-  FolderKanban,
+  FolderKanban, Truck,
 } from 'lucide-react-native'
 import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -914,6 +914,15 @@ export default function SettingsScreen() {
             subtitle="QR profile & storefront"
             onPress={() => router.push('/store-profile')}
           />
+
+          {!isStaff && (
+            <SettingsRow
+              icon={<Truck size={18} color="#0891B2" />}
+              label="Catalog Upload Help"
+              subtitle="Get a team member to add your catalog for you"
+              onPress={() => router.push('/settings/catalog-upload')}
+            />
+          )}
 
           {!isStaff && (
             <SettingsRow

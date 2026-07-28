@@ -96,6 +96,13 @@ enum TicketStatus {
   CLOSED
 }
 
+// F-019: distinguishes the paid on-site catalog upload service from
+// ordinary support tickets, which stay ticket_type = GENERAL
+enum TicketType {
+  GENERAL
+  CATALOG_UPLOAD
+}
+
 // ─── PLAN FEATURE MATRIX (F-013) ─────────────────────────────────
 
 enum PlanFeatureKey {
@@ -744,6 +751,7 @@ model TeamMember {
   role          TeamRole
   is_active     Boolean  @default(true)
   max_retailers Int? // soft cap; dashboard flags when exceeded, never blocks onboarding
+  referral_code String?  @unique // F-018: code a retailer can enter at self-serve signup to attribute onboarding to this agent
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -797,6 +805,15 @@ model SupportTicket {
   status          TicketStatus @default(OPEN)
   note            String?
 
+  // F-019: fields used only when ticket_type = CATALOG_UPLOAD
+  ticket_type          TicketType @default(GENERAL)
+  item_count_requested Int?
+  quoted_price_inr     Int?
+  proposed_slots       Json? // admin-proposed visit windows, ISO datetime array
+  confirmed_slot       DateTime? // retailer's pick from proposed_slots
+  razorpay_order_id    String? // platform account (retailer pays Kanchuki), not the F-302 retailer-connected rail
+  paid_at              DateTime? // slot cannot be confirmed until this is set
+
   created_at  DateTime  @default(now())
   resolved_at DateTime?
 
@@ -805,7 +822,22 @@ model SupportTicket {
 
   @@index([retailer_id])
   @@index([status])
+  @@index([ticket_type])
   @@map("support_tickets")
+}
+
+// F-019: admin-editable price tiers for the paid catalog upload service,
+// same pattern as plan_limits/plan_features (admin edits rows live, no deploy)
+model CatalogUploadPriceTier {
+  id        String @id @default(cuid())
+  min_items Int
+  max_items Int? // null = open-ended top tier
+  price_inr Int
+
+  updated_at    DateTime @updatedAt
+  updated_by_id String? // TeamMember.id — who last edited this tier
+
+  @@map("catalog_upload_price_tiers")
 }
 
 // ─── SUBSCRIPTIONS ───────────────────────────────────────────────

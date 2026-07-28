@@ -787,9 +787,14 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const bgUrl = photo.product.background_image?.is_active
       ? photo.product.background_image.image_url
       : undefined;
-    const raw = await fetchImageBuffer(photo.url);
-    const cleaned = await cleanupProductPhoto(raw, bgUrl);
-    await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
+    try {
+      const raw = await fetchImageBuffer(photo.url);
+      const cleaned = await cleanupProductPhoto(raw, bgUrl);
+      await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
+    } catch (err) {
+      console.error('Photo cleanup/upload failed:', err);
+      throw validationError('Photo storage is not configured. Please contact support.');
+    }
     await incrementUsage(request.retailerId, 'BG_REMOVAL');
 
     return reply.status(200).send({ data: { id: photo.id, url: photo.url } });

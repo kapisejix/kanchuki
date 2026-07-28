@@ -127,6 +127,15 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Remaining (operational — not code)
 - [ ] 10-retailer pilot + onboarding tutorial iteration *(requires real retailer feedback)*
 
+### Built — F-018/F-019, approved 2026-07-28, built 2026-07-28
+See `docs/PRO-REQUIREMENTS.md` §10.9–10.10 for full spec.
+- [x] F-018: `TeamMember.referral_code` + optional/skippable referral field in retailer onboarding wizard, resolves to `onboarded_by_id`
+- [x] F-019: `SupportTicket.ticket_type` (`GENERAL`/`CATALOG_UPLOAD`) + quote/slot/payment fields (migration 040)
+- [x] F-019: `CatalogUploadPriceTier` admin-editable price table + `/admin/catalog-upload-tiers` grid (mirrors `/admin/plan-limits`)
+- [x] F-019: retailer-facing request flow — skippable onboarding step + dashboard "Catalog Upload Help" button (mobile)
+- [x] F-019: admin quote + slot-proposal on the existing ticket API (`PATCH /team/tickets/:id`), filterable by `ticket_type`
+- [x] F-019: Razorpay Payment Link payment-first gate before a visit slot is confirmed
+
 ---
 
 ## Phase 1: AI Core (Month 5–8)

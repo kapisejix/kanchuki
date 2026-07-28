@@ -942,6 +942,85 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     return { data: summary };
   });
 
+  // ─── GET /admin/catalog-upload-tiers ─────────────────────────────
+  // F-019: admin-editable item-count-to-price tiers for the paid catalog
+  // upload service. Same live-edit pattern as plan-features — no deploy
+  // needed to change a price break.
+  server.get('/catalog-upload-tiers', async () => {
+    const tiers = await prisma.catalogUploadPriceTier.findMany({ orderBy: { min_items: 'asc' } });
+    return { data: tiers };
+  });
+
+  // ─── POST /admin/catalog-upload-tiers ────────────────────────────
+  server.post('/catalog-upload-tiers', async (request) => {
+    const body = z
+      .object({
+        min_items: z.number().int().min(0),
+        max_items: z.number().int().min(0).nullable().optional(),
+        price_inr: z.number().int().min(0),
+        updated_by_id: z.string().optional(),
+      })
+      .parse(request.body);
+
+    const tier = await prisma.catalogUploadPriceTier.create({
+      data: {
+        min_items: body.min_items,
+        max_items: body.max_items ?? null,
+        price_inr: body.price_inr,
+        updated_by_id: body.updated_by_id,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'CREATE',
+        resource_type: 'CatalogUploadPriceTier',
+        resource_id: tier.id,
+        metadata: { min_items: tier.min_items, max_items: tier.max_items, price_inr: tier.price_inr },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: tier };
+  });
+
+  // ─── PATCH /admin/catalog-upload-tiers/:id ───────────────────────
+  server.patch<{ Params: { id: string } }>('/catalog-upload-tiers/:id', async (request) => {
+    const body = z
+      .object({
+        min_items: z.number().int().min(0).optional(),
+        max_items: z.number().int().min(0).nullable().optional(),
+        price_inr: z.number().int().min(0).optional(),
+        updated_by_id: z.string().optional(),
+      })
+      .parse(request.body);
+
+    const tier = await prisma.catalogUploadPriceTier
+      .update({ where: { id: request.params.id }, data: body })
+      .catch(() => null);
+    if (!tier) throw notFound('Catalog upload price tier');
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UPDATE',
+        resource_type: 'CatalogUploadPriceTier',
+        resource_id: tier.id,
+        metadata: { min_items: tier.min_items, max_items: tier.max_items, price_inr: tier.price_inr },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: tier };
+  });
+
+  // ─── DELETE /admin/catalog-upload-tiers/:id ──────────────────────
+  server.delete<{ Params: { id: string } }>('/catalog-upload-tiers/:id', async (request, reply) => {
+    await prisma.catalogUploadPriceTier.delete({ where: { id: request.params.id } }).catch(() => null);
+    return reply.status(204).send();
+  });
+
   // ─── GET /admin/retailers/:id/activity ──────────────────────────
   // F-014: AuditLog entries for a specific retailer, most recent first.
   // Includes both retailer actions and admin actions on this retailer.

@@ -149,9 +149,13 @@ async function verifySupabaseJwt(token: string): Promise<{ sub: string } | null>
 // KYC, WhatsApp API config, staff management itself, account deletion, ...).
 // Single allowlist here — not scattered per-route checks — so every new
 // route is owner-only by default and has to opt in for staff access.
+// Salesperson is a further-restricted subset of manager: read-only catalog,
+// no categories, customer creation only. Any staff.role other than
+// 'salesperson' (manager, or the rare staff row created with role 'owner')
+// gets the full manager set.
 type StaffRule = { method: string; path: string; exact?: boolean };
 
-const STAFF_ALLOWED_ROUTES: StaffRule[] = [
+const MANAGER_ALLOWED_ROUTES: StaffRule[] = [
   { method: '*', path: '/v1/products' }, // add/edit/delete products
   { method: '*', path: '/v1/categories' },
   { method: '*', path: '/v1/collections' }, // create/manage collections to share
@@ -161,8 +165,16 @@ const STAFF_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'POST', path: '/v1/retailers/me/qr-slug', exact: true }, // Store QR code
 ];
 
-export function staffCanAccess(method: string, routeUrl: string): boolean {
-  return STAFF_ALLOWED_ROUTES.some((rule) => {
+const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
+  { method: 'GET', path: '/v1/products' }, // view catalog only — no add/edit/delete
+  { method: 'GET', path: '/v1/categories' }, // view only
+  { method: 'POST', path: '/v1/customers', exact: true }, // add new customers only
+  { method: 'GET', path: '/v1/retailers/me', exact: true }, // shop name shown in app header
+];
+
+export function staffCanAccess(method: string, routeUrl: string, role?: string): boolean {
+  const rules = role === 'salesperson' ? SALESPERSON_ALLOWED_ROUTES : MANAGER_ALLOWED_ROUTES;
+  return rules.some((rule) => {
     if (rule.method !== '*' && rule.method !== method) return false;
     if (rule.exact) return routeUrl === rule.path;
     return routeUrl === rule.path || routeUrl.startsWith(`${rule.path}/`);
@@ -246,7 +258,7 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
       request.staffRole = staff.role;
 
       const routeUrl = request.routeOptions.url ?? request.url;
-      if (!staffCanAccess(request.method, routeUrl)) {
+      if (!staffCanAccess(request.method, routeUrl, staff.role)) {
         return reply.status(403).send({
           error: {
             code: 'FORBIDDEN',

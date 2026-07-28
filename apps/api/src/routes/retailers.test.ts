@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
 import { retailerRoutes } from './retailers.js';
 
@@ -14,14 +14,35 @@ const { mockGetUploadPresignedUrl, mockPublicUrl } = vi.hoisted(() => ({
   mockPublicUrl: vi.fn(),
 }));
 
+const {
+  mockTeamMemberFindUnique,
+  mockSupportTicketFindUnique,
+  mockSupportTicketCreate,
+  mockSupportTicketUpdate,
+  mockGetSecret,
+} = vi.hoisted(() => ({
+  mockTeamMemberFindUnique: vi.fn(),
+  mockSupportTicketFindUnique: vi.fn(),
+  mockSupportTicketCreate: vi.fn(),
+  mockSupportTicketUpdate: vi.fn(),
+  mockGetSecret: vi.fn(),
+}));
+
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
+  getSecret: mockGetSecret,
   prisma: {
     retailer: { findUnique: mockRetailerFindUnique, update: mockRetailerUpdate },
     collection: { findFirst: mockCollectionFindFirst },
     product: { count: vi.fn(), findMany: vi.fn() },
     customer: { count: vi.fn() },
     storeSection: { findMany: vi.fn(), create: vi.fn(), findFirst: vi.fn() },
+    teamMember: { findUnique: mockTeamMemberFindUnique },
+    supportTicket: {
+      findUnique: mockSupportTicketFindUnique,
+      create: mockSupportTicketCreate,
+      update: mockSupportTicketUpdate,
+    },
     auditLog: { create: vi.fn() },
   },
   Prisma: {},
@@ -69,6 +90,144 @@ describe('PUT /retailers/me', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockRetailerUpdate).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it('F-018: resolves a valid referral_code to onboarded_by_id when unattributed', async () => {
+    mockRetailerFindUnique.mockResolvedValue({ onboarded_by_id: null });
+    mockTeamMemberFindUnique.mockResolvedValue({ id: 'agent_1', is_active: true });
+    mockRetailerUpdate.mockResolvedValue({ shop_name: 'Test Shop' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: { shop_name: 'Test Shop', referral_code: 'ABC123' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockRetailerUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ onboarded_by_id: 'agent_1' }) }),
+    );
+    await app.close();
+  });
+
+  it('F-018: silently ignores an invalid referral_code (no error, no attribution)', async () => {
+    mockRetailerFindUnique.mockResolvedValue({ onboarded_by_id: null });
+    mockTeamMemberFindUnique.mockResolvedValue(null);
+    mockRetailerUpdate.mockResolvedValue({ shop_name: 'Test Shop' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: { shop_name: 'Test Shop', referral_code: 'NOTREAL' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
+    expect(callArg.data).not.toHaveProperty('onboarded_by_id');
+    await app.close();
+  });
+
+  it('F-018: never overwrites an already-attributed retailer', async () => {
+    mockRetailerFindUnique.mockResolvedValue({ onboarded_by_id: 'agent_existing' });
+    mockRetailerUpdate.mockResolvedValue({ shop_name: 'Test Shop' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: { shop_name: 'Test Shop', referral_code: 'ABC123' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockTeamMemberFindUnique).not.toHaveBeenCalled();
+    const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
+    expect(callArg.data).not.toHaveProperty('onboarded_by_id');
+    await app.close();
+  });
+});
+
+describe('F-019: POST /retailers/me/catalog-upload-request/:id/pay', () => {
+  const TICKET_ID = 'ticket_1';
+  const originalFetch = global.fetch;
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it('creates a Razorpay Payment Link and returns checkout_url', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({
+      id: TICKET_ID,
+      retailer_id: RETAILER_ID,
+      ticket_type: 'CATALOG_UPLOAD',
+      razorpay_order_id: null,
+      paid_at: null,
+      item_count_requested: 100,
+      quoted_price_inr: 1499,
+      proposed_slots: null,
+      confirmed_slot: null,
+      created_at: new Date(),
+      resolved_at: null,
+    });
+    mockRetailerFindUnique.mockResolvedValue({ phone: '9876543210', shop_name: 'Test Shop' });
+    mockGetSecret.mockResolvedValue('test_secret');
+    mockSupportTicketUpdate.mockResolvedValue({ id: TICKET_ID, razorpay_order_id: 'plink_123' });
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ id: 'plink_123', short_url: 'https://rzp.io/i/abc123' }),
+    }) as unknown as typeof fetch;
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/retailers/me/catalog-upload-request/${TICKET_ID}/pay`,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.checkout_url).toBe('https://rzp.io/i/abc123');
+    expect(mockSupportTicketUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { razorpay_order_id: 'plink_123' } }),
+    );
+    await app.close();
+  });
+
+  it('rejects a ticket belonging to a different retailer (IDOR guard)', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({
+      id: TICKET_ID,
+      retailer_id: 'someone_elses_retailer',
+      ticket_type: 'CATALOG_UPLOAD',
+      quoted_price_inr: 1499,
+      paid_at: null,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/retailers/me/catalog-upload-request/${TICKET_ID}/pay`,
+    });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('rejects paying for an unquoted request', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({
+      id: TICKET_ID,
+      retailer_id: RETAILER_ID,
+      ticket_type: 'CATALOG_UPLOAD',
+      quoted_price_inr: null,
+      paid_at: null,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: `/v1/retailers/me/catalog-upload-request/${TICKET_ID}/pay`,
+    });
+
+    expect(res.statusCode).toBe(422);
     await app.close();
   });
 });

@@ -236,6 +236,19 @@ A retailer having an *active connected payment account* is itself the L1 (catalo
 
 ---
 
+## Planned: Sales Referral Attribution + Paid On-Site Catalog Upload Service (F-018/F-019)
+
+**Decided 2026-07-28** — full spec `docs/PRO-REQUIREMENTS.md` §10.9–10.10, schema `docs/DATABASE.md`, roadmap slot `docs/PLAN.md` Phase 0.5. Nothing built yet — docs only.
+
+Both extend the existing Phase 0.5 internal-team system (`TeamMember`, `onboarded_by_id`, `SupportTicket`, `routeTicket()`) rather than adding new models where an existing one already fits:
+
+1. **F-018 — Referral code:** `TeamMember.referral_code` + one optional, skippable field in retailer self-serve onboarding (currently only agent-initiated onboarding via `POST /team/retailers` sets `onboarded_by_id` — self-serve OTP signup sets none). Valid code resolves to the same `onboarded_by_id` field, so it shows up in existing `/admin/reports` with zero new reporting code.
+2. **F-019 — Paid on-site catalog upload:** retailer requests help uploading a large catalog (skippable at onboarding, or anytime from their dashboard) → admin quotes a price (from an admin-editable item-count price tier table, same pattern as `plan_limits`) and proposes visit time slots → **retailer pays first, then picks a slot** → routes through the existing `routeTicket()` nearest-agent logic. Modeled as a new `SupportTicket.ticket_type` (`CATALOG_UPLOAD`), not a separate table.
+
+Explicitly not in scope for these two: a generic non-catalog on-site maintenance charge and a standalone commission-per-sale engine were raised during scoping but not confirmed — treat as backlog, not implied by this entry.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

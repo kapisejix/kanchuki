@@ -206,6 +206,7 @@ export default function OnboardingScreen() {
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [statePickerOpen, setStatePickerOpen] = useState(false)
   const [skuEstimate, setSkuEstimate] = useState('')
+  const [referralCode, setReferralCode] = useState('')
 
   const canProceed = useCallback((): boolean => {
     if (step === 1) return shopName.trim().length >= 2
@@ -269,6 +270,7 @@ export default function OnboardingScreen() {
       await retailerApi.update({
         shop_name: shopName.trim(),
         owner_name: ownerName.trim() || undefined,
+        referral_code: referralCode.trim() || undefined,
         onboarding_step: 1,
       })
       goToStep(nextStep)
@@ -373,6 +375,21 @@ export default function OnboardingScreen() {
                 className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900"
                 placeholderTextColor="#9CA3AF"
                 maxLength={200}
+              />
+            </View>
+
+            <View className="mt-4">
+              <Text className="text-sm font-semibold text-gray-600 mb-2">
+                Referral code <Text className="text-gray-400 font-normal">(optional)</Text>
+              </Text>
+              <TextInput
+                value={referralCode}
+                onChangeText={(t) => setReferralCode(t.toUpperCase())}
+                placeholder="Referred by a Kanchuki salesperson?"
+                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900 tracking-wide"
+                placeholderTextColor="#9CA3AF"
+                autoCapitalize="characters"
+                maxLength={20}
               />
             </View>
 

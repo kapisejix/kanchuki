@@ -29,6 +29,7 @@ import {
   CheckSquare,
   ActivitySquare,
   Archive,
+  Package,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -42,6 +43,7 @@ const NAV_ITEMS = [
   { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
   { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
   { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
+  { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
   { separator: true } as const,

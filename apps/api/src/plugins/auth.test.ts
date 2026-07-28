@@ -43,4 +43,32 @@ describe('staffCanAccess', () => {
     expect(staffCanAccess('POST', '/v1/customers')).toBe(true);
     expect(staffCanAccess('POST', '/v1/customers/cust_1/favorites')).toBe(false);
   });
+
+  it('manager gets the same access as an unspecified staff role', () => {
+    expect(staffCanAccess('POST', '/v1/products', 'manager')).toBe(true);
+    expect(staffCanAccess('POST', '/v1/categories', 'manager')).toBe(true);
+  });
+
+  it.each([
+    ['GET', '/v1/products'],
+    ['GET', '/v1/categories'],
+    ['POST', '/v1/customers'],
+    ['GET', '/v1/retailers/me'],
+  ])('salesperson allows %s %s', (method, path) => {
+    expect(staffCanAccess(method, path, 'salesperson')).toBe(true);
+  });
+
+  it.each([
+    ['POST', '/v1/products'], // add product — manager only
+    ['PATCH', '/v1/products/prod_1'], // edit product
+    ['DELETE', '/v1/products/prod_1'],
+    ['POST', '/v1/categories'], // add category
+    ['PATCH', '/v1/categories/cat_1'],
+    ['DELETE', '/v1/categories/cat_1'],
+    ['POST', '/v1/collections'], // no collections at all
+    ['PATCH', '/v1/size-charts/chart_1'], // no size charts at all
+    ['POST', '/v1/retailers/me/qr-slug'], // manager only
+  ])('salesperson blocks %s %s', (method, path) => {
+    expect(staffCanAccess(method, path, 'salesperson')).toBe(false);
+  });
 });

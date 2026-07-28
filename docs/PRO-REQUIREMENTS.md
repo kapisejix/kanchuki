@@ -965,6 +965,56 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 5. Reporting: manager rollups, per-agent leaderboard, coverage-gap view (zones with 0 assigned agent)
 6. Staff mode in Expo app (offline-first field onboarding)
 
+### 10.9 F-018: Sales Referral Attribution (Self-Serve Signup)
+
+**Status:** ✅ Built 2026-07-28. Builds on the existing `onboarded_by_id` attribution (§10.4), no new attribution mechanism. `TeamMember.referral_code` (migration `039_referral_attribution`), auto-generated for `MARKETING_AGENT` on creation (`team.ts` `POST /members`), resolved silently in `retailers.ts` `PUT /me` (never overwrites existing attribution). Tests: `retailers.test.ts` "F-018" describe block.
+**Priority:** P2
+
+**Problem:** §10.4's `onboarded_by_id` only gets set when a Marketing Agent creates the retailer row in person via `POST /team/retailers`. A retailer who downloads the app and self-registers via OTP (`auth.ts` `/otp/verify`) gets zero attribution today — even if a salesperson pitched them in person and the retailer signs up on their own afterward.
+
+**Design:**
+- `TeamMember.referral_code` — short unique code per marketing agent.
+- One optional, skippable field in the retailer onboarding wizard (after OTP, alongside the shop-profile step): "Referred by a Kanchuki salesperson? Enter their code (optional)."
+- Valid code on submit → resolves to a `TeamMember`, sets `Retailer.onboarded_by_id` — the same field §10.4 already uses, so self-serve and agent-onboarded retailers land in one attribution field, not two parallel ones.
+- Invalid or blank code → silently ignored, retailer proceeds, no error shown.
+- No new reporting endpoint needed — `/team/reporting/agents` and `/admin/reports` already aggregate off `onboarded_by_id`, so self-serve-attributed retailers show up automatically alongside agent-onboarded ones.
+
+**Acceptance Criteria:**
+- Retailer can complete registration with the referral field empty, no friction.
+- A valid code correctly attributes the retailer to that agent, visible in `/admin/reports` Agent Performance tab.
+- An invalid code does not block or error the registration flow.
+
+---
+
+### 10.10 F-019: Paid On-Site Catalog Upload Service
+
+**Status:** ✅ Built 2026-07-28. Extends the existing `SupportTicket` entity (§10.6) rather than a new service model — `ticket_type`, `item_count_requested`, `quoted_price_inr`, `proposed_slots`, `confirmed_slot`, `razorpay_order_id`, `paid_at` (migration `040_catalog_upload_service`), plus admin-editable `CatalogUploadPriceTier` (seeded with starter tiers). Retailer request/pay/slot flow: `retailers.ts` `POST/GET /me/catalog-upload-request`, `.../:id/pay`, `.../:id/verify-payment`, `.../:id/confirm-slot` (payment verified server-side via platform Razorpay HMAC before any slot can be confirmed; routes through the existing `routeTicket()`, exported from `team.ts`). Admin quoting: existing `team.ts` `PATCH /team/tickets/:id` extended with `quoted_price_inr`/`proposed_slots`; `GET /team/tickets` filterable by `ticket_type`. Price tier CRUD: `admin.ts` `GET/POST/PATCH/DELETE /admin/catalog-upload-tiers`. Tests: `retailers.test.ts` "F-019" describe block (signature verification + IDOR guard).
+**Priority:** P2
+
+**Problem:** Retailers with large catalogs (hundreds to thousands of items) who can't or won't photograph/upload themselves need a paid option: a Kanchuki on-site team member visits the shop and adds the catalog for them. Price depends on item count and complexity, set by admin — not hardcoded.
+
+**Design — reuse `SupportTicket`, add fields used only by this ticket type:**
+- `SupportTicket.ticket_type` (`GENERAL` default | `CATALOG_UPLOAD`) — new enum value, existing general-support tickets unaffected.
+- `item_count_requested` — retailer's estimate at request time.
+- `quoted_price_inr` — filled in by admin after review, looked up against a new small admin-editable tier table (`CatalogUploadPriceTier`: `min_items`, `max_items`, `price_inr`) — same admin-grid pattern as `plan_limits`/`plan_features` (F-010/F-013): admin edits rows live, no deploy.
+- `proposed_slots` / `confirmed_slot` — admin proposes visit time windows, retailer picks the one that avoids their store's peak-sale hours.
+- `razorpay_order_id` / `paid_at` — payment fields mirrored off `SubscriptionPayment`'s shape. Platform's own Razorpay account (retailer pays Kanchuki) — not the F-302 retailer-connected-account rail, which is the opposite payment direction (customer pays retailer).
+
+**Flow:**
+1. Retailer requests the service — either a skippable step during onboarding, or later from the retailer dashboard ("Get help adding my catalog"). Captures estimated item count + optional note. Creates `SupportTicket{ticket_type: CATALOG_UPLOAD, requires_visit: true, status: OPEN}`.
+2. Admin reviews the request, sets `quoted_price_inr` (via the tier table or manual override) and proposes one or more visit time slots.
+3. Retailer sees the quote, **pays first** (Razorpay), then picks their preferred slot from admin's proposed options. No slot is confirmed before payment succeeds.
+4. Ticket moves to `ASSIGNED` — routes through the existing `routeTicket()` territory-aware nearest-agent logic (§10.6), same as any other visit-required ticket.
+5. On-site team member visits at the confirmed slot, uploads the catalog, ticket → `RESOLVED` → `CLOSED`.
+
+**Explicitly out of scope for this entry (flagged, not built):** a generic (non-catalog) on-site maintenance charge and a standalone commission-per-sale engine were discussed as related asks during scoping but are not yet confirmed — backlog candidates, same treatment as §12.6, not assumed into this design.
+
+**Acceptance Criteria:**
+- Retailer can skip the request at registration with no friction, and find the same option later on their dashboard.
+- Payment must succeed before a visit slot is confirmed — no team member is ever scheduled against an unpaid request.
+- Admin can edit the item-count-to-price tiers without a deploy.
+- The routed ticket appears in the same admin ticket view as general support tickets, filterable by `ticket_type`.
+
 ---
 
 ## 11. Out of Scope (MVP)

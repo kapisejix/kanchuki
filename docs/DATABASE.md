@@ -98,6 +98,12 @@ enum TicketStatus {
   CLOSED
 }
 
+// planned F-019
+enum TicketType {
+  GENERAL
+  CATALOG_UPLOAD
+}
+
 enum ProductStatus {
   AVAILABLE
   SOLD
@@ -619,7 +625,7 @@ model Staff {
 
 // ─────────────────────────────────────────────
 // INTERNAL TEAM (Kanchuki admin/marketing/support)
-// Not yet built — see PRO-REQUIREMENTS.md Section 10
+// Built — see PRO-REQUIREMENTS.md Section 10. F-018/F-019 additions built 2026-07-28.
 // ─────────────────────────────────────────────
 
 model TeamMember {
@@ -630,6 +636,7 @@ model TeamMember {
   role          TeamRole
   is_active     Boolean  @default(true)
   max_retailers Int?     // soft cap; dashboard flags when exceeded, never blocks onboarding
+  referral_code String?  @unique // planned F-018 — code a retailer can enter at self-serve signup to attribute onboarding to this agent
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -683,6 +690,15 @@ model SupportTicket {
   status          TicketStatus @default(OPEN)
   note            String?
 
+  // planned F-019 — fields used only when ticket_type = CATALOG_UPLOAD
+  ticket_type            TicketType @default(GENERAL)
+  item_count_requested   Int?
+  quoted_price_inr       Int?
+  proposed_slots         Json?      // admin-proposed visit windows, ISO datetime array
+  confirmed_slot         DateTime?  // retailer's pick from proposed_slots
+  razorpay_order_id      String?    // platform account (retailer pays Kanchuki), not the F-302 retailer-connected rail
+  paid_at                DateTime?  // slot cannot be confirmed until this is set
+
   created_at DateTime  @default(now())
   resolved_at DateTime?
 
@@ -692,6 +708,21 @@ model SupportTicket {
   @@index([retailer_id])
   @@index([status])
   @@map("support_tickets")
+}
+
+// planned F-019 — admin-editable price tiers for the paid catalog upload
+// service, same pattern as plan_limits/plan_features (admin edits rows live,
+// no deploy needed to change a price break)
+model CatalogUploadPriceTier {
+  id         String   @id @default(cuid())
+  min_items  Int
+  max_items  Int?     // null = open-ended top tier
+  price_inr  Int
+
+  updated_at    DateTime @updatedAt
+  updated_by_id String?  // TeamMember.id — who last edited this tier
+
+  @@map("catalog_upload_price_tiers")
 }
 
 // ─────────────────────────────────────────────
