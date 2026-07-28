@@ -506,7 +506,7 @@ export default function CatalogImportScreen() {
           <View className="flex-1 pr-3">
             <Text className="text-sm font-semibold text-gray-900">Add sizes?</Text>
             <Text className="text-xs text-gray-500 mt-0.5">
-              Turn on to pick S/M/L/XL/XXL/XXXL for each item below. Leave off if the catalog doesn't list sizes.
+              Turn on to pick S/M/L/XL/XXL/XXXL for each item below. Leave off if the catalog doesn&apos;t list sizes.
             </Text>
           </View>
           <Switch value={wantSizes} onValueChange={setWantSizes} />

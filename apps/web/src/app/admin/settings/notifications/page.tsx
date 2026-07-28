@@ -421,7 +421,7 @@ export default function NotificationsSettingsPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-800">Integrity check failures</p>
-                        <p className="text-xs text-gray-400 mt-0.5">Alert when restored backup table count doesn't match source</p>
+                        <p className="text-xs text-gray-400 mt-0.5">Alert when restored backup table count doesn&apos;t match source</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input

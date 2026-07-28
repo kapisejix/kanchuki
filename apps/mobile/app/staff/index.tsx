@@ -230,7 +230,7 @@ export default function StaffDashboard() {
                 <View className="bg-white rounded-2xl p-8 border border-gray-100 items-center">
                   <Store size={40} color="#D1D5DB" />
                   <Text className="text-gray-400 text-sm mt-4 text-center">
-                    No retailers in your territory yet.{'\n'}Tap "New Retailer" to get started.
+                    No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get started.
                   </Text>
                 </View>
               ) : (
