@@ -608,7 +608,7 @@ Same finding as B-012 above — already fail-closed with a logged warning, and `
 - [ ] **B-003**: Generate scrypt admin password hash, replace ADMIN_PASSWORD_HASH
 - [ ] **B-004**: Configure ADMIN_TOTP_SECRET, enforce 2FA
 - [ ] **B-005**: Set VAULT_DATABASE_URL to Railway Postgres-PYkI
-- [ ] **B-006**: Apply migration 037 via Supabase SQL Editor
+- [x] **B-006**: Migration 037 applied via Supabase SQL Editor (2026-07-28) — guard triggers on all 8 tables confirmed via `information_schema.triggers`. Applied as an idempotent `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER` variant since some triggers had partially landed from an earlier attempt.
 - [ ] **B-007**: Switch DATABASE_URL to kanchuki_app restricted role
 - [ ] **B-002**: Provision actual read replica, set distinct DATABASE_URL_REPLICA
 - [ ] **B-008**: Set TEAM_JWT_SECRET
@@ -634,6 +634,11 @@ Verified: `pnpm --filter @kanchuki/web typecheck`, `pnpm --filter @kanchuki/web 
 
 - [ ] Split admin.ts (2,545 lines) / checkout.ts (1,087 lines) into feature-scoped modules (large mechanical refactor)
 - [ ] **S-011**: Mobile CSP — low value; `expo-web-browser` opens the system browser, not an in-process WebView, so exposure is smaller than stated. Recommend downgrading to informational.
+
+### Pre-pilot audit findings — fixed 2026-07-28
+
+- [x] **New finding — `order_items` had no RLS policy.** `031_l2_ecommerce_checkout` added RLS to `orders` and `retailer_payment_accounts` but not their own `order_items` child table — inconsistent with every other join/child table in the schema (`collection_products`, `product_variants`, etc.). Fixed in `packages/db/prisma/migrations/038_order_items_rls/migration.sql`: RLS enabled, policy scopes via `order_id → orders.retailer_id → auth.uid()`. Applied live via Supabase SQL Editor and verified (`rowsecurity = true`, policy `retailer_own_order_items` present).
+- Found during the same audit, not yet acted on: mobile/web `.env.local` point at an ephemeral VS Code devtunnel URL (pilot-blocking if it closes mid-test), `apps/mobile/.env` falls back to `localhost` (dead on a retailer's own phone), migration `034_product_sizes` apply-status unverified, `packages/db/dist` can go stale if `apps/api` tests are run with bare `npx vitest` instead of `pnpm test`/`turbo test`, `@fastify/cookie` secret registered but unused (dead config, not a live vuln).
 
 ---
 

@@ -530,5 +530,19 @@ Ran the full OMP AI review (`docs/omp-review.md`), verified each finding against
 ### Still open (unchanged from review, needs a human)
 - Credential rotation (Anthropic/OpenAI/Supabase/R2/Redis keys — all exposed in local `.env`)
 - ADMIN_TOTP_SECRET, VAULT_DATABASE_URL, TEAM_JWT_SECRET, REVALIDATION_SECRET — all missing env vars
-- Migration 037 guardrail triggers — not deployed to Supabase
 - admin.ts (2,545 lines) / checkout.ts (1,087 lines) — large mechanical refactor, not started
+
+## 2026-07-28 — Pre-pilot bug audit + migrations 037/038 applied
+
+Full cross-check ahead of the 10-retailer mobile pilot: login flows, URLs, DB, API, servers, frontend, admin backend. Full monorepo typecheck (6/6 packages) and test suite (173 API + 34 web tests) verified clean via `turbo typecheck`/`turbo test`.
+
+**Applied live (Supabase SQL Editor):**
+- **Migration 037** (`db_guardrails`) — hard-delete guardrail triggers, previously undeployed. Some triggers had partially landed from an earlier attempt, so applied via an idempotent `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER` variant. Verified: all 8 `guard_*` triggers present.
+- **Migration 038** (`order_items_rls`, new) — fixes an RLS gap found during the audit: `order_items` (added in `031_l2_ecommerce_checkout`) never got Row Level Security, unlike every sibling table. Policy scopes via `order_id → orders.retailer_id → auth.uid()`. Verified: `rowsecurity = true`, policy `retailer_own_order_items` present.
+
+**Found, not yet fixed (needs a human/deploy decision):**
+- Mobile (`apps/mobile/.env.local`) and web (`apps/web/.env.local`) API URLs point at an ephemeral VS Code devtunnel — will break mid-pilot if the tunnel closes. `apps/mobile/.env` fallback is `localhost`, dead on a retailer's own phone. **Needs a real deploy or a pilot-duration tunnel before handing out the app.**
+- Migration `034_product_sizes` apply-status to the live DB unverified (couldn't check without a live query, blocked by operational policy).
+- `packages/db/dist` can go stale relative to source changes if `apps/api` tests are run via bare `npx vitest` instead of `pnpm test`/`turbo test` (which correctly rebuilds deps first). Caused two false test failures this session (`ReferenceError: exports is not defined`), fixed by rebuilding — no source change needed.
+- `@fastify/cookie` secret (`apps/api/src/index.ts`) registered but unused — admin CSRF check reads the raw unsigned cookie, not a signed one. Dead config, not a live vuln.
+- Env gaps and credential rotation from the 2026-07-27 review remain open (see above) — TEAM_JWT_SECRET, REVALIDATION_SECRET, ADMIN_TOTP_SECRET still missing locally.
