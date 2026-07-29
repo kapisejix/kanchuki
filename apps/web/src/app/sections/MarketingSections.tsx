@@ -17,8 +17,10 @@ import {
   Shirt,
   BarChart3,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { PLAN_PRICING } from '@kanchuki/shared'
+import { KanchukiMark } from '@/components/KanchukiMark'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -60,13 +62,24 @@ const FAQS: FaqItem[] = [
   { q: 'What if I need help setting up?', a: 'We offer WhatsApp-based onboarding support. Our team helps you upload your first 50 products and create your first collection link. Just tap the support chat in the app.' },
 ]
 
-const FEATURES = [
-  { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI tags category, color, fabric, and occasion automatically. Your entire shop digitized in hours, not weeks.', color: 'text-cyan-600', bg: 'bg-cyan-50' },
-  { icon: Share2, title: 'WhatsApp Collections', desc: 'Select products, generate a link, share on WhatsApp. Customers browse, heart favorites, and enquire — no app download needed.', color: 'text-green-600', bg: 'bg-green-50' },
-  { icon: Heart, title: 'Fashion DNA CRM', desc: 'Know what each customer loves. Capture color, style, budget, and occasion preferences. AI suggests the perfect products for every customer.', color: 'text-rose-600', bg: 'bg-rose-50' },
-  { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds. Natural language search understands Hindi-transliterated terms too.', color: 'text-blue-600', bg: 'bg-blue-50' },
-  { icon: Shirt, title: 'Virtual Try-On', desc: 'Customers upload a photo and see how outfits look on them. No mirror needed. Coming soon to all plans.', color: 'text-amber-600', bg: 'bg-amber-50', comingSoon: true },
+const FEATURES: { icon: LucideIcon; title: string; desc: string; accent: 'ink' | 'rust' | 'turmeric'; span: string; comingSoon?: boolean }[] = [
+  { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI tags category, color, fabric, and occasion automatically. Your entire shop digitized in hours, not weeks.', accent: 'ink', span: 'sm:col-span-4 lg:col-span-7' },
+  { icon: Share2, title: 'WhatsApp Collections', desc: 'Select products, generate a link, share on WhatsApp. Customers browse, heart favorites, and enquire — no app download needed.', accent: 'rust', span: 'sm:col-span-2 lg:col-span-5' },
+  { icon: Heart, title: 'Fashion DNA CRM', desc: 'Know what each customer loves. Capture color, style, budget, and occasion preferences. AI suggests the perfect products for every customer.', accent: 'turmeric', span: 'sm:col-span-2 lg:col-span-4' },
+  { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds. Natural language search understands Hindi-transliterated terms too.', accent: 'ink', span: 'sm:col-span-2 lg:col-span-4' },
+  { icon: Shirt, title: 'Virtual Try-On', desc: 'Customers upload a photo and see how outfits look on them. No mirror needed. Coming soon to all plans.', accent: 'rust', comingSoon: true, span: 'sm:col-span-2 lg:col-span-4' },
 ]
+
+const ACCENT_STRIP: Record<string, string> = {
+  ink: 'bg-ink-600',
+  rust: 'bg-rust-600',
+  turmeric: 'bg-turmeric-600',
+}
+const ACCENT_ICON: Record<string, string> = {
+  ink: 'text-ink-600',
+  rust: 'text-rust-600',
+  turmeric: 'text-turmeric-700',
+}
 
 const HOW_IT_WORKS = [
   { step: '01', title: 'Snap & Tag', desc: 'Take a photo of any product in your store. AI extracts category, color, fabric, and occasion in seconds. No manual data entry.', icon: Camera },
@@ -83,14 +96,28 @@ const fadeUp = {
 
 const stagger = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 }
 
 // ── Shared helpers ─────────────────────────────────────────────────
 
+// "Selvedge-edge" card (docs/design/emil-design.md §3.6) — a flat card
+// with a self-finished-edge detail on one side instead of a glass/shadow
+// treatment. No blur, no drop shadow in normal document flow.
+function SelvedgeCard({ children, accent = 'ink', className = '' }: { children: React.ReactNode; accent?: 'ink' | 'rust' | 'turmeric'; className?: string }) {
+  return (
+    <div className={`relative overflow-hidden bg-white rounded-xl border border-sand-200 transition-colors duration-300 hover:border-sand-300 ${className}`}>
+      {/* Selvedge strip — a clipped inset bar, not a mismatched border-width,
+          so it respects the rounded corner instead of pinching it. */}
+      <div className={`absolute inset-x-0 top-0 h-[3px] ${ACCENT_STRIP[accent]}`} />
+      {children}
+    </div>
+  )
+}
+
 function Section({ children, id, className = '', dark = false }: { children: React.ReactNode; id?: string; className?: string; dark?: boolean }) {
   return (
-    <section id={id} className={`py-16 sm:py-20 lg:py-28 ${dark ? 'bg-gray-900 text-white' : 'bg-white'} ${className}`}>
+    <section id={id} className={`py-16 sm:py-20 lg:py-28 ${dark ? 'bg-charcoal text-white' : 'bg-cotton'} ${className}`}>
       {children}
     </section>
   )
@@ -99,9 +126,9 @@ function Section({ children, id, className = '', dark = false }: { children: Rea
 function SectionHeader({ tag, title, subtitle, dark = false, align = 'center' }: { tag?: string; title: string; subtitle?: string; dark?: boolean; align?: 'center' | 'left' }) {
   return (
     <div className={`max-w-2xl ${align === 'center' ? 'mx-auto text-center' : ''} mb-12 sm:mb-16`}>
-      {tag && <span className="inline-block text-xs font-semibold tracking-widest uppercase text-cyan-600 mb-3">{tag}</span>}
-      <h2 className={`text-3xl sm:text-4xl font-bold tracking-tight text-balance ${dark ? 'text-white' : 'text-gray-900'}`}>{title}</h2>
-      {subtitle && <p className={`mt-4 text-lg ${dark ? 'text-gray-300' : 'text-gray-500'}`}>{subtitle}</p>}
+      {tag && <span className="inline-block text-xs font-semibold tracking-widest uppercase text-rust-600 mb-3">{tag}</span>}
+      <h2 className={`font-display text-3xl sm:text-4xl font-semibold tracking-tight text-balance ${dark ? 'text-white' : 'text-charcoal'}`}>{title}</h2>
+      {subtitle && <p className={`mt-4 text-lg ${dark ? 'text-sand-300' : 'text-sand-500'}`}>{subtitle}</p>}
     </div>
   )
 }
@@ -147,14 +174,14 @@ function StatsBar() {
       ]
 
   return (
-    <div className="bg-gray-50 border-y border-gray-100" ref={ref}>
+    <div className="bg-sand-50 border-y border-sand-200" ref={ref}>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid grid-cols-2 lg:grid-cols-4 gap-8">
           {stats.map((stat) => (
             <motion.div key={stat.label} variants={fadeUp} className="text-center">
-              <stat.icon size={24} className="mx-auto mb-2 text-cyan-500" />
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900">{stat.value}</div>
-              <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
+              <stat.icon size={24} strokeWidth={1.5} className="mx-auto mb-2 text-ink-500" />
+              <div className="font-display text-2xl sm:text-3xl font-semibold text-charcoal">{stat.value}</div>
+              <div className="text-sm text-sand-500 mt-1">{stat.label}</div>
             </motion.div>
           ))}
         </motion.div>
@@ -164,6 +191,8 @@ function StatsBar() {
 }
 
 // ── Features ───────────────────────────────────────────────────────
+// "Bolt-and-swatch" grid (§3.6) — uneven card spans like fabric swatches
+// pinned to a board, not a rigid symmetric bento.
 
 function FeaturesSection() {
   const ref = useRef(null)
@@ -175,17 +204,17 @@ function FeaturesSection() {
         <AnimatedSection>
           <SectionHeader tag="Features" title="Everything you need to run your clothing store" subtitle="Five capabilities — one platform. No stitching together WhatsApp, Excel, and a camera app." />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-4 lg:grid-cols-12 gap-5 sm:gap-6">
           {FEATURES.map((feature) => (
-            <motion.div key={feature.title} variants={fadeUp} className="group relative bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 hover:border-gray-200 hover:shadow-lg transition-all duration-300">
-              <div className={`w-12 h-12 ${feature.bg} ${feature.color} rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
-                <feature.icon size={24} />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900 mb-2">
-                {feature.title}
-                {feature.comingSoon && <span className="ml-2 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Coming soon</span>}
-              </h3>
-              <p className="text-sm text-gray-500 leading-relaxed">{feature.desc}</p>
+            <motion.div key={feature.title} variants={fadeUp} className={feature.span}>
+              <SelvedgeCard accent={feature.accent} className="group h-full p-6 sm:p-8">
+                <feature.icon size={26} strokeWidth={1.5} className={`mb-5 ${ACCENT_ICON[feature.accent]}`} />
+                <h3 className="text-lg font-semibold text-charcoal mb-2">
+                  {feature.title}
+                  {feature.comingSoon && <span className="ml-2 text-xs font-medium text-turmeric-700 bg-turmeric-50 px-2 py-0.5 rounded-full">Coming soon</span>}
+                </h3>
+                <p className="text-sm text-sand-500 leading-relaxed">{feature.desc}</p>
+              </SelvedgeCard>
             </motion.div>
           ))}
         </motion.div>
@@ -201,21 +230,22 @@ function HowItWorks() {
   const isInView = useInView(ref, { once: true, margin: '-60px' })
 
   return (
-    <Section id="how-it-works" className="bg-gray-50">
+    <Section id="how-it-works" className="bg-sand-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
           <SectionHeader tag="How It Works" title="Three steps. No tech skills needed." subtitle="From photo to WhatsApp — faster than your customer can say 'yeh kitne ka hai?'" />
         </AnimatedSection>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-8 sm:gap-12 relative">
-          <div className="hidden sm:block absolute top-16 left-[calc(16.66%+2rem)] right-[calc(16.66%+2rem)] h-0.5 bg-gradient-to-r from-cyan-200 via-cyan-400 to-cyan-200" />
+          <div className="hidden sm:block absolute top-16 left-[calc(16.66%+2rem)] right-[calc(16.66%+2rem)] h-px bg-ink-200" />
           {HOW_IT_WORKS.map((item) => (
             <motion.div key={item.step} variants={fadeUp} className="relative text-center">
-              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 bg-white rounded-2xl border-2 border-cyan-100 flex items-center justify-center shadow-sm">
-                <item.icon size={28} className="text-cyan-600" />
+              <div className="relative z-10 w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 overflow-hidden bg-white rounded-xl border border-ink-200 flex items-center justify-center">
+                <div className="absolute inset-x-0 top-0 h-[3px] bg-ink-600" />
+                <item.icon size={26} strokeWidth={1.5} className="text-ink-600" />
               </div>
-              <div className="text-xs font-bold text-cyan-600 mb-2 tracking-widest">STEP {item.step}</div>
-              <h3 className="text-lg font-bold text-gray-900 mb-3">{item.title}</h3>
-              <p className="text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">{item.desc}</p>
+              <div className="font-display text-xs font-semibold text-rust-600 mb-2 tracking-widest">STEP {item.step}</div>
+              <h3 className="text-lg font-semibold text-charcoal mb-3">{item.title}</h3>
+              <p className="text-sm text-sand-500 leading-relaxed max-w-xs mx-auto">{item.desc}</p>
             </motion.div>
           ))}
         </motion.div>
@@ -243,24 +273,24 @@ function ComparisonMatrix() {
         <AnimatedSection>
           <SectionHeader tag="The Kanchuki Moat" title="The only platform that has it all" subtitle="Competitors have one piece. Kanchuki has all five." />
         </AnimatedSection>
-        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={fadeUp} className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={fadeUp} className="overflow-x-auto rounded-xl border border-sand-200 bg-white">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-gray-100 bg-gray-50/50">
-                <th className="text-left px-5 py-4 text-gray-500 font-medium text-xs uppercase tracking-wider">Platform</th>
-                {headers.map((h) => <th key={h} className="px-4 py-4 text-center text-gray-500 font-medium text-xs uppercase tracking-wider">{h}</th>)}
+              <tr className="border-b border-sand-100 bg-sand-50">
+                <th className="text-left px-5 py-4 text-sand-500 font-medium text-xs uppercase tracking-wider">Platform</th>
+                {headers.map((h) => <th key={h} className="px-4 py-4 text-center text-sand-500 font-medium text-xs uppercase tracking-wider">{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {rows.map((row) => (
-                <tr key={row.name} className="border-b border-gray-50 hover:bg-gray-50/30 transition-colors">
-                  <td className="px-5 py-4 text-gray-700 font-medium">{row.name}</td>
-                  {row.cols.map((v, i) => <td key={i} className="px-4 py-4 text-center text-lg">{v ? <span className="text-green-500">✅</span> : <span className="text-gray-300">❌</span>}</td>)}
+                <tr key={row.name} className="border-b border-sand-100 hover:bg-sand-50/60 transition-colors">
+                  <td className="px-5 py-4 text-sand-700 font-medium">{row.name}</td>
+                  {row.cols.map((v, i) => <td key={i} className="px-4 py-4 text-center text-lg">{v ? <span className="text-turmeric-600">✓</span> : <span className="text-sand-300">–</span>}</td>)}
                 </tr>
               ))}
-              <tr className="bg-cyan-50/80">
-                <td className="px-5 py-4 font-bold text-cyan-800">Kanchuki</td>
-                {[true, true, true, true].map((_, i) => <td key={i} className="px-4 py-4 text-center text-lg font-bold text-cyan-700">✅</td>)}
+              <tr className="bg-ink-50">
+                <td className="px-5 py-4 font-semibold text-ink-800">Kanchuki</td>
+                {[true, true, true, true].map((_, i) => <td key={i} className="px-4 py-4 text-center text-lg font-semibold text-ink-700">✓</td>)}
               </tr>
             </tbody>
           </table>
@@ -282,20 +312,22 @@ function TestimonialsSection() {
   ]
 
   return (
-    <Section className="bg-gray-50">
+    <Section className="bg-sand-50">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
           <SectionHeader tag="Testimonials" title="What retailers say" subtitle="Real feedback from our pilot program." />
         </AnimatedSection>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6">
           {testimonials.map((t, i) => (
-            <motion.div key={i} variants={fadeUp} className="bg-white rounded-2xl p-6 sm:p-8 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex gap-1 mb-4">{[...Array(5)].map((_, s) => <Star key={s} size={14} className="fill-amber-400 text-amber-400" />)}</div>
-              <p className="text-sm text-gray-600 leading-relaxed mb-6">&ldquo;{t.quote}&rdquo;</p>
-              <div className="border-t border-gray-100 pt-4">
-                <div className="text-sm font-semibold text-gray-900">{t.name}</div>
-                <div className="text-xs text-gray-400">{t.role}</div>
-              </div>
+            <motion.div key={i} variants={fadeUp}>
+              <SelvedgeCard accent="turmeric" className="p-6 sm:p-8">
+                <div className="flex gap-1 mb-4">{[...Array(5)].map((_, s) => <Star key={s} size={14} strokeWidth={1.5} className="fill-turmeric-400 text-turmeric-400" />)}</div>
+                <p className="text-sm text-sand-600 leading-relaxed mb-6">&ldquo;{t.quote}&rdquo;</p>
+                <div className="border-t border-sand-100 pt-4">
+                  <div className="text-sm font-semibold text-charcoal">{t.name}</div>
+                  <div className="text-xs text-sand-400">{t.role}</div>
+                </div>
+              </SelvedgeCard>
             </motion.div>
           ))}
         </motion.div>
@@ -319,11 +351,11 @@ function PricingSection() {
           <SectionHeader tag="Pricing" title="Simple pricing in INR" subtitle="No hidden costs. Pay via UPI, cards, or netbanking. 14-day free trial on any plan." />
         </AnimatedSection>
         <motion.div initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.4, delay: 0.2 }} className="flex items-center justify-center gap-4 mb-10">
-          <button onClick={() => setPeriod('monthly')} className={`text-sm font-medium transition-colors ${period === 'monthly' ? 'text-gray-900' : 'text-gray-400'}`}>Monthly</button>
-          <button onClick={() => setPeriod(period === 'monthly' ? 'annual' : 'monthly')} className={`relative w-12 h-6 rounded-full transition-colors ${period === 'annual' ? 'bg-cyan-600' : 'bg-gray-200'}`} aria-label="Toggle billing period">
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${period === 'annual' ? 'translate-x-6' : ''}`} />
+          <button onClick={() => setPeriod('monthly')} className={`text-sm font-medium transition-colors ${period === 'monthly' ? 'text-charcoal' : 'text-sand-400'}`}>Monthly</button>
+          <button onClick={() => setPeriod(period === 'monthly' ? 'annual' : 'monthly')} className={`relative w-12 h-6 rounded-full transition-colors ${period === 'annual' ? 'bg-ink-600' : 'bg-sand-200'}`} aria-label="Toggle billing period">
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${period === 'annual' ? 'translate-x-6' : ''}`} />
           </button>
-          <button onClick={() => setPeriod('annual')} className={`text-sm font-medium transition-colors ${period === 'annual' ? 'text-gray-900' : 'text-gray-400'}`}>Annual <span className="text-green-600 font-semibold">(Save 20%)</span></button>
+          <button onClick={() => setPeriod('annual')} className={`text-sm font-medium transition-colors ${period === 'annual' ? 'text-charcoal' : 'text-sand-400'}`}>Annual <span className="text-turmeric-700 font-semibold">(Save 20%)</span></button>
         </motion.div>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6 lg:gap-8">
           {PLANS.map((plan) => {
@@ -331,30 +363,30 @@ function PricingSection() {
             const price = (period === 'monthly' ? planPricing.monthly : planPricing.annual) / 100
             const periodLabel = period === 'monthly' ? '/mo' : '/yr'
             return (
-              <motion.div key={plan.name} variants={fadeUp} className={`relative rounded-3xl p-6 sm:p-8 border-2 transition-all duration-300 hover:shadow-xl ${plan.highlight ? 'border-cyan-600 bg-cyan-600 text-white shadow-lg shadow-cyan-200 scale-[1.02] sm:scale-105' : 'border-gray-200 bg-white hover:border-gray-300'}`}>
-                {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-cyan-700 text-xs font-bold px-4 py-1 rounded-full shadow-sm border border-cyan-100">MOST POPULAR</div>}
-                <h3 className={`text-xl font-bold mb-1 ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
-                <div className={`text-3xl sm:text-4xl font-bold mb-1 ${plan.highlight ? 'text-white' : 'text-gray-900'}`}>
-                  <span className="inline-flex items-center"><IndianRupee size={22} className={plan.highlight ? 'text-white/80' : 'text-gray-400'} />{price.toLocaleString('en-IN')}</span>
-                  <span className={`text-base font-normal ${plan.highlight ? 'text-white/70' : 'text-gray-400'}`}>{periodLabel}</span>
+              <motion.div key={plan.name} variants={fadeUp} className={`relative rounded-xl p-6 sm:p-8 border transition-colors duration-300 ${plan.highlight ? 'border-ink-600 bg-ink-600 text-white' : 'border-sand-200 bg-white hover:border-sand-300'}`}>
+                {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white text-ink-700 text-xs font-semibold px-4 py-1 rounded-full border border-ink-100">MOST POPULAR</div>}
+                <h3 className={`text-xl font-semibold mb-1 ${plan.highlight ? 'text-white' : 'text-charcoal'}`}>{plan.name}</h3>
+                <div className={`font-display text-3xl sm:text-4xl font-semibold mb-1 ${plan.highlight ? 'text-white' : 'text-charcoal'}`}>
+                  <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={plan.highlight ? 'text-white/80' : 'text-sand-400'} />{price.toLocaleString('en-IN')}</span>
+                  <span className={`text-base font-normal ${plan.highlight ? 'text-white/70' : 'text-sand-400'}`}>{periodLabel}</span>
                 </div>
-                <div className={`text-sm mb-6 ${plan.highlight ? 'text-white/60' : 'text-gray-400'}`}>
+                <div className={`text-sm mb-6 ${plan.highlight ? 'text-white/60' : 'text-sand-400'}`}>
                   {period === 'annual' ? `₹${(planPricing.annual / 12 / 100).toLocaleString('en-IN')}/mo billed annually` : `₹${(planPricing.monthly / 100).toLocaleString('en-IN')}/mo billed monthly`}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (
                     <li key={f} className="flex items-start gap-2.5 text-sm">
-                      <Check size={16} className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-white/80' : 'text-green-500'}`} />
-                      <span className={plan.highlight ? 'text-white/90' : 'text-gray-600'}>{f}</span>
+                      <Check size={16} strokeWidth={1.5} className={`mt-0.5 shrink-0 ${plan.highlight ? 'text-white/80' : 'text-turmeric-600'}`} />
+                      <span className={plan.highlight ? 'text-white/90' : 'text-sand-600'}>{f}</span>
                     </li>
                   ))}
                 </ul>
-                <a href="#cta" className={`block text-center py-3.5 rounded-xl font-semibold transition-all active:scale-[0.98] ${plan.highlight ? 'bg-white text-cyan-700 hover:bg-cyan-50 shadow-sm' : 'bg-cyan-600 text-white hover:bg-cyan-700 shadow-sm hover:shadow-md'}`}>{plan.cta}</a>
+                <a href="#cta" className={`block text-center py-3.5 rounded-full font-semibold transition active:scale-[0.97] ${plan.highlight ? 'bg-white text-ink-700 hover:bg-ink-50' : 'bg-ink-600 text-white hover:bg-ink-700'}`}>{plan.cta}</a>
               </motion.div>
             )
           })}
         </motion.div>
-        <p className="text-center text-sm text-gray-400 mt-8">All plans include a 14-day free trial. No credit card required. Prices include GST.</p>
+        <p className="text-center text-sm text-sand-400 mt-8">All plans include a 14-day free trial. No credit card required. Prices include GST.</p>
       </div>
     </Section>
   )
@@ -368,22 +400,22 @@ function FaqSection() {
   const isInView = useInView(ref, { once: true })
 
   return (
-    <Section id="faq" className="bg-gray-50">
+    <Section id="faq" className="bg-sand-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
           <SectionHeader tag="FAQ" title="Frequently asked questions" subtitle="Everything you need to know about Kanchuki." />
         </AnimatedSection>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="space-y-3">
           {FAQS.map((faq, i) => (
-            <motion.div key={i} variants={fadeUp} className={`bg-white rounded-2xl border transition-all duration-300 ${openIndex === i ? 'border-cyan-200 shadow-sm' : 'border-gray-100 hover:border-gray-200'}`}>
-              <button onClick={() => setOpenIndex(openIndex === i ? null : i)} className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 rounded-2xl" aria-expanded={openIndex === i} aria-controls={`faq-panel-${i}`}>
-                <span className="text-sm font-semibold text-gray-900 pr-4">{faq.q}</span>
-                <ChevronDown size={18} className={`text-gray-400 shrink-0 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`} />
+            <motion.div key={i} variants={fadeUp} className={`bg-white rounded-xl border transition-colors duration-300 ${openIndex === i ? 'border-ink-200' : 'border-sand-200 hover:border-sand-300'}`}>
+              <button onClick={() => setOpenIndex(openIndex === i ? null : i)} className="w-full flex items-center justify-between px-6 py-5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500 focus-visible:ring-offset-2 rounded-xl" aria-expanded={openIndex === i} aria-controls={`faq-panel-${i}`}>
+                <span className="text-sm font-semibold text-charcoal pr-4">{faq.q}</span>
+                <ChevronDown size={18} strokeWidth={1.5} className={`text-sand-400 shrink-0 transition-transform duration-300 ${openIndex === i ? 'rotate-180' : ''}`} />
               </button>
               <AnimatePresence>
                 {openIndex === i && (
                   <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden" id={`faq-panel-${i}`} role="region">
-                    <div className="px-6 pb-5 text-sm text-gray-500 leading-relaxed border-t border-gray-50 pt-4">{faq.a}</div>
+                    <div className="px-6 pb-5 text-sm text-sand-500 leading-relaxed border-t border-sand-50 pt-4">{faq.a}</div>
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -405,28 +437,28 @@ function CtaSection() {
     <Section id="cta" dark>
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center" ref={ref}>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger}>
-          <motion.h2 variants={fadeUp} className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-balance">Ready to digitize your store?</motion.h2>
-          <motion.p variants={fadeUp} className="mt-5 text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto">Join Indian clothing retailers already using Kanchuki. 14-day free trial. No credit card needed.</motion.p>
+          <motion.h2 variants={fadeUp} className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-balance">Ready to digitize your store?</motion.h2>
+          <motion.p variants={fadeUp} className="mt-5 text-lg sm:text-xl text-sand-300 max-w-2xl mx-auto">Join Indian clothing retailers already using Kanchuki. 14-day free trial. No credit card needed.</motion.p>
           <motion.div variants={fadeUp} className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-6 sm:px-8 py-4 rounded-2xl hover:bg-gray-100 transition-all font-semibold shadow-lg active:scale-[0.98]">
-              <Smartphone size={22} />
+            <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-white text-charcoal px-6 sm:px-8 py-4 rounded-full hover:bg-sand-100 transition font-semibold active:scale-[0.97]">
+              <Smartphone size={22} strokeWidth={1.5} />
               <div className="text-left">
-                <div className="text-xs text-gray-500 font-normal">Download on</div>
-                <div className="font-bold">Google Play</div>
+                <div className="text-xs text-sand-500 font-normal">Download on</div>
+                <div className="font-semibold">Google Play</div>
               </div>
             </Link>
-            <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-white text-gray-900 px-6 sm:px-8 py-4 rounded-2xl hover:bg-gray-100 transition-all font-semibold shadow-lg active:scale-[0.98]">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-white text-charcoal px-6 sm:px-8 py-4 rounded-full hover:bg-sand-100 transition font-semibold active:scale-[0.97]">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z" />
                 <path d="M10 2c1 .5 2 2 2 5" />
               </svg>
               <div className="text-left">
-                <div className="text-xs text-gray-500 font-normal">Download on</div>
-                <div className="font-bold">App Store</div>
+                <div className="text-xs text-sand-500 font-normal">Download on</div>
+                <div className="font-semibold">App Store</div>
               </div>
             </Link>
           </motion.div>
-          <motion.div variants={fadeUp} className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-gray-400">
+          <motion.div variants={fadeUp} className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-sand-400">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
             <Link href="#faq" className="hover:text-white transition-colors">FAQ</Link>
@@ -442,22 +474,20 @@ function CtaSection() {
 
 function FooterSection() {
   return (
-    <footer className="bg-gray-950 border-t border-gray-800 py-10 sm:py-14">
+    <footer className="bg-charcoal border-t border-sand-800 py-10 sm:py-14">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-cyan-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">K</span>
-            </div>
-            <span className="text-gray-300 font-semibold">Kanchuki</span>
+            <KanchukiMark size={28} />
+            <span className="font-display text-sand-200 font-semibold">Kanchuki</span>
           </div>
-          <p className="text-gray-500 text-sm text-center">© {new Date().getFullYear()} Kanchuki. Made in India <span className="inline-block">🇮🇳</span></p>
-          <div className="flex gap-5 text-sm text-gray-500">
-            <a href="#" className="hover:text-gray-300 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-gray-300 transition-colors">Terms</a>
-            <a href="mailto:hello@kanchuki.app" className="hover:text-gray-300 transition-colors">Contact</a>
-            <span className="text-gray-700">·</span>
-            <a href="/admin" className="hover:text-gray-300 transition-colors text-gray-400">Admin</a>
+          <p className="text-sand-500 text-sm text-center">© {new Date().getFullYear()} Kanchuki. Made in India <span className="inline-block">🇮🇳</span></p>
+          <div className="flex gap-5 text-sm text-sand-500">
+            <a href="#" className="hover:text-sand-300 transition-colors">Privacy</a>
+            <a href="#" className="hover:text-sand-300 transition-colors">Terms</a>
+            <a href="mailto:hello@kanchuki.app" className="hover:text-sand-300 transition-colors">Contact</a>
+            <span className="text-sand-700">·</span>
+            <a href="/admin" className="hover:text-sand-300 transition-colors text-sand-400">Admin</a>
           </div>
         </div>
       </div>

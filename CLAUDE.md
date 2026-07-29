@@ -252,6 +252,26 @@ Explicitly not in scope for these two: a generic non-catalog on-site maintenance
 
 ---
 
+## Built: Marketing Page Redesign — Loom Design System (Option A)
+
+**Built 2026-07-28** — design direction decided + implemented. Full audit, four direction options with pros/cons, and the chosen system spec live in `docs/design/emil-design.md`.
+
+Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber palette that didn't match the live cyan code (see doc Part 1). Presented four creative directions (A Loom/textile-native, B Ledger/mercantile, C Studio Neon/fashion-editorial, D Quiet Atelier/minimal-premium) with honest pros/cons; user picked **Option A — Loom** (natural-dye palette, selvedge-edge cards, drape transitions, thin-line icons, serif+grotesk pairing). B/C/D stay documented in the doc as alternatives, not deleted.
+
+| Layer | Files | Summary |
+|---|---|---|
+| Tokens | `apps/web/tailwind.config.ts`, `apps/web/src/app/globals.css` | `ink`/`rust`/`turmeric`/`stone` oklch scales + `cotton`/`charcoal`, replacing the old cyan/amber mismatch |
+| Fonts | `apps/web/src/app/layout.tsx` | Fraunces (display serif) added alongside Inter |
+| Logomark | `apps/web/src/components/KanchukiMark.tsx` (new) | Interlaced-thread device, shared by Navbar + Footer |
+| Marketing page | `apps/web/src/app/page.tsx`, `apps/web/src/app/sections/MarketingSections.tsx` | Full redesign: selvedge-edge cards (implemented as a clipped inset strip, not a mismatched border — a border-width/radius rendering issue the impeccable design-lint hook caught), bolt-and-swatch feature grid, drape-transition hero, solid accent colors (gradient text removed — also hook-caught) |
+| Manifest | `apps/web/public/manifest.json` | Theme/background colors matched to the new palette |
+
+**Verified:** `tsc --noEmit` clean, `eslint` clean, dev server compiles, compiled CSS confirmed to contain real oklch values. **Not verified:** no live browser screenshot — no Playwright browser extension available in this environment. Open `localhost:3000` yourself before treating this as final.
+
+**Not yet done** (see the doc's own punch list): `docs/DESIGN.md` itself still has stale violet/amber values, not yet corrected to match the Loom tokens now live in code. Shared web/mobile token package (`packages/shared`) not built — mobile (`apps/mobile`) still has no design tokens at all. Founder-story/About page (etymology angle, doc §2.5) not built — needs the real founder story as input, won't be invented. Admin panel and retailer mobile app deliberately untouched — the doc argues those surfaces should stay motion/decoration-restrained, unlike marketing/customer-facing surfaces.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs
@@ -272,6 +292,7 @@ Explicitly not in scope for these two: a generic non-catalog on-site maintenance
 | `docs/DATABASE.md` | PostgreSQL schema, indexes, relationships |
 | `docs/API.md` | REST API contracts, endpoints, auth |
 | `docs/SECURITY.md` | Security model, OWASP, data privacy, governance |
+| `docs/SCALING.md` | Scaling plan — 1M retailer/5M customer target, phased infra upgrades |
 | `docs/MEMORY.md` | AI agent context and prompting strategy |
 | `docs/SKILLS-AND-MCP.md` | Claude Code skills and MCP tools in use |
 | `docs/final-research.md` | Market research foundation |

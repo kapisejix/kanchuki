@@ -153,6 +153,22 @@ See `docs/PRO-REQUIREMENTS.md` §10.9–10.10 for full spec.
 
 ---
 
+## Platform Scaling (cross-cutting — runs alongside Phase 1–3, not a separate calendar phase)
+
+**Full spec:** `docs/SCALING.md`. Trigger: retailer asked 2026-07-29 whether stack holds 1M retailers / 5M customers + DAU. Answer: current MVP stack holds MVP scale only — gap below.
+
+| Scaling Phase | Retailer range | Trigger point | Key work |
+|---|---|---|---|
+| **A — Pre-10K** | 0–10K retailers | Do now, before next onboarding push | Supabase connection pooler wired into `DATABASE_URL`; provision `DATABASE_URL_REPLICA` (client code already supports it); provision vault Postgres + set `VAULT_DATABASE_URL` (currently dormant, F-016 writes silently skip); move rate-limit store to Redis before running >1 API instance |
+| **B — 10K–100K** | Aligns with Phase 2 (B2B Supply Network) | Multi-instance API traffic | Railway multi-instance/autoscale; Supabase dedicated compute tier; Redis HA (Sentinel/cluster); `pg_stat_statements` query monitoring |
+| **C — 100K–1M** | Aligns with Phase 3 (Full Commerce) | Approaching 1M retailer target | Read-replica fan-out or hot-table partitioning (`Product`, `CollectionView`, `CustomerInteraction`); server-side edge cache for public `/c/*` collection reads; pgvector ivfflat/hnsw tuning once Fashion DNA (Phase 1) is live |
+
+**Explicitly deferred (no evidence of need yet):** multi-region DB (India-only market, single `ap-south-1` region correct for years), DB sharding, separate read-model service. Don't build these speculatively — see `docs/SCALING.md` §6.
+
+**Load/security test gate:** load test (k6/Artillery against staging Supabase branch) and a load-driven security pass required before Phase B infra work lands — not yet run, see `docs/SCALING.md` §5.
+
+---
+
 ## Milestones & Success Gates
 
 | Milestone | Month | Gate Criteria |

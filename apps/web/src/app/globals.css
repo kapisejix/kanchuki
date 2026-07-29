@@ -9,13 +9,15 @@
      and unreadable against our light backgrounds. */
   color-scheme: light;
 
-  --color-primary: #0891B2;
-  --color-primary-light: #cffafe;
-  --color-amber: #F59E0B;
-  --color-surface: #FAFAFA;
-  --color-bg: #F3F4F6;
-  --color-text: #111827;
-  --color-muted: #6B7280;
+  /* "Red Elegance" palette (docs/design/emil-design.md §3.1, revised 2026-07-29).
+     Mirrors apps/web/tailwind.config.ts for the handful of spots (scrollbar,
+     hero texture, logomark) that need a raw CSS value instead of a class. */
+  --color-ink: #D41E2A;
+  --color-rust: oklch(52% 0.12 14);
+  --color-turmeric: #6E5742;
+  --color-cotton: #FBFAF8;
+  --color-charcoal: #14100D;
+  --color-sand: oklch(59% 0.015 58);
 }
 
 * {
@@ -27,8 +29,8 @@ html {
 }
 
 body {
-  background-color: var(--color-bg);
-  color: var(--color-text);
+  background-color: var(--color-cotton);
+  color: var(--color-charcoal);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -38,7 +40,7 @@ body {
   height: 4px;
 }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #67e8f9; border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: var(--color-ink); border-radius: 3px; opacity: 0.4; }
 
 @layer utilities {
   .text-balance {

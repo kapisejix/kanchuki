@@ -1,8 +1,8 @@
 # Kanchuki — UI/UX Design Document
 
-**Version:** 1.0  
-**Date:** June 2026  
-**Tools:** Figma (design), Nativewind (mobile), TailwindCSS + shadcn/ui (web)
+**Version:** 1.1  
+**Date:** June 2026 (v1.0) · **Updated 2026-07-28:** Brand Identity palette/typography/tokens replaced with the "Loom" design system (Option A) — see `docs/design/emil-design.md` for the full audit, the four direction options considered, and why Loom was picked.  
+**Tools:** Figma (design), Nativewind (mobile — no design tokens wired yet, see note below), TailwindCSS (web — no component-primitive library installed; the "shadcn/ui" claim in v1.0 was inaccurate)
 
 ---
 
@@ -29,24 +29,27 @@
 **Tagline:** "Aapki dukan, AI ki taakat"  
 *(Your store, AI's power)*
 
-**Color Palette:**
+**Color Palette — "Loom" natural-dye system (Option A, `docs/design/emil-design.md` §3.1):**
 ```
-Primary:    #7C3AED  (Violet/Purple — premium, modern, unisex)
-Secondary:  #F59E0B  (Amber — warm, festive, Indian palette)
-Surface:    #FAFAFA  (Near white)
-Background: #F3F4F6  (Light gray)
-Text:       #111827  (Near black)
-Muted:      #6B7280  (Gray)
-Success:    #10B981  (Green)
-Error:      #EF4444  (Red)
+Ink (primary):      oklch(35% 0.12 265)   — deep indigo, primary buttons/links/nav
+Rust (accent):       oklch(48% 0.16 25)   — madder red, destructive actions + alert badges
+Turmeric (highlight): oklch(78% 0.15 85)  — success/positive states, used sparingly
+Cotton (surface/bg):  oklch(97% 0.01 90)  — warm off-white, not pure #fff
+Charcoal (text):      oklch(20% 0.01 265) — body text
+Stone (muted):        oklch(55% 0.01 265) — secondary text, borders
 ```
+No separate green/red "Success"/"Error" tokens — Turmeric and Rust cover those semantic roles, keeping the palette to one accent family instead of five competing hues. Full 50–900 scales for Ink/Rust/Turmeric/Stone live in `apps/web/tailwind.config.ts`.
+
+**Status:** live in `apps/web` (marketing page + tokens) as of 2026-07-28. **Not yet wired into `apps/mobile`** — the Nativewind config there still has no design tokens (`theme.extend: {}`); the retailer-app screens documented below (Screens 1–10) are specified against the old palette conceptually but haven't been re-skinned. Don't assume the mobile app looks like this yet.
 
 **Typography:**
-- Mobile: `Nunito` (rounded, friendly, good Hindi support)
-- Web: `Inter` (clean, professional)
+- Web display/marketing headlines: `Fraunces` (warm variable serif) — added 2026-07-28, see `apps/web/src/app/layout.tsx`
+- Web UI/body + mobile: `Inter` (clean, professional)
+- Mobile display face: `Nunito` was the v1.0 plan; unverified whether it's actually wired anywhere in `apps/mobile` — treat as unconfirmed until checked, not as fact
 - Fallback: System UI
+- **Hindi/Devanagari coverage not yet verified for any of the above** — required before Year-1 Hindi localization ships (CLAUDE.md constraint); check before committing further to Fraunces specifically
 
-**Icon Style:** Lucide icons (line-style, consistent weight)
+**Icon Style:** Lucide icons, thin-line weight (`strokeWidth: 1.5`, not Lucide's bold default) — matches the Loom "stitched line" direction, no new icon library added
 
 ---
 
@@ -141,7 +144,7 @@ Error:      #EF4444  (Red)
 
 **State 3: AI Result**
 - Photo preview (clear)
-- Below: auto-filled form with violet highlight on AI-generated fields
+- Below: auto-filled form with ink highlight on AI-generated fields
 - Fields: Category · Type · Colors · Fabric · Pattern · Occasion Tags
 - Edit icon on each field
 - Price field (empty — user fills)
@@ -405,30 +408,29 @@ Retailer can switch to "TV Mode" — optimized for 40"+ screens connected to tab
 
 ---
 
-## Design Tokens (Nativewind / Tailwind)
+## Design Tokens
 
-```javascript
-// tailwind.config.js
+**Web (`apps/web/tailwind.config.ts`) — live as of 2026-07-28:**
+
+```typescript
 colors: {
-  primary: {
-    50: '#f5f3ff',
-    100: '#ede9fe',
-    500: '#8b5cf6',
-    600: '#7c3aed',  // primary
-    700: '#6d28d9',
-  },
-  amber: {
-    400: '#fbbf24',
-    500: '#f59e0b',  // secondary
-  }
+  ink:      { /* 50–900 scale, oklch hue 265 */ 600: 'oklch(35% 0.12 265)' },
+  rust:     { /* 50–900 scale, oklch hue 25  */ 600: 'oklch(48% 0.16 25)' },
+  turmeric: { /* 50–900 scale, oklch hue 85  */ 400: 'oklch(78% 0.15 85)' },
+  stone:    { /* 50–900 scale, near-neutral  */ 500: 'oklch(55% 0.01 265)' },
+  cotton: 'oklch(97% 0.01 90)',
+  charcoal: 'oklch(20% 0.01 265)',
 },
 fontFamily: {
-  sans: ['Nunito', 'system-ui'],  // mobile
-  display: ['Inter', 'system-ui'],  // web
+  sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],     // Inter
+  display: ['var(--font-display)', 'Georgia', 'serif'],       // Fraunces
 },
 borderRadius: {
-  'xl': '12px',
+  'xl': '12px',   // selvedge-edge cards (§3.5, emil-design.md)
   '2xl': '16px',
   '3xl': '24px',
+  full: '999px',  // buttons/badges — pill shape, not squircle
 }
 ```
+
+**Mobile (`apps/mobile/tailwind.config.js`) — NOT yet updated.** `theme.extend` is currently empty; none of the above tokens exist there. This is tracked as open work (see `docs/design/emil-design.md` §3.4, "shared token gap") — until it's done, treat the mobile app's actual look as whatever NativeWind's untouched defaults produce, not as this palette.
