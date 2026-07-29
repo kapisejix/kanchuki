@@ -37,19 +37,19 @@ export class ErrorBoundary extends Component<Props, State> {
       if (this.props.fallback) return this.props.fallback
 
       return (
-        <View className="flex-1 items-center justify-center bg-cyan-50 px-8">
-          <View className="w-16 h-16 bg-red-100 rounded-3xl items-center justify-center mb-4">
-            <AlertTriangle size={32} color="#EF4444" />
+        <View className="flex-1 items-center justify-center bg-ink-50 px-8">
+          <View className="w-16 h-16 bg-rust-100 rounded-3xl items-center justify-center mb-4">
+            <AlertTriangle size={32} color="#BF6973" />
           </View>
-          <Text className="text-lg font-bold text-gray-900 text-center mb-2">
+          <Text className="text-lg font-bold text-sand-900 text-center mb-2">
             Something went wrong
           </Text>
-          <Text className="text-sm text-gray-500 text-center mb-6 leading-5">
+          <Text className="text-sm text-sand-500 text-center mb-6 leading-5">
             {"An unexpected error occurred. This doesn't affect your data — it's all safe in the cloud."}
           </Text>
           {this.state.error && (
             <Text
-              className="text-xs text-gray-400 mb-4 text-center max-w-xs"
+              className="text-xs text-sand-400 mb-4 text-center max-w-xs"
               numberOfLines={3}
             >
               {this.state.error.message}
@@ -57,7 +57,7 @@ export class ErrorBoundary extends Component<Props, State> {
           )}
           <TouchableOpacity
             onPress={this.handleRetry}
-            className="bg-cyan-600 px-8 py-3.5 rounded-2xl flex-row items-center gap-2"
+            className="bg-ink-600 px-8 py-3.5 rounded-2xl flex-row items-center gap-2"
             activeOpacity={0.8}
           >
             <RefreshCw size={18} color="white" />

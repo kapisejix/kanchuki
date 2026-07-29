@@ -4,12 +4,13 @@ import { Tabs } from 'expo-router'
 import { Home, Grid3X3, Users, Link2, BarChart3, ShoppingBag } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ordersApi } from '../../src/lib/api'
+import { useTheme } from '../../src/lib/theme'
 
-const PRIMARY = '#0891B2'
-const MUTED = '#9CA3AF'
+const MUTED = '#ABA39C'
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
+  const { primaryColor } = useTheme()
   const [pendingCount, setPendingCount] = useState(0)
 
   // Fetch pending order count for the badge on the Orders tab.
@@ -42,16 +43,16 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: PRIMARY,
+        tabBarActiveTintColor: primaryColor,
         tabBarInactiveTintColor: MUTED,
         tabBarStyle: {
           backgroundColor: '#ffffff',
-          borderTopColor: '#F3F4F6',
+          borderTopColor: '#F2EEE9',
           height: 60 + insets.bottom,
           paddingBottom: 8 + insets.bottom,
         },
         headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: '#111827',
+        headerTintColor: '#14100D',
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
       }}

@@ -7,8 +7,10 @@ import { ImagePlus, Check } from 'lucide-react-native'
 import { PRODUCT_CATEGORIES } from '@kanchuki/shared'
 import { categoryApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 
 export default function NewCategoryScreen() {
+  const { primaryColor } = useTheme()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)
@@ -59,42 +61,42 @@ export default function NewCategoryScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'New Category', headerShown: true }} />
-      <View className="flex-1 bg-cyan-50 px-4 py-5 gap-4">
+      <View className="flex-1 bg-ink-50 px-4 py-5 gap-4">
         <View className="items-center">
           <TouchableOpacity
             onPress={() => void handlePickImage()}
             disabled={uploading}
-            className="w-28 h-28 rounded-2xl bg-white border border-gray-200 items-center justify-center overflow-hidden"
+            className="w-28 h-28 rounded-2xl bg-white border border-sand-200 items-center justify-center overflow-hidden"
           >
             {uploading ? (
-              <ActivityIndicator color="#0891B2" />
+              <ActivityIndicator color={primaryColor} />
             ) : imageUrl ? (
               <Image source={{ uri: imageUrl }} style={{ width: 112, height: 112 }} resizeMode="cover" />
             ) : (
-              <ImagePlus size={26} color="#9CA3AF" />
+              <ImagePlus size={26} color="#ABA39C" />
             )}
           </TouchableOpacity>
-          <Text className="text-xs text-gray-400 mt-1.5">
+          <Text className="text-xs text-sand-400 mt-1.5">
             {imageUrl ? 'Tap to change photo' : 'Add a cover photo (optional)'}
           </Text>
         </View>
 
         <View>
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
             Category Name
           </Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. Wedding Sarees"
-            placeholderTextColor="#9CA3AF"
-            className="bg-white px-4 py-3 rounded-xl text-sm text-gray-900 border border-gray-100"
+            placeholderTextColor="#ABA39C"
+            className="bg-white px-4 py-3 rounded-xl text-sm text-sand-900 border border-sand-100"
             maxLength={100}
           />
         </View>
 
         <View>
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
             Suggestions
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -105,11 +107,11 @@ export default function NewCategoryScreen() {
                   key={cat}
                   onPress={() => setName(cat)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -121,9 +123,9 @@ export default function NewCategoryScreen() {
         <TouchableOpacity
           disabled={!canCreate}
           onPress={() => create.mutate()}
-          className={`py-3.5 rounded-xl items-center mt-2 ${canCreate ? 'bg-cyan-600' : 'bg-gray-200'}`}
+          className={`py-3.5 rounded-xl items-center mt-2 ${canCreate ? 'bg-ink-600' : 'bg-sand-200'}`}
         >
-          <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-gray-400'}`}>
+          <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-sand-400'}`}>
             {create.isPending ? 'Creating…' : 'Create Category'}
           </Text>
         </TouchableOpacity>

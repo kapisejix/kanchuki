@@ -1109,3 +1109,10 @@ export const categoryApi = {
       body: JSON.stringify({ product_ids: productIds }),
     }),
 }
+
+// ─── Theme (admin-configurable brand color, F-020) ─────────────────
+
+export const themeApi = {
+  get: () =>
+    request<{ data: { primary_color: string } }>('/v1/public/theme', { getCacheTtlMs: 60_000 }),
+}

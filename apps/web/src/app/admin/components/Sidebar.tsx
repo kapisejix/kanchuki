@@ -30,6 +30,7 @@ import {
   ActivitySquare,
   Archive,
   Package,
+  Palette,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
@@ -55,6 +56,7 @@ const NAV_ITEMS = [
   { label: 'Settings', href: '/admin/settings', icon: Settings },
   { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge },
   { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu },
+  { label: 'Theme', href: '/admin/settings/theme', icon: Palette },
   { separator: true } as const,
   { label: 'Activity Feed', href: '/admin/activity', icon: ActivitySquare },
   { label: 'Audit Log', href: '/admin/audit-log', icon: History },

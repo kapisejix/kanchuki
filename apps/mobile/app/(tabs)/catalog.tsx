@@ -61,15 +61,15 @@ function ChipRow({
   if (options.length === 0) return null
   return (
     <View className="mb-2.5">
-      <Text className="text-xs text-gray-500 mb-1.5">{label}</Text>
+      <Text className="text-xs text-sand-500 mb-1.5">{label}</Text>
       <View className="flex-row flex-wrap gap-2">
         <TouchableOpacity
           onPress={() => onSelect(null)}
           className={`px-3 py-1.5 rounded-full border ${
-            selected === null ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+            selected === null ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
           }`}
         >
-          <Text className={`text-xs font-medium ${selected === null ? 'text-white' : 'text-gray-600'}`}>
+          <Text className={`text-xs font-medium ${selected === null ? 'text-white' : 'text-sand-600'}`}>
             All
           </Text>
         </TouchableOpacity>
@@ -78,10 +78,10 @@ function ChipRow({
             key={opt}
             onPress={() => onSelect(selected === opt ? null : opt)}
             className={`px-3 py-1.5 rounded-full border ${
-              selected === opt ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+              selected === opt ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
             }`}
           >
-            <Text className={`text-xs font-medium ${selected === opt ? 'text-white' : 'text-gray-600'}`}>
+            <Text className={`text-xs font-medium ${selected === opt ? 'text-white' : 'text-sand-600'}`}>
               {opt}
             </Text>
           </TouchableOpacity>
@@ -118,25 +118,25 @@ const CatalogCard = memo(function CatalogCard({
       showAIDot={!product.ai_tagged}
       footer={
         <View className="p-2.5 gap-1">
-          <Text className="text-xs text-gray-500 truncate" numberOfLines={1}>
+          <Text className="text-xs text-sand-500 truncate" numberOfLines={1}>
             {product.category ?? 'Product'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
-          <Text className="text-sm font-bold text-gray-900">
+          <Text className="text-sm font-bold text-sand-900">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
           {product.section && (
             <View className="flex-row items-center gap-1">
-              <MapPin size={10} color="#9CA3AF" />
-              <Text className="text-xs text-gray-400" numberOfLines={1}>{product.section.name}</Text>
+              <MapPin size={10} color="#ABA39C" />
+              <Text className="text-xs text-sand-400" numberOfLines={1}>{product.section.name}</Text>
             </View>
           )}
           {product.status === 'AVAILABLE' && (
             <TouchableOpacity
               onPress={onMarkSold}
-              className="mt-1.5 bg-gray-100 py-1.5 rounded-lg items-center"
+              className="mt-1.5 bg-sand-100 py-1.5 rounded-lg items-center"
             >
-              <Text className="text-xs text-gray-600 font-medium">Mark Sold</Text>
+              <Text className="text-xs text-sand-600 font-medium">Mark Sold</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -300,18 +300,18 @@ export default function CatalogScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16">
-        <Text className="text-gray-400 text-sm">
+        <Text className="text-sand-400 text-sm">
           {activeFilterCount > 0 ? 'No products match the filter' : 'No products yet'}
         </Text>
         {activeFilterCount > 0 && (
           <TouchableOpacity onPress={clearFilters} className="mt-2">
-            <Text className="text-cyan-600 text-xs font-medium underline">Clear filters</Text>
+            <Text className="text-ink-600 text-xs font-medium underline">Clear filters</Text>
           </TouchableOpacity>
         )}
         {activeFilterCount === 0 && (
           <TouchableOpacity
             onPress={() => router.push('/product/add')}
-            className="mt-3 bg-cyan-600 px-5 py-2.5 rounded-xl"
+            className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
           >
             <Text className="text-white text-sm font-semibold">Add First Product</Text>
           </TouchableOpacity>
@@ -322,7 +322,7 @@ export default function CatalogScreen() {
   )
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Hero Banner with text overlay */}
       {bannerUrl ? (
         <View style={{ width: SCREEN_WIDTH, height: BANNER_HEIGHT }} className="relative">
@@ -359,14 +359,14 @@ export default function CatalogScreen() {
       ) : null}
 
       {/* Header — filter icon only, top right */}
-      <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center justify-end">
+      <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center justify-end">
         <TouchableOpacity
           onPress={() => setShowFilters((v) => !v)}
           className={`w-10 h-10 rounded-xl items-center justify-center border ${
-            activeFilterCount > 0 ? 'bg-cyan-600 border-cyan-600' : 'bg-gray-100 border-gray-100'
+            activeFilterCount > 0 ? 'bg-ink-600 border-ink-600' : 'bg-sand-100 border-sand-100'
           }`}
         >
-          <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#6B7280'} />
+          <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#847B75'} />
         </TouchableOpacity>
       </View>
 
@@ -399,20 +399,20 @@ export default function CatalogScreen() {
                             style={{ width: 64 }}
                           >
                             <View
-                              className={`w-16 h-16 rounded-full overflow-hidden bg-gray-100 border-2 ${
-                                isActive ? 'border-cyan-600' : 'border-gray-200'
+                              className={`w-16 h-16 rounded-full overflow-hidden bg-sand-100 border-2 ${
+                                isActive ? 'border-ink-600' : 'border-sand-200'
                               }`}
                             >
                               {photoUrl ? (
                                 <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                               ) : (
                                 <View className="flex-1 items-center justify-center">
-                                  <Text className="text-gray-300 text-xl">👗</Text>
+                                  <Text className="text-sand-300 text-xl">👗</Text>
                                 </View>
                               )}
                             </View>
                             <Text
-                              className={`text-[10px] text-center ${isActive ? 'text-cyan-700 font-semibold' : 'text-gray-600'}`}
+                              className={`text-[10px] text-center ${isActive ? 'text-ink-700 font-semibold' : 'text-sand-600'}`}
                               numberOfLines={1}
                             >
                               {category}
@@ -426,17 +426,17 @@ export default function CatalogScreen() {
 
                 {/* Filter panel — Category, Occasion, Price, Color */}
                 {showFilters && (
-                  <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-gray-100' : ''}>
+                  <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-sand-100' : ''}>
                     <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Filters</Text>
+                      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">Filters</Text>
                       <View className="flex-row items-center gap-3">
                         {activeFilterCount > 0 && (
                           <TouchableOpacity onPress={clearFilters}>
-                            <Text className="text-cyan-600 text-xs font-medium">Clear all</Text>
+                            <Text className="text-ink-600 text-xs font-medium">Clear all</Text>
                           </TouchableOpacity>
                         )}
                         <TouchableOpacity onPress={() => setShowFilters(false)}>
-                          <X size={16} color="#9CA3AF" />
+                          <X size={16} color="#ABA39C" />
                         </TouchableOpacity>
                       </View>
                     </View>
@@ -450,15 +450,15 @@ export default function CatalogScreen() {
                     <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
                     {/* New Arrivals — derived flag, no cron, auto-expires at 30 days */}
                     <View className="mb-2.5">
-                      <Text className="text-xs text-gray-500 mb-1.5">Age</Text>
+                      <Text className="text-xs text-sand-500 mb-1.5">Age</Text>
                       <TouchableOpacity
                         onPress={() => setFilterNewArrival((v) => !v)}
                         className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
-                          filterNewArrival ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                          filterNewArrival ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                         }`}
                       >
                         {filterNewArrival && <Text className="text-white text-xs font-medium">✓ </Text>}
-                        <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-gray-600'}`}>
+                        <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-sand-600'}`}>
                           New Arrivals (30d)
                         </Text>
                       </TouchableOpacity>
@@ -479,17 +479,17 @@ export default function CatalogScreen() {
       {/* Selection action bar — replaces the FAB while items are selected */}
       {selectionMode ? (
         <View
-          className="absolute bottom-6 left-4 right-4 bg-gray-900 rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-lg"
+          className="absolute bottom-6 left-4 right-4 bg-sand-900 rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-lg"
           style={{ elevation: 6 }}
         >
           <TouchableOpacity onPress={clearSelection} disabled={deleting}>
-            <Text className="text-gray-300 text-sm">Cancel</Text>
+            <Text className="text-sand-300 text-sm">Cancel</Text>
           </TouchableOpacity>
           <Text className="text-white text-sm font-semibold">{selectedIds.size} selected</Text>
           <TouchableOpacity
             onPress={handleBulkDelete}
             disabled={deleting}
-            className="flex-row items-center gap-1.5 bg-red-600 px-3 py-2 rounded-xl"
+            className="flex-row items-center gap-1.5 bg-rust-600 px-3 py-2 rounded-xl"
           >
             {deleting ? (
               <ActivityIndicator size="small" color="white" />
@@ -506,7 +506,7 @@ export default function CatalogScreen() {
         <View className="absolute bottom-6 right-4 items-end gap-2">
           <TouchableOpacity
             onPress={() => router.push('/product/add')}
-            className="w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
+            className="w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
             style={{ elevation: 6 }}
             activeOpacity={0.8}
           >
@@ -514,20 +514,20 @@ export default function CatalogScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/product/bulk')}
-            className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
+            className="bg-white/90 px-3 py-1.5 rounded-full border border-sand-200 shadow-sm flex-row items-center gap-1.5"
             style={{ elevation: 3 }}
             activeOpacity={0.7}
           >
-            <Text className="text-xs text-gray-500">Bulk</Text>
+            <Text className="text-xs text-sand-500">Bulk</Text>
             <Text className="text-xs">📷</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/product/catalog-import')}
-            className="bg-white/90 px-3 py-1.5 rounded-full border border-gray-200 shadow-sm flex-row items-center gap-1.5"
+            className="bg-white/90 px-3 py-1.5 rounded-full border border-sand-200 shadow-sm flex-row items-center gap-1.5"
             style={{ elevation: 3 }}
             activeOpacity={0.7}
           >
-            <Text className="text-xs text-gray-500">Catalog</Text>
+            <Text className="text-xs text-sand-500">Catalog</Text>
             <Text className="text-xs">📋</Text>
           </TouchableOpacity>
         </View>

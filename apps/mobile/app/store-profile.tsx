@@ -8,12 +8,14 @@ import QRCode from 'react-native-qrcode-svg'
 import { Paths, writeAsStringAsync } from 'expo-file-system'
 import { retailerApi, collectionApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
+import { useTheme } from '../src/lib/theme'
 
 type QrSlug = { public_slug: string; profile_url: string }
 type RetailerMe = { storefront_collection_id: string | null }
 type CollectionRow = { id: string; title: string; status: string; product_count: number }
 
 export default function StoreProfileScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const qrRef = useRef<any>(null)
@@ -74,48 +76,48 @@ export default function StoreProfileScreen() {
   )
 
   return (
-    <ScrollView className="flex-1 bg-cyan-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
+    <ScrollView className="flex-1 bg-ink-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
       <View className="flex-row items-center justify-between px-4 mb-4">
         <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
-          <X size={22} color="#374151" />
+          <X size={22} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">Store QR Code</Text>
+        <Text className="text-base font-bold text-sand-900">Store QR Code</Text>
         <View className="w-10" />
       </View>
 
       <View className="items-center px-6 mb-6">
-        <View className="bg-white rounded-3xl p-6 border border-gray-100 items-center">
+        <View className="bg-white rounded-3xl p-6 border border-sand-100 items-center">
           {qrError ? (
             <View className="w-56 h-56 items-center justify-center px-4">
-              <Text className="text-sm text-gray-500 text-center mb-3">{"Couldn't load QR code"}</Text>
+              <Text className="text-sm text-sand-500 text-center mb-3">{"Couldn't load QR code"}</Text>
               <TouchableOpacity
                 onPress={() => void refetchQr()}
-                className="bg-cyan-600 rounded-full px-4 py-2"
+                className="bg-ink-600 rounded-full px-4 py-2"
               >
                 <Text className="text-white font-semibold text-sm">Retry</Text>
               </TouchableOpacity>
             </View>
           ) : qrLoading || !qr ? (
             <View className="w-56 h-56 items-center justify-center">
-              <ActivityIndicator color="#0891B2" />
+              <ActivityIndicator color={primaryColor} />
             </View>
           ) : (
             <QRCode value={qr.profile_url} size={220} getRef={(ref: any) => { qrRef.current = ref }} />
           )}
         </View>
-        <Text className="text-xs text-gray-500 text-center mt-3 px-8">
+        <Text className="text-xs text-sand-500 text-center mt-3 px-8">
           Customers scan this to view your store profile and catalog
         </Text>
         {qr && (
           <>
             <TouchableOpacity onPress={() => void Linking.openURL(qr.profile_url)}>
-              <Text className="text-sm text-cyan-700 underline text-center mt-2 px-8">
+              <Text className="text-sm text-ink-700 underline text-center mt-2 px-8">
                 {qr.profile_url}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void Share.share({ message: qr.profile_url })}
-              className="flex-row items-center gap-2 bg-cyan-600 px-5 py-3 rounded-2xl mt-4"
+              className="flex-row items-center gap-2 bg-ink-600 px-5 py-3 rounded-2xl mt-4"
             >
               <Share2 size={16} color="white" />
               <Text className="text-white font-semibold text-sm">Share Link</Text>
@@ -125,7 +127,7 @@ export default function StoreProfileScreen() {
               <TouchableOpacity
                 onPress={() => void handleExportImage()}
                 disabled={exporting}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-gray-800 border border-gray-700 py-3 rounded-2xl"
+                className="flex-1 flex-row items-center justify-center gap-2 bg-sand-800 border border-sand-700 py-3 rounded-2xl"
               >
                 {exporting ? (
                   <ActivityIndicator size="small" color="white" />
@@ -142,16 +144,16 @@ export default function StoreProfileScreen() {
       </View>
 
       <View className="px-4">
-        <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
           Catalog shown after scan
         </Text>
-        <Text className="text-xs text-gray-400 mb-3">
+        <Text className="text-xs text-sand-400 mb-3">
           Pick which collection opens once a visitor fills the contact form
         </Text>
 
         {collections.length === 0 ? (
-          <View className="bg-white rounded-2xl p-4 border border-gray-100">
-            <Text className="text-sm text-gray-500">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+            <Text className="text-sm text-sand-500">
               No active collections yet — create one from the Collections tab first.
             </Text>
           </View>
@@ -164,14 +166,14 @@ export default function StoreProfileScreen() {
                   key={c.id}
                   onPress={() => setStorefront.mutate(c.id)}
                   disabled={setStorefront.isPending}
-                  className={`flex-row items-center justify-between bg-white rounded-2xl p-4 border ${isSelected ? 'border-cyan-400' : 'border-gray-100'}`}
+                  className={`flex-row items-center justify-between bg-white rounded-2xl p-4 border ${isSelected ? 'border-ink-400' : 'border-sand-100'}`}
                 >
                   <View>
-                    <Text className="text-sm font-semibold text-gray-900">{c.title}</Text>
-                    <Text className="text-xs text-gray-400 mt-0.5">{c.product_count} products</Text>
+                    <Text className="text-sm font-semibold text-sand-900">{c.title}</Text>
+                    <Text className="text-xs text-sand-400 mt-0.5">{c.product_count} products</Text>
                   </View>
                   {isSelected && (
-                    <View className="w-6 h-6 rounded-full bg-cyan-500 items-center justify-center">
+                    <View className="w-6 h-6 rounded-full bg-ink-500 items-center justify-center">
                       <Check size={14} color="white" />
                     </View>
                   )}

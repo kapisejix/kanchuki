@@ -21,6 +21,7 @@ import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, 
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 import {
   OCCASION_TYPES,
   PRODUCT_CATEGORIES,
@@ -71,6 +72,7 @@ const STATUS_OPTIONS: { value: Product['status']; label: string }[] = [
 ]
 
 export default function ProductDetailScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -589,20 +591,20 @@ export default function ProductDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">Product Details</Text>
+        <Text className="text-base font-bold text-sand-900">Product Details</Text>
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={saving}
-          className="bg-cyan-600 px-4 py-2 rounded-xl"
+          className="bg-ink-600 px-4 py-2 rounded-xl"
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
@@ -664,18 +666,18 @@ export default function ProductDetailScreen() {
                       onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
                     />
                   ) : (
-                    <View className="w-full h-full bg-gray-100 items-center justify-center">
-                      <Text className="text-gray-300 text-5xl mb-2">👗</Text>
-                      <Text className="text-gray-400 text-xs">Image unavailable</Text>
+                    <View className="w-full h-full bg-sand-100 items-center justify-center">
+                      <Text className="text-sand-300 text-5xl mb-2">👗</Text>
+                      <Text className="text-sand-400 text-xs">Image unavailable</Text>
                     </View>
                   )}
                 </Animated.View>
               ))}
             </ScrollView>
           ) : (
-            <View className="w-full h-full bg-gray-100 items-center justify-center">
-              <Text className="text-gray-300 text-5xl mb-2">👗</Text>
-              <Text className="text-gray-400 text-xs">No photos</Text>
+            <View className="w-full h-full bg-sand-100 items-center justify-center">
+              <Text className="text-sand-300 text-5xl mb-2">👗</Text>
+              <Text className="text-sand-400 text-xs">No photos</Text>
             </View>
           )}
 
@@ -686,7 +688,7 @@ export default function ProductDetailScreen() {
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
-              <ChevronLeft size={20} color="#374151" />
+              <ChevronLeft size={20} color="#4B4039" />
             </TouchableOpacity>
           )}
 
@@ -697,13 +699,13 @@ export default function ProductDetailScreen() {
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
-              <ChevronRight size={20} color="#374151" />
+              <ChevronRight size={20} color="#4B4039" />
             </TouchableOpacity>
           )}
 
           {/* Variant badge */}
           {currentPhotoIsVariant && variantPreviewColor && (
-            <View className="absolute top-3 left-3 bg-cyan-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
+            <View className="absolute top-3 left-3 bg-ink-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
               <Palette size={12} color="white" />
               <Text className="text-white text-xs font-semibold">{variantPreviewColor}</Text>
             </View>
@@ -733,10 +735,10 @@ export default function ProductDetailScreen() {
                 setSpinFrameIndex(0)
                 setSpinViewerOpen(true)
               }}
-              className="flex-row items-center justify-center gap-2 bg-cyan-50 py-2.5 rounded-xl"
+              className="flex-row items-center justify-center gap-2 bg-ink-50 py-2.5 rounded-xl"
             >
-              <RotateCw size={16} color="#0891B2" />
-              <Text className="text-cyan-700 text-sm font-semibold">View 360°</Text>
+              <RotateCw size={16} color={primaryColor} />
+              <Text className="text-ink-700 text-sm font-semibold">View 360°</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -760,7 +762,7 @@ export default function ProductDetailScreen() {
                       }
                     }}
                     className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${
-                      isSelected ? 'border-cyan-600' : 'border-gray-200'
+                      isSelected ? 'border-ink-600' : 'border-sand-200'
                     }`}
                   >
                     <Image
@@ -769,7 +771,7 @@ export default function ProductDetailScreen() {
                       contentFit="cover"
                     />
                     {isVariant && (
-                      <View className="absolute bottom-0 left-0 right-0 bg-cyan-600/80 py-0.5">
+                      <View className="absolute bottom-0 left-0 right-0 bg-ink-600/80 py-0.5">
                         <Text className="text-white text-[8px] text-center font-medium">
                           {variantPreviewColor ?? ''}
                         </Text>
@@ -795,11 +797,11 @@ export default function ProductDetailScreen() {
                     key={piece}
                     onPress={() => void handleSetPieceType(photo.id, piece)}
                     className={`px-3 py-1 rounded-full border flex-row items-center gap-1 ${
-                      selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                      selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
                   >
                     {selected && <Check size={12} color="white" />}
-                    <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-sand-600'}`}>
                       {piece} piece
                     </Text>
                   </TouchableOpacity>
@@ -810,8 +812,8 @@ export default function ProductDetailScreen() {
         })}
       </View>
       {isPieceTaggable(product.category) && (
-        <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
-          <Text className="text-cyan-700 text-xs">
+        <View className="mx-4 mt-3 bg-ink-50 border border-ink-100 rounded-xl px-3 py-2">
+          <Text className="text-ink-700 text-xs">
             Tag one photo {'"'}Upper piece{'"'} and one {'"'}Lower piece{'"'} for a better try-on match on this 2-piece outfit.
           </Text>
         </View>
@@ -830,14 +832,14 @@ export default function ProductDetailScreen() {
                 key={piece}
                 onPress={() => void handleCropPiece(piece)}
                 disabled={cropping !== null}
-                className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-cyan-300 rounded-xl py-2"
+                className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
               >
                 {cropping === piece ? (
-                  <ActivityIndicator size="small" color="#0891B2" />
+                  <ActivityIndicator size="small" color={primaryColor} />
                 ) : (
-                  <Scissors size={14} color="#0891B2" />
+                  <Scissors size={14} color={primaryColor} />
                 )}
-                <Text className="text-cyan-700 text-xs font-medium capitalize">
+                <Text className="text-ink-700 text-xs font-medium capitalize">
                   Crop {piece}
                 </Text>
               </TouchableOpacity>
@@ -850,14 +852,14 @@ export default function ProductDetailScreen() {
         <TouchableOpacity
           onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
           disabled={cleaningPhotoId !== null}
-          className="mx-4 mt-2 flex-row items-center justify-center gap-1.5 border border-dashed border-cyan-300 rounded-xl py-2"
+          className="mx-4 mt-2 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
         >
           {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
-            <ActivityIndicator size="small" color="#0891B2" />
+            <ActivityIndicator size="small" color={primaryColor} />
           ) : (
-            <Wand2 size={14} color="#0891B2" />
+            <Wand2 size={14} color={primaryColor} />
           )}
-          <Text className="text-cyan-700 text-xs font-medium">
+          <Text className="text-ink-700 text-xs font-medium">
             {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id
               ? 'Cleaning up...'
               : 'Crop & remove background'}
@@ -866,18 +868,18 @@ export default function ProductDetailScreen() {
       )}
 
       {!product.ai_tagged && !product.ai_tag_error && (
-        <View className="mx-4 mt-3 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2 flex-row items-center gap-2">
-          <ActivityIndicator size="small" color="#0891B2" />
-          <Text className="text-cyan-700 text-xs">AI tagging in progress...</Text>
+        <View className="mx-4 mt-3 bg-ink-50 border border-ink-100 rounded-xl px-3 py-2 flex-row items-center gap-2">
+          <ActivityIndicator size="small" color={primaryColor} />
+          <Text className="text-ink-700 text-xs">AI tagging in progress...</Text>
         </View>
       )}
       {product.ai_tag_error && (
-        <View className="mx-4 mt-3 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
-          <Text className="text-amber-700 text-xs font-semibold">AI tagging failed</Text>
-          <Text className="text-amber-600 text-[10px] mt-1 leading-relaxed" numberOfLines={3}>
+        <View className="mx-4 mt-3 bg-turmeric-50 border border-turmeric-100 rounded-xl px-3 py-2">
+          <Text className="text-turmeric-700 text-xs font-semibold">AI tagging failed</Text>
+          <Text className="text-turmeric-600 text-[10px] mt-1 leading-relaxed" numberOfLines={3}>
             {product.ai_tag_error}
           </Text>
-          <Text className="text-amber-500 text-[10px] mt-1">
+          <Text className="text-turmeric-500 text-[10px] mt-1">
             You can edit the fields below manually. Tap Save when done.
           </Text>
         </View>
@@ -890,7 +892,7 @@ export default function ProductDetailScreen() {
             onPress={() =>
               router.push({ pathname: '/tryon/in-store', params: { productId: product.id } })
             }
-            className="flex-row items-center justify-center gap-2 bg-cyan-600 py-3.5 rounded-2xl"
+            className="flex-row items-center justify-center gap-2 bg-ink-600 py-3.5 rounded-2xl"
             activeOpacity={0.8}
           >
             <Sparkles size={18} color="white" />
@@ -899,23 +901,23 @@ export default function ProductDetailScreen() {
         )}
 
         {/* Color variants — tapped variant shows in gallery preview */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Colors · Same Design
             </Text>
             <TouchableOpacity
               onPress={() => router.push(`/product/${product.id}/add-color`)}
-              className="bg-cyan-50 px-2.5 py-1 rounded-full flex-row items-center gap-1"
+              className="bg-ink-50 px-2.5 py-1 rounded-full flex-row items-center gap-1"
             >
-              <Plus size={12} color="#0891B2" />
-              <Text className="text-cyan-700 text-xs font-semibold">Add Color</Text>
+              <Plus size={12} color={primaryColor} />
+              <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
             </TouchableOpacity>
           </View>
 
           {product.variants.length === 0 ? (
-            <View className="bg-gray-50 rounded-xl px-4 py-3">
-              <Text className="text-xs text-gray-400 text-center">
+            <View className="bg-sand-50 rounded-xl px-4 py-3">
+              <Text className="text-xs text-sand-400 text-center">
                 No color variants yet. Add photos of the same design in different colors.
               </Text>
             </View>
@@ -948,8 +950,8 @@ export default function ProductDetailScreen() {
                       className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
                     >
                       <View
-                        className={`w-20 h-24 rounded-xl overflow-hidden bg-gray-100 border-2 ${
-                          isActive ? 'border-cyan-600' : 'border-gray-200'
+                        className={`w-20 h-24 rounded-xl overflow-hidden bg-sand-100 border-2 ${
+                          isActive ? 'border-ink-600' : 'border-sand-200'
                         }`}
                       >
                         {variant.photo_url ? (
@@ -960,13 +962,13 @@ export default function ProductDetailScreen() {
                           />
                         ) : (
                           <View className="flex-1 items-center justify-center">
-                            <Text className="text-gray-300 text-lg">?</Text>
+                            <Text className="text-sand-300 text-lg">?</Text>
                           </View>
                         )}
                       </View>
                       <View className="flex-row items-center gap-1">
-                        {isActive && <Check size={10} color="#0891B2" />}
-                        <Text className={`text-xs font-medium ${isActive ? 'text-cyan-700' : 'text-gray-500'}`}>
+                        {isActive && <Check size={10} color={primaryColor} />}
+                        <Text className={`text-xs font-medium ${isActive ? 'text-ink-700' : 'text-sand-500'}`}>
                           {variant.color}
                         </Text>
                       </View>
@@ -979,33 +981,33 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* AI-read attributes (read-only summary) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center gap-2 mb-2">
-            <Sparkles size={14} color="#0891B2" />
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Sparkles size={14} color={primaryColor} />
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               AI Summary
             </Text>
           </View>
-          <Text className="text-base font-bold text-gray-900">
+          <Text className="text-base font-bold text-sand-900">
             {product.category ?? 'Uncategorized'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
-          <Text className="text-sm text-gray-500 mt-0.5">
+          <Text className="text-sm text-sand-500 mt-0.5">
             {[product.fabric_estimate, product.pattern].filter(Boolean).join(' · ') || 'AI details pending'}
           </Text>
           {product.ai_tag_error && (
-            <Text className="text-xs text-amber-600 mt-1">
+            <Text className="text-xs text-turmeric-600 mt-1">
               AI failed — edit fields below manually
             </Text>
           )}
-          <Text className="text-lg font-bold text-cyan-600 mt-2">
+          <Text className="text-lg font-bold text-ink-600 mt-2">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
         </View>
 
         {/* Category (editable) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Category *
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1016,11 +1018,11 @@ export default function ProductDetailScreen() {
                   key={cat}
                   onPress={() => setEditedCategory(selected ? null : cat)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {cat}
                   </Text>
                 </TouchableOpacity>
@@ -1030,17 +1032,17 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Merchandising category (retailer-curated, optional) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Category (Catalog Group)
             </Text>
             <TouchableOpacity onPress={() => router.push('/category')}>
-              <Text className="text-cyan-600 text-xs font-semibold">Manage</Text>
+              <Text className="text-ink-600 text-xs font-semibold">Manage</Text>
             </TouchableOpacity>
           </View>
           {categories.length === 0 ? (
-            <Text className="text-xs text-gray-400">
+            <Text className="text-xs text-sand-400">
               No categories yet — tap Manage to create one.
             </Text>
           ) : (
@@ -1052,11 +1054,11 @@ export default function ProductDetailScreen() {
                     key={cat.id}
                     onPress={() => setEditedCategoryId(selected ? null : cat.id)}
                     className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                      selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                      selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
                   >
                     {selected && <Check size={12} color="white" />}
-                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                       {cat.name}
                     </Text>
                   </TouchableOpacity>
@@ -1067,22 +1069,22 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Color (editable) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Color
           </Text>
           <TextInput
             value={editedColor}
             onChangeText={setEditedColor}
             placeholder="e.g. Bottle Green, Navy Blue, Rani Pink"
-            className="text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
         {/* Fabric (editable) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Fabric
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1093,11 +1095,11 @@ export default function ProductDetailScreen() {
                   key={fab}
                   onPress={() => setEditedFabric(selected ? null : fab)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {fab}
                   </Text>
                 </TouchableOpacity>
@@ -1107,8 +1109,8 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Pattern (editable) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Pattern
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1119,11 +1121,11 @@ export default function ProductDetailScreen() {
                   key={pat}
                   onPress={() => setEditedPattern(selected ? null : pat)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {pat}
                   </Text>
                 </TouchableOpacity>
@@ -1133,13 +1135,13 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* 360 spin view */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between">
             <View className="flex-1">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
                 360° Spin View
               </Text>
-              <Text className="text-xs text-gray-400">
+              <Text className="text-xs text-sand-400">
                 {product.spin_status === 'processing'
                   ? 'Processing spin video...'
                   : product.spin_status === 'ready'
@@ -1152,10 +1154,10 @@ export default function ProductDetailScreen() {
             <TouchableOpacity
               onPress={() => router.push(`/product/${product.id}/spin-video`)}
               disabled={product.spin_status === 'processing'}
-              className="bg-cyan-50 px-2.5 py-1.5 rounded-full flex-row items-center gap-1"
+              className="bg-ink-50 px-2.5 py-1.5 rounded-full flex-row items-center gap-1"
             >
-              <RotateCw size={12} color="#0891B2" />
-              <Text className="text-cyan-700 text-xs font-semibold">
+              <RotateCw size={12} color={primaryColor} />
+              <Text className="text-ink-700 text-xs font-semibold">
                 {product.spin_status === 'ready' ? 'Retake' : 'Add'}
               </Text>
             </TouchableOpacity>
@@ -1163,8 +1165,8 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Status */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Status
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1176,11 +1178,11 @@ export default function ProductDetailScreen() {
                   disabled={statusUpdating}
                   onPress={() => void handleStatusChange(opt.value)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
@@ -1190,8 +1192,8 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Price */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Price (₹)
           </Text>
           <TextInput
@@ -1199,16 +1201,16 @@ export default function ProductDetailScreen() {
             onChangeText={setPrice}
             placeholder="e.g. 1500"
             keyboardType="numeric"
-            className="text-lg font-bold text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-lg font-bold text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
         {/* Location */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center gap-1.5 mb-2">
-            <MapPin size={12} color="#6B7280" />
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <MapPin size={12} color="#847B75" />
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Store Location
             </Text>
           </View>
@@ -1216,14 +1218,14 @@ export default function ProductDetailScreen() {
             value={location}
             onChangeText={setLocation}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
-            className="text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
         {/* Sizes */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Sizes
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1238,11 +1240,11 @@ export default function ProductDetailScreen() {
                     )
                   }
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {size}
                   </Text>
                 </TouchableOpacity>
@@ -1252,8 +1254,8 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Occasion */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Occasion
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -1268,11 +1270,11 @@ export default function ProductDetailScreen() {
                     )
                   }
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {occ}
                   </Text>
                 </TouchableOpacity>
@@ -1282,8 +1284,8 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* Notes */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Notes (private)
           </Text>
           <TextInput
@@ -1292,8 +1294,8 @@ export default function ProductDetailScreen() {
             placeholder="Any additional notes for your staff..."
             multiline
             numberOfLines={2}
-            className="text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
@@ -1312,14 +1314,14 @@ export default function ProductDetailScreen() {
         <TouchableOpacity
           onPress={handleDelete}
           disabled={deleting}
-          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-red-100 bg-red-50"
+          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
         >
           {deleting ? (
-            <ActivityIndicator size="small" color="#DC2626" />
+            <ActivityIndicator size="small" color="#A24854" />
           ) : (
-            <Trash2 size={16} color="#DC2626" />
+            <Trash2 size={16} color="#A24854" />
           )}
-          <Text className="text-red-600 font-semibold text-sm">
+          <Text className="text-rust-600 font-semibold text-sm">
             {deleting ? 'Deleting…' : 'Delete Product'}
           </Text>
         </TouchableOpacity>
@@ -1344,7 +1346,7 @@ export default function ProductDetailScreen() {
               <Text className="text-white font-semibold mb-1">
                 Drag the line to where the {cropDraft.piece} piece {cropDraft.piece === 'upper' ? 'ends' : 'begins'}
               </Text>
-              <Text className="text-gray-400 text-xs mb-4">
+              <Text className="text-sand-400 text-xs mb-4">
                 {cropDraft.piece === 'upper' ? 'Top' : 'Bottom'} highlighted section will be saved
               </Text>
               <View
@@ -1369,12 +1371,12 @@ export default function ProductDetailScreen() {
                     backgroundColor: cropDraft.piece === 'upper' ? 'rgba(0,0,0,0.6)' : 'transparent',
                   }}
                 />
-                <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: lineY - 1, height: 2, backgroundColor: '#0891B2' }} />
+                <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: lineY - 1, height: 2, backgroundColor: primaryColor }} />
                 <View
                   pointerEvents="none"
                   style={{
                     position: 'absolute', left: '50%', marginLeft: -22, top: lineY - 14,
-                    width: 44, height: 28, borderRadius: 14, backgroundColor: '#0891B2',
+                    width: 44, height: 28, borderRadius: 14, backgroundColor: primaryColor,
                     alignItems: 'center', justifyContent: 'center',
                   }}
                 >
@@ -1393,7 +1395,7 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity
                   onPress={() => void handleConfirmCrop()}
                   disabled={cropSaving}
-                  className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+                  className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
                 >
                   {cropSaving ? <ActivityIndicator color="white" /> : <Text className="text-white font-semibold">Crop & Save</Text>}
                 </TouchableOpacity>
@@ -1572,6 +1574,7 @@ function RelatedProductsSection({
   excludeId: string
   onSelect: (id: string) => void
 }) {
+  const { primaryColor } = useTheme()
   const [related, setRelated] = useState<RelatedProduct[]>([])
   const [loadingRelated, setLoadingRelated] = useState(true)
 
@@ -1600,10 +1603,10 @@ function RelatedProductsSection({
   if (loadingRelated || related.length === 0) return null
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-gray-100">
+    <View className="bg-white rounded-2xl p-4 border border-sand-100">
       <View className="flex-row items-center gap-2 mb-3">
-        <ShoppingBag size={14} color="#0891B2" />
-        <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <ShoppingBag size={14} color={primaryColor} />
+        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
           More {category}
         </Text>
       </View>
@@ -1616,7 +1619,7 @@ function RelatedProductsSection({
               className="w-28"
               activeOpacity={0.7}
             >
-              <View className="w-28 h-36 rounded-xl overflow-hidden bg-gray-100 border border-gray-200">
+              <View className="w-28 h-36 rounded-xl overflow-hidden bg-sand-100 border border-sand-200">
                 {rp.primary_photo_url ? (
                   <Image
                     source={{ uri: rp.primary_photo_url }}
@@ -1625,20 +1628,20 @@ function RelatedProductsSection({
                   />
                 ) : (
                   <View className="flex-1 items-center justify-center">
-                    <Text className="text-gray-300">👗</Text>
+                    <Text className="text-sand-300">👗</Text>
                   </View>
                 )}
                 {rp.status === 'SOLD' && (
-                  <View className="absolute top-1 left-1 bg-red-500 rounded-full px-1.5 py-0.5">
+                  <View className="absolute top-1 left-1 bg-rust-500 rounded-full px-1.5 py-0.5">
                     <Text className="text-white text-[8px] font-bold">Sold</Text>
                   </View>
                 )}
               </View>
-              <Text className="text-xs font-bold text-gray-900 mt-1.5 tabular-nums">
+              <Text className="text-xs font-bold text-sand-900 mt-1.5 tabular-nums">
                 {rp.price_min ? `₹${(rp.price_min / 100).toLocaleString('en-IN')}` : ''}
               </Text>
               {rp.primary_color && (
-                <Text className="text-[10px] text-gray-500 truncate">{rp.primary_color}</Text>
+                <Text className="text-[10px] text-sand-500 truncate">{rp.primary_color}</Text>
               )}
             </TouchableOpacity>
           ))}

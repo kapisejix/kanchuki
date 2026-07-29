@@ -17,17 +17,23 @@ const config: Config = {
         // color overrides are project-wide — keeping the marketing neutral under a
         // different key is what keeps the admin dashboard's palette untouched.
         ink: {
-          // Flaming Cherry — primary brand/action color.
-          50: 'oklch(97% 0.015 22)',
-          100: 'oklch(93% 0.035 22)',
-          200: 'oklch(87% 0.07 23)',
-          300: 'oklch(79% 0.12 24)',
-          400: 'oklch(68% 0.19 25)',
-          500: 'oklch(59% 0.22 26)',
-          600: '#D41E2A',
-          700: 'oklch(45% 0.185 26)',
-          800: 'oklch(37% 0.15 25)',
-          900: 'oklch(28% 0.11 24)',
+          // Navy — primary brand/action color (revised 2026-07-29, was "Flaming
+          // Cherry" red). Hex, not oklch, to stay pixel-identical with the mobile
+          // scale in apps/mobile/tailwind.config.js (RN's style engine can't parse
+          // oklch at all — see that file's comment).
+          50: '#F3F5F8',
+          100: '#E2E7ED',
+          200: '#C7D0DA',
+          300: '#A4B2C0',
+          400: '#7B8CA0',
+          500: '#4E6178',
+          // References the same --color-ink custom property globals.css sets
+          // (and RootLayout overrides per-request from the admin theme API) —
+          // one lever for admin-configurable branding instead of two.
+          600: 'var(--color-ink, #1E2A3D)',
+          700: '#182233',
+          800: '#121A27',
+          900: '#0C121C',
         },
         rust: {
           // Juicy Details — secondary accent. Darkened a step past the raw

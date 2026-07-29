@@ -27,6 +27,7 @@ import {
 import ProductCard from '../../src/components/ProductCard'
 import { productApi, tryOnApi, retailerApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 import { PLAN_LIMITS } from '@kanchuki/shared'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
@@ -42,6 +43,7 @@ type Product = {
 }
 
 export default function InStoreTryOnScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { productId: preselectedProductId } = useLocalSearchParams<{ productId?: string }>()
   const [step, setStep] = useState<Step>(preselectedProductId ? 'capture' : 'select')
@@ -261,7 +263,7 @@ export default function InStoreTryOnScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-cyan-600 px-6 py-3 rounded-xl"
+          className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -270,16 +272,16 @@ export default function InStoreTryOnScreen() {
   }
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()}>
-          <X size={22} color="#374151" />
+          <X size={22} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">
+        <Text className="text-base font-bold text-sand-900">
           {step === 'select' && 'Select Product'}
           {step === 'capture' && 'Capture Customer'}
           {step === 'preview' && 'Review & Try-On'}
@@ -293,9 +295,9 @@ export default function InStoreTryOnScreen() {
       {/* Try-on credits banner */}
       {retailer && (
         <View
-          className={`px-4 py-2 border-b ${creditsLow ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'}`}
+          className={`px-4 py-2 border-b ${creditsLow ? 'bg-turmeric-50 border-turmeric-100' : 'bg-white border-sand-100'}`}
         >
-          <Text className={`text-xs font-medium ${creditsLow ? 'text-amber-700' : 'text-gray-500'}`}>
+          <Text className={`text-xs font-medium ${creditsLow ? 'text-turmeric-700' : 'text-sand-500'}`}>
             {creditsRemaining} try-on credit{creditsRemaining === 1 ? '' : 's'} left
             {creditsLow ? ' — running low, upgrade or top up soon' : ''}
           </Text>
@@ -307,15 +309,15 @@ export default function InStoreTryOnScreen() {
         <>
           {preselectedProductId ? (
             <View className="flex-1 items-center justify-center">
-              <ActivityIndicator color="#0891B2" />
+              <ActivityIndicator color={primaryColor} />
             </View>
           ) : (
             <ScrollView className="flex-1 px-4 pt-4">
-              <Text className="text-gray-500 text-sm mb-4">
+              <Text className="text-sand-500 text-sm mb-4">
                 Select a product for the customer to try on
               </Text>
               {productsLoading ? (
-                <ActivityIndicator className="mt-8" color="#0891B2" />
+                <ActivityIndicator className="mt-8" color={primaryColor} />
               ) : (
                 <View className="flex-row flex-wrap gap-3">
                   {products.map((p) => (
@@ -331,10 +333,10 @@ export default function InStoreTryOnScreen() {
                       placeholderIcon="👕"
                       footer={
                         <View className="p-2">
-                          <Text className="text-xs text-gray-500 truncate">
+                          <Text className="text-xs text-sand-500 truncate">
                             {p.category ?? 'Product'}
                           </Text>
-                          <Text className="text-xs text-gray-700" numberOfLines={1}>
+                          <Text className="text-xs text-sand-700" numberOfLines={1}>
                             {p.primary_color ?? ''}
                           </Text>
                         </View>
@@ -411,8 +413,8 @@ export default function InStoreTryOnScreen() {
       {step === 'preview' && (
         <View className="flex-1 px-4 pt-4">
           {error && (
-            <View className="bg-red-50 border border-red-200 rounded-2xl p-3 mb-4">
-              <Text className="text-red-700 text-sm">{error}</Text>
+            <View className="bg-rust-50 border border-rust-200 rounded-2xl p-3 mb-4">
+              <Text className="text-rust-700 text-sm">{error}</Text>
             </View>
           )}
 
@@ -420,8 +422,8 @@ export default function InStoreTryOnScreen() {
             {/* Selected product */}
             {selectedProduct?.primary_photo_url && (
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 font-medium mb-2">Product</Text>
-                <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden">
+                <Text className="text-xs text-sand-500 font-medium mb-2">Product</Text>
+                <View className="aspect-[3/4] bg-sand-100 rounded-2xl overflow-hidden">
                   <Image
                     source={{ uri: selectedProduct.primary_photo_url }}
                     style={{ width: '100%', height: '100%' }}
@@ -433,8 +435,8 @@ export default function InStoreTryOnScreen() {
             {/* Customer photo */}
             {customerPhotoUri && (
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 font-medium mb-2">Customer</Text>
-                <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden">
+                <Text className="text-xs text-sand-500 font-medium mb-2">Customer</Text>
+                <View className="aspect-[3/4] bg-sand-100 rounded-2xl overflow-hidden">
                   <Image
                     source={{ uri: customerPhotoUri }}
                     style={{ width: '100%', height: '100%' }}
@@ -453,12 +455,12 @@ export default function InStoreTryOnScreen() {
           >
             <View
               className={`w-5 h-5 rounded-md border items-center justify-center mt-0.5 ${
-                consentToTraining ? 'bg-cyan-600 border-cyan-600' : 'border-gray-300'
+                consentToTraining ? 'bg-ink-600 border-ink-600' : 'border-sand-300'
               }`}
             >
               {consentToTraining && <Check size={12} color="white" />}
             </View>
-            <Text className="flex-1 text-xs text-gray-500 leading-5">
+            <Text className="flex-1 text-xs text-sand-500 leading-5">
               Customer agrees to let Kanchuki keep a copy of this photo and outfit
               to improve future try-on results. Optional — ask the customer before
               checking this.
@@ -468,16 +470,16 @@ export default function InStoreTryOnScreen() {
           <View className="mt-4 gap-3">
             <TouchableOpacity
               onPress={() => void handleRunTryOn()}
-              className="bg-cyan-600 py-4 rounded-2xl items-center"
+              className="bg-ink-600 py-4 rounded-2xl items-center"
               activeOpacity={0.8}
             >
               <Text className="text-white font-bold">✨ Try This On!</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setStep('capture')}
-              className="py-3 rounded-2xl items-center border border-gray-200"
+              className="py-3 rounded-2xl items-center border border-sand-200"
             >
-              <Text className="text-gray-600 font-medium">Retake Photo</Text>
+              <Text className="text-sand-600 font-medium">Retake Photo</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -486,22 +488,22 @@ export default function InStoreTryOnScreen() {
       {/* Step: Uploading */}
       {step === 'uploading' && (
         <View className="flex-1 items-center justify-center gap-4">
-          <ActivityIndicator size="large" color="#0891B2" />
-          <Text className="text-gray-900 font-semibold">Uploading customer photo...</Text>
+          <ActivityIndicator size="large" color={primaryColor} />
+          <Text className="text-sand-900 font-semibold">Uploading customer photo...</Text>
         </View>
       )}
 
       {/* Step: Processing */}
       {step === 'processing' && (
         <View className="flex-1 items-center justify-center gap-4 px-8">
-          <View className="w-20 h-20 bg-cyan-100 rounded-3xl items-center justify-center">
-            <RefreshCw size={36} color="#0891B2" />
+          <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
+            <RefreshCw size={36} color={primaryColor} />
           </View>
-          <Text className="text-gray-900 text-lg font-bold text-center">AI is working its magic...</Text>
-          <Text className="text-gray-500 text-sm text-center">
+          <Text className="text-sand-900 text-lg font-bold text-center">AI is working its magic...</Text>
+          <Text className="text-sand-500 text-sm text-center">
             Generating a try-on preview. This takes about 10-20 seconds.
           </Text>
-          <ActivityIndicator size="small" color="#0891B2" />
+          <ActivityIndicator size="small" color={primaryColor} />
         </View>
       )}
 
@@ -512,8 +514,8 @@ export default function InStoreTryOnScreen() {
             {/* Side by side */}
             {selectedProduct?.primary_photo_url && (
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 font-medium mb-2">Original</Text>
-                <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden">
+                <Text className="text-xs text-sand-500 font-medium mb-2">Original</Text>
+                <View className="aspect-[3/4] bg-sand-100 rounded-2xl overflow-hidden">
                   <Image
                     source={{ uri: selectedProduct.primary_photo_url }}
                     style={{ width: '100%', height: '100%' }}
@@ -524,8 +526,8 @@ export default function InStoreTryOnScreen() {
             )}
             {resultUrl && (
               <View className="flex-1">
-                <Text className="text-xs text-cyan-600 font-medium mb-2">Try-On ✨</Text>
-                <View className="aspect-[3/4] bg-gray-100 rounded-2xl overflow-hidden border-2 border-cyan-300">
+                <Text className="text-xs text-ink-600 font-medium mb-2">Try-On ✨</Text>
+                <View className="aspect-[3/4] bg-sand-100 rounded-2xl overflow-hidden border-2 border-ink-300">
                   <Image
                     source={{ uri: resultUrl }}
                     style={{ width: '100%', height: '100%' }}
@@ -542,7 +544,7 @@ export default function InStoreTryOnScreen() {
                 // Share the result
                 router.back()
               }}
-              className="bg-cyan-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
+              className="bg-ink-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
               activeOpacity={0.8}
             >
               <Share2 size={18} color="white" />
@@ -550,11 +552,11 @@ export default function InStoreTryOnScreen() {
             </TouchableOpacity>
 
             {revocationToken && (
-              <View className="bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5">
-                <Text className="text-xs text-gray-500 leading-4">
+              <View className="bg-sand-50 border border-sand-100 rounded-xl px-3 py-2.5">
+                <Text className="text-xs text-sand-500 leading-4">
                   Customer consented to training.{" "}
                   <Text
-                    className="text-cyan-600 underline"
+                    className="text-ink-600 underline"
                     onPress={() => {
                       const webUrl = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://kanchuki.app'
                       Linking.openURL(
@@ -577,9 +579,9 @@ export default function InStoreTryOnScreen() {
                 setConsentToTraining(false)
                 setStep(preselectedProductId ? 'capture' : 'select')
               }}
-              className="py-3 rounded-2xl items-center border border-gray-200"
+              className="py-3 rounded-2xl items-center border border-sand-200"
             >
-              <Text className="text-gray-600 font-medium">Try Another</Text>
+              <Text className="text-sand-600 font-medium">Try Another</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -91,13 +91,13 @@ export default function OtpScreen() {
         <View>
           <TouchableOpacity
             onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-gray-100 items-center justify-center mb-8"
+            className="w-10 h-10 rounded-full bg-sand-100 items-center justify-center mb-8"
           >
             <Text className="text-lg">←</Text>
           </TouchableOpacity>
 
-          <Text className="text-3xl font-bold text-gray-900">Enter OTP</Text>
-          <Text className="text-gray-500 text-base mt-2">
+          <Text className="text-3xl font-bold text-sand-900">Enter OTP</Text>
+          <Text className="text-sand-500 text-base mt-2">
             Sent to +91 ****{phone?.slice(-4)}
           </Text>
 
@@ -110,13 +110,13 @@ export default function OtpScreen() {
                   onPress={() => inputRef.current?.focus()}
                   className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
                     otp.length === i
-                      ? 'border-cyan-600 bg-cyan-50'
+                      ? 'border-ink-600 bg-ink-50'
                       : otp.length > i
-                      ? 'border-cyan-300 bg-cyan-50'
-                      : 'border-gray-200 bg-cyan-50'
+                      ? 'border-ink-300 bg-ink-50'
+                      : 'border-sand-200 bg-ink-50'
                   }`}
                 >
-                  <Text className="text-2xl font-bold text-gray-900">
+                  <Text className="text-2xl font-bold text-sand-900">
                     {otp[i] ?? ''}
                   </Text>
                 </TouchableOpacity>
@@ -142,12 +142,12 @@ export default function OtpScreen() {
           {/* Resend */}
           <View className="flex-row justify-center mt-6">
             {resendTimer > 0 ? (
-              <Text className="text-gray-400 text-sm">
+              <Text className="text-sand-400 text-sm">
                 Resend OTP in {resendTimer}s
               </Text>
             ) : (
               <TouchableOpacity onPress={() => void handleResend()} disabled={resending}>
-                <Text className="text-cyan-600 text-sm font-semibold">
+                <Text className="text-ink-600 text-sm font-semibold">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
               </TouchableOpacity>
@@ -160,12 +160,12 @@ export default function OtpScreen() {
           onPress={() => void handleVerify(otp)}
           disabled={otp.length !== 6 || loading}
           className={`py-4 rounded-2xl items-center justify-center ${
-            otp.length === 6 && !loading ? 'bg-cyan-600' : 'bg-gray-200'
+            otp.length === 6 && !loading ? 'bg-ink-600' : 'bg-sand-200'
           }`}
         >
           {loading
             ? <ActivityIndicator color="white" />
-            : <Text className={`text-base font-bold ${otp.length === 6 ? 'text-white' : 'text-gray-400'}`}>
+            : <Text className={`text-base font-bold ${otp.length === 6 ? 'text-white' : 'text-sand-400'}`}>
                 Verify & Continue →
               </Text>}
         </TouchableOpacity>

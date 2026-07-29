@@ -6,7 +6,7 @@ export default function StaffLayout() {
       screenOptions={{
         headerShown: false,
         headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: '#111827',
+        headerTintColor: '#14100D',
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
       }}

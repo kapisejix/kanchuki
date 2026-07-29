@@ -19,6 +19,7 @@ import {
 } from 'lucide-react-native'
 import { analyticsApi, retailerApi } from '../../src/lib/api'
 import { AnalyticsSkeleton } from '../../src/components/Skeleton'
+import { useTheme } from '../../src/lib/theme'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -54,7 +55,11 @@ function formatDate(dateStr: string): string {
   return days[d.getDay()]
 }
 
-const COLORS = ['#0891B2', '#10B981', '#F59E0B', '#EF4444', '#3B82F6', '#EC4899']
+// ponytail: categorical chart palette needs 6 distinct swatches — the blanket
+// hex remap collapsed several to the same value, so these are hand-picked
+// from the ink/rust/turmeric/sand ramps (tailwind.config.js) instead. First
+// swatch is the admin-configurable brand color, so it's injected by the
+// component (module scope can't call useTheme()).
 
 // ── Stat Card ──────────────────────────────────────────────────────
 
@@ -74,15 +79,15 @@ const StatCard = memo(function StatCard({
   onPress?: () => void
 }) {
   const content = (
-    <View className="flex-1 bg-white rounded-2xl p-4 border border-gray-100 min-w-[48%]">
+    <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100 min-w-[48%]">
       <View className="flex-row items-center gap-2 mb-2">
         <View className="w-8 h-8 rounded-lg items-center justify-center" style={{ backgroundColor: `${color}15` }}>
           {icon}
         </View>
       </View>
-      <Text className="text-2xl font-bold text-gray-900">{value}</Text>
-      <Text className="text-xs text-gray-500 mt-0.5">{label}</Text>
-      {subtitle && <Text className="text-[10px] text-gray-400 mt-0.5">{subtitle}</Text>}
+      <Text className="text-2xl font-bold text-sand-900">{value}</Text>
+      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
+      {subtitle && <Text className="text-[10px] text-sand-400 mt-0.5">{subtitle}</Text>}
     </View>
   )
 
@@ -110,18 +115,18 @@ function MiniBarChart({
         const height = Math.max((d.value / max) * 80, d.value > 0 ? 8 : 2)
         return (
           <View key={i} className="flex-1 items-center gap-1">
-            <Text className="text-[10px] text-gray-400 font-medium">
+            <Text className="text-[10px] text-sand-400 font-medium">
               {d.value > 0 ? d.value : ''}
             </Text>
             <View
               className="w-full rounded-t-md"
               style={{
                 height,
-                backgroundColor: d.value > 0 ? color : '#F3F4F6',
+                backgroundColor: d.value > 0 ? color : '#F2EEE9',
                 opacity: d.value > 0 ? 0.5 + (d.value / max) * 0.5 : 1,
               }}
             />
-            <Text className="text-[10px] text-gray-400">{d.label}</Text>
+            <Text className="text-[10px] text-sand-400">{d.label}</Text>
           </View>
         )
       })}
@@ -136,12 +141,14 @@ function CategoryBreakdown({
 }: {
   data: { category: string; count: number }[]
 }) {
+  const { primaryColor } = useTheme()
+  const COLORS = [primaryColor, '#7D5334', '#893540', '#665B55', '#F75D59', '#BF6973']
   const total = data.reduce((s, d) => s + d.count, 0)
   if (total === 0) return null
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-gray-100">
-      <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+    <View className="bg-white rounded-2xl p-4 border border-sand-100">
+      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
         Products by Category
       </Text>
       {data.slice(0, 6).map((d, i) => {
@@ -152,9 +159,9 @@ function CategoryBreakdown({
               className="w-2.5 h-2.5 rounded-full"
               style={{ backgroundColor: COLORS[i % COLORS.length] }}
             />
-            <Text className="flex-1 text-sm text-gray-700">{d.category}</Text>
-            <Text className="text-xs font-semibold text-gray-900">{d.count}</Text>
-            <View className="w-12 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+            <Text className="flex-1 text-sm text-sand-700">{d.category}</Text>
+            <Text className="text-xs font-semibold text-sand-900">{d.count}</Text>
+            <View className="w-12 bg-sand-100 rounded-full h-1.5 overflow-hidden">
               <View
                 className="h-full rounded-full"
                 style={{
@@ -180,20 +187,20 @@ const CollectionCard = memo(function CollectionCard({
   return (
     <TouchableOpacity
       onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
-      className="bg-white rounded-2xl p-4 border border-gray-100"
+      className="bg-white rounded-2xl p-4 border border-sand-100"
     >
       <View className="flex-row items-start justify-between mb-2">
-        <Text className="text-sm font-semibold text-gray-900 flex-1 mr-2" numberOfLines={1}>
+        <Text className="text-sm font-semibold text-sand-900 flex-1 mr-2" numberOfLines={1}>
           {item.title}
         </Text>
         <View
           className={`px-2 py-0.5 rounded-full ${
-            item.status === 'ACTIVE' ? 'bg-green-100' : 'bg-gray-100'
+            item.status === 'ACTIVE' ? 'bg-turmeric-100' : 'bg-sand-100'
           }`}
         >
           <Text
             className={`text-[10px] font-medium ${
-              item.status === 'ACTIVE' ? 'text-green-700' : 'text-gray-500'
+              item.status === 'ACTIVE' ? 'text-turmeric-700' : 'text-sand-500'
             }`}
           >
             {item.status}
@@ -203,20 +210,20 @@ const CollectionCard = memo(function CollectionCard({
 
       <View className="flex-row gap-3">
         <View className="flex-row items-center gap-1">
-          <Eye size={12} color="#9CA3AF" />
-          <Text className="text-xs text-gray-500">{item.view_count}</Text>
+          <Eye size={12} color="#ABA39C" />
+          <Text className="text-xs text-sand-500">{item.view_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <MessageCircle size={12} color="#9CA3AF" />
-          <Text className="text-xs text-gray-500">{item.enquiry_count}</Text>
+          <MessageCircle size={12} color="#ABA39C" />
+          <Text className="text-xs text-sand-500">{item.enquiry_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Heart size={12} color="#9CA3AF" />
-          <Text className="text-xs text-gray-500">{item.favorite_count}</Text>
+          <Heart size={12} color="#ABA39C" />
+          <Text className="text-xs text-sand-500">{item.favorite_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Package size={12} color="#9CA3AF" />
-          <Text className="text-xs text-gray-500">{item.product_count}</Text>
+          <Package size={12} color="#ABA39C" />
+          <Text className="text-xs text-sand-500">{item.product_count}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -239,14 +246,14 @@ function PlanUsageBar({
   return (
     <View className="mb-2">
       <View className="flex-row justify-between items-center mb-1">
-        <Text className="text-xs text-gray-600">{label}</Text>
-        <Text className="text-xs font-semibold text-gray-900">
+        <Text className="text-xs text-sand-600">{label}</Text>
+        <Text className="text-xs font-semibold text-sand-900">
           {current}/{max >= 999999 ? '∞' : max.toLocaleString('en-IN')}
         </Text>
       </View>
-      <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <View className="h-2 bg-sand-100 rounded-full overflow-hidden">
         <View
-          className={`h-full rounded-full ${isNearLimit ? 'bg-amber-500' : 'bg-cyan-500'}`}
+          className={`h-full rounded-full ${isNearLimit ? 'bg-turmeric-500' : 'bg-ink-500'}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </View>
@@ -257,6 +264,7 @@ function PlanUsageBar({
 // ── Analytics Screen ───────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
+  const { primaryColor } = useTheme()
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['analytics'],
     queryFn: () => analyticsApi.getAnalytics(),
@@ -277,15 +285,15 @@ export default function AnalyticsScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-cyan-50"
+      className="flex-1 bg-ink-50"
       refreshControl={
         <RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />
       }
     >
       {/* Page Header */}
-      <View className="bg-white px-4 pt-4 pb-5 border-b border-gray-100">
-        <Text className="text-2xl font-bold text-gray-900">Analytics</Text>
-        <Text className="text-sm text-gray-500 mt-1">
+      <View className="bg-white px-4 pt-4 pb-5 border-b border-sand-100">
+        <Text className="text-2xl font-bold text-sand-900">Analytics</Text>
+        <Text className="text-sm text-sand-500 mt-1">
           Last 7 days overview
         </Text>
       </View>
@@ -294,47 +302,47 @@ export default function AnalyticsScreen() {
         {/* Overview Stats */}
         <View className="flex-row flex-wrap gap-3">
           <StatCard
-            icon={<Eye size={18} color="#0891B2" />}
+            icon={<Eye size={18} color={primaryColor} />}
             label="Total Views (7d)"
             value={totalViews.toLocaleString('en-IN')}
-            color="#0891B2"
+            color={primaryColor}
             subtitle="Across all collections"
           />
           <StatCard
-            icon={<MessageCircle size={18} color="#10B981" />}
+            icon={<MessageCircle size={18} color="#946A4B" />}
             label="Total Enquiries (7d)"
             value={totalEnquiries.toLocaleString('en-IN')}
-            color="#10B981"
+            color="#946A4B"
             subtitle="Customer enquiries"
           />
           <StatCard
-            icon={<Package size={18} color="#F59E0B" />}
+            icon={<Package size={18} color="#946A4B" />}
             label="Active Products"
             value={
               (analytics?.status_breakdown
                 ?.find((s) => s.status === 'AVAILABLE')
                 ?.count ?? 0).toLocaleString('en-IN')
             }
-            color="#F59E0B"
+            color="#946A4B"
           />
           <StatCard
-            icon={<BarChart3 size={18} color="#3B82F6" />}
+            icon={<BarChart3 size={18} color="#E3262D" />}
             label="Total Products"
             value={
               (analytics?.status_breakdown
                 ?.reduce((s, g) => s + g.count, 0) ?? 0).toLocaleString('en-IN')
             }
-            color="#3B82F6"
+            color="#E3262D"
           />
         </View>
 
         {/* Daily Trend Chart */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Daily Views
             </Text>
-            <TrendingUp size={16} color="#0891B2" />
+            <TrendingUp size={16} color={primaryColor} />
           </View>
           <MiniBarChart
             data={trends.map((d) => ({
@@ -342,10 +350,10 @@ export default function AnalyticsScreen() {
               value: d.views,
             }))}
             maxValue={maxViews}
-            color="#0891B2"
+            color={primaryColor}
           />
           {totalViews === 0 && (
-            <Text className="text-xs text-gray-400 text-center mt-3">
+            <Text className="text-xs text-sand-400 text-center mt-3">
               Share a collection link to start seeing views
             </Text>
           )}
@@ -353,12 +361,12 @@ export default function AnalyticsScreen() {
 
         {/* Daily Enquiries Chart */}
         {trends.some((d) => d.enquiries > 0) && (
-          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100">
             <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Daily Enquiries
               </Text>
-              <MessageCircle size={16} color="#10B981" />
+              <MessageCircle size={16} color="#946A4B" />
             </View>
             <MiniBarChart
               data={trends.map((d) => ({
@@ -366,7 +374,7 @@ export default function AnalyticsScreen() {
                 value: d.enquiries,
               }))}
               maxValue={Math.max(...trends.map((d) => d.enquiries), 1)}
-              color="#10B981"
+              color="#946A4B"
             />
           </View>
         )}
@@ -378,32 +386,32 @@ export default function AnalyticsScreen() {
 
         {/* Plan Usage */}
         {analytics?.plan && (
-          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100">
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Plan Usage
               </Text>
               <View className="flex-row items-center gap-1">
-                <Store size={12} color="#9CA3AF" />
-                <Text className="text-xs text-gray-500 font-medium">
+                <Store size={12} color="#ABA39C" />
+                <Text className="text-xs text-sand-500 font-medium">
                   {analytics.plan.plan}
                 </Text>
                 <View
                   className={`px-1.5 py-0.5 rounded-full ${
                     analytics.plan.plan_status === 'ACTIVE'
-                      ? 'bg-green-100'
+                      ? 'bg-turmeric-100'
                       : analytics.plan.plan_status === 'TRIAL'
-                        ? 'bg-amber-100'
-                        : 'bg-gray-100'
+                        ? 'bg-turmeric-100'
+                        : 'bg-sand-100'
                   }`}
                 >
                   <Text
                     className={`text-[10px] font-medium ${
                       analytics.plan.plan_status === 'ACTIVE'
-                        ? 'text-green-700'
+                        ? 'text-turmeric-700'
                         : analytics.plan.plan_status === 'TRIAL'
-                          ? 'text-amber-700'
-                          : 'text-gray-500'
+                          ? 'text-turmeric-700'
+                          : 'text-sand-500'
                     }`}
                   >
                     {analytics.plan.plan_status}
@@ -425,9 +433,9 @@ export default function AnalyticsScreen() {
             />
             <TouchableOpacity
               onPress={() => router.push('/billing')}
-              className="mt-2 bg-cyan-50 border border-cyan-100 py-2.5 rounded-xl items-center"
+              className="mt-2 bg-ink-50 border border-ink-100 py-2.5 rounded-xl items-center"
             >
-              <Text className="text-cyan-700 text-sm font-semibold">
+              <Text className="text-ink-700 text-sm font-semibold">
                 Manage Plan
               </Text>
             </TouchableOpacity>
@@ -437,7 +445,7 @@ export default function AnalyticsScreen() {
         {/* Recent Collections */}
         {(analytics?.recent_collections?.length ?? 0) > 0 && (
           <View className="gap-2">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1">
               Recent Collections
             </Text>
             {analytics!.recent_collections.map((c) => (
@@ -449,8 +457,8 @@ export default function AnalyticsScreen() {
         {/* Empty state */}
         {(analytics?.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0) === 0 && (
           <View className="items-center py-10">
-            <BarChart3 size={48} color="#D1D5DB" />
-            <Text className="text-gray-400 text-sm mt-4 text-center">
+            <BarChart3 size={48} color="#CDC6BF" />
+            <Text className="text-sand-400 text-sm mt-4 text-center">
               No data yet.{'\n'}Start by adding products and sharing collections.
             </Text>
           </View>

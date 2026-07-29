@@ -48,7 +48,7 @@ export function NetworkBanner() {
       }}
       pointerEvents="none"
     >
-      <View className="flex-row items-center justify-center gap-2 px-4 py-2 bg-amber-500">
+      <View className="flex-row items-center justify-center gap-2 px-4 py-2 bg-turmeric-500">
         <WifiOff size={14} color="white" />
         <Text className="text-white text-xs font-medium">
           {Platform.OS === 'web'

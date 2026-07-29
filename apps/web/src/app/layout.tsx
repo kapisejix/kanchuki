@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#D41E2A',
+  themeColor: '#1E2A3D',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -32,9 +32,30 @@ export const viewport: Viewport = {
 const API_ORIGIN = process.env['NEXT_PUBLIC_API_URL'] ?? process.env['API_URL'] ?? ''
 const R2_ORIGIN = process.env['NEXT_PUBLIC_R2_PUBLIC_URL'] ?? ''
 
-export default function RootLayout({
+const DEFAULT_PRIMARY_COLOR = '#1E2A3D'
+
+// Admin-configurable brand color (apps/web/src/app/admin/settings/theme) —
+// read server-side on each request (60s revalidate) and injected as the
+// --color-ink CSS var that tailwind.config.ts's `ink.600` and globals.css's
+// raw-CSS spots both read. Falls back to the static default on any failure
+// so a slow/down API never blocks page render.
+async function getPrimaryColor(): Promise<string> {
+  if (!API_ORIGIN) return DEFAULT_PRIMARY_COLOR
+  try {
+    const res = await fetch(`${API_ORIGIN}/v1/public/theme`, { next: { revalidate: 60 } })
+    if (!res.ok) return DEFAULT_PRIMARY_COLOR
+    const json = (await res.json()) as { data?: { primary_color?: string } }
+    return json.data?.primary_color ?? DEFAULT_PRIMARY_COLOR
+  } catch {
+    return DEFAULT_PRIMARY_COLOR
+  }
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const primaryColor = await getPrimaryColor()
+
   return (
     <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
       <head>
@@ -53,6 +74,7 @@ export default function RootLayout({
             <link rel="dns-prefetch" href={R2_ORIGIN} />
           </>
         )}
+        <style>{`:root{--color-ink:${primaryColor}}`}</style>
       </head>
       <body className="font-sans">{children}</body>
     </html>

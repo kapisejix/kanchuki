@@ -6,12 +6,14 @@ import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } fr
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { productApi, readLocalImage, uploadImageToR2 } from '../../../src/lib/api';
 import { showError } from '../../../src/lib/errors';
+import { useTheme } from '../../../src/lib/theme';
 
 type Step = 'camera' | 'recording' | 'preview' | 'uploading';
 
 const MAX_DURATION_SECONDS = 6;
 
 export default function SpinVideoScreen() {
+  const { primaryColor } = useTheme();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [step, setStep] = useState<Step>('camera');
@@ -109,7 +111,7 @@ export default function SpinVideoScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-cyan-600 px-6 py-3 rounded-xl"
+          className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -120,8 +122,8 @@ export default function SpinVideoScreen() {
   if (step === 'preview') {
     return (
       <View className="flex-1 bg-black items-center justify-center px-8">
-        <View className="w-20 h-20 rounded-full bg-cyan-600/20 items-center justify-center mb-6">
-          <Check size={36} color="#0891B2" />
+        <View className="w-20 h-20 rounded-full bg-ink-600/20 items-center justify-center mb-6">
+          <Check size={36} color={primaryColor} />
         </View>
         <Text className="text-white text-center text-base mb-1">Spin video captured</Text>
         <Text className="text-white/50 text-center text-sm mb-8">
@@ -129,7 +131,7 @@ export default function SpinVideoScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void handleUpload()}
-          className="bg-cyan-600 px-8 py-4 rounded-2xl mb-3 w-full items-center"
+          className="bg-ink-600 px-8 py-4 rounded-2xl mb-3 w-full items-center"
         >
           <Text className="text-white font-semibold">Upload</Text>
         </TouchableOpacity>
@@ -149,11 +151,11 @@ export default function SpinVideoScreen() {
   if (step === 'uploading') {
     return (
       <View className="flex-1 bg-black items-center justify-center px-10">
-        <ActivityIndicator size="large" color="#0891B2" />
+        <ActivityIndicator size="large" color={primaryColor} />
         <Text className="text-white mt-4">Uploading spin video... {uploadPercent}%</Text>
         <View className="w-full h-2 bg-white/10 rounded-full overflow-hidden mt-4">
           <View
-            className="h-full bg-cyan-500 rounded-full"
+            className="h-full bg-ink-500 rounded-full"
             style={{ width: `${uploadPercent}%` }}
           />
         </View>
@@ -201,7 +203,7 @@ export default function SpinVideoScreen() {
         disabled={step === 'recording' || !!cameraError}
         className={`absolute right-4 w-10 h-10 rounded-full items-center justify-center ${
           step === 'recording' ? 'opacity-30' : ''
-        } ${flashMode === 'on' ? 'bg-yellow-400' : 'bg-black/50'}`}
+        } ${flashMode === 'on' ? 'bg-turmeric-400' : 'bg-black/50'}`}
         style={{ top: insets.top + 8 }}
       >
         {flashMode === 'on' ? (
@@ -232,7 +234,7 @@ export default function SpinVideoScreen() {
               setCameraError(null);
               setIsCameraReady(false);
             }}
-            className="bg-cyan-600 px-6 py-3 rounded-xl"
+            className="bg-ink-600 px-6 py-3 rounded-xl"
           >
             <Text className="text-white font-semibold">Retry Camera</Text>
           </TouchableOpacity>
@@ -242,7 +244,7 @@ export default function SpinVideoScreen() {
               onPress={() => (step === 'recording' ? handleStop() : void handleRecord())}
               disabled={step !== 'recording' && !isCameraReady}
               className={`w-20 h-20 rounded-full border-4 items-center justify-center ${
-                step === 'recording' ? 'border-red-500' : 'border-white'
+                step === 'recording' ? 'border-rust-500' : 'border-white'
               } ${!isCameraReady && step !== 'recording' ? 'opacity-40' : ''}`}
             >
               {!isCameraReady && step !== 'recording' ? (
@@ -251,7 +253,7 @@ export default function SpinVideoScreen() {
                 <View
                   className={
                     step === 'recording'
-                      ? 'w-8 h-8 bg-red-500 rounded-md'
+                      ? 'w-8 h-8 bg-rust-500 rounded-md'
                       : 'w-14 h-14 bg-white rounded-full'
                   }
                 />

@@ -24,6 +24,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { logError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 
 // Retries a flaky network step up to `attempts` times with a short backoff.
 // Bulk import fires many sequential requests back-to-back — a single
@@ -73,6 +74,7 @@ async function compressPhoto(uri: string): Promise<string> {
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function BulkImportScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const [step, setStep] = useState<Step>('pick')
   const [photos, setPhotos] = useState<PhotoItem[]>([])
@@ -216,31 +218,31 @@ export default function BulkImportScreen() {
   const StatusIcon = ({ status }: { status: ImportStatus }) => {
     switch (status.state) {
       case 'pending':
-        return <Text className="text-gray-300 text-base">⏳</Text>
+        return <Text className="text-sand-300 text-base">⏳</Text>
       case 'uploading':
-        return <ActivityIndicator size="small" color="#0891B2" />
+        return <ActivityIndicator size="small" color={primaryColor} />
       case 'creating':
-        return <ActivityIndicator size="small" color="#F59E0B" />
+        return <ActivityIndicator size="small" color="#946A4B" />
       case 'done':
-        return <Check size={18} color="#10B981" />
+        return <Check size={18} color="#946A4B" />
       case 'failed':
-        return <AlertTriangle size={18} color="#EF4444" />
+        return <AlertTriangle size={18} color="#BF6973" />
     }
   }
 
   const StatusLabel = ({ status }: { status: ImportStatus }) => {
     switch (status.state) {
       case 'pending':
-        return <Text className="text-xs text-gray-400">Pending</Text>
+        return <Text className="text-xs text-sand-400">Pending</Text>
       case 'uploading':
-        return <Text className="text-xs text-cyan-600 font-medium">Uploading...</Text>
+        return <Text className="text-xs text-ink-600 font-medium">Uploading...</Text>
       case 'creating':
-        return <Text className="text-xs text-amber-600 font-medium">Saving...</Text>
+        return <Text className="text-xs text-turmeric-600 font-medium">Saving...</Text>
       case 'done':
-        return <Text className="text-xs text-green-600 font-medium">Imported</Text>
+        return <Text className="text-xs text-turmeric-600 font-medium">Imported</Text>
       case 'failed':
         return (
-          <Text className="text-xs text-red-500" numberOfLines={1}>
+          <Text className="text-xs text-rust-500" numberOfLines={1}>
             {status.error}
           </Text>
         )
@@ -250,16 +252,16 @@ export default function BulkImportScreen() {
   // ── Render ────────────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'}>
-          <X size={22} color={step === 'importing' ? '#D1D5DB' : '#374151'} />
+          <X size={22} color={step === 'importing' ? '#CDC6BF' : '#4B4039'} />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">
+        <Text className="text-base font-bold text-sand-900">
           {step === 'pick' && 'Bulk Import'}
           {step === 'importing' && 'Importing...'}
           {step === 'done' && 'Import Complete'}
@@ -273,19 +275,19 @@ export default function BulkImportScreen() {
           <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 120 }}>
             {photos.length === 0 ? (
               <View className="items-center pt-20 gap-4">
-                <View className="w-20 h-20 bg-cyan-100 rounded-3xl items-center justify-center">
-                  <Camera size={36} color="#0891B2" />
+                <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
+                  <Camera size={36} color={primaryColor} />
                 </View>
-                <Text className="text-lg font-bold text-gray-900 text-center">
+                <Text className="text-lg font-bold text-sand-900 text-center">
                   Import products in bulk
                 </Text>
-                <Text className="text-gray-500 text-sm text-center px-8 leading-5">
+                <Text className="text-sand-500 text-sm text-center px-8 leading-5">
                   Select up to {MAX_BATCH_SIZE} photos from your gallery. AI will tag each product
                   automatically in the background.
                 </Text>
                 <TouchableOpacity
                   onPress={() => void handlePickPhotos()}
-                  className="bg-cyan-600 px-6 py-3.5 rounded-2xl flex-row items-center gap-2"
+                  className="bg-ink-600 px-6 py-3.5 rounded-2xl flex-row items-center gap-2"
                   activeOpacity={0.8}
                 >
                   <ImagePlus size={20} color="white" />
@@ -295,15 +297,15 @@ export default function BulkImportScreen() {
             ) : (
               <>
                 <View className="flex-row justify-between items-center mb-4">
-                  <Text className="text-sm font-semibold text-gray-700">
+                  <Text className="text-sm font-semibold text-sand-700">
                     {photos.length} photo{photos.length !== 1 ? 's' : ''} selected
                   </Text>
                   <TouchableOpacity
                     onPress={() => void handlePickPhotos()}
                     className="flex-row items-center gap-1"
                   >
-                    <ImagePlus size={16} color="#0891B2" />
-                    <Text className="text-cyan-600 text-sm font-medium">Add more</Text>
+                    <ImagePlus size={16} color={primaryColor} />
+                    <Text className="text-ink-600 text-sm font-medium">Add more</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -312,13 +314,13 @@ export default function BulkImportScreen() {
                     <View key={`${photo.localUri}-${i}`} className="relative">
                       <Image
                         source={{ uri: photo.thumbUri }}
-                        className="w-[30%] aspect-square rounded-xl bg-gray-200"
+                        className="w-[30%] aspect-square rounded-xl bg-sand-200"
                         contentFit="cover"
                         style={{ width: (Dimensions.get('window').width - 48 - 6) / 3 }}
                       />
                       <TouchableOpacity
                         onPress={() => removePhoto(i)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-gray-900/70 rounded-full items-center justify-center"
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-sand-900/70 rounded-full items-center justify-center"
                       >
                         <X size={12} color="white" />
                       </TouchableOpacity>
@@ -331,20 +333,20 @@ export default function BulkImportScreen() {
 
           {/* Bottom bar */}
           <View
-            className="bg-white border-t border-gray-100 px-4 pt-4"
+            className="bg-white border-t border-sand-100 px-4 pt-4"
             style={{ paddingBottom: 16 + insets.bottom }}
           >
             <TouchableOpacity
               onPress={() => void handleImport()}
               disabled={photos.length === 0}
               className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
-                photos.length > 0 ? 'bg-cyan-600' : 'bg-gray-200'
+                photos.length > 0 ? 'bg-ink-600' : 'bg-sand-200'
               }`}
               activeOpacity={0.8}
             >
-              <Upload size={18} color={photos.length > 0 ? 'white' : '#9CA3AF'} />
+              <Upload size={18} color={photos.length > 0 ? 'white' : '#ABA39C'} />
               <Text
-                className={`font-bold text-base ${photos.length > 0 ? 'text-white' : 'text-gray-400'}`}
+                className={`font-bold text-base ${photos.length > 0 ? 'text-white' : 'text-sand-400'}`}
               >
                 Import {photos.length > 0 ? `${photos.length} Product${photos.length !== 1 ? 's' : ''}` : ''}
               </Text>
@@ -356,23 +358,23 @@ export default function BulkImportScreen() {
       {step === 'importing' && (
         <View className="flex-1 px-4 pt-4">
           {/* Overall progress */}
-          <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-4">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
             <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-sm font-semibold text-gray-900">
+              <Text className="text-sm font-semibold text-sand-900">
                 Importing {total} product{total !== 1 ? 's' : ''}
               </Text>
-              <Text className="text-sm text-gray-500">
+              <Text className="text-sm text-sand-500">
                 {completed + failed}/{total}
               </Text>
             </View>
             {/* Progress bar */}
-            <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <View className="h-2 bg-sand-100 rounded-full overflow-hidden">
               <View
-                className="h-full bg-cyan-600 rounded-full"
+                className="h-full bg-ink-600 rounded-full"
                 style={{ width: `${((completed + failed) / total) * 100}%` }}
               />
             </View>
-            <Text className="text-xs text-gray-400 mt-2">
+            <Text className="text-xs text-sand-400 mt-2">
               {completed} succeeded{failed > 0 ? ` · ${failed} failed` : ''} · AI tagging runs in background
             </Text>
           </View>
@@ -384,14 +386,14 @@ export default function BulkImportScreen() {
             renderItem={({ item, index }) => {
               const status = statuses[index] ?? { state: 'pending' as const }
               return (
-                <View className="flex-row items-center gap-3 py-3 border-b border-gray-100">
+                <View className="flex-row items-center gap-3 py-3 border-b border-sand-100">
                   <Image
                     source={{ uri: item.thumbUri }}
-                    className="w-10 h-10 rounded-lg bg-gray-200"
+                    className="w-10 h-10 rounded-lg bg-sand-200"
                     contentFit="cover"
                   />
                   <View className="flex-1">
-                    <Text className="text-sm text-gray-700 truncate">
+                    <Text className="text-sm text-sand-700 truncate">
                       Photo {index + 1}
                     </Text>
                     <StatusLabel status={status} />
@@ -406,11 +408,11 @@ export default function BulkImportScreen() {
           {/* Auto-advance spinner when complete */}
           {completed + failed === total && total > 0 && (
             <View
-              className="bg-white border-t border-gray-100 px-0 pt-6 items-center gap-2"
+              className="bg-white border-t border-sand-100 px-0 pt-6 items-center gap-2"
               style={{ paddingBottom: 24 + insets.bottom }}
             >
-              <ActivityIndicator size="small" color="#0891B2" />
-              <Text className="text-sm text-gray-500">Finalizing...</Text>
+              <ActivityIndicator size="small" color={primaryColor} />
+              <Text className="text-sm text-sand-500">Finalizing...</Text>
             </View>
           )}
         </View>
@@ -418,14 +420,14 @@ export default function BulkImportScreen() {
 
       {step === 'done' && (
         <View className="flex-1 items-center justify-center px-8">
-          <View className="w-24 h-24 bg-green-100 rounded-3xl items-center justify-center mb-6">
+          <View className="w-24 h-24 bg-turmeric-100 rounded-3xl items-center justify-center mb-6">
             <Text className="text-5xl">{failed > 0 ? '⚠️' : '🎉'}</Text>
           </View>
 
-          <Text className="text-2xl font-bold text-gray-900 text-center">
+          <Text className="text-2xl font-bold text-sand-900 text-center">
             {failed > 0 ? 'Import complete with errors' : 'All products imported!'}
           </Text>
-          <Text className="text-gray-500 text-base mt-2 text-center leading-5">
+          <Text className="text-sand-500 text-base mt-2 text-center leading-5">
             {completed} product{completed !== 1 ? 's' : ''} added
             {failed > 0 ? ` · ${failed} failed` : ''}.
             {'\n'}AI is tagging them in the background.
@@ -435,11 +437,11 @@ export default function BulkImportScreen() {
             {failed > 0 && (
               <TouchableOpacity
                 onPress={() => handleRetry()}
-                className="py-4 rounded-2xl items-center border-2 border-gray-200 flex-row justify-center gap-2"
+                className="py-4 rounded-2xl items-center border-2 border-sand-200 flex-row justify-center gap-2"
                 activeOpacity={0.7}
               >
-                <AlertTriangle size={18} color="#374151" />
-                <Text className="text-gray-700 font-semibold">Retry Failed ({failed})</Text>
+                <AlertTriangle size={18} color="#4B4039" />
+                <Text className="text-sand-700 font-semibold">Retry Failed ({failed})</Text>
               </TouchableOpacity>
             )}
             <TouchableOpacity
@@ -447,7 +449,7 @@ export default function BulkImportScreen() {
                 void queryClient.invalidateQueries({ queryKey: ['products'] })
                 router.replace('/')
               }}
-              className="py-4 rounded-2xl items-center bg-cyan-600"
+              className="py-4 rounded-2xl items-center bg-ink-600"
               activeOpacity={0.8}
             >
               <Text className="text-white font-bold">View Catalog</Text>

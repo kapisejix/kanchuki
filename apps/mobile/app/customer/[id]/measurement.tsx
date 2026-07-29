@@ -10,11 +10,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, Ruler, Check } from 'lucide-react-native'
 import { customerApi, uploadImageToR2 } from '../../../src/lib/api'
 import { logError } from '../../../src/lib/errors'
+import { useTheme } from '../../../src/lib/theme'
 
 type Slot = 'front' | 'back'
 type Step = 'height' | 'camera' | 'preview' | 'uploading' | 'done'
 
 export default function MeasurementCaptureScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -108,24 +110,24 @@ export default function MeasurementCaptureScreen() {
 
   if (step === 'height') {
     return (
-      <View className="flex-1 bg-cyan-50 px-6" style={{ paddingTop: insets.top + 24 }}>
+      <View className="flex-1 bg-ink-50 px-6" style={{ paddingTop: insets.top + 24 }}>
         <TouchableOpacity onPress={() => router.back()} className="mb-6">
-          <X size={22} color="#374151" />
+          <X size={22} color="#4B4039" />
         </TouchableOpacity>
 
         <View className="items-center mb-8">
-          <View className="w-16 h-16 bg-cyan-100 rounded-full items-center justify-center mb-3">
-            <Ruler size={28} color="#0891B2" />
+          <View className="w-16 h-16 bg-ink-100 rounded-full items-center justify-center mb-3">
+            <Ruler size={28} color={primaryColor} />
           </View>
-          <Text className="text-xl font-bold text-gray-900">Body Measurement</Text>
-          <Text className="text-sm text-gray-500 text-center mt-1 px-4">
+          <Text className="text-xl font-bold text-sand-900">Body Measurement</Text>
+          <Text className="text-sm text-sand-500 text-center mt-1 px-4">
             Front + back photo, height only — AI reads bust/waist/hip/inseam. Photos are deleted
             right after processing.
           </Text>
         </View>
 
-        <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-6">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-6">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Height (cm)
           </Text>
           <TextInput
@@ -133,14 +135,14 @@ export default function MeasurementCaptureScreen() {
             onChangeText={setHeight}
             placeholder="e.g. 162"
             keyboardType="numeric"
-            className="text-lg font-bold text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-lg font-bold text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
-        <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-6 flex-row items-center gap-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-6 flex-row items-center gap-3">
           <Switch value={consentGiven} onValueChange={setConsentGiven} />
-          <Text className="flex-1 text-xs text-gray-600">
+          <Text className="flex-1 text-xs text-sand-600">
             Customer has consented to their front/back photos being captured and used to
             estimate measurements for try-on.
           </Text>
@@ -149,7 +151,7 @@ export default function MeasurementCaptureScreen() {
         <TouchableOpacity
           onPress={startCapture}
           disabled={!consentGiven}
-          className={`py-4 rounded-2xl items-center ${consentGiven ? 'bg-cyan-600' : 'bg-gray-300'}`}
+          className={`py-4 rounded-2xl items-center ${consentGiven ? 'bg-ink-600' : 'bg-sand-300'}`}
         >
           <Text className="text-white font-semibold">Continue to Front Photo →</Text>
         </TouchableOpacity>
@@ -167,7 +169,7 @@ export default function MeasurementCaptureScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-cyan-600 px-6 py-3 rounded-xl"
+          className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -246,7 +248,7 @@ export default function MeasurementCaptureScreen() {
                   contentFit="contain"
                 />
               )}
-              <View className="absolute top-4 left-4 bg-cyan-600/80 px-2.5 py-1 rounded-full">
+              <View className="absolute top-4 left-4 bg-ink-600/80 px-2.5 py-1 rounded-full">
                 <Text className="text-white text-xs font-semibold">Front</Text>
               </View>
             </View>
@@ -259,7 +261,7 @@ export default function MeasurementCaptureScreen() {
                   contentFit="contain"
                 />
               )}
-              <View className="absolute top-4 right-4 bg-purple-600/80 px-2.5 py-1 rounded-full">
+              <View className="absolute top-4 right-4 bg-ink-600/80 px-2.5 py-1 rounded-full">
                 <Text className="text-white text-xs font-semibold">Back</Text>
               </View>
             </View>
@@ -279,13 +281,13 @@ export default function MeasurementCaptureScreen() {
             {otherUri && (
               <View className="absolute bottom-32 left-0 right-0 items-center">
                 <View className="bg-black/60 rounded-xl px-4 py-2.5 flex-row gap-4">
-                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'front' ? 'border-cyan-400' : 'border-transparent'}`}>
+                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'front' ? 'border-ink-400' : 'border-transparent'}`}>
                     {photos.front && <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
                     <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
                       <Text className="text-white text-[8px] text-center font-medium">Front</Text>
                     </View>
                   </View>
-                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'back' ? 'border-cyan-400' : 'border-transparent'}`}>
+                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'back' ? 'border-ink-400' : 'border-transparent'}`}>
                     {photos.back && <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
                     <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
                       <Text className="text-white text-[8px] text-center font-medium">Back</Text>
@@ -299,7 +301,7 @@ export default function MeasurementCaptureScreen() {
 
         {error && (
           <View
-            className="absolute left-4 right-4 bg-red-500/90 rounded-xl p-3"
+            className="absolute left-4 right-4 bg-rust-500/90 rounded-xl p-3"
             style={{ top: insets.top + 8 }}
           >
             <Text className="text-white text-sm">{error}</Text>
@@ -317,7 +319,7 @@ export default function MeasurementCaptureScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={useThisPhoto}
-            className="flex-1 bg-cyan-600 py-4 rounded-2xl items-center"
+            className="flex-1 bg-ink-600 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">
               {slot === 'front' ? 'Use Photo → Back' : bothReady ? 'Upload Both Photos ✓' : 'Use Photo ✓'}
@@ -332,10 +334,10 @@ export default function MeasurementCaptureScreen() {
 
   if (step === 'uploading') {
     return (
-      <View className="flex-1 bg-gray-900 items-center justify-center gap-5">
-        <ActivityIndicator size="large" color="#0891B2" />
+      <View className="flex-1 bg-sand-900 items-center justify-center gap-5">
+        <ActivityIndicator size="large" color={primaryColor} />
         <Text className="text-white text-base font-semibold">Uploading photos...</Text>
-        <Text className="text-gray-400 text-sm">Queuing AI measurement extraction</Text>
+        <Text className="text-sand-400 text-sm">Queuing AI measurement extraction</Text>
       </View>
     )
   }
@@ -343,18 +345,18 @@ export default function MeasurementCaptureScreen() {
   // ── Done step ─────────────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-cyan-50 items-center justify-center px-8">
-      <View className="w-16 h-16 bg-green-100 rounded-full items-center justify-center mb-4">
-        <Check size={28} color="#16A34A" />
+    <View className="flex-1 bg-ink-50 items-center justify-center px-8">
+      <View className="w-16 h-16 bg-turmeric-100 rounded-full items-center justify-center mb-4">
+        <Check size={28} color="#7D5334" />
       </View>
-      <Text className="text-lg font-bold text-gray-900 text-center">Measurement queued</Text>
-      <Text className="text-sm text-gray-500 text-center mt-1">
+      <Text className="text-lg font-bold text-sand-900 text-center">Measurement queued</Text>
+      <Text className="text-sm text-sand-500 text-center mt-1">
         Bust/waist/hip/inseam will appear on the customer profile in a moment. Photos are deleted
         after processing.
       </Text>
       <TouchableOpacity
         onPress={() => router.back()}
-        className="mt-6 bg-cyan-600 px-6 py-3 rounded-xl"
+        className="mt-6 bg-ink-600 px-6 py-3 rounded-xl"
       >
         <Text className="text-white font-semibold">Back to Customer</Text>
       </TouchableOpacity>

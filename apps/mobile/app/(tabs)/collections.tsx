@@ -6,6 +6,7 @@ import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2 } from 'lucide-rea
 import { collectionApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 
 type Collection = {
   id: string
@@ -82,24 +83,24 @@ function EditCollectionModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-gray-900">Edit Collection</Text>
+          <Text className="text-lg font-bold text-sand-900">Edit Collection</Text>
 
           <View>
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
               Title
             </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="Collection name"
-              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
-              placeholderTextColor="#9CA3AF"
+              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              placeholderTextColor="#ABA39C"
               autoFocus
             />
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
               Expires in (days)
             </Text>
             <TextInput
@@ -107,8 +108,8 @@ function EditCollectionModal({
               onChangeText={setExpiryDays}
               placeholder="30"
               keyboardType="numeric"
-              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
-              placeholderTextColor="#9CA3AF"
+              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              placeholderTextColor="#ABA39C"
             />
           </View>
 
@@ -116,14 +117,14 @@ function EditCollectionModal({
             <TouchableOpacity
               onPress={onClose}
               disabled={saving}
-              className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center"
+              className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+              <Text className="text-sand-700 font-semibold">Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void handleSave()}
               disabled={saving || !title.trim()}
-              className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+              className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
             >
               {saving ? (
                 <ActivityIndicator size="small" color="white" />
@@ -153,22 +154,23 @@ const CollectionCard = memo(function CollectionCard({
   onEdit: () => void
   onDelete: () => void
 }) {
+  const { primaryColor } = useTheme()
   return (
-    <TouchableOpacity onPress={onPress} className="bg-white rounded-2xl p-4 border border-gray-100">
+    <TouchableOpacity onPress={onPress} className="bg-white rounded-2xl p-4 border border-sand-100">
       {/* Title + status */}
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-3">
-          <Text className="text-sm font-bold text-gray-900">{item.title}</Text>
-          <Text className="text-xs text-gray-400 mt-0.5">{item.product_count} products</Text>
+          <Text className="text-sm font-bold text-sand-900">{item.title}</Text>
+          <Text className="text-xs text-sand-400 mt-0.5">{item.product_count} products</Text>
         </View>
         <View
           className={`px-2 py-0.5 rounded-full ${
-            item.status === 'ACTIVE' ? 'bg-green-100' : 'bg-gray-100'
+            item.status === 'ACTIVE' ? 'bg-turmeric-100' : 'bg-sand-100'
           }`}
         >
           <Text
             className={`text-xs font-medium ${
-              item.status === 'ACTIVE' ? 'text-green-700' : 'text-gray-500'
+              item.status === 'ACTIVE' ? 'text-turmeric-700' : 'text-sand-500'
             }`}
           >
             {item.status}
@@ -179,16 +181,16 @@ const CollectionCard = memo(function CollectionCard({
       {/* Stats row */}
       <View className="flex-row gap-4 mb-3">
         <View className="flex-row items-center gap-1">
-          <Eye size={14} color="#9CA3AF" />
-          <Text className="text-xs text-gray-500">{item.view_count} views</Text>
+          <Eye size={14} color="#ABA39C" />
+          <Text className="text-xs text-sand-500">{item.view_count} views</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <MessageCircle size={14} color="#9CA3AF" />
-          <Text className="text-xs text-gray-500">{item.enquiry_count} enquiries</Text>
+          <MessageCircle size={14} color="#ABA39C" />
+          <Text className="text-xs text-sand-500">{item.enquiry_count} enquiries</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Clock size={14} color="#9CA3AF" />
-          <Text className="text-xs text-gray-400">{daysUntil(item.expires_at)}</Text>
+          <Clock size={14} color="#ABA39C" />
+          <Text className="text-xs text-sand-400">{daysUntil(item.expires_at)}</Text>
         </View>
       </View>
 
@@ -198,27 +200,27 @@ const CollectionCard = memo(function CollectionCard({
         {item.status === 'ACTIVE' && (
           <TouchableOpacity
             onPress={onShare}
-            className="flex-1 flex-row items-center justify-center gap-2 bg-green-50 border border-green-100 py-2.5 rounded-xl"
+            className="flex-1 flex-row items-center justify-center gap-2 bg-turmeric-50 border border-turmeric-100 py-2.5 rounded-xl"
           >
-            <Link2 size={14} color="#16A34A" />
-            <Text className="text-green-700 text-sm font-semibold">Share</Text>
+            <Link2 size={14} color="#7D5334" />
+            <Text className="text-turmeric-700 text-sm font-semibold">Share</Text>
           </TouchableOpacity>
         )}
 
         {/* Edit */}
         <TouchableOpacity
           onPress={onEdit}
-          className="flex-row items-center justify-center gap-1.5 bg-blue-50 border border-blue-100 px-3 py-2.5 rounded-xl"
+          className="flex-row items-center justify-center gap-1.5 bg-ink-50 border border-ink-100 px-3 py-2.5 rounded-xl"
         >
-          <Edit size={14} color="#2563EB" />
+          <Edit size={14} color={primaryColor} />
         </TouchableOpacity>
 
         {/* Delete */}
         <TouchableOpacity
           onPress={onDelete}
-          className="flex-row items-center justify-center bg-red-50 border border-red-100 px-3 py-2.5 rounded-xl"
+          className="flex-row items-center justify-center bg-rust-50 border border-rust-100 px-3 py-2.5 rounded-xl"
         >
-          <Trash2 size={14} color="#DC2626" />
+          <Trash2 size={14} color="#A24854" />
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
@@ -302,13 +304,13 @@ export default function CollectionsScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16">
-        <Link2 size={40} color="#D1D5DB" />
-        <Text className="text-gray-400 text-sm mt-4 text-center">
+        <Link2 size={40} color="#CDC6BF" />
+        <Text className="text-sand-400 text-sm mt-4 text-center">
           No collections yet.{'\n'}Create one to share products with customers.
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/collection/new')}
-          className="mt-4 bg-cyan-600 px-5 py-2.5 rounded-xl"
+          className="mt-4 bg-ink-600 px-5 py-2.5 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Create Collection</Text>
         </TouchableOpacity>
@@ -318,7 +320,7 @@ export default function CollectionsScreen() {
   )
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {isLoading && collections.length === 0 ? (
         <CollectionListSkeleton />
       ) : (
@@ -339,7 +341,7 @@ export default function CollectionsScreen() {
       {/* FAB */}
       <TouchableOpacity
         onPress={() => router.push('/collection/new')}
-        className="absolute bottom-6 right-4 w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
       >
         <Plus size={24} color="white" />

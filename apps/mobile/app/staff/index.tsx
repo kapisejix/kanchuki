@@ -14,10 +14,12 @@ import {
 import { teamApi, type TeamMemberInfo, type TerritoryRetailer, type SupportTicketStats } from '../../src/lib/team-api'
 import { getItem, deleteItem } from '../../src/lib/storage'
 import { clearToken, clearRequestCache } from '../../src/lib/api'
+import { useTheme } from '../../src/lib/theme'
 
 // ─── Staff Dashboard ─────────────────────────────────────────────
 
 export default function StaffDashboard() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
@@ -84,10 +86,10 @@ export default function StaffDashboard() {
     : 0
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Header */}
       <View
-        className="bg-cyan-700 px-4 pb-6 rounded-b-3xl"
+        className="bg-ink-700 px-4 pb-6 rounded-b-3xl"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between mb-4">
@@ -98,11 +100,11 @@ export default function StaffDashboard() {
               </Text>
             </View>
             <View className="flex-1">
-              <Text className="text-cyan-100 text-xs">Staff Dashboard</Text>
+              <Text className="text-ink-100 text-xs">Staff Dashboard</Text>
               <Text className="text-white text-lg font-bold mt-0.5">{displayName}</Text>
               <View className="flex-row items-center gap-1.5 mt-0.5">
-                <MapPin size={11} color="#99F6E4" />
-                <Text className="text-cyan-200 text-xs flex-1" numberOfLines={1}>
+                <MapPin size={11} color="#FFDFDD" />
+                <Text className="text-ink-200 text-xs flex-1" numberOfLines={1}>
                   {territoriesLabel}
                 </Text>
               </View>
@@ -140,48 +142,48 @@ export default function StaffDashboard() {
       >
         {isLoading ? (
           <View className="items-center py-16">
-            <ActivityIndicator size="large" color="#0891B2" />
-            <Text className="text-gray-400 text-sm mt-3">Loading...</Text>
+            <ActivityIndicator size="large" color={primaryColor} />
+            <Text className="text-sand-400 text-sm mt-3">Loading...</Text>
           </View>
         ) : (
           <>
             {/* Quick stats */}
             <View className="flex-row gap-3 px-4 pt-4">
               <StatCard
-                icon={<Store size={18} color="#0891B2" />}
+                icon={<Store size={18} color={primaryColor} />}
                 label="Retailers"
                 value={retailers.length}
-                accent="#ECFEFF"
+                accent="#FFF1F1"
               />
               <StatCard
-                icon={<Ticket size={18} color="#F59E0B" />}
+                icon={<Ticket size={18} color="#946A4B" />}
                 label="Active Tickets"
                 value={totalTickets}
-                accent="#FFFBEB"
+                accent="#F8F0E8"
               />
               <StatCard
-                icon={<Package size={18} color="#3B82F6" />}
+                icon={<Package size={18} color="#E3262D" />}
                 label="Open Issues"
                 value={ticketStats?.open ?? 0}
-                accent="#EFF6FF"
+                accent="#FFF1F1"
                 pulse={ticketStats && ticketStats.open > 0}
               />
             </View>
 
             {/* Quick actions */}
             <View className="px-4 pt-5">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
                 Quick Actions
               </Text>
               <View className="flex-row gap-3">
                 <TouchableOpacity
                   onPress={() => router.push('/staff/retailer-onboard')}
                   activeOpacity={0.7}
-                  className="flex-1 bg-cyan-600 rounded-2xl p-4"
+                  className="flex-1 bg-ink-600 rounded-2xl p-4"
                 >
                   <UserPlus size={24} color="white" />
                   <Text className="text-white font-semibold text-sm mt-2">New Retailer</Text>
-                  <Text className="text-cyan-100 text-xs mt-0.5">Quick onboard in field</Text>
+                  <Text className="text-ink-100 text-xs mt-0.5">Quick onboard in field</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -189,24 +191,24 @@ export default function StaffDashboard() {
                     // Scroll to retailers section — for now just a visual cue
                   }}
                   activeOpacity={0.7}
-                  className="flex-1 bg-white rounded-2xl p-4 border border-gray-100"
+                  className="flex-1 bg-white rounded-2xl p-4 border border-sand-100"
                 >
-                  <Users size={24} color="#0891B2" />
-                  <Text className="text-gray-900 font-semibold text-sm mt-2">View Retailers</Text>
-                  <Text className="text-gray-400 text-xs mt-0.5">{retailers.length} in territory</Text>
+                  <Users size={24} color={primaryColor} />
+                  <Text className="text-sand-900 font-semibold text-sm mt-2">View Retailers</Text>
+                  <Text className="text-sand-400 text-xs mt-0.5">{retailers.length} in territory</Text>
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Ticket alerts */}
             {ticketStats && ticketStats.requires_visit > 0 && (
-              <View className="mx-4 mt-5 bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5 flex-row items-start gap-3">
-                <AlertCircle size={18} color="#D97706" className="mt-0.5" />
+              <View className="mx-4 mt-5 bg-turmeric-50 border border-turmeric-200 rounded-2xl px-4 py-3.5 flex-row items-start gap-3">
+                <AlertCircle size={18} color="#7D5334" className="mt-0.5" />
                 <View className="flex-1">
-                  <Text className="text-sm font-semibold text-amber-800">
+                  <Text className="text-sm font-semibold text-turmeric-800">
                     {ticketStats.requires_visit} visit-required ticket{ticketStats.requires_visit !== 1 ? 's' : ''}
                   </Text>
-                  <Text className="text-xs text-amber-700 mt-0.5">
+                  <Text className="text-xs text-turmeric-700 mt-0.5">
                     These retailers need an in-person visit. Check the tickets list for details.
                   </Text>
                 </View>
@@ -216,20 +218,20 @@ export default function StaffDashboard() {
             {/* Retailers in territory */}
             <View className="px-4 pt-5">
               <View className="flex-row items-center justify-between mb-3">
-                <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                   Retailers in Territory
                 </Text>
                 {retailers.length > 5 && (
                   <TouchableOpacity>
-                    <Text className="text-xs text-cyan-600 font-semibold">See All</Text>
+                    <Text className="text-xs text-ink-600 font-semibold">See All</Text>
                   </TouchableOpacity>
                 )}
               </View>
 
               {retailers.length === 0 ? (
-                <View className="bg-white rounded-2xl p-8 border border-gray-100 items-center">
-                  <Store size={40} color="#D1D5DB" />
-                  <Text className="text-gray-400 text-sm mt-4 text-center">
+                <View className="bg-white rounded-2xl p-8 border border-sand-100 items-center">
+                  <Store size={40} color="#CDC6BF" />
+                  <Text className="text-sand-400 text-sm mt-4 text-center">
                     No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get started.
                   </Text>
                 </View>
@@ -239,35 +241,35 @@ export default function StaffDashboard() {
                     <TouchableOpacity
                       key={r.id}
                       activeOpacity={0.7}
-                      className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center"
+                      className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center"
                     >
-                      <View className="w-10 h-10 rounded-xl bg-cyan-100 items-center justify-center mr-3">
-                        <Text className="text-cyan-700 font-bold text-sm">
+                      <View className="w-10 h-10 rounded-xl bg-ink-100 items-center justify-center mr-3">
+                        <Text className="text-ink-700 font-bold text-sm">
                           {r.shop_name.charAt(0).toUpperCase()}
                         </Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-semibold text-gray-900">{r.shop_name}</Text>
+                        <Text className="text-sm font-semibold text-sand-900">{r.shop_name}</Text>
                         <View className="flex-row items-center gap-3 mt-1">
                           <View className="flex-row items-center gap-1">
-                            <MapPin size={11} color="#9CA3AF" />
-                            <Text className="text-xs text-gray-400">{r.city}</Text>
+                            <MapPin size={11} color="#ABA39C" />
+                            <Text className="text-xs text-sand-400">{r.city}</Text>
                           </View>
                           <View className="flex-row items-center gap-1">
-                            <Phone size={11} color="#9CA3AF" />
-                            <Text className="text-xs text-gray-400">{r.phone}</Text>
+                            <Phone size={11} color="#ABA39C" />
+                            <Text className="text-xs text-sand-400">{r.phone}</Text>
                           </View>
                         </View>
                       </View>
                       <View className="items-end gap-1">
                         <StatusBadge status={r.plan_status} />
-                        <Text className="text-[10px] text-gray-400">
+                        <Text className="text-[10px] text-sand-400">
                           {new Date(r.created_at).toLocaleDateString('en-IN', {
                             day: '2-digit', month: 'short',
                           })}
                         </Text>
                       </View>
-                      <ChevronRight size={16} color="#D1D5DB" style={{ marginLeft: 8 }} />
+                      <ChevronRight size={16} color="#CDC6BF" style={{ marginLeft: 8 }} />
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -277,10 +279,10 @@ export default function StaffDashboard() {
             {/* Ticket summary */}
             {ticketStats && (
               <View className="px-4 pt-5">
-                <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
                   Support Tickets
                 </Text>
-                <View className="bg-white rounded-2xl p-4 border border-gray-100">
+                <View className="bg-white rounded-2xl p-4 border border-sand-100">
                   <View className="flex-row justify-between mb-3">
                     <TicketStat label="Open" value={ticketStats.open} color="amber" />
                     <TicketStat label="Assigned" value={ticketStats.assigned} color="blue" />
@@ -289,10 +291,10 @@ export default function StaffDashboard() {
                   </View>
                   {retailers.length > 0 && ticketStats.open > 0 && (
                     <TouchableOpacity
-                      className="bg-cyan-50 rounded-xl py-2.5 items-center"
+                      className="bg-ink-50 rounded-xl py-2.5 items-center"
                       activeOpacity={0.7}
                     >
-                      <Text className="text-cyan-700 text-xs font-semibold">
+                      <Text className="text-ink-700 text-xs font-semibold">
                         View Ticket Details
                       </Text>
                     </TouchableOpacity>
@@ -319,24 +321,24 @@ function StatCard({
   pulse?: boolean
 }) {
   return (
-    <View className="flex-1 bg-white rounded-2xl p-4 border border-gray-100">
+    <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100">
       <View className="w-8 h-8 rounded-xl items-center justify-center mb-2" style={{ backgroundColor: accent }}>
         {icon}
       </View>
-      <Text className={`text-xl font-bold ${pulse ? 'text-amber-600' : 'text-gray-900'}`}>
+      <Text className={`text-xl font-bold ${pulse ? 'text-turmeric-600' : 'text-sand-900'}`}>
         {value.toLocaleString('en-IN')}
       </Text>
-      <Text className="text-xs text-gray-500 mt-0.5">{label}</Text>
+      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
     </View>
   )
 }
 
 function TicketStat({ label, value, color }: { label: string; value: number; color: string }) {
   const colorMap: Record<string, { bg: string; text: string }> = {
-    amber: { bg: 'bg-amber-100', text: 'text-amber-700' },
-    blue: { bg: 'bg-blue-100', text: 'text-blue-700' },
-    green: { bg: 'bg-green-100', text: 'text-green-700' },
-    gray: { bg: 'bg-gray-100', text: 'text-gray-500' },
+    amber: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
+    blue: { bg: 'bg-ink-100', text: 'text-ink-700' },
+    green: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
+    gray: { bg: 'bg-sand-100', text: 'text-sand-500' },
   }
   const c = colorMap[color] ?? colorMap.gray
 
@@ -345,19 +347,19 @@ function TicketStat({ label, value, color }: { label: string; value: number; col
       <View className={`w-8 h-8 rounded-lg ${c.bg} items-center justify-center mb-1`}>
         <Text className={`text-sm font-bold ${c.text}`}>{value}</Text>
       </View>
-      <Text className="text-[10px] text-gray-400">{label}</Text>
+      <Text className="text-[10px] text-sand-400">{label}</Text>
     </View>
   )
 }
 
 function StatusBadge({ status }: { status: string }) {
   const colorMap: Record<string, { bg: string; text: string }> = {
-    TRIAL: { bg: 'bg-amber-100', text: 'text-amber-700' },
-    ACTIVE: { bg: 'bg-green-100', text: 'text-green-700' },
-    PAST_DUE: { bg: 'bg-red-100', text: 'text-red-700' },
-    CANCELLED: { bg: 'bg-gray-100', text: 'text-gray-500' },
+    TRIAL: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
+    ACTIVE: { bg: 'bg-turmeric-100', text: 'text-turmeric-700' },
+    PAST_DUE: { bg: 'bg-rust-100', text: 'text-rust-700' },
+    CANCELLED: { bg: 'bg-sand-100', text: 'text-sand-500' },
   }
-  const c = colorMap[status] ?? { bg: 'bg-gray-100', text: 'text-gray-500' }
+  const c = colorMap[status] ?? { bg: 'bg-sand-100', text: 'text-sand-500' }
 
   return (
     <View className={`${c.bg} px-2 py-0.5 rounded-full`}>

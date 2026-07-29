@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Check, CreditCard, XCircle, ShieldAlert, ShoppingCart, ChevronLeft } from 'lucide-react-native'
 import { billingApi, retailerApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
+import { useTheme } from '../src/lib/theme'
 import { BillingSkeleton } from '../src/components/Skeleton'
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -24,6 +25,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 }
 
 export default function BillingScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly')
   const [buyingResource, setBuyingResource] = useState<string | null>(null)
@@ -116,36 +118,36 @@ export default function BillingScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-sand-50">
       <View
-        className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900 ml-3">Plans & Billing</Text>
+        <Text className="text-base font-bold text-sand-900 ml-3">Plans & Billing</Text>
       </View>
-      <ScrollView className="flex-1 bg-gray-50 px-4 pt-4">
+      <ScrollView className="flex-1 bg-sand-50 px-4 pt-4">
         {/* Current plan banner */}
         {current && (
           <View className={`rounded-2xl p-4 mb-5 border ${
-            isCancelled ? 'bg-red-50 border-red-200' :
-            isActive ? 'bg-green-50 border-green-200' :
-            'bg-amber-50 border-amber-200'
+            isCancelled ? 'bg-rust-50 border-rust-200' :
+            isActive ? 'bg-turmeric-50 border-turmeric-200' :
+            'bg-turmeric-50 border-turmeric-200'
           }`}>
             <View className="flex-row items-center gap-2 mb-1">
               {isCancelled ? (
-                <XCircle size={18} color="#DC2626" />
+                <XCircle size={18} color="#A24854" />
               ) : isActive ? (
-                <CreditCard size={18} color="#16A34A" />
+                <CreditCard size={18} color="#7D5334" />
               ) : (
-                <ShieldAlert size={18} color="#D97706" />
+                <ShieldAlert size={18} color="#7D5334" />
               )}
               <Text className={`font-bold text-sm ${
-                isCancelled ? 'text-red-700' :
-                isActive ? 'text-green-700' :
-                'text-amber-700'
+                isCancelled ? 'text-rust-700' :
+                isActive ? 'text-turmeric-700' :
+                'text-turmeric-700'
               }`}>
                 {isCancelled ? 'Subscription Cancelled' :
                  isActive ? `${current.plan} Plan · Active` :
@@ -153,7 +155,7 @@ export default function BillingScreen() {
               </Text>
             </View>
             {isTrial && current.trial_ends_at && (
-              <Text className="text-amber-700 text-xs mt-1">
+              <Text className="text-turmeric-700 text-xs mt-1">
                 Free trial ends{' '}
                 {new Date(current.trial_ends_at).toLocaleDateString('en-IN', {
                   day: 'numeric', month: 'long', year: 'numeric',
@@ -161,12 +163,12 @@ export default function BillingScreen() {
               </Text>
             )}
             {isActive && (
-              <Text className="text-green-700 text-xs mt-1">
+              <Text className="text-turmeric-700 text-xs mt-1">
                 Your subscription is active. You can switch plans at any time.
               </Text>
             )}
             {isCancelled && (
-              <Text className="text-red-700 text-xs mt-1">
+              <Text className="text-rust-700 text-xs mt-1">
                 Your subscription has ended. Choose a plan to reactivate.
               </Text>
             )}
@@ -175,14 +177,14 @@ export default function BillingScreen() {
 
         {/* Period toggle — hide if cancelled */}
         {!isCancelled && (
-          <View className="flex-row bg-gray-200 rounded-xl p-1 mb-4">
+          <View className="flex-row bg-sand-200 rounded-xl p-1 mb-4">
             {(['monthly', 'annual'] as const).map((p) => (
               <TouchableOpacity
                 key={p}
                 onPress={() => setPeriod(p)}
                 className={`flex-1 py-2.5 rounded-lg items-center ${period === p ? 'bg-white shadow-sm' : ''}`}
               >
-                <Text className={`text-sm font-medium ${period === p ? 'text-gray-900' : 'text-gray-500'}`}>
+                <Text className={`text-sm font-medium ${period === p ? 'text-sand-900' : 'text-sand-500'}`}>
                   {p === 'monthly' ? 'Monthly' : 'Annual (save 20%)'}
                 </Text>
               </TouchableOpacity>
@@ -198,19 +200,19 @@ export default function BillingScreen() {
 
           return (
             <View key={p.plan} className={`bg-white rounded-2xl p-5 mb-3 border ${
-              isCurrentPlan ? 'border-cyan-300' : 'border-gray-100'
+              isCurrentPlan ? 'border-ink-300' : 'border-sand-100'
             }`}>
               <View className="flex-row items-baseline justify-between mb-1">
-                <Text className="text-lg font-bold text-gray-900">{p.plan}</Text>
+                <Text className="text-lg font-bold text-sand-900">{p.plan}</Text>
                 <View className="items-end">
-                  <Text className="text-xl font-bold text-cyan-600">
+                  <Text className="text-xl font-bold text-ink-600">
                     ₹{(pricePaise / 100).toLocaleString('en-IN')}
-                    <Text className="text-xs text-gray-400 font-normal">
+                    <Text className="text-xs text-sand-400 font-normal">
                       /{period === 'monthly' ? 'mo' : 'yr'}
                     </Text>
                   </Text>
                   {period === 'annual' && (
-                    <Text className="text-xs text-gray-400">
+                    <Text className="text-xs text-sand-400">
                       ₹{(monthlyPrice / 100).toLocaleString('en-IN')}/mo billed yearly
                     </Text>
                   )}
@@ -220,8 +222,8 @@ export default function BillingScreen() {
               <View className="mt-3 gap-2">
                 {(PLAN_FEATURES[p.plan] ?? []).map((f) => (
                   <View key={f} className="flex-row items-center gap-2">
-                    <Check size={15} color="#10B981" />
-                    <Text className="text-sm text-gray-600">{f}</Text>
+                    <Check size={15} color="#946A4B" />
+                    <Text className="text-sm text-sand-600">{f}</Text>
                   </View>
                 ))}
               </View>
@@ -232,13 +234,13 @@ export default function BillingScreen() {
                   disabled={isCurrentPlan || subscribe.isPending}
                   onPress={() => subscribe.mutate({ plan: p.plan })}
                   className={`mt-4 py-3 rounded-xl items-center ${
-                    isCurrentPlan ? 'bg-gray-100' :
-                    isActive && current?.plan !== p.plan ? 'bg-cyan-500' :
-                    'bg-cyan-600'
+                    isCurrentPlan ? 'bg-sand-100' :
+                    isActive && current?.plan !== p.plan ? 'bg-ink-500' :
+                    'bg-ink-600'
                   }`}
                 >
                   <Text className={`font-semibold text-sm ${
-                    isCurrentPlan ? 'text-gray-400' : 'text-white'
+                    isCurrentPlan ? 'text-sand-400' : 'text-white'
                   }`}>
                     {isCurrentPlan ? '✓ Current Plan' :
                      subscribe.isPending ? 'Opening Razorpay…' :
@@ -257,10 +259,10 @@ export default function BillingScreen() {
             onPress={confirmCancel}
             className="py-3 items-center mt-2"
           >
-            <Text className="text-sm text-red-500 font-medium">
+            <Text className="text-sm text-rust-500 font-medium">
               Cancel subscription
             </Text>
-            <Text className="text-xs text-gray-400 mt-1">
+            <Text className="text-xs text-sand-400 mt-1">
               You can keep using Kanchuki until the period ends
             </Text>
           </TouchableOpacity>
@@ -269,10 +271,10 @@ export default function BillingScreen() {
         {/* ─── Buy More Addons ───────────────────────────────── */}
         <View className="mt-6 mb-4">
           <View className="flex-row items-center gap-2 mb-3">
-            <ShoppingCart size={18} color="#0891B2" />
-            <Text className="text-base font-bold text-gray-900">Need More?</Text>
+            <ShoppingCart size={18} color={primaryColor} />
+            <Text className="text-base font-bold text-sand-900">Need More?</Text>
           </View>
-          <Text className="text-xs text-gray-500 mb-3">
+          <Text className="text-xs text-sand-500 mb-3">
             Purchase extra credits if you&apos;ve hit your plan limits.
           </Text>
 
@@ -295,19 +297,19 @@ export default function BillingScreen() {
             if (!packs || packs.length === 0) return null
 
             return (
-              <View key={resource.resource_type} className="bg-white rounded-xl p-4 mb-2 border border-gray-100">
+              <View key={resource.resource_type} className="bg-white rounded-xl p-4 mb-2 border border-sand-100">
                 <View className="flex-row justify-between items-center mb-2">
-                  <Text className="text-sm font-medium text-gray-700">
+                  <Text className="text-sm font-medium text-sand-700">
                     {RESOURCE_LABELS[resource.resource_type] ?? resource.resource_type}
                   </Text>
-                  <Text className={`text-xs font-medium ${isAtLimit ? 'text-red-500' : isNearLimit ? 'text-amber-500' : 'text-gray-400'}`}>
+                  <Text className={`text-xs font-medium ${isAtLimit ? 'text-rust-500' : isNearLimit ? 'text-turmeric-500' : 'text-sand-400'}`}>
                     {used}/{limit === 999999 ? '∞' : limit}
                   </Text>
                 </View>
                 {/* Progress bar */}
-                <View className="h-1.5 bg-gray-100 rounded-full mb-3 overflow-hidden">
+                <View className="h-1.5 bg-sand-100 rounded-full mb-3 overflow-hidden">
                   <View
-                    className={`h-full rounded-full ${isAtLimit ? 'bg-red-500' : isNearLimit ? 'bg-amber-400' : 'bg-cyan-400'}`}
+                    className={`h-full rounded-full ${isAtLimit ? 'bg-rust-500' : isNearLimit ? 'bg-turmeric-400' : 'bg-ink-400'}`}
                     style={{ width: `${Math.min(pct, 100)}%` }}
                   />
                 </View>
@@ -324,12 +326,12 @@ export default function BillingScreen() {
                         })
                       }}
                       disabled={addonCheckout.isPending && buyingResource === resource.resource_type}
-                      className="flex-1 py-2 px-3 rounded-lg bg-cyan-50 border border-cyan-200 items-center"
+                      className="flex-1 py-2 px-3 rounded-lg bg-ink-50 border border-ink-200 items-center"
                     >
-                      <Text className="text-xs font-semibold text-cyan-700">
+                      <Text className="text-xs font-semibold text-ink-700">
                         {pack.label}
                       </Text>
-                      <Text className="text-xs font-bold text-cyan-600 mt-0.5">
+                      <Text className="text-xs font-bold text-ink-600 mt-0.5">
                         ₹{(pack.price_paise / 100).toLocaleString('en-IN')}
                       </Text>
                     </TouchableOpacity>
@@ -340,7 +342,7 @@ export default function BillingScreen() {
           })}
         </View>
 
-        <Text className="text-xs text-gray-400 text-center mt-4 mb-10">
+        <Text className="text-xs text-sand-400 text-center mt-4 mb-10">
           Secure payments via Razorpay · UPI, Cards & Netbanking · Prices include GST
         </Text>
       </ScrollView>

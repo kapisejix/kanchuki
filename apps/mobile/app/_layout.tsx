@@ -2,15 +2,37 @@ import '../global.css'
 import { useEffect, useRef } from 'react'
 import { Stack, router } from 'expo-router'
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
-import { AppState, Platform, View } from 'react-native'
+import { AppState, Platform, Text, TextInput, View } from 'react-native'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from '@expo-google-fonts/inter'
 import { getToken } from '../src/lib/api'
 import { getItem } from '../src/lib/storage'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { NetworkBanner } from '../src/components/NetworkBanner'
+import { ThemeProvider, useTheme } from '../src/lib/theme'
+import { vars } from 'nativewind'
 import { restoreQueryCache, persistQueryCache } from '../src/lib/offline-persister'
 import { useSyncQueue } from '../src/hooks/useSyncQueue'
+
+// ponytail: RN has no CSS-style View→Text font inheritance, and NativeWind's
+// className "inheritance" only covers CSS vars — not fontFamily. Patching the
+// default here is the one-place fix instead of adding font-sans to every Text
+// in the app; individual screens can still override with className="font-sans-*".
+;(Text as unknown as { defaultProps: Record<string, unknown> }).defaultProps = {
+  ...(Text as unknown as { defaultProps?: Record<string, unknown> }).defaultProps,
+  style: [{ fontFamily: 'Inter_400Regular' }, (Text as any).defaultProps?.style],
+}
+;(TextInput as unknown as { defaultProps: Record<string, unknown> }).defaultProps = {
+  ...(TextInput as unknown as { defaultProps?: Record<string, unknown> }).defaultProps,
+  style: [{ fontFamily: 'Inter_400Regular' }, (TextInput as any).defaultProps?.style],
+}
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,9 +61,47 @@ function SyncQueueGate() {
   return null
 }
 
+// Rendered inside ThemeProvider so useTheme() resolves. Sets --color-ink-600
+// via nativewind's vars() so every bg-ink-600/text-ink-600/border-ink-600
+// class in the app tree below picks up the admin-configured color live —
+// no per-screen edits needed.
+function AppShell() {
+  const { primaryColor } = useTheme()
+  return (
+    <View className="flex-1 bg-cotton" style={vars({ '--color-ink-600': primaryColor })}>
+      <NetworkBanner />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          headerStyle: { backgroundColor: '#FBFAF8' },
+          headerTintColor: '#14100D',
+          headerTitleStyle: { fontWeight: '700', fontSize: 17, fontFamily: 'Inter_700Bold' },
+          headerShadowVisible: false,
+        }}
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
+        <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
+        <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="product/[id]" />
+        <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="tryon/in-store" options={{ presentation: 'fullScreenModal' }} />
+        <Stack.Screen name="orders/[id]" />
+      </Stack>
+    </View>
+  )
+}
+
 export default function RootLayout() {
   const persistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const appStateRef = useRef(AppState.currentState)
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  })
 
   // ── Rehydrate offline cache on mount ──────────────────────────
   useEffect(() => {
@@ -96,34 +156,17 @@ export default function RootLayout() {
     return () => sub.remove()
   }, [])
 
+  if (!fontsLoaded) return null
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <SyncQueueGate />
           <ErrorBoundary>
-            <View className="flex-1">
-              <NetworkBanner />
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  headerStyle: { backgroundColor: '#ffffff' },
-                  headerTintColor: '#111827',
-                  headerTitleStyle: { fontWeight: '700', fontSize: 17 },
-                  headerShadowVisible: false,
-                }}
-              >
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
-                <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
-                <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="product/[id]" />
-                <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="tryon/in-store" options={{ presentation: 'fullScreenModal' }} />
-                <Stack.Screen name="orders/[id]" />
-              </Stack>
-            </View>
+            <ThemeProvider>
+              <AppShell />
+            </ThemeProvider>
           </ErrorBoundary>
         </QueryClientProvider>
       </SafeAreaProvider>

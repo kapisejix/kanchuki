@@ -80,14 +80,14 @@ const ProductCard = memo(function ProductCard({
       // Elevation on outer node, but NOT rounded — elevation + rounded-2xl
       // on the same node clips the Image on Android. Inner View handles
       // rounding and overflow clipping.
-      className={`bg-white border border-gray-200 ${flex ? 'flex-1' : ''}`}
+      className={`bg-white border border-sand-200 ${flex ? 'flex-1' : ''}`}
       style={[{ elevation }, style]}
       activeOpacity={0.95}
     >
       <View className="rounded-2xl overflow-hidden">
         {/* Image container */}
         <View
-          className="w-full bg-gray-100"
+          className="w-full bg-sand-100"
           style={
             imageHeight
               ? { height: imageHeight }
@@ -105,29 +105,29 @@ const ProductCard = memo(function ProductCard({
               onError={() => setImageError(true)}
             />
           ) : (
-            <View className="w-full h-full items-center justify-center bg-gray-50">
-              <Text className="text-gray-300 text-3xl">{imageError ? '⚠️' : placeholderIcon}</Text>
+            <View className="w-full h-full items-center justify-center bg-sand-50">
+              <Text className="text-sand-300 text-3xl">{imageError ? '⚠️' : placeholderIcon}</Text>
               {imageError && (
-                <Text className="text-gray-400 text-[10px] mt-1">Image error</Text>
+                <Text className="text-sand-400 text-[10px] mt-1">Image error</Text>
               )}
             </View>
           )}
 
           {/* Status badge (top-left) */}
           {statusBadge && (
-            <View className="absolute top-2 left-2 bg-red-500/90 px-2 py-0.5 rounded-full">
+            <View className="absolute top-2 left-2 bg-rust-500/90 px-2 py-0.5 rounded-full">
               <Text className="text-white text-xs font-semibold">{statusBadge}</Text>
             </View>
           )}
 
           {/* AI tagging pending indicator (top-right) */}
           {showAIDot && (
-            <View className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-amber-400 border border-white" />
+            <View className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-turmeric-400 border border-white" />
           )}
 
           {/* Selected checkmark overlay */}
           {selected && (
-            <View className="absolute top-2 right-2 w-6 h-6 bg-cyan-600 rounded-full items-center justify-center">
+            <View className="absolute top-2 right-2 w-6 h-6 bg-ink-600 rounded-full items-center justify-center">
               <Text className="text-white text-xs font-bold">✓</Text>
             </View>
           )}

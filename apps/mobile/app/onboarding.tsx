@@ -158,15 +158,15 @@ function StepIndicator({
             <View
               className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
                 isActive
-                  ? 'bg-cyan-600 border-cyan-600'
+                  ? 'bg-ink-600 border-ink-600'
                   : isPast
-                  ? 'bg-cyan-100 border-cyan-300'
-                  : 'bg-cyan-50 border-gray-200'
+                  ? 'bg-ink-100 border-ink-300'
+                  : 'bg-ink-50 border-sand-200'
               } ${isPast ? '' : ''}`}
             >
               <Text
                 className={`text-xs ${
-                  isActive ? 'text-white' : isPast ? 'text-cyan-600' : 'text-gray-300'
+                  isActive ? 'text-white' : isPast ? 'text-ink-600' : 'text-sand-300'
                 }`}
               >
                 {isPast ? '✓' : s}
@@ -174,7 +174,7 @@ function StepIndicator({
             </View>
             <Text
               className={`text-[10px] ${
-                isActive ? 'text-cyan-600 font-semibold' : 'text-gray-400'
+                isActive ? 'text-ink-600 font-semibold' : 'text-sand-400'
               }`}
             >
               {STEP_META[s].label}
@@ -338,64 +338,64 @@ export default function OnboardingScreen() {
           <View className="pt-4">
             {/* Brand header */}
             <View className="flex-row items-center gap-3 mb-6">
-              <View className="w-12 h-12 bg-cyan-600 rounded-2xl items-center justify-center">
+              <View className="w-12 h-12 bg-ink-600 rounded-2xl items-center justify-center">
                 <Text className="text-white text-xl font-bold">K</Text>
               </View>
               <View>
-                <Text className="text-lg font-bold text-gray-900">Kanchuki</Text>
-                <Text className="text-xs text-gray-500">Aapki dukan, AI ki taakat</Text>
+                <Text className="text-lg font-bold text-sand-900">Kanchuki</Text>
+                <Text className="text-xs text-sand-500">Aapki dukan, AI ki taakat</Text>
               </View>
             </View>
 
-            <Text className="text-2xl font-bold text-gray-900">Welcome to Kanchuki!</Text>
-            <Text className="text-gray-500 text-base mt-2 leading-5">
+            <Text className="text-2xl font-bold text-sand-900">Welcome to Kanchuki!</Text>
+            <Text className="text-sand-500 text-base mt-2 leading-5">
               Set up your digital store in minutes. AI will help you catalog products and
               share them with customers on WhatsApp.
             </Text>
 
             <View className="mt-6">
-              <Text className="text-sm font-semibold text-gray-600 mb-2">Shop name *</Text>
+              <Text className="text-sm font-semibold text-sand-600 mb-2">Shop name *</Text>
               <TextInput
                 value={shopName}
                 onChangeText={setShopName}
                 placeholder="e.g. Priya Fashion House"
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900"
-                placeholderTextColor="#9CA3AF"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                placeholderTextColor="#ABA39C"
                 autoFocus
                 maxLength={200}
               />
             </View>
 
             <View className="mt-4">
-              <Text className="text-sm font-semibold text-gray-600 mb-2">Your name</Text>
+              <Text className="text-sm font-semibold text-sand-600 mb-2">Your name</Text>
               <TextInput
                 value={ownerName}
                 onChangeText={setOwnerName}
                 placeholder="e.g. Priya Sharma (optional)"
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900"
-                placeholderTextColor="#9CA3AF"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                placeholderTextColor="#ABA39C"
                 maxLength={200}
               />
             </View>
 
             <View className="mt-4">
-              <Text className="text-sm font-semibold text-gray-600 mb-2">
-                Referral code <Text className="text-gray-400 font-normal">(optional)</Text>
+              <Text className="text-sm font-semibold text-sand-600 mb-2">
+                Referral code <Text className="text-sand-400 font-normal">(optional)</Text>
               </Text>
               <TextInput
                 value={referralCode}
                 onChangeText={(t) => setReferralCode(t.toUpperCase())}
                 placeholder="Referred by a Kanchuki salesperson?"
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900 tracking-wide"
-                placeholderTextColor="#9CA3AF"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 tracking-wide"
+                placeholderTextColor="#ABA39C"
                 autoCapitalize="characters"
                 maxLength={20}
               />
             </View>
 
-            <View className="mt-6 bg-cyan-50 rounded-2xl p-4">
-              <Text className="text-cyan-700 text-sm font-medium">✨ What happens next?</Text>
-              <Text className="text-cyan-600 text-sm mt-1 leading-5">
+            <View className="mt-6 bg-ink-50 rounded-2xl p-4">
+              <Text className="text-ink-700 text-sm font-medium">✨ What happens next?</Text>
+              <Text className="text-ink-600 text-sm mt-1 leading-5">
                 Add your shop details, then take a photo of any product — AI will automatically
                 tag it with category, color, fabric & occasion.
               </Text>
@@ -406,13 +406,13 @@ export default function OnboardingScreen() {
       case 2:
         return (
           <View className="pt-6">
-            <Text className="text-2xl font-bold text-gray-900">{"Where's your shop?"}</Text>
-            <Text className="text-gray-500 text-base mt-2">
+            <Text className="text-2xl font-bold text-sand-900">{"Where's your shop?"}</Text>
+            <Text className="text-sand-500 text-base mt-2">
               Customers use this to find your store
             </Text>
 
             <View className="mt-6">
-              <Text className="text-sm font-semibold text-gray-600 mb-2">City *</Text>
+              <Text className="text-sm font-semibold text-sand-600 mb-2">City *</Text>
               <TextInput
                 value={city}
                 onChangeText={(t) => {
@@ -420,8 +420,8 @@ export default function OnboardingScreen() {
                   setStatePickerOpen(false)
                 }}
                 placeholder="e.g. Surat, Jaipur, Ludhiana"
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900"
-                placeholderTextColor="#9CA3AF"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                placeholderTextColor="#ABA39C"
                 autoFocus
                 maxLength={100}
               />
@@ -429,23 +429,23 @@ export default function OnboardingScreen() {
 
             {/* State dropdown */}
             <View className="mt-4">
-              <Text className="text-sm font-semibold text-gray-600 mb-2">
-                State <Text className="text-gray-400 font-normal">(optional)</Text>
+              <Text className="text-sm font-semibold text-sand-600 mb-2">
+                State <Text className="text-sand-400 font-normal">(optional)</Text>
               </Text>
               <TouchableOpacity
                 onPress={() => setStatePickerOpen((p) => !p)}
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 flex-row items-center justify-between"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 flex-row items-center justify-between"
                 activeOpacity={0.7}
               >
-                <Text className={`text-base ${state ? 'text-gray-900' : 'text-gray-400'}`}>
+                <Text className={`text-base ${state ? 'text-sand-900' : 'text-sand-400'}`}>
                   {state || 'Select state'}
                 </Text>
-                <Text className="text-gray-400 text-lg">{statePickerOpen ? '▲' : '▼'}</Text>
+                <Text className="text-sand-400 text-lg">{statePickerOpen ? '▲' : '▼'}</Text>
               </TouchableOpacity>
 
               {statePickerOpen && (
-                <View className="mt-2 border-2 border-gray-100 rounded-2xl max-h-48 overflow-hidden">
-                  <ScrollView className="divide-y divide-gray-50" nestedScrollEnabled>
+                <View className="mt-2 border-2 border-sand-100 rounded-2xl max-h-48 overflow-hidden">
+                  <ScrollView className="divide-y divide-sand-50" nestedScrollEnabled>
                     {INDIAN_STATES.map((s) => (
                       <TouchableOpacity
                         key={s}
@@ -453,11 +453,11 @@ export default function OnboardingScreen() {
                           setState(s)
                           setStatePickerOpen(false)
                         }}
-                        className={`px-4 py-3 ${state === s ? 'bg-cyan-50' : ''}`}
+                        className={`px-4 py-3 ${state === s ? 'bg-ink-50' : ''}`}
                         activeOpacity={0.6}
                       >
                         <Text
-                          className={`text-sm ${state === s ? 'text-cyan-700 font-semibold' : 'text-gray-700'}`}
+                          className={`text-sm ${state === s ? 'text-ink-700 font-semibold' : 'text-sand-700'}`}
                         >
                           {s}
                         </Text>
@@ -473,8 +473,8 @@ export default function OnboardingScreen() {
       case 3:
         return (
           <View className="pt-6">
-            <Text className="text-2xl font-bold text-gray-900">What do you sell?</Text>
-            <Text className="text-gray-500 text-base mt-2">
+            <Text className="text-2xl font-bold text-sand-900">What do you sell?</Text>
+            <Text className="text-sand-500 text-base mt-2">
               Select all that apply — helps AI tag products accurately
             </Text>
 
@@ -487,14 +487,14 @@ export default function OnboardingScreen() {
                     onPress={() => toggleCategory(cat)}
                     className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 ${
                       selected
-                        ? 'bg-cyan-600 border-cyan-600'
-                        : 'bg-white border-gray-200 active:border-cyan-300'
+                        ? 'bg-ink-600 border-ink-600'
+                        : 'bg-white border-sand-200 active:border-ink-300'
                     }`}
                     activeOpacity={0.7}
                   >
                     <Text className="text-base">{categoryEmoji[cat] ?? '📦'}</Text>
                     <Text
-                      className={`font-medium text-sm ${selected ? 'text-white' : 'text-gray-700'}`}
+                      className={`font-medium text-sm ${selected ? 'text-white' : 'text-sand-700'}`}
                     >
                       {cat}
                     </Text>
@@ -503,25 +503,25 @@ export default function OnboardingScreen() {
               })}
             </View>
 
-            <Text className="text-xs text-gray-400 mt-4 text-center">
+            <Text className="text-xs text-sand-400 mt-4 text-center">
               {selectedCategories.length} selected
             </Text>
 
             <View className="mt-6">
-              <Text className="text-sm font-semibold text-gray-600 mb-2">
+              <Text className="text-sm font-semibold text-sand-600 mb-2">
                 About how many items do you carry?{' '}
-                <Text className="text-gray-400 font-normal">(optional)</Text>
+                <Text className="text-sand-400 font-normal">(optional)</Text>
               </Text>
               <TextInput
                 value={skuEstimate}
                 onChangeText={(t) => setSkuEstimate(t.replace(/[^0-9]/g, ''))}
                 placeholder="e.g. 1500"
                 keyboardType="number-pad"
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900"
-                placeholderTextColor="#9CA3AF"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                placeholderTextColor="#ABA39C"
                 maxLength={6}
               />
-              <Text className="text-xs text-gray-400 mt-2 px-1">
+              <Text className="text-xs text-sand-400 mt-2 px-1">
                 {"Over ~100 items? We'll offer a faster rack-by-rack bulk upload instead of one photo at a time."}
               </Text>
             </View>
@@ -531,8 +531,8 @@ export default function OnboardingScreen() {
       case 4:
         return (
           <View className="pt-6">
-            <Text className="text-2xl font-bold text-gray-900">GST number</Text>
-            <Text className="text-gray-500 text-base mt-2">
+            <Text className="text-2xl font-bold text-sand-900">GST number</Text>
+            <Text className="text-sand-500 text-base mt-2">
               Required for generating GST invoices for your customers
             </Text>
 
@@ -541,20 +541,20 @@ export default function OnboardingScreen() {
                 value={gstin}
                 onChangeText={(t) => setGstin(t.toUpperCase())}
                 placeholder="15-digit GSTIN"
-                className="border-2 border-gray-200 rounded-2xl px-4 py-4 text-base text-gray-900 font-mono tracking-widest"
-                placeholderTextColor="#9CA3AF"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 font-mono tracking-widest"
+                placeholderTextColor="#ABA39C"
                 autoCapitalize="characters"
                 maxLength={15}
                 autoFocus
               />
-              <Text className="text-xs text-gray-400 mt-2 px-1">
+              <Text className="text-xs text-sand-400 mt-2 px-1">
                 Format: 22AAAAA0000A1Z5 · You can add this later
               </Text>
             </View>
 
-            <View className="mt-6 bg-amber-50 rounded-2xl p-4">
-              <Text className="text-amber-800 text-sm font-medium">💡 GST invoice tip</Text>
-              <Text className="text-amber-700 text-sm mt-1 leading-5">
+            <View className="mt-6 bg-turmeric-50 rounded-2xl p-4">
+              <Text className="text-turmeric-800 text-sm font-medium">💡 GST invoice tip</Text>
+              <Text className="text-turmeric-700 text-sm mt-1 leading-5">
                 When a customer enquires about a product, Kanchuki can generate a GST invoice
                 automatically. Add your GSTIN now or skip and do it later from Settings.
               </Text>
@@ -569,7 +569,7 @@ export default function OnboardingScreen() {
               className="mt-4 py-3"
               activeOpacity={0.6}
             >
-              <Text className="text-cyan-600 text-sm font-semibold text-center">
+              <Text className="text-ink-600 text-sm font-semibold text-center">
                 Skip for now →
               </Text>
             </TouchableOpacity>
@@ -579,14 +579,14 @@ export default function OnboardingScreen() {
       case 5:
         return (
           <View className="pt-6">
-            <Text className="text-2xl font-bold text-gray-900">Organize your racks</Text>
-            <Text className="text-gray-500 text-base mt-2">
+            <Text className="text-2xl font-bold text-sand-900">Organize your racks</Text>
+            <Text className="text-sand-500 text-base mt-2">
               Tell us how your shop is arranged — makes finding products fast
             </Text>
 
-            <View className="mt-6 bg-cyan-50 rounded-2xl p-4 border border-cyan-100">
-              <Text className="text-cyan-800 text-sm font-medium mb-2">📦 Example layouts:</Text>
-              <Text className="text-cyan-700 text-sm leading-6">
+            <View className="mt-6 bg-ink-50 rounded-2xl p-4 border border-ink-100">
+              <Text className="text-ink-800 text-sm font-medium mb-2">📦 Example layouts:</Text>
+              <Text className="text-ink-700 text-sm leading-6">
                 • Floor → Section A → Rack 1 → Shelf 3{'\n'}
                 • Rack A, Rack B, Rack C...{'\n'}
                 • By category: Suit Rack, Saree Rack, Kurti Rack
@@ -605,7 +605,7 @@ export default function OnboardingScreen() {
                         goToStep(6 as Step) // For now all options proceed
                       }
                     }}
-                    className="flex-row items-center gap-3 p-4 border-2 border-gray-200 rounded-2xl"
+                    className="flex-row items-center gap-3 p-4 border-2 border-sand-200 rounded-2xl"
                     activeOpacity={0.7}
                   >
                     <Text className="text-lg">
@@ -614,13 +614,13 @@ export default function OnboardingScreen() {
                       {preset === 'By price range' && '💰'}
                       {preset === 'I will set up later' && '⏭️'}
                     </Text>
-                    <Text className="text-gray-700 text-sm font-medium">{preset}</Text>
+                    <Text className="text-sand-700 text-sm font-medium">{preset}</Text>
                   </TouchableOpacity>
                 ),
               )}
             </View>
 
-            <Text className="text-gray-400 text-xs mt-4 text-center">
+            <Text className="text-sand-400 text-xs mt-4 text-center">
               You can also set up racks after adding products
             </Text>
           </View>
@@ -630,14 +630,14 @@ export default function OnboardingScreen() {
         return (
           <View className="pt-2 items-center">
             {/* Big celebration emoji */}
-            <View className="w-24 h-24 bg-cyan-100 rounded-3xl items-center justify-center mb-6">
+            <View className="w-24 h-24 bg-ink-100 rounded-3xl items-center justify-center mb-6">
               <Text className="text-5xl">🎉</Text>
             </View>
 
-            <Text className="text-2xl font-bold text-gray-900 text-center">
+            <Text className="text-2xl font-bold text-sand-900 text-center">
               {"You're all set!"}
             </Text>
-            <Text className="text-gray-500 text-base mt-2 text-center">
+            <Text className="text-sand-500 text-base mt-2 text-center">
               {"Your store is ready to go. Here's what to do next:"}
             </Text>
 
@@ -651,17 +651,17 @@ export default function OnboardingScreen() {
                     router.replace('/')
                   }
                 }}
-                className="flex-row items-center gap-3 bg-cyan-600 rounded-2xl p-4"
+                className="flex-row items-center gap-3 bg-ink-600 rounded-2xl p-4"
                 activeOpacity={0.9}
               >
-                <View className="w-10 h-10 rounded-xl bg-cyan-500 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-ink-500 items-center justify-center">
                   <Text className="text-xl">📷</Text>
                 </View>
                 <View className="flex-1">
                   <Text className="text-white text-sm font-bold">
                     {parseInt(skuEstimate, 10) >= 100 ? 'Start bulk onboarding' : 'Add your first product'}
                   </Text>
-                  <Text className="text-cyan-200 text-xs mt-0.5">
+                  <Text className="text-ink-200 text-xs mt-0.5">
                     {parseInt(skuEstimate, 10) >= 100
                       ? 'Photograph one rack at a time'
                       : 'AI tags it automatically — takes 8 seconds'}
@@ -672,36 +672,36 @@ export default function OnboardingScreen() {
 
               <TouchableOpacity
                 onPress={() => router.replace('/')}
-                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4"
+                className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
                 activeOpacity={0.8}
               >
-                <View className="w-10 h-10 rounded-xl bg-cyan-50 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
                   <Text className="text-xl">👥</Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-gray-900 text-sm font-bold">Add customers</Text>
-                  <Text className="text-gray-500 text-xs mt-0.5">
+                  <Text className="text-sand-900 text-sm font-bold">Add customers</Text>
+                  <Text className="text-sand-500 text-xs mt-0.5">
                     Save preferences for faster selling
                   </Text>
                 </View>
-                <Text className="text-gray-400 text-lg">→</Text>
+                <Text className="text-sand-400 text-lg">→</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => router.replace('/')}
-                className="flex-row items-center gap-3 bg-white border-2 border-gray-200 rounded-2xl p-4"
+                className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
                 activeOpacity={0.8}
               >
-                <View className="w-10 h-10 rounded-xl bg-cyan-50 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
                   <Text className="text-xl">🔗</Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-gray-900 text-sm font-bold">Create a collection</Text>
-                  <Text className="text-gray-500 text-xs mt-0.5">
+                  <Text className="text-sand-900 text-sm font-bold">Create a collection</Text>
+                  <Text className="text-sand-500 text-xs mt-0.5">
                     Share on WhatsApp with a single link
                   </Text>
                 </View>
-                <Text className="text-gray-400 text-lg">→</Text>
+                <Text className="text-sand-400 text-lg">→</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -719,9 +719,9 @@ export default function OnboardingScreen() {
 
       <View className="flex-1 pt-14">
         {/* Progress bar */}
-        <View className="h-1 bg-gray-100 mx-6 rounded-full overflow-hidden">
+        <View className="h-1 bg-sand-100 mx-6 rounded-full overflow-hidden">
           <View
-            className="h-full bg-cyan-600 rounded-full"
+            className="h-full bg-ink-600 rounded-full"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </View>
@@ -753,24 +753,24 @@ export default function OnboardingScreen() {
 
       {/* Bottom navigation */}
       <View
-        className="bg-white border-t border-gray-100 px-6 pt-4"
+        className="bg-white border-t border-sand-100 px-6 pt-4"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
         <View className="flex-row items-center gap-3">
           {step > 1 && (
             <TouchableOpacity
               onPress={() => goToStep((step - 1) as Step)}
-              className="w-12 h-12 rounded-2xl border-2 border-gray-200 items-center justify-center"
+              className="w-12 h-12 rounded-2xl border-2 border-sand-200 items-center justify-center"
               activeOpacity={0.7}
             >
-              <Text className="text-gray-600 text-lg">←</Text>
+              <Text className="text-sand-600 text-lg">←</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
             onPress={() => void handleNext()}
             disabled={!canProceed() || saving || showConfetti}
             className={`flex-1 py-4 rounded-2xl items-center justify-center ${
-              canProceed() && !saving ? 'bg-cyan-600' : 'bg-gray-200'
+              canProceed() && !saving ? 'bg-ink-600' : 'bg-sand-200'
             }`}
             activeOpacity={0.8}
           >
@@ -781,7 +781,7 @@ export default function OnboardingScreen() {
             ) : (
               <Text
                 className={`font-bold text-base ${
-                  canProceed() ? 'text-white' : 'text-gray-400'
+                  canProceed() ? 'text-white' : 'text-sand-400'
                 }`}
               >
                 {step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'}
@@ -789,7 +789,7 @@ export default function OnboardingScreen() {
             )}
           </TouchableOpacity>
         </View>
-        <Text className="text-center text-xs text-gray-400 mt-2">
+        <Text className="text-center text-xs text-sand-400 mt-2">
           Step {step} of {TOTAL_STEPS}
         </Text>
       </View>

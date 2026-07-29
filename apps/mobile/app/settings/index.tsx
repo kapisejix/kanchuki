@@ -17,6 +17,7 @@ import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../
 import { showError } from '../../src/lib/errors'
 import { SettingsSkeleton } from '../../src/components/Skeleton'
 import { getItem, deleteItem } from '../../src/lib/storage'
+import { useTheme } from '../../src/lib/theme'
 
 type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back'
 
@@ -33,6 +34,7 @@ function ProfileEditModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { primaryColor } = useTheme()
   const [shopName, setShopName] = useState('')
   const [ownerName, setOwnerName] = useState('')
   const [city, setCity] = useState('')
@@ -146,9 +148,9 @@ function ProfileEditModal({
       >
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-gray-900">Edit Profile</Text>
+            <Text className="text-lg font-bold text-sand-900">Edit Profile</Text>
             <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#9CA3AF" />
+              <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
 
@@ -158,17 +160,17 @@ function ProfileEditModal({
               <TouchableOpacity
                 onPress={() => void handlePickLogo()}
                 disabled={uploadingLogo}
-                className="w-20 h-20 rounded-2xl bg-gray-50 border border-gray-200 items-center justify-center overflow-hidden"
+                className="w-20 h-20 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
               >
                 {uploadingLogo ? (
-                  <ActivityIndicator color="#0891B2" />
+                  <ActivityIndicator color={primaryColor} />
                 ) : logoUrl ? (
                   <Image source={{ uri: logoUrl }} style={{ width: 80, height: 80 }} resizeMode="cover" />
                 ) : (
-                  <ImagePlus size={22} color="#9CA3AF" />
+                  <ImagePlus size={22} color="#ABA39C" />
                 )}
               </TouchableOpacity>
-              <Text className="text-[10px] text-gray-400 mt-1.5">
+              <Text className="text-[10px] text-sand-400 mt-1.5">
                 {logoUrl ? 'Tap to change logo' : 'Add store logo (optional)'}
               </Text>
             </View>
@@ -178,16 +180,16 @@ function ProfileEditModal({
               <TouchableOpacity
                 onPress={() => void handlePickBanner()}
                 disabled={uploadingBanner}
-                className="w-full h-28 rounded-2xl bg-gray-50 border border-gray-200 items-center justify-center overflow-hidden"
+                className="w-full h-28 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
               >
                 {uploadingBanner ? (
-                  <ActivityIndicator color="#0891B2" />
+                  <ActivityIndicator color={primaryColor} />
                 ) : bannerUrl ? (
                   <Image source={{ uri: bannerUrl }} style={{ width: '100%', height: 112 }} resizeMode="cover" />
                 ) : (
                   <View className="items-center">
-                    <ImagePlus size={22} color="#9CA3AF" />
-                    <Text className="text-[10px] text-gray-400 mt-1">Tap to add store banner</Text>
+                    <ImagePlus size={22} color="#ABA39C" />
+                    <Text className="text-[10px] text-sand-400 mt-1">Tap to add store banner</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -199,7 +201,7 @@ function ProfileEditModal({
                   }}
                   className="mt-1"
                 >
-                  <Text className="text-[10px] text-red-500">Remove banner</Text>
+                  <Text className="text-[10px] text-rust-500">Remove banner</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -216,7 +218,7 @@ function ProfileEditModal({
               placeholder="22AAAAA0000A1Z5"
             />
 
-            <Text className="text-[10px] text-gray-400 mt-1">
+            <Text className="text-[10px] text-sand-400 mt-1">
               GSTIN format: 22AAAAA0000A1Z5 (15 characters)
             </Text>
 
@@ -224,14 +226,14 @@ function ProfileEditModal({
               <TouchableOpacity
                 onPress={onClose}
                 disabled={saving}
-                className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center"
+                className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
               >
-                <Text className="text-gray-700 font-semibold">Cancel</Text>
+                <Text className="text-sand-700 font-semibold">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => void handleSave()}
                 disabled={saving || !canSave}
-                className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+                className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
               >
                 {saving ? (
                   <ActivityIndicator size="small" color="white" />
@@ -255,14 +257,14 @@ function Field({
 }) {
   return (
     <View>
-      <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</Text>
+      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">{label}</Text>
       <TextInput
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
         keyboardType={keyboardType}
-        className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
-        placeholderTextColor="#9CA3AF"
+        className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+        placeholderTextColor="#ABA39C"
       />
     </View>
   )
@@ -308,8 +310,8 @@ function WhatsAppModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-gray-900">WhatsApp Number</Text>
-          <Text className="text-xs text-gray-500">
+          <Text className="text-lg font-bold text-sand-900">WhatsApp Number</Text>
+          <Text className="text-xs text-sand-500">
             Used for collection link enquiries and remote try-on. Leave empty to use your account phone number.
           </Text>
           <Field
@@ -320,10 +322,10 @@ function WhatsAppModal({
             keyboardType="numeric"
           />
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center">
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+              <Text className="text-sand-700 font-semibold">Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => void handleSave()} disabled={saving} className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center">
+            <TouchableOpacity onPress={() => void handleSave()} disabled={saving} className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center">
               {saving ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Save</Text>}
             </TouchableOpacity>
           </View>
@@ -354,6 +356,7 @@ function KycDocRow({
   url: string | null
   onUploaded: () => void
 }) {
+  const { primaryColor } = useTheme()
   const [uploading, setUploading] = useState(false)
 
   const handlePick = async () => {
@@ -380,31 +383,31 @@ function KycDocRow({
     <TouchableOpacity
       onPress={() => void handlePick()}
       disabled={uploading}
-      className="flex-row items-center bg-gray-50 rounded-2xl p-3.5 border border-gray-100"
+      className="flex-row items-center bg-sand-50 rounded-2xl p-3.5 border border-sand-100"
     >
-      <View className="w-11 h-11 rounded-xl bg-white border border-gray-200 items-center justify-center mr-3 overflow-hidden">
+      <View className="w-11 h-11 rounded-xl bg-white border border-sand-200 items-center justify-center mr-3 overflow-hidden">
         {uploading ? (
-          <ActivityIndicator size="small" color="#0891B2" />
+          <ActivityIndicator size="small" color={primaryColor} />
         ) : url ? (
           <Image source={{ uri: url }} style={{ width: 44, height: 44 }} resizeMode="cover" />
         ) : (
-          <FileText size={18} color="#9CA3AF" />
+          <FileText size={18} color="#ABA39C" />
         )}
       </View>
       <View className="flex-1">
-        <Text className="text-sm font-semibold text-gray-900">{label}</Text>
-        <Text className="text-xs text-gray-400 mt-0.5">{url ? 'Uploaded — tap to replace' : hint}</Text>
+        <Text className="text-sm font-semibold text-sand-900">{label}</Text>
+        <Text className="text-xs text-sand-400 mt-0.5">{url ? 'Uploaded — tap to replace' : hint}</Text>
       </View>
-      {url && <Check size={16} color="#10B981" />}
+      {url && <Check size={16} color="#946A4B" />}
     </TouchableOpacity>
   )
 }
 
 const KYC_STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  NOT_SUBMITTED: { label: 'Not Submitted', color: '#6B7280', bg: '#F3F4F6' },
-  PENDING: { label: 'Pending Review', color: '#D97706', bg: '#FEF3C7' },
-  VERIFIED: { label: 'Verified', color: '#059669', bg: '#D1FAE5' },
-  REJECTED: { label: 'Rejected', color: '#DC2626', bg: '#FEE2E2' },
+  NOT_SUBMITTED: { label: 'Not Submitted', color: '#847B75', bg: '#F2EEE9' },
+  PENDING: { label: 'Pending Review', color: '#7D5334', bg: '#EFDECE' },
+  VERIFIED: { label: 'Verified', color: '#7D5334', bg: '#EFDECE' },
+  REJECTED: { label: 'Rejected', color: '#A24854', bg: '#FAE1E4' },
 }
 
 function KycModal({
@@ -426,9 +429,9 @@ function KycModal({
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-gray-900">Identity Verification</Text>
+            <Text className="text-lg font-bold text-sand-900">Identity Verification</Text>
             <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#9CA3AF" />
+              <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
 
@@ -442,10 +445,10 @@ function KycModal({
           </View>
 
           {status === 'REJECTED' && retailer?.kyc_rejection_reason && (
-            <Text className="text-xs text-red-600">{retailer.kyc_rejection_reason}</Text>
+            <Text className="text-xs text-rust-600">{retailer.kyc_rejection_reason}</Text>
           )}
 
-          <Text className="text-xs text-gray-500">
+          <Text className="text-xs text-sand-500">
             Upload GST certificate and Aadhar card (front + back) for KYC. Submitted for review once all three are uploaded.
           </Text>
 
@@ -463,8 +466,8 @@ function KycModal({
             ))}
           </ScrollView>
 
-          <TouchableOpacity onPress={onClose} className="bg-gray-100 py-3.5 rounded-2xl items-center">
-            <Text className="text-gray-700 font-semibold">Done</Text>
+          <TouchableOpacity onPress={onClose} className="bg-sand-100 py-3.5 rounded-2xl items-center">
+            <Text className="text-sand-700 font-semibold">Done</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -483,6 +486,7 @@ function WhatsAppApiModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { primaryColor } = useTheme()
   const [phoneNumberId, setPhoneNumberId] = useState('')
   const [accessToken, setAccessToken] = useState('')
   const [templateName, setTemplateName] = useState('')
@@ -551,17 +555,17 @@ function WhatsAppApiModal({
       >
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-gray-900">WhatsApp Business API</Text>
+            <Text className="text-lg font-bold text-sand-900">WhatsApp Business API</Text>
             <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#9CA3AF" />
+              <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
 
           {loading ? (
-            <ActivityIndicator color="#0891B2" className="py-8" />
+            <ActivityIndicator color={primaryColor} className="py-8" />
           ) : (
             <ScrollView className="gap-3">
-              <Text className="text-xs text-gray-500 mb-1">
+              <Text className="text-xs text-sand-500 mb-1">
                 Optional — connect your own Meta WhatsApp Business API to send collection links to many
                 customers in one tap. Without this, sharing works one-by-one via WhatsApp. Requires a
                 pre-approved message template with a single body variable.
@@ -578,13 +582,13 @@ function WhatsAppApiModal({
               <Field label="Template Language" value={templateLang} onChange={setTemplateLang} placeholder="en_US" />
 
               <View className="flex-row gap-3 mt-2">
-                <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center">
-                  <Text className="text-gray-700 font-semibold">Cancel</Text>
+                <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+                  <Text className="text-sand-700 font-semibold">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => void handleSave()}
                   disabled={saving || !canSave}
-                  className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+                  className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
                 >
                   {saving ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Save</Text>}
                 </TouchableOpacity>
@@ -592,7 +596,7 @@ function WhatsAppApiModal({
 
               {configured && (
                 <TouchableOpacity onPress={handleDisconnect} className="items-center py-2">
-                  <Text className="text-red-500 text-xs font-semibold">Disconnect</Text>
+                  <Text className="text-rust-500 text-xs font-semibold">Disconnect</Text>
                 </TouchableOpacity>
               )}
             </ScrollView>
@@ -633,8 +637,8 @@ function DeleteAccountModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-red-600">Delete Account</Text>
-          <Text className="text-sm text-gray-600 leading-relaxed">
+          <Text className="text-lg font-bold text-rust-600">Delete Account</Text>
+          <Text className="text-sm text-sand-600 leading-relaxed">
             This will deactivate your account and archive all collections.{'\n\n'}
             Products, customers, and billing records are retained for audit purposes.{'\n\n'}
             Type DELETE to confirm.
@@ -643,18 +647,18 @@ function DeleteAccountModal({
             value={confirm}
             onChangeText={setConfirm}
             placeholder='Type "DELETE" to confirm'
-            className="bg-red-50 border border-red-200 px-4 py-3 rounded-xl text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="bg-rust-50 border border-rust-200 px-4 py-3 rounded-xl text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
             autoCapitalize="characters"
           />
           <View className="flex-row gap-3">
-            <TouchableOpacity onPress={onClose} disabled={deleting} className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center">
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+            <TouchableOpacity onPress={onClose} disabled={deleting} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+              <Text className="text-sand-700 font-semibold">Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void handleDelete()}
               disabled={confirm !== 'DELETE' || deleting}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${confirm === 'DELETE' ? 'bg-red-600' : 'bg-red-200'}`}
+              className={`flex-1 py-3.5 rounded-2xl items-center ${confirm === 'DELETE' ? 'bg-rust-600' : 'bg-rust-200'}`}
             >
               {deleting ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Delete Forever</Text>}
             </TouchableOpacity>
@@ -683,16 +687,16 @@ function SettingsRow({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="flex-row items-center bg-white rounded-2xl p-4 border border-gray-100"
+      className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
     >
-      <View className="w-9 h-9 rounded-xl bg-gray-100 items-center justify-center mr-3">
+      <View className="w-9 h-9 rounded-xl bg-sand-100 items-center justify-center mr-3">
         {icon}
       </View>
       <View className="flex-1">
-        <Text className={`text-sm font-semibold ${destructive ? 'text-red-600' : 'text-gray-900'}`}>{label}</Text>
-        {subtitle && <Text className="text-xs text-gray-400 mt-0.5">{subtitle}</Text>}
+        <Text className={`text-sm font-semibold ${destructive ? 'text-rust-600' : 'text-sand-900'}`}>{label}</Text>
+        {subtitle && <Text className="text-xs text-sand-400 mt-0.5">{subtitle}</Text>}
       </View>
-      <ChevronRight size={18} color="#9CA3AF" />
+      <ChevronRight size={18} color="#ABA39C" />
     </TouchableOpacity>
   )
 }
@@ -700,6 +704,7 @@ function SettingsRow({
 // ─── Usage Section (F-010) ─────────────────────────────────────────
 
 function UsageSection() {
+  const { primaryColor } = useTheme()
   const { data: usageData, isLoading } = useQuery({
     queryKey: ['retailer', 'usage'],
     queryFn: () => retailerApi.getUsage(),
@@ -722,24 +727,24 @@ function UsageSection() {
   if (activeResources.length === 0) return null
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-4">
+    <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
       <View className="flex-row items-center gap-2 mb-3">
-        <BarChart2 size={16} color="#0891B2" />
-        <Text className="text-sm font-bold text-gray-900">Usage</Text>
+        <BarChart2 size={16} color={primaryColor} />
+        <Text className="text-sm font-bold text-sand-900">Usage</Text>
       </View>
       {activeResources.map((r) => {
         const pct = Math.min(Math.round((r.used / r.limit) * 100), 100)
         const isOver = r.used >= r.limit
-        const barColor = isOver ? '#DC2626' : pct > 80 ? '#D97706' : '#0891B2'
+        const barColor = isOver ? '#A24854' : pct > 80 ? '#7D5334' : primaryColor
         return (
           <View key={r.resource_type} className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-xs text-gray-600">{labelMap[r.resource_type] ?? r.resource_type}</Text>
-              <Text className={`text-xs font-medium ${isOver ? 'text-red-600' : 'text-gray-700'}`}>
+              <Text className="text-xs text-sand-600">{labelMap[r.resource_type] ?? r.resource_type}</Text>
+              <Text className={`text-xs font-medium ${isOver ? 'text-rust-600' : 'text-sand-700'}`}>
                 {r.used}/{r.limit} {r.period === 'MONTH' ? 'mo' : r.period === 'DAY' ? 'day' : ''}
               </Text>
             </View>
-            <View className="h-2 bg-gray-100 rounded-full overflow-hidden">
+            <View className="h-2 bg-sand-100 rounded-full overflow-hidden">
               <View
                 style={{
                   width: `${Math.max(pct, 3)}%`,
@@ -750,8 +755,8 @@ function UsageSection() {
             </View>
             {isOver && (
               <View className="flex-row items-center gap-1 mt-1">
-                <AlertTriangle size={10} color="#DC2626" />
-                <Text className="text-[10px] text-red-600">Limit reached. Upgrade or contact support.</Text>
+                <AlertTriangle size={10} color="#A24854" />
+                <Text className="text-[10px] text-rust-600">Limit reached. Upgrade or contact support.</Text>
               </View>
             )}
           </View>
@@ -764,6 +769,7 @@ function UsageSection() {
 // ─── Main Settings Screen ──────────────────────────────────────────
 
 export default function SettingsScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
 
@@ -821,25 +827,25 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Header */}
       <View
-        className="bg-white border-b border-gray-100 px-4 pb-4"
+        className="bg-white border-b border-sand-100 px-4 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <ChevronLeft size={24} color="#374151" />
+            <ChevronLeft size={24} color="#4B4039" />
           </TouchableOpacity>
-          <Text className="text-base font-bold text-gray-900">Settings</Text>
+          <Text className="text-base font-bold text-sand-900">Settings</Text>
         </View>
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
         {/* Shop Card */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-4">
-          <Text className="text-base font-bold text-gray-900">{retailer?.shop_name ?? 'My Store'}</Text>
-          <Text className="text-sm text-gray-500 mt-0.5">{retailer?.city ?? ''} · {retailer?.plan ?? 'STARTER'}</Text>
+        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+          <Text className="text-base font-bold text-sand-900">{retailer?.shop_name ?? 'My Store'}</Text>
+          <Text className="text-sm text-sand-500 mt-0.5">{retailer?.city ?? ''} · {retailer?.plan ?? 'STARTER'}</Text>
         </View>
 
         {/* F-010: Usage section — owner-only endpoint */}
@@ -849,38 +855,38 @@ export default function SettingsScreen() {
         <View className="gap-2.5">
           {!isStaff && (
             <>
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Account</Text>
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">Account</Text>
 
               <SettingsRow
-                icon={<User size={18} color="#3B82F6" />}
+                icon={<User size={18} color="#E3262D" />}
                 label="Edit Profile"
                 subtitle={retailer?.shop_name ?? ''}
                 onPress={() => setShowProfileEdit(true)}
               />
 
               <SettingsRow
-                icon={<CreditCard size={18} color="#10B981" />}
+                icon={<CreditCard size={18} color="#946A4B" />}
                 label="Plans & Billing"
                 subtitle={`${retailer?.plan ?? 'STARTER'} · ${retailer?.plan_status ?? 'TRIAL'}`}
                 onPress={() => router.push('/billing')}
               />
 
               <SettingsRow
-                icon={<Smartphone size={18} color="#8B5CF6" />}
+                icon={<Smartphone size={18} color="#E3262D" />}
                 label="WhatsApp Number"
                 subtitle={whatsapp}
                 onPress={() => setShowWhatsApp(true)}
               />
 
               <SettingsRow
-                icon={<ShieldCheck size={18} color="#0891B2" />}
+                icon={<ShieldCheck size={18} color={primaryColor} />}
                 label="Identity Verification (KYC)"
                 subtitle={(KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED'] ?? KYC_STATUS_LABEL['NOT_SUBMITTED'])!.label}
                 onPress={() => setShowKyc(true)}
               />
 
               <SettingsRow
-                icon={<MessageCircle size={18} color="#10B981" />}
+                icon={<MessageCircle size={18} color="#946A4B" />}
                 label="WhatsApp Business API"
                 subtitle={retailer?.whatsapp_api_configured ? 'Connected — bulk send enabled' : 'Not connected — one-by-one only'}
                 onPress={() => setShowWhatsAppApi(true)}
@@ -890,10 +896,10 @@ export default function SettingsScreen() {
             </>
           )}
 
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Store</Text>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">Store</Text>
 
           <SettingsRow
-            icon={<FolderKanban size={18} color="#0891B2" />}
+            icon={<FolderKanban size={18} color={primaryColor} />}
             label="Product Categories"
             subtitle="Group products for customer browsing"
             onPress={() => router.push('/category')}
@@ -901,7 +907,7 @@ export default function SettingsScreen() {
 
           {!isStaff && (
             <SettingsRow
-              icon={<Users size={18} color="#F59E0B" />}
+              icon={<Users size={18} color="#946A4B" />}
               label="Team Members"
               subtitle="Manage shop staff"
               onPress={() => router.push('/settings/staff')}
@@ -909,7 +915,7 @@ export default function SettingsScreen() {
           )}
 
           <SettingsRow
-            icon={<QrCode size={18} color="#0891B2" />}
+            icon={<QrCode size={18} color={primaryColor} />}
             label="Store QR Code"
             subtitle="QR profile & storefront"
             onPress={() => router.push('/store-profile')}
@@ -917,7 +923,7 @@ export default function SettingsScreen() {
 
           {!isStaff && (
             <SettingsRow
-              icon={<Truck size={18} color="#0891B2" />}
+              icon={<Truck size={18} color={primaryColor} />}
               label="Catalog Upload Help"
               subtitle="Get a team member to add your catalog for you"
               onPress={() => router.push('/settings/catalog-upload')}
@@ -926,7 +932,7 @@ export default function SettingsScreen() {
 
           {!isStaff && (
             <SettingsRow
-              icon={<Trash2 size={18} color="#DC2626" />}
+              icon={<Trash2 size={18} color="#A24854" />}
               label="Recently Deleted"
               subtitle="Restore or permanently remove products"
               onPress={() => router.push('/settings/deleted-products')}
@@ -935,17 +941,17 @@ export default function SettingsScreen() {
 
           <View className="h-2" />
 
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-1 mb-0.5">Actions</Text>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">Actions</Text>
 
           <SettingsRow
-            icon={<LogOut size={18} color="#6B7280" />}
+            icon={<LogOut size={18} color="#847B75" />}
             label="Logout"
             onPress={handleLogout}
           />
 
           {!isStaff && (
             <SettingsRow
-              icon={<Trash2 size={18} color="#DC2626" />}
+              icon={<Trash2 size={18} color="#A24854" />}
               label="Delete Account"
               destructive
               onPress={() => setShowDelete(true)}

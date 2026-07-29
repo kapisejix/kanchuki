@@ -8,6 +8,7 @@ import { normalizeIndianPhone } from '@kanchuki/shared'
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
+import { useTheme } from '../../src/lib/theme'
 
 type CollectionDetail = {
   id: string
@@ -93,24 +94,24 @@ function EditModal({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-gray-900">Edit Collection</Text>
+          <Text className="text-lg font-bold text-sand-900">Edit Collection</Text>
 
           <View>
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
               Title
             </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="Collection name"
-              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
-              placeholderTextColor="#9CA3AF"
+              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              placeholderTextColor="#ABA39C"
               autoFocus
             />
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
               Expires in (days)
             </Text>
             <TextInput
@@ -118,8 +119,8 @@ function EditModal({
               onChangeText={setExpiryDays}
               placeholder="30"
               keyboardType="numeric"
-              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
-              placeholderTextColor="#9CA3AF"
+              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              placeholderTextColor="#ABA39C"
             />
           </View>
 
@@ -127,14 +128,14 @@ function EditModal({
             <TouchableOpacity
               onPress={onClose}
               disabled={saving}
-              className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center"
+              className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+              <Text className="text-sand-700 font-semibold">Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void handleSave()}
               disabled={saving || !title.trim()}
-              className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+              className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
             >
               {saving ? (
                 <ActivityIndicator size="small" color="white" />
@@ -162,6 +163,7 @@ function ShareModal({
   collection: CollectionDetail | null
   onClose: () => void
 }) {
+  const { primaryColor } = useTheme()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [queue, setQueue] = useState<CustomerLite[] | null>(null)
@@ -250,73 +252,73 @@ function ShareModal({
         <View className="bg-white rounded-t-3xl max-h-[85%] p-5">
           {bulkResult ? (
             <View className="items-center py-6 gap-3">
-              <Text className="text-base font-bold text-gray-900">Sent via WhatsApp Business API</Text>
-              <Text className="text-sm text-gray-600">{bulkResult.sent} delivered</Text>
+              <Text className="text-base font-bold text-sand-900">Sent via WhatsApp Business API</Text>
+              <Text className="text-sm text-sand-600">{bulkResult.sent} delivered</Text>
               {bulkResult.failed_count > 0 && (
-                <Text className="text-sm text-red-500">{bulkResult.failed_count} failed</Text>
+                <Text className="text-sm text-rust-500">{bulkResult.failed_count} failed</Text>
               )}
-              <TouchableOpacity onPress={handleClose} className="bg-gray-100 px-6 py-3 rounded-xl mt-2">
-                <Text className="text-gray-700 font-semibold">Done</Text>
+              <TouchableOpacity onPress={handleClose} className="bg-sand-100 px-6 py-3 rounded-xl mt-2">
+                <Text className="text-sand-700 font-semibold">Done</Text>
               </TouchableOpacity>
             </View>
           ) : queue ? (
             <View className="items-center py-6 gap-3">
-              <Text className="text-base font-bold text-gray-900">
+              <Text className="text-base font-bold text-sand-900">
                 Message {queueIndex + 1} of {queue.length}
               </Text>
-              <Text className="text-sm text-gray-500">{queue[queueIndex]!.name}</Text>
-              <Text className="text-xs text-gray-400 text-center px-4">
+              <Text className="text-sm text-sand-500">{queue[queueIndex]!.name}</Text>
+              <Text className="text-xs text-sand-400 text-center px-4">
                 WhatsApp opened with the message pre-filled. Tap Send in WhatsApp, then come back and tap Next.
               </Text>
-              <TouchableOpacity onPress={sendNext} className="bg-green-600 px-6 py-3 rounded-xl mt-2">
+              <TouchableOpacity onPress={sendNext} className="bg-turmeric-600 px-6 py-3 rounded-xl mt-2">
                 <Text className="text-white font-semibold">
                   {queueIndex + 1 >= queue.length ? 'Done' : 'Next Customer'}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleClose} className="mt-1">
-                <Text className="text-gray-400 text-xs">Cancel</Text>
+                <Text className="text-sand-400 text-xs">Cancel</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <>
-              <Text className="text-lg font-bold text-gray-900 mb-3">Share with Customers</Text>
-              <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2 mb-3">
-                <Search size={16} color="#9CA3AF" />
+              <Text className="text-lg font-bold text-sand-900 mb-3">Share with Customers</Text>
+              <View className="flex-row items-center bg-sand-100 rounded-xl px-3 py-2.5 gap-2 mb-3">
+                <Search size={16} color="#ABA39C" />
                 <TextInput
                   value={search}
                   onChangeText={setSearch}
                   placeholder="Search by name or phone..."
-                  placeholderTextColor="#9CA3AF"
-                  className="flex-1 text-sm text-gray-900"
+                  placeholderTextColor="#ABA39C"
+                  className="flex-1 text-sm text-sand-900"
                 />
               </View>
               {isLoading ? (
-                <ActivityIndicator color="#0891B2" className="py-8" />
+                <ActivityIndicator color={primaryColor} className="py-8" />
               ) : (
                 <FlatList
                   data={customers}
                   keyExtractor={(c) => c.id}
                   style={{ maxHeight: 320 }}
                   ListEmptyComponent={
-                    <Text className="text-gray-400 text-sm text-center py-8">No customers saved yet</Text>
+                    <Text className="text-sand-400 text-sm text-center py-8">No customers saved yet</Text>
                   }
                   renderItem={({ item }) => {
                     const isSelected = selected.has(item.id)
                     return (
                       <TouchableOpacity
                         onPress={() => toggle(item.id)}
-                        className="flex-row items-center gap-3 py-2.5 border-b border-gray-50"
+                        className="flex-row items-center gap-3 py-2.5 border-b border-sand-50"
                       >
                         <View
                           className={`w-5 h-5 rounded-md border items-center justify-center ${
-                            isSelected ? 'bg-cyan-600 border-cyan-600' : 'border-gray-300'
+                            isSelected ? 'bg-ink-600 border-ink-600' : 'border-sand-300'
                           }`}
                         >
                           {isSelected && <Check size={12} color="white" />}
                         </View>
                         <View className="flex-1">
-                          <Text className="text-sm font-medium text-gray-900">{item.name}</Text>
-                          <Text className="text-xs text-gray-400">{item.phone}</Text>
+                          <Text className="text-sm font-medium text-sand-900">{item.name}</Text>
+                          <Text className="text-xs text-sand-400">{item.phone}</Text>
                         </View>
                       </TouchableOpacity>
                     )
@@ -327,12 +329,12 @@ function ShareModal({
                 <TouchableOpacity
                   disabled={selected.size === 0 || bulkSending}
                   onPress={() => void handleBulkSend()}
-                  className={`mt-4 py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-cyan-600' : 'bg-gray-200'}`}
+                  className={`mt-4 py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-ink-600' : 'bg-sand-200'}`}
                 >
                   {bulkSending ? (
                     <ActivityIndicator size="small" color="white" />
                   ) : (
-                    <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-gray-400'}`}>
+                    <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-sand-400'}`}>
                       Send via WhatsApp Business API ({selected.size})
                     </Text>
                   )}
@@ -341,14 +343,14 @@ function ShareModal({
               <TouchableOpacity
                 disabled={selected.size === 0}
                 onPress={startSending}
-                className={`${apiConfigured ? 'mt-2' : 'mt-4'} py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-green-600' : 'bg-gray-200'}`}
+                className={`${apiConfigured ? 'mt-2' : 'mt-4'} py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-turmeric-600' : 'bg-sand-200'}`}
               >
-                <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-gray-400'}`}>
+                <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-sand-400'}`}>
                   {apiConfigured ? 'Or send one-by-one' : 'Share via WhatsApp'} ({selected.size})
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleClose} className="items-center py-3">
-                <Text className="text-gray-400 text-sm">Cancel</Text>
+                <Text className="text-sand-400 text-sm">Cancel</Text>
               </TouchableOpacity>
             </>
           )}
@@ -359,6 +361,7 @@ function ShareModal({
 }
 
 export default function CollectionDetailScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -404,36 +407,36 @@ export default function CollectionDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
         <View className="flex-row gap-2">
           <TouchableOpacity
             onPress={() => setShowEditModal(true)}
-            className="w-9 h-9 bg-blue-50 rounded-full items-center justify-center"
+            className="w-9 h-9 bg-ink-50 rounded-full items-center justify-center"
           >
-            <Edit size={16} color="#2563EB" />
+            <Edit size={16} color={primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDelete}
-            className="w-9 h-9 bg-red-50 rounded-full items-center justify-center"
+            className="w-9 h-9 bg-rust-50 rounded-full items-center justify-center"
           >
-            <Trash2 size={16} color="#DC2626" />
+            <Trash2 size={16} color="#A24854" />
           </TouchableOpacity>
         </View>
       </View>
-      <ScrollView className="flex-1 bg-cyan-50">
+      <ScrollView className="flex-1 bg-ink-50">
         {/* Stats */}
         <View className="flex-row flex-wrap px-4 pt-4 gap-3">
-          <Stat icon={<Eye size={16} color="#0891B2" />} label="Views" value={collection.view_count} />
-          <Stat icon={<Users size={16} color="#3B82F6" />} label="Visitors" value={collection.unique_viewer_count} />
-          <Stat icon={<Heart size={16} color="#EF4444" />} label="Favorites" value={collection.favorite_count} />
-          <Stat icon={<MessageCircle size={16} color="#10B981" />} label="Enquiries" value={collection.enquiry_count} />
+          <Stat icon={<Eye size={16} color={primaryColor} />} label="Views" value={collection.view_count} />
+          <Stat icon={<Users size={16} color="#E3262D" />} label="Visitors" value={collection.unique_viewer_count} />
+          <Stat icon={<Heart size={16} color="#BF6973" />} label="Favorites" value={collection.favorite_count} />
+          <Stat icon={<MessageCircle size={16} color="#946A4B" />} label="Enquiries" value={collection.enquiry_count} />
         </View>
 
         {/* Share */}
@@ -441,7 +444,7 @@ export default function CollectionDetailScreen() {
           <View className="px-4 pt-4">
             <TouchableOpacity
               onPress={() => setShowShareModal(true)}
-              className="flex-row items-center justify-center gap-2 bg-green-600 py-3 rounded-xl"
+              className="flex-row items-center justify-center gap-2 bg-turmeric-600 py-3 rounded-xl"
             >
               <Link2 size={16} color="white" />
               <Text className="text-white font-semibold">Share on WhatsApp</Text>
@@ -453,39 +456,39 @@ export default function CollectionDetailScreen() {
         <View className="px-4 pt-3 flex-row gap-3">
           <TouchableOpacity
             onPress={() => setShowEditModal(true)}
-            className="flex-1 flex-row items-center justify-center gap-1.5 bg-blue-50 border border-blue-100 py-3 rounded-xl"
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 border border-ink-100 py-3 rounded-xl"
           >
-            <Edit size={16} color="#2563EB" />
-            <Text className="text-blue-700 text-sm font-semibold">Edit</Text>
+            <Edit size={16} color={primaryColor} />
+            <Text className="text-ink-700 text-sm font-semibold">Edit</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDelete}
-            className="flex-1 flex-row items-center justify-center gap-1.5 bg-red-50 border border-red-100 py-3 rounded-xl"
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-rust-50 border border-rust-100 py-3 rounded-xl"
           >
-            <Trash2 size={16} color="#DC2626" />
-            <Text className="text-red-600 text-sm font-semibold">Delete</Text>
+            <Trash2 size={16} color="#A24854" />
+            <Text className="text-rust-600 text-sm font-semibold">Delete</Text>
           </TouchableOpacity>
         </View>
 
         {/* Enquiries */}
         {collection.enquiries.length > 0 && (
           <View className="px-4 pt-5">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
               Enquiries
             </Text>
             <View className="gap-2">
               {collection.enquiries.map((e) => (
-                <View key={e.id} className="bg-white rounded-xl p-3 border border-gray-100">
+                <View key={e.id} className="bg-white rounded-xl p-3 border border-sand-100">
                   <View className="flex-row justify-between items-center">
-                    <Text className="text-sm font-semibold text-gray-900">
+                    <Text className="text-sm font-semibold text-sand-900">
                       {e.customer_name ?? e.customer_phone ?? 'Anonymous'}
                     </Text>
-                    <Text className="text-xs text-gray-400">
+                    <Text className="text-xs text-sand-400">
                       {new Date(e.created_at).toLocaleDateString('en-IN')}
                     </Text>
                   </View>
                   {e.message && (
-                    <Text className="text-sm text-gray-600 mt-1">{e.message}</Text>
+                    <Text className="text-sm text-sand-600 mt-1">{e.message}</Text>
                   )}
                 </View>
               ))}
@@ -495,22 +498,22 @@ export default function CollectionDetailScreen() {
 
         {/* Products */}
         <View className="px-4 pt-5 pb-8">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Products ({collection.products.length})
           </Text>
           <View className="flex-row flex-wrap gap-2">
             {collection.products.map((cp) => (
-              <View key={cp.id} className="w-[31%] bg-white rounded-xl overflow-hidden border border-gray-100">
+              <View key={cp.id} className="w-[31%] bg-white rounded-xl overflow-hidden border border-sand-100">
                 {cp.product.photos[0]?.url ? (
                   <Image
                     source={{ uri: cp.product.photos[0].url }}
-                    className="w-full h-24 bg-gray-100"
+                    className="w-full h-24 bg-sand-100"
                     resizeMode="cover"
                   />
                 ) : (
-                  <View className="w-full h-24 bg-gray-100" />
+                  <View className="w-full h-24 bg-sand-100" />
                 )}
-                <Text className="text-[10px] text-gray-600 p-1.5" numberOfLines={1}>
+                <Text className="text-[10px] text-sand-600 p-1.5" numberOfLines={1}>
                   {cp.product.category ?? 'Product'} · {cp.product.primary_color ?? '—'}
                 </Text>
               </View>
@@ -538,12 +541,12 @@ export default function CollectionDetailScreen() {
 
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
-    <View className="bg-white rounded-xl p-3 border border-gray-100 flex-1 min-w-[45%]">
+    <View className="bg-white rounded-xl p-3 border border-sand-100 flex-1 min-w-[45%]">
       <View className="flex-row items-center gap-1.5">
         {icon}
-        <Text className="text-lg font-bold text-gray-900">{value.toLocaleString('en-IN')}</Text>
+        <Text className="text-lg font-bold text-sand-900">{value.toLocaleString('en-IN')}</Text>
       </View>
-      <Text className="text-xs text-gray-500 mt-0.5">{label}</Text>
+      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
     </View>
   )
 }

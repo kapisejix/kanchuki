@@ -19,6 +19,7 @@ import { customerApi, sizeChartApi, collectionApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 
 const STYLE_OPTIONS = ['Casual', 'Party', 'Office', 'Wedding', 'Festive']
 
@@ -76,6 +77,7 @@ type MatchedProduct = {
 }
 
 export default function CustomerDetailScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -282,20 +284,20 @@ export default function CustomerDetailScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-cyan-50">
+    <ScrollView className="flex-1 bg-ink-50">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()}>
-          <X size={22} color="#374151" />
+          <X size={22} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">Customer</Text>
+        <Text className="text-base font-bold text-sand-900">Customer</Text>
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={saving}
-          className="bg-cyan-600 px-4 py-2 rounded-xl"
+          className="bg-ink-600 px-4 py-2 rounded-xl"
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
@@ -307,10 +309,10 @@ export default function CustomerDetailScreen() {
 
       <View className="px-4 py-4 gap-4">
         {/* Identity */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center gap-3 mb-3">
-            <View className="w-14 h-14 rounded-full bg-cyan-100 items-center justify-center">
-              <Text className="text-cyan-700 font-bold text-xl">
+            <View className="w-14 h-14 rounded-full bg-ink-100 items-center justify-center">
+              <Text className="text-ink-700 font-bold text-xl">
                 {name.charAt(0).toUpperCase() || '?'}
               </Text>
             </View>
@@ -319,46 +321,46 @@ export default function CustomerDetailScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Customer name"
-                className="text-base font-bold text-gray-900"
-                placeholderTextColor="#9CA3AF"
+                className="text-base font-bold text-sand-900"
+                placeholderTextColor="#ABA39C"
               />
-              <Text className="text-xs text-gray-400 mt-0.5">{customer.phone}</Text>
+              <Text className="text-xs text-sand-400 mt-0.5">{customer.phone}</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
                 placeholder="email@example.com (optional)"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#ABA39C"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="text-xs text-gray-500 mt-0.5"
+                className="text-xs text-sand-500 mt-0.5"
               />
             </View>
           </View>
 
           {/* Address fields */}
-          <View className="border-t border-gray-100 pt-3 gap-3">
+          <View className="border-t border-sand-100 pt-3 gap-3">
             <TextInput
               value={addressLine1}
               onChangeText={setAddressLine1}
               placeholder="Shop/Home address (optional)"
-              placeholderTextColor="#9CA3AF"
-              className="text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+              placeholderTextColor="#ABA39C"
+              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
             />
             <View className="flex-row gap-3">
               <TextInput
                 value={city}
                 onChangeText={setCity}
                 placeholder="City"
-                placeholderTextColor="#9CA3AF"
-                className="flex-1 text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+                placeholderTextColor="#ABA39C"
+                className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
               />
               <TextInput
                 value={state}
                 onChangeText={setState}
                 placeholder="State"
-                placeholderTextColor="#9CA3AF"
-                className="flex-1 text-sm text-gray-900 bg-gray-50 rounded-xl px-3 py-2"
+                placeholderTextColor="#ABA39C"
+                className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
               />
             </View>
           </View>
@@ -366,23 +368,23 @@ export default function CustomerDetailScreen() {
 
         {/* Purchase summary */}
         <View className="flex-row gap-3">
-          <View className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 items-center">
-            <Text className="text-lg font-bold text-gray-900">{customer.total_purchases}</Text>
-            <Text className="text-xs text-gray-400">Purchases</Text>
+          <View className="flex-1 bg-white rounded-2xl p-3 border border-sand-100 items-center">
+            <Text className="text-lg font-bold text-sand-900">{customer.total_purchases}</Text>
+            <Text className="text-xs text-sand-400">Purchases</Text>
           </View>
-          <View className="flex-1 bg-white rounded-2xl p-3 border border-gray-100 items-center">
-            <Text className="text-lg font-bold text-gray-900">{formatPrice(customer.total_spent)}</Text>
-            <Text className="text-xs text-gray-400">Total Spent</Text>
+          <View className="flex-1 bg-white rounded-2xl p-3 border border-sand-100 items-center">
+            <Text className="text-lg font-bold text-sand-900">{formatPrice(customer.total_spent)}</Text>
+            <Text className="text-xs text-sand-400">Total Spent</Text>
           </View>
         </View>
 
         {/* Fashion DNA — AI Match Section */}
         {matchedProducts.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-gray-100">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100">
             <View className="flex-row items-center justify-between mb-3">
               <View className="flex-row items-center gap-2">
-                <Heart size={16} color="#EC4899" />
-                <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                <Heart size={16} color="#BF6973" />
+                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                   AI Match
                 </Text>
                 {dnaUsed && (
@@ -415,7 +417,7 @@ export default function CustomerDetailScreen() {
                   onPress={() => router.push(`/product/${product.id}`)}
                   className="mr-2 w-28"
                 >
-                  <View className="bg-gray-50 rounded-xl overflow-hidden border border-gray-100">
+                  <View className="bg-sand-50 rounded-xl overflow-hidden border border-sand-100">
                     {product.primary_photo_url ? (
                       <Image
                         source={{ uri: product.primary_photo_url }}
@@ -423,16 +425,16 @@ export default function CustomerDetailScreen() {
                         resizeMode="cover"
                       />
                     ) : (
-                      <View className="w-full h-28 bg-cyan-100 items-center justify-center">
-                        <Text className="text-cyan-400 text-xs">No photo</Text>
+                      <View className="w-full h-28 bg-ink-100 items-center justify-center">
+                        <Text className="text-ink-400 text-xs">No photo</Text>
                       </View>
                     )}
                     <View className="px-2 py-1.5">
-                      <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
+                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
                         {product.category ?? 'Product'}
                       </Text>
                       {product.price_min != null && (
-                        <Text className="text-[10px] text-gray-500">
+                        <Text className="text-[10px] text-sand-500">
                           {formatPrice(product.price_min)}
                         </Text>
                       )}
@@ -444,7 +446,7 @@ export default function CustomerDetailScreen() {
 
             {customer.fashion_dna && (
               <View className="flex-row items-center gap-2 mt-2">
-                <Text className="text-[10px] text-gray-400">
+                <Text className="text-[10px] text-sand-400">
                   {customer.fashion_dna.interaction_count} interactions · {(customer.fashion_dna.confidence_score * 100).toFixed(0)}% confidence
                 </Text>
               </View>
@@ -453,8 +455,8 @@ export default function CustomerDetailScreen() {
         )}
 
         {/* Preferred colors — free text */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Preferred Colors
           </Text>
           <View className="flex-row flex-wrap gap-2 mb-3">
@@ -462,7 +464,7 @@ export default function CustomerDetailScreen() {
               <TouchableOpacity
                 key={c}
                 onPress={() => setPrefColors((prev) => prev.filter((x) => x !== c))}
-                className="bg-cyan-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
+                className="bg-ink-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
               >
                 <Text className="text-white text-xs font-medium">{c}</Text>
                 <X size={10} color="white" />
@@ -475,18 +477,18 @@ export default function CustomerDetailScreen() {
               onChangeText={setColorInput}
               onSubmitEditing={addColor}
               placeholder="e.g. Maroon"
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+              placeholderTextColor="#ABA39C"
+              className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
-            <TouchableOpacity onPress={addColor} className="bg-gray-100 px-3 rounded-xl items-center justify-center">
-              <Plus size={16} color="#374151" />
+            <TouchableOpacity onPress={addColor} className="bg-sand-100 px-3 rounded-xl items-center justify-center">
+              <Plus size={16} color="#4B4039" />
             </TouchableOpacity>
           </View>
         </View>
 
         {/* Preferred styles */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Preferred Style
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -497,11 +499,11 @@ export default function CustomerDetailScreen() {
                   key={s}
                   onPress={() => toggle(prefStyles, setPrefStyles, s)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>{s}</Text>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{s}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -509,8 +511,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Preferred fabrics */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Preferred Fabrics
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -521,11 +523,11 @@ export default function CustomerDetailScreen() {
                   key={f}
                   onPress={() => toggle(prefFabrics, setPrefFabrics, f)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>{f}</Text>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -533,8 +535,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Preferred occasions */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Occasions
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -545,11 +547,11 @@ export default function CustomerDetailScreen() {
                   key={o}
                   onPress={() => toggle(prefOccasions, setPrefOccasions, o)}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>{o}</Text>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{o}</Text>
                 </TouchableOpacity>
               )
             })}
@@ -557,8 +559,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Budget */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Budget Range (₹)
           </Text>
           <View className="flex-row gap-3">
@@ -567,74 +569,74 @@ export default function CustomerDetailScreen() {
               onChangeText={setBudgetMin}
               placeholder="Min"
               keyboardType="numeric"
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+              placeholderTextColor="#ABA39C"
+              className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
             <TextInput
               value={budgetMax}
               onChangeText={setBudgetMax}
               placeholder="Max"
               keyboardType="numeric"
-              placeholderTextColor="#9CA3AF"
-              className="flex-1 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2 text-sm"
+              placeholderTextColor="#ABA39C"
+              className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
           </View>
         </View>
 
         {/* Measurements */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Measurements
             </Text>
             <View className="flex-row gap-1.5">
               <TouchableOpacity
                 onPress={() => setShowManualForm(true)}
-                className="flex-row items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full"
+                className="flex-row items-center gap-1 bg-turmeric-50 px-2.5 py-1 rounded-full"
               >
-                <Text className="text-emerald-700 text-xs font-semibold">Manual</Text>
+                <Text className="text-turmeric-700 text-xs font-semibold">Manual</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => router.push(`/customer/${customer.id}/measurement`)}
-                className="flex-row items-center gap-1 bg-cyan-50 px-2.5 py-1 rounded-full"
+                className="flex-row items-center gap-1 bg-ink-50 px-2.5 py-1 rounded-full"
               >
-                <Ruler size={12} color="#0891B2" />
-                <Text className="text-cyan-700 text-xs font-semibold">Camera</Text>
+                <Ruler size={12} color={primaryColor} />
+                <Text className="text-ink-700 text-xs font-semibold">Camera</Text>
               </TouchableOpacity>
             </View>
           </View>
 
           {measurements.length === 0 ? (
-            <Text className="text-xs text-gray-400">No measurements recorded yet.</Text>
+            <Text className="text-xs text-sand-400">No measurements recorded yet.</Text>
           ) : (
             <View className="gap-2">
               {measurements.slice(0, 3).map((m) => (
-                <View key={m.id} className="bg-cyan-50 rounded-xl px-3 py-2">
+                <View key={m.id} className="bg-ink-50 rounded-xl px-3 py-2">
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-1.5">
-                      <View className={`px-2 py-0.5 rounded ${m.source === 'PHOTO' ? 'bg-cyan-100' : 'bg-emerald-100'}`}>
-                        <Text className={`text-[10px] font-semibold ${m.source === 'PHOTO' ? 'text-cyan-700' : 'text-emerald-700'}`}>
+                      <View className={`px-2 py-0.5 rounded ${m.source === 'PHOTO' ? 'bg-ink-100' : 'bg-turmeric-100'}`}>
+                        <Text className={`text-[10px] font-semibold ${m.source === 'PHOTO' ? 'text-ink-700' : 'text-turmeric-700'}`}>
                           {m.source === 'PHOTO' ? 'AI' : 'Tape'}
                         </Text>
                       </View>
-                      <Text className="text-[10px] text-gray-400">
+                      <Text className="text-[10px] text-sand-400">
                         {new Date(m.created_at).toLocaleDateString('en-IN')}
                       </Text>
                     </View>
                   </View>
-                  <Text className="text-xs text-gray-600 mt-1">
+                  <Text className="text-xs text-sand-600 mt-1">
                     Height {m.height_cm}cm
                     {m.bust_cm ? ` · Bust ${m.bust_cm}cm` : ''}
                     {m.waist_cm ? ` · Waist ${m.waist_cm}cm` : ''}
                     {m.hip_cm ? ` · Hip ${m.hip_cm}cm` : ''}
                   </Text>
                   {m.source === 'PHOTO' && !m.bust_cm && (
-                    <Text className="text-[10px] text-amber-600 mt-1">Processing...</Text>
+                    <Text className="text-[10px] text-turmeric-600 mt-1">Processing...</Text>
                   )}
                 </View>
               ))}
               {measurements.length > 3 && (
-                <Text className="text-[10px] text-gray-400 text-center">
+                <Text className="text-[10px] text-sand-400 text-center">
                   +{measurements.length - 3} more
                 </Text>
               )}
@@ -644,15 +646,15 @@ export default function CustomerDetailScreen() {
           {(upperSize || lowerSize) && (
             <View className="flex-row gap-2 mt-3">
               {upperSize && (
-                <View className="bg-emerald-50 rounded-xl px-3 py-2 flex-1">
-                  <Text className="text-[10px] text-emerald-700 font-semibold uppercase">Upper Size</Text>
-                  <Text className="text-sm font-bold text-emerald-800">{upperSize.size_label}</Text>
+                <View className="bg-turmeric-50 rounded-xl px-3 py-2 flex-1">
+                  <Text className="text-[10px] text-turmeric-700 font-semibold uppercase">Upper Size</Text>
+                  <Text className="text-sm font-bold text-turmeric-800">{upperSize.size_label}</Text>
                 </View>
               )}
               {lowerSize && (
-                <View className="bg-emerald-50 rounded-xl px-3 py-2 flex-1">
-                  <Text className="text-[10px] text-emerald-700 font-semibold uppercase">Lower Size</Text>
-                  <Text className="text-sm font-bold text-emerald-800">{lowerSize.size_label}</Text>
+                <View className="bg-turmeric-50 rounded-xl px-3 py-2 flex-1">
+                  <Text className="text-[10px] text-turmeric-700 font-semibold uppercase">Lower Size</Text>
+                  <Text className="text-sm font-bold text-turmeric-800">{lowerSize.size_label}</Text>
                 </View>
               )}
             </View>
@@ -661,19 +663,19 @@ export default function CustomerDetailScreen() {
 
         {/* Recent activity */}
         {customer.interactions.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-gray-100">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
               Recent Activity
             </Text>
             <View className="gap-2">
               {customer.interactions.slice(0, 8).map((i) => (
                 <View key={i.id} className="flex-row items-center gap-2">
-                  <Clock size={12} color="#9CA3AF" />
-                  <Text className="text-xs text-gray-600 flex-1">
+                  <Clock size={12} color="#ABA39C" />
+                  <Text className="text-xs text-sand-600 flex-1">
                     {i.type}
                     {i.product ? ` · ${i.product.category ?? ''} ${i.product.primary_color ?? ''}` : ''}
                   </Text>
-                  <Text className="text-[10px] text-gray-400">
+                  <Text className="text-[10px] text-sand-400">
                     {new Date(i.created_at).toLocaleDateString('en-IN')}
                   </Text>
                 </View>
@@ -683,8 +685,8 @@ export default function CustomerDetailScreen() {
         )}
 
         {/* Notes */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Notes (private)
           </Text>
           <TextInput
@@ -693,18 +695,18 @@ export default function CustomerDetailScreen() {
             placeholder={`e.g. "likes bright colors", "buying for daughter's wedding"`}
             multiline
             numberOfLines={2}
-            className="text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
         {/* Delete */}
         <TouchableOpacity
           onPress={handleDelete}
-          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-red-100 bg-red-50"
+          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
         >
-          <Trash2 size={16} color="#DC2626" />
-          <Text className="text-red-600 font-semibold text-sm">Delete Customer</Text>
+          <Trash2 size={16} color="#A24854" />
+          <Text className="text-rust-600 font-semibold text-sm">Delete Customer</Text>
         </TouchableOpacity>
       </View>
 
@@ -715,17 +717,17 @@ export default function CustomerDetailScreen() {
         {...(Platform.OS === 'ios' ? { presentationStyle: 'pageSheet' } : {})}
         onRequestClose={() => setShowManualForm(false)}
       >
-        <View className="flex-1 bg-cyan-50" style={{ paddingTop: insets.top + 16 }}>
+        <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top + 16 }}>
           {/* Modal Header */}
           <View className="flex-row items-center justify-between px-4 pb-4">
             <TouchableOpacity onPress={() => setShowManualForm(false)}>
-              <X size={22} color="#374151" />
+              <X size={22} color="#4B4039" />
             </TouchableOpacity>
-            <Text className="text-base font-bold text-gray-900">Manual Measurements</Text>
+            <Text className="text-base font-bold text-sand-900">Manual Measurements</Text>
             <TouchableOpacity
               onPress={() => void handleSaveManualMeasurement()}
               disabled={savingManual}
-              className="bg-emerald-600 px-4 py-2 rounded-xl"
+              className="bg-turmeric-600 px-4 py-2 rounded-xl"
             >
               {savingManual ? (
                 <ActivityIndicator size="small" color="white" />
@@ -737,8 +739,8 @@ export default function CustomerDetailScreen() {
 
           <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
             {/* Height — required */}
-            <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
                 Height (cm) *
               </Text>
               <TextInput
@@ -746,97 +748,97 @@ export default function CustomerDetailScreen() {
                 onChangeText={setManualHeight}
                 placeholder="e.g. 162"
                 keyboardType="numeric"
-                className="text-lg font-bold text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                placeholderTextColor="#9CA3AF"
+                className="text-lg font-bold text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                placeholderTextColor="#ABA39C"
               />
             </View>
 
             {/* Upper body */}
-            <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
                 Upper Body (cm, optional)
               </Text>
               <View className="gap-3">
                 <View>
-                  <Text className="text-xs text-gray-500 mb-1">Bust</Text>
+                  <Text className="text-xs text-sand-500 mb-1">Bust</Text>
                   <TextInput
                     value={manualBust}
                     onChangeText={setManualBust}
                     placeholder="e.g. 92"
                     keyboardType="numeric"
-                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#9CA3AF"
+                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#ABA39C"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 mb-1">Waist</Text>
+                  <Text className="text-xs text-sand-500 mb-1">Waist</Text>
                   <TextInput
                     value={manualWaist}
                     onChangeText={setManualWaist}
                     placeholder="e.g. 76"
                     keyboardType="numeric"
-                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#9CA3AF"
+                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#ABA39C"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 mb-1">Hip</Text>
+                  <Text className="text-xs text-sand-500 mb-1">Hip</Text>
                   <TextInput
                     value={manualHip}
                     onChangeText={setManualHip}
                     placeholder="e.g. 100"
                     keyboardType="numeric"
-                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#9CA3AF"
+                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#ABA39C"
                   />
                 </View>
               </View>
             </View>
 
             {/* Lower body */}
-            <View className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
                 Lower Body (cm, optional)
               </Text>
               <View className="gap-3">
                 <View>
-                  <Text className="text-xs text-gray-500 mb-1">Pant Waist</Text>
+                  <Text className="text-xs text-sand-500 mb-1">Pant Waist</Text>
                   <TextInput
                     value={manualPantWaist}
                     onChangeText={setManualPantWaist}
                     placeholder="e.g. 78"
                     keyboardType="numeric"
-                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#9CA3AF"
+                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#ABA39C"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 mb-1">Pant Hip</Text>
+                  <Text className="text-xs text-sand-500 mb-1">Pant Hip</Text>
                   <TextInput
                     value={manualPantHip}
                     onChangeText={setManualPantHip}
                     placeholder="e.g. 102"
                     keyboardType="numeric"
-                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#9CA3AF"
+                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#ABA39C"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-gray-500 mb-1">Inseam</Text>
+                  <Text className="text-xs text-sand-500 mb-1">Inseam</Text>
                   <TextInput
                     value={manualInseam}
                     onChangeText={setManualInseam}
                     placeholder="e.g. 78"
                     keyboardType="numeric"
-                    className="text-sm text-gray-900 bg-cyan-50 border border-gray-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#9CA3AF"
+                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
+                    placeholderTextColor="#ABA39C"
                   />
                 </View>
               </View>
             </View>
 
-            <View className="bg-amber-50 rounded-2xl p-3 border border-amber-100 mb-6">
-              <Text className="text-xs text-amber-700">
+            <View className="bg-turmeric-50 rounded-2xl p-3 border border-turmeric-100 mb-6">
+              <Text className="text-xs text-turmeric-700">
                 Use a flexible measuring tape. Measure over light clothing. Keep tape snug but not tight.
               </Text>
             </View>

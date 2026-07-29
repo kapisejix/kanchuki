@@ -23,6 +23,7 @@ import {
   type CatalogDetectedItem,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 
 // F-001d: guided bulk onboarding — Path A (rack/shelf batch capture).
 // Reuses the same detect/tag/crop pipeline as F-001c/F-001b (catalog-import.ts);
@@ -42,6 +43,7 @@ type ReviewItem = {
 }
 
 export default function BulkOnboardScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const params = useLocalSearchParams<{ target?: string }>()
@@ -206,31 +208,31 @@ export default function BulkOnboardScreen() {
   const renderLocationStep = () => (
     <ScrollView className="flex-1 px-4 pt-6" contentContainerStyle={{ paddingBottom: 140 }}>
       <View className="items-center gap-3">
-        <View className="w-20 h-20 bg-cyan-100 rounded-3xl items-center justify-center">
-          <Sparkles size={36} color="#0891B2" />
+        <View className="w-20 h-20 bg-ink-100 rounded-3xl items-center justify-center">
+          <Sparkles size={36} color={primaryColor} />
         </View>
-        <Text className="text-lg font-bold text-gray-900 text-center">Bulk onboarding</Text>
-        <Text className="text-gray-500 text-sm text-center px-6 leading-5">
+        <Text className="text-lg font-bold text-sand-900 text-center">Bulk onboarding</Text>
+        <Text className="text-sand-500 text-sm text-center px-6 leading-5">
           Photograph one rack/shelf at a time — AI splits it into individual products.
         </Text>
       </View>
 
-      <View className="bg-cyan-50 rounded-2xl p-4 mt-6 items-center">
-        <Text className="text-2xl font-bold text-cyan-800">
+      <View className="bg-ink-50 rounded-2xl p-4 mt-6 items-center">
+        <Text className="text-2xl font-bold text-ink-800">
           {catalogued}
           {target ? ` / ${target}` : ''}
         </Text>
-        <Text className="text-xs text-cyan-600 mt-1">items catalogued so far</Text>
+        <Text className="text-xs text-ink-600 mt-1">items catalogued so far</Text>
       </View>
 
       {error && (
-        <View className="bg-red-50 border border-red-200 rounded-2xl p-4 mt-4 flex-row items-start gap-3">
-          <AlertTriangle size={18} color="#EF4444" />
-          <Text className="text-xs text-red-600 flex-1">{error}</Text>
+        <View className="bg-rust-50 border border-rust-200 rounded-2xl p-4 mt-4 flex-row items-start gap-3">
+          <AlertTriangle size={18} color="#BF6973" />
+          <Text className="text-xs text-rust-600 flex-1">{error}</Text>
         </View>
       )}
 
-      <Text className="text-sm font-semibold text-gray-700 mt-6 mb-2">
+      <Text className="text-sm font-semibold text-sand-700 mt-6 mb-2">
         Which rack/shelf is this photo?
       </Text>
       <View className="flex-row flex-wrap gap-2">
@@ -239,20 +241,20 @@ export default function BulkOnboardScreen() {
             key={s.id}
             onPress={() => setSelectedSectionId(s.id)}
             className={`px-4 py-2.5 rounded-xl border-2 ${
-              selectedSectionId === s.id ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+              selectedSectionId === s.id ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
             }`}
           >
-            <Text className={selectedSectionId === s.id ? 'text-white font-medium' : 'text-gray-700'}>
+            <Text className={selectedSectionId === s.id ? 'text-white font-medium' : 'text-sand-700'}>
               {s.name}
             </Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
           onPress={() => setAddingSection(true)}
-          className="px-4 py-2.5 rounded-xl border-2 border-dashed border-cyan-300 flex-row items-center gap-1"
+          className="px-4 py-2.5 rounded-xl border-2 border-dashed border-ink-300 flex-row items-center gap-1"
         >
-          <Plus size={14} color="#0891B2" />
-          <Text className="text-cyan-600 font-medium">New</Text>
+          <Plus size={14} color={primaryColor} />
+          <Text className="text-ink-600 font-medium">New</Text>
         </TouchableOpacity>
       </View>
 
@@ -262,12 +264,12 @@ export default function BulkOnboardScreen() {
             value={newSectionName}
             onChangeText={setNewSectionName}
             placeholder="e.g. Rack A"
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-sm"
+            className="flex-1 bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm"
             autoFocus
           />
           <TouchableOpacity
             onPress={() => void handleCreateSection()}
-            className="bg-cyan-600 rounded-xl px-4 py-2.5"
+            className="bg-ink-600 rounded-xl px-4 py-2.5"
           >
             <Text className="text-white font-medium text-sm">Add</Text>
           </TouchableOpacity>
@@ -276,7 +278,7 @@ export default function BulkOnboardScreen() {
 
       <TouchableOpacity
         onPress={() => void handleCapturePhoto()}
-        className="bg-cyan-600 rounded-2xl p-4 flex-row items-center justify-center gap-2 mt-8"
+        className="bg-ink-600 rounded-2xl p-4 flex-row items-center justify-center gap-2 mt-8"
         activeOpacity={0.8}
       >
         <Camera size={20} color="white" />
@@ -285,10 +287,10 @@ export default function BulkOnboardScreen() {
 
       <TouchableOpacity
         onPress={() => void handlePickPhoto()}
-        className="border-2 border-gray-200 rounded-2xl p-4 items-center mt-3"
+        className="border-2 border-sand-200 rounded-2xl p-4 items-center mt-3"
         activeOpacity={0.7}
       >
-        <Text className="text-gray-700 font-semibold text-sm">Choose from gallery</Text>
+        <Text className="text-sand-700 font-semibold text-sm">Choose from gallery</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -296,8 +298,8 @@ export default function BulkOnboardScreen() {
         className="flex-row items-center justify-center gap-2 mt-4 py-2"
         activeOpacity={0.7}
       >
-        <FileText size={16} color="#6B7280" />
-        <Text className="text-gray-500 text-sm">Restocking from a supplier PDF instead?</Text>
+        <FileText size={16} color="#847B75" />
+        <Text className="text-sand-500 text-sm">Restocking from a supplier PDF instead?</Text>
       </TouchableOpacity>
     </ScrollView>
   )
@@ -306,8 +308,8 @@ export default function BulkOnboardScreen() {
 
   const renderProgress = (label: string) => (
     <View className="flex-1 items-center justify-center px-8">
-      <ActivityIndicator size="large" color="#0891B2" className="mb-4" />
-      <Text className="text-lg font-bold text-gray-900 text-center">{label}</Text>
+      <ActivityIndicator size="large" color={primaryColor} className="mb-4" />
+      <Text className="text-lg font-bold text-sand-900 text-center">{label}</Text>
     </View>
   )
 
@@ -315,11 +317,11 @@ export default function BulkOnboardScreen() {
 
   const renderReview = () => (
     <>
-      <View className="bg-white px-4 py-3 border-b border-gray-100">
-        <Image source={{ uri: sourceUrl }} className="w-full h-32 rounded-xl bg-gray-100" contentFit="contain" />
+      <View className="bg-white px-4 py-3 border-b border-sand-100">
+        <Image source={{ uri: sourceUrl }} className="w-full h-32 rounded-xl bg-sand-100" contentFit="contain" />
       </View>
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 160 }}>
-        <Text className="text-sm font-semibold text-gray-700 mb-3">
+        <Text className="text-sm font-semibold text-sand-700 mb-3">
           AI detected {items.length} item{items.length !== 1 ? 's' : ''} — location defaults to{' '}
           {sectionName(selectedSectionId)}, tap the location chip to override.
         </Text>
@@ -327,38 +329,38 @@ export default function BulkOnboardScreen() {
           <View
             key={`${item.original.description}-${index}`}
             className={`bg-white rounded-2xl border mb-3 overflow-hidden ${
-              item.approved ? 'border-green-200' : 'border-gray-200 opacity-60'
+              item.approved ? 'border-turmeric-200' : 'border-sand-200 opacity-60'
             }`}
           >
             <View className="flex-row p-3 gap-3">
               <Image
                 source={{ uri: item.original.cropped_url }}
-                className="w-20 h-24 rounded-xl bg-gray-100"
+                className="w-20 h-24 rounded-xl bg-sand-100"
                 contentFit="cover"
               />
               <View className="flex-1 justify-center gap-1">
-                <Text className="text-sm font-semibold text-gray-900">{item.original.description}</Text>
+                <Text className="text-sm font-semibold text-sand-900">{item.original.description}</Text>
                 {item.original.tags.category && (
-                  <Text className="text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full self-start">
+                  <Text className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full self-start">
                     {item.original.tags.category}
                   </Text>
                 )}
                 <TouchableOpacity onPress={() => cycleItemSection(index)} className="mt-1">
-                  <Text className="text-xs text-gray-500">
+                  <Text className="text-xs text-sand-500">
                     📍 {sectionName(item.sectionId)} {sections.length > 1 ? '(tap to change)' : ''}
                   </Text>
                 </TouchableOpacity>
                 {item.original.is_duplicate && (
                   <View className="flex-row items-center gap-1 mt-1">
-                    <AlertTriangle size={12} color="#D97706" />
-                    <Text className="text-xs text-amber-600">Looks already catalogued</Text>
+                    <AlertTriangle size={12} color="#7D5334" />
+                    <Text className="text-xs text-turmeric-600">Looks already catalogued</Text>
                   </View>
                 )}
               </View>
               <TouchableOpacity
                 onPress={() => toggleApproval(index)}
                 className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
-                  item.approved ? 'bg-green-500 border-green-500' : 'border-gray-300'
+                  item.approved ? 'bg-turmeric-500 border-turmeric-500' : 'border-sand-300'
                 }`}
               >
                 {item.approved && <Check size={18} color="white" />}
@@ -367,14 +369,14 @@ export default function BulkOnboardScreen() {
           </View>
         ))}
         {items.length === 0 && (
-          <Text className="text-gray-400 text-sm text-center py-12">No garments detected. Try a different photo.</Text>
+          <Text className="text-sand-400 text-sm text-center py-12">No garments detected. Try a different photo.</Text>
         )}
       </ScrollView>
-      <View className="bg-white border-t border-gray-100 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
+      <View className="bg-white border-t border-sand-100 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
         <TouchableOpacity
           onPress={() => void handleSaveBatch()}
           disabled={approvedCount === 0}
-          className={`py-4 rounded-2xl items-center ${approvedCount > 0 ? 'bg-cyan-600' : 'bg-gray-200'}`}
+          className={`py-4 rounded-2xl items-center ${approvedCount > 0 ? 'bg-ink-600' : 'bg-sand-200'}`}
         >
           <Text className="text-white font-bold text-base">
             Save {approvedCount} & photograph next rack
@@ -393,15 +395,15 @@ export default function BulkOnboardScreen() {
   }
 
   return (
-    <View className="flex-1 bg-gray-50">
+    <View className="flex-1 bg-sand-50">
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()}>
-          <X size={22} color="#374151" />
+          <X size={22} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">{stepTitles[step]}</Text>
+        <Text className="text-base font-bold text-sand-900">{stepTitles[step]}</Text>
         <View className="w-6" />
       </View>
 

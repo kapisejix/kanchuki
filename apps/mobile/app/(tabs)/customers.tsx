@@ -48,27 +48,27 @@ const CustomerCard = memo(function CustomerCard({
   return (
     <TouchableOpacity
       onPress={onPress}
-      className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center gap-3"
+      className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center gap-3"
     >
       {/* Avatar */}
-      <View className="w-12 h-12 rounded-full bg-cyan-100 items-center justify-center flex-shrink-0">
-        <Text className="text-cyan-700 font-bold text-lg">
+      <View className="w-12 h-12 rounded-full bg-ink-100 items-center justify-center flex-shrink-0">
+        <Text className="text-ink-700 font-bold text-lg">
           {item.name.charAt(0).toUpperCase()}
         </Text>
       </View>
 
       <View className="flex-1 min-w-0">
-        <Text className="text-sm font-semibold text-gray-900">{item.name}</Text>
+        <Text className="text-sm font-semibold text-sand-900">{item.name}</Text>
         
         {/* City / State */}
         {locationStr && (
           <View className="flex-row items-center gap-1 mt-0.5">
-            <MapPin size={10} color="#9CA3AF" />
-            <Text className="text-xs text-gray-400" numberOfLines={1}>{locationStr}</Text>
+            <MapPin size={10} color="#ABA39C" />
+            <Text className="text-xs text-sand-400" numberOfLines={1}>{locationStr}</Text>
           </View>
         )}
 
-        <Text className="text-xs text-gray-400 mt-0.5">
+        <Text className="text-xs text-sand-400 mt-0.5">
           {item.phone.slice(-4).padStart(item.phone.length, '•')}
         </Text>
 
@@ -76,20 +76,20 @@ const CustomerCard = memo(function CustomerCard({
         {prefSummary.length > 0 && (
           <View className="flex-row flex-wrap gap-1 mt-1.5">
             {prefSummary.slice(0, 3).map((tag) => (
-              <View key={tag} className="bg-cyan-50 px-2 py-0.5 rounded-full">
-                <Text className="text-cyan-700 text-xs">{tag}</Text>
+              <View key={tag} className="bg-ink-50 px-2 py-0.5 rounded-full">
+                <Text className="text-ink-700 text-xs">{tag}</Text>
               </View>
             ))}
             {!!item.budget_max && (
-              <View className="bg-green-50 px-2 py-0.5 rounded-full">
-                <Text className="text-green-700 text-xs">≤{formatPrice(item.budget_max)}</Text>
+              <View className="bg-turmeric-50 px-2 py-0.5 rounded-full">
+                <Text className="text-turmeric-700 text-xs">≤{formatPrice(item.budget_max)}</Text>
               </View>
             )}
           </View>
         )}
       </View>
 
-      <ChevronRight size={16} color="#D1D5DB" />
+      <ChevronRight size={16} color="#CDC6BF" />
     </TouchableOpacity>
   )
 })
@@ -120,12 +120,12 @@ export default function CustomersScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16">
-        <Text className="text-gray-400 text-sm">
+        <Text className="text-sand-400 text-sm">
           {search ? 'No customers found' : 'No customers yet'}
         </Text>
         <TouchableOpacity
           onPress={() => router.push('/customer/add')}
-          className="mt-3 bg-cyan-600 px-5 py-2.5 rounded-xl"
+          className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Add First Customer</Text>
         </TouchableOpacity>
@@ -135,17 +135,17 @@ export default function CustomersScreen() {
   )
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Search */}
-      <View className="bg-white px-4 py-3 border-b border-gray-100">
-        <View className="flex-row items-center bg-gray-100 rounded-xl px-3 py-2.5 gap-2">
-          <Search size={16} color="#9CA3AF" />
+      <View className="bg-white px-4 py-3 border-b border-sand-100">
+        <View className="flex-row items-center bg-sand-100 rounded-xl px-3 py-2.5 gap-2">
+          <Search size={16} color="#ABA39C" />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search by name or phone..."
-            placeholderTextColor="#9CA3AF"
-            className="flex-1 text-sm text-gray-900"
+            placeholderTextColor="#ABA39C"
+            className="flex-1 text-sm text-sand-900"
           />
         </View>
       </View>
@@ -170,7 +170,7 @@ export default function CustomersScreen() {
       {/* FAB */}
       <TouchableOpacity
         onPress={() => router.push('/customer/add')}
-        className="absolute bottom-6 right-4 w-14 h-14 bg-cyan-600 rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
       >
         <Plus size={24} color="white" />

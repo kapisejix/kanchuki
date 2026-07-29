@@ -130,7 +130,7 @@ This directly replaces the mismatched values in `apps/web/src/app/globals.css`, 
 
 | Token | Base value | Use | Note |
 |---|---|---|---|
-| `ink` (primary) | `#D41E2A` at the 600 tier | primary buttons, links, active nav, brand accent | exact "Flaming Cherry" hex from the source swatch |
+| `ink` (primary) | `#1E2A3D` at the 600 tier | primary buttons, links, active nav, brand accent | navy, replacing the earlier "Flaming Cherry" red (2026-07-29) |
 | `rust` (secondary) | `oklch(52% 0.12 14)` at 600 | secondary accent — section tags, step labels | darkened past the raw swatch hex (`#D5777D`) so 600/700 text tiers clear WCAG AA 4.5:1 on `cotton`; the lighter true-to-swatch tone lives at 400/500 for decorative use |
 | `turmeric` (tertiary) | `#6E5742` at the 700 tier | grounding accent — badges, checkmarks, star fill | exact "Tobacco Brown" hex |
 | `sand` (neutral, was `stone`) | warm oklch ramp, hue ~50-75 | body text, borders, muted text (marketing only) | replaces the old cool oklch hue-265 ramp; **does not** touch admin's `stone-*` |

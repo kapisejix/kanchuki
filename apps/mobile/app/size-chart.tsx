@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft, Plus, Trash2, Check } from 'lucide-react-native'
 import { sizeChartApi, type SizeChartCategory, type SizeChartRow } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
+import { useTheme } from '../src/lib/theme'
 
 const CATEGORIES: { value: SizeChartCategory; label: string }[] = [
   { value: 'UPPER', label: 'Kurtas / Tops / Dresses' },
@@ -30,6 +31,7 @@ function emptyRow(sortOrder: number): SizeChartRow {
 }
 
 export default function SizeChartScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [category, setCategory] = useState<SizeChartCategory>('UPPER')
@@ -78,12 +80,12 @@ export default function SizeChartScreen() {
   const axes = AXES_BY_CATEGORY[category]
 
   return (
-    <View className="flex-1 bg-cyan-50" style={{ paddingTop: insets.top }}>
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100 bg-white">
+    <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top }}>
+      <View className="flex-row items-center px-4 py-3 border-b border-sand-100 bg-white">
         <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <ChevronLeft size={22} color="#374151" />
+          <ChevronLeft size={22} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900">Size Charts</Text>
+        <Text className="text-lg font-bold text-sand-900">Size Charts</Text>
       </View>
 
       <View className="flex-row px-4 pt-4 gap-2">
@@ -92,10 +94,10 @@ export default function SizeChartScreen() {
             key={c.value}
             onPress={() => setCategory(c.value)}
             className={`flex-1 py-2.5 rounded-xl items-center border ${
-              category === c.value ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+              category === c.value ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
             }`}
           >
-            <Text className={`text-xs font-semibold ${category === c.value ? 'text-white' : 'text-gray-600'}`}>
+            <Text className={`text-xs font-semibold ${category === c.value ? 'text-white' : 'text-sand-600'}`}>
               {c.label}
             </Text>
           </TouchableOpacity>
@@ -104,48 +106,48 @@ export default function SizeChartScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#0891B2" />
+          <ActivityIndicator color={primaryColor} />
         </View>
       ) : (
         <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 24 }}>
-          <Text className="text-xs text-gray-500 mb-3">
+          <Text className="text-xs text-sand-500 mb-3">
             One row per size (S, M, L...). {"Leave a field blank if that measurement isn't tracked."}
           </Text>
 
           {rows.map((row, index) => (
-            <View key={index} className="bg-white rounded-2xl p-4 border border-gray-100 mb-3">
+            <View key={index} className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
               <View className="flex-row items-center justify-between mb-3">
                 <TextInput
                   value={row.size_label}
                   onChangeText={(v) => updateRow(index, 'size_label', v)}
                   placeholder="Size label (e.g. M)"
-                  placeholderTextColor="#9CA3AF"
-                  className="text-base font-bold text-gray-900 flex-1"
+                  placeholderTextColor="#ABA39C"
+                  className="text-base font-bold text-sand-900 flex-1"
                 />
                 <TouchableOpacity onPress={() => removeRow(index)}>
-                  <Trash2 size={18} color="#DC2626" />
+                  <Trash2 size={18} color="#A24854" />
                 </TouchableOpacity>
               </View>
 
               {axes.map((axis) => (
                 <View key={axis.key} className="flex-row items-center gap-2 mb-2">
-                  <Text className="text-xs text-gray-500 w-12">{axis.label}</Text>
+                  <Text className="text-xs text-sand-500 w-12">{axis.label}</Text>
                   <TextInput
                     value={row[`${axis.key}_min_cm` as keyof SizeChartRow]?.toString() ?? ''}
                     onChangeText={(v) => updateRow(index, `${axis.key}_min_cm` as keyof SizeChartRow, v)}
                     placeholder="min cm"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor="#ABA39C"
                     keyboardType="numeric"
-                    className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-900"
+                    className="flex-1 bg-sand-50 rounded-lg px-3 py-2 text-sm text-sand-900"
                   />
-                  <Text className="text-gray-300 text-xs">–</Text>
+                  <Text className="text-sand-300 text-xs">–</Text>
                   <TextInput
                     value={row[`${axis.key}_max_cm` as keyof SizeChartRow]?.toString() ?? ''}
                     onChangeText={(v) => updateRow(index, `${axis.key}_max_cm` as keyof SizeChartRow, v)}
                     placeholder="max cm"
-                    placeholderTextColor="#9CA3AF"
+                    placeholderTextColor="#ABA39C"
                     keyboardType="numeric"
-                    className="flex-1 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-900"
+                    className="flex-1 bg-sand-50 rounded-lg px-3 py-2 text-sm text-sand-900"
                   />
                 </View>
               ))}
@@ -154,16 +156,16 @@ export default function SizeChartScreen() {
 
           <TouchableOpacity
             onPress={addRow}
-            className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-cyan-300 mb-4"
+            className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-ink-300 mb-4"
           >
-            <Plus size={16} color="#0891B2" />
-            <Text className="text-cyan-600 text-sm font-semibold">Add Size Row</Text>
+            <Plus size={16} color={primaryColor} />
+            <Text className="text-ink-600 text-sm font-semibold">Add Size Row</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => save.mutate()}
             disabled={save.isPending}
-            className="bg-cyan-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
+            className="bg-ink-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
           >
             {save.isPending ? (
               <ActivityIndicator color="white" />

@@ -29,33 +29,7 @@ import {
 } from 'lucide-react-native'
 import { ordersApi, type OrderDetail, type ShippingAddress } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  PENDING_PAYMENT: {
-    label: 'Pending Payment',
-    color: '#D97706',
-    bg: '#FFFBEB',
-    icon: <Clock size={16} color="#D97706" />,
-  },
-  PAID: {
-    label: 'Paid',
-    color: '#16A34A',
-    bg: '#F0FDF4',
-    icon: <CreditCard size={16} color="#16A34A" />,
-  },
-  FULFILLED: {
-    label: 'Fulfilled',
-    color: '#0891B2',
-    bg: '#ECFEFF',
-    icon: <PackageCheck size={16} color="#0891B2" />,
-  },
-  CANCELLED: {
-    label: 'Cancelled',
-    color: '#DC2626',
-    bg: '#FEF2F2',
-    icon: <XCircle size={16} color="#DC2626" />,
-  },
-}
+import { useTheme } from '../../src/lib/theme'
 
 function formatInr(paise: number): string {
   return `₹${(paise / 100).toLocaleString('en-IN')}`
@@ -100,20 +74,20 @@ function TimelineStep({
       <View className="items-center w-8">
         <View
           className={`w-7 h-7 rounded-full items-center justify-center ${
-            isActive ? 'bg-cyan-600' : 'bg-gray-100'
+            isActive ? 'bg-ink-600' : 'bg-sand-100'
           }`}
         >
           {icon}
         </View>
-        {!isLast && <View className="w-0.5 flex-1 bg-gray-200" />}
+        {!isLast && <View className="w-0.5 flex-1 bg-sand-200" />}
       </View>
       {/* Content */}
       <View className={`flex-1 ml-3 ${isLast ? '' : 'pb-6'}`}>
-        <Text className={`text-sm font-semibold ${isActive ? 'text-gray-900' : 'text-gray-400'}`}>
+        <Text className={`text-sm font-semibold ${isActive ? 'text-sand-900' : 'text-sand-400'}`}>
           {label}
         </Text>
         {timestamp && (
-          <Text className={`text-xs mt-0.5 ${isActive ? 'text-gray-500' : 'text-gray-300'}`}>
+          <Text className={`text-xs mt-0.5 ${isActive ? 'text-sand-500' : 'text-sand-300'}`}>
             {formatDateTime(timestamp)}
           </Text>
         )}
@@ -123,6 +97,36 @@ function TimelineStep({
 }
 
 export default function OrderDetailScreen() {
+  const { primaryColor } = useTheme()
+  // ponytail: STATUS_CONFIG moved inside the component (was module-scope)
+  // so FULFILLED can use the reactive admin brand color via useTheme().
+  const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+    PENDING_PAYMENT: {
+      label: 'Pending Payment',
+      color: '#7D5334',
+      bg: '#F8F0E8',
+      icon: <Clock size={16} color="#7D5334" />,
+    },
+    PAID: {
+      label: 'Paid',
+      color: '#7D5334',
+      bg: '#F8F0E8',
+      icon: <CreditCard size={16} color="#7D5334" />,
+    },
+    FULFILLED: {
+      label: 'Fulfilled',
+      color: primaryColor,
+      bg: '#FFF1F1',
+      icon: <PackageCheck size={16} color={primaryColor} />,
+    },
+    CANCELLED: {
+      label: 'Cancelled',
+      color: '#A24854',
+      bg: '#FDF2F3',
+      icon: <XCircle size={16} color="#A24854" />,
+    },
+  }
+
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -198,19 +202,19 @@ export default function OrderDetailScreen() {
           title: 'Order Details',
           headerShown: true,
           headerStyle: { backgroundColor: '#ffffff' },
-          headerTintColor: '#111827',
+          headerTintColor: '#14100D',
           headerTitleStyle: { fontWeight: '700', fontSize: 17 },
           headerShadowVisible: false,
           headerLeft: () => (
             <TouchableOpacity onPress={() => router.back()} hitSlop={8} className="mr-2">
-              <ChevronLeft size={24} color="#374151" />
+              <ChevronLeft size={24} color="#4B4039" />
             </TouchableOpacity>
           ),
         }}
       />
 
       <ScrollView
-        className="flex-1 bg-gray-50"
+        className="flex-1 bg-sand-50"
         refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
       >
         {/* ─── Status Banner ─────────────────────────────────── */}
@@ -225,48 +229,48 @@ export default function OrderDetailScreen() {
                 {config.label}
               </Text>
             </View>
-            <Text className="text-xs text-gray-500 mt-1">
+            <Text className="text-xs text-sand-500 mt-1">
               Order placed {formatDateTime(order.created_at)}
             </Text>
           </View>
         </View>
 
         {/* ─── Customer Info ─────────────────────────────────── */}
-        <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <View className="px-4 py-3 border-b border-gray-50">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+          <View className="px-4 py-3 border-b border-sand-50">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Customer
             </Text>
           </View>
           <View className="px-4 py-3">
             <View className="flex-row items-center gap-2 mb-2">
-              <User size={15} color="#6B7280" />
-              <Text className="text-sm font-semibold text-gray-900">
+              <User size={15} color="#847B75" />
+              <Text className="text-sm font-semibold text-sand-900">
                 {order.customer_name ?? 'Customer'}
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <Phone size={15} color="#6B7280" />
-              <Text className="text-sm text-gray-600">{order.customer_phone ?? '—'}</Text>
+              <Phone size={15} color="#847B75" />
+              <Text className="text-sm text-sand-600">{order.customer_phone ?? '—'}</Text>
             </View>
           </View>
         </View>
 
         {/* ─── Shipping Address ──────────────────────────────── */}
         {address && (
-          <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <View className="px-4 py-3 border-b border-gray-50 flex-row items-center gap-2">
-              <MapPin size={14} color="#6B7280" />
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+            <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
+              <MapPin size={14} color="#847B75" />
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Shipping Address
               </Text>
             </View>
             <View className="px-4 py-3">
-              <Text className="text-sm text-gray-900 font-medium">{address.line1}</Text>
+              <Text className="text-sm text-sand-900 font-medium">{address.line1}</Text>
               {address.line2 && (
-                <Text className="text-sm text-gray-600 mt-0.5">{address.line2}</Text>
+                <Text className="text-sm text-sand-600 mt-0.5">{address.line2}</Text>
               )}
-              <Text className="text-sm text-gray-600 mt-0.5">
+              <Text className="text-sm text-sand-600 mt-0.5">
                 {address.city}, {address.state} — {address.pincode}
               </Text>
             </View>
@@ -274,10 +278,10 @@ export default function OrderDetailScreen() {
         )}
 
         {/* ─── Items Breakdown ───────────────────────────────── */}
-        <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <View className="px-4 py-3 border-b border-gray-50 flex-row items-center gap-2">
-            <ShoppingBag size={14} color="#6B7280" />
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+          <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
+            <ShoppingBag size={14} color="#847B75" />
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Items ({order.items.length})
             </Text>
           </View>
@@ -285,17 +289,17 @@ export default function OrderDetailScreen() {
           {order.items.map((item) => (
             <View
               key={item.id}
-              className="px-4 py-3 border-b border-gray-50 flex-row items-center justify-between"
+              className="px-4 py-3 border-b border-sand-50 flex-row items-center justify-between"
             >
               <View className="flex-1 mr-3">
-                <Text className="text-sm font-medium text-gray-900" numberOfLines={1}>
+                <Text className="text-sm font-medium text-sand-900" numberOfLines={1}>
                   {item.product_name_snapshot ?? `Product #${item.product_id.slice(0, 8)}`}
                 </Text>
                 {item.quantity > 1 && (
-                  <Text className="text-xs text-gray-400 mt-0.5">Qty: {item.quantity}</Text>
+                  <Text className="text-xs text-sand-400 mt-0.5">Qty: {item.quantity}</Text>
                 )}
               </View>
-              <Text className="text-sm font-semibold text-gray-900">
+              <Text className="text-sm font-semibold text-sand-900">
                 {formatInr(item.price_snapshot)}
               </Text>
             </View>
@@ -303,27 +307,27 @@ export default function OrderDetailScreen() {
         </View>
 
         {/* ─── Amount Summary ────────────────────────────────── */}
-        <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <View className="px-4 py-3 border-b border-gray-50 flex-row items-center gap-2">
-            <Receipt size={14} color="#6B7280" />
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+          <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
+            <Receipt size={14} color="#847B75" />
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Payment Summary
             </Text>
           </View>
 
           <View className="px-4 py-3 gap-2">
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-600">Subtotal</Text>
-              <Text className="text-sm text-gray-900">{formatInr(order.subtotal_amount)}</Text>
+              <Text className="text-sm text-sand-600">Subtotal</Text>
+              <Text className="text-sm text-sand-900">{formatInr(order.subtotal_amount)}</Text>
             </View>
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm text-gray-600">GST</Text>
-              <Text className="text-sm text-gray-900">{formatInr(order.gst_amount)}</Text>
+              <Text className="text-sm text-sand-600">GST</Text>
+              <Text className="text-sm text-sand-900">{formatInr(order.gst_amount)}</Text>
             </View>
-            <View className="h-px bg-gray-100 my-1" />
+            <View className="h-px bg-sand-100 my-1" />
             <View className="flex-row items-center justify-between">
-              <Text className="text-base font-bold text-gray-900">Total</Text>
-              <Text className="text-base font-bold text-cyan-600">
+              <Text className="text-base font-bold text-sand-900">Total</Text>
+              <Text className="text-base font-bold text-ink-600">
                 {formatInr(order.total_amount)}
               </Text>
             </View>
@@ -332,21 +336,21 @@ export default function OrderDetailScreen() {
 
         {/* ─── GST Invoice ───────────────────────────────────── */}
         {order.gst_invoice_number && (
-          <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <View className="px-4 py-3 border-b border-gray-50 flex-row items-center gap-2">
-              <FileText size={14} color="#6B7280" />
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+            <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
+              <FileText size={14} color="#847B75" />
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 GST Invoice
               </Text>
             </View>
             <View className="px-4 py-3">
               <View className="flex-row items-center gap-2 mb-1">
-                <Hash size={13} color="#9CA3AF" />
-                <Text className="text-sm font-mono text-gray-900">
+                <Hash size={13} color="#ABA39C" />
+                <Text className="text-sm font-mono text-sand-900">
                   {order.gst_invoice_number}
                 </Text>
               </View>
-              <Text className="text-xs text-gray-400 mt-1">
+              <Text className="text-xs text-sand-400 mt-1">
                 Auto-generated for this order. Share with customer for their records.
               </Text>
             </View>
@@ -354,10 +358,10 @@ export default function OrderDetailScreen() {
         )}
 
         {/* ─── Payment Timeline ──────────────────────────────── */}
-        <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-          <View className="px-4 py-3 border-b border-gray-50 flex-row items-center gap-2">
-            <CalendarDays size={14} color="#6B7280" />
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+          <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
+            <CalendarDays size={14} color="#847B75" />
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Timeline
             </Text>
           </View>
@@ -401,33 +405,33 @@ export default function OrderDetailScreen() {
 
         {/* ─── Payment Info ──────────────────────────────────── */}
         {(order.razorpay_order_id || order.razorpay_payment_id) && (
-          <View className="mx-4 mb-3 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            <View className="px-4 py-3 border-b border-gray-50 flex-row items-center gap-2">
-              <Hash size={14} color="#6B7280" />
-              <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+          <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
+            <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
+              <Hash size={14} color="#847B75" />
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Payment Details
               </Text>
             </View>
             <View className="px-4 py-3 gap-2">
               {order.razorpay_order_id && (
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-xs text-gray-500">Razorpay Order ID</Text>
-                  <Text className="text-xs font-mono text-gray-700" numberOfLines={1}>
+                  <Text className="text-xs text-sand-500">Razorpay Order ID</Text>
+                  <Text className="text-xs font-mono text-sand-700" numberOfLines={1}>
                     {order.razorpay_order_id}
                   </Text>
                 </View>
               )}
               {order.razorpay_payment_id && (
                 <View className="flex-row items-center justify-between">
-                  <Text className="text-xs text-gray-500">Payment ID</Text>
-                  <Text className="text-xs font-mono text-gray-700" numberOfLines={1}>
+                  <Text className="text-xs text-sand-500">Payment ID</Text>
+                  <Text className="text-xs font-mono text-sand-700" numberOfLines={1}>
                     {order.razorpay_payment_id}
                   </Text>
                 </View>
               )}
               <View className="flex-row items-center justify-between">
-                <Text className="text-xs text-gray-500">Payment Mode</Text>
-                <Text className="text-xs font-medium text-gray-700">
+                <Text className="text-xs text-sand-500">Payment Mode</Text>
+                <Text className="text-xs font-medium text-sand-700">
                   {order.payment_mode === 'DIRECT' ? 'Direct (Razorpay)' : order.payment_mode}
                 </Text>
               </View>
@@ -441,7 +445,7 @@ export default function OrderDetailScreen() {
             <TouchableOpacity
               onPress={confirmFulfill}
               disabled={updateStatus.isPending}
-              className="py-3.5 rounded-2xl bg-cyan-600 items-center flex-row justify-center gap-2"
+              className="py-3.5 rounded-2xl bg-ink-600 items-center flex-row justify-center gap-2"
             >
               {updateStatus.isPending ? (
                 <ActivityIndicator size="small" color="white" />
@@ -456,10 +460,10 @@ export default function OrderDetailScreen() {
             <TouchableOpacity
               onPress={confirmCancel}
               disabled={updateStatus.isPending}
-              className="py-3.5 rounded-2xl border border-red-200 bg-red-50 items-center flex-row justify-center gap-2"
+              className="py-3.5 rounded-2xl border border-rust-200 bg-rust-50 items-center flex-row justify-center gap-2"
             >
-              <XCircle size={18} color="#DC2626" />
-              <Text className="text-red-600 font-semibold text-base">
+              <XCircle size={18} color="#A24854" />
+              <Text className="text-rust-600 font-semibold text-base">
                 {order.status === 'PAID' ? 'Cancel & Refund' : 'Cancel Order'}
               </Text>
             </TouchableOpacity>
@@ -467,9 +471,9 @@ export default function OrderDetailScreen() {
 
           <TouchableOpacity
             onPress={() => router.back()}
-            className="py-3.5 rounded-2xl border border-gray-200 bg-white items-center"
+            className="py-3.5 rounded-2xl border border-sand-200 bg-white items-center"
           >
-            <Text className="text-gray-600 font-medium">Back to Orders</Text>
+            <Text className="text-sand-600 font-medium">Back to Orders</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

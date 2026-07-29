@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban } from 'lucide-react-native'
 import { ordersApi, retailerApi, categoryApi } from '../../src/lib/api'
 import { HomeScreenSkeleton } from '../../src/components/Skeleton'
+import { useTheme } from '../../src/lib/theme'
 
 type RankedProduct = {
   product: { id: string; category: string | null; primary_color: string | null; photo_url: string | null }
@@ -26,6 +27,7 @@ type RetailerMe = {
 }
 
 export default function HomeScreen() {
+  const { primaryColor } = useTheme()
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -61,11 +63,11 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-cyan-50"
+      className="flex-1 bg-ink-50"
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
     >
       {/* Greeting hero */}
-      <View className="bg-cyan-600 px-4 pt-4 pb-8 rounded-b-3xl">
+      <View className="bg-ink-600 px-4 pt-4 pb-8 rounded-b-3xl">
         <View className="flex-row items-center gap-3">
           <View className="w-12 h-12 rounded-2xl bg-white/15 items-center justify-center">
             <Text className="text-white font-bold text-lg">
@@ -73,7 +75,7 @@ export default function HomeScreen() {
             </Text>
           </View>
           <View>
-            <Text className="text-cyan-100 text-sm">Welcome back 👋</Text>
+            <Text className="text-ink-100 text-sm">Welcome back 👋</Text>
             <Text className="text-white text-2xl font-bold mt-0.5">
               {me?.shop_name ?? 'Your Store'}
             </Text>
@@ -93,38 +95,38 @@ export default function HomeScreen() {
 
       {/* Quick Stats */}
       <View className="px-4 pt-4 pb-2 -mt-4">
-        <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
           This Month
         </Text>
         <View className="flex-row gap-3">
           <StatCard
-            icon={<Eye size={16} color="#0891B2" />}
+            icon={<Eye size={16} color={primaryColor} />}
             label="Views"
             value={stats?.views_this_month ?? 0}
-            color="#0891B2"
+            color={primaryColor}
             onPress={() => router.push('/analytics')}
           />
           <StatCard
-            icon={<MessageCircle size={16} color="#22C55E" />}
+            icon={<MessageCircle size={16} color="#946A4B" />}
             label="Enquiries"
             value={stats?.enquiries_this_month ?? 0}
-            color="#22C55E"
+            color="#946A4B"
             onPress={() => router.push('/analytics')}
           />
         </View>
         <View className="flex-row gap-3 mt-3">
           <StatCard
-            icon={<Package size={16} color="#F59E0B" />}
+            icon={<Package size={16} color="#946A4B" />}
             label="Products"
             value={stats?.total_products_available ?? 0}
-            color="#F59E0B"
+            color="#946A4B"
             onPress={() => router.push('/catalog')}
           />
           <StatCard
-            icon={<Users size={16} color="#3B82F6" />}
+            icon={<Users size={16} color="#E3262D" />}
             label="Customers"
             value={stats?.total_customers ?? 0}
-            color="#3B82F6"
+            color="#E3262D"
             onPress={() => router.push('/customers')}
           />
         </View>
@@ -133,7 +135,7 @@ export default function HomeScreen() {
       {/* Trending products */}
       {(stats?.top_viewed_products?.length ?? 0) > 0 && (
         <View className="px-4 py-2">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Trending This Month
           </Text>
           <View className="gap-2">
@@ -141,12 +143,12 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={r.product.id}
                 onPress={() => router.push(`/product/${r.product.id}`)}
-                className="bg-white rounded-2xl p-3 border border-gray-100 flex-row items-center justify-between"
+                className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center justify-between"
               >
-                <Text className="text-sm text-gray-700">
+                <Text className="text-sm text-sand-700">
                   {r.product.category ?? 'Product'} · {r.product.primary_color ?? '—'}
                 </Text>
-                <Text className="text-xs font-semibold text-cyan-600">{r.count} views</Text>
+                <Text className="text-xs font-semibold text-ink-600">{r.count} views</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -155,65 +157,65 @@ export default function HomeScreen() {
 
       {/* Quick Actions */}
       <View className="px-4 py-2">
-        <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
           Quick Actions
         </Text>
         <View className="flex-row flex-wrap gap-3">
           <QuickAction
-            icon={<Camera size={22} color="#0891B2" />}
+            icon={<Camera size={22} color={primaryColor} />}
             label="Add Product"
             sublabel="Photo + AI tagging"
             onPress={() => router.push('/product/add')}
-            accent="#ECFEFF"
+            accent="#FFF1F1"
           />
           <QuickAction
-            icon={<FolderKanban size={22} color="#0891B2" />}
+            icon={<FolderKanban size={22} color={primaryColor} />}
             label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
             sublabel="Add Category"
             onPress={() => router.push('/category')}
-            accent="#ECFEFF"
+            accent="#FFF1F1"
           />
           <QuickAction
-            icon={<Users size={22} color="#F59E0B" />}
+            icon={<Users size={22} color="#946A4B" />}
             label="Add Customer"
             sublabel="Save preferences"
             onPress={() => router.push('/customer/add')}
-            accent="#FFFBEB"
+            accent="#F8F0E8"
           />
           <QuickAction
-            icon={<Link2 size={22} color="#3B82F6" />}
+            icon={<Link2 size={22} color="#E3262D" />}
             label="New Collection"
             sublabel="Share on WhatsApp"
             onPress={() => router.push('/collection/new')}
-            accent="#EFF6FF"
+            accent="#FFF1F1"
           />
           <QuickAction
-            icon={<ShoppingBag size={22} color="#F97316" />}
+            icon={<ShoppingBag size={22} color="#946A4B" />}
             label="Orders"
             sublabel={`${pendingOrders} pending · Manage fulfillment`}
             onPress={() => router.push('/(tabs)/orders')}
-            accent="#FFF7ED"
+            accent="#F8F0E8"
           />
           <QuickAction
-            icon={<Ruler size={22} color="#8B5CF6" />}
+            icon={<Ruler size={22} color="#E3262D" />}
             label="Size Charts"
             sublabel="S–10XL per category"
             onPress={() => router.push('/size-chart')}
-            accent="#F5F3FF"
+            accent="#FFF1F1"
           />
           <QuickAction
-            icon={<QrCode size={22} color="#DB2777" />}
+            icon={<QrCode size={22} color="#A24854" />}
             label="Store QR Code"
             sublabel="Scan to view your catalog"
             onPress={() => router.push('/store-profile')}
-            accent="#FDF2F8"
+            accent="#FDF2F3"
           />
           <QuickAction
-            icon={<Settings size={22} color="#6B7280" />}
+            icon={<Settings size={22} color="#847B75" />}
             label="Settings"
             sublabel="Profile · Billing · Staff"
             onPress={() => router.push('/settings')}
-            accent="#F3F4F6"
+            accent="#F2EEE9"
           />
         </View>
       </View>
@@ -241,7 +243,7 @@ function StatCard({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      className="flex-1 bg-white rounded-2xl p-4 border border-gray-100"
+      className="flex-1 bg-white rounded-2xl p-4 border border-sand-100"
     >
       <View
         className="w-7 h-7 rounded-lg items-center justify-center mb-2"
@@ -252,7 +254,7 @@ function StatCard({
       <Text className="text-2xl font-bold" style={{ color }}>
         {value.toLocaleString('en-IN')}
       </Text>
-      <Text className="text-xs text-gray-500 mt-0.5">{label}</Text>
+      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
     </TouchableOpacity>
   )
 }
@@ -274,7 +276,7 @@ function QuickAction({
     <TouchableOpacity
       onPress={onPress}
       activeOpacity={0.7}
-      className="w-[47%] bg-white rounded-2xl p-4 border border-gray-100"
+      className="w-[47%] bg-white rounded-2xl p-4 border border-sand-100"
     >
       <View
         className="w-10 h-10 rounded-xl items-center justify-center mb-3"
@@ -282,8 +284,8 @@ function QuickAction({
       >
         {icon}
       </View>
-      <Text className="text-sm font-semibold text-gray-900">{label}</Text>
-      <Text className="text-xs text-gray-400 mt-0.5">{sublabel}</Text>
+      <Text className="text-sm font-semibold text-sand-900">{label}</Text>
+      <Text className="text-xs text-sand-400 mt-0.5">{sublabel}</Text>
     </TouchableOpacity>
   )
 }

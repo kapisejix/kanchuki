@@ -121,7 +121,7 @@ export default function AddColorVariantScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-cyan-600 px-6 py-3 rounded-xl"
+          className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -200,14 +200,14 @@ export default function AddColorVariantScreen() {
           value={color}
           onChangeText={setColor}
           placeholder="e.g. Maroon, Bottle Green, Mustard"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#ABA39C"
           className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
           autoFocus
         />
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={!color.trim() || step === 'saving'}
-          className={`py-4 rounded-2xl items-center ${color.trim() ? 'bg-cyan-600' : 'bg-white/10'}`}
+          className={`py-4 rounded-2xl items-center ${color.trim() ? 'bg-ink-600' : 'bg-white/10'}`}
         >
           {step === 'saving' ? (
             <ActivityIndicator size="small" color="white" />

@@ -111,6 +111,19 @@ const DEFAULT_AI_CONFIG: Record<
   },
 };
 
+// ─── Platform Theme (admin-editable brand color) ────────────────────
+// Same audit-log-as-key-value-store pattern as rate limits / AI config
+// above — no new Prisma model needed. Read by apps/web (CSS variable
+// injected server-side) and apps/mobile (fetched at launch, see
+// src/lib/theme.ts) so a color change doesn't need a new app build.
+const THEME_SETTING_KEY = 'app_theme';
+
+const DEFAULT_THEME: { primary_color: string } = {
+  primary_color: '#1E2A3D',
+};
+
+const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
+
 async function getSetting(key: string): Promise<Record<string, unknown> | null> {
   try {
     // Find the most recent audit log entry for this setting type
@@ -223,6 +236,28 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
       return { data: DEFAULT_RATE_LIMITS[key] };
     }
     throw notFound(`Rate limit '${key}' not found`);
+  });
+
+  // ═══════════════════════════════════════════════════════════════
+  //  Platform Theme
+  // ═══════════════════════════════════════════════════════════════
+
+  server.get('/settings/theme', async () => {
+    const data = await getTheme();
+    return { data };
+  });
+
+  server.put('/settings/theme', async (request) => {
+    const body = z
+      .object({
+        primary_color: z.string().regex(HEX_COLOR_RE, 'Must be a 6-digit hex color like #1E2A3D'),
+      })
+      .parse(request.body);
+
+    await saveSetting(THEME_SETTING_KEY, body);
+    request.log.info({ primary_color: body.primary_color }, 'Platform theme updated');
+
+    return { data: body };
   });
 
   // ═══════════════════════════════════════════════════════════════
@@ -1058,3 +1093,13 @@ export function getCachedRateLimits(): Record<
 }
 
 export { DEFAULT_RATE_LIMITS, DEFAULT_AI_CONFIG };
+
+/**
+ * Get the current platform theme (falls back to DEFAULT_THEME).
+ * Used by the public /v1/public/theme route — no admin auth needed to read it.
+ */
+export async function getTheme(): Promise<{ primary_color: string }> {
+  const saved = await getSetting(THEME_SETTING_KEY);
+  const primary_color = (saved?.primary_color as string | undefined) ?? DEFAULT_THEME.primary_color;
+  return { primary_color };
+}

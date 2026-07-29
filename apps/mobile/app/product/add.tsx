@@ -351,7 +351,7 @@ export default function AddProductScreen() {
         </Text>
         <TouchableOpacity
           onPress={() => void requestPermission()}
-          className="bg-cyan-600 px-6 py-3 rounded-xl"
+          className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
         </TouchableOpacity>
@@ -378,13 +378,13 @@ export default function AddProductScreen() {
         <View className="absolute left-0 right-0 flex-row items-center justify-center gap-2" style={{ top: insets.top + 8 }}>
           <TouchableOpacity
             onPress={() => setCaptureMode('photo')}
-            className={`px-4 py-1.5 rounded-full ${captureMode === 'photo' ? 'bg-cyan-600' : 'bg-black/50'}`}
+            className={`px-4 py-1.5 rounded-full ${captureMode === 'photo' ? 'bg-ink-600' : 'bg-black/50'}`}
           >
             <Text className="text-white text-xs font-semibold">Photo</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setCaptureMode('scan')}
-            className={`px-4 py-1.5 rounded-full ${captureMode === 'scan' ? 'bg-cyan-600' : 'bg-black/50'}`}
+            className={`px-4 py-1.5 rounded-full ${captureMode === 'scan' ? 'bg-ink-600' : 'bg-black/50'}`}
           >
             <Text className="text-white text-xs font-semibold">Scan</Text>
           </TouchableOpacity>
@@ -485,7 +485,7 @@ export default function AddProductScreen() {
                 <TouchableOpacity
                   key={idx}
                   onPress={() => toggleFrame(uri)}
-                  className={`w-28 h-40 rounded-xl overflow-hidden border-2 ${isSelected ? 'border-cyan-400' : 'border-white/20'}`}
+                  className={`w-28 h-40 rounded-xl overflow-hidden border-2 ${isSelected ? 'border-ink-400' : 'border-white/20'}`}
                 >
                   <Image
                     source={{ uri }}
@@ -493,12 +493,12 @@ export default function AddProductScreen() {
                     contentFit="cover"
                   />
                   {isBest && (
-                    <View className="absolute top-1.5 left-1.5 bg-cyan-500 px-2 py-0.5 rounded-full">
+                    <View className="absolute top-1.5 left-1.5 bg-ink-500 px-2 py-0.5 rounded-full">
                       <Text className="text-white text-[9px] font-bold">Best</Text>
                     </View>
                   )}
                   <View
-                    className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full items-center justify-center border-2 ${isSelected ? 'bg-cyan-500 border-cyan-500' : 'bg-black/40 border-white/60'}`}
+                    className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full items-center justify-center border-2 ${isSelected ? 'bg-ink-500 border-ink-500' : 'bg-black/40 border-white/60'}`}
                   >
                     {isSelected && <Check size={14} color="white" />}
                   </View>
@@ -512,7 +512,7 @@ export default function AddProductScreen() {
           <TouchableOpacity
             onPress={confirmSelection}
             disabled={scanSelected.length === 0}
-            className={`py-4 rounded-2xl items-center ${scanSelected.length === 0 ? 'bg-white/10' : 'bg-cyan-600'}`}
+            className={`py-4 rounded-2xl items-center ${scanSelected.length === 0 ? 'bg-white/10' : 'bg-ink-600'}`}
           >
             <Text className="text-white font-semibold">
               {scanSelected.length <= 1
@@ -538,7 +538,7 @@ export default function AddProductScreen() {
           />
         )}
         {aiError && (
-          <View className="absolute top-0 left-0 right-0 bg-red-500/90 px-4 py-3" style={{ paddingTop: insets.top + 12 }}>
+          <View className="absolute top-0 left-0 right-0 bg-rust-500/90 px-4 py-3" style={{ paddingTop: insets.top + 12 }}>
             <Text className="text-white text-sm text-center">{aiError}</Text>
           </View>
         )}
@@ -556,7 +556,7 @@ export default function AddProductScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => void handleUploadAndTag()}
-            className="flex-1 bg-cyan-600 py-4 rounded-2xl items-center"
+            className="flex-1 bg-ink-600 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">{aiError ? 'Try Again' : 'Use Photo →'}</Text>
           </TouchableOpacity>
@@ -582,7 +582,7 @@ export default function AddProductScreen() {
     const isActiveStep = (idx: number) => idx === currentStepIndex && !isComplete
 
     return (
-      <View className="flex-1 bg-gray-950 px-6" style={{ paddingTop: insets.top + 24 }}>
+      <View className="flex-1 bg-sand-950 px-6" style={{ paddingTop: insets.top + 24 }}>
         {/* Close button */}
         <TouchableOpacity
           onPress={() => {
@@ -599,7 +599,7 @@ export default function AddProductScreen() {
         <Text className="text-white text-xl font-bold text-center mb-1">
           {isComplete ? 'Upload Complete!' : 'Uploading Product'}
         </Text>
-        <Text className="text-gray-500 text-sm text-center mb-8">
+        <Text className="text-sand-500 text-sm text-center mb-8">
           {isComplete
             ? 'AI will tag it automatically'
             : 'Please wait while we process your photo'}
@@ -618,15 +618,15 @@ export default function AddProductScreen() {
 
             {/* Overlay badge */}
             {isComplete && (
-              <View className="absolute top-3 right-3 bg-emerald-500 px-3 py-1 rounded-full flex-row items-center gap-1">
+              <View className="absolute top-3 right-3 bg-turmeric-500 px-3 py-1 rounded-full flex-row items-center gap-1">
                 <Text className="text-white text-xs font-bold">✓ Done</Text>
               </View>
             )}
 
             {/* Scanning ring */}
             {!isComplete && (
-              <View className="absolute -inset-1.5 rounded-[26px] border-2 border-cyan-500/30">
-                <View className="absolute top-0 left-0 right-0 h-0.5 bg-cyan-400 rounded-full" style={{ opacity: 0.6 }} />
+              <View className="absolute -inset-1.5 rounded-[26px] border-2 border-ink-500/30">
+                <View className="absolute top-0 left-0 right-0 h-0.5 bg-ink-400 rounded-full" style={{ opacity: 0.6 }} />
               </View>
             )}
           </View>
@@ -634,17 +634,17 @@ export default function AddProductScreen() {
 
         {/* Progress bar */}
         <View className="mb-3">
-          <View className="h-2 bg-gray-800 rounded-full overflow-hidden">
+          <View className="h-2 bg-sand-800 rounded-full overflow-hidden">
             <Animated.View
-              className={`h-full rounded-full ${isComplete ? 'bg-emerald-500' : 'bg-cyan-500'}`}
+              className={`h-full rounded-full ${isComplete ? 'bg-turmeric-500' : 'bg-ink-500'}`}
               style={{ width: animWidth }}
             />
           </View>
           <View className="flex-row justify-between mt-1.5">
-            <Text className="text-gray-500 text-xs">
+            <Text className="text-sand-500 text-xs">
               Step {Math.min(currentStepIndex + 1, totalSteps)} of {totalSteps}
             </Text>
-            <Text className="text-gray-400 text-xs font-mono">
+            <Text className="text-sand-400 text-xs font-mono">
               {uploadProgress.percent}%
             </Text>
           </View>
@@ -654,7 +654,7 @@ export default function AddProductScreen() {
         <View className="flex-row items-center justify-center gap-2.5 mt-1 mb-8">
           {!isComplete && (
             <Animated.View
-              className="w-4 h-4 rounded-full border-2 border-cyan-400 border-t-transparent"
+              className="w-4 h-4 rounded-full border-2 border-ink-400 border-t-transparent"
               style={spinnerStyle}
             />
           )}
@@ -676,10 +676,10 @@ export default function AddProductScreen() {
                 <View
                   className={`w-9 h-9 rounded-full items-center justify-center mb-1.5 ${
                     active
-                      ? 'bg-cyan-600'
+                      ? 'bg-ink-600'
                       : completed || isComplete
-                        ? 'bg-emerald-600'
-                        : 'bg-gray-800'
+                        ? 'bg-turmeric-600'
+                        : 'bg-sand-800'
                   }`}
                 >
                   <Text className="text-sm">{displayIcon}</Text>
@@ -688,10 +688,10 @@ export default function AddProductScreen() {
                 <Text
                   className={`text-[10px] font-medium ${
                     active
-                      ? 'text-cyan-400'
+                      ? 'text-ink-400'
                       : completed || isComplete
-                        ? 'text-emerald-400'
-                        : 'text-gray-600'
+                        ? 'text-turmeric-400'
+                        : 'text-sand-600'
                   }`}
                 >
                   {stepDef.label}
@@ -703,8 +703,8 @@ export default function AddProductScreen() {
 
         {/* Error badge if upload failed earlier */}
         {aiError && (
-          <View className="mt-6 bg-red-500/20 border border-red-500/30 rounded-xl p-3">
-            <Text className="text-red-400 text-sm text-center">{aiError}</Text>
+          <View className="mt-6 bg-rust-500/20 border border-rust-500/30 rounded-xl p-3">
+            <Text className="text-rust-400 text-sm text-center">{aiError}</Text>
           </View>
         )}
       </View>
@@ -718,20 +718,20 @@ export default function AddProductScreen() {
   }
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900">Product Details</Text>
+        <Text className="text-base font-bold text-sand-900">Product Details</Text>
         <TouchableOpacity
           onPress={() => void handleSave()}
           disabled={step === 'saving'}
-          className="bg-cyan-600 px-4 py-2 rounded-xl"
+          className="bg-ink-600 px-4 py-2 rounded-xl"
         >
           {step === 'saving'
             ? <ActivityIndicator size="small" color="white" />
@@ -743,9 +743,9 @@ export default function AddProductScreen() {
       <View className="px-4 py-4 gap-4">
         {/* Photo preview */}
         {photo && (
-          <View className="h-56 rounded-2xl overflow-hidden bg-gray-100">
+          <View className="h-56 rounded-2xl overflow-hidden bg-sand-100">
             <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            <View className="absolute top-3 right-3 bg-cyan-600/90 px-2 py-1 rounded-full flex-row items-center gap-1">
+            <View className="absolute top-3 right-3 bg-ink-600/90 px-2 py-1 rounded-full flex-row items-center gap-1">
               <ActivityIndicator size="small" color="white" />
               <Text className="text-white text-xs">AI tagging...</Text>
             </View>
@@ -753,10 +753,10 @@ export default function AddProductScreen() {
         )}
 
         {/* Auto-clean toggle: crop + white-background removal (runs server-side after Save) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100 flex-row items-center justify-between">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
           <View className="flex-1 pr-3">
-            <Text className="text-sm font-semibold text-gray-900">Auto-clean photo</Text>
-            <Text className="text-xs text-gray-500 mt-0.5">
+            <Text className="text-sm font-semibold text-sand-900">Auto-clean photo</Text>
+            <Text className="text-xs text-sand-500 mt-0.5">
               Crop to the garment and remove the background. Turn off for a styled/mannequin shot you want to keep as-is.
             </Text>
           </View>
@@ -765,8 +765,8 @@ export default function AddProductScreen() {
 
         {/* Background picker — F-011, only meaningful once auto-clean is on */}
         {autoCleanup && backgroundImages.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-gray-100">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
               Background
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -774,17 +774,17 @@ export default function AddProductScreen() {
                 <TouchableOpacity
                   onPress={() => setBackgroundImageId(null)}
                   className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${
-                    backgroundImageId === null ? 'border-cyan-600' : 'border-gray-200'
+                    backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'
                   }`}
                 >
-                  <Text className="text-[10px] text-gray-500">White</Text>
+                  <Text className="text-[10px] text-sand-500">White</Text>
                 </TouchableOpacity>
                 {backgroundImages.map((bg) => (
                   <TouchableOpacity
                     key={bg.id}
                     onPress={() => setBackgroundImageId(bg.id)}
                     className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
-                      backgroundImageId === bg.id ? 'border-cyan-600' : 'border-gray-200'
+                      backgroundImageId === bg.id ? 'border-ink-600' : 'border-sand-200'
                     }`}
                   >
                     <Image
@@ -800,8 +800,8 @@ export default function AddProductScreen() {
         )}
 
         {/* Price */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Price (₹)
           </Text>
           <TextInput
@@ -809,37 +809,37 @@ export default function AddProductScreen() {
             onChangeText={setPrice}
             placeholder="e.g. 1500"
             keyboardType="numeric"
-            className="text-lg font-bold text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-lg font-bold text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
         {/* Store location */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Store Location
           </Text>
           <TextInput
             value={location}
             onChangeText={setLocation}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
-            className="text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
         {/* Category (retailer-curated merchandising group, optional) */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Category
             </Text>
             <TouchableOpacity onPress={() => router.push('/category/new')}>
-              <Text className="text-cyan-600 text-xs font-semibold">Manage</Text>
+              <Text className="text-ink-600 text-xs font-semibold">Manage</Text>
             </TouchableOpacity>
           </View>
           {categories.length === 0 ? (
-            <Text className="text-xs text-gray-400">
+            <Text className="text-xs text-sand-400">
               No categories yet — tap Manage to create one.
             </Text>
           ) : (
@@ -851,11 +851,11 @@ export default function AddProductScreen() {
                     key={cat.id}
                     onPress={() => setCategoryId(selected ? null : cat.id)}
                     className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                      selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                      selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
                   >
                     {selected && <Check size={12} color="white" />}
-                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                    <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                       {cat.name}
                     </Text>
                   </TouchableOpacity>
@@ -866,8 +866,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Sizes */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Sizes
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -882,11 +882,11 @@ export default function AddProductScreen() {
                     )
                   }
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-cyan-600 border-cyan-600' : 'bg-white border-gray-200'
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {size}
                   </Text>
                 </TouchableOpacity>
@@ -896,8 +896,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Occasion tags */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Occasion
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -913,12 +913,12 @@ export default function AddProductScreen() {
                   }
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected
-                      ? 'bg-cyan-600 border-cyan-600'
-                      : 'bg-white border-gray-200'
+                      ? 'bg-ink-600 border-ink-600'
+                      : 'bg-white border-sand-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-gray-600'}`}>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {occ}
                   </Text>
                 </TouchableOpacity>
@@ -928,8 +928,8 @@ export default function AddProductScreen() {
         </View>
 
         {/* Notes */}
-        <View className="bg-white rounded-2xl p-4 border border-gray-100">
-          <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
             Notes (private)
           </Text>
           <TextInput
@@ -938,12 +938,12 @@ export default function AddProductScreen() {
             placeholder="Any additional notes for your staff..."
             multiline
             numberOfLines={2}
-            className="text-sm text-gray-900"
-            placeholderTextColor="#9CA3AF"
+            className="text-sm text-sand-900"
+            placeholderTextColor="#ABA39C"
           />
         </View>
 
-        <Text className="text-xs text-center text-gray-400 px-4">
+        <Text className="text-xs text-center text-sand-400 px-4">
           AI will auto-fill category, color, and fabric in the background
         </Text>
       </View>

@@ -8,6 +8,7 @@ import ProductCard from '../../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../../src/components/Skeleton'
 import { productApi, categoryApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
+import { useTheme } from '../../../src/lib/theme'
 import { formatPriceRange } from '@kanchuki/shared'
 
 type Product = {
@@ -21,6 +22,7 @@ type Product = {
 }
 
 export default function AddProductsToCategoryScreen() {
+  const { primaryColor } = useTheme()
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
@@ -54,15 +56,15 @@ export default function AddProductsToCategoryScreen() {
   const canAssign = selected.size > 0 && !assign.isPending
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       <View
-        className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900 ml-3">Add Products</Text>
+        <Text className="text-base font-bold text-sand-900 ml-3">Add Products</Text>
       </View>
       {isLoading ? (
           <ProductGridSkeleton />
@@ -82,14 +84,14 @@ export default function AddProductsToCategoryScreen() {
                   selected={isSelected}
                   elevation={isSelected ? 3 : 1}
                   imageHeight={144}
-                  style={isSelected ? { borderWidth: 2, borderColor: '#0891B2' } : undefined}
+                  style={isSelected ? { borderWidth: 2, borderColor: primaryColor } : undefined}
                   placeholderIcon="📷"
                   footer={
                     <View className="p-2.5">
-                      <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
+                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
-                      <Text className="text-xs text-gray-500 mt-0.5">
+                      <Text className="text-xs text-sand-500 mt-0.5">
                         {formatPriceRange(item.price_min, item.price_max)}
                       </Text>
                     </View>
@@ -98,7 +100,7 @@ export default function AddProductsToCategoryScreen() {
               )
             }}
             ListEmptyComponent={
-              <Text className="text-gray-400 text-sm text-center mt-16">
+              <Text className="text-sand-400 text-sm text-center mt-16">
                 No available products. Add products first.
               </Text>
             }
@@ -106,15 +108,15 @@ export default function AddProductsToCategoryScreen() {
         )}
 
         <View
-          className="bg-white px-4 pt-3 border-t border-gray-100"
+          className="bg-white px-4 pt-3 border-t border-sand-100"
           style={{ paddingBottom: 12 + insets.bottom }}
         >
           <TouchableOpacity
             disabled={!canAssign}
             onPress={() => assign.mutate()}
-            className={`py-3.5 rounded-xl items-center ${canAssign ? 'bg-cyan-600' : 'bg-gray-200'}`}
+            className={`py-3.5 rounded-xl items-center ${canAssign ? 'bg-ink-600' : 'bg-sand-200'}`}
           >
-            <Text className={`font-semibold ${canAssign ? 'text-white' : 'text-gray-400'}`}>
+            <Text className={`font-semibold ${canAssign ? 'text-white' : 'text-sand-400'}`}>
               {assign.isPending ? 'Adding…' : `Add ${selected.size || ''} Product${selected.size === 1 ? '' : 's'}`.trim()}
             </Text>
           </TouchableOpacity>

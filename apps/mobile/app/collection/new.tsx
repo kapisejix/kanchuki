@@ -15,6 +15,7 @@ import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
+import { useTheme } from '../../src/lib/theme'
 
 type Product = {
   id: string
@@ -29,6 +30,7 @@ type Product = {
 const EXPIRY_OPTIONS = [7, 30, 90] as const
 
 export default function NewCollectionScreen() {
+  const { primaryColor } = useTheme()
   const [title, setTitle] = useState('')
   const [expiresDays, setExpiresDays] = useState<number>(30)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -67,24 +69,24 @@ export default function NewCollectionScreen() {
   const canCreate = title.trim().length > 0 && selected.size > 0 && !create.isPending
 
   return (
-    <View className="flex-1 bg-cyan-50">
+    <View className="flex-1 bg-ink-50">
       <View
-        className="flex-row items-center px-4 pb-4 bg-white border-b border-gray-100"
+        className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
         <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-          <ChevronLeft size={24} color="#374151" />
+          <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
-        <Text className="text-base font-bold text-gray-900 ml-3">New Collection</Text>
+        <Text className="text-base font-bold text-sand-900 ml-3">New Collection</Text>
       </View>
       <View className="flex-1">
-        <View className="bg-white px-4 py-3 border-b border-gray-100 gap-3">
+        <View className="bg-white px-4 py-3 border-b border-sand-100 gap-3">
           <TextInput
             value={title}
             onChangeText={setTitle}
             placeholder="Collection title (e.g. Wedding Specials)"
-            placeholderTextColor="#9CA3AF"
-            className="bg-gray-100 rounded-xl px-3 py-2.5 text-sm text-gray-900"
+            placeholderTextColor="#ABA39C"
+            className="bg-sand-100 rounded-xl px-3 py-2.5 text-sm text-sand-900"
             maxLength={200}
           />
           <View className="flex-row gap-2">
@@ -94,13 +96,13 @@ export default function NewCollectionScreen() {
                 onPress={() => setExpiresDays(d)}
                 className={`px-3 py-1.5 rounded-full border ${
                   expiresDays === d
-                    ? 'bg-cyan-600 border-cyan-600'
-                    : 'bg-white border-gray-200'
+                    ? 'bg-ink-600 border-ink-600'
+                    : 'bg-white border-sand-200'
                 }`}
               >
                 <Text
                   className={`text-xs font-medium ${
-                    expiresDays === d ? 'text-white' : 'text-gray-600'
+                    expiresDays === d ? 'text-white' : 'text-sand-600'
                   }`}
                 >
                   {d} days
@@ -128,14 +130,14 @@ export default function NewCollectionScreen() {
                   selected={isSelected}
                   elevation={isSelected ? 3 : 1}
                   imageHeight={144}
-                  style={isSelected ? { borderWidth: 2, borderColor: '#0891B2' } : undefined}
+                  style={isSelected ? { borderWidth: 2, borderColor: primaryColor } : undefined}
                   placeholderIcon="📷"
                   footer={
                     <View className="p-2.5">
-                      <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
+                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
-                      <Text className="text-xs text-gray-500 mt-0.5">
+                      <Text className="text-xs text-sand-500 mt-0.5">
                         {formatPriceRange(item.price_min, item.price_max)}
                       </Text>
                     </View>
@@ -144,7 +146,7 @@ export default function NewCollectionScreen() {
               )
             }}
             ListEmptyComponent={
-              <Text className="text-gray-400 text-sm text-center mt-16">
+              <Text className="text-sand-400 text-sm text-center mt-16">
                 No available products. Add products first.
               </Text>
             }
@@ -152,24 +154,24 @@ export default function NewCollectionScreen() {
         )}
 
         <View
-          className="bg-white px-4 pt-3 border-t border-gray-100"
+          className="bg-white px-4 pt-3 border-t border-sand-100"
           style={{ paddingBottom: 12 + insets.bottom }}
         >
           <TouchableOpacity
             disabled={!canCreate}
             onPress={() => create.mutate()}
             className={`py-3.5 rounded-xl items-center ${
-              canCreate ? 'bg-cyan-600' : 'bg-gray-200'
+              canCreate ? 'bg-ink-600' : 'bg-sand-200'
             }`}
           >
-            <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-gray-400'}`}>
+            <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-sand-400'}`}>
               {create.isPending
                 ? 'Creating…'
                 : `Create & Share (${selected.size} selected)`}
             </Text>
           </TouchableOpacity>
           {!canCreate && !create.isPending && (
-            <Text className="text-xs text-gray-400 text-center mt-2">
+            <Text className="text-xs text-sand-400 text-center mt-2">
               {title.trim().length === 0
                 ? 'Enter a title above to continue'
                 : selected.size === 0

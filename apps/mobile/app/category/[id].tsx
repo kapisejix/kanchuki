@@ -10,6 +10,7 @@ import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/
 import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 
 type Product = {
   id: string
@@ -32,6 +33,7 @@ function EditCategoryModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { primaryColor } = useTheme()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)
@@ -93,9 +95,9 @@ function EditCategoryModal({
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-gray-900">Edit Category</Text>
+            <Text className="text-lg font-bold text-sand-900">Edit Category</Text>
             <TouchableOpacity onPress={onClose}>
-              <X size={20} color="#9CA3AF" />
+              <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
 
@@ -103,39 +105,39 @@ function EditCategoryModal({
             <TouchableOpacity
               onPress={() => void handlePickImage()}
               disabled={uploading}
-              className="w-24 h-24 rounded-2xl bg-gray-50 border border-gray-200 items-center justify-center overflow-hidden"
+              className="w-24 h-24 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
             >
               {uploading ? (
-                <ActivityIndicator color="#0891B2" />
+                <ActivityIndicator color={primaryColor} />
               ) : imageUrl ? (
                 <Image source={{ uri: imageUrl }} style={{ width: 96, height: 96 }} resizeMode="cover" />
               ) : (
-                <ImagePlus size={22} color="#9CA3AF" />
+                <ImagePlus size={22} color="#ABA39C" />
               )}
             </TouchableOpacity>
-            <Text className="text-[10px] text-gray-400 mt-1.5">Tap to change photo</Text>
+            <Text className="text-[10px] text-sand-400 mt-1.5">Tap to change photo</Text>
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
               Category Name
             </Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              className="bg-gray-50 px-4 py-3 rounded-xl text-sm text-gray-900"
+              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
               maxLength={100}
             />
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-gray-100 py-3.5 rounded-2xl items-center">
-              <Text className="text-gray-700 font-semibold">Cancel</Text>
+            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+              <Text className="text-sand-700 font-semibold">Cancel</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void handleSave()}
               disabled={saving || uploading || name.trim().length === 0}
-              className="flex-1 bg-cyan-600 py-3.5 rounded-2xl items-center"
+              className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
             >
               {saving ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Save</Text>}
             </TouchableOpacity>
@@ -147,6 +149,7 @@ function EditCategoryModal({
 }
 
 export default function CategoryDetailScreen() {
+  const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -197,29 +200,29 @@ export default function CategoryDetailScreen() {
 
   return (
     <>
-      <View className="flex-1 bg-cyan-50">
+      <View className="flex-1 bg-ink-50">
         {/* Icon-only header — no title text, matches the rest of the app's
             custom headers instead of the native Stack header (which showed
             the previous screen's title as the back-button label). */}
         <View
-          className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-gray-100"
+          className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
           style={{ paddingTop: insets.top + 12 }}
         >
           <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
-            <ChevronLeft size={24} color="#374151" />
+            <ChevronLeft size={24} color="#4B4039" />
           </TouchableOpacity>
           <View className="flex-row items-center gap-4">
             <TouchableOpacity onPress={() => setShowEdit(true)} hitSlop={8}>
-              <Pencil size={18} color="#0891B2" />
+              <Pencil size={18} color={primaryColor} />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleDelete} disabled={deleting} hitSlop={8}>
-              {deleting ? <ActivityIndicator size="small" color="#DC2626" /> : <Trash2 size={20} color="#DC2626" />}
+              {deleting ? <ActivityIndicator size="small" color="#A24854" /> : <Trash2 size={20} color="#A24854" />}
             </TouchableOpacity>
           </View>
         </View>
 
-        <View className="bg-white px-4 py-3 border-b border-gray-100 flex-row items-center gap-3">
-          <View className="w-14 h-14 rounded-xl bg-gray-100 overflow-hidden items-center justify-center">
+        <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center gap-3">
+          <View className="w-14 h-14 rounded-xl bg-sand-100 overflow-hidden items-center justify-center">
             {category.image_url ? (
               <Image source={{ uri: category.image_url }} style={{ width: 56, height: 56 }} resizeMode="cover" />
             ) : (
@@ -227,8 +230,8 @@ export default function CategoryDetailScreen() {
             )}
           </View>
           <View className="flex-1">
-            <Text className="text-base font-bold text-gray-900">{category.name}</Text>
-            <Text className="text-xs text-gray-500 mt-0.5">
+            <Text className="text-base font-bold text-sand-900">{category.name}</Text>
+            <Text className="text-xs text-sand-500 mt-0.5">
               {category.product_count} product{category.product_count === 1 ? '' : 's'}
             </Text>
           </View>
@@ -249,10 +252,10 @@ export default function CategoryDetailScreen() {
                 onPress={() => router.push(`/product/${item.id}`)}
                 footer={
                   <View className="p-2.5">
-                    <Text className="text-xs font-semibold text-gray-900" numberOfLines={1}>
+                    <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
                       {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                     </Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">
+                    <Text className="text-xs text-sand-500 mt-0.5">
                       {formatPriceRange(item.price_min, item.price_max)}
                     </Text>
                   </View>
@@ -261,7 +264,7 @@ export default function CategoryDetailScreen() {
             )}
             ListEmptyComponent={
               <View className="items-center py-16">
-                <Text className="text-gray-400 text-sm">No products in this category yet</Text>
+                <Text className="text-sand-400 text-sm">No products in this category yet</Text>
               </View>
             }
           />
@@ -269,7 +272,7 @@ export default function CategoryDetailScreen() {
 
         <TouchableOpacity
           onPress={() => router.push(`/category/${id}/add-products`)}
-          className="absolute bottom-6 right-4 flex-row items-center gap-1.5 bg-cyan-600 px-4 py-3.5 rounded-full shadow-lg"
+          className="absolute bottom-6 right-4 flex-row items-center gap-1.5 bg-ink-600 px-4 py-3.5 rounded-full shadow-lg"
           style={{ elevation: 6 }}
           activeOpacity={0.85}
         >
