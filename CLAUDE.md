@@ -272,6 +272,16 @@ Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber pale
 
 ---
 
+## Built: Product-Level WhatsApp Share Button (F-006 gap) + Ratings Reviewed
+
+**Built 2026-07-30.** Full research on three user-proposed features (cross-store coupon network, ratings, WhatsApp share) in `docs/design/feature-ideas-2026-07-30.md`. Two of three acted on:
+
+- **WhatsApp share on product detail (done):** `CollectionView.tsx` already had a working share button (`navigator.share` Web Share API). `ProductDetailSheet.tsx` (single-product view) did not — added the same pattern (`Share2` icon next to the favorite heart), sharing the current page URL + product name/category as title. No new dependency — Web Share API was already in use in this codebase. Falls back to clipboard copy on browsers without `navigator.share`. Spec updated in `docs/PRO-REQUIREMENTS.md` F-006, `docs/PLAN.md` Month 4c.
+- **Ratings system (planned, not built):** spec written as F-021 in `docs/PRO-REQUIREMENTS.md` §10.12, roadmap slot in `docs/PLAN.md` (Future, post-MVP). Gate rating eligibility behind a prior enquiry/order — open ratings on a catalog with no purchase-verification invite fake reviews. Not in locked MVP scope; candidate for early Phase 1.
+- **Cross-store coupon network:** reviewed, not spec'd — deferred, needs retailer density Kanchuki doesn't have yet plus an unresolved money-settlement/GST question between two retailers. See the doc for the cheap way to test the idea first (manual redemption, no ledger).
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

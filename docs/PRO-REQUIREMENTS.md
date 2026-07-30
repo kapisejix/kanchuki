@@ -297,7 +297,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - Favorite/shortlist button
 - "I'm interested" enquiry button (opens WhatsApp to retailer)
 - Product detail view with all colors, close-up photos
-- Share button (forward to family/friends)
+- Share button (forward to family/friends) — collection-level built with F-005/F-006; product-level share (single-item deep share from the product detail sheet) closed 2026-07-30, see `docs/design/feature-ideas-2026-07-30.md` §3
 
 **Acceptance Criteria:**
 - Loads without account/login
@@ -1036,6 +1036,27 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 | **Tests** | `apps/api/src/plugins/auth.test.ts` (`catalogDelegateCanAccess` allowlist), `apps/api/src/routes/team.test.ts` ("F-020" describe block — mint guard conditions + audit log) | |
 
 **Not built:** a general mobile support-ticket inbox for field staff (today's `/staff` dashboard has no ticket list/detail UI at all, even for `GENERAL` tickets — `catalog-tickets.tsx` is scoped narrowly to ready-for-upload `CATALOG_UPLOAD` tickets only, not a replacement for that missing surface).
+
+---
+
+### 10.12 F-021: Product & Store Ratings
+
+**Status:** 🔴 Planned, not started. Reviewed 2026-07-30, see `docs/design/feature-ideas-2026-07-30.md` §2.
+
+**Problem:** Customers browsing a collection link have no signal of store or product trustworthiness beyond the retailer's own photos/description — no way to leave or see feedback.
+
+**Design:**
+- `ProductReview` (product_id, customer_id, rating 1–5, comment, created_at) and `StoreReview` (retailer_id, customer_id, rating, comment, created_at) — separate tables, product review is item-specific, store review is about service/staff/experience.
+- One review per customer per product/store — enforced via a unique constraint.
+- **Gating decision (required before build):** rating eligibility should be tied to a prior `CustomerInteraction`/`Order` record, not open to any visitor — otherwise the catalog fills with fake 5-stars from the retailer's own network or fake 1-stars from competitors.
+- Denormalized `Product.avg_rating`/`rating_count` and `Retailer.avg_rating`/`rating_count`, updated on write — avoids a live aggregate query on every catalog page load.
+- Customer-facing: star display on `ProductDetailSheet.tsx` and product cards; a "rate this" affordance gated per above.
+- Retailer-facing: reviews visible on the retailer's own product/store view, with an optional owner-reply field.
+- Moderation: extends the existing Admin Control Center (F-013–F-017) — admin can remove abusive reviews, `AuditLog`-wired the same as other admin delete actions, rather than a new moderation system.
+
+**Complexity estimate:** Moderate, 3–5 days — CRUD + one denormalized-counter decision + admin moderation hook, no new architectural pattern.
+
+**Why not built yet:** not in the locked MVP feature list (Section 3) — MVP success metrics are about catalog upload/collection-link/enquiry conversion, not reviews, and a brand-new catalog has nothing to rate yet. Candidate for Phase 1, once Phase 0 metrics are validated and there's repeat customer traffic worth rating.
 
 ---
 

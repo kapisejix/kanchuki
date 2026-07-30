@@ -33,6 +33,11 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 ### Month 3: Customer CRM + Collection Links — ✅ Complete
 ### Month 4: AI Search + Polish + Launch — ✅ Complete
 ### Month 4b: Retailer Settings + Quota & Limits + Offline PWA + Ecommerce Checkout — ✅ Complete
+### Month 4c: Product-level WhatsApp share button (F-006 gap) — ✅ Complete 2026-07-30
+Collection-level share (`CollectionView.tsx`) already used the Web Share API; `ProductDetailSheet.tsx` had no share button until now. See `docs/PRO-REQUIREMENTS.md` F-006, `docs/design/feature-ideas-2026-07-30.md` §3.
+
+### Future: F-021 Product & Store Ratings — 🔴 Planned
+Reviewed 2026-07-30 (`docs/design/feature-ideas-2026-07-30.md` §2, spec in `docs/PRO-REQUIREMENTS.md` §10.12). Not in locked MVP scope — candidate for early Phase 1, after Phase 0 retention/conversion metrics are validated and there's repeat customer traffic worth rating. Gate rating eligibility behind a prior enquiry/order to prevent fake reviews.
 
 ---
 

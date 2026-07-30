@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2 } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
@@ -292,6 +292,16 @@ export function ProductDetailSheet({
     }
   }, [basePhotos.length, goTo])
 
+  const handleShare = useCallback(async () => {
+    const url = window.location.href
+    const title = product.name ?? product.category ?? 'Product'
+    if (navigator.share) {
+      await navigator.share({ title, url })
+    } else {
+      await navigator.clipboard.writeText(url)
+    }
+  }, [product.name, product.category])
+
   const handleEnquire = () => {
     if (isSold) return
     const message = buildEnquiryMessage({
@@ -546,20 +556,31 @@ export function ProductDetailSheet({
                 {product.occasions[0] ? ` · ${product.occasions[0]}` : ''}
               </p>
             </div>
-            {!isSold && (
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
-                onClick={() => onFavorite(product.id)}
-                className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center flex-shrink-0
-                           transition-all active:scale-90 hover:border-rose-200 hover:bg-rose-50
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                aria-label={isFavorited ? 'Remove from Selected' : 'Add to Selected'}
+                onClick={() => void handleShare()}
+                className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center
+                           transition-all active:scale-90 hover:border-cyan-200 hover:bg-cyan-50
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                aria-label="Share product"
               >
-                <Heart
-                  size={20}
-                  className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
-                />
+                <Share2 size={18} className="text-gray-500" />
               </button>
-            )}
+              {!isSold && (
+                <button
+                  onClick={() => onFavorite(product.id)}
+                  className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center
+                             transition-all active:scale-90 hover:border-rose-200 hover:bg-rose-50
+                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
+                  aria-label={isFavorited ? 'Remove from Selected' : 'Add to Selected'}
+                >
+                  <Heart
+                    size={20}
+                    className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
+                  />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Attribute chips */}
