@@ -15,7 +15,7 @@
 # Build:  docker build -f apps/web/Dockerfile .   (repo root context)
 # Deployed via apps/web/railway.json, Railway builder: DOCKERFILE, root dir: .
 
-FROM node:20-slim
+FROM node:22-slim
 
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 

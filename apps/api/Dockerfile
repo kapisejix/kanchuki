@@ -11,7 +11,9 @@
 # Build:  docker build -f apps/api/Dockerfile .   (repo root context)
 # Deployed via apps/api/railway.json, Railway builder: DOCKERFILE, root dir: .
 
-FROM node:20-slim
+# node:22 (not 20) — @supabase/supabase-js's realtime-js requires native
+# WebSocket support, which Node 20 doesn't have (crashes at startup).
+FROM node:22-slim
 
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
