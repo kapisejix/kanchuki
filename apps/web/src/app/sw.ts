@@ -1,6 +1,6 @@
 import { defaultCache } from '@serwist/next/worker'
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { CacheFirst, ExpirationPlugin, Serwist, StaleWhileRevalidate, NetworkFirst } from 'serwist'
+import { CacheFirst, ExpirationPlugin, Serwist, StaleWhileRevalidate, NetworkFirst, NetworkOnly } from 'serwist'
 
 // This declares the global `self.__SW_MANIFEST` variable (Serwist injects the
 // precache manifest at build time, not at runtime). Without this declaration,
@@ -44,6 +44,14 @@ const serwist = new Serwist({
     {
       matcher: ({ url }) => url.pathname.startsWith('/c/'),
       handler: new NetworkFirst({ cacheName: 'collection-pages', networkTimeoutSeconds: 3 }),
+    },
+    // Admin panel isn't part of the offline-capable customer PWA — defaultCache
+    // below caches Next.js RSC/navigation fetches by URL only, so a cached
+    // response from one nav method leaked into the other and admin pages
+    // rendered blank until a hard refresh. Never cache admin at all.
+    {
+      matcher: ({ url }) => url.pathname.startsWith('/admin'),
+      handler: new NetworkOnly(),
     },
     ...defaultCache,
   ],
