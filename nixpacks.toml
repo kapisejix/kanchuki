@@ -2,9 +2,13 @@
 # (apps/api/src/jobs/extract-spin-frames.ts). Harmless on the web service,
 # which shares this root-level Nixpacks config per docs/DEPLOY.md.
 #
-# nixPkgs listed explicitly because declaring [phases.setup] here replaces
-# Nixpacks' auto-detected setup phase instead of merging with it — without
-# this, node/pnpm silently disappear from PATH (`pnpm: command not found`).
+# nixPkgs/cmds listed explicitly because declaring [phases.setup] here
+# replaces Nixpacks' auto-detected setup phase instead of merging with it —
+# without this, node/pnpm silently disappear from PATH (`pnpm: command not
+# found`). pnpm is activated via corepack (bundled with nodejs_20) rather
+# than a nix package — top-level `pnpm` isn't a valid nixpkgs attribute on
+# Railway's pinned channel.
 [phases.setup]
-nixPkgs = ["nodejs_20", "pnpm"]
+nixPkgs = ["nodejs_20"]
 aptPkgs = ["ffmpeg"]
+cmds = ["corepack enable", "corepack prepare pnpm@9.0.0 --activate"]
