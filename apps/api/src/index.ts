@@ -64,6 +64,10 @@ await server.register(helmet, {
       styleSrc: ["'self'", "'unsafe-inline'"],
     },
   },
+  // API is called cross-origin by design (web app on a different domain,
+  // CORS below authorizes it) — helmet's default same-origin CORP silently
+  // blocks the browser from reading every response even when CORS allows it.
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 });
 
 await server.register(cors, {

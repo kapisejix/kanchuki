@@ -218,7 +218,7 @@ export async function detectColor(imageUrl: string): Promise<string | null> {
   const image = await fetchTaggableImage(imageUrl)
 
   const response = await (await getClaude()).messages.create({
-    model: 'claude-3-haiku-20240307',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 50,
     temperature: 0,
     system: 'You are a color expert for Indian fashion. Extract only the dominant color of the garment in the photo. Return a short, specific color name like "Bottle Green", "Rani Pink", "Navy Blue", "Mustard Yellow", "Maroon", "Peach", "Ivory", "Teal", etc. Return JUST the color name, nothing else.',

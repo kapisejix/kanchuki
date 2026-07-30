@@ -50,22 +50,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [authed, setAuthed] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
 
   // Check for existing session on mount
   useEffect(() => {
-    setMounted(true)
     const saved = sessionStorage.getItem('admin_key')
-    if (saved) {
-      fetch(`${API_URL}/v1/admin/stats`, {
-        headers: { 'x-admin-key': saved },
-      })
-        .then((r) => {
-          if (r.ok) setAuthed(true)
-          else sessionStorage.removeItem('admin_key')
-        })
-        .catch(() => sessionStorage.removeItem('admin_key'))
+    if (!saved) {
+      setCheckingSession(false)
+      return
     }
+    fetch(`${API_URL}/v1/admin/stats`, {
+      headers: { 'x-admin-key': saved },
+    })
+      .then((r) => {
+        if (r.ok) setAuthed(true)
+        else sessionStorage.removeItem('admin_key')
+      })
+      .catch(() => sessionStorage.removeItem('admin_key'))
+      .finally(() => setCheckingSession(false))
   }, [])
 
   // Close mobile sidebar on route change
@@ -77,8 +79,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     setAuthed(true)
   }
 
-  // Prevent flash of login screen — show loading skeleton
-  if (!mounted) {
+  // Prevent flash of login screen — show loading skeleton while checking sessionStorage
+  if (checkingSession) {
     return (
       <div className="min-h-screen bg-gray-950 flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />

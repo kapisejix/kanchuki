@@ -67,12 +67,12 @@ async function purgeTable(table: string, cutoff: Date, extraWhere?: string): Pro
     const ids = batch.map((r) => r.id);
     const lastId = ids[ids.length - 1];
 
-    // Delete the batch with the session flag set
-    await prisma.$executeRawUnsafe(
-      `SET app.allow_hard_delete = 'true';
-       DELETE FROM "${table}" WHERE id = ANY($1::text[]);`,
-      ids,
-    );
+    // Delete the batch with the session flag set (same tx = same connection,
+    // so SET carries over to the DELETE)
+    await prisma.$transaction([
+      prisma.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      prisma.$executeRawUnsafe(`DELETE FROM "${table}" WHERE id = ANY($1::text[]);`, ids),
+    ]);
 
     total += ids.length;
     cursor = lastId;
@@ -91,15 +91,17 @@ async function purgeChildren(
   parentTable: string,
   cutoff: Date,
 ): Promise<number> {
-  const result = await prisma.$executeRawUnsafe(
-    `SET app.allow_hard_delete = 'true';
-     DELETE FROM "${childTable}"
-     WHERE "${childFkColumn}" IN (
-       SELECT id FROM "${parentTable}"
-       WHERE deleted_at IS NOT NULL AND deleted_at < $1
-     );`,
-    cutoff,
-  );
+  const [, result] = await prisma.$transaction([
+    prisma.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+    prisma.$executeRawUnsafe(
+      `DELETE FROM "${childTable}"
+       WHERE "${childFkColumn}" IN (
+         SELECT id FROM "${parentTable}"
+         WHERE deleted_at IS NOT NULL AND deleted_at < $1
+       );`,
+      cutoff,
+    ),
+  ]);
   return result ?? 0;
 }
 
