@@ -16,7 +16,7 @@ declare const self: WorkerGlobalScope
 const serwist = new Serwist({
   // '/offline' is precached at install time so it's available as a fallback
   // even if the customer never visited it while online.
-  precacheEntries: [...self.__SW_MANIFEST, '/offline'],
+  precacheEntries: [...(self.__SW_MANIFEST ?? []), '/offline'],
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
