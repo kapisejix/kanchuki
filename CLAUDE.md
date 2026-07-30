@@ -277,8 +277,14 @@ Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber pale
 **Built 2026-07-30.** Full research on three user-proposed features (cross-store coupon network, ratings, WhatsApp share) in `docs/design/feature-ideas-2026-07-30.md`. Two of three acted on:
 
 - **WhatsApp share on product detail (done):** `CollectionView.tsx` already had a working share button (`navigator.share` Web Share API). `ProductDetailSheet.tsx` (single-product view) did not — added the same pattern (`Share2` icon next to the favorite heart), sharing the current page URL + product name/category as title. No new dependency — Web Share API was already in use in this codebase. Falls back to clipboard copy on browsers without `navigator.share`. Spec updated in `docs/PRO-REQUIREMENTS.md` F-006, `docs/PLAN.md` Month 4c.
-- **Ratings system (planned, not built):** spec written as F-021 in `docs/PRO-REQUIREMENTS.md` §10.12, roadmap slot in `docs/PLAN.md` (Future, post-MVP). Gate rating eligibility behind a prior enquiry/order — open ratings on a catalog with no purchase-verification invite fake reviews. Not in locked MVP scope; candidate for early Phase 1.
+- **Ratings system (planned, not built):** spec written as F-021 in `docs/PRO-REQUIREMENTS.md` §10.12, roadmap slot in `docs/PLAN.md` (Future, post-MVP). Gate rating eligibility behind a prior enquiry/order — open ratings on a catalog with no purchase-verification invite fake reviews. Not in locked MVP scope; candidate for early Phase 1. Includes a `Retailer.google_place_id` Google-review deep-link CTA (rating ≥4 → prompt; ≤3 → private feedback instead) — flagged in spec as "review gating," a pattern against Google's Business Profile policy; built because explicitly requested, risk is the retailer's/platform's call.
 - **Cross-store coupon network:** reviewed, not spec'd — deferred, needs retailer density Kanchuki doesn't have yet plus an unresolved money-settlement/GST question between two retailers. See the doc for the cheap way to test the idea first (manual redemption, no ledger).
+
+## Planned — NOT started: F-022 Auto-Post New Arrivals to Google Business Profile
+
+**Reviewed 2026-07-30. DO NOT START DEVELOPMENT until the user explicitly says go ahead — when that happens, use this entry + `docs/PRO-REQUIREMENTS.md` §10.13 as the reference spec.**
+
+Distinct from F-021's Google review link — this uses the Business Profile API's `localPosts` resource (Google *does* allow creating Posts via API, unlike reviews). Retailer OAuth-connects their Google Business Profile (reuses F-012 encrypted-secret pattern); Kanchuki posts latest 3–4 new-arrival products (photo + text + CTA linking to the collection link) via `localPosts.create`. **Blocked on an external, unpredictable-timeline Google API access approval** in addition to not being MVP scope — request that access before development starts.
 
 ---
 

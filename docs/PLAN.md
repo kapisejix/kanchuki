@@ -37,7 +37,10 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 Collection-level share (`CollectionView.tsx`) already used the Web Share API; `ProductDetailSheet.tsx` had no share button until now. See `docs/PRO-REQUIREMENTS.md` F-006, `docs/design/feature-ideas-2026-07-30.md` §3.
 
 ### Future: F-021 Product & Store Ratings — 🔴 Planned
-Reviewed 2026-07-30 (`docs/design/feature-ideas-2026-07-30.md` §2, spec in `docs/PRO-REQUIREMENTS.md` §10.12). Not in locked MVP scope — candidate for early Phase 1, after Phase 0 retention/conversion metrics are validated and there's repeat customer traffic worth rating. Gate rating eligibility behind a prior enquiry/order to prevent fake reviews.
+Reviewed 2026-07-30 (`docs/design/feature-ideas-2026-07-30.md` §2, spec in `docs/PRO-REQUIREMENTS.md` §10.12). Not in locked MVP scope — candidate for early Phase 1, after Phase 0 retention/conversion metrics are validated and there's repeat customer traffic worth rating. Gate rating eligibility behind a prior enquiry/order to prevent fake reviews. Includes `google_place_id` Google-review-link CTA (flagged review-gating risk documented in spec).
+
+### Future: F-022 Auto-Post New Arrivals to Google Business Profile — 🔴 Planned, DO NOT START
+Reviewed 2026-07-30, spec in `docs/PRO-REQUIREMENTS.md` §10.13. **Hold — do not begin development until explicit go-ahead; use `CLAUDE.md` reference at that time.** Blocked on external Google Business Profile API access approval (outside Kanchuki's control) in addition to not being MVP scope.
 
 ---
 
