@@ -5,39 +5,20 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
-import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage } from '@kanchuki/shared'
+import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
 
-// Common Indian-fashion color names aren't valid CSS color keywords (e.g.
-// "Bottle Green", "Rani Pink", "Mustard", "Navy Blue") — using them directly
-// as backgroundColor silently renders black/transparent. Alias the ones that
-// come up in retailer color-variant naming; anything else is checked against
-// the browser's own color parser and falls back to neutral grey.
-const FASHION_COLOR_ALIASES: Record<string, string> = {
-  mustard: '#c9a227',
-  'bottle green': '#0a4d3c',
-  'rani pink': '#e0218a',
-  'navy blue': '#1a2b4c',
-  wine: '#722f37',
-  burgundy: '#800020',
-  peach: '#ffcba4',
-  emerald: '#50c878',
-  mint: '#98ff98',
-  mauve: '#e0b0ff',
-  copper: '#b87333',
-  cream: '#fffdd0',
-  'off-white': '#faf6f0',
-  'off white': '#faf6f0',
-}
-
+// Alias map lookup (shared with mobile) first; anything unmapped is checked
+// against the browser's own color parser before falling back to neutral grey.
 function swatchColor(name: string): string {
-  const key = name.trim().toLowerCase()
-  if (FASHION_COLOR_ALIASES[key]) return FASHION_COLOR_ALIASES[key]
+  const aliased = resolveFashionColor(name)
+  if (aliased !== '#d1d5db') return aliased
   if (typeof window !== 'undefined') {
+    const key = name.trim().toLowerCase()
     const probe = new Option().style
     probe.color = key
     if (probe.color !== '') return key

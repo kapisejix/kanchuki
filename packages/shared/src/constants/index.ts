@@ -120,6 +120,71 @@ export const OCCASION_TYPES = [
   'Special Occasion',
 ] as const;
 
+// ─── Color Swatch Resolution ──────────────────────────────────────
+// Common Indian-fashion color names aren't valid CSS/RN color keywords
+// (e.g. "Bottle Green", "Rani Pink", "Mustard") — used directly as a
+// backgroundColor they render black/transparent. Shared between web
+// (which adds a browser color-parser probe on top) and mobile (which has
+// no DOM to probe, so this map is its only source of truth).
+export const FASHION_COLOR_ALIASES: Record<string, string> = {
+  mustard: '#c9a227',
+  'bottle green': '#0a4d3c',
+  'rani pink': '#e0218a',
+  'navy blue': '#1a2b4c',
+  wine: '#722f37',
+  burgundy: '#800020',
+  peach: '#ffcba4',
+  emerald: '#50c878',
+  mint: '#98ff98',
+  mauve: '#e0b0ff',
+  copper: '#b87333',
+  cream: '#fffdd0',
+  'off-white': '#faf6f0',
+  'off white': '#faf6f0',
+  red: '#dc2626',
+  blue: '#2563eb',
+  green: '#16a34a',
+  yellow: '#eab308',
+  orange: '#ea580c',
+  purple: '#9333ea',
+  pink: '#ec4899',
+  brown: '#78350f',
+  black: '#1c1917',
+  white: '#f5f5f4',
+  grey: '#78716c',
+  gray: '#78716c',
+  maroon: '#7f1d1d',
+  navy: '#1e3a5f',
+  teal: '#0d9488',
+  olive: '#65760a',
+  gold: '#d4af37',
+  silver: '#c0c0c0',
+  beige: '#e8dcc8',
+  tan: '#d2b48c',
+  coral: '#ff7f50',
+  turquoise: '#40e0d0',
+  indigo: '#4338ca',
+  violet: '#7c3aed',
+  magenta: '#c026d3',
+  cyan: '#06b6d4',
+  lavender: '#c4b5fd',
+  khaki: '#bdb76b',
+  ivory: '#fffff0',
+  crimson: '#dc143c',
+  salmon: '#fa8072',
+  rust: '#b7410e',
+  charcoal: '#36454f',
+  chocolate: '#7b3f00',
+  lilac: '#c8a2c8',
+};
+
+/** Resolve a retailer-entered color name to a hex swatch, falling back to
+ * neutral grey for anything unmapped rather than rendering invisible/black. */
+export function resolveFashionColor(name: string): string {
+  const key = name.trim().toLowerCase();
+  return FASHION_COLOR_ALIASES[key] ?? '#d1d5db';
+}
+
 // ─── Hindi → English Search Mapping ──────────────────────────────
 
 export const HINDI_TO_ENGLISH: Record<string, string> = {

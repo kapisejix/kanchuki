@@ -17,7 +17,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Plus, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag } from 'lucide-react-native'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag, Camera } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
@@ -30,10 +30,13 @@ import {
   PIECE_TAGGABLE_CATEGORIES,
   SIZE_OPTIONS,
   formatPriceRange,
+  resolveFashionColor,
 } from '@kanchuki/shared'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
+// ponytail: manual per-photo top/bottom crop not supported for now — retake with add-photos instead.
+const CROP_PIECE_ENABLED = false
 
 type Photo = { id: string; url: string; is_primary: boolean; piece_type: 'upper' | 'lower' | null }
 type Variant = { id: string; color: string; photo_url: string | null }
@@ -113,7 +116,6 @@ export default function ProductDetailScreen() {
   // old cached bytes at an unchanged URL.
   const [cleaningPhotoId, setCleaningPhotoId] = useState<string | null>(null)
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
-  const [addingPhoto, setAddingPhoto] = useState(false)
 
   // Editable AI fields
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
@@ -565,41 +567,6 @@ export default function ProductDetailScreen() {
     }
   }
 
-  const handleAddPhoto = async () => {
-    if (!product || addingPhoto) return
-    if (product.photos.length >= 10) {
-      Alert.alert('Photo limit reached', 'Maximum 10 photos per product.')
-      return
-    }
-    setAddingPhoto(true)
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
-      if (!permission.granted) {
-        Alert.alert('Permission Required', 'Gallery access is needed to add a photo.')
-        return
-      }
-      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
-      const asset = picked.canceled ? null : picked.assets[0]
-      if (!asset?.uri) return
-
-      const compressed = await ImageManipulator.manipulateAsync(
-        asset.uri,
-        [{ resize: { width: 1200 } }],
-        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
-      )
-      const blob = await readLocalImage(compressed.uri)
-      const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
-      const { upload_url, r2_key, public_url } = uploadResult.data
-      await uploadImageToR2(compressed.uri, upload_url, 'image/jpeg')
-      await productApi.addPhoto(product.id, { r2_key, url: public_url, content_type: 'image/jpeg' })
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-    } catch (err) {
-      showError(err, 'Failed to add photo')
-    } finally {
-      setAddingPhoto(false)
-    }
-  }
-
   const handleDelete = () => {
     if (!product || deleting) return
     Alert.alert('Delete Product', 'This removes it from your catalog. This cannot be undone.', [
@@ -779,8 +746,9 @@ export default function ProductDetailScreen() {
           </View>
         )}
 
-        {/* Thumbnail strip — synced with carousel, + tile always available to add more */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
+        {/* Thumbnail strip — synced with carousel */}
+        {displayPhotos.length > 0 && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
             <View className="flex-row gap-2">
               {displayPhotos.map((photo, idx) => {
                 const isSelected = idx === selectedPhotoIndex
@@ -815,19 +783,40 @@ export default function ProductDetailScreen() {
                   </TouchableOpacity>
                 )
               })}
-              <TouchableOpacity
-                onPress={() => void handleAddPhoto()}
-                disabled={addingPhoto}
-                className="w-16 h-16 rounded-lg border-2 border-dashed border-sand-200 items-center justify-center"
-              >
-                {addingPhoto ? (
-                  <ActivityIndicator size="small" color={primaryColor} />
-                ) : (
-                  <Plus size={20} color={primaryColor} />
-                )}
-              </TouchableOpacity>
             </View>
-        </ScrollView>
+          </ScrollView>
+        )}
+
+        {/* Add photo / add color / add 360° — one row, right below the slider */}
+        <View className="flex-row gap-2 px-3 pb-3 pt-1">
+          <TouchableOpacity
+            onPress={() =>
+              router.push(`/product/${product.id}/add-photos?existingCount=${product.photos.length}`)
+            }
+            disabled={product.photos.length >= 10}
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+          >
+            <Camera size={14} color={primaryColor} />
+            <Text className="text-ink-700 text-xs font-semibold">Add Photo</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push(`/product/${product.id}/add-color`)}
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+          >
+            <Palette size={14} color={primaryColor} />
+            <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push(`/product/${product.id}/spin-video`)}
+            disabled={product.spin_status === 'processing'}
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+          >
+            <RotateCw size={14} color={primaryColor} />
+            <Text className="text-ink-700 text-xs font-semibold">
+              {product.spin_status === 'ready' ? 'Retake 360°' : 'Add 360°'}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         {/* Piece tagging for each photo */}
               {displayPhotos.map((photo, displayIdx) => {
@@ -868,7 +857,7 @@ export default function ProductDetailScreen() {
           photo (e.g. draped kameez+dupatta with the folded bottom piece on a
           stand, same frame) — crop the missing piece out of an existing
           gallery photo instead of needing a fresh, separate photoshoot. */}
-      {isPieceTaggable(product.category) && (
+      {CROP_PIECE_ENABLED && isPieceTaggable(product.category) && (
         <View className="mx-4 mt-2 flex-row gap-2">
           {(['upper', 'lower'] as const)
             .filter((piece) => !product.photos.some((p) => p.piece_type === piece))
@@ -947,18 +936,9 @@ export default function ProductDetailScreen() {
 
         {/* Color variants — tapped variant shows in gallery preview */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-              Colors · Same Design
-            </Text>
-            <TouchableOpacity
-              onPress={() => router.push(`/product/${product.id}/add-color`)}
-              className="bg-ink-50 px-2.5 py-1 rounded-full flex-row items-center gap-1"
-            >
-              <Plus size={12} color={primaryColor} />
-              <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
-            </TouchableOpacity>
-          </View>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            Colors · Same Design
+          </Text>
 
           {product.variants.length === 0 ? (
             <View className="bg-sand-50 rounded-xl px-4 py-3">
@@ -994,23 +974,14 @@ export default function ProductDetailScreen() {
                       }}
                       className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
                     >
+                      {/* Solid color-fill circle (ecommerce swatch convention) — the
+                          actual photo shows in the slider above on tap, not here. */}
                       <View
-                        className={`w-16 h-16 rounded-full overflow-hidden bg-sand-100 border-2 ${
+                        className={`w-9 h-9 rounded-full border-2 ${
                           isActive ? 'border-ink-600' : 'border-sand-200'
                         }`}
-                      >
-                        {variant.photo_url ? (
-                          <Image
-                            source={{ uri: variant.photo_url }}
-                            style={{ width: '100%', height: '100%' }}
-                            contentFit="cover"
-                          />
-                        ) : (
-                          <View className="flex-1 items-center justify-center">
-                            <Text className="text-sand-300 text-lg">?</Text>
-                          </View>
-                        )}
-                      </View>
+                        style={{ backgroundColor: resolveFashionColor(variant.color) }}
+                      />
                       <View className="flex-row items-center gap-1">
                         {isActive && <Check size={10} color={primaryColor} />}
                         <Text className={`text-xs font-medium ${isActive ? 'text-ink-700' : 'text-sand-500'}`}>
@@ -1179,34 +1150,20 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
-        {/* 360 spin view */}
+        {/* 360 spin view — status only, the add/retake action lives in the row below the slider */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
-                360° Spin View
-              </Text>
-              <Text className="text-xs text-sand-400">
-                {product.spin_status === 'processing'
-                  ? 'Processing spin video...'
-                  : product.spin_status === 'ready'
-                    ? `${product.spin_frames.length} frames ready`
-                    : product.spin_status === 'failed'
-                      ? (product.spin_error ?? 'Processing failed — try again')
-                      : 'Record a short spin video of the garment'}
-              </Text>
-            </View>
-            <TouchableOpacity
-              onPress={() => router.push(`/product/${product.id}/spin-video`)}
-              disabled={product.spin_status === 'processing'}
-              className="bg-ink-50 px-2.5 py-1.5 rounded-full flex-row items-center gap-1"
-            >
-              <RotateCw size={12} color={primaryColor} />
-              <Text className="text-ink-700 text-xs font-semibold">
-                {product.spin_status === 'ready' ? 'Retake' : 'Add'}
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
+            360° Spin View
+          </Text>
+          <Text className="text-xs text-sand-400">
+            {product.spin_status === 'processing'
+              ? 'Processing spin video...'
+              : product.spin_status === 'ready'
+                ? `${product.spin_frames.length} frames ready`
+                : product.spin_status === 'failed'
+                  ? (product.spin_error ?? 'Processing failed — try again')
+                  : 'Record a short spin video of the garment'}
+          </Text>
         </View>
 
         {/* Status */}
