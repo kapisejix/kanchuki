@@ -12,6 +12,39 @@ import { Product360Viewer } from './Product360Viewer'
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
 
+// Common Indian-fashion color names aren't valid CSS color keywords (e.g.
+// "Bottle Green", "Rani Pink", "Mustard", "Navy Blue") — using them directly
+// as backgroundColor silently renders black/transparent. Alias the ones that
+// come up in retailer color-variant naming; anything else is checked against
+// the browser's own color parser and falls back to neutral grey.
+const FASHION_COLOR_ALIASES: Record<string, string> = {
+  mustard: '#c9a227',
+  'bottle green': '#0a4d3c',
+  'rani pink': '#e0218a',
+  'navy blue': '#1a2b4c',
+  wine: '#722f37',
+  burgundy: '#800020',
+  peach: '#ffcba4',
+  emerald: '#50c878',
+  mint: '#98ff98',
+  mauve: '#e0b0ff',
+  copper: '#b87333',
+  cream: '#fffdd0',
+  'off-white': '#faf6f0',
+  'off white': '#faf6f0',
+}
+
+function swatchColor(name: string): string {
+  const key = name.trim().toLowerCase()
+  if (FASHION_COLOR_ALIASES[key]) return FASHION_COLOR_ALIASES[key]
+  if (typeof window !== 'undefined') {
+    const probe = new Option().style
+    probe.color = key
+    if (probe.color !== '') return key
+  }
+  return '#d1d5db' // unresolvable color name — neutral grey rather than black
+}
+
 interface Props {
   product: PublicProduct
   retailer: PublicCollection['retailer']
@@ -597,7 +630,7 @@ export function ProductDetailSheet({
                     >
                       <span
                         className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                        style={{ backgroundColor: v.color.toLowerCase() }}
+                        style={{ backgroundColor: swatchColor(v.color) }}
                       />
                       <span className={`text-xs ${isActive ? 'text-cyan-800 font-medium' : 'text-gray-700'}`}>
                         {v.color}

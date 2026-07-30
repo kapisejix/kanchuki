@@ -113,6 +113,7 @@ export default function ProductDetailScreen() {
   // old cached bytes at an unchanged URL.
   const [cleaningPhotoId, setCleaningPhotoId] = useState<string | null>(null)
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
+  const [addingPhoto, setAddingPhoto] = useState(false)
 
   // Editable AI fields
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
@@ -564,6 +565,41 @@ export default function ProductDetailScreen() {
     }
   }
 
+  const handleAddPhoto = async () => {
+    if (!product || addingPhoto) return
+    if (product.photos.length >= 10) {
+      Alert.alert('Photo limit reached', 'Maximum 10 photos per product.')
+      return
+    }
+    setAddingPhoto(true)
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync()
+      if (!permission.granted) {
+        Alert.alert('Permission Required', 'Gallery access is needed to add a photo.')
+        return
+      }
+      const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.85 })
+      const asset = picked.canceled ? null : picked.assets[0]
+      if (!asset?.uri) return
+
+      const compressed = await ImageManipulator.manipulateAsync(
+        asset.uri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
+      )
+      const blob = await readLocalImage(compressed.uri)
+      const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
+      const { upload_url, r2_key, public_url } = uploadResult.data
+      await uploadImageToR2(compressed.uri, upload_url, 'image/jpeg')
+      await productApi.addPhoto(product.id, { r2_key, url: public_url, content_type: 'image/jpeg' })
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      showError(err, 'Failed to add photo')
+    } finally {
+      setAddingPhoto(false)
+    }
+  }
+
   const handleDelete = () => {
     if (!product || deleting) return
     Alert.alert('Delete Product', 'This removes it from your catalog. This cannot be undone.', [
@@ -743,9 +779,8 @@ export default function ProductDetailScreen() {
           </View>
         )}
 
-        {/* Thumbnail strip — synced with carousel */}
-        {displayPhotos.length > 1 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
+        {/* Thumbnail strip — synced with carousel, + tile always available to add more */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
             <View className="flex-row gap-2">
               {displayPhotos.map((photo, idx) => {
                 const isSelected = idx === selectedPhotoIndex
@@ -780,9 +815,19 @@ export default function ProductDetailScreen() {
                   </TouchableOpacity>
                 )
               })}
+              <TouchableOpacity
+                onPress={() => void handleAddPhoto()}
+                disabled={addingPhoto}
+                className="w-16 h-16 rounded-lg border-2 border-dashed border-sand-200 items-center justify-center"
+              >
+                {addingPhoto ? (
+                  <ActivityIndicator size="small" color={primaryColor} />
+                ) : (
+                  <Plus size={20} color={primaryColor} />
+                )}
+              </TouchableOpacity>
             </View>
-          </ScrollView>
-        )}
+        </ScrollView>
 
         {/* Piece tagging for each photo */}
               {displayPhotos.map((photo, displayIdx) => {
@@ -950,7 +995,7 @@ export default function ProductDetailScreen() {
                       className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
                     >
                       <View
-                        className={`w-20 h-24 rounded-xl overflow-hidden bg-sand-100 border-2 ${
+                        className={`w-16 h-16 rounded-full overflow-hidden bg-sand-100 border-2 ${
                           isActive ? 'border-ink-600' : 'border-sand-200'
                         }`}
                       >
