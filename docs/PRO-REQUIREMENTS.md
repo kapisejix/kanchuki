@@ -988,7 +988,8 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 
 ### 10.10 F-019: Paid On-Site Catalog Upload Service
 
-**Status:** ✅ Built 2026-07-28. Extends the existing `SupportTicket` entity (§10.6) rather than a new service model — `ticket_type`, `item_count_requested`, `quoted_price_inr`, `proposed_slots`, `confirmed_slot`, `razorpay_order_id`, `paid_at` (migration `040_catalog_upload_service`), plus admin-editable `CatalogUploadPriceTier` (seeded with starter tiers). Retailer request/pay/slot flow: `retailers.ts` `POST/GET /me/catalog-upload-request`, `.../:id/pay`, `.../:id/verify-payment`, `.../:id/confirm-slot` (payment verified server-side via platform Razorpay HMAC before any slot can be confirmed; routes through the existing `routeTicket()`, exported from `team.ts`). Admin quoting: existing `team.ts` `PATCH /team/tickets/:id` extended with `quoted_price_inr`/`proposed_slots`; `GET /team/tickets` filterable by `ticket_type`. Price tier CRUD: `admin.ts` `GET/POST/PATCH/DELETE /admin/catalog-upload-tiers`. Tests: `retailers.test.ts` "F-019" describe block (signature verification + IDOR guard).
+**Status:** ✅ Built 2026-07-28, gaps closed 2026-07-30. Extends the existing `SupportTicket` entity (§10.6) rather than a new service model — `ticket_type`, `item_count_requested`, `quoted_price_inr`, `proposed_slots`, `confirmed_slot`, `razorpay_order_id`, `paid_at` (migration `040_catalog_upload_service`), plus admin-editable `CatalogUploadPriceTier` (seeded with starter tiers). Retailer request/pay/slot flow: `retailers.ts` `POST/GET /me/catalog-upload-request`, `.../:id/pay`, `.../:id/confirm-slot` — payment verification is a GET redirect callback, `public.ts` `GET /public/catalog-upload-tickets/:id/payment-callback` (Razorpay Payment Link can't carry a Bearer token, so it verifies via HMAC signature instead, same pattern as billing.ts's addon-callback; doc previously said `.../:id/verify-payment`, which never existed). Payment verified server-side before any slot can be confirmed; routes through the existing `routeTicket()`, exported from `team.ts`. Admin quoting: existing `team.ts` `PATCH /team/tickets/:id` extended with `quoted_price_inr`/`proposed_slots`; `GET /team/tickets` filterable by `ticket_type`. Price tier CRUD: `admin.ts` `GET/POST/PATCH/DELETE /admin/catalog-upload-tiers`. Tests: `retailers.test.ts` "F-019" describe block (signature verification + IDOR guard).
+**2026-07-30 gap-fix:** the "Built" status above was true for backend + retailer flow, but two acceptance criteria had no UI: (1) the onboarding-time skip entry point didn't exist (only the retailer-dashboard entry did) — added a "Get help adding your catalog" card to `apps/mobile/app/onboarding.tsx` step 6, linking to the existing `apps/mobile/app/settings/catalog-upload.tsx` screen; (2) admin had no way to actually set `quoted_price_inr`/`proposed_slots` — the entire retailer pay/slot flow was unreachable in practice. Added quoting UI (price input, slot picker/list) plus a `ticket_type` filter and badge to `apps/web/src/app/admin/support-tickets/page.tsx`, wired to the already-existing `PATCH /team/tickets/:id` fields.
 **Priority:** P2
 
 **Problem:** Retailers with large catalogs (hundreds to thousands of items) who can't or won't photograph/upload themselves need a paid option: a Kanchuki on-site team member visits the shop and adds the catalog for them. Price depends on item count and complexity, set by admin — not hardcoded.
@@ -1014,6 +1015,27 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 - Payment must succeed before a visit slot is confirmed — no team member is ever scheduled against an unpaid request.
 - Admin can edit the item-count-to-price tiers without a deploy.
 - The routed ticket appears in the same admin ticket view as general support tickets, filterable by `ticket_type`.
+
+---
+
+### 10.11 F-020: Catalog-Upload Delegated Access
+
+**Status:** ✅ Built 2026-07-30.
+
+**Problem:** F-019 gets a team member's visit *scheduled* against a retailer, but never gave them a way to actually act on that retailer's account once on-site — the only alternative would be the retailer handing over their real login, which nothing in this codebase should require.
+
+**Design — deviates from the originally-discussed "new DB model" in one way, flagged here:** instead of a DB-backed session table, this reuses the existing `TEAM_JWT_SECRET`-signed JWT pattern already used for team login (`team-auth.ts`). The JWT's `exp` claim gives expiry for free (8h TTL); revocability before natural expiry comes from a live `SupportTicket` status check on every request instead of a session row — reassigning or resolving the ticket revokes access immediately. This is fewer moving parts for the same guarantees (scoped, expiring, revocable, audited).
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Token** | `apps/api/src/plugins/team-auth.ts` | `signCatalogUploadToken`/`verifyCatalogUploadToken` — JWT claims `sub`=retailer_id, `tid`=ticket_id, `tm`=team_member_id, `scope`='catalog_upload', 8h TTL |
+| **Session endpoint** | `apps/api/src/routes/team.ts` `POST /team/tickets/:id/catalog-session` | Only the ticket's `assigned_to_id` (or super admin) can mint, only once `paid_at`+`confirmed_slot` are set |
+| **Auth accept** | `apps/api/src/plugins/auth.ts` | preHandler tries the delegate token before Supabase JWT verification; live-checks `ticket.status === 'ASSIGNED'` + `ticket_type === 'CATALOG_UPLOAD'` on every request (revocation without a session table); new `catalogDelegateCanAccess()` allowlist restricts to `/v1/products`, `/v1/catalog-import`, `GET /v1/categories`, `GET /v1/size-charts` only — narrower than even the retailer-staff allowlist |
+| **Audit log** | `apps/api/src/plugins/auth.ts` | One `onResponse` hook writes an `AuditLog` row (`actor_type: 'catalog_delegate'`) for every mutating request made under a delegate session — a single choke point instead of touching every route file |
+| **Mobile wiring** | `apps/mobile/src/lib/catalog-delegate.ts` (session swap), `apps/mobile/app/staff/catalog-tickets.tsx` (job list + start button), `apps/mobile/src/components/CatalogDelegateBanner.tsx` (persistent "uploading for {shop}" banner + End Session, wired into `app/_layout.tsx`) | Delegate token temporarily replaces the team member's own `auth_token`, so the existing retailer product-upload screens (`/product/add`, `/product/bulk-onboard`) work unmodified |
+| **Tests** | `apps/api/src/plugins/auth.test.ts` (`catalogDelegateCanAccess` allowlist), `apps/api/src/routes/team.test.ts` ("F-020" describe block — mint guard conditions + audit log) | |
+
+**Not built:** a general mobile support-ticket inbox for field staff (today's `/staff` dashboard has no ticket list/detail UI at all, even for `GENERAL` tickets — `catalog-tickets.tsx` is scoped narrowly to ready-for-upload `CATALOG_UPLOAD` tickets only, not a replacement for that missing surface).
 
 ---
 

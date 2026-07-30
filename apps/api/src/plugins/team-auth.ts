@@ -48,3 +48,55 @@ export async function verifyTeamToken(token: string): Promise<TeamTokenClaims | 
     return null;
   }
 }
+
+// ─── Catalog-upload delegated session (F-020) ──────────────────────
+// A short-lived, ticket-scoped token so the team member assigned to a paid
+// on-site catalog-upload visit (F-019) can act on that one retailer's
+// products from their own phone — without ever seeing the retailer's real
+// login. Reuses TEAM_JWT_SECRET rather than a new DB-backed session table:
+// the JWT's exp claim gives expiry for free, and auth.ts re-checks the
+// SupportTicket's live status on every request, so reassigning/closing the
+// ticket revokes access immediately even before the token naturally expires.
+
+const CATALOG_UPLOAD_SCOPE = 'catalog_upload';
+const CATALOG_UPLOAD_TOKEN_TTL = '8h'; // one field-visit day; re-issue from the ticket if it runs long
+
+export interface CatalogUploadTokenClaims {
+  retailer_id: string;
+  ticket_id: string;
+  team_member_id: string;
+}
+
+export async function signCatalogUploadToken(
+  claims: CatalogUploadTokenClaims,
+): Promise<string> {
+  return new SignJWT({
+    scope: CATALOG_UPLOAD_SCOPE,
+    tid: claims.ticket_id,
+    tm: claims.team_member_id,
+  })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setSubject(claims.retailer_id)
+    .setIssuedAt()
+    .setExpirationTime(CATALOG_UPLOAD_TOKEN_TTL)
+    .sign(secret());
+}
+
+export async function verifyCatalogUploadToken(
+  token: string,
+): Promise<CatalogUploadTokenClaims | null> {
+  try {
+    const { payload } = await jwtVerify(token, secret());
+    if (
+      payload.scope !== CATALOG_UPLOAD_SCOPE ||
+      !payload.sub ||
+      typeof payload.tid !== 'string' ||
+      typeof payload.tm !== 'string'
+    ) {
+      return null;
+    }
+    return { retailer_id: payload.sub, ticket_id: payload.tid, team_member_id: payload.tm };
+  } catch {
+    return null;
+  }
+}

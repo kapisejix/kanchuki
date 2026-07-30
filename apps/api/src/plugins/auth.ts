@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
+import { verifyCatalogUploadToken } from './team-auth.js';
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -10,6 +11,9 @@ declare module 'fastify' {
     retailerId: string;
     retailerAuthUserId: string;
     staffRole: string | null;
+    // F-020: set only when this request is authenticated via a delegated
+    // catalog-upload session token, not a real retailer/staff login.
+    catalogDelegate: { team_member_id: string; ticket_id: string } | null;
   }
 }
 
@@ -172,13 +176,33 @@ const SALESPERSON_ALLOWED_ROUTES: StaffRule[] = [
   { method: 'GET', path: '/v1/retailers/me', exact: true }, // shop name shown in app header
 ];
 
-export function staffCanAccess(method: string, routeUrl: string, role?: string): boolean {
-  const rules = role === 'salesperson' ? SALESPERSON_ALLOWED_ROUTES : MANAGER_ALLOWED_ROUTES;
+function matchesRules(method: string, routeUrl: string, rules: StaffRule[]): boolean {
   return rules.some((rule) => {
     if (rule.method !== '*' && rule.method !== method) return false;
     if (rule.exact) return routeUrl === rule.path;
     return routeUrl === rule.path || routeUrl.startsWith(`${rule.path}/`);
   });
+}
+
+export function staffCanAccess(method: string, routeUrl: string, role?: string): boolean {
+  const rules = role === 'salesperson' ? SALESPERSON_ALLOWED_ROUTES : MANAGER_ALLOWED_ROUTES;
+  return matchesRules(method, routeUrl, rules);
+}
+
+// ─── Catalog-upload delegate access control (F-020) ────────────────
+// Narrower than even the salesperson allowlist above — a delegated session
+// exists for exactly one purpose (upload this retailer's catalog while the
+// team member is on-site) and must not reach customers, billing, staff, or
+// account settings for a retailer whose real login was never shared.
+const CATALOG_DELEGATE_ALLOWED_ROUTES: StaffRule[] = [
+  { method: '*', path: '/v1/products' }, // add/edit products + photos
+  { method: '*', path: '/v1/catalog-import' }, // bulk/rack-photo onboarding (F-001c/d)
+  { method: 'GET', path: '/v1/categories' },
+  { method: 'GET', path: '/v1/size-charts' },
+];
+
+export function catalogDelegateCanAccess(method: string, routeUrl: string): boolean {
+  return matchesRules(method, routeUrl, CATALOG_DELEGATE_ALLOWED_ROUTES);
 }
 
 // ─── Plugin ───────────────────────────────────────────────────────
@@ -191,6 +215,34 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
   server.decorateRequest('retailerId', '');
   server.decorateRequest('retailerAuthUserId', '');
   server.decorateRequest('staffRole', null);
+  server.decorateRequest('catalogDelegate', null);
+
+  // F-020: every mutation made under a delegated catalog-upload session gets
+  // its own audit trail entry, regardless of which route it hit — one hook
+  // here instead of touching every mutation call site in products.ts /
+  // catalog-import.ts.
+  server.addHook('onResponse', async (request: FastifyRequest, reply) => {
+    if (!request.catalogDelegate) return;
+    if (!['POST', 'PATCH', 'PUT', 'DELETE'].includes(request.method)) return;
+    if (reply.statusCode >= 400) return;
+
+    await prisma.auditLog
+      .create({
+        data: {
+          actor_type: 'catalog_delegate',
+          actor_id: request.catalogDelegate.team_member_id,
+          action: request.method.toLowerCase(),
+          resource_type: 'route',
+          resource_id: request.routeOptions.url ?? request.url,
+          metadata: {
+            ticket_id: request.catalogDelegate.ticket_id,
+            retailer_id: request.retailerId,
+          },
+          ip_address: request.ip,
+        },
+      })
+      .catch((err) => request.log.error({ err }, 'Failed to write catalog-delegate audit log'));
+  });
 
   server.addHook('preHandler', async (request: FastifyRequest, reply) => {
     // Skip auth for public routes
@@ -217,6 +269,50 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     }
 
     const token = authHeader.slice(7);
+
+    // F-020: delegated catalog-upload session — checked first since it's a
+    // cheap local HMAC verify (no JWKS round-trip) and structurally can't
+    // collide with a real Supabase JWT (different signing secret).
+    const delegateClaims = await verifyCatalogUploadToken(token);
+    if (delegateClaims) {
+      const ticket = await prisma.supportTicket.findUnique({
+        where: { id: delegateClaims.ticket_id },
+        select: { ticket_type: true, status: true, retailer_id: true, assigned_to_id: true },
+      });
+      const stillLive =
+        ticket &&
+        ticket.ticket_type === 'CATALOG_UPLOAD' &&
+        ticket.status === 'ASSIGNED' &&
+        ticket.retailer_id === delegateClaims.retailer_id &&
+        ticket.assigned_to_id === delegateClaims.team_member_id;
+
+      if (!stillLive) {
+        return reply.status(401).send({
+          error: { code: 'UNAUTHORIZED', message: 'This catalog upload session has ended', status: 401 },
+        });
+      }
+
+      const routeUrl = request.routeOptions.url ?? request.url;
+      if (!catalogDelegateCanAccess(request.method, routeUrl)) {
+        return reply.status(403).send({
+          error: {
+            code: 'FORBIDDEN',
+            message: 'This session can only manage the catalog',
+            status: 403,
+          },
+        });
+      }
+
+      request.retailerId = delegateClaims.retailer_id;
+      request.retailerAuthUserId = '';
+      request.staffRole = null;
+      request.catalogDelegate = {
+        team_member_id: delegateClaims.team_member_id,
+        ticket_id: delegateClaims.ticket_id,
+      };
+      return;
+    }
+
     const claims = await verifySupabaseJwt(token);
 
     if (!claims) {

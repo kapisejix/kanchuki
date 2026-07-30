@@ -18,11 +18,16 @@ import {
   Save,
   RefreshCw,
   Navigation,
+  IndianRupee,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 type TicketStatus = 'OPEN' | 'ASSIGNED' | 'RESOLVED' | 'CLOSED'
+
+type TicketType = 'GENERAL' | 'CATALOG_UPLOAD'
 
 type Ticket = {
   id: string
@@ -36,6 +41,12 @@ type Ticket = {
   resolved_at: string | null
   assigned_to: { id: string; name: string } | null
   retailer: { id: string; shop_name: string; city: string; phone: string }
+  ticket_type: TicketType
+  item_count_requested: number | null
+  quoted_price_inr: number | null
+  proposed_slots: string[] | null
+  confirmed_slot: string | null
+  paid_at: string | null
 }
 
 type TicketStats = {
@@ -99,6 +110,16 @@ function TicketDetailPanel({
   const [assignedTo, setAssignedTo] = useState(ticket.assigned_to_id ?? '')
   const [note, setNote] = useState(ticket.note ?? '')
   const [saving, setSaving] = useState(false)
+  const [quotedPrice, setQuotedPrice] = useState(ticket.quoted_price_inr?.toString() ?? '')
+  const [slots, setSlots] = useState<string[]>(ticket.proposed_slots ?? [])
+  const [newSlot, setNewSlot] = useState('')
+
+  const addSlot = () => {
+    if (!newSlot) return
+    const iso = new Date(newSlot).toISOString()
+    if (!slots.includes(iso)) setSlots((prev) => [...prev, iso])
+    setNewSlot('')
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -107,6 +128,15 @@ function TicketDetailPanel({
       if (status !== ticket.status) body.status = status
       if (assignedTo !== (ticket.assigned_to_id ?? '')) body.assigned_to_id = assignedTo || null
       if (note !== (ticket.note ?? '')) body.note = note
+      if (ticket.ticket_type === 'CATALOG_UPLOAD') {
+        const priceNum = quotedPrice.trim() === '' ? NaN : parseInt(quotedPrice, 10)
+        if (!Number.isNaN(priceNum) && priceNum >= 0 && priceNum !== (ticket.quoted_price_inr ?? -1)) {
+          body.quoted_price_inr = priceNum
+        }
+        if (JSON.stringify(slots) !== JSON.stringify(ticket.proposed_slots ?? [])) {
+          body.proposed_slots = slots
+        }
+      }
 
       if (Object.keys(body).length === 0) {
         onClose()
@@ -214,6 +244,78 @@ function TicketDetailPanel({
           </div>
         </div>
 
+        {/* F-019: Catalog upload quoting — admin sets price + visit slots */}
+        {ticket.ticket_type === 'CATALOG_UPLOAD' && (
+          <div className="bg-purple-50/60 border border-purple-200 rounded-xl p-4 space-y-4">
+            <p className="text-xs font-semibold text-purple-700">
+              Catalog Upload Request
+              {ticket.item_count_requested != null && ` · ~${ticket.item_count_requested} items`}
+            </p>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Quoted Price (₹)</label>
+              <div className="relative">
+                <IndianRupee size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="number"
+                  min={0}
+                  value={quotedPrice}
+                  onChange={(e) => setQuotedPrice(e.target.value)}
+                  placeholder="e.g. 2999"
+                  className="w-full pl-9 pr-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                />
+              </div>
+              {ticket.paid_at && (
+                <p className="text-[10px] text-green-600 mt-1">
+                  Already paid on {new Date(ticket.paid_at).toLocaleString('en-IN')} — price is locked.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1.5">Proposed Visit Slots</label>
+              {slots.length > 0 && (
+                <div className="space-y-1.5 mb-2">
+                  {slots.map((slot) => (
+                    <div key={slot} className="flex items-center justify-between bg-white border border-gray-200 rounded-lg px-3 py-2">
+                      <span className="text-xs text-gray-700">
+                        {new Date(slot).toLocaleString('en-IN', {
+                          weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+                        })}
+                        {ticket.confirmed_slot === slot && (
+                          <span className="ml-1.5 text-[10px] font-medium text-green-600">(confirmed)</span>
+                        )}
+                      </span>
+                      <button
+                        onClick={() => setSlots((prev) => prev.filter((s) => s !== slot))}
+                        disabled={ticket.confirmed_slot === slot}
+                        className="text-gray-400 hover:text-red-500 disabled:opacity-30 cursor-pointer"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <input
+                  type="datetime-local"
+                  value={newSlot}
+                  onChange={(e) => setNewSlot(e.target.value)}
+                  className="flex-1 px-3 py-2.5 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                />
+                <button
+                  onClick={addSlot}
+                  disabled={!newSlot || slots.length >= 10}
+                  className="px-3 rounded-xl border border-gray-200 text-gray-500 hover:text-cyan-600 hover:border-cyan-300 disabled:opacity-40 cursor-pointer"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Note */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1.5">Internal Note</label>
@@ -267,6 +369,7 @@ export default function SupportTicketsPage() {
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
   const [statusFilter, setStatusFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState<'' | TicketType>('')
   const [search, setSearch] = useState('')
   const [routing, setRouting] = useState(false)
 
@@ -319,6 +422,7 @@ export default function SupportTicketsPage() {
         return false
     }
     if (statusFilter && t.status !== statusFilter) return false
+    if (typeFilter && t.ticket_type !== typeFilter) return false
     return true
   })
 
@@ -412,6 +516,15 @@ export default function SupportTicketsPage() {
           <option value="RESOLVED">Resolved</option>
           <option value="CLOSED">Closed</option>
         </select>
+        <select
+          value={typeFilter}
+          onChange={(e) => setTypeFilter(e.target.value as '' | TicketType)}
+          className={selectClass}
+        >
+          <option value="">All Types</option>
+          <option value="GENERAL">General</option>
+          <option value="CATALOG_UPLOAD">Catalog Upload</option>
+        </select>
       </div>
 
       {/* Main area: table + detail panel */}
@@ -473,7 +586,14 @@ export default function SupportTicketsPage() {
                     >
                       <td className="px-4 py-3.5">
                         <div className="min-w-0">
-                          <p className="font-medium text-gray-900 truncate">{t.retailer.shop_name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="font-medium text-gray-900 truncate">{t.retailer.shop_name}</p>
+                            {t.ticket_type === 'CATALOG_UPLOAD' && (
+                              <span className="shrink-0 text-[10px] font-medium text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-full">
+                                Catalog
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-gray-400">{t.retailer.city}</p>
                         </div>
                       </td>

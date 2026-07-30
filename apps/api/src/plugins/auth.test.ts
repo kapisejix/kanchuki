@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { staffCanAccess } from './auth.js';
+import { catalogDelegateCanAccess, staffCanAccess } from './auth.js';
 
 // A retailer-added team member (Staff row) gets a retailer-scoped token but
 // must be limited to: products, categories, collections, size charts,
@@ -70,5 +70,35 @@ describe('staffCanAccess', () => {
     ['POST', '/v1/retailers/me/qr-slug'], // manager only
   ])('salesperson blocks %s %s', (method, path) => {
     expect(staffCanAccess(method, path, 'salesperson')).toBe(false);
+  });
+});
+
+// F-020: a delegated catalog-upload session is narrower than even the
+// salesperson allowlist above — it exists for exactly one purpose (upload
+// this retailer's catalog while the team member is on-site) and must not
+// reach customers, billing, staff, or account settings.
+describe('catalogDelegateCanAccess', () => {
+  it.each([
+    ['GET', '/v1/products'],
+    ['POST', '/v1/products'],
+    ['PATCH', '/v1/products/prod_1'],
+    ['POST', '/v1/catalog-import/detect-items'],
+    ['GET', '/v1/categories'],
+    ['GET', '/v1/size-charts'],
+  ])('allows %s %s', (method, path) => {
+    expect(catalogDelegateCanAccess(method, path)).toBe(true);
+  });
+
+  it.each([
+    ['GET', '/v1/customers'],
+    ['POST', '/v1/customers'],
+    ['GET', '/v1/collections'],
+    ['PUT', '/v1/retailers/me'],
+    ['GET', '/v1/billing'],
+    ['GET', '/v1/staff'],
+    ['POST', '/v1/categories'], // write access to categories not granted, read-only
+    ['POST', '/v1/size-charts'], // write access to size charts not granted, read-only
+  ])('blocks %s %s', (method, path) => {
+    expect(catalogDelegateCanAccess(method, path)).toBe(false);
   });
 });

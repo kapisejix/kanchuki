@@ -6,11 +6,12 @@ import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
 import {
   hashPassword,
+  signCatalogUploadToken,
   signTeamToken,
   verifyPassword,
   verifyTeamToken,
 } from '../plugins/team-auth.js';
-import { validAdminKey } from './admin.js';
+import { validAdminKey, verifyAdminSession } from './admin.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -220,7 +221,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     // Bootstrap: the existing shared admin key acts as an unscoped Super Admin,
     // since team_members starts empty and needs a way to create the first one.
     const adminKey = request.headers['x-admin-key'] as string | undefined;
-    if (validAdminKey(adminKey)) {
+    if (adminKey && (validAdminKey(adminKey) || (await verifyAdminSession(adminKey)))) {
       request.teamMember = {
         id: 'admin-key',
         role: 'SUPER_ADMIN',
@@ -926,6 +927,60 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         requires_visit: visitRequired,
       },
     };
+  });
+
+  // ── POST /team/tickets/:id/catalog-session ──────────────────────
+  // F-020: mint a short-lived, ticket-scoped token so the assigned team
+  // member can upload the retailer's catalog from their own phone without
+  // ever seeing the retailer's real login. Only the assigned agent (or a
+  // super admin) can mint one, and only once payment cleared + a visit
+  // slot is confirmed — mirrors the retailer-side confirm-slot guard in
+  // retailers.ts.
+  server.post<{ Params: { id: string } }>('/tickets/:id/catalog-session', async (request) => {
+    const tm = request.teamMember;
+    if (!tm) throw forbidden('Not authenticated');
+
+    const ticket = await prisma.supportTicket.findUnique({
+      where: { id: request.params.id },
+      select: {
+        id: true,
+        ticket_type: true,
+        retailer_id: true,
+        assigned_to_id: true,
+        paid_at: true,
+        confirmed_slot: true,
+      },
+    });
+    if (!ticket || ticket.ticket_type !== 'CATALOG_UPLOAD') {
+      throw notFound('Catalog upload ticket');
+    }
+    if (!tm.isSuperAdmin && ticket.assigned_to_id !== tm.id) {
+      throw forbidden('Only the assigned team member can start this session');
+    }
+    if (!ticket.paid_at || !ticket.confirmed_slot) {
+      throw validationError('Visit is not confirmed yet — payment and a slot are required first');
+    }
+
+    const teamMemberId = ticket.assigned_to_id ?? tm.id;
+    const token = await signCatalogUploadToken({
+      retailer_id: ticket.retailer_id,
+      ticket_id: ticket.id,
+      team_member_id: teamMemberId,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'staff',
+        actor_id: tm.id,
+        action: 'issue_catalog_session',
+        resource_type: 'SupportTicket',
+        resource_id: ticket.id,
+        metadata: { retailer_id: ticket.retailer_id },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: { token, expires_in_seconds: 8 * 60 * 60 } };
   });
 
   // ═══════════════════════════════════════════════════════════════

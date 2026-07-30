@@ -22,6 +22,7 @@ const {
   mockSupportTicketFindUnique,
   mockSupportTicketUpdate,
   mockSupportTicketCount,
+  mockAuditLogCreate,
 } = vi.hoisted(() => ({
   mockTeamMemberFindUnique: vi.fn(),
   mockTeamMemberFindMany: vi.fn(),
@@ -40,6 +41,7 @@ const {
   mockSupportTicketFindUnique: vi.fn(),
   mockSupportTicketUpdate: vi.fn(),
   mockSupportTicketCount: vi.fn(),
+  mockAuditLogCreate: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -70,6 +72,9 @@ vi.mock('@kanchuki/db', () => ({
       findUnique: mockSupportTicketFindUnique,
       update: mockSupportTicketUpdate,
       count: mockSupportTicketCount,
+    },
+    auditLog: {
+      create: mockAuditLogCreate,
     },
   },
   Prisma: {},
@@ -743,6 +748,114 @@ describe('GET /team/tickets/stats', () => {
     expect(stats.closed).toBe(2);
     expect(stats.total).toBe(20);
     expect(stats.requires_visit).toBe(1);
+    await app.close();
+  });
+});
+
+// F-020: delegated catalog-upload session — mint endpoint
+describe('POST /team/tickets/:id/catalog-session', () => {
+  const CATALOG_TICKET = {
+    id: 'ticket_1',
+    ticket_type: 'CATALOG_UPLOAD',
+    retailer_id: 'retailer_1',
+    assigned_to_id: 'support_1',
+    paid_at: new Date('2026-07-30T10:00:00Z'),
+    confirmed_slot: new Date('2026-08-01T10:00:00Z'),
+  };
+
+  beforeEach(() => {
+    process.env.TEAM_JWT_SECRET = 'test-team-secret';
+    mockTeamMemberTerritoryFindMany.mockResolvedValue([]);
+  });
+
+  it('issues a token for the assigned agent once paid + slot confirmed, and audits it', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue(CATALOG_TICKET);
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'support_1',
+      role: 'SUPPORT_AGENT',
+      is_active: true,
+    });
+    const token = await signTeamToken({ sub: 'support_1', role: 'SUPPORT_AGENT' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets/ticket_1/catalog-session',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.token).toBeTruthy();
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          actor_type: 'staff',
+          actor_id: 'support_1',
+          action: 'issue_catalog_session',
+          resource_id: 'ticket_1',
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('rejects a team member who is not the assigned agent', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue(CATALOG_TICKET);
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'support_9',
+      role: 'SUPPORT_AGENT',
+      is_active: true,
+    });
+    const token = await signTeamToken({ sub: 'support_9', role: 'SUPPORT_AGENT' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets/ticket_1/catalog-session',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('rejects when payment or slot confirmation is missing', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({ ...CATALOG_TICKET, paid_at: null });
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'support_1',
+      role: 'SUPPORT_AGENT',
+      is_active: true,
+    });
+    const token = await signTeamToken({ sub: 'support_1', role: 'SUPPORT_AGENT' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets/ticket_1/catalog-session',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('rejects a ticket that is not CATALOG_UPLOAD', async () => {
+    mockSupportTicketFindUnique.mockResolvedValue({ ...CATALOG_TICKET, ticket_type: 'GENERAL' });
+    mockTeamMemberFindUnique.mockResolvedValue({
+      id: 'support_1',
+      role: 'SUPPORT_AGENT',
+      is_active: true,
+    });
+    const token = await signTeamToken({ sub: 'support_1', role: 'SUPPORT_AGENT' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/tickets/ticket_1/catalog-session',
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(res.statusCode).toBe(404);
     await app.close();
   });
 });

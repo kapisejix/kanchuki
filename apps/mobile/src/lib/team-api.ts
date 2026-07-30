@@ -93,6 +93,12 @@ export type SupportTicket = {
   resolved_at: string | null
   assigned_to: { id: string; name: string } | null
   retailer: { id: string; shop_name: string; city: string; phone: string }
+  ticket_type: 'GENERAL' | 'CATALOG_UPLOAD'
+  item_count_requested: number | null
+  quoted_price_inr: number | null
+  proposed_slots: string[] | null
+  confirmed_slot: string | null
+  paid_at: string | null
 }
 
 export type SupportTicketStats = {
@@ -142,9 +148,21 @@ export const teamApi = {
       { method: 'POST', body: JSON.stringify(data), timeoutMs: 30_000 },
     ),
 
-  /** List support tickets */
-  getTickets: () =>
-    teamRequest<{ data: SupportTicket[] }>('/v1/team/tickets'),
+  /** List support tickets, optionally filtered by ticket_type */
+  getTickets: (params?: { ticket_type?: 'GENERAL' | 'CATALOG_UPLOAD' }) =>
+    teamRequest<{ data: SupportTicket[] }>(
+      params?.ticket_type
+        ? `/v1/team/tickets?ticket_type=${params.ticket_type}`
+        : '/v1/team/tickets',
+    ),
+
+  /** F-020: mint a delegated, ticket-scoped session token to upload this
+   * retailer's catalog from the assigned team member's own phone. */
+  startCatalogSession: (ticketId: string) =>
+    teamRequest<{ data: { token: string; expires_in_seconds: number } }>(
+      `/v1/team/tickets/${ticketId}/catalog-session`,
+      { method: 'POST' },
+    ),
 
   /** Get support ticket stats */
   getTicketStats: () =>

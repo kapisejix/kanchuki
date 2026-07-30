@@ -703,6 +703,23 @@ export default function OnboardingScreen() {
                 </View>
                 <Text className="text-sand-400 text-lg">→</Text>
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push('/settings/catalog-upload')}
+                className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
+                activeOpacity={0.8}
+              >
+                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
+                  <Text className="text-xl">🧑‍💼</Text>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sand-900 text-sm font-bold">Get help adding your catalog</Text>
+                  <Text className="text-sand-500 text-xs mt-0.5">
+                    A paid Kanchuki team visit uploads it for you — skip anytime
+                  </Text>
+                </View>
+                <Text className="text-sand-400 text-lg">→</Text>
+              </TouchableOpacity>
             </View>
           </View>
         )

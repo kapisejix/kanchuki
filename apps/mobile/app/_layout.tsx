@@ -16,6 +16,7 @@ import { getToken } from '../src/lib/api'
 import { getItem } from '../src/lib/storage'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { NetworkBanner } from '../src/components/NetworkBanner'
+import { CatalogDelegateBanner } from '../src/components/CatalogDelegateBanner'
 import { ThemeProvider, useTheme } from '../src/lib/theme'
 import { vars } from 'nativewind'
 import { restoreQueryCache, persistQueryCache } from '../src/lib/offline-persister'
@@ -70,6 +71,7 @@ function AppShell() {
   return (
     <View className="flex-1 bg-cotton" style={vars({ '--color-ink-600': primaryColor })}>
       <NetworkBanner />
+      <CatalogDelegateBanner />
       <Stack
         screenOptions={{
           headerShown: false,
