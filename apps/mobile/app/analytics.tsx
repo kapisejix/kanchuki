@@ -17,9 +17,9 @@ import {
   BarChart3,
   Store,
 } from 'lucide-react-native'
-import { analyticsApi, retailerApi } from '../../src/lib/api'
-import { AnalyticsSkeleton } from '../../src/components/Skeleton'
-import { useTheme } from '../../src/lib/theme'
+import { analyticsApi, retailerApi } from '../src/lib/api'
+import { AnalyticsSkeleton } from '../src/components/Skeleton'
+import { useTheme } from '../src/lib/theme'
 
 // ── Types ─────────────────────────────────────────────────────────
 

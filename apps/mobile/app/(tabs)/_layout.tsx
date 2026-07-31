@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { AppState } from 'react-native'
-import { Tabs } from 'expo-router'
-import { Home, Grid3X3, Users, Link2, BarChart3, ShoppingBag } from 'lucide-react-native'
+import { Tabs, router } from 'expo-router'
+import { Home, Grid3X3, Users, Link2, ShoppingBag, BarChart3 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ordersApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 const MUTED = '#ABA39C'
 
@@ -64,6 +65,15 @@ export default function TabsLayout() {
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
           headerTitle: 'Kanchuki',
+          headerRight: () => (
+            <AnimatedPressable
+              onPress={() => router.push('/analytics')}
+              accessibilityLabel="Analytics"
+              style={{ marginRight: 16 }}
+            >
+              <BarChart3 color={primaryColor} size={22} />
+            </AnimatedPressable>
+          ),
         }}
       />
       <Tabs.Screen
@@ -94,13 +104,6 @@ export default function TabsLayout() {
         options={{
           title: 'Collections',
           tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="analytics"
-        options={{
-          title: 'Analytics',
-          tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={size} />,
         }}
       />
     </Tabs>

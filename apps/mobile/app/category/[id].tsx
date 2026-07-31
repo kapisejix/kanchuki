@@ -7,6 +7,7 @@ import * as ImagePicker from 'expo-image-picker'
 import { Plus, Trash2, Pencil, X, ImagePlus, ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { DetailScreenSkeleton, ProductGridSkeleton } from '../../src/components/Skeleton'
+import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductCategory } from '../../src/lib/api'
 import { formatPriceRange } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
@@ -149,6 +150,7 @@ function EditCategoryModal({
 }
 
 export default function CategoryDetailScreen() {
+  const columns = useGridColumns()
   const { primaryColor } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -252,9 +254,10 @@ export default function CategoryDetailScreen() {
           <ProductGridSkeleton />
         ) : (
           <FlatList
+            key={columns}
             data={products}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={columns}
             columnWrapperStyle={{ gap: 10 }}
             contentContainerStyle={{ padding: 12, gap: 10, flexGrow: 1 }}
             renderItem={({ item }) => (

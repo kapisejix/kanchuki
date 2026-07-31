@@ -12,6 +12,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
+import { useGridColumns } from '../../src/hooks/useIsTablet'
+import { GradientButton } from '../../src/components/GradientButton'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
@@ -30,6 +32,7 @@ type Product = {
 const EXPIRY_OPTIONS = [7, 30, 90] as const
 
 export default function NewCollectionScreen() {
+  const columns = useGridColumns()
   const { primaryColor } = useTheme()
   const [title, setTitle] = useState('')
   const [expiresDays, setExpiresDays] = useState<number>(30)
@@ -116,9 +119,10 @@ export default function NewCollectionScreen() {
           <ProductGridSkeleton />
         ) : (
           <FlatList
+            key={columns}
             data={products}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={columns}
             contentContainerStyle={{ padding: 12, gap: 10 }}
             columnWrapperStyle={{ gap: 10 }}
             renderItem={({ item }) => {
@@ -157,19 +161,12 @@ export default function NewCollectionScreen() {
           className="bg-white px-4 pt-3 border-t border-sand-100"
           style={{ paddingBottom: 12 + insets.bottom }}
         >
-          <TouchableOpacity
+          <GradientButton
+            label={`Create & Share (${selected.size} selected)`}
             disabled={!canCreate}
+            loading={create.isPending}
             onPress={() => create.mutate()}
-            className={`py-3.5 rounded-xl items-center ${
-              canCreate ? 'bg-ink-600' : 'bg-sand-200'
-            }`}
-          >
-            <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-sand-400'}`}>
-              {create.isPending
-                ? 'Creating…'
-                : `Create & Share (${selected.size} selected)`}
-            </Text>
-          </TouchableOpacity>
+          />
           {!canCreate && !create.isPending && (
             <Text className="text-xs text-sand-400 text-center mt-2">
               {title.trim().length === 0

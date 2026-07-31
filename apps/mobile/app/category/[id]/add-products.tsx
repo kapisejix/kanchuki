@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../../src/components/Skeleton'
+import { useGridColumns } from '../../../src/hooks/useIsTablet'
 import { productApi, categoryApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
@@ -22,6 +23,7 @@ type Product = {
 }
 
 export default function AddProductsToCategoryScreen() {
+  const columns = useGridColumns()
   const { primaryColor } = useTheme()
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
@@ -70,9 +72,10 @@ export default function AddProductsToCategoryScreen() {
           <ProductGridSkeleton />
         ) : (
           <FlatList
+            key={columns}
             data={products}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={columns}
             contentContainerStyle={{ padding: 12, gap: 10 }}
             columnWrapperStyle={{ gap: 10 }}
             renderItem={({ item }) => {

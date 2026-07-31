@@ -834,6 +834,8 @@ export default function ProductDetailScreen() {
                   <TouchableOpacity
                     key={piece}
                     onPress={() => void handleSetPieceType(photo.id, piece)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
                     className={`px-3 py-1 rounded-full border flex-row items-center gap-1 ${
                       selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
@@ -1037,6 +1039,8 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity
                   key={cat}
                   onPress={() => setEditedCategory(selected ? null : cat)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -1073,6 +1077,8 @@ export default function ProductDetailScreen() {
                   <TouchableOpacity
                     key={cat.id}
                     onPress={() => setEditedCategoryId(selected ? null : cat.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
                     className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                       selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
@@ -1114,6 +1120,8 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity
                   key={fab}
                   onPress={() => setEditedFabric(selected ? null : fab)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -1140,6 +1148,8 @@ export default function ProductDetailScreen() {
                 <TouchableOpacity
                   key={pat}
                   onPress={() => setEditedPattern(selected ? null : pat)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -1183,6 +1193,8 @@ export default function ProductDetailScreen() {
                   key={opt.value}
                   disabled={statusUpdating}
                   onPress={() => void handleStatusChange(opt.value)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -1245,6 +1257,8 @@ export default function ProductDetailScreen() {
                       selected ? prev.filter((s) => s !== size) : [...prev, size],
                     )
                   }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -1275,6 +1289,8 @@ export default function ProductDetailScreen() {
                       selected ? prev.filter((o) => o !== occ) : [...prev, occ],
                     )
                   }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}

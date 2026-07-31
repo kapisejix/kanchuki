@@ -6,9 +6,11 @@ import { Plus, ChevronLeft } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { categoryApi, type ProductCategory } from '../../src/lib/api'
+import { useGridColumns } from '../../src/hooks/useIsTablet'
 
 export default function CategoryListScreen() {
   const insets = useSafeAreaInsets()
+  const columns = useGridColumns()
   const { data, isLoading } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
@@ -32,9 +34,10 @@ export default function CategoryListScreen() {
           <ProductGridSkeleton />
         ) : (
           <FlatList
+            key={columns}
             data={categories}
             keyExtractor={(item) => item.id}
-            numColumns={2}
+            numColumns={columns}
             columnWrapperStyle={{ gap: 12 }}
             contentContainerStyle={{ padding: 12, gap: 12, flexGrow: 1 }}
             renderItem={({ item }: { item: ProductCategory }) => (

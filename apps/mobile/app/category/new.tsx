@@ -106,6 +106,8 @@ export default function NewCategoryScreen() {
                 <TouchableOpacity
                   key={cat}
                   onPress={() => setName(cat)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}

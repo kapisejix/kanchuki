@@ -24,6 +24,7 @@ import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../
 import { showError, logError } from '../../src/lib/errors'
 import { OCCASION_TYPES, PRODUCT_CATEGORIES, SIZE_OPTIONS } from '@kanchuki/shared'
 import { ProductAddSkeleton } from '../../src/components/Skeleton'
+import { GradientButton } from '../../src/components/GradientButton'
 
 type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
 type CaptureMode = 'photo' | 'scan'
@@ -734,15 +735,11 @@ export default function AddProductScreen() {
           <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
-        <TouchableOpacity
+        <GradientButton
+          label="Save"
           onPress={() => void handleSave()}
-          disabled={step === 'saving'}
-          className="bg-ink-600 px-4 py-2 rounded-xl"
-        >
-          {step === 'saving'
-            ? <ActivityIndicator size="small" color="white" />
-            : <Text className="text-white font-semibold text-sm">Save</Text>}
-        </TouchableOpacity>
+          loading={step === 'saving'}
+        />
       </View>
 
       <ScrollView className="flex-1">
@@ -856,6 +853,8 @@ export default function AddProductScreen() {
                   <TouchableOpacity
                     key={cat.id}
                     onPress={() => setCategoryId(selected ? null : cat.id)}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
                     className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                       selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
@@ -887,6 +886,8 @@ export default function AddProductScreen() {
                       selected ? prev.filter((s) => s !== size) : [...prev, size],
                     )
                   }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -917,6 +918,8 @@ export default function AddProductScreen() {
                       selected ? prev.filter((o) => o !== occ) : [...prev, occ],
                     )
                   }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected
                       ? 'bg-ink-600 border-ink-600'

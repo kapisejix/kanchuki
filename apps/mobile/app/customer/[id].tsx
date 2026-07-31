@@ -505,6 +505,8 @@ export default function CustomerDetailScreen() {
                 <TouchableOpacity
                   key={s}
                   onPress={() => toggle(prefStyles, setPrefStyles, s)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -529,6 +531,8 @@ export default function CustomerDetailScreen() {
                 <TouchableOpacity
                   key={f}
                   onPress={() => toggle(prefFabrics, setPrefFabrics, f)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}
@@ -553,6 +557,8 @@ export default function CustomerDetailScreen() {
                 <TouchableOpacity
                   key={o}
                   onPress={() => toggle(prefOccasions, setPrefOccasions, o)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
                     selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                   }`}

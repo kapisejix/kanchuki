@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { GradientButton } from '../../src/components/GradientButton'
 
 export default function AddCustomerScreen() {
   const insets = useSafeAreaInsets()
@@ -53,17 +54,7 @@ export default function AddCustomerScreen() {
           <X size={22} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">New Customer</Text>
-        <TouchableOpacity
-          onPress={() => void handleSave()}
-          disabled={saving}
-          className="bg-ink-600 px-4 py-2 rounded-xl"
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text className="text-white font-semibold text-sm">Save</Text>
-          )}
-        </TouchableOpacity>
+        <GradientButton label="Save" onPress={() => void handleSave()} loading={saving} />
       </View>
 
       <View className="px-4 py-4 gap-4">

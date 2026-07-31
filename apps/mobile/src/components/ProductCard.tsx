@@ -18,8 +18,17 @@
  */
 
 import React, { memo, useState, useEffect } from 'react'
-import { View, Text, TouchableOpacity, type ViewStyle } from 'react-native'
+import { View, Text, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
+import { AnimatedPressable } from './AnimatedPressable'
+
+// iOS shadow (Android keeps its own `elevation` prop, RN can't share one style key for both).
+const CARD_SHADOW: ViewStyle = {
+  shadowColor: '#0C121C',
+  shadowOffset: { width: 0, height: 3 },
+  shadowOpacity: 0.1,
+  shadowRadius: 8,
+}
 
 // Blurhash placeholder for product images (neutral grey)
 const BLURHASH = 'L6PZfSi_.AyE_3t7t7R**0o#DgR4'
@@ -74,15 +83,14 @@ const ProductCard = memo(function ProductCard({
   useEffect(() => setImageError(false), [imageUrl])
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
       onLongPress={onLongPress}
       // Elevation on outer node, but NOT rounded — elevation + rounded-2xl
       // on the same node clips the Image on Android. Inner View handles
       // rounding and overflow clipping.
       className={`bg-white border border-sand-200 ${flex ? 'flex-1' : ''}`}
-      style={[{ elevation }, style]}
-      activeOpacity={0.95}
+      style={[{ elevation }, CARD_SHADOW, style]}
     >
       <View className="rounded-2xl overflow-hidden">
         {/* Image container */}
@@ -136,7 +144,7 @@ const ProductCard = memo(function ProductCard({
         {/* Footer */}
         {footer}
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 })
 

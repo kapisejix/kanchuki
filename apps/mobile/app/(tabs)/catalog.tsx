@@ -14,6 +14,7 @@ import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
+import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { productApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -148,6 +149,8 @@ const CatalogCard = memo(function CatalogCard({
 // ── Catalog Screen ─────────────────────────────────────────────────
 
 export default function CatalogScreen() {
+  const columns = useGridColumns()
+
   // Fetch retailer profile for banner
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
@@ -377,10 +380,11 @@ export default function CatalogScreen() {
         <ProductGridSkeleton />
       ) : (
         <FlatList
+          key={columns}
           data={products}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          numColumns={2}
+          numColumns={columns}
           columnWrapperStyle={{ gap: 12 }}
           contentContainerStyle={{ padding: 12, gap: 12, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
