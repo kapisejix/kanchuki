@@ -35,7 +35,8 @@
           "photosPermission": "Select product photos for your catalog."
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true

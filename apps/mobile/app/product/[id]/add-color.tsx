@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TextInput, Alert, StyleSheet } from 'react-native'
+import { View, Text, TextInput, Alert, StyleSheet, ActivityIndicator } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
@@ -12,7 +12,9 @@ import { showError } from '../../../src/lib/errors'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 
-type Step = 'camera' | 'preview' | 'saving'
+// No manual color step in the happy path — AI detects the color and the
+// variant saves itself. 'manual' is a fallback only for when detection fails.
+type Step = 'camera' | 'detecting' | 'manual' | 'saving'
 
 export default function AddColorVariantScreen() {
   const insets = useSafeAreaInsets()
@@ -21,7 +23,6 @@ export default function AddColorVariantScreen() {
   const [permission, requestPermission] = useCameraPermissions()
   const [photoUri, setPhotoUri] = useState<string | null>(null)
   const [color, setColor] = useState('')
-  const [detectingColor, setDetectingColor] = useState(false)
   const cameraRef = useRef<CameraView>(null)
   // Store upload result so we don't re-upload on save
   const uploadInfoRef = useRef<{ r2_key: string; public_url: string } | null>(null)
@@ -49,58 +50,52 @@ export default function AddColorVariantScreen() {
       { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
     )
     setPhotoUri(compressed.uri)
-    setStep('preview')
-
-    // Auto-upload + AI color detect in background
-    detectColorAsync(compressed.uri)
+    setStep('detecting')
+    await uploadAndAutoSave(compressed.uri)
   }
 
-  const detectColorAsync = async (uri: string) => {
-    setDetectingColor(true)
+  // Upload, detect color, save — no user interaction. Falls back to the
+  // manual step only if upload or detection didn't produce a color.
+  const uploadAndAutoSave = async (uri: string) => {
     try {
       const blob = await readLocalImage(uri)
       const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
       const info = uploadResult.data
       await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
-
-      // Store upload info so handleSave doesn't upload again
       uploadInfoRef.current = { r2_key: info.r2_key, public_url: info.public_url }
 
-      // Quick AI color detection
-      try {
-        const colorResult = await productApi.detectColor(info.public_url)
-        if (colorResult.data.color) {
-          setColor(colorResult.data.color)
-        }
-      } catch {
-        // Color detection is best-effort — user can type manually
+      const colorResult = await productApi.detectColor(info.public_url)
+      const detected = colorResult.data.color
+      if (detected) {
+        await saveVariant(detected)
+      } else {
+        setStep('manual')
       }
     } catch {
-      // Upload failed — user can retry on save
-    } finally {
-      setDetectingColor(false)
+      // Upload or detection failed — fall back to manual entry
+      setStep('manual')
     }
   }
 
-  const handleSave = async () => {
-    if (!photoUri || !color.trim()) return
+  const saveVariant = async (colorValue: string) => {
+    if (!colorValue.trim()) return
     setStep('saving')
     try {
       // Use pre-uploaded photo if available, otherwise upload now
       if (uploadInfoRef.current) {
         await productApi.addVariant(id, {
-          color: color.trim(),
+          color: colorValue.trim(),
           r2_key: uploadInfoRef.current.r2_key,
           url: uploadInfoRef.current.public_url,
         })
-      } else {
+      } else if (photoUri) {
         const blob = await readLocalImage(photoUri)
         const uploadResult = await productApi.getUploadUrl('variant.jpg', 'image/jpeg', blob.size)
         const info = uploadResult.data
         await uploadImageToR2(photoUri, info.upload_url, 'image/jpeg')
 
         await productApi.addVariant(id, {
-          color: color.trim(),
+          color: colorValue.trim(),
           r2_key: info.r2_key,
           url: info.public_url,
         })
@@ -108,7 +103,7 @@ export default function AddColorVariantScreen() {
 
       router.back()
     } catch (err) {
-      setStep('preview')
+      setStep('manual')
       showError(err, 'Failed to add color')
     }
   }
@@ -181,7 +176,7 @@ export default function AddColorVariantScreen() {
     )
   }
 
-  // preview + saving
+  // detecting / manual / saving
   return (
     <View className="flex-1 bg-black">
       {photoUri && <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />}
@@ -189,6 +184,7 @@ export default function AddColorVariantScreen() {
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
         <AnimatedPressable
           onPress={() => setStep('camera')}
+          disabled={step === 'saving'}
           className="w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           accessibilityLabel="Retake photo"
           accessibilityRole="button"
@@ -197,26 +193,41 @@ export default function AddColorVariantScreen() {
         </AnimatedPressable>
       </View>
 
-      <View
-        className="absolute bottom-0 left-0 right-0 bg-black/80 px-6 pt-4 gap-3"
-        style={{ paddingBottom: 40 + insets.bottom }}
-      >
-        <Text className="text-white text-xs font-semibold uppercase tracking-wide">Color name</Text>
-        <TextInput
-          value={color}
-          onChangeText={setColor}
-          placeholder="e.g. Maroon, Bottle Green, Mustard"
-          placeholderTextColor="#ABA39C"
-          className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
-          autoFocus
-        />
-        <GradientButton
-          label="Add Color Variant"
-          onPress={() => void handleSave()}
-          disabled={!color.trim()}
-          loading={step === 'saving'}
-        />
-      </View>
+      {(step === 'detecting' || step === 'saving') && (
+        <View
+          className="absolute bottom-0 left-0 right-0 bg-black/80 px-6 pt-4 flex-row items-center gap-3"
+          style={{ paddingBottom: 40 + insets.bottom }}
+        >
+          <ActivityIndicator color="white" />
+          <Text className="text-white text-sm font-semibold">
+            {step === 'detecting' ? 'Detecting color…' : `Saving ${color}…`}
+          </Text>
+        </View>
+      )}
+
+      {step === 'manual' && (
+        <View
+          className="absolute bottom-0 left-0 right-0 bg-black/80 px-6 pt-4 gap-3"
+          style={{ paddingBottom: 40 + insets.bottom }}
+        >
+          <Text className="text-white text-xs font-semibold uppercase tracking-wide">
+            Couldn't detect color — enter it
+          </Text>
+          <TextInput
+            value={color}
+            onChangeText={setColor}
+            placeholder="e.g. Maroon, Bottle Green, Mustard"
+            placeholderTextColor="#ABA39C"
+            className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
+            autoFocus
+          />
+          <GradientButton
+            label="Add Color Variant"
+            onPress={() => void saveVariant(color)}
+            disabled={!color.trim()}
+          />
+        </View>
+      )}
     </View>
   )
 }
