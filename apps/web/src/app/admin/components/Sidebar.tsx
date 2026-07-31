@@ -1,5 +1,7 @@
 'use client'
 
+import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -10,6 +12,7 @@ import {
   Gauge,
   LogOut,
   ChevronLeft,
+  ChevronRight,
   Shield,
   Users,
   Image as ImageIcon,
@@ -33,42 +36,84 @@ import {
   Palette,
 } from 'lucide-react'
 
-const NAV_ITEMS = [
+type Leaf = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
+type Group = { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; children: Leaf[] }
+type NavItem = Leaf | Group | { separator: true }
+
+const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   { label: 'Retailers', href: '/admin/retailers', icon: Store },
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
-  { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
-  { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare },
-  { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
-  { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
-  { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
-  { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
-  { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
+  { separator: true },
+  {
+    label: 'Plans',
+    icon: Gauge,
+    children: [
+      { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
+      { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare },
+    ],
+  },
+  {
+    label: 'Catalog',
+    icon: Package,
+    children: [
+      { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
+      { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
+      { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
+      { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
+    ],
+  },
+  {
+    label: 'Team',
+    icon: UsersRound,
+    children: [
+      { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
+      { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
+    ],
+  },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
-  { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
-  { separator: true } as const,
-  { label: 'Operations', href: '/admin/operations', icon: Shield },
-  { label: 'Pending Approvals', href: '/admin/operations/pending', icon: Clock },
-  { label: 'Deployments', href: '/admin/operations/deployments', icon: GitBranch },
-  { label: 'Deployment Gate', href: '/admin/operations/gate', icon: Activity },
-  { separator: true } as const,
-  { label: 'Settings', href: '/admin/settings', icon: Settings },
-  { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge },
-  { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu },
-  { label: 'Theme', href: '/admin/settings/theme', icon: Palette },
-  { separator: true } as const,
-  { label: 'Activity Feed', href: '/admin/activity', icon: ActivitySquare },
-  { label: 'Audit Log', href: '/admin/audit-log', icon: History },
-  { label: 'Query Console', href: '/admin/database/query', icon: Terminal },
-  { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
-  { label: 'Database Health', href: '/admin/database/status', icon: Activity },
-  { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive },
+  { separator: true },
+  {
+    label: 'Operations',
+    icon: Shield,
+    children: [
+      { label: 'Overview', href: '/admin/operations', icon: Shield },
+      { label: 'Pending Approvals', href: '/admin/operations/pending', icon: Clock },
+      { label: 'Deployments', href: '/admin/operations/deployments', icon: GitBranch },
+      { label: 'Deployment Gate', href: '/admin/operations/gate', icon: Activity },
+    ],
+  },
+  {
+    label: 'Settings',
+    icon: Settings,
+    children: [
+      { label: 'General', href: '/admin/settings', icon: Settings },
+      { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge },
+      { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu },
+      { label: 'Theme', href: '/admin/settings/theme', icon: Palette },
+    ],
+  },
+  { separator: true },
+  {
+    label: 'Activity',
+    icon: ActivitySquare,
+    children: [
+      { label: 'Activity Feed', href: '/admin/activity', icon: ActivitySquare },
+      { label: 'Audit Log', href: '/admin/audit-log', icon: History },
+    ],
+  },
+  {
+    label: 'Database',
+    icon: HardDrive,
+    children: [
+      { label: 'Query Console', href: '/admin/database/query', icon: Terminal },
+      { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
+      { label: 'Database Health', href: '/admin/database/status', icon: Activity },
+      { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive },
+    ],
+  },
 ]
-
-type NavItem =
-  | { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
-  | { separator: true }
 
 export function Sidebar({
   collapsed,
@@ -83,11 +128,15 @@ export function Sidebar({
 }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [openGroup, setOpenGroup] = useState<{ label: string; top: number; left: number } | null>(null)
 
   const handleLogout = () => {
     sessionStorage.removeItem('admin_key')
     router.push('/admin')
   }
+
+  const isLinkActive = (href: string) =>
+    href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
 
   return (
     <>
@@ -108,7 +157,7 @@ export function Sidebar({
       <motion.aside
         animate={{ width: collapsed ? 64 : 240 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        className={`fixed top-0 left-0 z-50 h-full bg-gray-950/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col overflow-hidden ${
+        className={`fixed top-0 left-0 z-50 h-full bg-gray-950/90 backdrop-blur-xl border-r border-white/[0.06] flex flex-col ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         } transition-transform duration-300`}
       >
@@ -145,21 +194,83 @@ export function Sidebar({
               )
             }
 
-            const isActive = 'href' in item && (
-              item.href === '/admin'
-                ? pathname === '/admin'
-                : pathname.startsWith(item.href)
-            )
+            if ('children' in item) {
+              const isGroupActive = item.children.some((c) => isLinkActive(c.href))
+              const isOpen = openGroup?.label === item.label
+
+              return (
+                <div
+                  key={item.label}
+                  className="relative"
+                  onMouseEnter={(e) =>
+                    setOpenGroup({ label: item.label, top: e.currentTarget.getBoundingClientRect().top, left: e.currentTarget.getBoundingClientRect().right })
+                  }
+                  onMouseLeave={() => setOpenGroup(null)}
+                >
+                  <button
+                    type="button"
+                    className={`relative flex items-center gap-3 w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+                      isGroupActive ? 'text-cyan-400' : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    <item.icon
+                      size={20}
+                      className={`shrink-0 relative z-10 transition-colors ${
+                        isGroupActive ? 'text-cyan-400' : 'text-gray-500 group-hover:text-gray-300'
+                      }`}
+                    />
+                    {!collapsed && (
+                      <>
+                        <span className="relative z-10 whitespace-nowrap flex-1 text-left">{item.label}</span>
+                        <ChevronRight size={14} className="relative z-10 shrink-0 text-gray-600" />
+                      </>
+                    )}
+                  </button>
+
+                  {isOpen && openGroup && createPortal(
+                    <div
+                      style={{ position: 'fixed', top: openGroup.top, left: openGroup.left + 8 }}
+                      className="w-56 bg-gray-900 border border-white/[0.08] rounded-xl shadow-2xl py-2 z-50"
+                      onMouseEnter={() => setOpenGroup(openGroup)}
+                      onMouseLeave={() => setOpenGroup(null)}
+                    >
+                      {item.children.map((child) => {
+                          const childActive = isLinkActive(child.href)
+                          return (
+                            <Link
+                              key={child.href}
+                              href={child.href}
+                              onClick={() => {
+                                onMobileClose()
+                                setOpenGroup(null)
+                              }}
+                              className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
+                                childActive ? 'text-cyan-400 bg-cyan-500/10' : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.04]'
+                              }`}
+                            >
+                              <child.icon size={16} className="shrink-0" />
+                              <span className="whitespace-nowrap">{child.label}</span>
+                            </Link>
+                          )
+                        })}
+                    </div>,
+                    document.body
+                  )}
+                </div>
+              )
+            }
+
+            const isActive = isLinkActive(item.href)
 
             return (
               <motion.div
-                key={'href' in item ? item.href : index}
+                key={item.href}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.1, type: 'spring', stiffness: 200, damping: 20 }}
+                transition={{ delay: index * 0.05, type: 'spring', stiffness: 200, damping: 20 }}
               >
                 <Link
-                  href={'href' in item ? item.href : '#'}
+                  href={item.href}
                   onClick={onMobileClose}
                   className="relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group"
                 >
@@ -177,16 +288,14 @@ export function Sidebar({
                       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                     />
                   )}
-                  {'icon' in item && (
-                    <item.icon
-                      size={20}
-                      className={`shrink-0 relative z-10 transition-colors ${
-                        isActive ? 'text-cyan-400' : 'text-gray-500 group-hover:text-gray-300'
-                      }`}
-                    />
-                  )}
+                  <item.icon
+                    size={20}
+                    className={`shrink-0 relative z-10 transition-colors ${
+                      isActive ? 'text-cyan-400' : 'text-gray-500 group-hover:text-gray-300'
+                    }`}
+                  />
                   <AnimatePresence>
-                    {!collapsed && 'label' in item && (
+                    {!collapsed && (
                       <motion.span
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}

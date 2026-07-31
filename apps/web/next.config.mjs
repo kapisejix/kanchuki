@@ -10,6 +10,10 @@ const withSerwist = withSerwistInit({
   // Cache product photos aggressively (photos rarely change once shot)
   cacheOnNavigation: true,
   reloadOnOnline: true,
+  // Dev chunk filenames aren't content-hashed like prod, but defaultCache
+  // still CacheFirsts _next/static — SW serves stale chunk bytes under the
+  // same filename after every edit, causing ChunkLoadError. Prod-only.
+  disable: process.env.NODE_ENV === 'development',
 })
 
 /** @type {import('next').NextConfig} */
