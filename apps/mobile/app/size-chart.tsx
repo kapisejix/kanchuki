@@ -82,7 +82,7 @@ export default function SizeChartScreen() {
   return (
     <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top }}>
       <View className="flex-row items-center px-4 py-3 border-b border-sand-100 bg-white">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
+        <TouchableOpacity onPress={() => router.back()} className="mr-3" accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={22} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-sand-900">Size Charts</Text>
@@ -124,7 +124,11 @@ export default function SizeChartScreen() {
                   placeholderTextColor="#ABA39C"
                   className="text-base font-bold text-sand-900 flex-1"
                 />
-                <TouchableOpacity onPress={() => removeRow(index)}>
+                <TouchableOpacity
+                  onPress={() => removeRow(index)}
+                  accessibilityLabel="Remove size row"
+                  accessibilityRole="button"
+                >
                   <Trash2 size={18} color="#A24854" />
                 </TouchableOpacity>
               </View>

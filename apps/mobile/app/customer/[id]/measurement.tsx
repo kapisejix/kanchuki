@@ -111,7 +111,7 @@ export default function MeasurementCaptureScreen() {
   if (step === 'height') {
     return (
       <View className="flex-1 bg-ink-50 px-6" style={{ paddingTop: insets.top + 24 }}>
-        <TouchableOpacity onPress={() => router.back()} className="mb-6">
+        <TouchableOpacity onPress={() => router.back()} className="mb-6" accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
         </TouchableOpacity>
 
@@ -189,6 +189,8 @@ export default function MeasurementCaptureScreen() {
           onPress={() => (slot === 'back' ? setStep('preview') : router.back())}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
+          accessibilityLabel="Close camera"
+          accessibilityRole="button"
         >
           <X size={20} color="white" />
         </TouchableOpacity>

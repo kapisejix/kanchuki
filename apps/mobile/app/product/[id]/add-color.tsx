@@ -138,6 +138,8 @@ export default function AddColorVariantScreen() {
           onPress={() => router.back()}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
+          accessibilityLabel="Close camera"
+          accessibilityRole="button"
         >
           <X size={20} color="white" />
         </TouchableOpacity>
@@ -186,6 +188,8 @@ export default function AddColorVariantScreen() {
         <TouchableOpacity
           onPress={() => setStep('camera')}
           className="w-10 h-10 bg-black/50 rounded-full items-center justify-center"
+          accessibilityLabel="Retake photo"
+          accessibilityRole="button"
         >
           <X size={20} color="white" />
         </TouchableOpacity>

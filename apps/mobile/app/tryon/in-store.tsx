@@ -278,7 +278,7 @@ export default function InStoreTryOnScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">
@@ -360,6 +360,8 @@ export default function InStoreTryOnScreen() {
             onPress={() => setStep('select')}
             className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
             style={{ top: insets.top + 8 }}
+            accessibilityLabel="Back to selection"
+            accessibilityRole="button"
           >
             <X size={20} color="white" />
           </TouchableOpacity>

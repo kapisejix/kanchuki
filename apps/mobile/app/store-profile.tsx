@@ -78,7 +78,7 @@ export default function StoreProfileScreen() {
   return (
     <ScrollView className="flex-1 bg-ink-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
       <View className="flex-row items-center justify-between px-4 mb-4">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center">
+        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center" accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">Store QR Code</Text>

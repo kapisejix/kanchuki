@@ -114,6 +114,8 @@ export default function AddPhotosScreen() {
         onPress={() => router.back()}
         className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
         style={{ top: insets.top + 8 }}
+        accessibilityLabel="Close camera"
+        accessibilityRole="button"
       >
         <X size={20} color="white" />
       </TouchableOpacity>

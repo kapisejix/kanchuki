@@ -206,7 +206,7 @@ export default function OrderDetailScreen() {
           headerTitleStyle: { fontWeight: '700', fontSize: 17 },
           headerShadowVisible: false,
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8} className="mr-2">
+            <TouchableOpacity onPress={() => router.back()} hitSlop={8} className="mr-2" accessibilityLabel="Go back" accessibilityRole="button">
               <ChevronLeft size={24} color="#4B4039" />
             </TouchableOpacity>
           ),

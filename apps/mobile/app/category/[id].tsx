@@ -96,7 +96,7 @@ function EditCategoryModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Edit Category</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
@@ -208,14 +208,25 @@ export default function CategoryDetailScreen() {
           className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
           style={{ paddingTop: insets.top + 12 }}
         >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
           </TouchableOpacity>
           <View className="flex-row items-center gap-4">
-            <TouchableOpacity onPress={() => setShowEdit(true)} hitSlop={8}>
+            <TouchableOpacity
+              onPress={() => setShowEdit(true)}
+              hitSlop={8}
+              accessibilityLabel="Edit category name"
+              accessibilityRole="button"
+            >
               <Pencil size={18} color={primaryColor} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleDelete} disabled={deleting} hitSlop={8}>
+            <TouchableOpacity
+              onPress={handleDelete}
+              disabled={deleting}
+              hitSlop={8}
+              accessibilityLabel="Delete category"
+              accessibilityRole="button"
+            >
               {deleting ? <ActivityIndicator size="small" color="#A24854" /> : <Trash2 size={20} color="#A24854" />}
             </TouchableOpacity>
           </View>

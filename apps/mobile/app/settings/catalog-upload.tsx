@@ -244,7 +244,7 @@ export default function CatalogUploadScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
           </TouchableOpacity>
           <Text className="text-base font-bold text-sand-900">Catalog Upload Help</Text>

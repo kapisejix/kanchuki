@@ -1,12 +1,19 @@
 import { useEffect } from 'react'
 import { RefreshControl, ScrollView, View } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated'
+import { useReduceMotion } from '../hooks/useReduceMotion'
 
 export function Skeleton({ className = '', style }: { className?: string; style?: object }) {
+  const reduceMotion = useReduceMotion()
   const opacity = useSharedValue(0.3)
   useEffect(() => {
+    if (reduceMotion) {
+      // Reduce Motion: keep the loading cue (dimmed block) without the pulse
+      opacity.value = 0.6
+      return
+    }
     opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true)
-  }, [opacity])
+  }, [opacity, reduceMotion])
   const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
   return <Animated.View className={`rounded-md bg-sand-200 ${className}`} style={[animStyle, style]} />
 }

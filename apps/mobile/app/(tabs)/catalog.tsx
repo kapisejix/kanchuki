@@ -365,6 +365,8 @@ export default function CatalogScreen() {
           className={`w-10 h-10 rounded-xl items-center justify-center border ${
             activeFilterCount > 0 ? 'bg-ink-600 border-ink-600' : 'bg-sand-100 border-sand-100'
           }`}
+          accessibilityLabel="Filters"
+          accessibilityRole="button"
         >
           <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#847B75'} />
         </TouchableOpacity>
@@ -435,7 +437,7 @@ export default function CatalogScreen() {
                             <Text className="text-ink-600 text-xs font-medium">Clear all</Text>
                           </TouchableOpacity>
                         )}
-                        <TouchableOpacity onPress={() => setShowFilters(false)}>
+                        <TouchableOpacity onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
                           <X size={16} color="#ABA39C" />
                         </TouchableOpacity>
                       </View>
@@ -509,6 +511,8 @@ export default function CatalogScreen() {
             className="w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
             style={{ elevation: 6 }}
             activeOpacity={0.8}
+            accessibilityLabel="Add product"
+            accessibilityRole="button"
           >
             <Plus size={24} color="white" />
           </TouchableOpacity>

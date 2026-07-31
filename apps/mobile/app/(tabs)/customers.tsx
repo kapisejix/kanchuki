@@ -172,6 +172,8 @@ export default function CustomersScreen() {
         onPress={() => router.push('/customer/add')}
         className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
+        accessibilityLabel="Add customer"
+        accessibilityRole="button"
       >
         <Plus size={24} color="white" />
       </TouchableOpacity>

@@ -370,6 +370,8 @@ export default function AddProductScreen() {
           onPress={() => router.back()}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
+          accessibilityLabel="Close camera"
+          accessibilityRole="button"
         >
           <X size={20} color="white" />
         </TouchableOpacity>
@@ -467,6 +469,8 @@ export default function AddProductScreen() {
           }}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center z-10"
           style={{ top: insets.top + 8 }}
+          accessibilityLabel="Discard and retake"
+          accessibilityRole="button"
         >
           <X size={20} color="white" />
         </TouchableOpacity>
@@ -591,6 +595,8 @@ export default function AddProductScreen() {
           }}
           className="absolute left-4 w-10 h-10 bg-white/10 rounded-full items-center justify-center z-10"
           style={{ top: insets.top + 8 }}
+          accessibilityLabel="Cancel upload"
+          accessibilityRole="button"
         >
           <X size={20} color="white" />
         </TouchableOpacity>
@@ -724,7 +730,7 @@ export default function AddProductScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>

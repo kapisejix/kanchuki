@@ -1,8 +1,8 @@
 # Kanchuki — UI/UX Design Document
 
-**Version:** 1.1  
-**Date:** June 2026 (v1.0) · **Updated 2026-07-28:** Brand Identity palette/typography/tokens replaced with the "Loom" design system (Option A) — see `docs/design/emil-design.md` for the full audit, the four direction options considered, and why Loom was picked.  
-**Tools:** Figma (design), Nativewind (mobile — no design tokens wired yet, see note below), TailwindCSS (web — no component-primitive library installed; the "shadcn/ui" claim in v1.0 was inaccurate)
+**Version:** 1.2  
+**Date:** June 2026 (v1.0) · **Updated 2026-07-28:** Brand Identity palette/typography/tokens replaced with the "Loom" design system (Option A) — see `docs/design/emil-design.md` for the full audit, the four direction options considered, and why Loom was picked. · **Updated 2026-07-31:** corrected the "mobile has no design tokens" claim below (it does — see Design Tokens section) and closed the accessibility-label / Reduce Motion gaps flagged by an `/impeccable audit` pass on `apps/mobile` — see `docs/design/design-work.md`.  
+**Tools:** Figma (design), Nativewind (mobile — design tokens ARE wired, see note below; this doc previously claimed otherwise), TailwindCSS (web — no component-primitive library installed; the "shadcn/ui" claim in v1.0 was inaccurate)
 
 ---
 
@@ -40,7 +40,7 @@ Stone (muted):        oklch(55% 0.01 265) — secondary text, borders
 ```
 No separate green/red "Success"/"Error" tokens — Turmeric and Rust cover those semantic roles, keeping the palette to one accent family instead of five competing hues. Full 50–900 scales for Ink/Rust/Turmeric/Stone live in `apps/web/tailwind.config.ts`.
 
-**Status:** live in `apps/web` (marketing page + tokens) as of 2026-07-28. **Not yet wired into `apps/mobile`** — the Nativewind config there still has no design tokens (`theme.extend: {}`); the retailer-app screens documented below (Screens 1–10) are specified against the old palette conceptually but haven't been re-skinned. Don't assume the mobile app looks like this yet.
+**Status:** live in `apps/web` (marketing page + tokens) as of 2026-07-28. **Also live in `apps/mobile`** (`apps/mobile/tailwind.config.js` has a full `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` scale, verified 2026-07-31 during an `/impeccable audit` pass) — this doc previously claimed mobile had no tokens; that was stale. What mobile does NOT share with web: the `rust`/`turmeric`/`sand` hue values drifted from web's current palette (only `ink`/navy is pixel-matched via the shared `--color-ink-600` CSS var), and mobile has no dark-mode variant at all. Both are open gaps, not "no tokens."
 
 **Typography:**
 - Web display/marketing headlines: `Fraunces` (warm variable serif) — added 2026-07-28, see `apps/web/src/app/layout.tsx`
@@ -380,6 +380,11 @@ Retailer can switch to "TV Mode" — optimized for 40"+ screens connected to tab
 - Error states: clear message + action
 - Form validation: inline, not modal alert
 
+**Mobile status (updated 2026-07-31, `apps/mobile`):**
+- **Screen reader labels:** fixed. An `/impeccable audit` found 0 `accessibilityLabel` usage across all 48 screens despite 43+ files using icon-only `TouchableOpacity` controls (back buttons, remove/close/share/filter icons). Swept and added `accessibilityLabel`/`accessibilityRole="button"` to every icon-only control found (66 labels across 32 files) — see `docs/design/design-work.md` for the full audit report.
+- **Reduce Motion:** fixed for the app's decorative animation — `src/hooks/useReduceMotion.ts` (wraps `AccessibilityInfo.isReduceMotionEnabled`) now gates the onboarding confetti overlay, the onboarding step-transition slide (crossfades instead when Reduce Motion is on, per HIG/Material guidance), the skeleton shimmer loop (dims instead of pulses), and the offline-banner slide-in (jumps instead of animating). Functional loading affordances (AI-processing spinner/progress bar, pinch-to-zoom photo viewer) were deliberately left alone — they carry state, not decoration.
+- **Still open:** dark mode (0 `useColorScheme` usage anywhere in `apps/mobile`) and the 6-destination bottom tab bar (exceeds the 3–5 destination guidance both platforms give) were flagged by the same audit and are not yet fixed — see the audit report for the full P0–P3 list. (The one sub-44pt touch target it found — a remove-photo button in bulk upload — was fixed alongside the accessibility-label sweep.)
+
 **Skill reference:** `accessibility` skill for WCAG 2.2 AA audit
 
 ---
@@ -433,4 +438,4 @@ borderRadius: {
 }
 ```
 
-**Mobile (`apps/mobile/tailwind.config.js`) — NOT yet updated.** `theme.extend` is currently empty; none of the above tokens exist there. This is tracked as open work (see `docs/design/emil-design.md` §3.4, "shared token gap") — until it's done, treat the mobile app's actual look as whatever NativeWind's untouched defaults produce, not as this palette.
+**Mobile (`apps/mobile/tailwind.config.js`) — wired, but not pixel-identical to web.** Has its own full `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` scale (hex, not oklch — RN's style engine can't parse `oklch()` at all, see that file's comment). `ink` (navy/primary) is pixel-matched to web via the same `--color-ink-600` runtime CSS var (admin-configurable branding, set live through NativeWind's `vars()`). `rust`/`turmeric`/`sand` are NOT currently kept in sync with web's values — this is tracked as open work (see `docs/design/emil-design.md` §3.4, "shared token gap"); until resolved, don't assume mobile's accent colors match whatever web is currently showing.

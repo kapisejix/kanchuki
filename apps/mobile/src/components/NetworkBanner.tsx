@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { View, Text, Animated, Platform } from 'react-native'
 import { onlineManager } from '@tanstack/react-query'
 import { WifiOff } from 'lucide-react-native'
+import { useReduceMotion } from '../hooks/useReduceMotion'
 
 /**
  * Shows a subtle "offline" banner at the top of the screen when the device
@@ -11,6 +12,7 @@ import { WifiOff } from 'lucide-react-native'
  * connectivity via fetch() failures (no extra native dependency needed).
  */
 export function NetworkBanner() {
+  const reduceMotion = useReduceMotion()
   const [isOnline, setIsOnline] = useState(true)
   const slideAnim = useRef(new Animated.Value(0)).current
 
@@ -24,12 +26,13 @@ export function NetworkBanner() {
   }, [])
 
   useEffect(() => {
+    // Reduce Motion: jump to the end state (still shows/hides the banner) instead of sliding
     Animated.timing(slideAnim, {
       toValue: isOnline ? 0 : 1,
-      duration: 300,
+      duration: reduceMotion ? 0 : 300,
       useNativeDriver: true,
     }).start()
-  }, [isOnline, slideAnim])
+  }, [isOnline, slideAnim, reduceMotion])
 
   if (isOnline) return null
 

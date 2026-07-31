@@ -258,7 +258,7 @@ export default function BulkImportScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'}>
+        <TouchableOpacity onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color={step === 'importing' ? '#CDC6BF' : '#4B4039'} />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">
@@ -321,6 +321,9 @@ export default function BulkImportScreen() {
                       <TouchableOpacity
                         onPress={() => removePhoto(i)}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-sand-900/70 rounded-full items-center justify-center"
+                        hitSlop={8}
+                        accessibilityLabel="Remove photo"
+                        accessibilityRole="button"
                       >
                         <X size={12} color="white" />
                       </TouchableOpacity>

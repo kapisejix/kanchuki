@@ -16,6 +16,7 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { retailerApi } from '../src/lib/api'
 import { PRODUCT_CATEGORIES, INDIAN_STATES } from '@kanchuki/shared'
+import { useReduceMotion } from '../src/hooks/useReduceMotion'
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 const TOTAL_STEPS = 6
@@ -41,10 +42,13 @@ interface Particle {
 }
 
 function ConfettiOverlay({ visible }: { visible: boolean }) {
+  const reduceMotion = useReduceMotion()
   const [particles, setParticles] = useState<Particle[]>([])
 
   useEffect(() => {
-    if (!visible) {
+    // Reduce Motion: skip the decorative particle animation — the "Done" step's
+    // own text already carries the completion state, confetti is decoration only
+    if (!visible || reduceMotion) {
       setParticles([])
       return
     }
@@ -104,7 +108,7 @@ function ConfettiOverlay({ visible }: { visible: boolean }) {
         p.opacity.stopAnimation()
       }
     }
-  }, [visible])
+  }, [visible, reduceMotion])
 
   if (!visible || particles.length === 0) return null
 
@@ -189,6 +193,7 @@ function StepIndicator({
 // ─── Main Screen ──────────────────────────────────────────────────
 export default function OnboardingScreen() {
   const insets = useSafeAreaInsets()
+  const reduceMotion = useReduceMotion()
   const [step, setStep] = useState<Step>(1)
   const [saving, setSaving] = useState(false)
   const [showConfetti, setShowConfetti] = useState(false)
@@ -219,7 +224,8 @@ export default function OnboardingScreen() {
 
   const animateTransition = useCallback(
     (direction: 'forward' | 'back', onComplete: () => void) => {
-      const toValue = direction === 'forward' ? -1 : 1
+      // Reduce Motion: crossfade only, no horizontal slide (HIG/Material guidance)
+      const toValue = reduceMotion ? 0 : direction === 'forward' ? -1 : 1
       slideAnim.setValue(0)
       fadeAnim.setValue(1)
       Animated.parallel([
@@ -235,7 +241,7 @@ export default function OnboardingScreen() {
         }),
       ]).start(() => {
         onComplete()
-        slideAnim.setValue(direction === 'forward' ? 1 : -1)
+        slideAnim.setValue(reduceMotion ? 0 : direction === 'forward' ? 1 : -1)
         fadeAnim.setValue(0.5)
         Animated.parallel([
           Animated.timing(slideAnim, {
@@ -251,7 +257,7 @@ export default function OnboardingScreen() {
         ]).start()
       })
     },
-    [slideAnim, fadeAnim],
+    [slideAnim, fadeAnim, reduceMotion],
   )
 
   const goToStep = useCallback(

@@ -412,19 +412,23 @@ export default function CollectionDetailScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
         <View className="flex-row gap-2">
           <TouchableOpacity
             onPress={() => setShowEditModal(true)}
             className="w-9 h-9 bg-ink-50 rounded-full items-center justify-center"
+            accessibilityLabel="Edit collection"
+            accessibilityRole="button"
           >
             <Edit size={16} color={primaryColor} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDelete}
             className="w-9 h-9 bg-rust-50 rounded-full items-center justify-center"
+            accessibilityLabel="Delete collection"
+            accessibilityRole="button"
           >
             <Trash2 size={16} color="#A24854" />
           </TouchableOpacity>

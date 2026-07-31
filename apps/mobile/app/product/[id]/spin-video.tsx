@@ -194,6 +194,8 @@ export default function SpinVideoScreen() {
         onPress={() => router.back()}
         className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
         style={{ top: insets.top + 8 }}
+        accessibilityLabel="Close camera"
+        accessibilityRole="button"
       >
         <X size={20} color="white" />
       </TouchableOpacity>
@@ -205,6 +207,8 @@ export default function SpinVideoScreen() {
           step === 'recording' ? 'opacity-30' : ''
         } ${flashMode === 'on' ? 'bg-turmeric-400' : 'bg-black/50'}`}
         style={{ top: insets.top + 8 }}
+        accessibilityLabel={flashMode === 'on' ? 'Turn off flash' : 'Turn on flash'}
+        accessibilityRole="button"
       >
         {flashMode === 'on' ? (
           <Zap size={20} color="black" />

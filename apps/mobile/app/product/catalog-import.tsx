@@ -777,6 +777,8 @@ export default function CatalogImportScreen() {
               setStep('source')
             }
           }}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
           <X size={22} color="#4B4039" />
         </TouchableOpacity>

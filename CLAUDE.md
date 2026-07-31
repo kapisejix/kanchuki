@@ -288,6 +288,21 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 
 ---
 
+## Built: Mobile Accessibility Audit + Harden Pass (`apps/mobile`)
+
+**Built 2026-07-31.** `/impeccable audit` ran against `apps/mobile` (React Native/Expo), scored against native iOS/Android platform guidance — full report in `docs/design/design-work.md` ("Mobile audit results"). Score: 10/20, "Acceptable, significant work needed." The two P1 findings (zero accessibility labels, zero Reduce Motion handling) were hardened same day; the rest are tracked as open follow-ups, not fixed.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Reduce Motion** | `apps/mobile/src/hooks/useReduceMotion.ts` (new) | Wraps `AccessibilityInfo.isReduceMotionEnabled` + change listener. Wired into `app/onboarding.tsx` (confetti skipped, step-transition slide replaced with crossfade), `src/components/Skeleton.tsx` (shimmer dims instead of pulsing), `src/components/NetworkBanner.tsx` (offline-banner slide becomes instant). Functional loading/gesture animation (AI-processing spinner, pinch-to-zoom photo viewer) deliberately untouched — they carry state, not decoration |
+| **Accessibility labels** | 32 files across `apps/mobile/app/**` and `src/components/**` | Swept every `lucide-react-native` icon import for icon-only `TouchableOpacity`/`Pressable` controls (back/close/remove/share/filter/FAB buttons) with no visible text label. Added `accessibilityLabel` + `accessibilityRole="button"` to 66 spots. Selection chips using a `{selected && <Check/>}` overlay were left as-is (they already have a visible text label) — flagged as a smaller `accessibilityState` follow-up, not silent |
+| **Touch target (in passing)** | `apps/mobile/app/product/bulk.tsx` | Added `hitSlop={8}` to the 24×24px remove-photo button flagged by the audit as below the 44pt/48dp minimum |
+| **Docs corrected** | `docs/DESIGN.md` | Fixed a stale claim ("mobile has no design tokens" / `theme.extend: {}`) — `apps/mobile/tailwind.config.js` has had a full token scale since before this session; the doc just hadn't caught up |
+
+**Still open (not part of this pass):** dark mode (0 `useColorScheme` usage in `apps/mobile`), the 6-destination bottom tab bar (exceeds the 3–5 spec both platforms give — recommend `/impeccable shape` to redesign), tablet/window-size adaptivity (only 4/48 screens are size-aware), and the mobile/web accent-color drift on `rust`/`turmeric`/`sand` tokens (only `ink`/navy is currently kept in sync). See `docs/design/design-work.md` for the full P0–P3 list.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

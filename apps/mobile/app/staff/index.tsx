@@ -113,6 +113,8 @@ export default function StaffDashboard() {
           <TouchableOpacity
             onPress={handleLogout}
             className="w-9 h-9 rounded-full bg-white/15 items-center justify-center"
+            accessibilityLabel="Logout"
+            accessibilityRole="button"
           >
             <LogOut size={16} color="white" />
           </TouchableOpacity>

@@ -149,7 +149,7 @@ function ProfileEditModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Edit Profile</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
@@ -430,7 +430,7 @@ function KycModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Identity Verification</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
@@ -556,7 +556,7 @@ function WhatsAppApiModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">WhatsApp Business API</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
             </TouchableOpacity>
           </View>
@@ -834,7 +834,7 @@ export default function SettingsScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
           </TouchableOpacity>
           <Text className="text-base font-bold text-sand-900">Settings</Text>

@@ -74,7 +74,7 @@ export default function NewCollectionScreen() {
         className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900 ml-3">New Collection</Text>

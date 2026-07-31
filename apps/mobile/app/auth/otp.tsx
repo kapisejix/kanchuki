@@ -92,6 +92,8 @@ export default function OtpScreen() {
           <TouchableOpacity
             onPress={() => router.back()}
             className="w-10 h-10 rounded-full bg-sand-100 items-center justify-center mb-8"
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <Text className="text-lg">←</Text>
           </TouchableOpacity>

@@ -600,7 +600,7 @@ export default function ProductDetailScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
@@ -688,6 +688,8 @@ export default function ProductDetailScreen() {
           {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
             <TouchableOpacity
               onPress={() => goToPhoto(selectedPhotoIndex - 1)}
+              accessibilityLabel="Previous photo"
+              accessibilityRole="button"
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
@@ -699,6 +701,8 @@ export default function ProductDetailScreen() {
           {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
             <TouchableOpacity
               onPress={() => goToPhoto(selectedPhotoIndex + 1)}
+              accessibilityLabel="Next photo"
+              accessibilityRole="button"
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
@@ -1418,6 +1422,8 @@ export default function ProductDetailScreen() {
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <TouchableOpacity
             onPress={() => setFullscreenOpen(false)}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
             hitSlop={8}
             style={{
               position: 'absolute',
@@ -1500,6 +1506,8 @@ export default function ProductDetailScreen() {
         <View style={{ flex: 1, backgroundColor: 'black' }}>
           <TouchableOpacity
             onPress={() => setSpinViewerOpen(false)}
+            accessibilityLabel="Close"
+            accessibilityRole="button"
             hitSlop={8}
             style={{
               position: 'absolute',

@@ -24,7 +24,7 @@ export default function CategoryListScreen() {
           className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
           style={{ paddingTop: insets.top + 12 }}
         >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
           </TouchableOpacity>
         </View>
@@ -73,6 +73,8 @@ export default function CategoryListScreen() {
           className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
           style={{ elevation: 6 }}
           activeOpacity={0.8}
+          accessibilityLabel="Add category"
+          accessibilityRole="button"
         >
           <Plus size={24} color="white" />
         </TouchableOpacity>

@@ -290,7 +290,7 @@ export default function CustomerDetailScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
         </TouchableOpacity>
         <Text className="text-base font-bold text-sand-900">Customer</Text>
@@ -465,6 +465,8 @@ export default function CustomerDetailScreen() {
                 key={c}
                 onPress={() => setPrefColors((prev) => prev.filter((x) => x !== c))}
                 className="bg-ink-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
+                accessibilityLabel={`Remove ${c}`}
+                accessibilityRole="button"
               >
                 <Text className="text-white text-xs font-medium">{c}</Text>
                 <X size={10} color="white" />
@@ -480,7 +482,12 @@ export default function CustomerDetailScreen() {
               placeholderTextColor="#ABA39C"
               className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
-            <TouchableOpacity onPress={addColor} className="bg-sand-100 px-3 rounded-xl items-center justify-center">
+            <TouchableOpacity
+              onPress={addColor}
+              className="bg-sand-100 px-3 rounded-xl items-center justify-center"
+              accessibilityLabel="Add color"
+              accessibilityRole="button"
+            >
               <Plus size={16} color="#4B4039" />
             </TouchableOpacity>
           </View>
@@ -720,7 +727,7 @@ export default function CustomerDetailScreen() {
         <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top + 16 }}>
           {/* Modal Header */}
           <View className="flex-row items-center justify-between px-4 pb-4">
-            <TouchableOpacity onPress={() => setShowManualForm(false)}>
+            <TouchableOpacity onPress={() => setShowManualForm(false)} accessibilityLabel="Close" accessibilityRole="button">
               <X size={22} color="#4B4039" />
             </TouchableOpacity>
             <Text className="text-base font-bold text-sand-900">Manual Measurements</Text>

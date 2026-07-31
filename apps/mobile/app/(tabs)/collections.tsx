@@ -211,6 +211,8 @@ const CollectionCard = memo(function CollectionCard({
         <TouchableOpacity
           onPress={onEdit}
           className="flex-row items-center justify-center gap-1.5 bg-ink-50 border border-ink-100 px-3 py-2.5 rounded-xl"
+          accessibilityLabel="Edit collection"
+          accessibilityRole="button"
         >
           <Edit size={14} color={primaryColor} />
         </TouchableOpacity>
@@ -219,6 +221,8 @@ const CollectionCard = memo(function CollectionCard({
         <TouchableOpacity
           onPress={onDelete}
           className="flex-row items-center justify-center bg-rust-50 border border-rust-100 px-3 py-2.5 rounded-xl"
+          accessibilityLabel="Delete collection"
+          accessibilityRole="button"
         >
           <Trash2 size={14} color="#A24854" />
         </TouchableOpacity>
@@ -343,6 +347,8 @@ export default function CollectionsScreen() {
         onPress={() => router.push('/collection/new')}
         className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
+        accessibilityLabel="New collection"
+        accessibilityRole="button"
       >
         <Plus size={24} color="white" />
       </TouchableOpacity>
