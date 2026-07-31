@@ -38,6 +38,22 @@ if (!process.env.ENCRYPTION_MASTER_KEY) {
   process.exit(1);
 }
 
+// Collection share links / WhatsApp messages / QR codes are built from
+// WEB_URL (routes/collections.ts). A missing or stale value silently ships
+// broken /c/{slug} links that 404 in the customer's browser — warn loudly at
+// boot so a bad Railway env var is caught at deploy time, not by a retailer's
+// first WhatsApp share. Must point at the customer web app (e.g. kanchuki.app),
+// NOT the API's own railway.app preview URL.
+if (!process.env.WEB_URL) {
+  console.warn(
+    '[startup] WEB_URL is NOT set — collection share links will be relative (/c/{slug}) and will not open from WhatsApp. Set WEB_URL to the customer web app URL (e.g. https://kanchuki.app) in the API Railway env.',
+  );
+} else if (process.env.WEB_URL.includes('.up.railway.app')) {
+  console.warn(
+    `[startup] WEB_URL points at a Railway preview URL (${process.env.WEB_URL}) — preview subdomains change on service recreation and are not the permanent customer URL. Set WEB_URL to the custom domain (e.g. https://kanchuki.app) or collection links will break.`,
+  );
+}
+
 const server = Fastify({
   logger: process.env.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty' } } : true,
   // Trust Railway's internal proxy so request.ip returns the real client IP

@@ -13,6 +13,13 @@ const withSerwist = withSerwistInit({
   // Dev chunk filenames aren't content-hashed like prod, but defaultCache
   // still CacheFirsts _next/static — SW serves stale chunk bytes under the
   // same filename after every edit, causing ChunkLoadError. Prod-only.
+  //
+  // The SW stays disabled in `next dev` so hot reload never fights the cache.
+  // The customer e2e suite (playwright.customer.config.ts) exercises the
+  // offline rules in src/app/sw.ts against a production build (turbo build +
+  // next start) instead — where the SW is always enabled and the precache
+  // manifest contains the content-hashed prod chunks that a dev-mode offline
+  // reload can't serve (hydration never runs on the raw SSR page).
   disable: process.env.NODE_ENV === 'development',
 })
 

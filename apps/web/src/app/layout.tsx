@@ -42,7 +42,15 @@ const DEFAULT_PRIMARY_COLOR = '#1E2A3D'
 async function getPrimaryColor(): Promise<string> {
   if (!API_ORIGIN) return DEFAULT_PRIMARY_COLOR
   try {
-    const res = await fetch(`${API_ORIGIN}/v1/public/theme`, { next: { revalidate: 60 } })
+    const res = await fetch(`${API_ORIGIN}/v1/public/theme`, {
+      next: { revalidate: 60 },
+      // Hard 5s cap: this runs on EVERY server render of every page (incl. the
+      // root `/` which is the Railway web healthcheck target). A down API was
+      // hanging the request past the 30s healthcheck timeout → "Network
+      // Healthcheck failure" on the Railway dashboard. The try/catch already
+      // falls back to the default color — the missing piece was the timeout.
+      signal: AbortSignal.timeout(5000),
+    })
     if (!res.ok) return DEFAULT_PRIMARY_COLOR
     const json = (await res.json()) as { data?: { primary_color?: string } }
     return json.data?.primary_color ?? DEFAULT_PRIMARY_COLOR

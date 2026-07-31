@@ -26,7 +26,42 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: bash scripts/check-delete-guard.sh
-      - run: pnpm test
+      - run: pnpm test      # Web unit suite (vitest, jsdom): AdminLayout auth/session gate, Sidebar
+  # state, and other component tests (apps/web/src/**/__tests__). Hermetic —
+  # no backend, DB, or seeded data — and fast, so it runs in parallel with
+  # `quality` rather than gating on it: a shell regression gets caught on
+  # every PR without waiting for the full API/DB test pipeline. (The quality
+  # job's `pnpm test` via turbo also runs this suite; this job makes it a
+  # visible, fast gate of its own.)
+  unit-web:
+    runs-on: ubuntu-latest
+    # Belt-and-suspenders guard against a hung vitest run (default job timeout
+    # is 6h otherwise).
+    timeout-minutes: 10
+    env:
+      # Same dummy value as the quality job so postinstall generates the
+      # vault Prisma client identically (never connected to).
+      VAULT_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_vault_unused
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Go through turbo (not a bare `pnpm --filter @kanchuki/web test`): the
+      # web tests import @kanchuki/shared via its built dist/index.js, which
+      # doesn't exist on a fresh checkout — turbo's `test` task declares
+      # `dependsOn: ["^build"]`, so @kanchuki/shared is built first (same
+      # dependency ordering the `quality` job's `pnpm test` relies on).
+      - name: Run web vitest unit suite
+        run: pnpm exec turbo test --filter=@kanchuki/web
+
 
   build:
     runs-on: ubuntu-latest
@@ -50,3 +85,58 @@ jobs:
 
       - name: Build Web
         run: pnpm build --filter=@kanchuki/web
+
+  # Browser regression suite for the admin layout: proves sidebar/top bar
+  # stay mounted while only the content area swaps, and that navigation
+  # never triggers a full page reload (see apps/web/e2e/admin-navigation.spec.ts).
+  e2e-web:
+    runs-on: ubuntu-latest
+    # Only run if quality passes — saves runner minutes on quick failures
+    needs: [quality]
+    # Belt-and-suspenders guard: if next dev ever hangs past the webServer
+    # timeout, fail the job instead of letting it run the 6h default.
+    timeout-minutes: 15
+    env:
+      # Same dummy value as the quality job so postinstall generates the
+      # vault Prisma client identically (never connected to).
+      VAULT_DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_vault_unused
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The Playwright config uses channel: 'chrome'. Install the matching
+      # Chrome for Testing build + shared libs so the suite never depends on
+      # the runner image's own Chrome version (which can drift out of CDP
+      # compatibility with the pinned Playwright). --with-deps needs root;
+      # GitHub Actions runners provide it.
+      - name: Install Playwright Chrome
+        run: pnpm --filter @kanchuki/web exec playwright install --with-deps chrome
+
+      # Two hermetic suites, no backend/DB/seeded data needed:
+      #  1. Admin navigation — `next dev` on :3000, all /v1/* calls mocked in-page
+      #  2. Customer PWA + offline — `turbo build` + `next start` on :3100 (a
+      #     prod build so the SW precaches its JS/CSS chunks and offline reloads
+      #     actually hydrate), stub API on :3001, offline caching verified with
+      #     context.setOffline(true)
+      - name: Run web e2e tests
+        run: pnpm test:e2e:web:all
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/playwright-report-customer
+            apps/web/test-results
+            apps/web/test-results-customer
+          retention-days: 7

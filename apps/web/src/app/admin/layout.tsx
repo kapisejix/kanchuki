@@ -3,17 +3,25 @@
 import { useState, useEffect, Suspense, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import nextDynamic from 'next/dynamic'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { Menu, Shield } from 'lucide-react'
 import { PageLoader } from '@/components/PageLoader'
 import { RouteProgress } from '@/components/RouteProgress'
+import { FloatingOrbs } from './components/FloatingOrbs'
+import { NotificationBell } from './components/NotificationBell'
+import { Sidebar } from './components/Sidebar'
 
 // ── Lazy-loaded admin components ──────────────────────────────────
-
-const FloatingOrbs = nextDynamic(() => import('./components/FloatingOrbs'), {
-  ssr: false,
-  loading: () => null,
-})
+// LoginScreen is the only genuinely lazy shell piece (it only renders
+// pre-auth, so its mount cost is irrelevant to navigation). The sidebar /
+// top-bar chrome (Sidebar, NotificationBell, FloatingOrbs) is imported
+// statically on purpose: `next/dynamic({ ssr: false })` re-resolves the
+// dynamic boundary on every App Router navigation, which REMOUNTS the
+// sidebar/header on each route change — visible as the whole shell
+// reloading instead of just the content area (user issue #1). All three are
+// 'use client' and SSR-safe (no window/document access at render time), so
+// static imports keep them mounted across navigations; only the keyed
+// motion.main below swaps.
 
 const LoginScreen = nextDynamic(() => import('./components/LoginScreen'), {
   ssr: false,
@@ -21,18 +29,6 @@ const LoginScreen = nextDynamic(() => import('./components/LoginScreen'), {
     <div className="min-h-screen bg-gray-950 flex items-center justify-center">
       <PageLoader variant="fullscreen" text="Loading login..." />
     </div>
-  ),
-})
-
-const Sidebar = nextDynamic(() => import('./components/Sidebar'), {
-  ssr: false,
-  loading: () => null,
-})
-
-const NotificationBell = nextDynamic(() => import('./components/NotificationBell'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-9 h-9 rounded-xl bg-gray-100 animate-pulse" />
   ),
 })
 
@@ -151,31 +147,34 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        {/* Page content with AnimatePresence for exit + entrance transitions */}
-        <AnimatePresence mode="wait">
-          <motion.main
-            key={pathname}
-            initial={{ opacity: 0, y: 20, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.97, transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] } }}
-            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-            className="p-4 sm:p-6 lg:p-8 relative z-10"
+        {/* Page content — keyed remount on route change, entrance animation
+            only. AnimatePresence mode="wait" + Suspense + App Router streaming
+            got stuck after navigation (the exit had to finish before the new
+            page's RSC payload could mount), leaving a blank content area until
+            a hard refresh. Removing the exit gate means the new page mounts
+            immediately and only the content area swaps — sidebar/top bar stay
+            mounted. */}
+        <motion.main
+          key={pathname}
+          initial={{ opacity: 0, y: 16, scale: 0.99 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+          className="p-4 sm:p-6 lg:p-8 relative z-10"
+        >
+          <Suspense
+            fallback={
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex items-center justify-center min-h-[40vh]"
+              >
+                <PageLoader variant="card" text="Loading page..." />
+              </motion.div>
+            }
           >
-            <Suspense
-              fallback={
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex items-center justify-center min-h-[40vh]"
-                >
-                  <PageLoader variant="card" text="Loading page..." />
-                </motion.div>
-              }
-            >
-              {children}
-            </Suspense>
-          </motion.main>
-        </AnimatePresence>
+            {children}
+          </Suspense>
+        </motion.main>
       </motion.div>
     </div>
   )

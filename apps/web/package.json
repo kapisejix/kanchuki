@@ -9,6 +9,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "next lint",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:customer": "playwright test -c playwright.customer.config.ts",
+    "test:e2e:all": "playwright test && playwright test -c playwright.customer.config.ts",
     "bones": "boneyard-js build",
     "bones:watch": "boneyard-js build --watch"
   },
@@ -31,6 +34,7 @@
     "tailwindcss": "^3.4.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.41.2",
     "@testing-library/jest-dom": "^6.6.0",
     "@testing-library/react": "^16.0.0",
     "@types/node": "^20.0.0",

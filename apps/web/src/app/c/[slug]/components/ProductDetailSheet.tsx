@@ -437,9 +437,10 @@ export function ProductDetailSheet({
                 }
               `}</style>
 
-              {/* Variant photo badge */}
+              {/* Variant photo badge — bottom-left so it can't collide with the
+                  floating Back button (top-4 left-4) the way a top-left pill does */}
               {variantColor && variantPhotoUrl && photos[photoIndex] === variantPhotoUrl && (
-                <div className="absolute top-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+                <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
                   <Palette size={12} />
                   {variantColor}
                 </div>
@@ -454,9 +455,9 @@ export function ProductDetailSheet({
             </>
           )}
 
-          {/* 360 slide badge */}
+          {/* 360 slide badge — bottom-left, mirroring the variant badge */}
           {isSpinSlide && (
-            <div className="absolute top-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
+            <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm">
               <RotateCw size={12} />
               Drag to rotate
             </div>
@@ -504,8 +505,10 @@ export function ProductDetailSheet({
             </div>
           )}
 
-          {/* Counter */}
-          <div className="absolute top-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
+          {/* Counter — bottom-right, mirroring the variant badge, so it can't
+              sit under the floating Close button (top-4 right-4) and swallow
+              its clicks (caught by the customer-collection e2e suite) */}
+          <div className="absolute bottom-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
             {isSpinSlide ? '360°' : `${photoIndex + 1} / ${totalPhotos}`}
           </div>
         </div>

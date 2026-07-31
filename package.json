@@ -17,6 +17,8 @@
     "test:e2e:skip-tryon": "pnpm --filter @kanchuki/api exec tsx ../../scripts/e2e-test.ts --skip-tryon",
     "test:e2e:seed": "pnpm --filter @kanchuki/api exec tsx ../../scripts/seed-credits.ts",
     "test:e2e:full": "bash scripts/run-e2e.sh",
+    "test:e2e:web": "pnpm --filter @kanchuki/web test:e2e",
+    "test:e2e:web:all": "pnpm --filter @kanchuki/web test:e2e:all",
     "db:generate": "turbo db:generate",
     "db:migrate": "pnpm --filter @kanchuki/db migrate:dev",
     "db:studio": "pnpm --filter @kanchuki/db studio",

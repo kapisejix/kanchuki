@@ -65,12 +65,52 @@ export default function AddPhotosScreen() {
     if (shots.length === 0) return
     setUploading(true)
     try {
+      // Issue #4: adding a photo of a NEW color should attach it to THIS
+      // product's image slider (never a new product) and auto-create a color
+      // swatch, ecommerce-style. Load the product's existing colors first so
+      // we only add a variant when the detected color is actually new — extra
+      // angles of the same color stay plain photos.
+      let existingColors = new Set<string>()
+      // If the product fetch fails, existingColors would stay empty and every
+      // detected color would look "new" — creating duplicate swatches of the
+      // product's own color. So variant creation is skipped entirely unless we
+      // successfully loaded the existing colors.
+      let colorsLoaded = false
+      try {
+        const existing = await productApi.get(id)
+        const prod = (existing as {
+          data: { primary_color?: string | null; variants?: { color: string }[] } | null
+        }).data
+        if (prod) {
+          if (prod.primary_color) existingColors.add(prod.primary_color.trim().toLowerCase())
+          for (const v of prod.variants ?? []) existingColors.add(v.color.trim().toLowerCase())
+          colorsLoaded = true
+        }
+      } catch {
+        // Non-fatal — variant creation is skipped when existing colors are unknown
+      }
+
       for (const uri of shots) {
         const blob = await readLocalImage(uri)
         const uploadResult = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
         const { upload_url, r2_key, public_url } = uploadResult.data
         await uploadImageToR2(uri, upload_url, 'image/jpeg')
         await productApi.addPhoto(id, { r2_key, url: public_url, content_type: 'image/jpeg' })
+
+        // Auto-detect the color; if it's new, add it as a color variant so the
+        // product shows a solid color name + circular swatch (like shopping
+        // cart sites). Best-effort — the photo is already saved regardless.
+        if (!colorsLoaded) continue
+        try {
+          const colorResult = await productApi.detectColor(public_url)
+          const color = colorResult?.data?.color?.trim()
+          if (color && !existingColors.has(color.toLowerCase())) {
+            await productApi.addVariant(id, { color, r2_key, url: public_url })
+            existingColors.add(color.toLowerCase())
+          }
+        } catch {
+          // Color detection is best-effort
+        }
       }
       router.back()
     } catch (err) {
@@ -123,7 +163,7 @@ export default function AddPhotosScreen() {
 
       <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
         <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
-          Shoot a few angles of this product · {shots.length}/{maxShots}
+          Shoot a few angles · {shots.length}/{maxShots} · new colors auto-detect as swatches
         </Text>
       </View>
 
