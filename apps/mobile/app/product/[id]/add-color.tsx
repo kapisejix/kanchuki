@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TextInput, Alert, StyleSheet, ActivityIndicator } from 'react-native'
+import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
@@ -211,7 +211,7 @@ export default function AddColorVariantScreen() {
           style={{ paddingBottom: 40 + insets.bottom }}
         >
           <Text className="text-white text-xs font-semibold uppercase tracking-wide">
-            Couldn't detect color — enter it
+            Couldn&apos;t detect color — enter it
           </Text>
           <TextInput
             value={color}
