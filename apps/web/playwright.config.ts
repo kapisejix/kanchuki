@@ -39,7 +39,14 @@ export default defineConfig({
     timeout: 15_000,
   },
   webServer: {
-    command: 'pnpm dev',
+    // Build @kanchuki/shared first (turbo builds it in dependency order) —
+    // the web app imports its built dist/index.js, which doesn't exist on a
+    // fresh CI checkout and makes `next dev` fail to resolve the workspace
+    // package (same failure mode the customer suite avoids by building via
+    // turbo). Then start only the web dev server: the spec intercepts every
+    // /v1/* call in-page, so no API backend is needed.
+    command:
+      'pnpm exec turbo build --filter=@kanchuki/shared && pnpm --filter @kanchuki/web dev',
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
