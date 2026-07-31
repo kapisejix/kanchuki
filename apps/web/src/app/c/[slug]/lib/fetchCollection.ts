@@ -1,4 +1,5 @@
 import type { PublicCollection } from '@kanchuki/shared'
+import { API_URL as apiUrl } from '@/lib/apiUrl'
 
 export interface FetchCollectionParams {
   page?: number
@@ -11,7 +12,6 @@ export async function fetchCollection(
   slug: string,
   params?: FetchCollectionParams,
 ): Promise<PublicCollection | null> {
-  const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
   const qs = params
     ? `?${new URLSearchParams(
         Object.entries(params)

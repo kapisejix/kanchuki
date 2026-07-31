@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { ContactGate } from './components/ContactGate'
+import { API_URL as apiUrl } from '@/lib/apiUrl'
 
 export interface RetailerProfile {
   shop_name: string
@@ -19,7 +20,6 @@ interface Props {
 }
 
 async function fetchProfile(slug: string): Promise<RetailerProfile | null> {
-  const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
   try {
     const res = await fetch(`${apiUrl}/v1/public/retailers/${slug}`, {
       next: { revalidate: 60 },

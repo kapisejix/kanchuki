@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import type { PublicCollection } from '@kanchuki/shared'
 import { CollectionView } from '../../../../c/[slug]/components/CollectionView'
+import { API_URL as apiUrl } from '@/lib/apiUrl'
 
 interface Props {
   params: Promise<{ slug: string; categoryId: string }>
@@ -12,7 +13,6 @@ async function fetchCategory(
   categoryId: string,
   params?: { page?: number; pageSize?: number },
 ): Promise<PublicCollection | null> {
-  const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
   const qs = params
     ? `?${new URLSearchParams(
         Object.entries(params)

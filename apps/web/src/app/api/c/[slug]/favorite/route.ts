@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { API_URL as apiUrl } from '@/lib/apiUrl'
 
 export async function POST(
   request: NextRequest,
@@ -6,7 +7,6 @@ export async function POST(
 ) {
   const { slug } = await params
   const body: unknown = await request.json()
-  const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
 
   try {
     await fetch(`${apiUrl}/v1/public/collections/${slug}/favorite`, {

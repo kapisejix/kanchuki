@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Store } from 'lucide-react'
+import { API_URL as apiUrl } from '@/lib/apiUrl'
 
 interface PublicCategory {
   id: string
@@ -23,7 +24,6 @@ interface Props {
 }
 
 async function fetchData(slug: string): Promise<StoreCategoriesData | null> {
-  const apiUrl = process.env['API_URL'] ?? 'http://localhost:3001'
   try {
     const [profileRes, categoriesRes] = await Promise.all([
       fetch(`${apiUrl}/v1/public/retailers/${slug}`, { next: { revalidate: 60 } }),
