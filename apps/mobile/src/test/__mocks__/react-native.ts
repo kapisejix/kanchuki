@@ -115,6 +115,15 @@ export const Vibration = {
   cancel: () => {},
 }
 
+export const AccessibilityInfo = {
+  isReduceMotionEnabled: async () => false,
+  isBoldTextEnabled: async () => false,
+  isScreenReaderEnabled: async () => false,
+  isGrayscaleEnabled: async () => false,
+  addEventListener: () => ({ remove: () => {} }),
+  removeEventListener: () => {},
+}
+
 export const AppState = {
   currentState: 'active',
   addEventListener: () => ({ remove: () => {} }),
@@ -238,6 +247,7 @@ export default {
   Linking,
   Alert,
   Vibration,
+  AccessibilityInfo,
   AppState,
   Appearance,
   I18nManager,

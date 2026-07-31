@@ -69,6 +69,21 @@ vi.mock('react-native-safe-area-context', () => {
   }
 })
 
+// ── react-native-reanimated ────────────────────────────────────────
+// AnimatedPressable/ProductCard import it; the real module pulls in
+// react-native-worklets, whose native part can't initialize in vitest's
+// Node environment (WorkletsError at suite load). Plain-object stubs keep
+// rendering working — scale springs become no-ops.
+
+vi.mock('react-native-reanimated', () => ({
+  default: {
+    createAnimatedComponent: (component: unknown) => component,
+  },
+  useSharedValue: <T,>(value: T) => ({ value }),
+  useAnimatedStyle: (styleFactory: () => unknown) => styleFactory(),
+  withSpring: (value: unknown) => value,
+}))
+
 // ── lucide-react-native (Proxy — catches any icon import) ──────────
 
 vi.mock('lucide-react-native', () => {
