@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import {
-  View, Text, FlatList, TouchableOpacity, TextInput,
+  View, Text, FlatList, TextInput,
   ActivityIndicator, Alert, Modal,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -10,6 +10,7 @@ import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { staffApi, type StaffMember } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // ─── Add Staff Modal ───────────────────────────────────────────────
 
@@ -48,9 +49,9 @@ function AddStaffModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Add Team Member</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
           <View>
@@ -79,14 +80,14 @@ function AddStaffModal({
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={onClose}
               disabled={createStaff.isPending}
               className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
               <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={() => createStaff.mutate()}
               disabled={!name.trim() || phone.replace(/\D/g, '').length !== 10 || createStaff.isPending}
               className={`flex-1 py-3.5 rounded-2xl items-center ${
@@ -98,7 +99,7 @@ function AddStaffModal({
               ) : (
                 <Text className="text-white font-semibold">Add</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -158,14 +159,14 @@ export default function StaffScreen() {
           <Text className="text-sm font-semibold text-sand-900">{item.name}</Text>
           <Text className="text-xs text-sand-400">{item.phone} · {item.role}</Text>
         </View>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => handleRemove(item)}
           className="w-9 h-9 rounded-full bg-rust-50 items-center justify-center"
           accessibilityLabel={`Remove ${item.name}`}
           accessibilityRole="button"
         >
           <Trash2 size={16} color="#A24854" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     ),
     [handleRemove],
@@ -179,9 +180,9 @@ export default function StaffScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Team Members</Text>
         </View>
       </View>
@@ -195,12 +196,12 @@ export default function StaffScreen() {
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No team members yet.{'\n'}Add shop staff to help manage the catalog.
             </Text>
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => setShowAdd(true)}
               className="mt-4 bg-ink-600 px-5 py-2.5 rounded-xl"
             >
               <Text className="text-white text-sm font-semibold">Add Team Member</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         ) : (
           <FlatList
@@ -219,7 +220,7 @@ export default function StaffScreen() {
         )}
 
         {/* FAB */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => setShowAdd(true)}
           className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
           style={{ elevation: 6 }}
@@ -227,7 +228,7 @@ export default function StaffScreen() {
           accessibilityRole="button"
         >
           <Plus size={24} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         <AddStaffModal visible={showAdd} onClose={() => setShowAdd(false)} />
       </View>

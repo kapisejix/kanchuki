@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { GestureResponderEvent, StyleProp, ViewStyle } from 'react-native'
+import type { GestureResponderEvent, Insets, StyleProp, ViewStyle } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { Pressable } from 'react-native'
 import { useReduceMotion } from '../hooks/useReduceMotion'
@@ -17,16 +17,20 @@ export function AnimatedPressable({
   accessibilityLabel,
   accessibilityRole = 'button',
   accessibilityState,
+  hitSlop,
+  testID,
 }: {
   onPress?: (e: GestureResponderEvent) => void
   onLongPress?: (e: GestureResponderEvent) => void
   disabled?: boolean
-  children: ReactNode
+  children?: ReactNode
   style?: StyleProp<ViewStyle>
   className?: string
   accessibilityLabel?: string
   accessibilityRole?: 'button'
   accessibilityState?: { selected?: boolean; disabled?: boolean }
+  hitSlop?: Insets | number
+  testID?: string
 }) {
   const reduceMotion = useReduceMotion()
   const scale = useSharedValue(1)
@@ -48,6 +52,8 @@ export function AnimatedPressable({
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState}
+      hitSlop={hitSlop}
+      testID={testID}
     >
       {children}
     </AnimatedView>

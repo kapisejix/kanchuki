@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Image } from 'react-native'
+import { View, Text, TextInput, ActivityIndicator, Image } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
@@ -8,6 +8,8 @@ import { PRODUCT_CATEGORIES } from '@kanchuki/shared'
 import { categoryApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 export default function NewCategoryScreen() {
   const { primaryColor } = useTheme()
@@ -63,7 +65,7 @@ export default function NewCategoryScreen() {
       <Stack.Screen options={{ title: 'New Category', headerShown: true }} />
       <View className="flex-1 bg-ink-50 px-4 py-5 gap-4">
         <View className="items-center">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handlePickImage()}
             disabled={uploading}
             className="w-28 h-28 rounded-2xl bg-white border border-sand-200 items-center justify-center overflow-hidden"
@@ -75,7 +77,7 @@ export default function NewCategoryScreen() {
             ) : (
               <ImagePlus size={26} color="#ABA39C" />
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-xs text-sand-400 mt-1.5">
             {imageUrl ? 'Tap to change photo' : 'Add a cover photo (optional)'}
           </Text>
@@ -103,7 +105,7 @@ export default function NewCategoryScreen() {
             {PRODUCT_CATEGORIES.map((cat) => {
               const selected = name.trim() === cat
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={cat}
                   onPress={() => setName(cat)}
                   accessibilityRole="button"
@@ -116,21 +118,18 @@ export default function NewCategoryScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {cat}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
         </View>
 
-        <TouchableOpacity
+        <GradientButton
+          label="Create Category"
           disabled={!canCreate}
+          loading={create.isPending}
           onPress={() => create.mutate()}
-          className={`py-3.5 rounded-xl items-center mt-2 ${canCreate ? 'bg-ink-600' : 'bg-sand-200'}`}
-        >
-          <Text className={`font-semibold ${canCreate ? 'text-white' : 'text-sand-400'}`}>
-            {create.isPending ? 'Creating…' : 'Create Category'}
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     </>
   )

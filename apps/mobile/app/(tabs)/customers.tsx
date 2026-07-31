@@ -1,11 +1,12 @@
 import { useState, useCallback, memo } from 'react'
-import { View, Text, FlatList, TextInput, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList, TextInput } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, ChevronRight, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { formatPrice } from '@kanchuki/shared'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Customer = {
   id: string
@@ -46,7 +47,7 @@ const CustomerCard = memo(function CustomerCard({
   ].filter(Boolean)
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
       className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center gap-3"
     >
@@ -90,7 +91,7 @@ const CustomerCard = memo(function CustomerCard({
       </View>
 
       <ChevronRight size={16} color="#CDC6BF" />
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 })
 
@@ -123,12 +124,12 @@ export default function CustomersScreen() {
         <Text className="text-sand-400 text-sm">
           {search ? 'No customers found' : 'No customers yet'}
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.push('/customer/add')}
           className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Add First Customer</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     ),
     [search],
@@ -168,7 +169,7 @@ export default function CustomersScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => router.push('/customer/add')}
         className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
@@ -176,7 +177,7 @@ export default function CustomersScreen() {
         accessibilityRole="button"
       >
         <Plus size={24} color="white" />
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   )
 }

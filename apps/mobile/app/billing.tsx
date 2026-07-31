@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, Linking, Alert } from 'react-native'
+import { View, Text, ScrollView, Linking, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -8,6 +8,7 @@ import { billingApi, retailerApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 import { useTheme } from '../src/lib/theme'
 import { BillingSkeleton } from '../src/components/Skeleton'
+import { AnimatedPressable } from '../src/components/AnimatedPressable'
 
 const RESOURCE_LABELS: Record<string, string> = {
   PRODUCT_UPLOAD: 'Product uploads',
@@ -123,9 +124,9 @@ export default function BillingScreen() {
         className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">Plans & Billing</Text>
       </View>
       <ScrollView className="flex-1 bg-sand-50 px-4 pt-4">
@@ -179,7 +180,7 @@ export default function BillingScreen() {
         {!isCancelled && (
           <View className="flex-row bg-sand-200 rounded-xl p-1 mb-4">
             {(['monthly', 'annual'] as const).map((p) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={p}
                 onPress={() => setPeriod(p)}
                 className={`flex-1 py-2.5 rounded-lg items-center ${period === p ? 'bg-white shadow-sm' : ''}`}
@@ -187,7 +188,7 @@ export default function BillingScreen() {
                 <Text className={`text-sm font-medium ${period === p ? 'text-sand-900' : 'text-sand-500'}`}>
                   {p === 'monthly' ? 'Monthly' : 'Annual (save 20%)'}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </View>
         )}
@@ -230,7 +231,7 @@ export default function BillingScreen() {
 
               {/* Action button */}
               {!isCancelled && (
-                <TouchableOpacity
+                <AnimatedPressable
                   disabled={isCurrentPlan || subscribe.isPending}
                   onPress={() => subscribe.mutate({ plan: p.plan })}
                   className={`mt-4 py-3 rounded-xl items-center ${
@@ -247,7 +248,7 @@ export default function BillingScreen() {
                      isActive ? 'Switch to ' + p.plan :
                      'Subscribe to ' + p.plan}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )}
             </View>
           )
@@ -255,7 +256,7 @@ export default function BillingScreen() {
 
         {/* Cancel subscription — only for active/trial */}
         {(isActive || isTrial) && (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={confirmCancel}
             className="py-3 items-center mt-2"
           >
@@ -265,7 +266,7 @@ export default function BillingScreen() {
             <Text className="text-xs text-sand-400 mt-1">
               You can keep using Kanchuki until the period ends
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* ─── Buy More Addons ───────────────────────────────── */}
@@ -316,7 +317,7 @@ export default function BillingScreen() {
                 {/* Pack buttons */}
                 <View className="flex-row gap-2">
                   {packs.slice(0, 2).map((pack, idx) => (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       key={idx}
                       onPress={() => {
                         setBuyingResource(resource.resource_type)
@@ -334,7 +335,7 @@ export default function BillingScreen() {
                       <Text className="text-xs font-bold text-ink-600 mt-0.5">
                         ₹{(pack.price_paise / 100).toLocaleString('en-IN')}
                       </Text>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   ))}
                 </View>
               </View>

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   Alert,
   ActivityIndicator,
   RefreshControl,
@@ -30,6 +29,7 @@ import {
 import { ordersApi, type OrderDetail, type ShippingAddress } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 function formatInr(paise: number): string {
   return `₹${(paise / 100).toLocaleString('en-IN')}`
@@ -206,9 +206,9 @@ export default function OrderDetailScreen() {
           headerTitleStyle: { fontWeight: '700', fontSize: 17 },
           headerShadowVisible: false,
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} hitSlop={8} className="mr-2" accessibilityLabel="Go back" accessibilityRole="button">
+            <AnimatedPressable onPress={() => router.back()} hitSlop={8} className="mr-2" accessibilityLabel="Go back" accessibilityRole="button">
               <ChevronLeft size={24} color="#4B4039" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           ),
         }}
       />
@@ -442,7 +442,7 @@ export default function OrderDetailScreen() {
         {/* ─── Action Buttons ────────────────────────────────── */}
         <View className="px-4 pb-6 gap-2">
           {order.status === 'PAID' && (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={confirmFulfill}
               disabled={updateStatus.isPending}
               className="py-3.5 rounded-2xl bg-ink-600 items-center flex-row justify-center gap-2"
@@ -453,11 +453,11 @@ export default function OrderDetailScreen() {
                 <PackageCheck size={18} color="white" />
               )}
               <Text className="text-white font-semibold text-base">Mark as Fulfilled</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
           {(order.status === 'PENDING_PAYMENT' || order.status === 'PAID') && (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={confirmCancel}
               disabled={updateStatus.isPending}
               className="py-3.5 rounded-2xl border border-rust-200 bg-rust-50 items-center flex-row justify-center gap-2"
@@ -466,15 +466,15 @@ export default function OrderDetailScreen() {
               <Text className="text-rust-600 font-semibold text-base">
                 {order.status === 'PAID' ? 'Cancel & Refund' : 'Cancel Order'}
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => router.back()}
             className="py-3.5 rounded-2xl border border-sand-200 bg-white items-center"
           >
             <Text className="text-sand-600 font-medium">Back to Orders</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </ScrollView>
     </>

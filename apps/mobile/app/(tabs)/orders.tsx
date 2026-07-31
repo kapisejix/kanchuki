@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
   Alert,
 } from 'react-native'
@@ -24,6 +23,7 @@ import { ordersApi, type Order } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { OrdersListSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function OrdersScreen() {
   const { primaryColor } = useTheme()
@@ -164,7 +164,7 @@ export default function OrdersScreen() {
               bg: cfg.bg,
             })),
           ].map((chip) => (
-            <TouchableOpacity
+            <AnimatedPressable
               key={chip.key ?? 'all'}
               onPress={() => setFilter(chip.key)}
               className={`px-3 py-1.5 rounded-full border ${
@@ -180,7 +180,7 @@ export default function OrdersScreen() {
               >
                 {chip.label}
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           ))}
         </View>
       </ScrollView>
@@ -207,10 +207,9 @@ export default function OrdersScreen() {
             const config = STATUS_CONFIG[order.status] ?? STATUS_CONFIG.PENDING_PAYMENT
 
             return (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={order.id}
                 onPress={() => router.push(`/orders/${order.id}`)}
-                activeOpacity={0.7}
                 className="bg-white rounded-2xl border border-sand-100 overflow-hidden"
               >
                 {/* Header — status + date */}
@@ -303,7 +302,7 @@ export default function OrdersScreen() {
                 {/* Action buttons */}
                 <View className="flex-row px-3 py-2 gap-2">
                   {order.status === 'PAID' && (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       onPress={() => confirmFulfill(order)}
                       disabled={updateStatus.isPending}
                       className="flex-1 py-2.5 rounded-xl bg-ink-600 items-center flex-row justify-center gap-1.5"
@@ -312,10 +311,10 @@ export default function OrdersScreen() {
                       <Text className="text-white text-xs font-semibold">
                         Mark Fulfilled
                       </Text>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   )}
                   {(order.status === 'PENDING_PAYMENT' || order.status === 'PAID') && (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       onPress={() => confirmCancel(order)}
                       disabled={updateStatus.isPending}
                       className={`py-2.5 rounded-xl items-center flex-row justify-center gap-1.5 ${
@@ -335,7 +334,7 @@ export default function OrdersScreen() {
                       >
                         Cancel
                       </Text>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   )}
                   {order.status === 'FULFILLED' && (
                     <View className="flex-1 py-2.5 rounded-xl bg-turmeric-50 border border-turmeric-100 items-center">
@@ -352,7 +351,7 @@ export default function OrdersScreen() {
                     </View>
                   )}
                 </View>
-              </TouchableOpacity>
+              </AnimatedPressable>
             )
           })}
         </View>

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -12,6 +11,7 @@ import {
 import { router } from 'expo-router'
 import { authApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function PhoneScreen() {
   const [phone, setPhone] = useState('')
@@ -79,20 +79,19 @@ export default function PhoneScreen() {
 
         {/* Bottom CTA */}
         <View>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handleSend()}
             disabled={!isValid || loading}
             className={`py-4 rounded-2xl items-center justify-center flex-row gap-2 ${
               isValid && !loading ? 'bg-ink-600' : 'bg-sand-200'
             }`}
-            activeOpacity={0.8}
           >
             {loading
               ? <ActivityIndicator color="white" />
               : <Text className={`text-base font-bold ${isValid ? 'text-white' : 'text-sand-400'}`}>
                   Send OTP →
                 </Text>}
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           <Text className="text-center text-xs text-sand-400 mt-4 px-4">
             By continuing, you agree to our Terms of Service and Privacy Policy

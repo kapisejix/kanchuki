@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Alert,
   Image,
@@ -21,6 +20,7 @@ import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
 import { formatPriceRange } from '@kanchuki/shared'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const BANNER_HEIGHT = SCREEN_WIDTH * 0.35 // 16:5.6 aspect ratio
@@ -64,7 +64,7 @@ function ChipRow({
     <View className="mb-2.5">
       <Text className="text-xs text-sand-500 mb-1.5">{label}</Text>
       <View className="flex-row flex-wrap gap-2">
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => onSelect(null)}
           className={`px-3 py-1.5 rounded-full border ${
             selected === null ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
@@ -73,9 +73,9 @@ function ChipRow({
           <Text className={`text-xs font-medium ${selected === null ? 'text-white' : 'text-sand-600'}`}>
             All
           </Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
         {options.map((opt) => (
-          <TouchableOpacity
+          <AnimatedPressable
             key={opt}
             onPress={() => onSelect(selected === opt ? null : opt)}
             className={`px-3 py-1.5 rounded-full border ${
@@ -85,7 +85,7 @@ function ChipRow({
             <Text className={`text-xs font-medium ${selected === opt ? 'text-white' : 'text-sand-600'}`}>
               {opt}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         ))}
       </View>
     </View>
@@ -133,12 +133,12 @@ const CatalogCard = memo(function CatalogCard({
             </View>
           )}
           {product.status === 'AVAILABLE' && (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={onMarkSold}
               className="mt-1.5 bg-sand-100 py-1.5 rounded-lg items-center"
             >
               <Text className="text-xs text-sand-600 font-medium">Mark Sold</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
         </View>
       }
@@ -307,17 +307,17 @@ export default function CatalogScreen() {
           {activeFilterCount > 0 ? 'No products match the filter' : 'No products yet'}
         </Text>
         {activeFilterCount > 0 && (
-          <TouchableOpacity onPress={clearFilters} className="mt-2">
+          <AnimatedPressable onPress={clearFilters} className="mt-2">
             <Text className="text-ink-600 text-xs font-medium underline">Clear filters</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
         {activeFilterCount === 0 && (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => router.push('/product/add')}
             className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
           >
             <Text className="text-white text-sm font-semibold">Add First Product</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
       </View>
     ),
@@ -363,7 +363,7 @@ export default function CatalogScreen() {
 
       {/* Header — filter icon only, top right */}
       <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center justify-end">
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => setShowFilters((v) => !v)}
           className={`w-10 h-10 rounded-xl items-center justify-center border ${
             activeFilterCount > 0 ? 'bg-ink-600 border-ink-600' : 'bg-sand-100 border-sand-100'
@@ -372,7 +372,7 @@ export default function CatalogScreen() {
           accessibilityRole="button"
         >
           <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#847B75'} />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       {/* Product Grid — category shortcuts + filter panel scroll away with it, not sticky */}
@@ -398,7 +398,7 @@ export default function CatalogScreen() {
                       {categoryImages.map(({ category, photoUrl }) => {
                         const isActive = filterCategory === category
                         return (
-                          <TouchableOpacity
+                          <AnimatedPressable
                             key={category}
                             onPress={() => setFilterCategory(isActive ? null : category)}
                             className="items-center gap-1"
@@ -423,7 +423,7 @@ export default function CatalogScreen() {
                             >
                               {category}
                             </Text>
-                          </TouchableOpacity>
+                          </AnimatedPressable>
                         )
                       })}
                     </View>
@@ -437,13 +437,13 @@ export default function CatalogScreen() {
                       <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">Filters</Text>
                       <View className="flex-row items-center gap-3">
                         {activeFilterCount > 0 && (
-                          <TouchableOpacity onPress={clearFilters}>
+                          <AnimatedPressable onPress={clearFilters}>
                             <Text className="text-ink-600 text-xs font-medium">Clear all</Text>
-                          </TouchableOpacity>
+                          </AnimatedPressable>
                         )}
-                        <TouchableOpacity onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
+                        <AnimatedPressable onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
                           <X size={16} color="#ABA39C" />
-                        </TouchableOpacity>
+                        </AnimatedPressable>
                       </View>
                     </View>
                     <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
@@ -457,7 +457,7 @@ export default function CatalogScreen() {
                     {/* New Arrivals — derived flag, no cron, auto-expires at 30 days */}
                     <View className="mb-2.5">
                       <Text className="text-xs text-sand-500 mb-1.5">Age</Text>
-                      <TouchableOpacity
+                      <AnimatedPressable
                         onPress={() => setFilterNewArrival((v) => !v)}
                         className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
                           filterNewArrival ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
@@ -467,7 +467,7 @@ export default function CatalogScreen() {
                         <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-sand-600'}`}>
                           New Arrivals (30d)
                         </Text>
-                      </TouchableOpacity>
+                      </AnimatedPressable>
                     </View>
                   </View>
                 )}
@@ -488,11 +488,11 @@ export default function CatalogScreen() {
           className="absolute bottom-6 left-4 right-4 bg-sand-900 rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-lg"
           style={{ elevation: 6 }}
         >
-          <TouchableOpacity onPress={clearSelection} disabled={deleting}>
+          <AnimatedPressable onPress={clearSelection} disabled={deleting}>
             <Text className="text-sand-300 text-sm">Cancel</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-white text-sm font-semibold">{selectedIds.size} selected</Text>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={handleBulkDelete}
             disabled={deleting}
             className="flex-row items-center gap-1.5 bg-rust-600 px-3 py-2 rounded-xl"
@@ -505,39 +505,36 @@ export default function CatalogScreen() {
                 <Text className="text-white text-sm font-semibold">Delete</Text>
               </>
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       ) : (
         /* FAB — quick import menu */
         <View className="absolute bottom-6 right-4 items-end gap-2">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => router.push('/product/add')}
             className="w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
             style={{ elevation: 6 }}
-            activeOpacity={0.8}
             accessibilityLabel="Add product"
             accessibilityRole="button"
           >
             <Plus size={24} color="white" />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={() => router.push('/product/bulk')}
             className="bg-white/90 px-3 py-1.5 rounded-full border border-sand-200 shadow-sm flex-row items-center gap-1.5"
             style={{ elevation: 3 }}
-            activeOpacity={0.7}
           >
             <Text className="text-xs text-sand-500">Bulk</Text>
             <Text className="text-xs">📷</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={() => router.push('/product/catalog-import')}
             className="bg-white/90 px-3 py-1.5 rounded-full border border-sand-200 shadow-sm flex-row items-center gap-1.5"
             style={{ elevation: 3 }}
-            activeOpacity={0.7}
           >
             <Text className="text-xs text-sand-500">Catalog</Text>
             <Text className="text-xs">📋</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       )}
     </View>

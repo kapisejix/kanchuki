@@ -3,7 +3,6 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -20,6 +19,7 @@ import {
 import { analyticsApi, retailerApi } from '../src/lib/api'
 import { AnalyticsSkeleton } from '../src/components/Skeleton'
 import { useTheme } from '../src/lib/theme'
+import { AnimatedPressable } from '../src/components/AnimatedPressable'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -92,7 +92,7 @@ const StatCard = memo(function StatCard({
   )
 
   if (onPress) {
-    return <TouchableOpacity onPress={onPress} className="w-[48%]">{content}</TouchableOpacity>
+    return <AnimatedPressable onPress={onPress} className="w-[48%]">{content}</AnimatedPressable>
   }
   return <View className="w-[48%]">{content}</View>
 })
@@ -185,7 +185,7 @@ const CollectionCard = memo(function CollectionCard({
   item: Analytics['recent_collections'][0]
 }) {
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
       className="bg-white rounded-2xl p-4 border border-sand-100"
     >
@@ -226,7 +226,7 @@ const CollectionCard = memo(function CollectionCard({
           <Text className="text-xs text-sand-500">{item.product_count}</Text>
         </View>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 })
 
@@ -431,14 +431,14 @@ export default function AnalyticsScreen() {
               current={analytics.recent_collections.length}
               max={analytics.plan.max_customers}
             />
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => router.push('/billing')}
               className="mt-2 bg-ink-50 border border-ink-100 py-2.5 rounded-xl items-center"
             >
               <Text className="text-ink-700 text-sm font-semibold">
                 Manage Plan
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         )}
 

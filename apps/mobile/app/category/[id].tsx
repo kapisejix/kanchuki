@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, FlatList, TextInput, TouchableOpacity, ActivityIndicator, Alert, Image, Modal } from 'react-native'
+import { View, Text, FlatList, TextInput, ActivityIndicator, Alert, Image, Modal } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -12,6 +12,8 @@ import { productApi, categoryApi, readLocalImage, uploadImageToR2, type ProductC
 import { formatPriceRange } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 type Product = {
   id: string
@@ -97,13 +99,13 @@ function EditCategoryModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Edit Category</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
           <View className="items-center">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handlePickImage()}
               disabled={uploading}
               className="w-24 h-24 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
@@ -115,7 +117,7 @@ function EditCategoryModal({
               ) : (
                 <ImagePlus size={22} color="#ABA39C" />
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
             <Text className="text-[10px] text-sand-400 mt-1.5">Tap to change photo</Text>
           </View>
 
@@ -132,16 +134,17 @@ function EditCategoryModal({
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+            <AnimatedPressable onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
               <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => void handleSave()}
-              disabled={saving || uploading || name.trim().length === 0}
-              className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
-            >
-              {saving ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Save</Text>}
-            </TouchableOpacity>
+            </AnimatedPressable>
+            <View className="flex-1">
+              <GradientButton
+                label="Save"
+                onPress={() => void handleSave()}
+                disabled={uploading || name.trim().length === 0}
+                loading={saving}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -210,19 +213,19 @@ export default function CategoryDetailScreen() {
           className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
           style={{ paddingTop: insets.top + 12 }}
         >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <View className="flex-row items-center gap-4">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => setShowEdit(true)}
               hitSlop={8}
               accessibilityLabel="Edit category name"
               accessibilityRole="button"
             >
               <Pencil size={18} color={primaryColor} />
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={handleDelete}
               disabled={deleting}
               hitSlop={8}
@@ -230,7 +233,7 @@ export default function CategoryDetailScreen() {
               accessibilityRole="button"
             >
               {deleting ? <ActivityIndicator size="small" color="#A24854" /> : <Trash2 size={20} color="#A24854" />}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
 
@@ -284,15 +287,14 @@ export default function CategoryDetailScreen() {
           />
         )}
 
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.push(`/category/${id}/add-products`)}
           className="absolute bottom-6 right-4 flex-row items-center gap-1.5 bg-ink-600 px-4 py-3.5 rounded-full shadow-lg"
           style={{ elevation: 6 }}
-          activeOpacity={0.85}
         >
           <Plus size={18} color="white" />
           <Text className="text-white text-sm font-semibold">Add Products</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       <EditCategoryModal

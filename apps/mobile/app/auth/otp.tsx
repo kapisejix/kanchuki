@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -13,6 +12,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { authApi, setToken } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function OtpScreen() {
   const { phone } = useLocalSearchParams<{ phone: string }>()
@@ -89,14 +89,14 @@ export default function OtpScreen() {
       <View className="flex-1 px-6 pt-16 pb-10 justify-between">
         {/* Top */}
         <View>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => router.back()}
             className="w-10 h-10 rounded-full bg-sand-100 items-center justify-center mb-8"
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
             <Text className="text-lg">←</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           <Text className="text-3xl font-bold text-sand-900">Enter OTP</Text>
           <Text className="text-sand-500 text-base mt-2">
@@ -107,7 +107,7 @@ export default function OtpScreen() {
           <View className="mt-10">
             <View className="flex-row gap-3 justify-center">
               {[0, 1, 2, 3, 4, 5].map((i) => (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={i}
                   onPress={() => inputRef.current?.focus()}
                   className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
@@ -121,7 +121,7 @@ export default function OtpScreen() {
                   <Text className="text-2xl font-bold text-sand-900">
                     {otp[i] ?? ''}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               ))}
             </View>
 
@@ -148,17 +148,17 @@ export default function OtpScreen() {
                 Resend OTP in {resendTimer}s
               </Text>
             ) : (
-              <TouchableOpacity onPress={() => void handleResend()} disabled={resending}>
+              <AnimatedPressable onPress={() => void handleResend()} disabled={resending}>
                 <Text className="text-ink-600 text-sm font-semibold">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             )}
           </View>
         </View>
 
         {/* Verify button */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleVerify(otp)}
           disabled={otp.length !== 6 || loading}
           className={`py-4 rounded-2xl items-center justify-center ${
@@ -170,7 +170,7 @@ export default function OtpScreen() {
             : <Text className={`text-base font-bold ${otp.length === 6 ? 'text-white' : 'text-sand-400'}`}>
                 Verify & Continue →
               </Text>}
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     </KeyboardAvoidingView>
   )

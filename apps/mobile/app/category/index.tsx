@@ -1,4 +1,4 @@
-import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -7,6 +7,7 @@ import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { categoryApi, type ProductCategory } from '../../src/lib/api'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function CategoryListScreen() {
   const insets = useSafeAreaInsets()
@@ -26,9 +27,9 @@ export default function CategoryListScreen() {
           className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
           style={{ paddingTop: insets.top + 12 }}
         >
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
         {isLoading ? (
           <ProductGridSkeleton />
@@ -60,27 +61,26 @@ export default function CategoryListScreen() {
             ListEmptyComponent={
               <View className="items-center py-16">
                 <Text className="text-sand-400 text-sm">No categories yet</Text>
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => router.push('/category/new')}
                   className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
                 >
                   <Text className="text-white text-sm font-semibold">Add First Category</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </View>
             }
           />
         )}
 
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.push('/category/new')}
           className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
           style={{ elevation: 6 }}
-          activeOpacity={0.8}
           accessibilityLabel="Add category"
           accessibilityRole="button"
         >
           <Plus size={24} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     </>
   )

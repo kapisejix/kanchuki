@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Dimensions,
@@ -35,6 +34,7 @@ import {
 import { showError, logError } from '../../src/lib/errors'
 import { SIZE_OPTIONS } from '@kanchuki/shared'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -387,10 +387,9 @@ export default function CatalogImportScreen() {
         )}
 
         {/* Option cards */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handlePickPhoto()}
           className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4 mt-6"
-          activeOpacity={0.7}
         >
           <View className="w-14 h-14 bg-ink-50 rounded-2xl items-center justify-center">
             <ImagePlus size={28} color={primaryColor} />
@@ -405,9 +404,9 @@ export default function CatalogImportScreen() {
             </Text>
           </View>
           <Text className="text-sand-300">→</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
 
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => {
             Alert.alert(
               'PDF Import',
@@ -417,7 +416,6 @@ export default function CatalogImportScreen() {
             )
           }}
           className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4"
-          activeOpacity={0.7}
         >
           <View className="w-14 h-14 bg-turmeric-50 rounded-2xl items-center justify-center">
             <FileText size={28} color="#7D5334" />
@@ -431,7 +429,7 @@ export default function CatalogImportScreen() {
             </Text>
           </View>
           <Text className="text-sand-300">→</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </ScrollView>
 
       {/* Tip */}
@@ -490,7 +488,7 @@ export default function CatalogImportScreen() {
             AI detected {items.length} item
             {items.length !== 1 ? 's' : ''}
           </Text>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() =>
               setItems((prev) =>
                 prev.map((item) => ({ ...item, approved: true })),
@@ -500,7 +498,7 @@ export default function CatalogImportScreen() {
             <Text className="text-xs text-ink-600 font-medium">
               Select All
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         {/* Ask once per batch — most catalogs don't list sizes */}
@@ -553,7 +551,7 @@ export default function CatalogImportScreen() {
                   </Text>
                 )}
               </View>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => toggleApproval(index)}
                 className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
                   item.approved
@@ -562,7 +560,7 @@ export default function CatalogImportScreen() {
                 }`}
               >
                 {item.approved && <Check size={18} color="white" />}
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
 
             {/* Expandable editor */}
@@ -611,7 +609,7 @@ export default function CatalogImportScreen() {
                       {SIZE_OPTIONS.map((size) => {
                         const selected = item.edits.sizes.includes(size)
                         return (
-                          <TouchableOpacity
+                          <AnimatedPressable
                             key={size}
                             onPress={() => toggleItemSize(index, size)}
                             accessibilityRole="button"
@@ -624,25 +622,25 @@ export default function CatalogImportScreen() {
                             <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                               {size}
                             </Text>
-                          </TouchableOpacity>
+                          </AnimatedPressable>
                         )
                       })}
                     </View>
                   </View>
                 )}
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => setEditingIndex(null)}
                   className="bg-sand-100 py-2.5 rounded-xl items-center mt-1"
                 >
                   <Text className="text-sm text-sand-600 font-medium">
                     Done Editing
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </View>
             )}
 
             {editingIndex !== index && (
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => setEditingIndex(index)}
                 className="border-t border-sand-100 py-2.5 flex-row items-center justify-center gap-1.5"
               >
@@ -650,7 +648,7 @@ export default function CatalogImportScreen() {
                 <Text className="text-xs text-sand-500 font-medium">
                   Edit details
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             )}
           </View>
         ))}
@@ -669,7 +667,7 @@ export default function CatalogImportScreen() {
         className="bg-white border-t border-sand-100 px-4 pt-4"
         style={{ paddingBottom: 16 + insets.bottom }}
       >
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleSaveSelected()}
           disabled={items.filter((i) => i.approved).length === 0}
           className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
@@ -677,14 +675,13 @@ export default function CatalogImportScreen() {
               ? 'bg-ink-600'
               : 'bg-sand-200'
           }`}
-          activeOpacity={0.8}
         >
           <Save size={18} color="white" />
           <Text className="text-white font-bold text-base">
             Save {items.filter((i) => i.approved).length} Product
             {items.filter((i) => i.approved).length !== 1 ? 's' : ''}
           </Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     </>
   )
@@ -725,17 +722,16 @@ export default function CatalogImportScreen() {
         </Text>
 
         <View className="mt-8 w-full gap-3">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => {
               void queryClient.invalidateQueries({ queryKey: ['products'] })
               router.replace('/')
             }}
             className="py-4 rounded-2xl items-center bg-ink-600"
-            activeOpacity={0.8}
           >
             <Text className="text-white font-bold">View Catalog</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={() => {
               setItems([])
               setBatchResult(null)
@@ -743,12 +739,11 @@ export default function CatalogImportScreen() {
               setStep('source')
             }}
             className="py-4 rounded-2xl items-center border-2 border-sand-200"
-            activeOpacity={0.7}
           >
             <Text className="text-sand-700 font-semibold">
               Import Another Photo
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
     )
@@ -771,7 +766,7 @@ export default function CatalogImportScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => {
             if (step === 'source' || step === 'done') {
               router.back()
@@ -783,7 +778,7 @@ export default function CatalogImportScreen() {
           accessibilityRole="button"
         >
           <X size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {stepTitles[step]}
         </Text>

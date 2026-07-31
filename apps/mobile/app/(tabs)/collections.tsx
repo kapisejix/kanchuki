@@ -1,5 +1,5 @@
 import { useCallback, memo, useState, useEffect } from 'react'
-import { View, Text, FlatList, TouchableOpacity, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
+import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2 } from 'lucide-react-native'
@@ -7,6 +7,7 @@ import { collectionApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Collection = {
   id: string
@@ -114,14 +115,14 @@ function EditCollectionModal({
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={onClose}
               disabled={saving}
               className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
               <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={() => void handleSave()}
               disabled={saving || !title.trim()}
               className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
@@ -131,7 +132,7 @@ function EditCollectionModal({
               ) : (
                 <Text className="text-white font-semibold">Save</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -156,7 +157,7 @@ const CollectionCard = memo(function CollectionCard({
 }) {
   const { primaryColor } = useTheme()
   return (
-    <TouchableOpacity onPress={onPress} className="bg-white rounded-2xl p-4 border border-sand-100">
+    <AnimatedPressable onPress={onPress} className="bg-white rounded-2xl p-4 border border-sand-100">
       {/* Title + status */}
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-3">
@@ -198,36 +199,36 @@ const CollectionCard = memo(function CollectionCard({
       <View className="flex-row gap-2">
         {/* Share */}
         {item.status === 'ACTIVE' && (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={onShare}
             className="flex-1 flex-row items-center justify-center gap-2 bg-turmeric-50 border border-turmeric-100 py-2.5 rounded-xl"
           >
             <Link2 size={14} color="#7D5334" />
             <Text className="text-turmeric-700 text-sm font-semibold">Share</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* Edit */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={onEdit}
           className="flex-row items-center justify-center gap-1.5 bg-ink-50 border border-ink-100 px-3 py-2.5 rounded-xl"
           accessibilityLabel="Edit collection"
           accessibilityRole="button"
         >
           <Edit size={14} color={primaryColor} />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Delete */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={onDelete}
           className="flex-row items-center justify-center bg-rust-50 border border-rust-100 px-3 py-2.5 rounded-xl"
           accessibilityLabel="Delete collection"
           accessibilityRole="button"
         >
           <Trash2 size={14} color="#A24854" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 })
 
@@ -312,12 +313,12 @@ export default function CollectionsScreen() {
         <Text className="text-sand-400 text-sm mt-4 text-center">
           No collections yet.{'\n'}Create one to share products with customers.
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.push('/collection/new')}
           className="mt-4 bg-ink-600 px-5 py-2.5 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Create Collection</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     ),
     [],
@@ -343,7 +344,7 @@ export default function CollectionsScreen() {
       )}
 
       {/* FAB */}
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => router.push('/collection/new')}
         className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
@@ -351,7 +352,7 @@ export default function CollectionsScreen() {
         accessibilityRole="button"
       >
         <Plus size={24} color="white" />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       {/* Edit Modal */}
       <EditCollectionModal

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  View, Text, TextInput, TouchableOpacity, ScrollView,
+  View, Text, TextInput, ScrollView,
   ActivityIndicator, Linking, RefreshControl,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -10,6 +10,8 @@ import { ChevronLeft, Package, Check, Clock, IndianRupee } from 'lucide-react-na
 import { catalogUploadApi, type CatalogUploadTicket } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 // ─── Request Form (no ticket yet) ───────────────────────────────────
 
@@ -73,19 +75,14 @@ function RequestForm() {
         />
       </View>
 
-      <TouchableOpacity
-        onPress={() => create.mutate()}
-        disabled={!canSubmit || create.isPending}
-        className={`mt-6 py-4 rounded-2xl items-center ${canSubmit ? 'bg-ink-600' : 'bg-sand-200'}`}
-      >
-        {create.isPending ? (
-          <ActivityIndicator color="white" />
-        ) : (
-          <Text className={`font-bold text-base ${canSubmit ? 'text-white' : 'text-sand-400'}`}>
-            Request Catalog Upload Help
-          </Text>
-        )}
-      </TouchableOpacity>
+      <View className="mt-6">
+        <GradientButton
+          label="Request Catalog Upload Help"
+          onPress={() => create.mutate()}
+          disabled={!canSubmit}
+          loading={create.isPending}
+        />
+      </View>
     </View>
   )
 }
@@ -140,7 +137,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
         <Text className="text-sand-500 text-sm mt-2 text-center leading-5">
           for {ticket.item_count_requested ?? 'your'} items. Pay now to pick your visit slot.
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => pay.mutate()}
           disabled={pay.isPending}
           className="mt-6 w-full bg-ink-600 py-4 rounded-2xl items-center"
@@ -150,7 +147,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           ) : (
             <Text className="text-white font-bold text-base">Pay ₹{ticket.quoted_price_inr}</Text>
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-sand-400 text-xs mt-3 text-center">
           Opens Razorpay checkout in your browser — return here after paying.
         </Text>
@@ -180,12 +177,11 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
               Pick a visit time:
             </Text>
             {slots.map((slot) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={slot}
                 onPress={() => confirmSlot.mutate(slot)}
                 disabled={confirmSlot.isPending}
                 className="flex-row items-center justify-between border-2 border-sand-200 rounded-2xl p-4 mb-3"
-                activeOpacity={0.7}
               >
                 <Text className="text-sand-900 font-semibold">
                   {new Date(slot).toLocaleString('en-IN', {
@@ -194,7 +190,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
                   })}
                 </Text>
                 {confirmSlot.isPending && <ActivityIndicator size="small" color={primaryColor} />}
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </>
         )}
@@ -244,9 +240,9 @@ export default function CatalogUploadScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Catalog Upload Help</Text>
         </View>
       </View>

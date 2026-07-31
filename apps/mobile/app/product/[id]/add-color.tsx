@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet } from 'react-native'
+import { View, Text, TextInput, Alert, StyleSheet } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
@@ -9,6 +9,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { GradientButton } from '../../../src/components/GradientButton'
 
 type Step = 'camera' | 'preview' | 'saving'
 
@@ -119,12 +121,12 @@ export default function AddColorVariantScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to photograph this color
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void requestPermission()}
           className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     )
   }
@@ -134,7 +136,7 @@ export default function AddColorVariantScreen() {
       <View className="flex-1 bg-black">
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.back()}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
@@ -142,7 +144,7 @@ export default function AddColorVariantScreen() {
           accessibilityRole="button"
         >
           <X size={20} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
           <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
@@ -157,19 +159,19 @@ export default function AddColorVariantScreen() {
 
         <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
           <View className="flex-row items-center gap-10">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handlePickFromGallery()}
               className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
             >
               <ImagePlus size={24} color="white" />
-            </TouchableOpacity>
+            </AnimatedPressable>
 
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handleCapture()}
               className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
             >
               <View className="w-14 h-14 bg-white rounded-full" />
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             <View className="w-14" />
           </View>
@@ -185,14 +187,14 @@ export default function AddColorVariantScreen() {
       {photoUri && <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />}
 
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => setStep('camera')}
           className="w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           accessibilityLabel="Retake photo"
           accessibilityRole="button"
         >
           <X size={20} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       <View
@@ -208,17 +210,12 @@ export default function AddColorVariantScreen() {
           className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
           autoFocus
         />
-        <TouchableOpacity
+        <GradientButton
+          label="Add Color Variant"
           onPress={() => void handleSave()}
-          disabled={!color.trim() || step === 'saving'}
-          className={`py-4 rounded-2xl items-center ${color.trim() ? 'bg-ink-600' : 'bg-white/10'}`}
-        >
-          {step === 'saving' ? (
-            <ActivityIndicator size="small" color="white" />
-          ) : (
-            <Text className="text-white font-semibold">Add Color Variant</Text>
-          )}
-        </TouchableOpacity>
+          disabled={!color.trim()}
+          loading={step === 'saving'}
+        />
       </View>
     </View>
   )

@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -32,6 +31,8 @@ import {
   formatPriceRange,
   resolveFashionColor,
 } from '@kanchuki/shared'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
@@ -600,11 +601,11 @@ export default function ProductDetailScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleSave()}
           disabled={saving}
           className="bg-ink-600 px-4 py-2 rounded-xl"
@@ -614,7 +615,7 @@ export default function ProductDetailScreen() {
           ) : (
             <Text className="text-white font-semibold text-sm">Save</Text>
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       <ScrollView className="flex-1">
@@ -686,7 +687,7 @@ export default function ProductDetailScreen() {
 
           {/* Left arrow — hidden when zoomed */}
           {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => goToPhoto(selectedPhotoIndex - 1)}
               accessibilityLabel="Previous photo"
               accessibilityRole="button"
@@ -694,12 +695,12 @@ export default function ProductDetailScreen() {
               style={{ elevation: 3, zIndex: 10 }}
             >
               <ChevronLeft size={20} color="#4B4039" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
           {/* Right arrow — hidden when zoomed */}
           {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => goToPhoto(selectedPhotoIndex + 1)}
               accessibilityLabel="Next photo"
               accessibilityRole="button"
@@ -707,7 +708,7 @@ export default function ProductDetailScreen() {
               style={{ elevation: 3, zIndex: 10 }}
             >
               <ChevronRight size={20} color="#4B4039" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
 
           {/* Variant badge */}
@@ -722,7 +723,7 @@ export default function ProductDetailScreen() {
           {displayPhotos.length > 1 && (
             <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
               {displayPhotos.map((_, idx) => (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={idx}
                   onPress={() => goToPhoto(idx)}
                   className={`w-2 h-2 rounded-full ${
@@ -737,7 +738,7 @@ export default function ProductDetailScreen() {
         {/* 360° spin icon — opens the same frames fullscreen, drag to rotate */}
         {product.spin_status === 'ready' && product.spin_frames.length > 0 && (
           <View className="px-4 pt-3">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => {
                 setSpinFrameIndex(0)
                 setSpinViewerOpen(true)
@@ -746,7 +747,7 @@ export default function ProductDetailScreen() {
             >
               <RotateCw size={16} color={primaryColor} />
               <Text className="text-ink-700 text-sm font-semibold">View 360°</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         )}
 
@@ -758,7 +759,7 @@ export default function ProductDetailScreen() {
                 const isSelected = idx === selectedPhotoIndex
                 const isVariant = 'is_variant_preview' in photo && photo.is_variant_preview
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={photo.id}
                     onPress={() => {
                       goToPhoto(idx)
@@ -784,7 +785,7 @@ export default function ProductDetailScreen() {
                         </Text>
                       </View>
                     )}
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 )
               })}
             </View>
@@ -793,7 +794,7 @@ export default function ProductDetailScreen() {
 
         {/* Add photo / add color / add 360° — one row, right below the slider */}
         <View className="flex-row gap-2 px-3 pb-3 pt-1">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() =>
               router.push(`/product/${product.id}/add-photos?existingCount=${product.photos.length}`)
             }
@@ -802,15 +803,15 @@ export default function ProductDetailScreen() {
           >
             <Camera size={14} color={primaryColor} />
             <Text className="text-ink-700 text-xs font-semibold">Add Photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={() => router.push(`/product/${product.id}/add-color`)}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
           >
             <Palette size={14} color={primaryColor} />
             <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={() => router.push(`/product/${product.id}/spin-video`)}
             disabled={product.spin_status === 'processing'}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
@@ -819,7 +820,7 @@ export default function ProductDetailScreen() {
             <Text className="text-ink-700 text-xs font-semibold">
               {product.spin_status === 'ready' ? 'Retake 360°' : 'Add 360°'}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         {/* Piece tagging for each photo */}
@@ -831,7 +832,7 @@ export default function ProductDetailScreen() {
               {(['upper', 'lower'] as const).map((piece) => {
                 const selected = photo.piece_type === piece
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={piece}
                     onPress={() => void handleSetPieceType(photo.id, piece)}
                     accessibilityRole="button"
@@ -844,7 +845,7 @@ export default function ProductDetailScreen() {
                     <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-sand-600'}`}>
                       {piece} piece
                     </Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 )
               })}
             </View>
@@ -868,7 +869,7 @@ export default function ProductDetailScreen() {
           {(['upper', 'lower'] as const)
             .filter((piece) => !product.photos.some((p) => p.piece_type === piece))
             .map((piece) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={piece}
                 onPress={() => void handleCropPiece(piece)}
                 disabled={cropping !== null}
@@ -882,14 +883,14 @@ export default function ProductDetailScreen() {
                 <Text className="text-ink-700 text-xs font-medium capitalize">
                   Crop {piece}
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
         </View>
       )}
 
       {/* Manual crop + white-background cleanup for the currently viewed photo */}
       {!currentPhotoIsVariant && displayPhotos[selectedPhotoIndex] && (
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
           disabled={cleaningPhotoId !== null}
           className="mx-4 mt-2 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
@@ -904,7 +905,7 @@ export default function ProductDetailScreen() {
               ? 'Cleaning up...'
               : 'Crop & remove background'}
           </Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       )}
 
       {!product.ai_tagged && !product.ai_tag_error && (
@@ -928,16 +929,15 @@ export default function ProductDetailScreen() {
       <View className="px-4 py-4 gap-4">
         {/* Try-On */}
         {TRY_ON_ENABLED && (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() =>
               router.push({ pathname: '/tryon/in-store', params: { productId: product.id } })
             }
             className="flex-row items-center justify-center gap-2 bg-ink-600 py-3.5 rounded-2xl"
-            activeOpacity={0.8}
           >
             <Sparkles size={18} color="white" />
             <Text className="text-white font-bold">Try-On with Customer Photo</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
 
         {/* Color variants — tapped variant shows in gallery preview */}
@@ -958,7 +958,7 @@ export default function ProductDetailScreen() {
                 {product.variants.map((variant) => {
                   const isActive = variantPreviewUrl === variant.photo_url
                   return (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       key={variant.id}
                       onPress={() => {
                         if (variant.photo_url) {
@@ -994,7 +994,7 @@ export default function ProductDetailScreen() {
                           {variant.color}
                         </Text>
                       </View>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   )
                 })}
               </View>
@@ -1036,7 +1036,7 @@ export default function ProductDetailScreen() {
             {PRODUCT_CATEGORIES.map((cat) => {
               const selected = editedCategory === cat
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={cat}
                   onPress={() => setEditedCategory(selected ? null : cat)}
                   accessibilityRole="button"
@@ -1049,7 +1049,7 @@ export default function ProductDetailScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {cat}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -1061,9 +1061,9 @@ export default function ProductDetailScreen() {
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Category (Catalog Group)
             </Text>
-            <TouchableOpacity onPress={() => router.push('/category')}>
+            <AnimatedPressable onPress={() => router.push('/category')}>
               <Text className="text-ink-600 text-xs font-semibold">Manage</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
           {categories.length === 0 ? (
             <Text className="text-xs text-sand-400">
@@ -1074,7 +1074,7 @@ export default function ProductDetailScreen() {
               {categories.map((cat) => {
                 const selected = editedCategoryId === cat.id
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={cat.id}
                     onPress={() => setEditedCategoryId(selected ? null : cat.id)}
                     accessibilityRole="button"
@@ -1087,7 +1087,7 @@ export default function ProductDetailScreen() {
                     <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                       {cat.name}
                     </Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 )
               })}
             </View>
@@ -1117,7 +1117,7 @@ export default function ProductDetailScreen() {
             {FABRIC_TYPES.map((fab) => {
               const selected = editedFabric === fab
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={fab}
                   onPress={() => setEditedFabric(selected ? null : fab)}
                   accessibilityRole="button"
@@ -1130,7 +1130,7 @@ export default function ProductDetailScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {fab}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -1145,7 +1145,7 @@ export default function ProductDetailScreen() {
             {PATTERN_TYPES.map((pat) => {
               const selected = editedPattern === pat
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={pat}
                   onPress={() => setEditedPattern(selected ? null : pat)}
                   accessibilityRole="button"
@@ -1158,7 +1158,7 @@ export default function ProductDetailScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {pat}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -1189,7 +1189,7 @@ export default function ProductDetailScreen() {
             {STATUS_OPTIONS.map((opt) => {
               const selected = product.status === opt.value
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={opt.value}
                   disabled={statusUpdating}
                   onPress={() => void handleStatusChange(opt.value)}
@@ -1203,7 +1203,7 @@ export default function ProductDetailScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {opt.label}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -1250,7 +1250,7 @@ export default function ProductDetailScreen() {
             {SIZE_OPTIONS.map((size) => {
               const selected = selectedSizes.includes(size)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={size}
                   onPress={() =>
                     setSelectedSizes((prev) =>
@@ -1267,7 +1267,7 @@ export default function ProductDetailScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {size}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -1282,7 +1282,7 @@ export default function ProductDetailScreen() {
             {OCCASION_TYPES.map((occ) => {
               const selected = selectedOccasions.includes(occ)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={occ}
                   onPress={() =>
                     setSelectedOccasions((prev) =>
@@ -1299,7 +1299,7 @@ export default function ProductDetailScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {occ}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -1333,7 +1333,7 @@ export default function ProductDetailScreen() {
         )}
 
         {/* Delete */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={handleDelete}
           disabled={deleting}
           className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
@@ -1346,7 +1346,7 @@ export default function ProductDetailScreen() {
           <Text className="text-rust-600 font-semibold text-sm">
             {deleting ? 'Deleting…' : 'Delete Product'}
           </Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       <View className="h-12" />
@@ -1407,20 +1407,16 @@ export default function ProductDetailScreen() {
               </View>
 
               <View className="flex-row gap-3 mt-6 w-full">
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => setCropDraft(null)}
                   disabled={cropSaving}
                   className="flex-1 bg-white/10 py-3.5 rounded-2xl items-center"
                 >
                   <Text className="text-white font-semibold">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void handleConfirmCrop()}
-                  disabled={cropSaving}
-                  className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
-                >
-                  {cropSaving ? <ActivityIndicator color="white" /> : <Text className="text-white font-semibold">Crop & Save</Text>}
-                </TouchableOpacity>
+                </AnimatedPressable>
+                <View className="flex-1">
+                  <GradientButton label="Crop & Save" onPress={() => void handleConfirmCrop()} loading={cropSaving} />
+                </View>
               </View>
             </View>
           )
@@ -1436,7 +1432,7 @@ export default function ProductDetailScreen() {
         onRequestClose={() => setFullscreenOpen(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'black' }}>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setFullscreenOpen(false)}
             accessibilityLabel="Close"
             accessibilityRole="button"
@@ -1455,7 +1451,7 @@ export default function ProductDetailScreen() {
             }}
           >
             <ChevronLeft size={26} color="white" />
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           <ScrollView
             ref={fullscreenRef}
@@ -1520,7 +1516,7 @@ export default function ProductDetailScreen() {
         onRequestClose={() => setSpinViewerOpen(false)}
       >
         <View style={{ flex: 1, backgroundColor: 'black' }}>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setSpinViewerOpen(false)}
             accessibilityLabel="Close"
             accessibilityRole="button"
@@ -1539,7 +1535,7 @@ export default function ProductDetailScreen() {
             }}
           >
             <ChevronLeft size={26} color="white" />
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           <View
             style={{ flex: 1 }}
@@ -1639,11 +1635,10 @@ function RelatedProductsSection({
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         <View className="flex-row gap-3">
           {related.map((rp) => (
-            <TouchableOpacity
+            <AnimatedPressable
               key={rp.id}
               onPress={() => onSelect(rp.id)}
               className="w-28"
-              activeOpacity={0.7}
             >
               <View className="w-28 h-36 rounded-xl overflow-hidden bg-sand-100 border border-sand-200">
                 {rp.primary_photo_url ? (
@@ -1669,7 +1664,7 @@ function RelatedProductsSection({
               {rp.primary_color && (
                 <Text className="text-[10px] text-sand-500 truncate">{rp.primary_color}</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           ))}
         </View>
       </ScrollView>

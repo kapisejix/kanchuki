@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, RefreshControl,
+  View, Text, ScrollView, RefreshControl,
   ActivityIndicator,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
@@ -11,6 +11,7 @@ import { teamApi, type SupportTicket, type TeamMemberInfo } from '../../src/lib/
 import { enterCatalogSession } from '../../src/lib/catalog-delegate'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // F-020: only tickets ready for an on-site upload — assigned to me, paid,
 // and a visit slot confirmed. General support tickets aren't shown here;
@@ -75,9 +76,9 @@ export default function CatalogTicketsScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Catalog Upload Jobs</Text>
         </View>
       </View>
@@ -118,7 +119,7 @@ export default function CatalogTicketsScreen() {
                         weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
                       })}
                   </Text>
-                  <TouchableOpacity
+                  <AnimatedPressable
                     onPress={() => void handleStart(t)}
                     disabled={starting === t.id}
                     className="flex-row items-center justify-center gap-2 bg-ink-600 py-3 rounded-xl"
@@ -131,7 +132,7 @@ export default function CatalogTicketsScreen() {
                         <ArrowRight size={16} color="white" />
                       </>
                     )}
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 </View>
               ))}
             </View>

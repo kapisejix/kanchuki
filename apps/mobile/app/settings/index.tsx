@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, TextInput,
+  View, Text, ScrollView, TextInput,
   ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, Image,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -18,6 +18,8 @@ import { showError } from '../../src/lib/errors'
 import { SettingsSkeleton } from '../../src/components/Skeleton'
 import { getItem, deleteItem } from '../../src/lib/storage'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back'
 
@@ -149,15 +151,15 @@ function ProfileEditModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Edit Profile</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
           <ScrollView className="gap-3">
             {/* Logo — optional */}
             <View className="items-center mb-1">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void handlePickLogo()}
                 disabled={uploadingLogo}
                 className="w-20 h-20 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
@@ -169,7 +171,7 @@ function ProfileEditModal({
                 ) : (
                   <ImagePlus size={22} color="#ABA39C" />
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
               <Text className="text-[10px] text-sand-400 mt-1.5">
                 {logoUrl ? 'Tap to change logo' : 'Add store logo (optional)'}
               </Text>
@@ -177,7 +179,7 @@ function ProfileEditModal({
 
             {/* Banner — optional hero image */}
             <View className="items-center mb-2">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void handlePickBanner()}
                 disabled={uploadingBanner}
                 className="w-full h-28 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
@@ -192,9 +194,9 @@ function ProfileEditModal({
                     <Text className="text-[10px] text-sand-400 mt-1">Tap to add store banner</Text>
                   </View>
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
               {bannerUrl && (
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => {
                     setBannerUrl(null)
                     setBannerR2Key(null)
@@ -202,7 +204,7 @@ function ProfileEditModal({
                   className="mt-1"
                 >
                   <Text className="text-[10px] text-rust-500">Remove banner</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )}
             </View>
 
@@ -223,14 +225,14 @@ function ProfileEditModal({
             </Text>
 
             <View className="flex-row gap-3 mt-2">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={onClose}
                 disabled={saving}
                 className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
               >
                 <Text className="text-sand-700 font-semibold">Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </AnimatedPressable>
+              <AnimatedPressable
                 onPress={() => void handleSave()}
                 disabled={saving || !canSave}
                 className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
@@ -240,7 +242,7 @@ function ProfileEditModal({
                 ) : (
                   <Text className="text-white font-semibold">Save</Text>
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </ScrollView>
         </View>
@@ -322,12 +324,12 @@ function WhatsAppModal({
             keyboardType="numeric"
           />
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+            <AnimatedPressable onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
               <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => void handleSave()} disabled={saving} className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center">
-              {saving ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Save</Text>}
-            </TouchableOpacity>
+            </AnimatedPressable>
+            <View className="flex-1">
+              <GradientButton label="Save" onPress={() => void handleSave()} loading={saving} />
+            </View>
           </View>
         </View>
       </View>
@@ -380,7 +382,7 @@ function KycDocRow({
   }
 
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={() => void handlePick()}
       disabled={uploading}
       className="flex-row items-center bg-sand-50 rounded-2xl p-3.5 border border-sand-100"
@@ -399,7 +401,7 @@ function KycDocRow({
         <Text className="text-xs text-sand-400 mt-0.5">{url ? 'Uploaded — tap to replace' : hint}</Text>
       </View>
       {url && <Check size={16} color="#946A4B" />}
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 }
 
@@ -430,9 +432,9 @@ function KycModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Identity Verification</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
           <View
@@ -466,9 +468,9 @@ function KycModal({
             ))}
           </ScrollView>
 
-          <TouchableOpacity onPress={onClose} className="bg-sand-100 py-3.5 rounded-2xl items-center">
+          <AnimatedPressable onPress={onClose} className="bg-sand-100 py-3.5 rounded-2xl items-center">
             <Text className="text-sand-700 font-semibold">Done</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
     </Modal>
@@ -556,9 +558,9 @@ function WhatsAppApiModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">WhatsApp Business API</Text>
-            <TouchableOpacity onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
               <X size={20} color="#ABA39C" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
           {loading ? (
@@ -582,22 +584,18 @@ function WhatsAppApiModal({
               <Field label="Template Language" value={templateLang} onChange={setTemplateLang} placeholder="en_US" />
 
               <View className="flex-row gap-3 mt-2">
-                <TouchableOpacity onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+                <AnimatedPressable onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
                   <Text className="text-sand-700 font-semibold">Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => void handleSave()}
-                  disabled={saving || !canSave}
-                  className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
-                >
-                  {saving ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Save</Text>}
-                </TouchableOpacity>
+                </AnimatedPressable>
+                <View className="flex-1">
+                  <GradientButton label="Save" onPress={() => void handleSave()} disabled={!canSave} loading={saving} />
+                </View>
               </View>
 
               {configured && (
-                <TouchableOpacity onPress={handleDisconnect} className="items-center py-2">
+                <AnimatedPressable onPress={handleDisconnect} className="items-center py-2">
                   <Text className="text-rust-500 text-xs font-semibold">Disconnect</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )}
             </ScrollView>
           )}
@@ -652,16 +650,16 @@ function DeleteAccountModal({
             autoCapitalize="characters"
           />
           <View className="flex-row gap-3">
-            <TouchableOpacity onPress={onClose} disabled={deleting} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
+            <AnimatedPressable onPress={onClose} disabled={deleting} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
               <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={() => void handleDelete()}
               disabled={confirm !== 'DELETE' || deleting}
               className={`flex-1 py-3.5 rounded-2xl items-center ${confirm === 'DELETE' ? 'bg-rust-600' : 'bg-rust-200'}`}
             >
               {deleting ? <ActivityIndicator size="small" color="white" /> : <Text className="text-white font-semibold">Delete Forever</Text>}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -685,7 +683,7 @@ function SettingsRow({
   destructive?: boolean
 }) {
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
       className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
     >
@@ -697,7 +695,7 @@ function SettingsRow({
         {subtitle && <Text className="text-xs text-sand-400 mt-0.5">{subtitle}</Text>}
       </View>
       <ChevronRight size={18} color="#ABA39C" />
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 }
 
@@ -834,9 +832,9 @@ export default function SettingsScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Settings</Text>
         </View>
       </View>

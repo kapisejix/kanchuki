@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -17,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { retailerApi } from '../src/lib/api'
 import { PRODUCT_CATEGORIES, INDIAN_STATES } from '@kanchuki/shared'
 import { useReduceMotion } from '../src/hooks/useReduceMotion'
+import { AnimatedPressable } from '../src/components/AnimatedPressable'
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 const TOTAL_STEPS = 6
@@ -153,7 +153,7 @@ function StepIndicator({
         const isActive = s === currentStep
         const isPast = s < currentStep
         return (
-          <TouchableOpacity
+          <AnimatedPressable
             key={s}
             onPress={() => isPast && onPress(s)}
             disabled={!isPast}
@@ -183,7 +183,7 @@ function StepIndicator({
             >
               {STEP_META[s].label}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )
       })}
     </View>
@@ -438,36 +438,34 @@ export default function OnboardingScreen() {
               <Text className="text-sm font-semibold text-sand-600 mb-2">
                 State <Text className="text-sand-400 font-normal">(optional)</Text>
               </Text>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => setStatePickerOpen((p) => !p)}
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 flex-row items-center justify-between"
-                activeOpacity={0.7}
               >
                 <Text className={`text-base ${state ? 'text-sand-900' : 'text-sand-400'}`}>
                   {state || 'Select state'}
                 </Text>
                 <Text className="text-sand-400 text-lg">{statePickerOpen ? '▲' : '▼'}</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
 
               {statePickerOpen && (
                 <View className="mt-2 border-2 border-sand-100 rounded-2xl max-h-48 overflow-hidden">
                   <ScrollView className="divide-y divide-sand-50" nestedScrollEnabled>
                     {INDIAN_STATES.map((s) => (
-                      <TouchableOpacity
+                      <AnimatedPressable
                         key={s}
                         onPress={() => {
                           setState(s)
                           setStatePickerOpen(false)
                         }}
                         className={`px-4 py-3 ${state === s ? 'bg-ink-50' : ''}`}
-                        activeOpacity={0.6}
                       >
                         <Text
                           className={`text-sm ${state === s ? 'text-ink-700 font-semibold' : 'text-sand-700'}`}
                         >
                           {s}
                         </Text>
-                      </TouchableOpacity>
+                      </AnimatedPressable>
                     ))}
                   </ScrollView>
                 </View>
@@ -488,7 +486,7 @@ export default function OnboardingScreen() {
               {PRODUCT_CATEGORIES.map((cat) => {
                 const selected = selectedCategories.includes(cat)
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={cat}
                     onPress={() => toggleCategory(cat)}
                     className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 ${
@@ -496,7 +494,6 @@ export default function OnboardingScreen() {
                         ? 'bg-ink-600 border-ink-600'
                         : 'bg-white border-sand-200 active:border-ink-300'
                     }`}
-                    activeOpacity={0.7}
                   >
                     <Text className="text-base">{categoryEmoji[cat] ?? '📦'}</Text>
                     <Text
@@ -504,7 +501,7 @@ export default function OnboardingScreen() {
                     >
                       {cat}
                     </Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 )
               })}
             </View>
@@ -566,19 +563,18 @@ export default function OnboardingScreen() {
               </Text>
             </View>
 
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={async () => {
                 // Persist step 5 progress before skipping
                 await retailerApi.update({ onboarding_step: 5 }).catch(() => {})
                 goToStep(6 as Step)
               }}
               className="mt-4 py-3"
-              activeOpacity={0.6}
             >
               <Text className="text-ink-600 text-sm font-semibold text-center">
                 Skip for now →
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         )
 
@@ -602,7 +598,7 @@ export default function OnboardingScreen() {
             <View className="mt-4 gap-2">
               {['By rack (A, B, C...)', 'By category', 'By price range', 'I will set up later'].map(
                 (preset) => (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={preset}
                     onPress={() => {
                       if (preset === 'I will set up later') {
@@ -612,7 +608,6 @@ export default function OnboardingScreen() {
                       }
                     }}
                     className="flex-row items-center gap-3 p-4 border-2 border-sand-200 rounded-2xl"
-                    activeOpacity={0.7}
                   >
                     <Text className="text-lg">
                       {preset === 'By rack (A, B, C...)' && '🔤'}
@@ -621,7 +616,7 @@ export default function OnboardingScreen() {
                       {preset === 'I will set up later' && '⏭️'}
                     </Text>
                     <Text className="text-sand-700 text-sm font-medium">{preset}</Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 ),
               )}
             </View>
@@ -648,7 +643,7 @@ export default function OnboardingScreen() {
             </Text>
 
             <View className="mt-6 w-full gap-3">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => {
                   const estimate = parseInt(skuEstimate, 10)
                   if (estimate >= 100) {
@@ -658,7 +653,6 @@ export default function OnboardingScreen() {
                   }
                 }}
                 className="flex-row items-center gap-3 bg-ink-600 rounded-2xl p-4"
-                activeOpacity={0.9}
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-500 items-center justify-center">
                   <Text className="text-xl">📷</Text>
@@ -674,12 +668,11 @@ export default function OnboardingScreen() {
                   </Text>
                 </View>
                 <Text className="text-white text-lg">→</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
 
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => router.replace('/')}
                 className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
-                activeOpacity={0.8}
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
                   <Text className="text-xl">👥</Text>
@@ -691,12 +684,11 @@ export default function OnboardingScreen() {
                   </Text>
                 </View>
                 <Text className="text-sand-400 text-lg">→</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
 
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => router.replace('/')}
                 className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
-                activeOpacity={0.8}
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
                   <Text className="text-xl">🔗</Text>
@@ -708,12 +700,11 @@ export default function OnboardingScreen() {
                   </Text>
                 </View>
                 <Text className="text-sand-400 text-lg">→</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
 
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => router.push('/settings/catalog-upload')}
                 className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
-                activeOpacity={0.8}
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
                   <Text className="text-xl">🧑‍💼</Text>
@@ -725,7 +716,7 @@ export default function OnboardingScreen() {
                   </Text>
                 </View>
                 <Text className="text-sand-400 text-lg">→</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </View>
         )
@@ -781,21 +772,19 @@ export default function OnboardingScreen() {
       >
         <View className="flex-row items-center gap-3">
           {step > 1 && (
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => goToStep((step - 1) as Step)}
               className="w-12 h-12 rounded-2xl border-2 border-sand-200 items-center justify-center"
-              activeOpacity={0.7}
             >
               <Text className="text-sand-600 text-lg">←</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           )}
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handleNext()}
             disabled={!canProceed() || saving || showConfetti}
             className={`flex-1 py-4 rounded-2xl items-center justify-center ${
               canProceed() && !saving ? 'bg-ink-600' : 'bg-sand-200'
             }`}
-            activeOpacity={0.8}
           >
             {saving ? (
               <ActivityIndicator color="white" />
@@ -810,7 +799,7 @@ export default function OnboardingScreen() {
                 {step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'}
               </Text>
             )}
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
         <Text className="text-center text-xs text-sand-400 mt-2">
           Step {step} of {TOTAL_STEPS}

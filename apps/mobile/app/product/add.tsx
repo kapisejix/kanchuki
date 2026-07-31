@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   TextInput,
   ScrollView,
   Alert,
@@ -25,6 +24,7 @@ import { showError, logError } from '../../src/lib/errors'
 import { OCCASION_TYPES, PRODUCT_CATEGORIES, SIZE_OPTIONS } from '@kanchuki/shared'
 import { ProductAddSkeleton } from '../../src/components/Skeleton'
 import { GradientButton } from '../../src/components/GradientButton'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Step = 'camera' | 'scan_review' | 'preview' | 'ai_tagging' | 'edit' | 'saving'
 type CaptureMode = 'photo' | 'scan'
@@ -350,12 +350,12 @@ export default function AddProductScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to photograph products
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void requestPermission()}
           className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     )
   }
@@ -367,7 +367,7 @@ export default function AddProductScreen() {
       <View className="flex-1 bg-black">
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.back()}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
@@ -375,22 +375,22 @@ export default function AddProductScreen() {
           accessibilityRole="button"
         >
           <X size={20} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Photo / Scan mode toggle */}
         <View className="absolute left-0 right-0 flex-row items-center justify-center gap-2" style={{ top: insets.top + 8 }}>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setCaptureMode('photo')}
             className={`px-4 py-1.5 rounded-full ${captureMode === 'photo' ? 'bg-ink-600' : 'bg-black/50'}`}
           >
             <Text className="text-white text-xs font-semibold">Photo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={() => setCaptureMode('scan')}
             className={`px-4 py-1.5 rounded-full ${captureMode === 'scan' ? 'bg-ink-600' : 'bg-black/50'}`}
           >
             <Text className="text-white text-xs font-semibold">Scan</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         {/* Frame guide */}
@@ -404,16 +404,16 @@ export default function AddProductScreen() {
         {/* Controls */}
         <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
           <View className="flex-row items-center gap-10">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handlePickFromGallery()}
               disabled={isScanning}
               className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
             >
               <ImagePlus size={24} color="white" />
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             {/* Shutter */}
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void (captureMode === 'scan' ? handleScanCapture() : handleCapture())}
               disabled={isScanning}
               className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
@@ -423,7 +423,7 @@ export default function AddProductScreen() {
               ) : (
                 <View className="w-14 h-14 bg-white rounded-full" />
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             <View className="w-14" />
           </View>
@@ -461,7 +461,7 @@ export default function AddProductScreen() {
 
     return (
       <View className="flex-1 bg-black" style={{ paddingTop: insets.top + 16 }}>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => {
             setScanFrames([])
             setScanBestUri(null)
@@ -474,7 +474,7 @@ export default function AddProductScreen() {
           accessibilityRole="button"
         >
           <X size={20} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         <Text className="text-white text-center font-semibold mt-2">Pick shots to keep</Text>
         <Text className="text-white/50 text-xs text-center mt-1 mb-4 px-8">
@@ -487,7 +487,7 @@ export default function AddProductScreen() {
               const isBest = uri === scanBestUri
               const isSelected = scanSelected.includes(uri)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={idx}
                   onPress={() => toggleFrame(uri)}
                   className={`w-28 h-40 rounded-xl overflow-hidden border-2 ${isSelected ? 'border-ink-400' : 'border-white/20'}`}
@@ -507,14 +507,14 @@ export default function AddProductScreen() {
                   >
                     {isSelected && <Check size={14} color="white" />}
                   </View>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
         </ScrollView>
 
         <View className="px-6" style={{ paddingBottom: 24 + insets.bottom }}>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={confirmSelection}
             disabled={scanSelected.length === 0}
             className={`py-4 rounded-2xl items-center ${scanSelected.length === 0 ? 'bg-white/10' : 'bg-ink-600'}`}
@@ -524,7 +524,7 @@ export default function AddProductScreen() {
                 ? 'Continue →'
                 : `Continue with ${scanSelected.length} photos →`}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
     )
@@ -548,7 +548,7 @@ export default function AddProductScreen() {
           </View>
         )}
         <View className="absolute bottom-12 left-0 right-0 flex-row gap-4 px-6">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => {
               setPhoto(null)
               setAiError(null)
@@ -558,13 +558,10 @@ export default function AddProductScreen() {
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">Retake</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => void handleUploadAndTag()}
-            className="flex-1 bg-ink-600 py-4 rounded-2xl items-center"
-          >
-            <Text className="text-white font-semibold">{aiError ? 'Try Again' : 'Use Photo →'}</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
+          <View className="flex-1">
+            <GradientButton label={aiError ? 'Try Again' : 'Use Photo →'} onPress={() => void handleUploadAndTag()} />
+          </View>
         </View>
       </View>
     )
@@ -589,7 +586,7 @@ export default function AddProductScreen() {
     return (
       <View className="flex-1 bg-sand-950 px-6" style={{ paddingTop: insets.top + 24 }}>
         {/* Close button */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => {
             setAiError('Upload cancelled')
             setStep('preview')
@@ -600,7 +597,7 @@ export default function AddProductScreen() {
           accessibilityRole="button"
         >
           <X size={20} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         {/* Header */}
         <Text className="text-white text-xl font-bold text-center mb-1">
@@ -731,9 +728,9 @@ export default function AddProductScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
         <GradientButton
           label="Save"
@@ -774,16 +771,16 @@ export default function AddProductScreen() {
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-2">
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => setBackgroundImageId(null)}
                   className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${
                     backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'
                   }`}
                 >
                   <Text className="text-[10px] text-sand-500">White</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
                 {backgroundImages.map((bg) => (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={bg.id}
                     onPress={() => setBackgroundImageId(bg.id)}
                     className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
@@ -795,7 +792,7 @@ export default function AddProductScreen() {
                       style={{ width: '100%', height: '100%' }}
                       contentFit="cover"
                     />
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 ))}
               </View>
             </ScrollView>
@@ -837,9 +834,9 @@ export default function AddProductScreen() {
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Category
             </Text>
-            <TouchableOpacity onPress={() => router.push('/category/new')}>
+            <AnimatedPressable onPress={() => router.push('/category/new')}>
               <Text className="text-ink-600 text-xs font-semibold">Manage</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
           {categories.length === 0 ? (
             <Text className="text-xs text-sand-400">
@@ -850,7 +847,7 @@ export default function AddProductScreen() {
               {categories.map((cat) => {
                 const selected = categoryId === cat.id
                 return (
-                  <TouchableOpacity
+                  <AnimatedPressable
                     key={cat.id}
                     onPress={() => setCategoryId(selected ? null : cat.id)}
                     accessibilityRole="button"
@@ -863,7 +860,7 @@ export default function AddProductScreen() {
                     <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                       {cat.name}
                     </Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 )
               })}
             </View>
@@ -879,7 +876,7 @@ export default function AddProductScreen() {
             {SIZE_OPTIONS.map((size) => {
               const selected = selectedSizes.includes(size)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={size}
                   onPress={() =>
                     setSelectedSizes((prev) =>
@@ -896,7 +893,7 @@ export default function AddProductScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {size}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -911,7 +908,7 @@ export default function AddProductScreen() {
             {OCCASION_TYPES.map((occ) => {
               const selected = selectedOccasions.includes(occ)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={occ}
                   onPress={() =>
                     setSelectedOccasions((prev) =>
@@ -930,7 +927,7 @@ export default function AddProductScreen() {
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {occ}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>

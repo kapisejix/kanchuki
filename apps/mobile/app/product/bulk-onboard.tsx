@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   TextInput,
@@ -24,6 +23,8 @@ import {
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 // F-001d: guided bulk onboarding — Path A (rack/shelf batch capture).
 // Reuses the same detect/tag/crop pipeline as F-001c/F-001b (catalog-import.ts);
@@ -237,7 +238,7 @@ export default function BulkOnboardScreen() {
       </Text>
       <View className="flex-row flex-wrap gap-2">
         {sections.map((s) => (
-          <TouchableOpacity
+          <AnimatedPressable
             key={s.id}
             onPress={() => setSelectedSectionId(s.id)}
             className={`px-4 py-2.5 rounded-xl border-2 ${
@@ -247,15 +248,15 @@ export default function BulkOnboardScreen() {
             <Text className={selectedSectionId === s.id ? 'text-white font-medium' : 'text-sand-700'}>
               {s.name}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         ))}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => setAddingSection(true)}
           className="px-4 py-2.5 rounded-xl border-2 border-dashed border-ink-300 flex-row items-center gap-1"
         >
           <Plus size={14} color={primaryColor} />
           <Text className="text-ink-600 font-medium">New</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       {addingSection && (
@@ -267,40 +268,37 @@ export default function BulkOnboardScreen() {
             className="flex-1 bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm"
             autoFocus
           />
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handleCreateSection()}
             className="bg-ink-600 rounded-xl px-4 py-2.5"
           >
             <Text className="text-white font-medium text-sm">Add</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       )}
 
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => void handleCapturePhoto()}
         className="bg-ink-600 rounded-2xl p-4 flex-row items-center justify-center gap-2 mt-8"
-        activeOpacity={0.8}
       >
         <Camera size={20} color="white" />
         <Text className="text-white font-bold text-base">Photograph this rack</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
 
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => void handlePickPhoto()}
         className="border-2 border-sand-200 rounded-2xl p-4 items-center mt-3"
-        activeOpacity={0.7}
       >
         <Text className="text-sand-700 font-semibold text-sm">Choose from gallery</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
 
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => router.push('/product/catalog-import')}
         className="flex-row items-center justify-center gap-2 mt-4 py-2"
-        activeOpacity={0.7}
       >
         <FileText size={16} color="#847B75" />
         <Text className="text-sand-500 text-sm">Restocking from a supplier PDF instead?</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
     </ScrollView>
   )
 
@@ -345,11 +343,11 @@ export default function BulkOnboardScreen() {
                     {item.original.tags.category}
                   </Text>
                 )}
-                <TouchableOpacity onPress={() => cycleItemSection(index)} className="mt-1">
+                <AnimatedPressable onPress={() => cycleItemSection(index)} className="mt-1">
                   <Text className="text-xs text-sand-500">
                     📍 {sectionName(item.sectionId)} {sections.length > 1 ? '(tap to change)' : ''}
                   </Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
                 {item.original.is_duplicate && (
                   <View className="flex-row items-center gap-1 mt-1">
                     <AlertTriangle size={12} color="#7D5334" />
@@ -357,14 +355,14 @@ export default function BulkOnboardScreen() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => toggleApproval(index)}
                 className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
                   item.approved ? 'bg-turmeric-500 border-turmeric-500' : 'border-sand-300'
                 }`}
               >
                 {item.approved && <Check size={18} color="white" />}
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </View>
         ))}
@@ -373,15 +371,11 @@ export default function BulkOnboardScreen() {
         )}
       </ScrollView>
       <View className="bg-white border-t border-sand-100 px-4 pt-4" style={{ paddingBottom: 16 + insets.bottom }}>
-        <TouchableOpacity
+        <GradientButton
+          label={`Save ${approvedCount} & photograph next rack`}
           onPress={() => void handleSaveBatch()}
           disabled={approvedCount === 0}
-          className={`py-4 rounded-2xl items-center ${approvedCount > 0 ? 'bg-ink-600' : 'bg-sand-200'}`}
-        >
-          <Text className="text-white font-bold text-base">
-            Save {approvedCount} & photograph next rack
-          </Text>
-        </TouchableOpacity>
+        />
       </View>
     </>
   )
@@ -400,9 +394,9 @@ export default function BulkOnboardScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">{stepTitles[step]}</Text>
         <View className="w-6" />
       </View>

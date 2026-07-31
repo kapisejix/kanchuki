@@ -4,7 +4,6 @@ import {
   Text,
   FlatList,
   TextInput,
-  TouchableOpacity,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -18,6 +17,7 @@ import { productApi, collectionApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { formatPriceRange } from '@kanchuki/shared'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Product = {
   id: string
@@ -77,9 +77,9 @@ export default function NewCollectionScreen() {
         className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">New Collection</Text>
       </View>
       <View className="flex-1">
@@ -94,7 +94,7 @@ export default function NewCollectionScreen() {
           />
           <View className="flex-row gap-2">
             {EXPIRY_OPTIONS.map((d) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={d}
                 onPress={() => setExpiresDays(d)}
                 className={`px-3 py-1.5 rounded-full border ${
@@ -110,7 +110,7 @@ export default function NewCollectionScreen() {
                 >
                   {d} days
                 </Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </View>
         </View>

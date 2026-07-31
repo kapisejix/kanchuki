@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { View, Text, FlatList, TouchableOpacity } from 'react-native'
+import { View, Text, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -11,6 +11,7 @@ import { productApi, categoryApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
 import { formatPriceRange } from '@kanchuki/shared'
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 
 type Product = {
   id: string
@@ -63,9 +64,9 @@ export default function AddProductsToCategoryScreen() {
         className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">Add Products</Text>
       </View>
       {isLoading ? (
@@ -114,7 +115,7 @@ export default function AddProductsToCategoryScreen() {
           className="bg-white px-4 pt-3 border-t border-sand-100"
           style={{ paddingBottom: 12 + insets.bottom }}
         >
-          <TouchableOpacity
+          <AnimatedPressable
             disabled={!canAssign}
             onPress={() => assign.mutate()}
             className={`py-3.5 rounded-xl items-center ${canAssign ? 'bg-ink-600' : 'bg-sand-200'}`}
@@ -122,7 +123,7 @@ export default function AddProductsToCategoryScreen() {
             <Text className={`font-semibold ${canAssign ? 'text-white' : 'text-sand-400'}`}>
               {assign.isPending ? 'Adding…' : `Add ${selected.size || ''} Product${selected.size === 1 ? '' : 's'}`.trim()}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
     </View>
   )

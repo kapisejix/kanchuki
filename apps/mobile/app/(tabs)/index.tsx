@@ -1,10 +1,11 @@
-import { View, Text, ScrollView, TouchableOpacity, RefreshControl } from 'react-native'
+import { View, Text, ScrollView, RefreshControl } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban } from 'lucide-react-native'
 import { ordersApi, retailerApi, categoryApi } from '../../src/lib/api'
 import { HomeScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type RankedProduct = {
   product: { id: string; category: string | null; primary_color: string | null; photo_url: string | null }
@@ -82,14 +83,14 @@ export default function HomeScreen() {
           </View>
         </View>
         {me?.plan_status === 'TRIAL' && (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => router.push('/billing')}
             className="mt-4 bg-white/15 px-3 py-1.5 rounded-lg self-start"
           >
             <Text className="text-white text-xs font-medium">
               14-day free trial active · Tap to subscribe
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         )}
       </View>
 
@@ -140,7 +141,7 @@ export default function HomeScreen() {
           </Text>
           <View className="gap-2">
             {stats!.top_viewed_products.map((r) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={r.product.id}
                 onPress={() => router.push(`/product/${r.product.id}`)}
                 className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center justify-between"
@@ -149,7 +150,7 @@ export default function HomeScreen() {
                   {r.product.category ?? 'Product'} · {r.product.primary_color ?? '—'}
                 </Text>
                 <Text className="text-xs font-semibold text-ink-600">{r.count} views</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </View>
         </View>
@@ -240,9 +241,8 @@ function StatCard({
   onPress: () => void
 }) {
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
-      activeOpacity={0.7}
       className="flex-1 bg-white rounded-2xl p-4 border border-sand-100"
     >
       <View
@@ -255,7 +255,7 @@ function StatCard({
         {value.toLocaleString('en-IN')}
       </Text>
       <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 }
 
@@ -273,9 +273,8 @@ function QuickAction({
   accent: string
 }) {
   return (
-    <TouchableOpacity
+    <AnimatedPressable
       onPress={onPress}
-      activeOpacity={0.7}
       className="w-[47%] bg-white rounded-2xl p-4 border border-sand-100"
     >
       <View
@@ -286,6 +285,6 @@ function QuickAction({
       </View>
       <Text className="text-sm font-semibold text-sand-900">{label}</Text>
       <Text className="text-xs text-sand-400 mt-0.5">{sublabel}</Text>
-    </TouchableOpacity>
+    </AnimatedPressable>
   )
 }

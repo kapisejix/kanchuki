@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import {
-  View, Text, FlatList, TouchableOpacity, Image,
+  View, Text, FlatList, Image,
   Alert,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -12,6 +12,7 @@ import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { productApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type DeletedProduct = {
   id: string
@@ -83,7 +84,7 @@ export default function DeletedProductsScreen() {
             {formatPriceRange(item.price_min, item.price_max)}
           </Text>
         </View>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => restore.mutate(item.id)}
           disabled={restore.isPending}
           className="w-9 h-9 rounded-full bg-ink-50 items-center justify-center mr-2"
@@ -91,8 +92,8 @@ export default function DeletedProductsScreen() {
           accessibilityRole="button"
         >
           <RotateCcw size={16} color={primaryColor} />
-        </TouchableOpacity>
-        <TouchableOpacity
+        </AnimatedPressable>
+        <AnimatedPressable
           onPress={() => handlePurge(item)}
           disabled={purge.isPending}
           className="w-9 h-9 rounded-full bg-rust-50 items-center justify-center"
@@ -100,7 +101,7 @@ export default function DeletedProductsScreen() {
           accessibilityRole="button"
         >
           <Trash2 size={16} color="#A24854" />
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     ),
     [restore, purge, handlePurge, primaryColor],
@@ -113,9 +114,9 @@ export default function DeletedProductsScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Recently Deleted</Text>
         </View>
       </View>

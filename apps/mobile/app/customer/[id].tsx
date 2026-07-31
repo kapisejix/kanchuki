@@ -3,7 +3,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Alert,
   ActivityIndicator,
@@ -20,6 +19,7 @@ import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 const STYLE_OPTIONS = ['Casual', 'Party', 'Office', 'Wedding', 'Festive']
 
@@ -290,11 +290,11 @@ export default function CustomerDetailScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Customer</Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleSave()}
           disabled={saving}
           className="bg-ink-600 px-4 py-2 rounded-xl"
@@ -304,7 +304,7 @@ export default function CustomerDetailScreen() {
           ) : (
             <Text className="text-white font-semibold text-sm">Save</Text>
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       <View className="px-4 py-4 gap-4">
@@ -393,7 +393,7 @@ export default function CustomerDetailScreen() {
                   </View>
                 )}
               </View>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void handleAutoSuggestCollection()}
                 disabled={generatingCollection}
                 className="flex-row items-center gap-1 bg-fuchsia-600 px-3 py-1.5 rounded-full"
@@ -406,13 +406,13 @@ export default function CustomerDetailScreen() {
                     <Text className="text-white text-xs font-semibold">Create Collection</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
 
             {/* Top matched products — horizontal scroll */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
               {matchedProducts.map((product) => (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={product.id}
                   onPress={() => router.push(`/product/${product.id}`)}
                   className="mr-2 w-28"
@@ -440,7 +440,7 @@ export default function CustomerDetailScreen() {
                       )}
                     </View>
                   </View>
-                </TouchableOpacity>
+                </AnimatedPressable>
               ))}
             </ScrollView>
 
@@ -461,7 +461,7 @@ export default function CustomerDetailScreen() {
           </Text>
           <View className="flex-row flex-wrap gap-2 mb-3">
             {prefColors.map((c) => (
-              <TouchableOpacity
+              <AnimatedPressable
                 key={c}
                 onPress={() => setPrefColors((prev) => prev.filter((x) => x !== c))}
                 className="bg-ink-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
@@ -470,7 +470,7 @@ export default function CustomerDetailScreen() {
               >
                 <Text className="text-white text-xs font-medium">{c}</Text>
                 <X size={10} color="white" />
-              </TouchableOpacity>
+              </AnimatedPressable>
             ))}
           </View>
           <View className="flex-row gap-2">
@@ -482,14 +482,14 @@ export default function CustomerDetailScreen() {
               placeholderTextColor="#ABA39C"
               className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={addColor}
               className="bg-sand-100 px-3 rounded-xl items-center justify-center"
               accessibilityLabel="Add color"
               accessibilityRole="button"
             >
               <Plus size={16} color="#4B4039" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
 
@@ -502,7 +502,7 @@ export default function CustomerDetailScreen() {
             {STYLE_OPTIONS.map((s) => {
               const selected = prefStyles.includes(s)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={s}
                   onPress={() => toggle(prefStyles, setPrefStyles, s)}
                   accessibilityRole="button"
@@ -513,7 +513,7 @@ export default function CustomerDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{s}</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -528,7 +528,7 @@ export default function CustomerDetailScreen() {
             {FABRIC_TYPES.map((f) => {
               const selected = prefFabrics.includes(f)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={f}
                   onPress={() => toggle(prefFabrics, setPrefFabrics, f)}
                   accessibilityRole="button"
@@ -539,7 +539,7 @@ export default function CustomerDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f}</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -554,7 +554,7 @@ export default function CustomerDetailScreen() {
             {OCCASION_TYPES.map((o) => {
               const selected = prefOccasions.includes(o)
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={o}
                   onPress={() => toggle(prefOccasions, setPrefOccasions, o)}
                   accessibilityRole="button"
@@ -565,7 +565,7 @@ export default function CustomerDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{o}</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>
@@ -603,19 +603,19 @@ export default function CustomerDetailScreen() {
               Measurements
             </Text>
             <View className="flex-row gap-1.5">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => setShowManualForm(true)}
                 className="flex-row items-center gap-1 bg-turmeric-50 px-2.5 py-1 rounded-full"
               >
                 <Text className="text-turmeric-700 text-xs font-semibold">Manual</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
+              </AnimatedPressable>
+              <AnimatedPressable
                 onPress={() => router.push(`/customer/${customer.id}/measurement`)}
                 className="flex-row items-center gap-1 bg-ink-50 px-2.5 py-1 rounded-full"
               >
                 <Ruler size={12} color={primaryColor} />
                 <Text className="text-ink-700 text-xs font-semibold">Camera</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </View>
 
@@ -714,13 +714,13 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Delete */}
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={handleDelete}
           className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
         >
           <Trash2 size={16} color="#A24854" />
           <Text className="text-rust-600 font-semibold text-sm">Delete Customer</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
 
       {/* ── Manual Measurement Modal ─────────────────────────────── */}
@@ -733,11 +733,11 @@ export default function CustomerDetailScreen() {
         <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top + 16 }}>
           {/* Modal Header */}
           <View className="flex-row items-center justify-between px-4 pb-4">
-            <TouchableOpacity onPress={() => setShowManualForm(false)} accessibilityLabel="Close" accessibilityRole="button">
+            <AnimatedPressable onPress={() => setShowManualForm(false)} accessibilityLabel="Close" accessibilityRole="button">
               <X size={22} color="#4B4039" />
-            </TouchableOpacity>
+            </AnimatedPressable>
             <Text className="text-base font-bold text-sand-900">Manual Measurements</Text>
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handleSaveManualMeasurement()}
               disabled={savingManual}
               className="bg-turmeric-600 px-4 py-2 rounded-xl"
@@ -747,7 +747,7 @@ export default function CustomerDetailScreen() {
               ) : (
                 <Text className="text-white font-semibold text-sm">Save</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
 
           <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">

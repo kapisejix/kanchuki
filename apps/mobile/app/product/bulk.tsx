@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   FlatList,
@@ -25,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // Retries a flaky network step up to `attempts` times with a short backoff.
 // Bulk import fires many sequential requests back-to-back — a single
@@ -258,9 +258,9 @@ export default function BulkImportScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color={step === 'importing' ? '#CDC6BF' : '#4B4039'} />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {step === 'pick' && 'Bulk Import'}
           {step === 'importing' && 'Importing...'}
@@ -285,14 +285,13 @@ export default function BulkImportScreen() {
                   Select up to {MAX_BATCH_SIZE} photos from your gallery. AI will tag each product
                   automatically in the background.
                 </Text>
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => void handlePickPhotos()}
                   className="bg-ink-600 px-6 py-3.5 rounded-2xl flex-row items-center gap-2"
-                  activeOpacity={0.8}
                 >
                   <ImagePlus size={20} color="white" />
                   <Text className="text-white font-semibold">Select Photos</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </View>
             ) : (
               <>
@@ -300,13 +299,13 @@ export default function BulkImportScreen() {
                   <Text className="text-sm font-semibold text-sand-700">
                     {photos.length} photo{photos.length !== 1 ? 's' : ''} selected
                   </Text>
-                  <TouchableOpacity
+                  <AnimatedPressable
                     onPress={() => void handlePickPhotos()}
                     className="flex-row items-center gap-1"
                   >
                     <ImagePlus size={16} color={primaryColor} />
                     <Text className="text-ink-600 text-sm font-medium">Add more</Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 </View>
 
                 <View className="flex-row flex-wrap gap-3">
@@ -318,7 +317,7 @@ export default function BulkImportScreen() {
                         contentFit="cover"
                         style={{ width: (Dimensions.get('window').width - 48 - 6) / 3 }}
                       />
-                      <TouchableOpacity
+                      <AnimatedPressable
                         onPress={() => removePhoto(i)}
                         className="absolute -top-2 -right-2 w-6 h-6 bg-sand-900/70 rounded-full items-center justify-center"
                         hitSlop={8}
@@ -326,7 +325,7 @@ export default function BulkImportScreen() {
                         accessibilityRole="button"
                       >
                         <X size={12} color="white" />
-                      </TouchableOpacity>
+                      </AnimatedPressable>
                     </View>
                   ))}
                 </View>
@@ -339,13 +338,12 @@ export default function BulkImportScreen() {
             className="bg-white border-t border-sand-100 px-4 pt-4"
             style={{ paddingBottom: 16 + insets.bottom }}
           >
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handleImport()}
               disabled={photos.length === 0}
               className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
                 photos.length > 0 ? 'bg-ink-600' : 'bg-sand-200'
               }`}
-              activeOpacity={0.8}
             >
               <Upload size={18} color={photos.length > 0 ? 'white' : '#ABA39C'} />
               <Text
@@ -353,7 +351,7 @@ export default function BulkImportScreen() {
               >
                 Import {photos.length > 0 ? `${photos.length} Product${photos.length !== 1 ? 's' : ''}` : ''}
               </Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </>
       )}
@@ -438,25 +436,23 @@ export default function BulkImportScreen() {
 
           <View className="mt-8 w-full gap-3">
             {failed > 0 && (
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => handleRetry()}
                 className="py-4 rounded-2xl items-center border-2 border-sand-200 flex-row justify-center gap-2"
-                activeOpacity={0.7}
               >
                 <AlertTriangle size={18} color="#4B4039" />
                 <Text className="text-sand-700 font-semibold">Retry Failed ({failed})</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             )}
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => {
                 void queryClient.invalidateQueries({ queryKey: ['products'] })
                 router.replace('/')
               }}
               className="py-4 rounded-2xl items-center bg-ink-600"
-              activeOpacity={0.8}
             >
               <Text className="text-white font-bold">View Catalog</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       )}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { View, Text, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, ScrollView, TextInput, ActivityIndicator, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -7,6 +7,8 @@ import { ChevronLeft, Plus, Trash2, Check } from 'lucide-react-native'
 import { sizeChartApi, type SizeChartCategory, type SizeChartRow } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 import { useTheme } from '../src/lib/theme'
+import { AnimatedPressable } from '../src/components/AnimatedPressable'
+import { GradientButton } from '../src/components/GradientButton'
 
 const CATEGORIES: { value: SizeChartCategory; label: string }[] = [
   { value: 'UPPER', label: 'Kurtas / Tops / Dresses' },
@@ -82,15 +84,15 @@ export default function SizeChartScreen() {
   return (
     <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top }}>
       <View className="flex-row items-center px-4 py-3 border-b border-sand-100 bg-white">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3" accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} className="mr-3" accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-lg font-bold text-sand-900">Size Charts</Text>
       </View>
 
       <View className="flex-row px-4 pt-4 gap-2">
         {CATEGORIES.map((c) => (
-          <TouchableOpacity
+          <AnimatedPressable
             key={c.value}
             onPress={() => setCategory(c.value)}
             className={`flex-1 py-2.5 rounded-xl items-center border ${
@@ -100,7 +102,7 @@ export default function SizeChartScreen() {
             <Text className={`text-xs font-semibold ${category === c.value ? 'text-white' : 'text-sand-600'}`}>
               {c.label}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         ))}
       </View>
 
@@ -124,13 +126,13 @@ export default function SizeChartScreen() {
                   placeholderTextColor="#ABA39C"
                   className="text-base font-bold text-sand-900 flex-1"
                 />
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => removeRow(index)}
                   accessibilityLabel="Remove size row"
                   accessibilityRole="button"
                 >
                   <Trash2 size={18} color="#A24854" />
-                </TouchableOpacity>
+                </AnimatedPressable>
               </View>
 
               {axes.map((axis) => (
@@ -158,28 +160,20 @@ export default function SizeChartScreen() {
             </View>
           ))}
 
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={addRow}
             className="flex-row items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-ink-300 mb-4"
           >
             <Plus size={16} color={primaryColor} />
             <Text className="text-ink-600 text-sm font-semibold">Add Size Row</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
 
-          <TouchableOpacity
+          <GradientButton
+            label="Save Chart"
             onPress={() => save.mutate()}
-            disabled={save.isPending}
-            className="bg-ink-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
-          >
-            {save.isPending ? (
-              <ActivityIndicator color="white" />
-            ) : (
-              <>
-                <Check size={18} color="white" />
-                <Text className="text-white font-semibold">Save Chart</Text>
-              </>
-            )}
-          </TouchableOpacity>
+            loading={save.isPending}
+            icon={<Check size={18} color="white" />}
+          />
         </ScrollView>
       )}
     </View>

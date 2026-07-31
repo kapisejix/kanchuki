@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
+import { View, Text, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -9,6 +9,7 @@ import { Paths, writeAsStringAsync } from 'expo-file-system'
 import { retailerApi, collectionApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 import { useTheme } from '../src/lib/theme'
+import { AnimatedPressable } from '../src/components/AnimatedPressable'
 
 type QrSlug = { public_slug: string; profile_url: string }
 type RetailerMe = { storefront_collection_id: string | null }
@@ -78,9 +79,9 @@ export default function StoreProfileScreen() {
   return (
     <ScrollView className="flex-1 bg-ink-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
       <View className="flex-row items-center justify-between px-4 mb-4">
-        <TouchableOpacity onPress={() => router.back()} className="w-10 h-10 items-center justify-center" accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center" accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Store QR Code</Text>
         <View className="w-10" />
       </View>
@@ -90,12 +91,12 @@ export default function StoreProfileScreen() {
           {qrError ? (
             <View className="w-56 h-56 items-center justify-center px-4">
               <Text className="text-sm text-sand-500 text-center mb-3">{"Couldn't load QR code"}</Text>
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void refetchQr()}
                 className="bg-ink-600 rounded-full px-4 py-2"
               >
                 <Text className="text-white font-semibold text-sm">Retry</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           ) : qrLoading || !qr ? (
             <View className="w-56 h-56 items-center justify-center">
@@ -110,21 +111,21 @@ export default function StoreProfileScreen() {
         </Text>
         {qr && (
           <>
-            <TouchableOpacity onPress={() => void Linking.openURL(qr.profile_url)}>
+            <AnimatedPressable onPress={() => void Linking.openURL(qr.profile_url)}>
               <Text className="text-sm text-ink-700 underline text-center mt-2 px-8">
                 {qr.profile_url}
               </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={() => void Share.share({ message: qr.profile_url })}
               className="flex-row items-center gap-2 bg-ink-600 px-5 py-3 rounded-2xl mt-4"
             >
               <Share2 size={16} color="white" />
               <Text className="text-white font-semibold text-sm">Share Link</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             <View className="flex-row gap-3 mt-2">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void handleExportImage()}
                 disabled={exporting}
                 className="flex-1 flex-row items-center justify-center gap-2 bg-sand-800 border border-sand-700 py-3 rounded-2xl"
@@ -137,7 +138,7 @@ export default function StoreProfileScreen() {
                     <Text className="text-white font-semibold text-sm">Save QR Image</Text>
                   </>
                 )}
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           </>
         )}
@@ -162,7 +163,7 @@ export default function StoreProfileScreen() {
             {collections.map((c) => {
               const isSelected = me?.storefront_collection_id === c.id
               return (
-                <TouchableOpacity
+                <AnimatedPressable
                   key={c.id}
                   onPress={() => setStorefront.mutate(c.id)}
                   disabled={setStorefront.isPending}
@@ -177,7 +178,7 @@ export default function StoreProfileScreen() {
                       <Check size={14} color="white" />
                     </View>
                   )}
-                </TouchableOpacity>
+                </AnimatedPressable>
               )
             })}
           </View>

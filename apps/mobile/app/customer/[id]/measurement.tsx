@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Alert, StyleSheet, Switch } from 'react-native'
+import { View, Text, TextInput, ActivityIndicator, Alert, StyleSheet, Switch } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -11,6 +11,8 @@ import { X, ImagePlus, Ruler, Check } from 'lucide-react-native'
 import { customerApi, uploadImageToR2 } from '../../../src/lib/api'
 import { logError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { GradientButton } from '../../../src/components/GradientButton'
 
 type Slot = 'front' | 'back'
 type Step = 'height' | 'camera' | 'preview' | 'uploading' | 'done'
@@ -111,9 +113,9 @@ export default function MeasurementCaptureScreen() {
   if (step === 'height') {
     return (
       <View className="flex-1 bg-ink-50 px-6" style={{ paddingTop: insets.top + 24 }}>
-        <TouchableOpacity onPress={() => router.back()} className="mb-6" accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} className="mb-6" accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         <View className="items-center mb-8">
           <View className="w-16 h-16 bg-ink-100 rounded-full items-center justify-center mb-3">
@@ -148,13 +150,7 @@ export default function MeasurementCaptureScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          onPress={startCapture}
-          disabled={!consentGiven}
-          className={`py-4 rounded-2xl items-center ${consentGiven ? 'bg-ink-600' : 'bg-sand-300'}`}
-        >
-          <Text className="text-white font-semibold">Continue to Front Photo →</Text>
-        </TouchableOpacity>
+        <GradientButton label="Continue to Front Photo →" onPress={startCapture} disabled={!consentGiven} />
       </View>
     )
   }
@@ -167,12 +163,12 @@ export default function MeasurementCaptureScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to capture measurement photos
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void requestPermission()}
           className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     )
   }
@@ -185,7 +181,7 @@ export default function MeasurementCaptureScreen() {
       <View className="flex-1 bg-black">
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => (slot === 'back' ? setStep('preview') : router.back())}
           className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           style={{ top: insets.top + 8 }}
@@ -193,7 +189,7 @@ export default function MeasurementCaptureScreen() {
           accessibilityRole="button"
         >
           <X size={20} color="white" />
-        </TouchableOpacity>
+        </AnimatedPressable>
 
         <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
           <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
@@ -208,19 +204,19 @@ export default function MeasurementCaptureScreen() {
 
         <View className="pb-12 items-center gap-6">
           <View className="flex-row items-center gap-10">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handlePickFromGallery()}
               className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
             >
               <ImagePlus size={24} color="white" />
-            </TouchableOpacity>
+            </AnimatedPressable>
 
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handleCapture()}
               className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
             >
               <View className="w-14 h-14 bg-white rounded-full" />
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             <View className="w-14" />
           </View>
@@ -313,20 +309,20 @@ export default function MeasurementCaptureScreen() {
           className="absolute left-0 right-0 flex-row gap-4 px-6"
           style={{ bottom: 48 + insets.bottom }}
         >
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setStep('camera')}
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">Retake</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={useThisPhoto}
             className="flex-1 bg-ink-600 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">
               {slot === 'front' ? 'Use Photo → Back' : bothReady ? 'Upload Both Photos ✓' : 'Use Photo ✓'}
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
     )
@@ -356,12 +352,12 @@ export default function MeasurementCaptureScreen() {
         Bust/waist/hip/inseam will appear on the customer profile in a moment. Photos are deleted
         after processing.
       </Text>
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => router.back()}
         className="mt-6 bg-ink-600 px-6 py-3 rounded-xl"
       >
         <Text className="text-white font-semibold">Back to Customer</Text>
-      </TouchableOpacity>
+      </AnimatedPressable>
     </View>
   )
 }

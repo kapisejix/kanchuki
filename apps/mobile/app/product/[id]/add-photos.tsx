@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native'
+import { View, Text, ActivityIndicator, ScrollView, Alert } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
 import * as ImagePicker from 'expo-image-picker'
@@ -9,6 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, Check } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 
 const PHOTO_LIMIT = 10
 const MAX_SHOTS_PER_SESSION = 4
@@ -94,12 +95,12 @@ export default function AddPhotosScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to add photos
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void requestPermission()}
           className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     )
   }
@@ -110,7 +111,7 @@ export default function AddPhotosScreen() {
     <View className="flex-1 bg-black">
       <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
 
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => router.back()}
         className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
         style={{ top: insets.top + 8 }}
@@ -118,7 +119,7 @@ export default function AddPhotosScreen() {
         accessibilityRole="button"
       >
         <X size={20} color="white" />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
         <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
@@ -136,42 +137,42 @@ export default function AddPhotosScreen() {
           contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
         >
           {shots.map((uri, idx) => (
-            <TouchableOpacity
+            <AnimatedPressable
               key={uri}
               onPress={() => removeShot(idx)}
               className="w-16 h-16 rounded-lg overflow-hidden border-2 border-white/70"
             >
               <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            </TouchableOpacity>
+            </AnimatedPressable>
           ))}
         </ScrollView>
       )}
 
       <View className="items-center gap-4" style={{ paddingBottom: 40 + insets.bottom }}>
         <View className="flex-row items-center gap-10">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handlePickFromGallery()}
             disabled={atLimit}
             className={`w-14 h-14 bg-white/20 rounded-2xl items-center justify-center ${atLimit ? 'opacity-30' : ''}`}
           >
             <ImagePlus size={24} color="white" />
-          </TouchableOpacity>
+          </AnimatedPressable>
 
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handleCapture()}
             disabled={atLimit}
             className={`w-20 h-20 rounded-full border-4 border-white items-center justify-center ${atLimit ? 'opacity-30' : ''}`}
           >
             <View className="w-14 h-14 bg-white rounded-full" />
-          </TouchableOpacity>
+          </AnimatedPressable>
 
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => void handleSave()}
             disabled={shots.length === 0 || uploading}
             className={`w-14 h-14 rounded-2xl items-center justify-center ${shots.length > 0 ? 'bg-ink-600' : 'bg-white/10'}`}
           >
             {uploading ? <ActivityIndicator color="white" /> : <Check size={24} color="white" />}
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
         <Text className="text-white/50 text-xs">Tap shutter for each angle · gallery to import · check to save</Text>
       </View>

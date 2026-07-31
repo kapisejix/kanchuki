@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  View, Text, ScrollView, TextInput, TouchableOpacity,
+  View, Text, ScrollView, TextInput,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native'
 import { teamApi } from '../../src/lib/team-api'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function RetailerOnboardScreen() {
   const { primaryColor } = useTheme()
@@ -87,12 +88,12 @@ export default function RetailerOnboardScreen() {
         <Text className="text-sand-500 text-sm mt-2 text-center">
           {shopName} has been added with a 14-day free trial.
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => router.back()}
           className="mt-8 bg-ink-600 px-8 py-3.5 rounded-2xl"
         >
           <Text className="text-white font-semibold">Back to Dashboard</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     )
   }
@@ -108,9 +109,9 @@ export default function RetailerOnboardScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
             <ChevronLeft size={24} color="#4B4039" />
-          </TouchableOpacity>
+          </AnimatedPressable>
           <View>
             <Text className="text-base font-bold text-sand-900">New Retailer</Text>
             <Text className="text-xs text-sand-400">Quick field onboarding</Text>
@@ -234,13 +235,12 @@ export default function RetailerOnboardScreen() {
         className="bg-white border-t border-sand-100 px-4 py-4"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleSubmit()}
           disabled={!isFormValid || saving}
           className={`py-4 rounded-2xl items-center justify-center flex-row gap-2 ${
             isFormValid && !saving ? 'bg-ink-600' : 'bg-sand-200'
           }`}
-          activeOpacity={0.8}
         >
           {saving ? (
             <ActivityIndicator color="white" />
@@ -252,7 +252,7 @@ export default function RetailerOnboardScreen() {
               </Text>
             </>
           )}
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     </KeyboardAvoidingView>
   )

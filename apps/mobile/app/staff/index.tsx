@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
-  View, Text, ScrollView, TouchableOpacity, RefreshControl,
+  View, Text, ScrollView, RefreshControl,
   ActivityIndicator, Alert,
 } from 'react-native'
 import { router } from 'expo-router'
@@ -15,6 +15,7 @@ import { teamApi, type TeamMemberInfo, type TerritoryRetailer, type SupportTicke
 import { getItem, deleteItem } from '../../src/lib/storage'
 import { clearToken, clearRequestCache } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 // ─── Staff Dashboard ─────────────────────────────────────────────
 
@@ -110,14 +111,14 @@ export default function StaffDashboard() {
               </View>
             </View>
           </View>
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={handleLogout}
             className="w-9 h-9 rounded-full bg-white/15 items-center justify-center"
             accessibilityLabel="Logout"
             accessibilityRole="button"
           >
             <LogOut size={16} color="white" />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         {/* Role badge */}
@@ -178,32 +179,29 @@ export default function StaffDashboard() {
                 Quick Actions
               </Text>
               <View className="flex-row gap-3">
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => router.push('/staff/retailer-onboard')}
-                  activeOpacity={0.7}
                   className="flex-1 bg-ink-600 rounded-2xl p-4"
                 >
                   <UserPlus size={24} color="white" />
                   <Text className="text-white font-semibold text-sm mt-2">New Retailer</Text>
                   <Text className="text-ink-100 text-xs mt-0.5">Quick onboard in field</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
 
-                <TouchableOpacity
+                <AnimatedPressable
                   onPress={() => {
                     // Scroll to retailers section — for now just a visual cue
                   }}
-                  activeOpacity={0.7}
                   className="flex-1 bg-white rounded-2xl p-4 border border-sand-100"
                 >
                   <Users size={24} color={primaryColor} />
                   <Text className="text-sand-900 font-semibold text-sm mt-2">View Retailers</Text>
                   <Text className="text-sand-400 text-xs mt-0.5">{retailers.length} in territory</Text>
-                </TouchableOpacity>
+                </AnimatedPressable>
               </View>
 
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => router.push('/staff/catalog-tickets')}
-                activeOpacity={0.7}
                 className="mt-3 flex-row items-center gap-3 bg-white rounded-2xl p-4 border border-sand-100"
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
@@ -216,7 +214,7 @@ export default function StaffDashboard() {
                   </Text>
                 </View>
                 <ChevronRight size={16} color="#CDC6BF" />
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
 
             {/* Ticket alerts */}
@@ -241,9 +239,9 @@ export default function StaffDashboard() {
                   Retailers in Territory
                 </Text>
                 {retailers.length > 5 && (
-                  <TouchableOpacity>
+                  <AnimatedPressable>
                     <Text className="text-xs text-ink-600 font-semibold">See All</Text>
-                  </TouchableOpacity>
+                  </AnimatedPressable>
                 )}
               </View>
 
@@ -257,9 +255,8 @@ export default function StaffDashboard() {
               ) : (
                 <View className="gap-2">
                   {retailers.slice(0, 10).map((r) => (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       key={r.id}
-                      activeOpacity={0.7}
                       className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center"
                     >
                       <View className="w-10 h-10 rounded-xl bg-ink-100 items-center justify-center mr-3">
@@ -289,7 +286,7 @@ export default function StaffDashboard() {
                         </Text>
                       </View>
                       <ChevronRight size={16} color="#CDC6BF" style={{ marginLeft: 8 }} />
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   ))}
                 </View>
               )}
@@ -309,14 +306,13 @@ export default function StaffDashboard() {
                     <TicketStat label="Closed" value={ticketStats.closed} color="gray" />
                   </View>
                   {retailers.length > 0 && ticketStats.open > 0 && (
-                    <TouchableOpacity
+                    <AnimatedPressable
                       className="bg-ink-50 rounded-xl py-2.5 items-center"
-                      activeOpacity={0.7}
                     >
                       <Text className="text-ink-700 text-xs font-semibold">
                         View Ticket Details
                       </Text>
-                    </TouchableOpacity>
+                    </AnimatedPressable>
                   )}
                 </View>
               </View>

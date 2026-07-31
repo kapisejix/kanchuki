@@ -2,11 +2,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Check, X, Zap, ZapOff } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { productApi, readLocalImage, uploadImageToR2 } from '../../../src/lib/api';
 import { showError } from '../../../src/lib/errors';
 import { useTheme } from '../../../src/lib/theme';
+import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 
 type Step = 'camera' | 'recording' | 'preview' | 'uploading';
 
@@ -109,12 +110,12 @@ export default function SpinVideoScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to record a spin video
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void requestPermission()}
           className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     );
   }
@@ -129,13 +130,13 @@ export default function SpinVideoScreen() {
         <Text className="text-white/50 text-center text-sm mb-8">
           {"We'll extract 24 frames for the 360° viewer"}
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void handleUpload()}
           className="bg-ink-600 px-8 py-4 rounded-2xl mb-3 w-full items-center"
         >
           <Text className="text-white font-semibold">Upload</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
+        </AnimatedPressable>
+        <AnimatedPressable
           onPress={() => {
             setVideoUri(null);
             setStep('camera');
@@ -143,7 +144,7 @@ export default function SpinVideoScreen() {
           className="py-3"
         >
           <Text className="text-white/60 font-medium">Retake</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     );
   }
@@ -190,7 +191,7 @@ export default function SpinVideoScreen() {
       />
 
       {/* Top bar — close left, torch right */}
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => router.back()}
         className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
         style={{ top: insets.top + 8 }}
@@ -198,9 +199,9 @@ export default function SpinVideoScreen() {
         accessibilityRole="button"
       >
         <X size={20} color="white" />
-      </TouchableOpacity>
+      </AnimatedPressable>
 
-      <TouchableOpacity
+      <AnimatedPressable
         onPress={() => setFlashMode((prev) => (prev === 'off' ? 'on' : 'off'))}
         disabled={step === 'recording' || !!cameraError}
         className={`absolute right-4 w-10 h-10 rounded-full items-center justify-center ${
@@ -215,7 +216,7 @@ export default function SpinVideoScreen() {
         ) : (
           <ZapOff size={20} color="white" />
         )}
-      </TouchableOpacity>
+      </AnimatedPressable>
 
       <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
         <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
@@ -231,7 +232,7 @@ export default function SpinVideoScreen() {
 
       <View className="items-center gap-4" style={{ paddingBottom: 48 + insets.bottom }}>
         {cameraError && !isCameraReady ? (
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => {
               // Increment retry count to force CameraView remount via key prop
               cameraRetryCount.current += 1;
@@ -241,10 +242,10 @@ export default function SpinVideoScreen() {
             className="bg-ink-600 px-6 py-3 rounded-xl"
           >
             <Text className="text-white font-semibold">Retry Camera</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         ) : (
           <>
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => (step === 'recording' ? handleStop() : void handleRecord())}
               disabled={step !== 'recording' && !isCameraReady}
               className={`w-20 h-20 rounded-full border-4 items-center justify-center ${
@@ -262,7 +263,7 @@ export default function SpinVideoScreen() {
                   }
                 />
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
             <Text className="text-white/50 text-xs">
               {step === 'recording'
                 ? 'Tap to stop early'

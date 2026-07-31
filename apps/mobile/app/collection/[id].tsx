@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { View, Text, ScrollView, FlatList, TouchableOpacity, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
+import { View, Text, ScrollView, FlatList, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -9,6 +9,7 @@ import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type CollectionDetail = {
   id: string
@@ -125,14 +126,14 @@ function EditModal({
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={onClose}
               disabled={saving}
               className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
             >
               <Text className="text-sand-700 font-semibold">Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={() => void handleSave()}
               disabled={saving || !title.trim()}
               className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
@@ -142,7 +143,7 @@ function EditModal({
               ) : (
                 <Text className="text-white font-semibold">Save</Text>
               )}
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       </View>
@@ -257,9 +258,9 @@ function ShareModal({
               {bulkResult.failed_count > 0 && (
                 <Text className="text-sm text-rust-500">{bulkResult.failed_count} failed</Text>
               )}
-              <TouchableOpacity onPress={handleClose} className="bg-sand-100 px-6 py-3 rounded-xl mt-2">
+              <AnimatedPressable onPress={handleClose} className="bg-sand-100 px-6 py-3 rounded-xl mt-2">
                 <Text className="text-sand-700 font-semibold">Done</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           ) : queue ? (
             <View className="items-center py-6 gap-3">
@@ -270,14 +271,14 @@ function ShareModal({
               <Text className="text-xs text-sand-400 text-center px-4">
                 WhatsApp opened with the message pre-filled. Tap Send in WhatsApp, then come back and tap Next.
               </Text>
-              <TouchableOpacity onPress={sendNext} className="bg-turmeric-600 px-6 py-3 rounded-xl mt-2">
+              <AnimatedPressable onPress={sendNext} className="bg-turmeric-600 px-6 py-3 rounded-xl mt-2">
                 <Text className="text-white font-semibold">
                   {queueIndex + 1 >= queue.length ? 'Done' : 'Next Customer'}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleClose} className="mt-1">
+              </AnimatedPressable>
+              <AnimatedPressable onPress={handleClose} className="mt-1">
                 <Text className="text-sand-400 text-xs">Cancel</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </View>
           ) : (
             <>
@@ -305,7 +306,7 @@ function ShareModal({
                   renderItem={({ item }) => {
                     const isSelected = selected.has(item.id)
                     return (
-                      <TouchableOpacity
+                      <AnimatedPressable
                         onPress={() => toggle(item.id)}
                         className="flex-row items-center gap-3 py-2.5 border-b border-sand-50"
                       >
@@ -320,13 +321,13 @@ function ShareModal({
                           <Text className="text-sm font-medium text-sand-900">{item.name}</Text>
                           <Text className="text-xs text-sand-400">{item.phone}</Text>
                         </View>
-                      </TouchableOpacity>
+                      </AnimatedPressable>
                     )
                   }}
                 />
               )}
               {apiConfigured && (
-                <TouchableOpacity
+                <AnimatedPressable
                   disabled={selected.size === 0 || bulkSending}
                   onPress={() => void handleBulkSend()}
                   className={`mt-4 py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-ink-600' : 'bg-sand-200'}`}
@@ -338,9 +339,9 @@ function ShareModal({
                       Send via WhatsApp Business API ({selected.size})
                     </Text>
                   )}
-                </TouchableOpacity>
+                </AnimatedPressable>
               )}
-              <TouchableOpacity
+              <AnimatedPressable
                 disabled={selected.size === 0}
                 onPress={startSending}
                 className={`${apiConfigured ? 'mt-2' : 'mt-4'} py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-turmeric-600' : 'bg-sand-200'}`}
@@ -348,10 +349,10 @@ function ShareModal({
                 <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-sand-400'}`}>
                   {apiConfigured ? 'Or send one-by-one' : 'Share via WhatsApp'} ({selected.size})
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={handleClose} className="items-center py-3">
+              </AnimatedPressable>
+              <AnimatedPressable onPress={handleClose} className="items-center py-3">
                 <Text className="text-sand-400 text-sm">Cancel</Text>
-              </TouchableOpacity>
+              </AnimatedPressable>
             </>
           )}
         </View>
@@ -412,26 +413,26 @@ export default function CollectionDetailScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <View className="flex-row gap-2">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setShowEditModal(true)}
             className="w-9 h-9 bg-ink-50 rounded-full items-center justify-center"
             accessibilityLabel="Edit collection"
             accessibilityRole="button"
           >
             <Edit size={16} color={primaryColor} />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={handleDelete}
             className="w-9 h-9 bg-rust-50 rounded-full items-center justify-center"
             accessibilityLabel="Delete collection"
             accessibilityRole="button"
           >
             <Trash2 size={16} color="#A24854" />
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
       </View>
       <ScrollView className="flex-1 bg-ink-50">
@@ -446,32 +447,32 @@ export default function CollectionDetailScreen() {
         {/* Share */}
         {collection.status === 'ACTIVE' && (
           <View className="px-4 pt-4">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => setShowShareModal(true)}
               className="flex-row items-center justify-center gap-2 bg-turmeric-600 py-3 rounded-xl"
             >
               <Link2 size={16} color="white" />
               <Text className="text-white font-semibold">Share on WhatsApp</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         )}
 
         {/* Action buttons row */}
         <View className="px-4 pt-3 flex-row gap-3">
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setShowEditModal(true)}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 border border-ink-100 py-3 rounded-xl"
           >
             <Edit size={16} color={primaryColor} />
             <Text className="text-ink-700 text-sm font-semibold">Edit</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
+          </AnimatedPressable>
+          <AnimatedPressable
             onPress={handleDelete}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-rust-50 border border-rust-100 py-3 rounded-xl"
           >
             <Trash2 size={16} color="#A24854" />
             <Text className="text-rust-600 text-sm font-semibold">Delete</Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
         </View>
 
         {/* Enquiries */}

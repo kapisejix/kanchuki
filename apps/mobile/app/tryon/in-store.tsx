@@ -2,7 +2,6 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Alert,
@@ -29,6 +28,7 @@ import { productApi, tryOnApi, retailerApi, uploadImageToR2, readLocalImage } fr
 import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { PLAN_LIMITS } from '@kanchuki/shared'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
 
@@ -261,12 +261,12 @@ export default function InStoreTryOnScreen() {
         <Text className="text-white text-center text-base mb-6">
           Camera access needed to capture customer photo for try-on
         </Text>
-        <TouchableOpacity
+        <AnimatedPressable
           onPress={() => void requestPermission()}
           className="bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white font-semibold">Allow Camera</Text>
-        </TouchableOpacity>
+        </AnimatedPressable>
       </View>
     )
   }
@@ -278,9 +278,9 @@ export default function InStoreTryOnScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color="#4B4039" />
-        </TouchableOpacity>
+        </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {step === 'select' && 'Select Product'}
           {step === 'capture' && 'Capture Customer'}
@@ -356,7 +356,7 @@ export default function InStoreTryOnScreen() {
         <View className="flex-1 bg-black">
           <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setStep('select')}
             className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center"
             style={{ top: insets.top + 8 }}
@@ -364,7 +364,7 @@ export default function InStoreTryOnScreen() {
             accessibilityRole="button"
           >
             <X size={20} color="white" />
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
             <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
@@ -381,21 +381,21 @@ export default function InStoreTryOnScreen() {
           {/* Controls */}
           <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
             <View className="flex-row items-center gap-10">
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void handlePickFromGallery()}
                 disabled={processingPhoto}
                 className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
               >
                 <ImagePlus size={24} color="white" />
-              </TouchableOpacity>
+              </AnimatedPressable>
 
-              <TouchableOpacity
+              <AnimatedPressable
                 onPress={() => void handleCapture()}
                 disabled={processingPhoto}
                 className="w-20 h-20 rounded-full border-4 border-white items-center justify-center"
               >
                 <View className="w-14 h-14 bg-white rounded-full" />
-              </TouchableOpacity>
+              </AnimatedPressable>
 
               <View className="w-14" />
             </View>
@@ -450,10 +450,9 @@ export default function InStoreTryOnScreen() {
           </View>
 
           {/* Training-data consent — separate, optional, unchecked by default */}
-          <TouchableOpacity
+          <AnimatedPressable
             onPress={() => setConsentToTraining((v) => !v)}
             className="mt-5 flex-row items-start gap-2"
-            activeOpacity={0.7}
           >
             <View
               className={`w-5 h-5 rounded-md border items-center justify-center mt-0.5 ${
@@ -467,22 +466,21 @@ export default function InStoreTryOnScreen() {
               to improve future try-on results. Optional — ask the customer before
               checking this.
             </Text>
-          </TouchableOpacity>
+          </AnimatedPressable>
 
           <View className="mt-4 gap-3">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => void handleRunTryOn()}
               className="bg-ink-600 py-4 rounded-2xl items-center"
-              activeOpacity={0.8}
             >
               <Text className="text-white font-bold">✨ Try This On!</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
+            </AnimatedPressable>
+            <AnimatedPressable
               onPress={() => setStep('capture')}
               className="py-3 rounded-2xl items-center border border-sand-200"
             >
               <Text className="text-sand-600 font-medium">Retake Photo</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       )}
@@ -541,17 +539,16 @@ export default function InStoreTryOnScreen() {
           </View>
 
           <View className="gap-3">
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => {
                 // Share the result
                 router.back()
               }}
               className="bg-ink-600 py-4 rounded-2xl items-center flex-row justify-center gap-2"
-              activeOpacity={0.8}
             >
               <Share2 size={18} color="white" />
               <Text className="text-white font-bold">Share with Customer</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
 
             {revocationToken && (
               <View className="bg-sand-50 border border-sand-100 rounded-xl px-3 py-2.5">
@@ -572,7 +569,7 @@ export default function InStoreTryOnScreen() {
               </View>
             )}
 
-            <TouchableOpacity
+            <AnimatedPressable
               onPress={() => {
                 setResultUrl(null)
                 setRevocationToken(null)
@@ -584,7 +581,7 @@ export default function InStoreTryOnScreen() {
               className="py-3 rounded-2xl items-center border border-sand-200"
             >
               <Text className="text-sand-600 font-medium">Try Another</Text>
-            </TouchableOpacity>
+            </AnimatedPressable>
           </View>
         </View>
       )}
