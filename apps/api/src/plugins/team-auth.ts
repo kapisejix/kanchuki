@@ -67,9 +67,7 @@ export interface CatalogUploadTokenClaims {
   team_member_id: string;
 }
 
-export async function signCatalogUploadToken(
-  claims: CatalogUploadTokenClaims,
-): Promise<string> {
+export async function signCatalogUploadToken(claims: CatalogUploadTokenClaims): Promise<string> {
   return new SignJWT({
     scope: CATALOG_UPLOAD_SCOPE,
     tid: claims.ticket_id,

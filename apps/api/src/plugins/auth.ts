@@ -288,7 +288,11 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
 
       if (!stillLive) {
         return reply.status(401).send({
-          error: { code: 'UNAUTHORIZED', message: 'This catalog upload session has ended', status: 401 },
+          error: {
+            code: 'UNAUTHORIZED',
+            message: 'This catalog upload session has ended',
+            status: 401,
+          },
         });
       }
 
