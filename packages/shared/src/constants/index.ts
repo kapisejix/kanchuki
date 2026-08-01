@@ -302,6 +302,11 @@ export const INTEGRATION_KEYS = [
     category: 'AI',
     label: 'Together AI API Key',
   },
+  {
+    key_name: 'NVIDIA_API_KEY',
+    category: 'AI',
+    label: 'NVIDIA NIM API Key (free Llama 3.2 Vision fallbacks)',
+  },
   { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
   { key_name: 'RAZORPAY_KEY_ID', category: 'PAYMENT', label: 'Razorpay Key ID' },
   { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },
