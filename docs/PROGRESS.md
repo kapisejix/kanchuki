@@ -436,6 +436,24 @@ Full implementation of the admin permission/control system: plan-tier feature ch
 - `packages/db/src/index.ts` — vault exports
 - `packages/shared/src/constants/index.ts` — PURGE_SOFT_DELETED queue name
 
+---
+
+## 2026-08-01 — Launch Readiness Audit + 12-Retailer Pilot Prep (in progress)
+
+Full doc audit + code reality-check → `docs/LAUNCH-READINESS-AUDIT.md` (new file, single source of truth for launch status, supersedes stale status lines elsewhere). User's near-term goal: one controlled pilot with 12 retailers, no server/port/AI-tagging breakage. SEO + admin-content-CMS + app-store prep deliberately deferred until after pilot (§9b of the audit doc — irrelevant to a 12-retailer internal test).
+
+**Doc-vs-doc contradictions found and resolved** (see audit §0): Deletion Vault/replica/guardrail "Executed" claims in `PLAN.md`/`26-night-report.md` vs still-open in `omp-review.md` — omp-review is correct, replica/vault-URL/role-separation still open. F-006B offline PWA — built (an early `omp-review.md` pass calling it "not built" was superseded same-doc). GST invoice numbering — fixed, `Math.random()` flag was stale.
+
+**Corrected 2 findings from my own earlier audit pass** after checking live evidence instead of trusting docs: rate limiter is already Redis-backed (`apps/api/src/index.ts` — `redis: getRedis()`), SECURITY.md's in-memory claim was stale. `packages/db/src/vault.test.ts` DOES skip cleanly in CI (verified via `gh run view` — "2 skipped" every recent run), the env-var-set-but-unreachable concern doesn't manifest.
+
+**New bug found + fixed:** `COOKIE_SECRET` had no production guard — `apps/api/src/index.ts` fell back to a `Date.now()`-based signing key when unset, silently invalidating every admin CSRF cookie/session on each restart. Now throws at startup in production if unset. **Typechecked clean, not yet committed to git.**
+
+**Secrets generated this session** (handed to user in chat only, never written to any file — do not search memory/docs for these, they don't exist there): `COOKIE_SECRET`, `TEAM_JWT_SECRET`, `REVALIDATION_SECRET`, `RAZORPAY_WEBHOOK_SECRET`. User still needs to: paste these into Railway; run `npx tsx scripts/generate-admin-hash.ts '<password>' --totp` themselves for `ADMIN_PASSWORD_HASH`+`ADMIN_TOTP_SECRET`; switch `DATABASE_URL` to the `kanchuki_app` role (SQL in `SECURITY.md` §19.1, staging-test first); set an explicit `PORT` var on the web Railway service (prevents a repeat of the 2026-08-01 502 incident documented in `DEPLOY.md`); confirm migration `034_product_sizes` applied live; confirm 2+ AI providers active in Admin → AI Providers before the pilot.
+
+**Not started yet, explicitly deferred (not forgotten):** SEO (sitemap.ts/robots.ts/metadata/JSON-LD — all missing), admin-managed marketing content page (no CMS exists, 31 admin pages are all ops/retailer/billing, none edit marketing copy), mobile app-store submission prep (Apple needs an OTP-login reviewer bypass, not built), full k6/Artillery load test (skipped intentionally for a 12-retailer scale, `SCALING.md` recommends one before wider launch).
+
+**Next session should start here:** confirm with user whether the P0 Railway/Supabase dashboard steps above got done, then either help debug the pilot or move to §8/§9 (SEO + admin content + app-store) once the pilot's stable.
+
 ### Typecheck status
 | Package | Errors |
 |---------|--------|

@@ -93,6 +93,12 @@ await server.register(cors, {
 });
 
 // ─── Cookie Plugin (for admin CSRF protection) ────────────────────
+// COOKIE_SECRET must be a fixed value in production: the Date.now()-based
+// fallback below regenerates on every process start, silently invalidating
+// every admin CSRF cookie (and logged-in session) on each restart/deploy.
+if (!process.env.COOKIE_SECRET && process.env.NODE_ENV === 'production') {
+  throw new Error('COOKIE_SECRET must be set in production (admin CSRF cookies would rotate on every restart otherwise)');
+}
 await server.register(cookie, {
   secret:
     process.env.COOKIE_SECRET ??
