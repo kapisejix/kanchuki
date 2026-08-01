@@ -356,6 +356,8 @@ r2://kanchuki-prod/
 
 ### 14. CI/CD: GitHub Actions → Railway
 
+**Host comparison (why Railway over Vercel/Render/Fly.io/Cloudflare) + mobile app store launch steps:** `docs/HOSTING-AND-APP-STORE-GUIDE.md`
+
 **Pipeline:**
 1. Push to main branch
 2. Run tests (vitest + playwright)

@@ -76,6 +76,8 @@ Admin-configurable tagging models + per-provider usage so AI tagging never halts
 
 ### Month S3: Deployment Control + Operations Center — ✅ **Built**
 
+> This section = the admin-facing deploy dashboard/approval UI (below). For actual server hosting choices (Railway vs alternatives) and mobile app store launch steps, see `docs/HOSTING-AND-APP-STORE-GUIDE.md`.
+
 **Deployment Dashboard**
 - [x] `/admin/operations/deployments` — deployment history with commit/author/date/status, rollback button
 - [x] `/admin/operations/pending` — pending approvals (deploy/migration/backup-restore/bulk-action/config-change), approve/reject with audit logging
@@ -222,6 +224,8 @@ See `docs/PRO-REQUIREMENTS.md` §10.9–10.10 for full spec.
 ---
 
 ## Budget Estimates (MVP — 4 months)
+
+**Hosting cost/provider comparison + mobile store fees:** `docs/HOSTING-AND-APP-STORE-GUIDE.md`
 
 | Category | Monthly | 4-Month Total |
 |----------|---------|--------------|
