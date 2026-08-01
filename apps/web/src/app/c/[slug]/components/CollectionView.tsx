@@ -42,7 +42,15 @@ interface Props {
 }
 
 export function CollectionView({ collection, slug, productsApiPath }: Props) {
-  const [favorites, setFavorites] = useState<Map<string, WishlistItem>>(() => loadWishlist(slug));
+  // Start EMPTY and hydrate from localStorage in an effect — reading
+  // localStorage during render (useState initializer) makes the client's
+  // first render differ from SSR HTML (server always renders an empty Map),
+  // which trips React hydration errors #418/#422 on the collection page.
+  // Same deferred-load pattern as WishlistView/CartPage/CheckoutForm.
+  const [favorites, setFavorites] = useState<Map<string, WishlistItem>>(new Map());
+  useEffect(() => {
+    setFavorites(loadWishlist(slug));
+  }, [slug]);
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterOccasion, setFilterOccasion] = useState<string | null>(null);
