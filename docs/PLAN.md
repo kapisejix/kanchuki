@@ -42,6 +42,9 @@ Reviewed 2026-07-30 (`docs/design/feature-ideas-2026-07-30.md` §2, spec in `doc
 ### Future: F-022 Auto-Post New Arrivals to Google Business Profile — 🔴 Planned, DO NOT START
 Reviewed 2026-07-30, spec in `docs/PRO-REQUIREMENTS.md` §10.13. **Hold — do not begin development until explicit go-ahead; use `CLAUDE.md` reference at that time.** Blocked on external Google Business Profile API access approval (outside Kanchuki's control) in addition to not being MVP scope.
 
+### F-023: AI Provider Registry — ✅ **Built 2026-08-01**
+Admin-configurable tagging models + per-provider usage so AI tagging never halts when one provider's credits run out (user's live production issue). DB-driven registry (`ai_provider_configs`) replaces the hardcoded claude/openai/gemini adapter list; generic `OPENAI_COMPAT` adapter (base_url + model) serves any OpenAI-protocol provider (OpenRouter/DeepSeek/Mistral/Groq/Together); cost-weighted `credits_per_call` drains the existing F-010 `AI_TAGGING_CALL` quota; per-call `AiUsageLog` attribution powers Admin → AI Usage. Spec `docs/PRO-REQUIREMENTS.md` §10.14, build table in `CLAUDE.md`. Migration 041 + `prisma generate` required.
+
 ---
 
 ## Phase S: Security Infrastructure & Admin Control (NEW — Month 4–5)

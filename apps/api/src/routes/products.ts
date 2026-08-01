@@ -13,6 +13,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addSpinFrameJob, addTaggingJob } from '../jobs/index.js';
+import { recordAiUsage } from '../lib/ai-usage.js';
 import { hasFeature } from '../lib/features.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import {
@@ -1017,15 +1018,19 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /products/detect-color ───────────────────────────────
-  // Lightweight Claude Haiku call that extracts only the dominant color
-  // from a variant/product photo. Designed for the "Add Color Variant"
-  // screen to pre-fill the color field instead of requiring manual entry.
+  // Lightweight lite-model call that extracts only the dominant color from a
+  // variant/product photo. Designed for the "Add Color Variant" screen to
+  // pre-fill the color field instead of requiring manual entry. Multi-provider
+  // failover keeps it working when the primary model is out of credits; usage
+  // is attributed per-call (AI_COLOR_DETECT) but not quota-gated.
   server.post('/detect-color', async (request, reply) => {
     const body = z.object({ image_url: z.string().url() }).safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     try {
-      const color = await detectColor(body.data.image_url);
+      const color = await detectColor(body.data.image_url, {
+        onProviderUsed: recordAiUsage(request.retailerId),
+      });
       return reply.status(200).send({ data: { color } });
     } catch (err) {
       request.log.error({ err, image_url: body.data.image_url }, 'Color detection failed');

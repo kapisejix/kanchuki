@@ -258,8 +258,50 @@ export const R2_PATHS = {
 // docs/SECURITY.md.
 
 export const INTEGRATION_KEYS = [
-  { key_name: 'ANTHROPIC_API_KEY', category: 'AI', label: 'Claude API Key (product tagging)' },
-  { key_name: 'OPENAI_API_KEY', category: 'AI', label: 'OpenAI API Key (embeddings)' },
+  {
+    key_name: 'ANTHROPIC_API_KEY',
+    category: 'AI',
+    label: 'Claude API Key (AI tagging + color detection)',
+  },
+  {
+    key_name: 'OPENAI_API_KEY',
+    category: 'AI',
+    label: 'OpenAI API Key (embeddings + AI tagging failover)',
+  },
+  {
+    key_name: 'GEMINI_API_KEY',
+    category: 'AI',
+    label: 'Google Gemini API Key (AI tagging failover)',
+  },
+  // Generic OpenAI-protocol providers — same key mechanism, used via the
+  // Admin → AI Providers registry (provider_type OPENAI_COMPAT + base_url).
+  // OpenRouter gives access to 100s of models (Claude, GPT, Gemini, Llama,
+  // DeepSeek, ...) behind one key + one credit balance.
+  {
+    key_name: 'OPENROUTER_API_KEY',
+    category: 'AI',
+    label: 'OpenRouter API Key (any model, one key)',
+  },
+  {
+    key_name: 'DEEPSEEK_API_KEY',
+    category: 'AI',
+    label: 'DeepSeek API Key',
+  },
+  {
+    key_name: 'MISTRAL_API_KEY',
+    category: 'AI',
+    label: 'Mistral API Key',
+  },
+  {
+    key_name: 'GROQ_API_KEY',
+    category: 'AI',
+    label: 'Groq API Key',
+  },
+  {
+    key_name: 'TOGETHER_API_KEY',
+    category: 'AI',
+    label: 'Together AI API Key',
+  },
   { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
   { key_name: 'RAZORPAY_KEY_ID', category: 'PAYMENT', label: 'Razorpay Key ID' },
   { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },

@@ -1,10 +1,12 @@
 import {
   cleanupProductPhoto,
   fetchImageBuffer,
+  reserveAiCredits,
   tagProductImageUrls,
   uploadBuffer,
 } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
+import { recordAiUsage } from '../lib/ai-usage.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { addEmbeddingJob } from './index.js';
 import type { TaggingJobData } from './index.js';
@@ -13,11 +15,11 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
   const { product_id, retailer_id, photo_url, r2_key, auto_cleanup = true } = data;
 
   try {
-    // F-010: no prior enforcement existed for AI tagging calls — this is the
-    // first gate. Falls through as a no-op until plan_limits has a row for
-    // AI_TAGGING_CALL. Errors here flow into the same catch below (ai_tag_error
-    // + BullMQ retry) as any other failure in this job.
-    await checkQuota(retailer_id, 'AI_TAGGING_CALL');
+    // F-010: weighted quota gate — reserves the most expensive currently-
+    // healthy provider's credits so the retailer can always afford whichever
+    // provider actually serves (failover never incurs an unaffordable cost).
+    // Falls through as a no-op until plan_limits has a row for AI_TAGGING_CALL.
+    await checkQuota(retailer_id, 'AI_TAGGING_CALL', await reserveAiCredits());
 
     // Mark photo as tagging in progress
     await prisma.productPhoto.updateMany({
@@ -30,8 +32,10 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // general-purpose bg removal can over-strip a busy/patterned garment shot
     // down to a near-blank cutout — feeding that into Claude Vision produced
     // null category/color/occasions instead of a bad-but-present garment photo.
-    const tags = await tagProductImageUrls([photo_url]);
-    await incrementUsage(retailer_id, 'AI_TAGGING_CALL');
+    // onProviderUsed: weighted quota increment + per-call attribution log.
+    const tags = await tagProductImageUrls([photo_url], {
+      onProviderUsed: recordAiUsage(retailer_id),
+    });
 
     // Auto catalog photo cleanup (PRO-REQUIREMENTS.md): overwrite the raw
     // retailer upload in place with a background-stripped, white-backdrop
@@ -102,10 +106,16 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     await addEmbeddingJob({ product_id, retailer_id });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await prisma.product.update({
-      where: { id: product_id },
-      data: { ai_tagged: false, ai_tag_error: message.slice(0, 500) },
-    });
+    // ponytail: this write can itself fail on a transient DB error (e.g. pooler
+    // hiccup) — don't let that mask the real failure reason from BullMQ/logs.
+    try {
+      await prisma.product.update({
+        where: { id: product_id },
+        data: { ai_tagged: false, ai_tag_error: message.slice(0, 500) },
+      });
+    } catch (persistErr) {
+      console.error(`Failed to persist ai_tag_error for product ${product_id}:`, persistErr);
+    }
     throw err; // re-throw so BullMQ records the failure and retries
   }
 }

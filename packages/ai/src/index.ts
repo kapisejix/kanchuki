@@ -1,4 +1,5 @@
 export * from './tagger.js'
+export * from './providers.js'
 export * from './embedder.js'
 export * from './r2.js'
 export * from './tryon.js'

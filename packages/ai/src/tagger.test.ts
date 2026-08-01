@@ -10,6 +10,9 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 vi.mock('@kanchuki/db', () => ({
   getSecret: vi.fn().mockResolvedValue('test-anthropic-key'),
+  // null = registry table missing → legacy hardcoded claude/openai/gemini
+  // adapters (matches the pre-registry behavior these tests assert against).
+  listActiveAiProviders: vi.fn().mockResolvedValue(null),
 }))
 
 const { tagProductImages, tagProductImageUrl, tagProductImageUrls, imageHash } = await import(

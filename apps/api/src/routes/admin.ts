@@ -2768,4 +2768,216 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       },
     };
   });
+
+  // ─── AI Provider Registry (F-023) ───────────────────────────────
+  // Admin-configurable list of tagging models the failover engine tries in
+  // priority order. Each row = provider type + model + API key name + weighted
+  // credit cost. Admin adds any OpenAI-protocol provider via OPENAI_COMPAT
+  // + base_url (OpenRouter, DeepSeek, Mistral, Groq, ...).
+
+  // ─── GET /admin/ai-providers ─────────────────────────────────────
+  server.get('/ai-providers', async () => {
+    const rows = await prisma.aiProviderConfig.findMany({
+      orderBy: [{ priority: 'asc' }, { created_at: 'asc' }],
+    });
+
+    // Report whether each row's key is actually configured (DB or env), so
+    // the admin UI can flag rows that will be skipped by the failover.
+    const withKeyState = await Promise.all(
+      rows.map(async (row) => ({
+        ...row,
+        key_configured: !!(await getSecret(row.api_key_name)),
+      })),
+    );
+    return { data: withKeyState };
+  });
+
+  // ─── POST /admin/ai-providers ────────────────────────────────────
+  server.post('/ai-providers', async (request, reply) => {
+    const body = z
+      .object({
+        provider_type: z.enum(['ANTHROPIC', 'OPENAI_COMPAT', 'GEMINI']),
+        label: z.string().min(1).max(100),
+        model_name: z.string().min(1).max(200),
+        lite_model_name: z.string().max(200).nullable().optional(),
+        base_url: z.string().url().nullable().optional(),
+        api_key_name: z.string().min(1).max(100),
+        priority: z.number().int().min(1).max(999).optional(),
+        is_active: z.boolean().optional(),
+        credits_per_call: z.number().int().min(1).max(100_000).default(1),
+      })
+      .parse(request.body);
+
+    const row = await prisma.aiProviderConfig.create({
+      data: {
+        provider_type: body.provider_type,
+        label: body.label,
+        model_name: body.model_name,
+        lite_model_name: body.lite_model_name ?? null,
+        base_url: body.base_url ?? null,
+        api_key_name: body.api_key_name,
+        priority: body.priority ?? 1,
+        is_active: body.is_active ?? true,
+        credits_per_call: body.credits_per_call,
+      },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'CREATE',
+        resource_type: 'AiProviderConfig',
+        resource_id: row.id,
+        metadata: { label: row.label, provider_type: row.provider_type, model_name: row.model_name },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ provider_id: row.id, label: row.label }, 'AI provider created');
+    return reply.status(201).send({ data: row });
+  });
+
+  // ─── PATCH /admin/ai-providers/:id ───────────────────────────────
+  server.patch<{ Params: { id: string } }>('/ai-providers/:id', async (request) => {
+    const body = z
+      .object({
+        provider_type: z.enum(['ANTHROPIC', 'OPENAI_COMPAT', 'GEMINI']).optional(),
+        label: z.string().min(1).max(100).optional(),
+        model_name: z.string().min(1).max(200).optional(),
+        lite_model_name: z.string().max(200).nullable().optional(),
+        base_url: z.string().url().nullable().optional(),
+        api_key_name: z.string().min(1).max(100).optional(),
+        priority: z.number().int().min(1).max(999).optional(),
+        is_active: z.boolean().optional(),
+        credits_per_call: z.number().int().min(1).max(100_000).optional(),
+      })
+      .parse(request.body);
+
+    const existing = await prisma.aiProviderConfig.findUnique({ where: { id: request.params.id } });
+    if (!existing) throw notFound('AI provider');
+
+    const row = await prisma.aiProviderConfig.update({
+      where: { id: request.params.id },
+      data: body,
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UPDATE',
+        resource_type: 'AiProviderConfig',
+        resource_id: row.id,
+        metadata: { label: row.label, updated_fields: Object.keys(body) },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ provider_id: row.id }, 'AI provider updated');
+    return { data: row };
+  });
+
+  // ─── DELETE /admin/ai-providers/:id ──────────────────────────────
+  server.delete<{ Params: { id: string } }>('/ai-providers/:id', async (request, reply) => {
+    const existing = await prisma.aiProviderConfig.findUnique({ where: { id: request.params.id } });
+    if (!existing) throw notFound('AI provider');
+
+    await prisma.aiProviderConfig.delete({ where: { id: request.params.id } });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'DELETE',
+        resource_type: 'AiProviderConfig',
+        resource_id: request.params.id,
+        metadata: { label: existing.label, provider_type: existing.provider_type },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ provider_id: request.params.id }, 'AI provider deleted');
+    return reply.status(204).send();
+  });
+
+  // ─── POST /admin/ai-providers/reorder ────────────────────────────
+  // Accept an ordered list of ids; rewrites priority 1..N in that order.
+  server.post('/ai-providers/reorder', async (request) => {
+    const body = z
+      .object({ ordered_ids: z.array(z.string()).min(1).max(100) })
+      .parse(request.body);
+
+    await prisma.$transaction(
+      body.ordered_ids.map((id, index) =>
+        prisma.aiProviderConfig.update({
+          where: { id },
+          data: { priority: index + 1 },
+        }),
+      ),
+    );
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UPDATE',
+        resource_type: 'AiProviderConfig',
+        metadata: { reordered: body.ordered_ids },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: { reordered: body.ordered_ids.length } };
+  });
+
+  // ─── GET /admin/ai-usage ─────────────────────────────────────────
+  // Per-retailer × per-provider AI usage aggregation (weighted credits).
+  server.get('/ai-usage', async (request) => {
+    const query = z
+      .object({
+        retailer_id: z.string().optional(),
+        date_from: z.string().optional(),
+        date_to: z.string().optional(),
+      })
+      .safeParse(request.query);
+    const { retailer_id, date_from, date_to } = query.success ? query.data : {};
+
+    const where: Record<string, unknown> = {};
+    if (retailer_id) where.retailer_id = retailer_id;
+    if (date_from || date_to) {
+      const created_at: Record<string, Date> = {};
+      if (date_from) created_at.gte = new Date(date_from);
+      if (date_to) created_at.lte = new Date(date_to);
+      where.created_at = created_at;
+    }
+
+    const groups = await prisma.aiUsageLog.groupBy({
+      by: ['retailer_id', 'provider_type', 'model_name', 'resource_type'],
+      where,
+      _sum: { credits_used: true },
+      _count: { id: true },
+      orderBy: { _sum: { credits_used: 'desc' } },
+    });
+
+    // Join retailer names for display
+    const retailerIds = [...new Set(groups.map((g) => g.retailer_id))];
+    const retailers = retailerIds.length
+      ? await prisma.retailer.findMany({
+          where: { id: { in: retailerIds } },
+          select: { id: true, shop_name: true, city: true, plan: true },
+        })
+      : [];
+    const retailerMap = new Map(retailers.map((r) => [r.id, r]));
+
+    return {
+      data: groups.map((g) => ({
+        retailer_id: g.retailer_id,
+        retailer_name: retailerMap.get(g.retailer_id)?.shop_name ?? null,
+        city: retailerMap.get(g.retailer_id)?.city ?? null,
+        plan: retailerMap.get(g.retailer_id)?.plan ?? null,
+        provider_type: g.provider_type,
+        model_name: g.model_name,
+        resource_type: g.resource_type,
+        calls: g._count.id,
+        credits_used: g._sum.credits_used ?? 0,
+      })),
+    };
+  });
 };

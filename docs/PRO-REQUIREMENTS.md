@@ -1085,6 +1085,28 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 
 ---
 
+### 10.14 F-023: AI Provider Registry — Admin-Configurable Tagging Models + Per-Provider Usage
+
+**Status:** ✅ **Built** (2026-08-01). Migration 041 + `packages/ai/src/providers.ts` DB-driven registry + Admin → AI Providers / AI Usage. See `CLAUDE.md` F-023 entry for the full build table.
+
+**Problem:** AI tagging stops whenever the single configured provider (Claude) exhausts its credit balance — uploading new products and the add-color AI pick both break. The fix that only adds a second hardcoded provider (OpenAI, Gemini) still leaves the platform dependent on whichever few models the codebase happens to name.
+
+**Design (user-chosen direction): full DB registry + generic adapter + cost-weighted credits:**
+
+- **`AiProviderConfig` table** — one row per tagging model: `provider_type` (`ANTHROPIC` | `OPENAI_COMPAT` | `GEMINI`), `model_name`, `lite_model_name` (cheaper model for color detection), `base_url`, `api_key_name`, `priority` (1 = tried first), `is_active`, `credits_per_call`. Migration seeds the 3 legacy adapters as rows (Claude 5 / OpenAI 2 / Gemini 1 credits) so failover works out of the box.
+- **Generic `OPENAI_COMPAT` adapter** — every provider that speaks the OpenAI chat-completions protocol (OpenAI, OpenRouter, DeepSeek, Mistral, Groq, Together, ...) works through one adapter via a `base_url` override. An OpenRouter key alone unlocks hundreds of models behind one credit balance. **One adapter, any model on the market** — no new code per provider.
+- **Failover semantics** — only providers with a configured key (`getSecret(api_key_name)` — Admin → Integrations or env var) are tried, in priority order. A provider outage (auth/credit/rate/5xx/transport) trips a 5-min circuit-breaker cooldown and auto-tries the next; a success self-heals immediately. Contract errors (provider responded but unusably) do NOT fail over. A persistent 400 (e.g. a text-only model fed an image) is classified as an outage via the `providerDown` flag so a bad model choice can't halt tagging. `listActiveAiProviders()` returns `null` when the table is missing (legacy fallback) vs `[]` when every row is inactive (admin disabled AI — clear error, no fallback).
+- **Weighted credits** — the quota gate (`checkQuota(AI_TAGGING_CALL, reserveAiCredits())`) checks against the most expensive healthy provider's cost — a gate-check, not a held reservation; actual consumption is recorded per call when the winning provider's `credits_per_call` is incremented against the retailer's existing F-010 `AI_TAGGING_CALL` counter (same counter the `/billing/addon-checkout` packs top up). Expensive models drain the same flat quota faster; admins edit weights live. Edge: a retailer near their limit can be gated even when a cheap fallback would have served (gate uses the max healthy cost, the safe direction — never over-spend); topping up via addon packs clears it.
+- **`AiUsageLog` per-call attribution** — retailer × provider × model × `resource_type` (`AI_TAGGING_CALL` | `AI_ITEM_DETECT` | `AI_COLOR_DETECT`) × weighted credits. Powers Admin → AI Usage. `legacy-*` synthetic ids never FK to `ai_provider_configs`.
+
+**Acceptance Criteria:**
+- Retailer uploads a product while Claude's credits are exhausted → tagging completes via the next configured provider with a key (e.g. Gemini/OpenRouter)
+- Admin adds a DeepSeek/OpenRouter row (OPENAI_COMPAT + base_url + key) in Admin → AI Providers → it appears in the failover order without a redeploy
+- Admin reorders providers → priorities rewrite 1..N; deactivating all rows stops AI with a clear "No AI provider configured" error (no silent legacy fallback)
+- A retailer's AI Usage counter reflects the *winning* provider's `credits_per_call`, and Admin → AI Usage shows per-retailer × per-model weighted breakdown
+
+---
+
 ## 11. Out of Scope (MVP)
 
 - AI virtual try-on

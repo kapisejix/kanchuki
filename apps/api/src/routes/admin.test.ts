@@ -31,6 +31,12 @@ const {
   mockIntegrationUpdate,
   mockIntegrationDelete,
   mockAuditLogCreate,
+  mockAiProviderFindMany,
+  mockAiProviderFindUnique,
+  mockAiProviderCreate,
+  mockAiProviderUpdate,
+  mockAiProviderDelete,
+  mockAiUsageGroupBy,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
   mockRetailerFindMany: vi.fn(),
@@ -57,6 +63,12 @@ const {
   mockIntegrationUpdate: vi.fn(),
   mockIntegrationDelete: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockAiProviderFindMany: vi.fn(),
+  mockAiProviderFindUnique: vi.fn(),
+  mockAiProviderCreate: vi.fn(),
+  mockAiProviderUpdate: vi.fn(),
+  mockAiProviderDelete: vi.fn(),
+  mockAiUsageGroupBy: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -76,6 +88,14 @@ vi.mock('@kanchuki/db', () => ({
       delete: mockIntegrationDelete,
     },
     auditLog: { create: mockAuditLogCreate },
+    aiProviderConfig: {
+      findMany: mockAiProviderFindMany,
+      findUnique: mockAiProviderFindUnique,
+      create: mockAiProviderCreate,
+      update: mockAiProviderUpdate,
+      delete: mockAiProviderDelete,
+    },
+    aiUsageLog: { groupBy: mockAiUsageGroupBy },
     retailer: {
       findUnique: mockRetailerFindUnique,
       findMany: mockRetailerFindMany,
@@ -908,6 +928,200 @@ describe('Admin integrations', () => {
 
     expect(res.statusCode).toBe(204);
     expect(mockIntegrationDelete).toHaveBeenCalledWith({ where: { id: 'int_1' } });
+    await app.close();
+  });
+});
+
+// ─── AI Provider Registry (F-023) ─────────────────────────────────
+
+const fakeAiProvider = {
+  id: 'prov_1',
+  provider_type: 'OPENAI_COMPAT',
+  label: 'DeepSeek V3',
+  model_name: 'deepseek-chat',
+  lite_model_name: null,
+  base_url: 'https://api.deepseek.com',
+  api_key_name: 'DEEPSEEK_API_KEY',
+  priority: 1,
+  is_active: true,
+  credits_per_call: 3,
+  created_at: new Date(),
+  updated_at: new Date(),
+};
+
+describe('Admin AI providers', () => {
+  it('rejects unauthenticated requests', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/ai-providers' });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('lists providers with key_configured flag per row', async () => {
+    mockAiProviderFindMany.mockResolvedValue([fakeAiProvider]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/ai-providers',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(200);
+    const data = res.json().data;
+    expect(data).toHaveLength(1);
+    expect(data[0].provider_type).toBe('OPENAI_COMPAT');
+    expect(data[0].base_url).toBe('https://api.deepseek.com');
+    expect(data[0]).toHaveProperty('key_configured');
+    await app.close();
+  });
+
+  it('creates a provider row with priority + weighted credits', async () => {
+    mockAiProviderCreate.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ id: 'prov_2', ...data, created_at: new Date(), updated_at: new Date() }),
+    );
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/ai-providers',
+      headers: csrfHeaders(),
+      payload: {
+        provider_type: 'OPENAI_COMPAT',
+        label: 'OpenRouter Claude',
+        model_name: 'anthropic/claude-3.5-sonnet',
+        base_url: 'https://openrouter.ai/api/v1',
+        api_key_name: 'OPENROUTER_API_KEY',
+        priority: 4,
+        credits_per_call: 10,
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(mockAiProviderCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          provider_type: 'OPENAI_COMPAT',
+          base_url: 'https://openrouter.ai/api/v1',
+          priority: 4,
+          credits_per_call: 10,
+        }),
+      }),
+    );
+    expect(mockAuditLogCreate).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an invalid provider_type', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/ai-providers',
+      headers: csrfHeaders(),
+      payload: {
+        provider_type: 'BOGUS',
+        label: 'Bad',
+        model_name: 'x',
+        api_key_name: 'X_API_KEY',
+      },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockAiProviderCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('updates a provider, auditing changed fields', async () => {
+    mockAiProviderFindUnique.mockResolvedValue(fakeAiProvider);
+    mockAiProviderUpdate.mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ ...fakeAiProvider, ...data }),
+    );
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/admin/ai-providers/prov_1',
+      headers: csrfHeaders(),
+      payload: { credits_per_call: 7, is_active: false },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.credits_per_call).toBe(7);
+    expect(res.json().data.is_active).toBe(false);
+    expect(mockAiProviderUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ credits_per_call: 7 }) }),
+    );
+    expect(mockAuditLogCreate).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('returns 404 when updating a missing provider', async () => {
+    mockAiProviderFindUnique.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/admin/ai-providers/missing',
+      headers: csrfHeaders(),
+      payload: { credits_per_call: 5 },
+    });
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it('deletes a provider, returning 204', async () => {
+    mockAiProviderFindUnique.mockResolvedValue(fakeAiProvider);
+    mockAiProviderDelete.mockResolvedValue(fakeAiProvider);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/ai-providers/prov_1',
+      headers: csrfHeaders(),
+      body: {},
+    });
+    expect(res.statusCode).toBe(204);
+    expect(mockAiProviderDelete).toHaveBeenCalledWith({ where: { id: 'prov_1' } });
+    expect(mockAuditLogCreate).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('reorders providers via a transaction, rewriting priorities 1..N', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/ai-providers/reorder',
+      headers: csrfHeaders(),
+      payload: { ordered_ids: ['prov_2', 'prov_1'] },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.reordered).toBe(2);
+    expect(mockTransaction).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('aggregates ai-usage grouped by retailer × provider', async () => {
+    mockAiUsageGroupBy.mockResolvedValue([
+      {
+        retailer_id: 'retailer_1',
+        provider_type: 'OPENAI_COMPAT',
+        model_name: 'deepseek-chat',
+        resource_type: 'AI_TAGGING_CALL',
+        _count: { id: 4 },
+        _sum: { credits_used: 12 },
+      },
+    ]);
+    mockRetailerFindMany.mockResolvedValue([
+      { id: 'retailer_1', shop_name: 'Test Shop', city: 'Test City', plan: 'GROWTH' },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/ai-usage',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(200);
+    const row = res.json().data[0];
+    expect(row.retailer_name).toBe('Test Shop');
+    expect(row.calls).toBe(4);
+    expect(row.credits_used).toBe(12);
     await app.close();
   });
 });

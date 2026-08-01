@@ -1,9 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk'
 import { removeBackground } from '@imgly/background-removal-node'
 import { createHash } from 'node:crypto'
-import { getSecret } from '@kanchuki/db'
 import type { AiTagResult } from '@kanchuki/shared'
-import { tagProductImageUrl } from './tagger.js'
+import { runVisionExtract } from './providers.js'
+import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
+import { tagProductImageUrl, type TaggingCallOpts } from './tagger.js'
 import { uploadBuffer, publicUrl } from './r2.js'
 import { computePhash } from './phash.js'
 
@@ -20,12 +20,6 @@ async function getSharp() {
     _sharp = mod.default ?? mod
   }
   return _sharp
-}
-
-let _claude: Anthropic | null = null
-async function getClaude(): Promise<Anthropic> {
-  _claude ??= new Anthropic({ apiKey: await getSecret('ANTHROPIC_API_KEY') })
-  return _claude
 }
 
 // @imgly/background-removal-node's default publicPath is computed via
@@ -83,10 +77,10 @@ interface DetectedGarment {
   design_number?: string | null
 }
 
-const DETECT_TOOL: Anthropic.Tool = {
+const DETECT_SCHEMA: AiJsonSchema = {
   name: 'detect_garments',
   description: 'Detect one or more distinct garments in a product image and extract their attributes',
-  input_schema: {
+  schema: {
     type: 'object' as const,
     properties: {
       items: {
@@ -123,7 +117,10 @@ const DETECT_TOOL: Anthropic.Tool = {
  * Detect all distinct garments in a product/catalog image using Claude Vision.
  * Returns bounding boxes and preliminary tags for each detected garment.
  */
-export async function detectItems(imageUrl: string): Promise<DetectedItem[]> {
+export async function detectItems(
+  imageUrl: string,
+  opts?: TaggingCallOpts,
+): Promise<DetectedItem[]> {
   const res = await fetch(imageUrl)
   if (!res.ok) throw new Error(`Failed to fetch image for detection: ${res.status}`)
 
@@ -135,34 +132,23 @@ export async function detectItems(imageUrl: string): Promise<DetectedItem[]> {
     : 'image/jpeg'
   ) as 'image/jpeg' | 'image/png' | 'image/webp'
 
-  const response = await (await getClaude()).messages.create({
-    model: 'claude-sonnet-4-5-20250929',
-    max_tokens: 2048,
-    temperature: 0,
-    system: DETECT_SYSTEM_PROMPT,
-    tools: [DETECT_TOOL],
-    tool_choice: { type: 'tool', name: 'detect_garments' },
-    messages: [
-      {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: mediaType, data: buffer.toString('base64') },
-          },
-          { type: 'text', text: 'Analyze this image and detect each distinct garment.' },
-        ],
-      },
-    ],
+  // Multi-provider failover (Claude → OpenAI → Gemini). missingToolUseIsEmpty
+  // keeps the old semantics: a model that responds without a detect_garments
+  // call (or an empty/{} payload) means "no distinct items" → single product.
+  const raw = await runVisionExtract({
+    images: [{ buffer, mediaType }],
+    systemPrompt: DETECT_SYSTEM_PROMPT,
+    userPrompt: 'Analyze this image and detect each distinct garment.',
+    maxTokens: 2048,
+    schema: DETECT_SCHEMA,
+    missingToolUseIsEmpty: true,
+    ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
+    // Attribution bucket for the Admin → AI Usage dashboard: item detection is
+    // distinct from per-item tagging (detectCropAndTag fires both).
+    resourceType: 'AI_ITEM_DETECT',
   })
 
-  const toolUse = response.content.find((c) => c.type === 'tool_use')
-  if (!toolUse || toolUse.type !== 'tool_use') {
-    return [] // No items detected — treat as single product
-  }
-
-  const raw = toolUse.input as { items?: DetectedGarment[] }
-  const garments = raw.items ?? []
+  const garments = (raw['items'] as DetectedGarment[] | undefined) ?? []
 
   // Claude sometimes fills optional string fields with the literal word "null" instead of omitting them
   const nullable = (v: unknown): string | null => (v == null || v === 'null' ? null : (v as string))
@@ -280,13 +266,14 @@ export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: s
 export async function detectCropAndTag(
   sourceImageUrl: string,
   retailerId: string,
+  opts?: TaggingCallOpts,
 ): Promise<Array<DetectedItem & { croppedUrl: string; r2Key: string; phash: string }>> {
   // Fetch image
   const imageBuffer = await fetchImageBuffer(sourceImageUrl)
   const { width, height } = await getImageDimensions(imageBuffer)
 
   // Detect items
-  const items = await detectItems(sourceImageUrl)
+  const items = await detectItems(sourceImageUrl, opts)
 
   if (items.length <= 1) {
     // Single item — no cropping needed, just tag the original
@@ -296,7 +283,7 @@ export async function detectCropAndTag(
       const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
       await uploadBuffer(r2Key, cleaned, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
-      const tags = await tagProductImageUrl(sourceImageUrl)
+      const tags = await tagProductImageUrl(sourceImageUrl, opts)
       const phash = await computePhash(cleaned)
       return [{ bbox: { x_pct: 0, y_pct: 0, w_pct: 100, h_pct: 100 }, description: 'Full image', tags, croppedUrl, r2Key, phash }]
     }
@@ -307,7 +294,7 @@ export async function detectCropAndTag(
     const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
     await uploadBuffer(r2Key, cleaned, 'image/jpeg')
     const croppedUrl = publicUrl(r2Key)
-    const tags = await tagProductImageUrl(croppedUrl)
+    const tags = await tagProductImageUrl(croppedUrl, opts)
     const phash = await computePhash(cleaned)
     return [{ ...item, tags, croppedUrl, r2Key, phash }]
   }
@@ -322,7 +309,7 @@ export async function detectCropAndTag(
       const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
       await uploadBuffer(r2Key, cleaned, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
-      const tags = await tagProductImageUrl(croppedUrl)
+      const tags = await tagProductImageUrl(croppedUrl, opts)
       const phash = await computePhash(cleaned)
       results.push({ ...item, tags, croppedUrl, r2Key, phash })
     } catch (err) {

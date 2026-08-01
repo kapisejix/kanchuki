@@ -27,6 +27,9 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('@kanchuki/ai', () => ({
   tagProductImageUrls: mockTagProductImageUrls,
+  // Weighted quota reserve (F-023): return a fixed credit cost so the
+  // checkQuota gate is deterministic in tests.
+  reserveAiCredits: vi.fn().mockResolvedValue(5),
   // Best-effort cleanup is called with auto_cleanup=true (default) but
   // doesn't need to do anything in unit tests — the tagging assertions
   // are what we're actually testing.
@@ -83,7 +86,11 @@ describe('handleTagProduct', () => {
 
     await handleTagProduct(baseData);
 
-    expect(mockTagProductImageUrls).toHaveBeenCalledWith([baseData.photo_url]);
+    // The job now passes attribution opts (onProviderUsed) as the second arg.
+    expect(mockTagProductImageUrls).toHaveBeenCalledWith(
+      [baseData.photo_url],
+      expect.objectContaining({ onProviderUsed: expect.any(Function) }),
+    );
   });
 
   it('writes tags to product and marks primary photo tagged, then queues embedding', async () => {

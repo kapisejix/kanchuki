@@ -34,10 +34,12 @@ import {
   Archive,
   Package,
   Palette,
+  Bot,
+  type LucideIcon,
 } from 'lucide-react'
 
-type Leaf = { label: string; href: string; icon: React.ComponentType<{ size?: number; className?: string }> }
-type Group = { label: string; icon: React.ComponentType<{ size?: number; className?: string }>; children: Leaf[] }
+type Leaf = { label: string; href: string; icon: LucideIcon }
+type Group = { label: string; icon: LucideIcon; children: Leaf[] }
 type NavItem = Leaf | Group | { separator: true }
 
 const NAV_ITEMS: NavItem[] = [
@@ -52,6 +54,14 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
       { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare },
+    ],
+  },
+  {
+    label: 'AI Models',
+    icon: Bot,
+    children: [
+      { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot },
+      { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3 },
     ],
   },
   {

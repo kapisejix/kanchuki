@@ -252,6 +252,7 @@ model Retailer {
   limit_overrides       RetailerLimitOverride[]
   usage_counters        UsageCounter[]
   quota_addon_purchases QuotaAddonPurchase[]
+  ai_usage_logs         AiUsageLog[]
   territory             Territory?              @relation(fields: [territory_id], references: [id])
   onboarded_by          TeamMember?             @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
   support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
@@ -1297,4 +1298,78 @@ model IntegrationSetting {
 
   @@index([category])
   @@map("integration_settings")
+}
+
+// ─── AI PROVIDER REGISTRY (admin-configurable tagging models) ───────
+// Replaces the hardcoded claude/openai/gemini adapters: admin adds any
+// model + API key + priority order + per-call credit cost in the Admin →
+// AI Providers screen. getSecret(api_key_name) resolves the key from
+// IntegrationSetting (F-012) or the .env var of the same name.
+// provider_type OPENAI_COMPAT covers every provider that speaks the OpenAI
+// chat-completions protocol (OpenAI, OpenRouter, DeepSeek, Mistral, Groq,
+// Together, ...) via base_url — one adapter, any model.
+
+enum AiProviderType {
+  ANTHROPIC
+  OPENAI_COMPAT
+  GEMINI
+}
+
+model AiProviderConfig {
+  id            String        @id @default(cuid())
+  provider_type AiProviderType
+  label         String // human label, e.g. "Claude Sonnet"
+
+  // Model used for full product tagging / item detection (extract calls)
+  model_name String
+  // Cheaper model used for quick single-answer calls (color detection).
+  // Null = fall back to model_name.
+  lite_model_name String?
+  // OPENAI_COMPAT only — defaults to https://api.openai.com/v1 when null
+  base_url String?
+  // IntegrationSetting key_name OR env var name holding the API key
+  api_key_name String
+
+  priority Int @default(1) // 1 = tried first (failover order)
+  is_active Boolean @default(true)
+
+  // Weighted quota cost: how many AI_TAGGING_CALL credits one call consumes.
+  // Expensive models cost more credits so a flat quota still reflects
+  // platform spend (see docs/PRO-REQUIREMENTS.md F-010 + AI registry).
+  credits_per_call Int @default(1)
+
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  updated_by_id String? // TeamMember.id
+
+  usage_logs AiUsageLog[]
+
+  @@index([is_active, priority])
+  @@map("ai_provider_configs")
+}
+
+// Per-call AI attribution — which provider/model actually served each
+// retailer's call, and how many weighted credits it consumed. Powers the
+// Admin → AI Usage screen (per-retailer × per-model breakdown).
+// This is attribution, not the quota gate — the gate stays F-010 UsageCounter.
+
+model AiUsageLog {
+  id String @id @default(cuid())
+
+  retailer_id   String
+  provider_id   String? // AiProviderConfig.id — null for legacy/env fallback rows
+  provider_type AiProviderType
+  model_name    String
+  // AI_TAGGING_CALL | AI_ITEM_DETECT | AI_COLOR_DETECT
+  resource_type String
+  credits_used  Int @default(1)
+
+  created_at DateTime @default(now())
+
+  retailer Retailer            @relation(fields: [retailer_id], references: [id])
+  provider AiProviderConfig?   @relation(fields: [provider_id], references: [id], onDelete: SetNull)
+
+  @@index([retailer_id, created_at])
+  @@index([provider_id])
+  @@map("ai_usage_logs")
 }

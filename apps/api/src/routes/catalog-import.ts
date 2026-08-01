@@ -6,12 +6,14 @@ import {
   getUploadPresignedUrl,
   hammingDistance,
   publicUrl,
+  reserveAiCredits,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { PLAN_LIMITS, SIZE_OPTIONS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
+import { recordAiUsage } from '../lib/ai-usage.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
@@ -180,17 +182,17 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     // F-010: gate before spending Vision API + crop cost; detectCropAndTag can
     // return several items from one photo, so the exact count isn't known
-    // until after it runs — increment by the real count below.
+    // until after it runs — per-call weighted credits are recorded by the
+    // onProviderUsed callback below.
     await checkQuota(retailerId, 'IMAGE_CROP');
-    await checkQuota(retailerId, 'AI_TAGGING_CALL');
+    await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
 
     try {
-      const items = await detectCropAndTag(image_url, retailerId);
+      const items = await detectCropAndTag(image_url, retailerId, {
+        onProviderUsed: recordAiUsage(retailerId),
+      });
       incrementUsage(retailerId, 'IMAGE_CROP', items.length).catch((err) => {
         request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-      });
-      incrementUsage(retailerId, 'AI_TAGGING_CALL', items.length).catch((err) => {
-        request.log.error({ err, retailer_id: retailerId }, 'Failed to record tagging usage');
       });
       const dupes = await flagDuplicates(retailerId, items);
 
@@ -236,7 +238,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     // so increment by the real total below.
     if (page_images && page_images.length > 0) {
       await checkQuota(retailerId, 'IMAGE_CROP');
-      await checkQuota(retailerId, 'AI_TAGGING_CALL');
+      await checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits());
     }
 
     try {
@@ -249,7 +251,9 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
           try {
             const pageImg = page_images[i];
             if (!pageImg) continue;
-            const items = await detectCropAndTag(pageImg, retailerId);
+            const items = await detectCropAndTag(pageImg, retailerId, {
+              onProviderUsed: recordAiUsage(retailerId),
+            });
             for (const item of items) {
               allItems.push({
                 description: `Page ${i + 1}: ${item.description}`,
@@ -269,9 +273,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
         incrementUsage(retailerId, 'IMAGE_CROP', allItems.length).catch((err) => {
           request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
-        });
-        incrementUsage(retailerId, 'AI_TAGGING_CALL', allItems.length).catch((err) => {
-          request.log.error({ err, retailer_id: retailerId }, 'Failed to record tagging usage');
         });
 
         const dupes = await flagDuplicates(retailerId, allItems);
