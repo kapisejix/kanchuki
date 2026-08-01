@@ -26,6 +26,10 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: bash scripts/check-delete-guard.sh
+      # Blocks PRs that add a RELATIVE /v1/ fetch to the web app (no /v1
+      # routes/rewrites on the web origin — such calls 404 and silently
+      # break features, e.g. the 2026-08-01 checkout-status bug).
+      - run: bash scripts/check-v1-fetch-guard.sh
       - run: pnpm test      # Web unit suite (vitest, jsdom): AdminLayout auth/session gate, Sidebar
   # state, and other component tests (apps/web/src/**/__tests__). Hermetic —
   # no backend, DB, or seeded data — and fast, so it runs in parallel with
