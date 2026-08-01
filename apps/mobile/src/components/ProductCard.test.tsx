@@ -1,8 +1,14 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { render } from '@testing-library/react-native'
 import React from 'react'
 import { View, Text } from 'react-native'
+import { createControllableAccessibility } from '../test/__mocks__/react-native'
 import ProductCard from './ProductCard'
+
+// ProductCard renders AnimatedPressable, which calls useReduceMotion →
+// AccessibilityInfo. The controllable handle locks the default (reduce motion
+// off) per test and exercises the documented helper (see src/test/README.md).
+const accessibility = createControllableAccessibility(false)
 
 const sampleFooter = (
   <View>
@@ -12,6 +18,9 @@ const sampleFooter = (
 )
 
 describe('ProductCard', () => {
+  beforeEach(() => {
+    accessibility.reset()
+  })
   it('renders with an image URL', () => {
     const tree = render(
       <ProductCard

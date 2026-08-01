@@ -9,6 +9,13 @@ export default defineConfig({
       // native resolver (not affected by this alias), but those are handled
       // by vi.mock() in the setup file.
       'react-native': resolve(__dirname, 'src/test/__mocks__/react-native.ts'),
+      // Reanimated mock — the real module pulls in react-native-worklets,
+      // whose native part can't initialize in vitest's Node environment
+      // (WorkletsError at suite load). Aliased the same way as react-native.
+      'react-native-reanimated': resolve(
+        __dirname,
+        'src/test/__mocks__/react-native-reanimated.ts',
+      ),
     },
   },
   test: {

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
+import { createControllablePathname } from '@/test/__mocks__/next-navigation'
 import AdminLayout from '../layout'
 
 // LoginScreen is lazy-loaded via next/dynamic({ ssr: false }). In jsdom that
@@ -14,26 +15,10 @@ vi.mock('next/dynamic', () => ({
 }))
 
 // Controllable pathname so the shell-persistence test can simulate a real
-// route change (the shared next/navigation mock is fixed to '/admin').
-// Same pattern as Sidebar.test.tsx — the factory closes over the mutable
-// `currentPath` and re-reads it on every render.
-let currentPath = '/admin'
-
-vi.mock('next/navigation', () => ({
-  usePathname: () => currentPath,
-  useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-  useParams: () => ({}),
-  redirect: () => {},
-  notFound: () => {},
-}))
+// route change. The shared next/navigation mock (aliased in vitest.config.ts)
+// is stateful — createControllablePathname() returns a handle that mutates
+// the shared module state, and usePathname() reads it on every render.
+const nav = createControllablePathname('/admin')
 
 const STATS_URL = expect.stringContaining('/v1/admin/stats')
 
@@ -56,7 +41,7 @@ describe('AdminLayout auth/session check', () => {
 
   beforeEach(() => {
     sessionStorage.clear()
-    currentPath = '/admin'
+    nav.reset()
     // The layout chains .then() on the fetch result — the base implementation
     // must return a real Promise (resolve to a Response-like object).
     fetchMock = vi.fn(async () => okResponse())
@@ -163,7 +148,7 @@ describe('AdminLayout auth/session check', () => {
     // Real route change: pathname moves /admin → /admin/retailers. The
     // keyed motion.main remounts (content swaps + entrance animation), but
     // the layout component instance — and with it the shell — persists.
-    currentPath = '/admin/retailers'
+    nav.setPathname('/admin/retailers')
     rerender(
       <AdminLayout>
         <div>Page two</div>

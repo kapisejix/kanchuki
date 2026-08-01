@@ -1,23 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { createControllablePathname } from '@/test/__mocks__/next-navigation'
 import { Sidebar } from '../Sidebar'
 
 // Controllable router/pathname so the active-link behavior can be tested per
-// route (the shared next/navigation mock is fixed to '/admin').
-const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }))
-let currentPath = '/admin'
-
-vi.mock('next/navigation', () => ({
-  usePathname: () => currentPath,
-  useRouter: () => ({
-    push: pushMock,
-    replace: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-}))
+// route. The shared next/navigation mock is stateful; the handle exposes the
+// router's push mock for the sign-out assertion (nav.router.push).
+const nav = createControllablePathname('/admin')
 
 const noop = () => {}
 
@@ -35,8 +24,7 @@ function renderSidebar(overrides?: Partial<Parameters<typeof Sidebar>[0]>) {
 
 describe('Sidebar state', () => {
   beforeEach(() => {
-    currentPath = '/admin'
-    pushMock.mockClear()
+    nav.reset()
     sessionStorage.clear()
   })
 
@@ -86,7 +74,7 @@ describe('Sidebar state', () => {
   })
 
   it('marks only the current route link as active', () => {
-    currentPath = '/admin/retailers'
+    nav.setPathname('/admin/retailers')
     renderSidebar()
 
     // The active link's label span carries the cyan active class; inactive
@@ -151,6 +139,6 @@ describe('Sidebar state', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(removeSpy).toHaveBeenCalledWith('admin_key')
-    expect(pushMock).toHaveBeenCalledWith('/admin')
+    expect(nav.router.push).toHaveBeenCalledWith('/admin')
   })
 })

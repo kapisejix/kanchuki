@@ -126,7 +126,16 @@ export function OrderView({ slug, orderId }: Props) {
             {isPaid ? 'Your order has been placed.' : isPending ? 'Your payment is being confirmed.' : `Status: ${order.status}`}
           </p>
           {order.paid_at && (
-            <p className="text-xs text-gray-500 mt-2">Paid on {new Date(order.paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+            // Locale/timezone-dependent timestamp: the exact text can differ
+            // between the server render and the client (locale, TZ), and the
+            // order fetch can resolve before hydration finishes. suppressHydrationWarning
+            // is React's documented escape hatch for this class (time content).
+            <p
+              suppressHydrationWarning
+              className="text-xs text-gray-500 mt-2"
+            >
+              Paid on {new Date(order.paid_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
           )}
         </div>
 

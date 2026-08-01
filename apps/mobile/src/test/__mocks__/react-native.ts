@@ -115,13 +115,37 @@ export const Vibration = {
   cancel: () => {},
 }
 
+// Controllable reduce-motion state so tests can exercise the app's Reduce
+// Motion handling (useReduceMotion hook, Skeleton/NetworkBanner dimming, etc.).
+let reduceMotionEnabled = false
+
 export const AccessibilityInfo = {
-  isReduceMotionEnabled: async () => false,
+  isReduceMotionEnabled: async () => reduceMotionEnabled,
   isBoldTextEnabled: async () => false,
   isScreenReaderEnabled: async () => false,
   isGrayscaleEnabled: async () => false,
   addEventListener: () => ({ remove: () => {} }),
   removeEventListener: () => {},
+}
+
+/**
+ * Controllable AccessibilityInfo handle for tests.
+ *
+ * Call once at module top level, then `setReduceMotion(true)` to simulate the
+ * system Reduce Motion setting and `reset()` in `beforeEach`. The shared
+ * `AccessibilityInfo` reads the same module state, so components under test
+ * (via the react-native alias) see the change — no vi.mock needed.
+ */
+export function createControllableAccessibility(initialReduceMotion = false) {
+  reduceMotionEnabled = initialReduceMotion
+  return {
+    setReduceMotion: (enabled: boolean) => {
+      reduceMotionEnabled = enabled
+    },
+    reset: () => {
+      reduceMotionEnabled = initialReduceMotion
+    },
+  }
 }
 
 export const AppState = {

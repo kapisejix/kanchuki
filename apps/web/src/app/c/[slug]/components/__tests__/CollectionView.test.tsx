@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { usePathname } from 'next/navigation'
+import { createControllablePathname } from '@/test/__mocks__/next-navigation'
 import { CollectionView } from '../CollectionView'
 import type { PublicCollection } from '@kanchuki/shared'
 import type { ReactNode } from 'react'
@@ -10,25 +11,8 @@ import type { ReactNode } from 'react'
 // content area), the customer route keyed on pathname in app/c/[slug]/layout.tsx
 // REMOUNTS the whole page subtree. Favorites survive that remount only because
 // they're persisted to localStorage (loadWishlist/saveWishlist) and rehydrated
-// on mount — that persistence guarantee is what this test locks in. Same
-// controllable-mock pattern as the admin layout / Sidebar tests.
-let currentPath = '/c/festive-edit'
-
-vi.mock('next/navigation', () => ({
-  usePathname: () => currentPath,
-  useSearchParams: () => new URLSearchParams(),
-  useRouter: () => ({
-    push: vi.fn(),
-    replace: vi.fn(),
-    back: vi.fn(),
-    forward: vi.fn(),
-    refresh: vi.fn(),
-    prefetch: vi.fn(),
-  }),
-  useParams: () => ({}),
-  redirect: () => {},
-  notFound: () => {},
-}))
+// on mount — that persistence guarantee is what this test locks in.
+const nav = createControllablePathname('/c/festive-edit')
 
 // ProductDetailSheet / TryOnModal are lazy-loaded via next/dynamic({ ssr: false });
 // in jsdom that async boundary never resolves deterministically, so stub it out —
@@ -107,7 +91,7 @@ function RouteKeyedHarness({ children }: { children: ReactNode }) {
 
 describe('CollectionView favorites survive a client-side route change', () => {
   beforeEach(() => {
-    currentPath = '/c/festive-edit'
+    nav.reset()
     localStorage.clear()
     // CollectionView pings the checkout status + fire-and-forgets the favorite
     // POST — both must resolve for the assertions to be deterministic.
@@ -127,7 +111,7 @@ describe('CollectionView favorites survive a client-side route change', () => {
   })
 
   const pageElement = (pathname: string) => {
-    currentPath = pathname
+    nav.setPathname(pathname)
     return (
       <RouteKeyedHarness>
         <CollectionView

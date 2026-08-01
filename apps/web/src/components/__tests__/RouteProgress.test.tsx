@@ -1,18 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, act } from '@testing-library/react'
+import { createControllablePathname } from '@/test/__mocks__/next-navigation'
 import { RouteProgress } from '../RouteProgress'
 
-// Mock usePathname to control route changes
-const mockUsePathname = vi.fn()
-vi.mock('next/navigation', () => ({
-  usePathname: () => mockUsePathname(),
-  useSearchParams: () => new URLSearchParams(),
-}))
+// Controllable pathname — the shared next/navigation mock's handle drives
+// usePathname so each route change re-triggers the progress bar.
+const nav = createControllablePathname('/admin')
 
 describe('RouteProgress', () => {
   beforeEach(() => {
     vi.useFakeTimers()
-    mockUsePathname.mockReturnValue('/admin')
+    nav.reset()
   })
 
   afterEach(() => {
@@ -41,7 +39,7 @@ describe('RouteProgress', () => {
     const { rerender } = render(<RouteProgress />)
 
     // Change pathname to trigger navigation state
-    mockUsePathname.mockReturnValue('/admin/retailers')
+    nav.setPathname('/admin/retailers')
     rerender(<RouteProgress />)
 
     // The progress bar should now be visible (isNavigating = true)
@@ -59,7 +57,7 @@ describe('RouteProgress', () => {
     const { rerender } = render(<RouteProgress />)
 
     // Trigger navigation
-    mockUsePathname.mockReturnValue('/admin/billing')
+    nav.setPathname('/admin/billing')
     rerender(<RouteProgress />)
 
     // Advance through all timer stages
@@ -79,7 +77,7 @@ describe('RouteProgress', () => {
     const { unmount } = render(<RouteProgress />)
 
     // Trigger navigation
-    mockUsePathname.mockReturnValue('/admin/settings')
+    nav.setPathname('/admin/settings')
     unmount()
 
     // Should not throw - timers are cleaned up
@@ -92,15 +90,15 @@ describe('RouteProgress', () => {
     const { rerender } = render(<RouteProgress />)
 
     // Rapid navigation: /admin -> /admin/retailers -> /admin/billing
-    mockUsePathname.mockReturnValue('/admin/retailers')
+    nav.setPathname('/admin/retailers')
     rerender(<RouteProgress />)
     act(() => vi.advanceTimersByTime(100))
 
-    mockUsePathname.mockReturnValue('/admin/billing')
+    nav.setPathname('/admin/billing')
     rerender(<RouteProgress />)
     act(() => vi.advanceTimersByTime(100))
 
-    mockUsePathname.mockReturnValue('/admin/settings')
+    nav.setPathname('/admin/settings')
     rerender(<RouteProgress />)
 
     // Advance all timers to completion
