@@ -270,7 +270,52 @@ npx railway up --service @kanchuki/web
 | API crashes on start | Missing env var | Check Railway dashboard → Service → Variables for required vars |
 | DB connection refused | DATABASE_URL not set correctly | Use Railway PostgreSQL plugin's provided URL |
 | 502 Bad Gateway | Health check failing | Check `startCommand` in `railway.json` — ensure path is correct |
+| 502 Bad Gateway — **every** path (`/`, static assets, `/c/{slug}`), with `x-railway-fallback: true` in the response | **Service domain target port ≠ app's listening port** (see §Troubleshooting below) | `railway domain list --service <name>` to compare; `railway domain update --port <PORT> <domain-id> --service <name>` to fix |
 | Prisma schema mismatch | Migrations not run | Run `pnpm exec prisma migrate deploy` from the API service |
+
+### 502 on every path — domain target port vs Railway `$PORT` mismatch
+
+**Symptom:** the whole web service is down, not just one route. `curl` returns HTTP 502
+with `{"status":"error","code":502,"message":"Application failed to respond"}`
+and a `x-railway-fallback: true` header — Railway's edge can't reach the container at
+all (the fallback is served by the edge, so it is fast, ~0.6–0.8s, and every path
+including `/robots.txt` and `/_next/static/*` fails).
+
+**Root cause (incident 2026-08-01):** the app's listening port and the service
+domain's *target port* drifted apart.
+
+- Railway injects a `$PORT` env var per service. The web `start` script listens on it:
+  `next start -p ${PORT:-3000}` (commit `c30e46e` — previously it hardcoded `-p 3000`,
+  which itself broke the healthcheck and killed deploys).
+- The **service domain** was created with a fixed target port (3000) that no longer
+  matched the injected `$PORT` (8080). The container starts fine (logs show
+  "Ready in 247ms" on `localhost:8080`, no crash loop) but the edge routes to 3000 →
+  every request 502s.
+- The **API service** is unaffected because it sets an explicit `PORT=3001` service
+  variable; the **web service has no `PORT` variable**, so it follows Railway's
+  injected `$PORT` and can drift from a domain created earlier.
+
+**How to diagnose:**
+
+```bash
+railway status                          # service shows ● Online but site is down
+railway domain list --service <name>    # shows the domain's target Port
+railway logs --service <name> -n 100    # shows the app's actual listening port
+# e.g. "- Local: http://localhost:8080" in the web logs → app is on 8080
+```
+
+**How to fix (no redeploy needed):**
+
+```bash
+railway domain update --port <actual-port> <domain-id> --service <name>
+# e.g. railway domain update --port 8080 6911637d-... --service magnificent-liberation
+```
+
+Then verify: `curl -I https://<domain>/api/health` should return 200.
+
+**Prevention:** give the web service an explicit `PORT` service variable (mirroring the
+API's `PORT=3001`) so the listening port can't drift from the domain's target port,
+or re-check the domain's target port after any change to the `start` command.
 
 ---
 

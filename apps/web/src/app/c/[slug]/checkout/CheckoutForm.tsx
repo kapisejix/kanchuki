@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ArrowLeft, ShoppingBag, CreditCard, Loader2, MapPin, Phone, User } from 'lucide-react'
 import { formatPriceRange } from '@kanchuki/shared'
 import { type CartMap, loadCart, cartTotal, saveCart } from '../lib/cart'
+import { saveOrderPhone } from '../lib/order'
 
 declare global {
   interface Window {
@@ -79,7 +80,9 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
           quantity: item.quantity,
         }))
 
-        const orderRes = await fetch('/v1/public/checkout/create-order', {
+        // Goes through the web proxy — a relative /v1/... fetch would 404 on
+        // the web origin (no /v1 routes/rewrites) and break order creation.
+        const orderRes = await fetch('/api/checkout/create-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -118,7 +121,7 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
           theme: { color: '#0891b2' },
           handler: async (response) => {
             try {
-              await fetch('/v1/public/checkout/verify-payment', {
+              await fetch('/api/checkout/verify-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -130,6 +133,9 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
             } catch {
               // webhook is source of truth
             }
+            // SECURITY §11.10: the order page needs the phone as second factor
+            // to look the order up — stash in sessionStorage (never in the URL).
+            saveOrderPhone(slug, phone)
             saveCart(slug, new Map())
             router.push(`/c/${slug}/order/${orderData.order_id}`)
           },

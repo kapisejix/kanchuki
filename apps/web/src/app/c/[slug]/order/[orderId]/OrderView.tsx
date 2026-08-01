@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Clock, CreditCard, Package } from 'lucide-react'
 import { formatPriceRange } from '@kanchuki/shared'
+import { loadOrderPhone } from '../../lib/order'
 
 interface Props {
   slug: string
@@ -34,9 +35,16 @@ export function OrderView({ slug, orderId }: Props) {
 
   useEffect(() => {
     let cancelled = false
+    // SECURITY §11.10: the API requires the customer's phone as a second factor
+    // (?phone=) to prevent IDOR. It was stashed in sessionStorage by
+    // CheckoutForm after payment — never in the URL. Request goes through the
+    // web proxy (/api/orders/...) — a relative /v1/... fetch would 404 on the
+    // web origin.
+    const phone = loadOrderPhone(slug)
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`/v1/public/orders/${orderId}`)
+        const qs = phone ? `?phone=${encodeURIComponent(phone)}` : ''
+        const res = await fetch(`/api/orders/${orderId}${qs}`)
         if (!res.ok) throw new Error('Failed to load order')
         const json = await res.json()
         if (!cancelled) {
@@ -61,7 +69,7 @@ export function OrderView({ slug, orderId }: Props) {
       clearInterval(interval)
       clearTimeout(timeout)
     }
-  }, [orderId])
+  }, [orderId, slug])
 
   if (loading && !order) {
     return (

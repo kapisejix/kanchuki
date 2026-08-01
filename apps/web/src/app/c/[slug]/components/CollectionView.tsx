@@ -51,10 +51,13 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
   const [showFilters, setShowFilters] = useState(false);
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null);
 
-  // F-302: Check if the retailer has online checkout enabled
+  // F-302: Check if the retailer has online checkout enabled.
+  // Goes through the web proxy (/api/c/[slug]/checkout-status) — a relative
+  // /v1/... fetch would 404 on the web origin (no /v1 routes/rewrites) and
+  // silently leave checkout disabled for every retailer.
   const [checkoutEnabled, setCheckoutEnabled] = useState(false);
   useEffect(() => {
-    fetch(`/v1/public/checkout/retailer-status/${slug}`)
+    fetch(`/api/c/${slug}/checkout-status`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json?.data?.checkout_enabled) setCheckoutEnabled(true);
