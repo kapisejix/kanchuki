@@ -16,6 +16,7 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -43,11 +44,6 @@ type Retailer = {
   product_count: number
   customer_count: number
   collection_count: number
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 const containerVariants = {
@@ -93,9 +89,7 @@ function RetailersContent() {
       if (cursorVal) params.set('cursor', cursorVal)
       params.set('limit', '20')
 
-      const res = await fetch(`${API_URL}/v1/admin/retailers?${params}`, {
-        headers: getHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/retailers?${params}`, adminGetOptions())
       const json = await res.json()
       setRetailers(json.data)
       setHasMore(json.pagination.has_more)
@@ -154,8 +148,8 @@ function RetailersContent() {
     setDeleting(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers`, {
+        ...(await adminMutateOptions()),
         method: 'DELETE',
-        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: Array.from(selected) }),
       })
       if (!res.ok) throw new Error('Delete failed')

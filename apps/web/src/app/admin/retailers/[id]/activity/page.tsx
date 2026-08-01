@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -29,11 +30,6 @@ type LogEntry = {
   metadata: Record<string, unknown> | null
   ip_address: string | null
   created_at: string
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 const ACTION_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -74,14 +70,14 @@ export default function RetailerActivityPage() {
     async function load() {
       try {
         // Load retailer name
-        const retailerRes = await fetch(`${API_URL}/v1/admin/retailers/${id}`, { headers: getHeaders() })
+        const retailerRes = await fetch(`${API_URL}/v1/admin/retailers/${id}`, adminGetOptions())
         if (retailerRes.ok) {
           const retailerJson = await retailerRes.json()
           setRetailerName(retailerJson.data.shop_name)
         }
 
         // Load activity
-        const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?limit=30`, { headers: getHeaders() })
+        const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?limit=30`, adminGetOptions())
         const json = await res.json()
         setLogs(json.data)
         setHasMore(json.pagination.has_more)
@@ -102,7 +98,7 @@ export default function RetailerActivityPage() {
       const params = new URLSearchParams()
       params.set('limit', '30')
       if (cursorVal) params.set('cursor', cursorVal)
-      const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?${params}`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?${params}`, adminGetOptions())
       const json = await res.json()
       setLogs(json.data)
       setHasMore(json.pagination.has_more)

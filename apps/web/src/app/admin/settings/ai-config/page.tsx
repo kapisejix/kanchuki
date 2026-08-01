@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Cpu, Loader2, AlertCircle, Save, RefreshCw } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -16,11 +17,6 @@ type AiConfigEntry = {
 
 type AiConfigs = Record<string, AiConfigEntry>
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 export default function AiConfigPage() {
   const [configs, setConfigs] = useState<AiConfigs>({})
   const [loading, setLoading] = useState(true)
@@ -33,7 +29,7 @@ export default function AiConfigPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/ai-config`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/settings/ai-config`, adminGetOptions())
       if (!res.ok) throw new Error('Failed to load')
       const json = await res.json()
       setConfigs(json.data ?? {})
@@ -64,8 +60,8 @@ export default function AiConfigPage() {
         payload[key] = { model: val.model, temperature: val.temperature, max_tokens: val.max_tokens, timeout_ms: val.timeout_ms }
       }
       const res = await fetch(`${API_URL}/v1/admin/settings/ai-config`, {
+        ...(await adminMutateOptions()),
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({ configs: payload }),
       })
       if (!res.ok) throw new Error('Failed to save')

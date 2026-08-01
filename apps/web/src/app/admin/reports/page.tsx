@@ -15,6 +15,7 @@ import {
   RefreshCw,
   Activity,
 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -48,11 +49,6 @@ type ActivationReport = {
   cancelled: number
   onboarding_rate: number
   trial_to_active_rate: number
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 const containerVariants = {
@@ -161,11 +157,11 @@ export default function ReportsPage() {
   const loadData = async () => {
     setLoading(true)
     try {
-      const headers = getHeaders()
+      const opts = adminGetOptions()
       const [a, g, f] = await Promise.all([
-        fetch(`${API_URL}/v1/team/reporting/agents`, { headers }).then((r) => r.json()),
-        fetch(`${API_URL}/v1/team/reporting/coverage-gaps`, { headers }).then((r) => r.json()),
-        fetch(`${API_URL}/v1/team/reporting/retailer-activation`, { headers }).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/reporting/agents`, opts).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/reporting/coverage-gaps`, opts).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/reporting/retailer-activation`, opts).then((r) => r.json()),
       ])
       setAgents(a.data ?? [])
       setGaps(g.data ?? { total_gaps: 0, gaps: [] })

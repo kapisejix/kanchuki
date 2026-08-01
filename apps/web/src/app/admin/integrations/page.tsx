@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { KeyRound, Save, Trash2, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -26,11 +27,6 @@ const CATEGORY_LABELS: Record<Category, string> = {
   WHATSAPP: 'WhatsApp Business API',
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 export default function IntegrationsPage() {
   const [rows, setRows] = useState<IntegrationRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -39,7 +35,7 @@ export default function IntegrationsPage() {
   const [status, setStatus] = useState('')
 
   const load = useCallback(async () => {
-    const res = await fetch(`${API_URL}/v1/admin/integrations`, { headers: getHeaders() })
+    const res = await fetch(`${API_URL}/v1/admin/integrations`, adminGetOptions())
     const json = await res.json()
     setRows(json.data ?? [])
     setLoading(false)
@@ -58,15 +54,16 @@ export default function IntegrationsPage() {
     setBusy(row.key_name)
     setStatus('')
     try {
+      const opts = await adminMutateOptions()
       const res = row.configured
         ? await fetch(`${API_URL}/v1/admin/integrations/${row.id}`, {
+            ...opts,
             method: 'PATCH',
-            headers: getHeaders(),
             body: JSON.stringify({ value }),
           })
         : await fetch(`${API_URL}/v1/admin/integrations`, {
+            ...opts,
             method: 'POST',
-            headers: getHeaders(),
             body: JSON.stringify({ key_name: row.key_name, value }),
           })
       if (!res.ok) throw new Error((await res.json())?.error?.message ?? 'Save failed')
@@ -86,8 +83,8 @@ export default function IntegrationsPage() {
     setBusy(row.key_name)
     try {
       const res = await fetch(`${API_URL}/v1/admin/integrations/${row.id}`, {
+        ...(await adminMutateOptions()),
         method: 'DELETE',
-        headers: getHeaders(),
       })
       if (!res.ok) throw new Error('Delete failed')
       setStatus(`✅ ${row.label} removed — using .env fallback`)
@@ -104,8 +101,8 @@ export default function IntegrationsPage() {
     setBusy(row.key_name)
     try {
       await fetch(`${API_URL}/v1/admin/integrations/${row.id}`, {
+        ...(await adminMutateOptions()),
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify({ is_active: !row.is_active }),
       })
       await load()

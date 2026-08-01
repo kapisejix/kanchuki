@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { Image as ImageIcon, Upload, Loader2, Eye, EyeOff } from 'lucide-react'
 import Image from 'next/image'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -16,11 +17,6 @@ type BackgroundImage = {
   created_at: string
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 export default function BackgroundImagesPage() {
   const [rows, setRows] = useState<BackgroundImage[]>([])
   const [loading, setLoading] = useState(true)
@@ -29,7 +25,7 @@ export default function BackgroundImagesPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/background-images`, { headers: getHeaders() })
+    const res = await fetch(`${API_URL}/v1/admin/background-images`, adminGetOptions())
     const json = await res.json()
     setRows(json.data ?? [])
     setLoading(false)
@@ -48,8 +44,8 @@ export default function BackgroundImagesPage() {
     setStatus('')
     try {
       const presign = await fetch(`${API_URL}/v1/admin/background-images/upload-url`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ content_type: file.type, filename: file.name }),
       })
       if (!presign.ok) throw new Error('Failed to get upload URL')
@@ -64,8 +60,8 @@ export default function BackgroundImagesPage() {
 
       const name = file.name.replace(/\.[^.]+$/, '')
       const create = await fetch(`${API_URL}/v1/admin/background-images`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ name, image_url: data.public_url }),
       })
       if (!create.ok) throw new Error('Failed to register background image')
@@ -81,8 +77,8 @@ export default function BackgroundImagesPage() {
 
   const toggleActive = async (row: BackgroundImage) => {
     await fetch(`${API_URL}/v1/admin/background-images/${row.id}`, {
+      ...(await adminMutateOptions()),
       method: 'PATCH',
-      headers: getHeaders(),
       body: JSON.stringify({ is_active: !row.is_active }),
     })
     setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)))

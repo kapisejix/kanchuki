@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Palette, Save, Loader2, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -10,11 +11,6 @@ const HEX_RE = /^#[0-9A-Fa-f]{6}$/
 
 // A few sane starting points — not a constraint, admin can type any hex below.
 const PRESETS = ['#1E2A3D', '#D41E2A', '#0F5132', '#4C1D95', '#7C2D12']
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
 
 export default function ThemeSettingsPage() {
   const [savedColor, setSavedColor] = useState<string | null>(null)
@@ -28,7 +24,7 @@ export default function ThemeSettingsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/theme`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/settings/theme`, adminGetOptions())
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setSavedColor(json.data.primary_color)
@@ -53,8 +49,8 @@ export default function ThemeSettingsPage() {
     setError('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/settings/theme`, {
+        ...(await adminMutateOptions()),
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({ primary_color: color }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

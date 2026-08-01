@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { BarChart3, Loader2 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -18,18 +19,13 @@ type UsageRow = {
   credits_used: number
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 export default function AiUsagePage() {
   const [rows, setRows] = useState<UsageRow[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
-    const res = await fetch(`${API_URL}/v1/admin/ai-usage`, { headers: getHeaders() })
+    const res = await fetch(`${API_URL}/v1/admin/ai-usage`, adminGetOptions())
     const json = await res.json()
     setRows(json.data ?? [])
     setLoading(false)

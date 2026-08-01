@@ -22,6 +22,7 @@ import {
   Plus,
   Trash2,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -76,11 +77,6 @@ const STATUS_COLORS: Record<TicketStatus, string> = {
   ASSIGNED: 'bg-blue-100 text-blue-700 border-blue-200',
   RESOLVED: 'bg-green-100 text-green-700 border-green-200',
   CLOSED: 'bg-gray-100 text-gray-500 border-gray-200',
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
 }
 
 const containerVariants = {
@@ -144,8 +140,8 @@ function TicketDetailPanel({
       }
 
       await fetch(`${API_URL}/v1/team/tickets/${ticket.id}`, {
+        ...(await adminMutateOptions()),
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify(body),
       })
       onUpdated()
@@ -377,8 +373,8 @@ export default function SupportTicketsPage() {
     setRouting(true)
     try {
       await fetch(`${API_URL}/v1/team/tickets/route-all`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
       })
       await loadData()
     } catch {
@@ -392,9 +388,9 @@ export default function SupportTicketsPage() {
     setLoading(true)
     try {
       const [t, s, m] = await Promise.all([
-        fetch(`${API_URL}/v1/team/tickets`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${API_URL}/v1/team/tickets/stats`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${API_URL}/v1/team/members`, { headers: getHeaders() }).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/tickets`, adminGetOptions()).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/tickets/stats`, adminGetOptions()).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/members`, adminGetOptions()).then((r) => r.json()),
       ])
       setTickets(t.data ?? [])
       setStats(s.data ?? null)

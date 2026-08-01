@@ -13,6 +13,7 @@ import {
   Clock,
   History,
 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -35,11 +36,6 @@ type GateHistoryItem = {
   result: string
   summary: string
   checked_at: string
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
 }
 
 const containerVariants = {
@@ -66,10 +62,10 @@ export default function DeploymentGatePage() {
     setError('')
 
     try {
-      const headers = getHeaders()
+      const opts = adminGetOptions()
       const [checkRes, historyRes] = await Promise.all([
-        fetch(`${API_URL}/v1/admin/deployment-gate/check`, { headers }),
-        fetch(`${API_URL}/v1/admin/deployment-gate/history`, { headers }),
+        fetch(`${API_URL}/v1/admin/deployment-gate/check`, opts),
+        fetch(`${API_URL}/v1/admin/deployment-gate/history`, opts),
       ])
 
       if (!checkRes.ok) throw new Error('Failed to check deployment gates')

@@ -343,9 +343,11 @@ git push → GitHub Actions
 **Problem:** `apps/api/src/routes/products.ts:30-31` reads `REVALIDATION_SECRET`. The `revalidateCollectionsForProduct()` function short-circuits immediately when the secret is empty. Product status changes (SOLD, RESERVED) do not propagate to ISR-cached collection link pages.  
 **Fix:** Set `REVALIDATION_SECRET` to a shared random string in both API and Web environment variables.
 
-### B-010 — MEDIUM: Collection share URL uses hardcoded Railway domain
-**File:** `apps/api/.env` line 24: `WEB_URL=https://magnificent-liberation-production-5e44.up.railway.app`  
-**Problem:** While this is better than the earlier LAN IP bug (B-007 in PROGRESS.md), the Railway preview domain is not the production URL. Collection links will point to a Railway-generated subdomain that may change with service restarts. Should be set to the permanent custom domain.
+### B-010 — ⚠️ PARTIALLY FIXED (2026-08-01): Collection share URL uses hardcoded Railway domain
+**File:** `apps/api/.env` line 24  
+**Problem:** Railway preview domain is not the production URL. Collection links point to a Railway-generated subdomain that may change with service restarts.
+**Local fix applied:** `apps/api/.env` now reads `WEB_URL=https://kanchuki.app`.
+**Still open:** the same env var on the live Railway API service (production) needs the identical update in the Railway dashboard — per this repo's operational policy, production environment variables are never modified by the agent. Do this manually.
 
 ### B-011 — ✅ FIXED (verified 2026-07-27): GST invoice suffix
 **Location:** `apps/api/src/routes/checkout.ts:61`  
@@ -613,7 +615,7 @@ Same finding as B-012 above — already fail-closed with a logged warning, and `
 - [ ] **B-002**: Provision actual read replica, set distinct DATABASE_URL_REPLICA
 - [ ] **B-008**: Set TEAM_JWT_SECRET
 - [ ] **B-009**: Set REVALIDATION_SECRET in API + Web envs
-- [ ] **B-010**: Point WEB_URL at the permanent custom domain, not the Railway preview URL
+- [x] **B-010**: Local `.env` fixed 2026-08-01 — production Railway env still needs same manual update
 - [ ] **S-009**: Replace `RAZORPAY_WEBHOOK_SECRET` dictionary phrase with `openssl rand -hex 32`
 
 ### §15 offline-first build — done this session (2026-07-27), see §15 for full detail

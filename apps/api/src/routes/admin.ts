@@ -219,7 +219,12 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       const csrfToken = randomBytes(32).toString('hex');
       reply.setCookie('csrf-token', csrfToken, {
         path: '/v1/admin',
-        sameSite: 'strict',
+        // 'none' in prod: web and api live on different *.up.railway.app
+        // subdomains — up.railway.app is public-suffix-listed, so each
+        // subdomain is its own "site" and 'strict'/'lax' would never send
+        // this cookie cross-service. 'none' requires secure, already true
+        // in prod. Dev stays 'strict' — localhost is same-site across ports.
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         maxAge: 86400, // 24 hours
@@ -788,7 +793,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     const csrfToken = randomBytes(32).toString('hex');
     reply.setCookie('csrf-token', csrfToken, {
       path: '/v1/admin',
-      sameSite: 'strict',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       maxAge: 86400,

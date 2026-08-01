@@ -14,7 +14,12 @@ import {
   KeyRound,
   Edit3,
   X,
+  Eye,
+  AlertTriangle,
+  HelpCircle,
 } from 'lucide-react'
+import { classifyVisionModel } from '@/lib/vision-model'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -51,9 +56,38 @@ const EMPTY_FORM = {
   credits_per_call: '1',
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
+// Badge showing whether a model can read product images (AI tagging sends
+// images, so a text-only model would fail over every call).
+function VisionBadge({ modelName }: { modelName: string }) {
+  const capability = classifyVisionModel(modelName)
+  if (capability === 'vision') {
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-green-50 border border-green-200 text-green-600 flex items-center gap-1"
+        title="Vision-capable — can read product images"
+      >
+        <Eye size={10} /> Vision
+      </span>
+    )
+  }
+  if (capability === 'text-only') {
+    return (
+      <span
+        className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-600 flex items-center gap-1"
+        title="Text-only — cannot read product images; every tagging call fails over to the next provider"
+      >
+        <AlertTriangle size={10} /> Text-only
+      </span>
+    )
+  }
+  return (
+    <span
+      className="text-[10px] px-1.5 py-0.5 rounded bg-gray-50 border border-gray-200 text-gray-400 flex items-center gap-1"
+      title="Unverified — confirm this model accepts image inputs before using it for tagging"
+    >
+      <HelpCircle size={10} /> Unverified
+    </span>
+  )
 }
 
 export default function AiProvidersPage() {
@@ -66,7 +100,7 @@ export default function AiProvidersPage() {
   const [form, setForm] = useState(EMPTY_FORM)
 
   const load = useCallback(async () => {
-    const res = await fetch(`${API_URL}/v1/admin/ai-providers`, { headers: getHeaders() })
+    const res = await fetch(`${API_URL}/v1/admin/ai-providers`, adminGetOptions())
     const json = await res.json()
     setRows((json.data ?? []).sort((a: AiProviderRow, b: AiProviderRow) => a.priority - b.priority))
     setLoading(false)
@@ -86,8 +120,8 @@ export default function AiProvidersPage() {
     setBusy(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/reorder`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ ordered_ids: next.map((r) => r.id) }),
       })
       if (!res.ok) throw new Error('Reorder failed')
@@ -104,8 +138,8 @@ export default function AiProvidersPage() {
     setBusy(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/${row.id}`, {
+        ...(await adminMutateOptions()),
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify({ is_active: !row.is_active }),
       })
       if (!res.ok) throw new Error('Update failed')
@@ -122,8 +156,8 @@ export default function AiProvidersPage() {
     setBusy(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/${row.id}`, {
+        ...(await adminMutateOptions()),
         method: 'DELETE',
-        headers: getHeaders(),
       })
       if (!res.ok) throw new Error('Delete failed')
       setStatus(`✅ ${row.label} deleted`)
@@ -172,15 +206,16 @@ export default function AiProvidersPage() {
       credits_per_call: Number(form.credits_per_call) || 1,
     }
     try {
+      const opts = await adminMutateOptions()
       const res = editing
         ? await fetch(`${API_URL}/v1/admin/ai-providers/${editing.id}`, {
+            ...opts,
             method: 'PATCH',
-            headers: getHeaders(),
             body: JSON.stringify(payload),
           })
         : await fetch(`${API_URL}/v1/admin/ai-providers`, {
+            ...opts,
             method: 'POST',
-            headers: getHeaders(),
             body: JSON.stringify(payload),
           })
       if (!res.ok) throw new Error((await res.json())?.error?.message ?? 'Save failed')
@@ -193,6 +228,10 @@ export default function AiProvidersPage() {
       setBusy(false)
     }
   }
+
+  const textOnlyActive = rows.filter(
+    (r) => r.is_active && classifyVisionModel(r.model_name) === 'text-only',
+  )
 
   if (loading) {
     return (
@@ -236,6 +275,19 @@ export default function AiProvidersPage() {
           }`}
         >
           {status}
+        </div>
+      )}
+
+      {textOnlyActive.length > 0 && (
+        <div className="flex items-start gap-2 text-sm rounded-xl px-4 py-3 border bg-red-50/80 border-red-200 text-red-700">
+          <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" />
+          <p>
+            <strong>Text-only model{textOnlyActive.length > 1 ? 's' : ''} in the active chain:</strong>{' '}
+            {textOnlyActive.map((r) => r.label).join(', ')}. AI tagging sends product images, so
+            every call to {textOnlyActive.length > 1 ? 'these models' : 'this model'} fails over to
+            the next provider — or fails entirely if it's the only one. Swap in a vision-capable
+            model.
+          </p>
         </div>
       )}
 
@@ -286,6 +338,7 @@ export default function AiProvidersPage() {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-gray-800 truncate">{row.label}</p>
+                  <VisionBadge modelName={row.model_name} />
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-500">
                     {row.provider_type}
                   </span>
@@ -402,6 +455,13 @@ export default function AiProvidersPage() {
                     placeholder="e.g. claude-sonnet-4-5"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                   />
+                  {form.model_name.trim() &&
+                    classifyVisionModel(form.model_name) === 'text-only' && (
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                        <AlertTriangle size={12} className="flex-shrink-0" /> Looks text-only — AI
+                        tagging sends images, so every call will fail over to the next provider.
+                      </p>
+                    )}
                 </div>
                 <div>
                   <label className="text-xs font-medium text-gray-600 block mb-1">
@@ -413,6 +473,13 @@ export default function AiProvidersPage() {
                     placeholder="e.g. claude-haiku"
                     className="w-full px-3 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                   />
+                  {form.lite_model_name.trim() &&
+                    classifyVisionModel(form.lite_model_name) === 'text-only' && (
+                      <p className="text-[11px] text-red-600 mt-1 flex items-center gap-1">
+                        <AlertTriangle size={12} className="flex-shrink-0" /> Color detection also
+                        sends images — a text-only model fails over every call.
+                      </p>
+                    )}
                 </div>
               </div>
 

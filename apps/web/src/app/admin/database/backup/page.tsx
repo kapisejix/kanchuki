@@ -23,6 +23,7 @@ import {
   Bell,
   Calendar,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -73,43 +74,6 @@ type ActionResponse = {
 }
 
 // ─── Helpers ───────────────────────────────────────────────────
-
-/** CSRF token state — fetched once, reused for all POST requests */
-let cachedCsrfToken: string | null = null
-let csrfFetchPromise: Promise<string> | null = null
-
-async function ensureCsrfToken(): Promise<string> {
-  if (cachedCsrfToken) return cachedCsrfToken
-  if (csrfFetchPromise) return csrfFetchPromise
-
-  csrfFetchPromise = (async () => {
-    const key = sessionStorage.getItem('admin_key')
-    const res = await fetch(`${API_URL}/v1/admin/csrf-token`, {
-      headers: { 'x-admin-key': key ?? '' },
-    })
-    if (!res.ok) throw new Error(`CSRF token fetch failed: HTTP ${res.status}`)
-    const json = await res.json()
-    const token = json.data.csrf_token as string
-    cachedCsrfToken = token
-    return token
-  })()
-
-  return csrfFetchPromise
-}
-
-function getAdminHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
-async function getCsrfHeaders(): Promise<Record<string, string>> {
-  const csrf = await ensureCsrfToken()
-  return {
-    ...getAdminHeaders(),
-    'Cookie': `csrf-token=${csrf}`,
-    'x-csrf-token': csrf,
-  }
-}
 
 function formatDate(iso: string | null): string {
   if (!iso) return '—'
@@ -193,9 +157,7 @@ export default function DatabaseBackupPage() {
     setRestoreResult(null)
 
     try {
-      const res = await fetch(`${API_URL}/v1/admin/backups`, {
-        headers: getAdminHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/backups`, adminGetOptions())
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
 
       const json = (await res.json()) as BackupListResponse
@@ -214,14 +176,6 @@ export default function DatabaseBackupPage() {
     fetchBackups()
   }, [fetchBackups])
 
-  // ── CSRF state ────────────────────────────────────────────────
-  const [csrfReady, setCsrfReady] = useState(false)
-
-  // Ensure CSRF token is fetched on mount
-  useEffect(() => {
-    ensureCsrfToken().then(() => setCsrfReady(true)).catch(() => setCsrfReady(false))
-  }, [])
-
   // ── Trigger backup ───────────────────────────────────────────
   const handleTriggerBackup = async () => {
     setTriggering(true)
@@ -230,8 +184,8 @@ export default function DatabaseBackupPage() {
 
     try {
       const res = await fetch(`${API_URL}/v1/admin/backup/create`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: await getCsrfHeaders(),
         body: JSON.stringify({}),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)
@@ -255,8 +209,8 @@ export default function DatabaseBackupPage() {
 
     try {
       const res = await fetch(`${API_URL}/v1/admin/backups/restore`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: await getCsrfHeaders(),
         body: JSON.stringify({ key }),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`)

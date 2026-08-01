@@ -14,6 +14,7 @@ import {
   ExternalLink,
   type LucideIcon,
 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -28,10 +29,6 @@ type Deployment = {
   duration_seconds: number | null
   ip_address: string | null
   created_at: string
-}
-
-function getHeaders() {
-  return { 'x-admin-key': sessionStorage.getItem('admin_key') ?? '' }
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -67,9 +64,7 @@ export default function DeploymentsPage() {
       if (filter) params.set('status', filter)
       params.set('limit', '50')
 
-      const res = await fetch(`${API_URL}/v1/admin/deployments?${params}`, {
-        headers: getHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/deployments?${params}`, adminGetOptions())
       if (!res.ok) throw new Error('Failed to load')
       const json = await res.json()
       const data = json.data ?? []

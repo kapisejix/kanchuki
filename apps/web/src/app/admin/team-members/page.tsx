@@ -19,6 +19,7 @@ import {
   Sparkles,
   ChevronRight,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -58,11 +59,6 @@ const ROLE_COLORS: Record<TeamRole, string> = {
   MARKETING_AGENT: 'bg-cyan-100 text-cyan-700 border-cyan-200',
   SUPPORT_MANAGER: 'bg-amber-100 text-amber-700 border-amber-200',
   SUPPORT_AGENT: 'bg-green-100 text-green-700 border-green-200',
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
 }
 
 const containerVariants = {
@@ -125,8 +121,8 @@ function MemberModal({
     try {
       if (editMember) {
         const res = await fetch(`${API_URL}/v1/team/members/${editMember.id}`, {
+          ...(await adminMutateOptions()),
           method: 'PATCH',
-          headers: getHeaders(),
           body: JSON.stringify({
             territory_ids: selectedTerritories,
             ...(maxRetailers ? { max_retailers: Number(maxRetailers) } : { max_retailers: null }),
@@ -138,8 +134,8 @@ function MemberModal({
         }
       } else {
         const res = await fetch(`${API_URL}/v1/team/members`, {
+          ...(await adminMutateOptions()),
           method: 'POST',
-          headers: getHeaders(),
           body: JSON.stringify({
             name,
             email,
@@ -370,8 +366,8 @@ export default function TeamMembersPage() {
     setLoading(true)
     try {
       const [m, t] = await Promise.all([
-        fetch(`${API_URL}/v1/team/members`, { headers: getHeaders() }).then((r) => r.json()),
-        fetch(`${API_URL}/v1/team/territories`, { headers: getHeaders() }).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/members`, adminGetOptions()).then((r) => r.json()),
+        fetch(`${API_URL}/v1/team/territories`, adminGetOptions()).then((r) => r.json()),
       ])
       setMembers(m.data ?? [])
       setTerritories(t.data ?? [])
@@ -403,8 +399,8 @@ export default function TeamMembersPage() {
   const toggleActive = async (member: TeamMember) => {
     try {
       await fetch(`${API_URL}/v1/team/members/${member.id}`, {
+        ...(await adminMutateOptions()),
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify({ is_active: !member.is_active }),
       })
       loadData()

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Gauge, Loader2, AlertCircle, Save, RefreshCw } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -14,11 +15,6 @@ type RateLimitEntry = {
 }
 
 type RateLimits = Record<string, RateLimitEntry>
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
 
 export default function RateLimitsPage() {
   const [limits, setLimits] = useState<RateLimits>({})
@@ -33,7 +29,7 @@ export default function RateLimitsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/rate-limits`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/settings/rate-limits`, adminGetOptions())
       if (!res.ok) throw new Error('Failed to load')
       const json = await res.json()
       setLimits(json.data ?? {})
@@ -71,8 +67,8 @@ export default function RateLimitsPage() {
         payload[key] = { window_ms: val.window_ms, max_requests: val.max_requests }
       }
       const res = await fetch(`${API_URL}/v1/admin/settings/rate-limits`, {
+        ...(await adminMutateOptions()),
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({ limits: payload }),
       })
       if (!res.ok) throw new Error('Failed to save')

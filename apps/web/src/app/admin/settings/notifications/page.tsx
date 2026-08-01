@@ -20,6 +20,7 @@ import {
   Send,
   Sparkles,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -29,11 +30,6 @@ type NotificationPreferences = {
   integrity_failure: { enabled: boolean }
   last_alert: { time: string; type: string; message: string } | null
   consecutive_failures_count: number
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
 }
 
 const containerVariants = {
@@ -61,9 +57,7 @@ export default function NotificationsSettingsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API_URL}/v1/admin/settings/notifications`, {
-        headers: getHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/settings/notifications`, adminGetOptions())
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
       setPrefs(json.data)
@@ -86,8 +80,8 @@ export default function NotificationsSettingsPage() {
     setError('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/settings/notifications`, {
+        ...(await adminMutateOptions()),
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({
           backup_failure: prefs.backup_failure,
           consecutive_failures: prefs.consecutive_failures,
@@ -111,8 +105,8 @@ export default function NotificationsSettingsPage() {
     setError('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/notify/test`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({}),
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)

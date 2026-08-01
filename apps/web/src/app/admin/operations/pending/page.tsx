@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Shield,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -21,14 +22,6 @@ type PendingOperation = {
   requested_by: string
   requested_at: string
   metadata: Record<string, unknown> | null
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return {
-    'x-admin-key': key ?? '',
-    'Content-Type': 'application/json',
-  }
 }
 
 export default function PendingApprovalsPage() {
@@ -43,9 +36,7 @@ export default function PendingApprovalsPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`${API_URL}/v1/admin/operations/pending`, {
-        headers: getHeaders(),
-      })
+      const res = await fetch(`${API_URL}/v1/admin/operations/pending`, adminGetOptions())
       if (!res.ok) throw new Error('Failed to load')
       const json = await res.json()
       setOperations(json.data ?? [])
@@ -62,8 +53,8 @@ export default function PendingApprovalsPage() {
     setActionLoading(id)
     try {
       const res = await fetch(`${API_URL}/v1/admin/operations/${id}/approve`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({}),
       })
       if (!res.ok) throw new Error('Failed to approve')
@@ -80,8 +71,8 @@ export default function PendingApprovalsPage() {
     setActionLoading(rejectModal.id)
     try {
       const res = await fetch(`${API_URL}/v1/admin/operations/${rejectModal.id}/reject`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({ reason: rejectReason.trim() }),
       })
       if (!res.ok) throw new Error('Failed to reject')

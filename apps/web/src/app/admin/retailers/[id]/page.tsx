@@ -30,6 +30,7 @@ import {
   FileText,
   ExternalLink,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -86,11 +87,6 @@ type RetailerDetail = {
   }>
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
-}
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
@@ -126,8 +122,8 @@ export default function RetailerDetailPage() {
     async function load() {
       try {
         const [retailerRes, overridesRes] = await Promise.all([
-          fetch(`${API_URL}/v1/admin/retailers/${id}`, { headers: getHeaders() }),
-          fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, { headers: getHeaders() }),
+          fetch(`${API_URL}/v1/admin/retailers/${id}`, adminGetOptions()),
+          fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, adminGetOptions()),
         ])
         if (!retailerRes.ok) throw new Error('Retailer not found')
         const retailerJson = await retailerRes.json()
@@ -154,8 +150,8 @@ export default function RetailerDetailPage() {
     setActionLoading(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/extend-trial`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ days: extendDays }),
       })
       if (!res.ok) throw new Error('Failed to extend trial')
@@ -177,8 +173,8 @@ export default function RetailerDetailPage() {
     setActionMsg('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resource_type: overrideForm.resource_type,
           limit_per_period: Number(overrideForm.limit_per_period),
@@ -206,8 +202,8 @@ export default function RetailerDetailPage() {
     setActionMsg('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/overrides/${overrideId}`, {
+        ...(await adminMutateOptions()),
         method: 'DELETE',
-        headers: getHeaders(),
       })
       if (!res.ok) throw new Error('Failed to delete override')
       setOverrides((prev) => prev.filter((o) => o.id !== overrideId))
@@ -223,8 +219,8 @@ export default function RetailerDetailPage() {
     setActionLoading(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/change-plan`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan, status: plan === retailer.plan ? retailer.plan_status : 'ACTIVE' }),
       })
       if (!res.ok) throw new Error('Failed to change plan')
@@ -479,8 +475,8 @@ export default function RetailerDetailPage() {
                     setActionLoading(true)
                     try {
                       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/unsuspend`, {
+                        ...(await adminMutateOptions()),
                         method: 'POST',
-                        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
                       })
                       if (!res.ok) throw new Error('Failed to unsuspend')
                       setIsSuspended(false)
@@ -555,8 +551,8 @@ export default function RetailerDetailPage() {
                         setActionLoading(true)
                         try {
                           const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/suspend`, {
+                            ...(await adminMutateOptions()),
                             method: 'POST',
-                            headers: { ...getHeaders(), 'Content-Type': 'application/json' },
                             body: JSON.stringify({ reason: suspendReasonInput.trim() }),
                           })
                           if (!res.ok) throw new Error('Failed to suspend')

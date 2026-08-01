@@ -15,6 +15,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import Link from 'next/link'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -27,11 +28,6 @@ type OperationCounts = {
     checked_at: string | null
   } | null
   deployment_totals: { total: number; last24h: number; failed24h: number }
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 const containerVariants = {
@@ -53,13 +49,13 @@ export default function OperationsPage() {
     async function load() {
       setLoading(true)
       try {
-        const headers = getHeaders()
+        const opts = adminGetOptions()
 
         // Fetch pending count, gate status, and deployment totals in parallel
         const [pendingRes, gateRes, deployRes] = await Promise.allSettled([
-          fetch(`${API_URL}/v1/admin/operations/pending`, { headers }),
-          fetch(`${API_URL}/v1/admin/deployment-gate/check`, { headers }),
-          fetch(`${API_URL}/v1/admin/deployments?limit=50`, { headers }),
+          fetch(`${API_URL}/v1/admin/operations/pending`, opts),
+          fetch(`${API_URL}/v1/admin/deployment-gate/check`, opts),
+          fetch(`${API_URL}/v1/admin/deployments?limit=50`, opts),
         ])
 
         const pendingData = pendingRes.status === 'fulfilled' ? await pendingRes.value.json() : { data: [] }

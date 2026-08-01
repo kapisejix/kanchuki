@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Package, Save, Loader2, Plus, Trash2 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -13,11 +14,6 @@ type Tier = {
   price_inr: number
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 export default function CatalogUploadTiersPage() {
   const [tiers, setTiers] = useState<Tier[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,7 +22,7 @@ export default function CatalogUploadTiersPage() {
   const [newTier, setNewTier] = useState({ min_items: '', max_items: '', price_inr: '' })
 
   const load = async () => {
-    const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, { headers: getHeaders() })
+    const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, adminGetOptions())
     const json = await res.json()
     setTiers(json.data ?? [])
     setLoading(false)
@@ -45,8 +41,8 @@ export default function CatalogUploadTiersPage() {
     setStatus('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers/${tier.id}`, {
+        ...(await adminMutateOptions()),
         method: 'PATCH',
-        headers: getHeaders(),
         body: JSON.stringify({
           min_items: tier.min_items,
           max_items: tier.max_items,
@@ -65,8 +61,8 @@ export default function CatalogUploadTiersPage() {
   const remove = async (id: string) => {
     if (!confirm('Delete this price tier?')) return
     await fetch(`${API_URL}/v1/admin/catalog-upload-tiers/${id}`, {
+      ...(await adminMutateOptions()),
       method: 'DELETE',
-      headers: getHeaders(),
     })
     setTiers((prev) => prev.filter((t) => t.id !== id))
   }
@@ -79,8 +75,8 @@ export default function CatalogUploadTiersPage() {
     setSaving('new')
     try {
       const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
         body: JSON.stringify({
           min_items: Number(newTier.min_items),
           max_items: newTier.max_items ? Number(newTier.max_items) : null,

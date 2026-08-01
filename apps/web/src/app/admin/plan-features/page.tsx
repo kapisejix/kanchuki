@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { CheckSquare, Square, Save, Loader2, Sparkles } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -59,11 +60,6 @@ const PLAN_ACCENT: Record<Plan, string> = {
   PRO: 'from-purple-500 to-pink-500',
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 // ─── Page ──────────────────────────────────────────────────────────────
 
 export default function PlanFeaturesPage() {
@@ -78,7 +74,7 @@ export default function PlanFeaturesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/v1/admin/plan-features`, { headers: getHeaders() })
+        const res = await fetch(`${API_URL}/v1/admin/plan-features`, adminGetOptions())
         const json = await res.json()
         const data: PlanFeature[] = json.data ?? []
         setRows(data)
@@ -114,8 +110,8 @@ export default function PlanFeaturesPage() {
     setStatus('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/plan-features`, {
+        ...(await adminMutateOptions()),
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({ plan, feature_key: featureKey, enabled }),
       })
       if (!res.ok) throw new Error('Save failed')

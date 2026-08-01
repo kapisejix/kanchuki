@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Gauge, Save, Loader2 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -35,11 +36,6 @@ const RESOURCE_TYPES: ResourceType[] = [
 ]
 const PERIODS: Period[] = ['DAY', 'MONTH', 'LIFETIME']
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
-}
-
 // One editable cell per (plan, resource_type) pair. A missing row means
 // "unlimited" (checkQuota fails open) — shown as blank, not zero.
 type CellState = { limit_per_period: string; period: Period }
@@ -55,7 +51,7 @@ export default function PlanLimitsPage() {
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_URL}/v1/admin/plan-limits`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/plan-limits`, adminGetOptions())
       const json = await res.json()
       const data: PlanLimit[] = json.data ?? []
       setRows(data)
@@ -96,8 +92,8 @@ export default function PlanLimitsPage() {
     setStatus('')
     try {
       const res = await fetch(`${API_URL}/v1/admin/plan-limits`, {
+        ...(await adminMutateOptions()),
         method: 'PUT',
-        headers: getHeaders(),
         body: JSON.stringify({
           plan,
           resource_type: resourceType,

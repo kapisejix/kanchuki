@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ShoppingCart, IndianRupee, TrendingUp, Users, Package, Loader2 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -37,11 +38,6 @@ type AddonData = {
   summary: { total_revenue_inr: number; total_purchases: number }
   top_buyers: TopBuyer[]
   resource_breakdown: ResourceBreakdown[]
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '', 'Content-Type': 'application/json' }
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -89,7 +85,7 @@ export default function AddonPurchasesPage() {
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`${API_URL}/v1/admin/addon-purchases`, { headers: getHeaders() })
+        const res = await fetch(`${API_URL}/v1/admin/addon-purchases`, adminGetOptions())
         const json = await res.json()
         setData(json.data)
       } catch {

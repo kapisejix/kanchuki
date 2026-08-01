@@ -12,6 +12,7 @@ import {
   Sparkles,
   BadgeCheck,
 } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -34,11 +35,6 @@ type Usage = {
   try_on_cost_usd: number
 }
 
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
-}
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
@@ -57,10 +53,10 @@ export default function BillingPage() {
 
   useEffect(() => {
     async function load() {
-      const headers = getHeaders()
+      const opts = adminGetOptions()
       const [s, u] = await Promise.all([
-        fetch(`${API_URL}/v1/admin/stats`, { headers }).then((r) => r.json()),
-        fetch(`${API_URL}/v1/admin/usage`, { headers }).then((r) => r.json()),
+        fetch(`${API_URL}/v1/admin/stats`, opts).then((r) => r.json()),
+        fetch(`${API_URL}/v1/admin/usage`, opts).then((r) => r.json()),
       ])
       setStats(s.data)
       setUsage(u.data)
@@ -73,8 +69,8 @@ export default function BillingPage() {
     setSetupStatus('Creating Razorpay plans...')
     try {
       const res = await fetch(`${API_URL}/v1/admin/billing/setup-plans`, {
+        ...(await adminMutateOptions()),
         method: 'POST',
-        headers: getHeaders(),
       })
       if (!res.ok) throw new Error('Setup failed')
       const json = await res.json()

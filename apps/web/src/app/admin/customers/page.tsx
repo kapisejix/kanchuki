@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Users, Search, ChevronRight, ChevronLeft, Store, Ruler, Sparkles, Ban, CheckCircle } from 'lucide-react'
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -19,11 +20,6 @@ type Customer = {
   created_at: string
   measurement_count: number
   retailer: { id: string; shop_name: string; city: string }
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 const containerVariants = {
@@ -56,7 +52,7 @@ export default function CustomersPage() {
       if (cursorVal) params.set('cursor', cursorVal)
       params.set('limit', '20')
 
-      const res = await fetch(`${API_URL}/v1/admin/customers?${params}`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/customers?${params}`, adminGetOptions())
       const json = await res.json()
       setCustomers(json.data)
       setHasMore(json.pagination.has_more)
@@ -206,8 +202,8 @@ export default function CustomersPage() {
                             setActionLoading(true)
                             try {
                               const res = await fetch(`${API_URL}/v1/admin/customers/${c.id}/unblock`, {
+                                ...(await adminMutateOptions()),
                                 method: 'POST',
-                                headers: { ...getHeaders(), 'Content-Type': 'application/json' },
                               })
                               if (!res.ok) throw new Error('Failed to unblock')
                               setCustomers((prev) => prev.map((cc) => cc.id === c.id ? { ...cc, is_blocked: false, blocked_reason: null } : cc))
@@ -313,8 +309,8 @@ export default function CustomersPage() {
                   setActionLoading(true)
                   try {
                     const res = await fetch(`${API_URL}/v1/admin/customers/${blockDialog.customer.id}/block`, {
+                      ...(await adminMutateOptions()),
                       method: 'POST',
-                      headers: { ...getHeaders(), 'Content-Type': 'application/json' },
                       body: JSON.stringify({ reason: blockReason.trim() }),
                     })
                     if (!res.ok) throw new Error('Failed to block')

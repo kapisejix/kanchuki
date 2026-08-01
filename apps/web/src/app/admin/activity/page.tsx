@@ -17,6 +17,7 @@ import {
   HardDrive,
   Bell,
 } from 'lucide-react'
+import { adminGetOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -39,11 +40,6 @@ type BurstAlert = {
   count: number
   threshold: number
   flagged: boolean
-}
-
-function getHeaders() {
-  const key = sessionStorage.getItem('admin_key')
-  return { 'x-admin-key': key ?? '' }
 }
 
 const ACTION_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
@@ -100,7 +96,7 @@ export default function ActivityFeedPage() {
       if (filters.resource_type) params.set('resource_type', filters.resource_type)
       if (cursorVal) params.set('cursor', cursorVal)
 
-      const res = await fetch(`${API_URL}/v1/admin/activity?${params}`, { headers: getHeaders() })
+      const res = await fetch(`${API_URL}/v1/admin/activity?${params}`, adminGetOptions())
       const json = await res.json()
       setLogs(json.data.logs)
       setBursts(json.data.bursts ?? [])
