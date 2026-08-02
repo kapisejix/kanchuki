@@ -362,14 +362,13 @@ export const QUEUES = {
   AI_TAGGING: 'kanchuki-ai-tagging',
   EMBEDDINGS: 'kanchuki-embeddings',
   TRY_ON: 'kanchuki-try-on',
-  CLEANUP: 'kanchuki-cleanup',
-  ORDER_EXPIRY: 'kanchuki-order-expiry',
   MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
   FASHION_DNA: 'kanchuki-fashion-dna',
   SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
-  DATABASE_BACKUP: 'kanchuki-database-backup',
   GHOST_MANNEQUIN: 'kanchuki-ghost-mannequin',
-  PURGE_SOFT_DELETED: 'kanchuki-purge-soft-deleted',
+  // Cron-only, low-volume jobs share one queue — one Worker dispatches by job.name
+  // instead of 4 separate Workers each holding their own duplicated Redis connection.
+  MAINTENANCE: 'kanchuki-maintenance',
 } as const;
 
 // ─── Cache TTLs (seconds) ─────────────────────────────────────────
