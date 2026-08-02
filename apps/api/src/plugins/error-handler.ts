@@ -78,11 +78,17 @@ export function errorHandler(
   }
 
   // Zod validation errors (from z.parse() in route handlers)
+  // NOTE: ZodError.message is a JSON-array string of issue messages
+  // (e.g. '["Invalid email","Password is required"]') — build a
+  // human-readable joined message instead so client error boxes show
+  // "Invalid email, Password is required", not raw JSON.
   if (error.name === 'ZodError') {
+    const issues = (error as unknown as { issues?: Array<{ message: string }> }).issues;
+    const message = issues?.map((i) => i.message).join(', ') || 'Invalid input';
     void reply.status(422).send({
       error: {
         code: 'VALIDATION_ERROR',
-        message: (error as Error).message,
+        message,
         status: 422,
       },
     });

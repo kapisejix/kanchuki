@@ -109,6 +109,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
+        onLogout={() => setAuthed(false)}
       />
 
       {/* Main content area */}

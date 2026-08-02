@@ -40,13 +40,17 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
         body: JSON.stringify({ email, password }),
       })
 
-      const json = await res.json()
+      // Defensive: the API normally returns { error: { message } }, but a
+      // malformed/gateway body must never leak raw JSON into the error box.
+      const json = (await res.json().catch(() => null)) as
+        | { error?: { message?: string }; data?: { token?: string } }
+        | null
 
       if (!res.ok) {
-        throw new Error(json?.error?.message ?? 'Invalid credentials')
+        throw new Error(json?.error?.message ?? `Login failed (HTTP ${res.status})`)
       }
 
-      const token = json.data.token
+      const token = json?.data?.token
       if (!token) throw new Error('No token returned')
 
       sessionStorage.setItem('admin_key', token)
