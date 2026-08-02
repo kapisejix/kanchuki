@@ -1,15 +1,678 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`ProductCard > renders placeholder when imageUrl is null > no-image-placeholder 1`] = `null`;
+exports[`ProductCard > renders placeholder when imageUrl is null > no-image-placeholder 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 2,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "aspectRatio": 0.75,
+        }
+      }
+    >
+      <View
+        className="w-full h-full items-center justify-center bg-sand-50"
+        ref={null}
+      >
+        <Text
+          className="text-sand-300 text-3xl"
+          ref={null}
+        >
+          📦
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;
 
-exports[`ProductCard > renders selected state with checkmark overlay > selected-checkmark 1`] = `null`;
+exports[`ProductCard > renders selected state with checkmark overlay > selected-checkmark 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 2,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "aspectRatio": 0.75,
+        }
+      }
+    >
+      <View
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        onError={[Function]}
+        placeholder={
+          {
+            "blurhash": "L6PZfSi_.AyE_3t7t7R**0o#DgR4",
+          }
+        }
+        ref={null}
+        style={
+          {
+            "height": "100%",
+            "width": "100%",
+          }
+        }
+        transition={300}
+      >
+        <Text
+          testID="expo-image-uri"
+        >
+          https://cdn.example.com/selected.jpg
+        </Text>
+      </View>
+      <View
+        className="absolute top-2 right-2 w-6 h-6 bg-ink-600 rounded-full items-center justify-center"
+        ref={null}
+      >
+        <Text
+          className="text-white text-xs font-bold"
+          ref={null}
+        >
+          ✓
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;
 
-exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] = `null`;
+exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 2,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "aspectRatio": 0.75,
+        }
+      }
+    >
+      <View
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        onError={[Function]}
+        placeholder={
+          {
+            "blurhash": "L6PZfSi_.AyE_3t7t7R**0o#DgR4",
+          }
+        }
+        ref={null}
+        style={
+          {
+            "height": "100%",
+            "width": "100%",
+          }
+        }
+        transition={300}
+      >
+        <Text
+          testID="expo-image-uri"
+        >
+          https://cdn.example.com/untagged.jpg
+        </Text>
+      </View>
+      <View
+        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-turmeric-400 border border-white"
+        ref={null}
+      />
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;
 
-exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `null`;
+exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 2,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "aspectRatio": 0.75,
+        }
+      }
+    >
+      <View
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        onError={[Function]}
+        placeholder={
+          {
+            "blurhash": "L6PZfSi_.AyE_3t7t7R**0o#DgR4",
+          }
+        }
+        ref={null}
+        style={
+          {
+            "height": "100%",
+            "width": "100%",
+          }
+        }
+        transition={300}
+      >
+        <Text
+          testID="expo-image-uri"
+        >
+          https://cdn.example.com/sold.jpg
+        </Text>
+      </View>
+      <View
+        className="absolute top-2 left-2 bg-rust-500/90 px-2 py-0.5 rounded-full"
+        ref={null}
+      >
+        <Text
+          className="text-white text-xs font-semibold"
+          ref={null}
+        >
+          SOLD
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;
 
-exports[`ProductCard > renders with all props combined > all-props-combined 1`] = `null`;
+exports[`ProductCard > renders with all props combined > all-props-combined 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 3,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "aspectRatio": 0.75,
+        }
+      }
+    >
+      <View
+        cachePolicy="memory"
+        contentFit="cover"
+        onError={[Function]}
+        placeholder={
+          {
+            "blurhash": "L6PZfSi_.AyE_3t7t7R**0o#DgR4",
+          }
+        }
+        ref={null}
+        style={
+          {
+            "height": "100%",
+            "width": "100%",
+          }
+        }
+        transition={300}
+      >
+        <Text
+          testID="expo-image-uri"
+        >
+          https://cdn.example.com/full.jpg
+        </Text>
+      </View>
+      <View
+        className="absolute top-2 left-2 bg-rust-500/90 px-2 py-0.5 rounded-full"
+        ref={null}
+      >
+        <Text
+          className="text-white text-xs font-semibold"
+          ref={null}
+        >
+          RESERVED
+        </Text>
+      </View>
+      <View
+        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-turmeric-400 border border-white"
+        ref={null}
+      />
+      <View
+        className="absolute top-2 right-2 w-6 h-6 bg-ink-600 rounded-full items-center justify-center"
+        ref={null}
+      >
+        <Text
+          className="text-white text-xs font-bold"
+          ref={null}
+        >
+          ✓
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;
 
-exports[`ProductCard > renders with an image URL > with-image-url 1`] = `null`;
+exports[`ProductCard > renders with an image URL > with-image-url 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 2,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "aspectRatio": 0.75,
+        }
+      }
+    >
+      <View
+        cachePolicy="memory-disk"
+        contentFit="cover"
+        onError={[Function]}
+        placeholder={
+          {
+            "blurhash": "L6PZfSi_.AyE_3t7t7R**0o#DgR4",
+          }
+        }
+        ref={null}
+        style={
+          {
+            "height": "100%",
+            "width": "100%",
+          }
+        }
+        transition={300}
+      >
+        <Text
+          testID="expo-image-uri"
+        >
+          https://cdn.example.com/product.jpg
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;
 
-exports[`ProductCard > renders with custom height and placeholder icon > custom-height-placeholder 1`] = `null`;
+exports[`ProductCard > renders with custom height and placeholder icon > custom-height-placeholder 1`] = `
+<Pressable
+  accessibilityRole="button"
+  className="bg-white border border-sand-200 flex-1"
+  onPress={[Function]}
+  onPressIn={[Function]}
+  onPressOut={[Function]}
+  ref={null}
+  style={
+    [
+      {
+        "transform": [
+          {
+            "scale": 1,
+          },
+        ],
+      },
+      [
+        {
+          "elevation": 2,
+        },
+        {
+          "shadowColor": "#0C121C",
+          "shadowOffset": {
+            "height": 3,
+            "width": 0,
+          },
+          "shadowOpacity": 0.1,
+          "shadowRadius": 8,
+        },
+        undefined,
+      ],
+    ]
+  }
+>
+  <View
+    className="rounded-2xl overflow-hidden"
+    ref={null}
+  >
+    <View
+      className="w-full bg-sand-100"
+      ref={null}
+      style={
+        {
+          "height": 144,
+        }
+      }
+    >
+      <View
+        className="w-full h-full items-center justify-center bg-sand-50"
+        ref={null}
+      >
+        <Text
+          className="text-sand-300 text-3xl"
+          ref={null}
+        >
+          👕
+        </Text>
+      </View>
+    </View>
+    <View
+      ref={null}
+    >
+      <Text
+        ref={null}
+        testID="footer-text"
+      >
+        Category · Color
+      </Text>
+      <Text
+        ref={null}
+        testID="footer-price"
+      >
+        ₹1,999
+      </Text>
+    </View>
+  </View>
+</Pressable>
+`;

@@ -70,6 +70,12 @@ vi.mock('react-native-safe-area-context', () => {
 })
 
 // ── lucide-react-native (Proxy — catches any icon import) ──────────
+// CRITICAL: the `get` trap must return undefined for `then`/`__esModule`/non-string
+// keys. Returning a component function for `then` makes Promise.resolve() treat the
+// Proxy as a thenable — `await import('lucide-react-native')` (and vitest's ESM
+// interop on mocked modules) hangs forever waiting for a resolve() that never runs.
+// Found 2026-08-02 while adding the first real-screen test (retailer-onboard);
+// existing tests never imported lucide, so the broken trap went unnoticed.
 
 vi.mock('lucide-react-native', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -78,23 +84,52 @@ vi.mock('lucide-react-native', () => {
   return new Proxy(
     {},
     {
+      // Vitest's ESM interop on a mocked module checks `iconName in mock` before
+      // reading it — a bare Proxy has no own keys, so every named icon import
+      // would throw "No X export is defined on the mock". Report every string
+      // key as present (get returns the factory below).
+      has: (_, key) =>
+        typeof key === 'string' &&
+        key !== 'then' &&
+        key !== '__esModule' &&
+        key !== 'default',
+      getOwnPropertyDescriptor: (_, key) => {
+        if (
+          typeof key !== 'string' ||
+          key === 'then' ||
+          key === '__esModule' ||
+          key === 'default'
+        ) {
+          return undefined
+        }
+        return { configurable: true, enumerable: true, value: undefined }
+      },
       get:
-        (_, iconName: string) =>
-        ({ size, color, ...props }: Record<string, unknown>) =>
-          React.createElement(
-            'View' as never,
-            { testID: `lucide-${iconName}`, ...props },
+        (_, iconName) => {
+          if (
+            iconName === 'then' ||
+            iconName === '__esModule' ||
+            iconName === 'default' ||
+            typeof iconName !== 'string'
+          ) {
+            return undefined
+          }
+          return ({ size, color, ...props }: Record<string, unknown>) =>
             React.createElement(
-              'Text' as never,
-              {
-                style: {
-                  fontSize: Number(size) || 16,
-                  color: String(color || '#000'),
+              'View' as never,
+              { testID: `lucide-${iconName}`, ...props },
+              React.createElement(
+                'Text' as never,
+                {
+                  style: {
+                    fontSize: Number(size) || 16,
+                    color: String(color || '#000'),
+                  },
                 },
-              },
-              String(iconName),
-            ),
-          ),
+                String(iconName),
+              ),
+            )
+        },
     },
   )
 })

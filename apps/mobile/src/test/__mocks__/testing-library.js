@@ -25,9 +25,14 @@ function render(ui, options = {}) {
 
   const element = React.createElement(Wrapper, null, ui)
 
-  // Create the test renderer without act() wrapping to avoid
-  // the "Can't access .root on unmounted test renderer" error.
-  const instance = renderer.create(element)
+  // React 19's react-test-renderer leaves the renderer UNMOUNTED when create()
+  // is called outside act() — toJSON() then returns null and toTree() throws
+  // "Can't access .root on unmounted test renderer". Every snapshot in the
+  // suite was `null` until this was wrapped (2026-08-02).
+  let instance = null
+  renderer.act(() => {
+    instance = renderer.create(element)
+  })
 
   function toJSON() {
     return instance ? instance.toJSON() : null
