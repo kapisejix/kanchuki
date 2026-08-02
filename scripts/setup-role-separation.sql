@@ -6,7 +6,11 @@
 --
 -- Idempotent: safe to re-run against an existing setup (the roles were
 -- first created 2026-07-26; re-running applies the sequence grants and
--- default-privileges fixes below without failing on CREATE ROLE).
+-- default-privileges fixes below without failing on CREATE ROLE). Each role
+-- block also re-asserts its password via ALTER ROLE, so a re-run ALIGNS the
+-- password to the documented one even when the role already exists (the
+-- original 2026-07-26 run set different passwords — that mismatch caused
+-- "password authentication failed" on the pooled DATABASE_URL).
 --
 -- Step 1: Open https://supabase.com/dashboard/projects
 -- Step 2: Select your project (project ref = the `thpqcylmcxokajxoerjx`
@@ -26,6 +30,10 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_app') THEN
     CREATE ROLE kanchuki_app WITH LOGIN PASSWORD 'KanchukiApp_R3stricted!';
+  ELSE
+    -- Role exists (first created 2026-07-26 with a different password) —
+    -- re-align to the documented credential so the pooled DATABASE_URL works.
+    ALTER ROLE kanchuki_app WITH LOGIN PASSWORD 'KanchukiApp_R3stricted!';
   END IF;
 END
 $$;
@@ -59,6 +67,8 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_migrator') THEN
     CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD 'KanchukiM1grator!2026' INHERIT;
+  ELSE
+    ALTER ROLE kanchuki_migrator WITH LOGIN PASSWORD 'KanchukiM1grator!2026' INHERIT;
   END IF;
 END
 $$;
@@ -84,6 +94,8 @@ DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_purge') THEN
     CREATE ROLE kanchuki_purge WITH LOGIN PASSWORD 'KanchukiPurge_Delete0nly!2026' INHERIT;
+  ELSE
+    ALTER ROLE kanchuki_purge WITH LOGIN PASSWORD 'KanchukiPurge_Delete0nly!2026' INHERIT;
   END IF;
 END
 $$;
