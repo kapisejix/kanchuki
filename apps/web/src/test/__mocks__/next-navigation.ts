@@ -74,7 +74,7 @@ export function createControllablePathname(initialPath = '/admin') {
       currentPath = initialPath
       // A test may mutate the shared searchParams (e.g. searchParams.set(...))
       // — clear all keys so nothing leaks into the next test in the file.
-      for (const key of [...searchParams.keys()]) searchParams.delete(key)
+      for (const key of Array.from(searchParams.keys())) searchParams.delete(key)
       router.push.mockClear()
       router.replace.mockClear()
       router.back.mockClear()
