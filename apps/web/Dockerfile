@@ -24,6 +24,16 @@ WORKDIR /app
 COPY . .
 
 RUN pnpm install --frozen-lockfile
+
+# Railway only passes dashboard variables into `docker build` for ARGs
+# declared here — without this, every NEXT_PUBLIC_* var silently falls back
+# to its hardcoded default at build time regardless of the dashboard value,
+# since Next.js inlines these into the client bundle during `next build`.
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_R2_PUBLIC_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_R2_PUBLIC_URL=$NEXT_PUBLIC_R2_PUBLIC_URL
+
 RUN pnpm exec turbo build --filter=@kanchuki/web
 
 EXPOSE 3000
