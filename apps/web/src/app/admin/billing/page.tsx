@@ -11,6 +11,7 @@ import {
   DollarSign,
   Sparkles,
   BadgeCheck,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -272,7 +273,7 @@ function RevenueCard({
   subtext,
   color,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: string
   subtext: string
@@ -302,7 +303,7 @@ function RevenueCard({
   )
 }
 
-function CostRow({ icon: Icon, label, value, isLast }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string; isLast?: boolean }) {
+function CostRow({ icon: Icon, label, value, isLast }: { icon: LucideIcon; label: string; value: string; isLast?: boolean }) {
   return (
     <div className={`flex items-center justify-between py-2 ${!isLast ? 'border-b border-gray-50' : ''}`}>
       <div className="flex items-center gap-2">

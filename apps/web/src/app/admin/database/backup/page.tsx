@@ -22,6 +22,7 @@ import {
   ShieldAlert,
   Bell,
   Calendar,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -658,7 +659,7 @@ function SummaryCard({
   value,
   color,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: string | number
   color: 'emerald' | 'blue' | 'amber' | 'gray'

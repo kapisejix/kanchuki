@@ -22,6 +22,7 @@ import {
   Archive,
   BarChart3,
   FileText,
+  type LucideIcon,
 } from 'lucide-react'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -588,7 +589,7 @@ function DbCard({
   children,
 }: {
   title: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   gradient: string
   iconColor: string
   borderAccent: string
@@ -618,7 +619,7 @@ function MetricTile({
   subtext,
   color,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: string
   subtext?: string

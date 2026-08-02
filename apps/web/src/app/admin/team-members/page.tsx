@@ -18,6 +18,7 @@ import {
   UserCog,
   Sparkles,
   ChevronRight,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -670,7 +671,7 @@ function StatsCard({
   color,
   pulse,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: number
   color: 'blue' | 'green' | 'amber' | 'cyan' | 'red'

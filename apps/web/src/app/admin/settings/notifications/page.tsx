@@ -19,6 +19,7 @@ import {
   X,
   Send,
   Sparkles,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -141,7 +142,7 @@ export default function NotificationsSettingsPage() {
   }: {
     id: string
     title: string
-    icon: React.ComponentType<{ size?: number; className?: string }>
+    icon: LucideIcon
     description: string
   }) => (
     <button

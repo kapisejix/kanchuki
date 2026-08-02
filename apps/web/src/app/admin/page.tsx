@@ -16,6 +16,7 @@ import {
   Shield,
   Sparkles,
   ArrowRight,
+  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -347,7 +348,7 @@ function MetricCard({
   color,
   formatCurrency,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: number
   subText: string
@@ -430,7 +431,7 @@ function MiniMetricCard({
   label,
   value,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: string | number
 }) {
@@ -461,7 +462,7 @@ function QuickActionCard({
   title: string
   description: string
   href: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   color: string
 }) {
   const colorMap: Record<string, string> = {

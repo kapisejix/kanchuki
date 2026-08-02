@@ -14,6 +14,7 @@ import {
   UserCheck,
   RefreshCw,
   Activity,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
 
@@ -468,7 +469,7 @@ function SummaryCard({
   color,
   pulse,
 }: {
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   label: string
   value: string | number
   color: 'blue' | 'green' | 'cyan' | 'amber'

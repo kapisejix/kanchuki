@@ -16,6 +16,7 @@ import {
   CreditCard,
   HardDrive,
   Bell,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
 
@@ -42,7 +43,7 @@ type BurstAlert = {
   flagged: boolean
 }
 
-const ACTION_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const ACTION_ICONS: Record<string, LucideIcon> = {
   CREATE: User,
   UPDATE: Settings,
   DELETE: Store,

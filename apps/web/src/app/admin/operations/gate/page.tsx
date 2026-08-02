@@ -12,6 +12,7 @@ import {
   Shield,
   Clock,
   History,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
 
@@ -87,7 +88,7 @@ export default function DeploymentGatePage() {
   useEffect(() => { loadData() }, [loadData])
 
   // Gate descriptions for tooltips
-  const gateLabels: Record<string, { title: string; icon: React.ComponentType<{ size?: number; className?: string }> }> = {
+  const gateLabels: Record<string, { title: string; icon: LucideIcon }> = {
     pending_operations: { title: 'Pending Operations', icon: Clock },
     no_recent_failures: { title: 'Recent Failures', icon: XCircle },
     recent_backup: { title: 'Recent Backup', icon: Clock },

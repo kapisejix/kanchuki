@@ -15,6 +15,7 @@ import {
   Cpu,
   ChevronLeft,
   ChevronRight,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
 
@@ -32,7 +33,7 @@ type LogEntry = {
   created_at: string
 }
 
-const ACTION_ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
+const ACTION_ICONS: Record<string, LucideIcon> = {
   CREATE: User,
   UPDATE: Settings,
   DELETE: Store,

@@ -13,6 +13,7 @@ import {
   Loader2,
   AlertTriangle,
   RefreshCw,
+  type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
 import { adminGetOptions } from '@/lib/admin-fetch'
@@ -281,7 +282,7 @@ function OperationCard({
   title: string
   description: string
   href: string
-  icon: React.ComponentType<{ size?: number; className?: string }>
+  icon: LucideIcon
   color: string
   count: number | null
   countLabel: string

@@ -29,6 +29,7 @@ import {
   Hash,
   FileText,
   ExternalLink,
+  type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -768,7 +769,7 @@ export default function RetailerDetailPage() {
 
 // ── Sub-components ────────────────────────────────────────────────
 
-function ProfileField({ label, value, icon: Icon }: { label: string; value: string; icon?: React.ComponentType<{ size?: number; className?: string }> }) {
+function ProfileField({ label, value, icon: Icon }: { label: string; value: string; icon?: LucideIcon }) {
   return (
     <div className="py-1">
       <span className="text-xs text-gray-400 flex items-center gap-1 mb-0.5">
@@ -802,7 +803,7 @@ function KycDocLink({ label, url }: { label: string; url: string | null }) {
   )
 }
 
-function MiniStat({ icon: Icon, label, value, max }: { icon: React.ComponentType<{ size?: number; className?: string }>; label: string; value: string | number; max?: number }) {
+function MiniStat({ icon: Icon, label, value, max }: { icon: LucideIcon; label: string; value: string | number; max?: number }) {
   const pct = max && typeof value === 'number' ? Math.min(Math.round((value / max) * 100), 100) : null
   return (
     <motion.div
