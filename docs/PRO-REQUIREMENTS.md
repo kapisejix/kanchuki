@@ -1248,7 +1248,7 @@ Defaults above are a starting proposal — admin edits every cell live, no deplo
 
 **What closes the gap (see SECURITY.md §19 for full detail):**
 1. **Postgres role separation** — the app's runtime role (used by the API server, local dev, and any AI coding agent's `DATABASE_URL`) has its `DELETE`/`TRUNCATE`/`DROP`/`ALTER`/`CREATE` grants revoked entirely. A separate migrator role, with those privileges, is never present in any `.env` the app or an agent reads — only used interactively by a human running `prisma migrate deploy`.
-2. **`BEFORE DELETE OR TRUNCATE` DB triggers** on every business table, raising an exception unless a session flag only the 30-day purge cron sets — belt-and-suspenders even if the app role somehow retained DELETE.
+2. **`BEFORE DELETE OR TRUNCATE` DB triggers** on every business table, raising an exception unless a session flag only the 30-day purge cron sets — belt-and-suspenders even if the app role somehow retained DELETE. (The cron runs as the scoped `kanchuki_purge` role via `PURGE_DATABASE_URL` — DELETE on the purge tables only, no DDL; see `scripts/setup-role-separation.sql` and `docs/SECURITY.md` §19.1.)
 3. **No raw `.delete()` in application code for business models** — enforced by a CI grep check (parallel to the existing secrets-scanning pre-commit hook in §15.4), allowlisting only the purge-cron file.
 4. **F-016's Deletion Vault** as the actual recovery path if every other layer somehow fails.
 5. **Env separation already partially stated in §15.4, now made concrete**: production `DATABASE_URL`/`VAULT_DATABASE_URL` never appear in any file an AI coding agent's working directory can read; local/agent dev points at a local or branched dev database only.

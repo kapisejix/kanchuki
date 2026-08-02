@@ -198,8 +198,8 @@ Four layers of defense: role separation (infra) → DB triggers (migration) → 
 | **DB triggers** | `packages/db/prisma/migrations/037_db_guardrails/migration.sql` | `prevent_hard_delete()` PL/pgSQL function. 8 `BEFORE DELETE OR TRUNCATE` triggers on `products`, `customers`, `retailers`, `collections`, `staff`, `orders`, `order_items`, `product_variants`. Bypass via `SET app.allow_hard_delete = 'true'` |
 | **CI grep guard** | `scripts/check-delete-guard.sh` | 3 checks: (1) raw `.delete()` on 7 business models outside allowlist, (2) empty-where `deleteMany()` danger detection, (3) destructive SQL outside migrations. Runs in CI |
 | **CI workflow** | `.github/workflows/ci.yml` | Added `bash scripts/check-delete-guard.sh` step |
-| **Role separation docs** | `docs/SECURITY.md` §19 | Updated to [x] Phase D checklist + §19.6 build table. Role-creation SQL in §19.1: `kanchuki_app` (no DELETE/TRUNCATE/DROP) vs `kanchuki_migrator` (human-only, never in `.env`) |
-| **Purge cron** | `apps/api/src/jobs/purge-soft-deleted.ts` | Daily cron (1:30 AM UTC). Batch-purges soft-deleted records >30 days old. Uses `SET app.allow_hard_delete = 'true'` to bypass triggers. Cursor-based batching, FK-safe order (children before parents). Writes audit log |
+| **Role separation docs** | `docs/SECURITY.md` §19 | Updated to [x] Phase D checklist + §19.6 build table. Role-creation SQL in §19.1: `kanchuki_app` (no DELETE/TRUNCATE/DROP) vs `kanchuki_migrator` (human-only, never in `.env`) + `kanchuki_purge` (scoped DELETE for the purge cron, added 2026-08-02) |
+| **Purge cron** | `apps/api/src/jobs/purge-soft-deleted.ts` | Daily cron (1:30 AM UTC). Batch-purges soft-deleted records >30 days old. Uses `SET app.allow_hard_delete = 'true'` to bypass triggers. Cursor-based batching, FK-safe order (children before parents). Writes audit log. Since 2026-08-02 runs via `getPurgePrisma()`/`PURGE_DATABASE_URL` (the `kanchuki_purge` role) — `kanchuki_app` has no DELETE under role separation |
 | **Purge registration** | `apps/api/src/jobs/index.ts`, `packages/shared/src/constants/index.ts` | PURGE_SOFT_DELETED queue, worker (concurrency 1), daily schedule, queue name constant |
 
 ### Deletion Vault DB setup (future — needs provisioned instance)
@@ -325,6 +325,21 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 **Follow-up pass, same day (commit `39e5ea8`):** `accessibilityState` on the 16 selection chips (fixed — screen readers now announce toggle state, not just the checkmark). Mobile/web `rust`/`turmeric`/`sand` token drift checked and found already resolved (doc claim was stale, not a real gap). Tab bar cut 6→5 (`analytics` moved to a top-level route, reachable via a Home header icon). Tablet/window adaptivity added (`useIsTablet`/`useGridColumns`, wired into all 5 product/category grids). New `AnimatedPressable`/`GradientButton` primitives (Reanimated press-scale + `expo-linear-gradient`), applied to the shared `ProductCard` (iOS shadow added — it had none, only Android `elevation`) and the 3 highest-traffic primary CTAs (product/customer save, collection create). No dark mode — user chose a light-only gradient/shadow/animation direction instead. Primitives + high-traffic screens only, not all 48 hand-migrated (no RN simulator in this environment to verify a blind full sweep). See `docs/design/design-work.md` for full detail.
 
 **Still open:** dark mode (declined for this pass, may revisit later), full tablet-adaptivity coverage beyond the 5 grid screens, remaining ~45 screens' buttons/icons not yet migrated to `GradientButton`/`AnimatedPressable`.
+
+---
+
+## Built: 2026-08-02 — Production DB Outage Fix (Pooler Suffix) + Purge-Cron Scoped Role + Admin/Web Hardening
+
+**Incident:** production API 500'd on every DB-backed endpoint while `/health` stayed 200. Root cause confirmed live: Supabase's pooler requires `<role>.<project_ref>` usernames, but `DATABASE_URL` used bare `kanchuki_app` → `password authentication failed`. Fixed in Railway; docs + setup SQL corrected repo-wide (0 unsuffixed URLs remain). Live probe still shows `kanchuki_app` auth-failing until `scripts/setup-role-separation.sql` is run in the Supabase SQL Editor (superuser connects fine).
+
+| Change | Files | Summary |
+|---|---|---|
+| **Pooler suffix** | `docs/INFRA-SETUP.md`, `docs/26-night-report.md`, `scripts/setup-role-separation.sql` | All `kanchuki_*` pooler URLs now `kanchuki_app.thpqcylmcxokajxoerjx` / `kanchuki_migrator.thpqcylmcxokajxoerjx`; stale `wqcbvmmqzoxapmxbjzhm` ref removed; setup SQL made idempotent + gained missing sequence grants (`GRANT USAGE, SELECT ON ALL SEQUENCES` + default privileges) |
+| **Purge-cron scoped role** | `packages/db/src/client.ts`, `apps/api/src/jobs/purge-soft-deleted.ts`, `scripts/setup-role-separation.sql`, `.env.example` | New `kanchuki_purge` role — inherits `kanchuki_app` (SELECT/INSERT/UPDATE) + DELETE on exactly the 18 purge tables, no TRUNCATE/DROP/DDL — via new `PURGE_DATABASE_URL` and `getPurgePrisma()`. Under full role separation the cron can't run as `kanchuki_app` (no DELETE) or `kanchuki_migrator` (human-only) — this is the scoped role SECURITY §19.2 sanctions. Falls back to the shared client (with a warning) when the URL is unset |
+| **Admin DB-down guards** | `apps/web/src/app/admin/{page,retailers/page,activity/page,retailers/[id]/activity/page}.tsx` + `error.tsx`/`global-error.tsx`/`admin/error.tsx` | Every admin fetch now guards `!res.ok`/`Array.isArray(json?.data)` so a 500 `{error}` body can't crash renders with `undefined.length` — this was crashing the production admin panel during the outage |
+| **Brand assets** | `apps/web/src/app/{icon.svg,apple-icon.png,robots.ts}`, `apps/web/public/{favicon.ico,og-image.png}`, PWA icons, `apps/web/src/app/layout.tsx`, `scripts/generate-brand-assets.mjs` | Loom-brand favicon (SVG + PNG-in-ICO), iOS apple-icon, PWA icons regenerated from stale pre-Loom cyan → brand-correct ink/turmeric, `robots.txt` (Disallow `/admin /api/ /offline`), OG/Twitter meta + 1200×630 `og-image.png` resolved via `metadataBase` (`NEXT_PUBLIC_SITE_URL` fallback `https://kanchuki.app`) |
+
+**Verified:** api + db `tsc --noEmit` 0 errors, db vitest 10/10, delete-guard + secrets-guard pass, live smoke test 8/11 while DB down (the 3 DB-backed checks flip green once the role exists).
 
 ---
 

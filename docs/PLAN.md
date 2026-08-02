@@ -114,7 +114,7 @@ Admin-configurable tagging models + per-provider usage so AI tagging never halts
 - [x] `DeletedRecord` vault schema + `vaultDelete()` helper wired into every soft-delete call site
 - [x] Vault DB role: INSERT-only `vault_app` grant, verified by passing vault test (INSERT succeeds, UPDATE/DELETE rejected)
 - [x] `/admin/database/deletion-vault` lookup page (view-only, filterable)
-- [x] Postgres role separation on Supabase: `kanchuki_app` (no DELETE/TRUNCATE) + `kanchuki_migrator` (human-only, full DDL)
+- [x] Postgres role separation on Supabase: `kanchuki_app` (no DELETE/TRUNCATE) + `kanchuki_migrator` (human-only, full DDL) + `kanchuki_purge` (scoped DELETE for the 30-day purge cron via `PURGE_DATABASE_URL` — added 2026-08-02)
 - [x] `BEFORE DELETE OR TRUNCATE` guardrail triggers on all 8 business tables (migration 037)
 - [x] CI grep guard (`scripts/check-delete-guard.sh`) blocking raw `.delete()` outside allowlist + workflow step in `.github/workflows/ci.yml`
 

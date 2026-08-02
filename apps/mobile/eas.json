@@ -10,13 +10,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://supportive-love-production-9d37.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://supportive-love-production-9d37.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app"
       }
     }
   },
