@@ -197,7 +197,7 @@ Update these files from superuser to `kanchuki_app`:
 
 New value:
 ```
-DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:<APP_PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
 
 ### 3. Redeploy API on Railway

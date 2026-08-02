@@ -4,16 +4,23 @@
 -- Run this SQL in the Supabase SQL Editor (not via psql pooler).
 -- These roles revoke DELETE/TRUNCATE/DROP from the app runtime.
 --
+-- ⚠️ SECURITY (2026-08-02): the previous hardcoded passwords were leaked to
+-- a public GitHub repo (GitGuardian alert) and must NOT be reused. This file
+-- now contains placeholders only. BEFORE running: generate 3 strong random
+-- passwords (e.g. `openssl rand -base64 24`), replace the three
+-- <*_PASSWORD_CHANGE_ME> tokens below, then run. Then set the same values in
+-- Railway env vars / local .env. Never commit real passwords.
+--
 -- Idempotent: safe to re-run against an existing setup (the roles were
 -- first created 2026-07-26; re-running applies the sequence grants and
 -- default-privileges fixes below without failing on CREATE ROLE). Each role
 -- block also re-asserts its password via ALTER ROLE, so a re-run ALIGNS the
--- password to the documented one even when the role already exists (the
+-- password to the tokens below even when the role already exists (the
 -- original 2026-07-26 run set different passwords — that mismatch caused
 -- "password authentication failed" on the pooled DATABASE_URL).
 --
 -- Step 1: Open https://supabase.com/dashboard/projects
--- Step 2: Select your project (project ref = the `thpqcylmcxokajxoerjx`
+-- Step 2: Select your project (project ref = the `<PROJECT_REF>`
 --         suffix in your pooler URLs — see the DATABASE_URL examples below;
 --         confirm it on the dashboard's Connect tab if unsure)
 -- Step 3: Open SQL Editor
@@ -29,11 +36,11 @@
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_app') THEN
-    CREATE ROLE kanchuki_app WITH LOGIN PASSWORD 'KanchukiApp_R3stricted!';
+    CREATE ROLE kanchuki_app WITH LOGIN PASSWORD '<APP_PASSWORD_CHANGE_ME>';
   ELSE
     -- Role exists (first created 2026-07-26 with a different password) —
     -- re-align to the documented credential so the pooled DATABASE_URL works.
-    ALTER ROLE kanchuki_app WITH LOGIN PASSWORD 'KanchukiApp_R3stricted!';
+    ALTER ROLE kanchuki_app WITH LOGIN PASSWORD '<APP_PASSWORD_CHANGE_ME>';
   END IF;
 END
 $$;
@@ -66,9 +73,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_migrator') THEN
-    CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD 'KanchukiM1grator!2026' INHERIT;
+    CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD '<MIGRATOR_PASSWORD_CHANGE_ME>' INHERIT;
   ELSE
-    ALTER ROLE kanchuki_migrator WITH LOGIN PASSWORD 'KanchukiM1grator!2026' INHERIT;
+    ALTER ROLE kanchuki_migrator WITH LOGIN PASSWORD '<MIGRATOR_PASSWORD_CHANGE_ME>' INHERIT;
   END IF;
 END
 $$;
@@ -93,9 +100,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_purge') THEN
-    CREATE ROLE kanchuki_purge WITH LOGIN PASSWORD 'KanchukiPurge_Delete0nly!2026' INHERIT;
+    CREATE ROLE kanchuki_purge WITH LOGIN PASSWORD '<PURGE_PASSWORD_CHANGE_ME>' INHERIT;
   ELSE
-    ALTER ROLE kanchuki_purge WITH LOGIN PASSWORD 'KanchukiPurge_Delete0nly!2026' INHERIT;
+    ALTER ROLE kanchuki_purge WITH LOGIN PASSWORD '<PURGE_PASSWORD_CHANGE_ME>' INHERIT;
   END IF;
 END
 $$;
@@ -150,14 +157,14 @@ SELECT has_table_privilege('kanchuki_purge', 'products', 'TRUNCATE');
 -- required. Substitute your project ref if it differs from this one.
 --
 -- .env (root):
---   DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+--   DATABASE_URL=postgresql://kanchuki_app.<PROJECT_REF>:<APP_PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 --
 -- packages/db/.env:
---   DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+--   DATABASE_URL=postgresql://kanchuki_app.<PROJECT_REF>:<APP_PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 --
 -- Railway (production):
---   DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
---   DATABASE_URL_MIGRATOR=postgresql://kanchuki_migrator.thpqcylmcxokajxoerjx:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+--   DATABASE_URL=postgresql://kanchuki_app.<PROJECT_REF>:<APP_PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+--   DATABASE_URL_MIGRATOR=postgresql://kanchuki_migrator.<PROJECT_REF>:<MIGRATOR_PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 --     (DATABASE_URL_MIGRATOR only for the admin migration-trigger button — human-only)
---   PURGE_DATABASE_URL=postgresql://kanchuki_purge.thpqcylmcxokajxoerjx:KanchukiPurge_Delete0nly!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+--   PURGE_DATABASE_URL=postgresql://kanchuki_purge.<PROJECT_REF>:<PURGE_PASSWORD>@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 --     (PURGE_DATABASE_URL read ONLY by the 30-day purge cron — never DATABASE_URL)

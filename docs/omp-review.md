@@ -379,7 +379,7 @@ git push → GitHub Actions
 | Secret | Type | Risk |
 |--------|------|------|
 | `ANTHROPIC_API_KEY=sk-ant-api03-...` | Live AI API key | API calls billed to account; full Claude API access |
-| `DATABASE_URL=postgresql://postgres.thpqcylmcxokajxoerjx:4z2bvJCW7r806VGJ@...` | Supabase primary DB password | Full read/write/delete of production data |
+| `DATABASE_URL=postgresql://postgres.thpqcylmcxokajxoerjx:<SUPERUSER_PASSWORD>@...` | Supabase primary DB password | Full read/write/delete of production data |
 | `ENCRYPTION_MASTER_KEY=e9631228d1d701bd...` | AES-256-GCM master key | Decrypts ALL stored integration secrets in DB |
 | `OPENAI_API_KEY=sk-proj-XSNS...` | Live OpenAI API key | Billed API access |
 | `R2_SECRET_ACCESS_KEY=5bd16b09...` | R2 storage credentials | Read/write/delete of all product images |

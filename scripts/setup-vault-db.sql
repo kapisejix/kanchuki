@@ -4,6 +4,12 @@
 -- Run this SQL against the VAULT Postgres instance (NOT Supabase)
 -- AFTER provisioning it (e.g., Railway Postgres).
 --
+-- ⚠️ SECURITY (2026-08-02): the previous hardcoded password was leaked to a
+-- public GitHub repo (GitGuardian alert) and must NOT be reused. BEFORE
+-- running: generate a strong random password (`openssl rand -base64 24`),
+-- replace the <VAULT_PASSWORD_CHANGE_ME> token below, then run. Set the same
+-- value in the VAULT_DATABASE_URL env var. Never commit real passwords.
+--
 -- Steps:
 -- 1. Provision a new Postgres instance on Railway
 -- 2. Connect via Railway CLI: railway connect <vault-db-name>
@@ -15,7 +21,7 @@
 -- ─── 1. Create the INSERT-only application role ───────────────
 -- The app uses this role for vault writes. It can INSERT but
 -- never UPDATE or DELETE — tamper-resistant by permission.
-CREATE ROLE vault_app WITH LOGIN PASSWORD 'VaultApp_InsertOnly!2026';
+CREATE ROLE vault_app WITH LOGIN PASSWORD '<VAULT_PASSWORD_CHANGE_ME>';
 GRANT CONNECT ON DATABASE "railway" TO vault_app;
 GRANT USAGE ON SCHEMA public TO vault_app;
 
