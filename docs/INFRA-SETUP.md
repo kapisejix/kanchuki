@@ -132,7 +132,7 @@ This creates `kanchuki_app` (restricted, no DELETE) and `kanchuki_migrator` (ful
 ### Step 1: Open Supabase SQL Editor
 
 1. Go to [Supabase Dashboard](https://supabase.com/dashboard/projects)
-2. Select your project (`wqcbvmmqzoxapmxbjzhm`)
+2. Select your project (`thpqcylmcxokajxoerjx` — the project ref, i.e. the suffix in the pooler URLs below; confirm on the dashboard's **Connect** tab if unsure)
 3. Click **SQL Editor** in the left sidebar
 4. Click **New Query**
 
@@ -140,33 +140,48 @@ This creates `kanchuki_app` (restricted, no DELETE) and `kanchuki_migrator` (ful
 
 Open `scripts/setup-role-separation.sql` and paste into the SQL Editor, OR copy directly:
 
+> The canonical, idempotent version lives in **`scripts/setup-role-separation.sql`** — paste that file into the SQL Editor. It is safe to re-run over the existing setup (the 2026-07-26 roles already exist; re-running applies the sequence grants). Equivalent inline:
+
 ```sql
-CREATE ROLE kanchuki_app WITH LOGIN PASSWORD 'KanchukiApp_R3stricted!';
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_app') THEN CREATE ROLE kanchuki_app WITH LOGIN PASSWORD 'KanchukiApp_R3stricted!'; END IF; END $$;
 GRANT CONNECT ON DATABASE postgres TO kanchuki_app;
 GRANT USAGE ON SCHEMA public TO kanchuki_app;
 GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO kanchuki_app;
-REVOKE DELETE, TRUNCATE, DROP, ALTER, CREATE
-  ON ALL TABLES IN SCHEMA public FROM kanchuki_app;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE ON TABLES TO kanchuki_app;
+REVOKE DELETE, TRUNCATE ON ALL TABLES IN SCHEMA public FROM kanchuki_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE ON TABLES TO kanchuki_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO kanchuki_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO kanchuki_app;
 
-CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD 'KanchukiM1grator!2026' INHERIT;
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_migrator') THEN CREATE ROLE kanchuki_migrator WITH LOGIN PASSWORD 'KanchukiM1grator!2026' INHERIT; END IF; END $$;
 GRANT kanchuki_app TO kanchuki_migrator;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kanchuki_migrator;
-ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT ALL ON TABLES TO kanchuki_migrator;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO kanchuki_migrator;
+
+-- Third role: the 30-day purge cron (narrow-scoped DELETE, no DDL).
+-- The cron cannot use kanchuki_app (DELETE revoked) or kanchuki_migrator
+-- (human-only) — this is the sanctioned middle ground.
+DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'kanchuki_purge') THEN CREATE ROLE kanchuki_purge WITH LOGIN PASSWORD 'KanchukiPurge_Delete0nly!2026' INHERIT; END IF; END $$;
+GRANT kanchuki_app TO kanchuki_purge;
+GRANT DELETE ON TABLE products, product_variants, product_photos, product_embeddings, collections, collection_products, collection_views, collection_enquiries, customers, customer_interactions, customer_measurements, customer_fashion_dna, retailers, staff, store_sections, product_categories, try_on_usage_logs, usage_counters TO kanchuki_purge;
 ```
 
 **Verify:**
 ```sql
 SELECT rolname, rolsuper FROM pg_roles WHERE rolname LIKE 'kanchuki_%';
--- Should show 2 rows
+-- Should show 3 rows — kanchuki_app, kanchuki_migrator, kanchuki_purge
 
 SELECT has_table_privilege('kanchuki_app', 'products', 'DELETE'); -- → false
 SELECT has_table_privilege('kanchuki_migrator', 'products', 'DELETE'); -- → true
+SELECT has_table_privilege('kanchuki_purge', 'products', 'DELETE'); -- → true (purge role only)
+SELECT has_table_privilege('kanchuki_purge', 'products', 'TRUNCATE'); -- → false (no DDL)
 ```
 
 ### Step 3: Update DATABASE_URL
+
+> ⚠️ **Pooler usernames include the project ref.** Supabase's pooler rejects the
+> bare `kanchuki_app` username with `password authentication failed` — the
+> username must be `<role>.<project_ref>`, e.g. `kanchuki_app.thpqcylmcxokajxoerjx`.
+> Substitute your project's ref if it differs.
 
 **Locally** — update `apps/api/.env`:
 ```
@@ -174,7 +189,7 @@ SELECT has_table_privilege('kanchuki_migrator', 'products', 'DELETE'); -- → tr
 DATABASE_URL=postgresql://postgres.thpqcylmcxokajxoerjx:4z2bvJCW7r806VGJ@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 
 # AFTER:
-DATABASE_URL=postgresql://kanchuki_app:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
 
 Also update `packages/db/.env` (direct connection, no pooler):
@@ -183,20 +198,27 @@ Also update `packages/db/.env` (direct connection, no pooler):
 DATABASE_URL=postgresql://postgres.thpqcylmcxokajxoerjx:4z2bvJCW7r806VGJ@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 
 # AFTER:
-DATABASE_URL=postgresql://kanchuki_app:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 ```
 
 **Railway (production)** — update the `DATABASE_URL` env var on the API service:
 | Variable | New Value |
 |----------|-----------|
-| `DATABASE_URL` | `postgresql://kanchuki_app:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true` |
+| `DATABASE_URL` | `postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true` |
 
 **Optional** — add a migrator URL (only used by the admin migration-trigger button):
 | Variable | Value |
 |----------|-------|
-| `DATABASE_URL_MIGRATOR` | `postgresql://kanchuki_migrator:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres` |
+| `DATABASE_URL_MIGRATOR` | `postgresql://kanchuki_migrator.thpqcylmcxokajxoerjx:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres` |
 
 > ⚠️ `DATABASE_URL_MIGRATOR` should NOT be set as a regular env var — only provide it when the admin needs to trigger a migration, or use it interactively via `prisma migrate deploy`.
+
+**Purge cron** — add a scoped purge URL (read ONLY by the 30-day purge cron in `apps/api/src/jobs/purge-soft-deleted.ts`, never by request traffic):
+| Variable | Value |
+|----------|-------|
+| `PURGE_DATABASE_URL` | `postgresql://kanchuki_purge.thpqcylmcxokajxoerjx:KanchukiPurge_Delete0nly!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres` |
+
+> Without `PURGE_DATABASE_URL` the purge cron falls back to the main client and fails nightly with `permission denied` (kanchuki_app has no DELETE). The `kanchuki_purge` role is created by the Step 2 SQL above.
 
 ### Step 4: Apply Migration 037 (Guardrail Triggers)
 
@@ -205,7 +227,7 @@ Now that the restricted roles exist, apply the BEFORE DELETE triggers:
 ```bash
 cd E:/Kanchuki/packages/db
 # Use the MIGRATOR URL (kanchuki_app can't run DDL)
-set DATABASE_URL=postgresql://kanchuki_migrator:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+set DATABASE_URL=postgresql://kanchuki_migrator.thpqcylmcxokajxoerjx:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 npx prisma migrate deploy
 ```
 
@@ -214,15 +236,20 @@ npx prisma migrate deploy
 Test that a DELETE is blocked via the API connection:
 ```bash
 # This should FAIL — kanchuki_app has no DELETE privilege
-psql "postgresql://kanchuki_app:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" -c "DELETE FROM products WHERE id = 'nonexistent';"
+psql "postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" -c "DELETE FROM products WHERE id = 'nonexistent';"
 # Expected: ERROR: permission denied for table products
 ```
 
 Test that the guardrail trigger also blocks:
 ```bash
 # Even through the migrator role, the trigger blocks without session flag
-psql "postgresql://kanchuki_migrator:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" -c "DELETE FROM products WHERE id = 'nonexistent';"
+psql "postgresql://kanchuki_migrator.thpqcylmcxokajxoerjx:KanchukiM1grator!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" -c "DELETE FROM products WHERE id = 'nonexistent';"
 # Expected: ERROR: Hard delete blocked by guardrail trigger on products (F-017)
+
+# The purge role has DELETE but is still blocked by the trigger without the flag
+psql "postgresql://kanchuki_purge.thpqcylmcxokajxoerjx:KanchukiPurge_Delete0nly!2026@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" -c "DELETE FROM products WHERE id = 'nonexistent';"
+# Expected: ERROR: Hard delete blocked by guardrail trigger on products (F-017)
+# (The purge cron sets SET app.allow_hard_delete = 'true' itself inside each tx.)
 ```
 
 ---

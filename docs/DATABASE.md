@@ -1119,7 +1119,10 @@ way to remove data through normal API paths. Full rationale:
 The app's runtime Postgres role (`kanchuki_app`) has `DELETE`/`TRUNCATE`/`DROP`/
 `ALTER`/`CREATE` revoked entirely. A separate `kanchuki_migrator` role holds
 those privileges and is **never** present in any `.env` file — human-only, via
-`prisma migrate deploy`. Role-creation SQL:
+`prisma migrate deploy`. The 30-day purge cron connects through a third,
+narrowly-scoped `kanchuki_purge` role via `PURGE_DATABASE_URL` (`DELETE` on the
+purge tables only, no DDL — see `scripts/setup-role-separation.sql`), so
+hard-delete credentials never ride the main `DATABASE_URL`. Role-creation SQL:
 `docs/SECURITY.md` §19.1.
 
 ### Layer 2 — BEFORE DELETE OR TRUNCATE Triggers (migration 037)
@@ -1182,6 +1185,14 @@ SET app.allow_hard_delete = 'true';
 -- Now DELETE/TRUNCATE work for this session only
 -- The setting lasts only as long as the DB connection
 ```
+
+The purge cron sets this flag itself inside each transaction
+(`apps/api/src/jobs/purge-soft-deleted.ts`). It connects via the scoped
+`kanchuki_purge` role (`PURGE_DATABASE_URL`) — the only role with `DELETE` on
+the purge tables — so the flag alone is not enough to delete through the
+guards: a role without the `DELETE` grant is blocked at the permission layer
+before the trigger even runs, and the purge role is blocked by the trigger
+unless it sets the flag.
 
 ### Layer 3 — CI Grep Guard (`scripts/check-delete-guard.sh`)
 

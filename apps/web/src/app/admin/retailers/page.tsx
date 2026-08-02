@@ -91,12 +91,21 @@ function RetailersContent() {
 
       const res = await fetch(`${API_URL}/v1/admin/retailers?${params}`, adminGetOptions())
       const json = await res.json()
+      // Guard: the API returns { error: {...} } with no .data on a 500.
+      // Previously `json.pagination.has_more` threw TypeError here, which
+      // (with no error boundary in older builds) surfaced as the generic
+      // "Application error" screen. Show the API's message instead.
+      if (!res.ok || !Array.isArray(json?.data)) {
+        throw new Error(json?.error?.message ?? `HTTP ${res.status}`)
+      }
       setRetailers(json.data)
-      setHasMore(json.pagination.has_more)
-      setCursor(json.pagination.cursor)
+      setHasMore(json.pagination?.has_more ?? false)
+      setCursor(json.pagination?.cursor ?? null)
       setSelected(new Set())
     } catch {
-      // ignore
+      // API down / error — keep the last successful list, show empty state
+      setRetailers((prev) => prev)
+      setHasMore(false)
     } finally {
       setLoading(false)
     }

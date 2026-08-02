@@ -80,10 +80,18 @@ export default function RetailerActivityPage() {
         // Load activity
         const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?limit=30`, adminGetOptions())
         const json = await res.json()
+        // Guard: a 500 from the API returns { error: {...} } with no .data /
+        // .pagination. Writing undefined into logs used to crash the render
+        // on `logs.length` — keep the last successful list instead.
+        if (!res.ok || !Array.isArray(json?.data)) {
+          setHasMore(false)
+          setCursor(null)
+          return
+        }
         setLogs(json.data)
-        setHasMore(json.pagination.has_more)
-        setCursor(json.pagination.cursor)
-        setTotal(json.pagination.total ?? 0)
+        setHasMore(json.pagination?.has_more ?? false)
+        setCursor(json.pagination?.cursor ?? null)
+        setTotal(json.pagination?.total ?? 0)
       } catch {
         // ignore
       } finally {
@@ -101,9 +109,17 @@ export default function RetailerActivityPage() {
       if (cursorVal) params.set('cursor', cursorVal)
       const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/activity?${params}`, adminGetOptions())
       const json = await res.json()
+      // Guard: same 500-with-no-data shape as the initial load — stop paginating.
+      if (!res.ok || !Array.isArray(json?.data)) {
+        setHasMore(false)
+        return
+      }
       setLogs(json.data)
-      setHasMore(json.pagination.has_more)
-      setCursor(json.pagination.cursor)
+      setHasMore(json.pagination?.has_more ?? false)
+      setCursor(json.pagination?.cursor ?? null)
+    } catch {
+      // Network/parse failure (DB down) — keep the current list, stop paginating.
+      setHasMore(false)
     } finally {
       setLoading(false)
     }

@@ -17,6 +17,7 @@ function renderSidebar(overrides?: Partial<Parameters<typeof Sidebar>[0]>) {
       onToggle={noop}
       mobileOpen={false}
       onMobileClose={noop}
+      onLogout={noop}
       {...overrides}
     />,
   )
@@ -60,7 +61,13 @@ describe('Sidebar state', () => {
     expect(document.querySelector('a[href="/admin/retailers"]')).toBeInTheDocument()
 
     rerender(
-      <Sidebar collapsed={false} onToggle={noop} mobileOpen={false} onMobileClose={noop} />,
+      <Sidebar
+        collapsed={false}
+        onToggle={noop}
+        mobileOpen={false}
+        onMobileClose={noop}
+        onLogout={noop}
+      />,
     )
     expect(screen.getByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument()
     expect(screen.getByText('Retailers')).toBeInTheDocument()
@@ -123,7 +130,13 @@ describe('Sidebar state', () => {
     expect(onMobileClose).toHaveBeenCalledTimes(1)
 
     rerender(
-      <Sidebar collapsed={false} onToggle={noop} mobileOpen={false} onMobileClose={onMobileClose} />,
+      <Sidebar
+        collapsed={false}
+        onToggle={noop}
+        mobileOpen={false}
+        onMobileClose={onMobileClose}
+        onLogout={noop}
+      />,
     )
     expect(container.querySelector('aside')).toHaveClass('-translate-x-full')
     // Overlay exits via AnimatePresence — wait for the exit animation to finish
@@ -132,13 +145,15 @@ describe('Sidebar state', () => {
     })
   })
 
-  it('sign out clears the session key and redirects to /admin', () => {
+  it('sign out clears the session key, fires onLogout, and redirects to /admin', () => {
     const removeSpy = vi.spyOn(Storage.prototype, 'removeItem')
+    const onLogout = vi.fn()
     sessionStorage.setItem('admin_key', 'k')
-    renderSidebar()
+    renderSidebar({ onLogout })
 
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
     expect(removeSpy).toHaveBeenCalledWith('admin_key')
+    expect(onLogout).toHaveBeenCalledTimes(1)
     expect(nav.router.push).toHaveBeenCalledWith('/admin')
   })
 })

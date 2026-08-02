@@ -99,11 +99,19 @@ export default function ActivityFeedPage() {
 
       const res = await fetch(`${API_URL}/v1/admin/activity?${params}`, adminGetOptions())
       const json = await res.json()
-      setLogs(json.data.logs)
+      // Guard: a 500 from the API returns { error: {...} } with no .data /
+      // .pagination — keep the last successful feed instead of crashing on
+      // `json.data.logs` or `json.pagination.has_more`.
+      if (!res.ok || !Array.isArray(json?.data?.logs)) {
+        setHasMore(false)
+        setCursor(null)
+        return
+      }
+      setLogs(json.data.logs ?? [])
       setBursts(json.data.bursts ?? [])
-      setHasMore(json.pagination.has_more)
-      setCursor(json.pagination.cursor)
-      setTotal(json.pagination.total ?? 0)
+      setHasMore(json.pagination?.has_more ?? false)
+      setCursor(json.pagination?.cursor ?? null)
+      setTotal(json.pagination?.total ?? 0)
     } catch {
       // ignore
     } finally {

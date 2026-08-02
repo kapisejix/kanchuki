@@ -117,8 +117,16 @@ Create **two separate services** within the project:
 # Required
 NODE_ENV=production
 PORT=3001
+# ⚠️ Supabase pooler usernames MUST be <role>.<project_ref> — bare `kanchuki_app`
+# is rejected with "password authentication failed". Example:
+#   DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:<pw>@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 DATABASE_URL="postgresql://..."
 DATABASE_URL_POOLER="postgresql://..."
+# F-017: scoped purge-role URL — read ONLY by the 30-day purge cron
+# (apps/api/src/jobs/purge-soft-deleted.ts via getPurgePrisma()). Role:
+# kanchuki_purge — DELETE on the purge tables only, no DDL. Without this var
+# the cron falls back to the main client and fails with permission denied.
+PURGE_DATABASE_URL="postgresql://kanchuki_purge...@aws-1-ap-south-1.pooler.supabase.com:5432/postgres"
 SUPABASE_URL="https://your-project.supabase.co"
 SUPABASE_SERVICE_KEY="..."
 REDIS_URL="redis://..."

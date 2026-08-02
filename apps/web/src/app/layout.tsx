@@ -9,10 +9,47 @@ const fraunces = Fraunces({
   axes: ['opsz', 'SOFT'],
 })
 
+// Canonical origin for absolute social-share URLs (og:image must be
+// absolute). Follows the NEXT_PUBLIC_SITE_URL convention from DEPLOY.md.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app'
+
+const SITE_DESCRIPTION =
+  'AI-powered fashion collections for Indian clothing stores. Catalog products in seconds with AI auto-tagging, share via WhatsApp, no website needed.'
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
+  // Plain title (no %s template): existing pages like /c/[slug] and /store/*
+  // already append " | Kanchuki" manually — a template would double it.
   title: 'Kanchuki',
-  description: 'AI-powered fashion collections for Indian clothing stores',
+  description: SITE_DESCRIPTION,
   manifest: '/manifest.json',
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }, { url: '/favicon.ico', sizes: 'any' }],
+    shortcut: '/favicon.ico',
+    apple: '/apple-icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    siteName: 'Kanchuki',
+    title: 'Kanchuki — AI-powered fashion collections for Indian clothing stores',
+    description: SITE_DESCRIPTION,
+    url: '/',
+    locale: 'en_IN',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Kanchuki — AI-powered fashion collections for Indian clothing stores',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Kanchuki — AI-powered fashion collections for Indian clothing stores',
+    description: SITE_DESCRIPTION,
+    images: ['/og-image.png'],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',

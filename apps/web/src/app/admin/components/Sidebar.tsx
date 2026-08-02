@@ -130,19 +130,25 @@ export function Sidebar({
   onToggle,
   mobileOpen,
   onMobileClose,
+  onLogout,
 }: {
   collapsed: boolean
   onToggle: () => void
   mobileOpen: boolean
   onMobileClose: () => void
+  onLogout: () => void
 }) {
   const pathname = usePathname()
   const router = useRouter()
   const [openGroup, setOpenGroup] = useState<{ label: string; top: number; left: number } | null>(null)
 
   const handleLogout = () => {
+    // Clearing sessionStorage alone is not enough — the layout keeps its
+    // `authed` state, so the dashboard would stay mounted. onLogout tells the
+    // layout to flip back to the login screen.
     sessionStorage.removeItem('admin_key')
     router.push('/admin')
+    onLogout()
   }
 
   const isLinkActive = (href: string) =>

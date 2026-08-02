@@ -946,7 +946,8 @@ An audit log viewer page (`/admin/audit-log`) must be built with:
 | Role | Grants | Who/what holds credentials |
 |---|---|---|
 | `kanchuki_app` | `SELECT, INSERT, UPDATE` on all business tables. **No `DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`.** | API server (`DATABASE_URL`), local dev, any AI coding agent's working `.env` |
-| `kanchuki_migrator` | Full DDL + `DELETE`/`TRUNCATE`, for schema migrations and the 30-day purge cron only | Human only — run interactively via `prisma migrate deploy` or the admin dashboard's migration-trigger button (§12.2). **Never** written to any `.env` file, Railway env var used by the API service, or any location an AI agent's session can read. |
+| `kanchuki_migrator` | Full DDL + `DELETE`/`TRUNCATE`, for schema migrations only | Human only — run interactively via `prisma migrate deploy` or the admin dashboard's migration-trigger button (§12.2). **Never** written to any `.env` file, Railway env var used by the API service, or any location an AI agent's session can read. |
+| `kanchuki_purge` | `SELECT, INSERT, UPDATE` (inherits `kanchuki_app`) + `DELETE` on exactly the 18 purge-cron tables. **No `TRUNCATE`, `DROP`, or DDL.** | `PURGE_DATABASE_URL` — read **only** by the 30-day purge cron (`apps/api/src/jobs/purge-soft-deleted.ts` via `getPurgePrisma()`). Never used as `DATABASE_URL`. The job still sets `app.allow_hard_delete = 'true'` inside each transaction, so the Layer-2 triggers remain the second barrier even for this role. |
 | `kanchuki_vault_writer` | `INSERT` only on `deletion_vault` DB (F-016) | App's vault-write path only |
 | `kanchuki_replica_reader` | `SELECT` only, against the replica (§13/§14) | Admin query console |
 
@@ -970,8 +971,10 @@ GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO kanchuki_migrator;
 -- Full privileges on future tables too
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO kanchuki_migrator;
 
--- The 30-day purge cron needs a narrow scope: DELETE only on soft-deleted records
--- Run as kanchuki_migrator or set app.allow_hard_delete session flag
+-- The 30-day purge cron uses the dedicated kanchuki_purge role (DELETE on the
+-- purge tables only, connected via PURGE_DATABASE_URL, never DATABASE_URL) —
+-- see scripts/setup-role-separation.sql. It sets the app.allow_hard_delete
+-- session flag inside each transaction to pass the Layer-2 triggers.
 ```
 
 After creating the roles, update `DATABASE_URL` in `.env` and Railway to use `kanchuki_app` credentials.
@@ -998,7 +1001,7 @@ CREATE TRIGGER guard_products_delete
   FOR EACH STATEMENT EXECUTE FUNCTION prevent_hard_delete();
 ```
 
-Only the purge-cron job (running as `kanchuki_migrator`, or a scoped role with `SET app.allow_hard_delete = 'true'` permission granted narrowly) can clear the session flag that lets this pass. Even if `kanchuki_app` somehow retained DELETE (misconfiguration, role change mistake), the trigger still blocks it.
+Only the purge-cron job (running as the `kanchuki_purge` scoped role via `PURGE_DATABASE_URL`, with `SET app.allow_hard_delete = 'true'` granted narrowly to it) can clear the session flag that lets this pass. Even if `kanchuki_app` somehow retained DELETE (misconfiguration, role change mistake), the trigger still blocks it — and the purge role itself is blocked by the same trigger unless it sets the flag.
 
 ### 19.3 Layer 3 — Code-level guard (CI)
 

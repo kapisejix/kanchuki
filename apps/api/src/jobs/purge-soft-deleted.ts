@@ -1,4 +1,14 @@
-import { prisma } from '@kanchuki/db';
+import { getPurgePrisma } from '@kanchuki/db';
+
+/**
+ * Dedicated scoped-role client for hard deletes (SECURITY §19). The shared
+ * `prisma` client runs as `kanchuki_app`, which has DELETE revoked — under full
+ * role separation the purge would fail with `permission denied` on every batch.
+ * `PURGE_DATABASE_URL` points at the `kanchuki_purge` role (SELECT/INSERT/UPDATE
+ * inherited from `kanchuki_app`, plus DELETE on exactly the purge tables — no
+ * TRUNCATE, no DDL). Falls back to the shared client if the URL is unset (dev).
+ */
+const db = getPurgePrisma();
 
 /**
  * Purge-soft-deleted cron job (F-017 / F-016).
@@ -51,7 +61,7 @@ async function purgeTable(table: string, cutoff: Date, extraWhere?: string): Pro
 
   while (true) {
     // Select the next batch of IDs to delete (ordered by id ASC for stability)
-    const batch = await prisma.$queryRawUnsafe<{ id: string }[]>(
+    const batch = await db.$queryRawUnsafe<{ id: string }[]>(
       `SELECT id FROM "${table}"
        WHERE deleted_at IS NOT NULL AND deleted_at < $1
        ${cursor ? 'AND id > $2' : ''}
@@ -69,9 +79,9 @@ async function purgeTable(table: string, cutoff: Date, extraWhere?: string): Pro
 
     // Delete the batch with the session flag set (same tx = same connection,
     // so SET carries over to the DELETE)
-    await prisma.$transaction([
-      prisma.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
-      prisma.$executeRawUnsafe(`DELETE FROM "${table}" WHERE id = ANY($1::text[]);`, ids),
+    await db.$transaction([
+      db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      db.$executeRawUnsafe(`DELETE FROM "${table}" WHERE id = ANY($1::text[]);`, ids),
     ]);
 
     total += ids.length;
@@ -91,9 +101,9 @@ async function purgeChildren(
   parentTable: string,
   cutoff: Date,
 ): Promise<number> {
-  const [, result] = await prisma.$transaction([
-    prisma.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
-    prisma.$executeRawUnsafe(
+  const [, result] = await db.$transaction([
+    db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+    db.$executeRawUnsafe(
       `DELETE FROM "${childTable}"
        WHERE "${childFkColumn}" IN (
          SELECT id FROM "${parentTable}"
@@ -160,7 +170,7 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   const totalRetailers = await purgeTable('retailers', cutoff);
 
   // ── 5. Audit log ──────────────────────────────────────────────
-  await prisma.auditLog.create({
+  await db.auditLog.create({
     data: {
       actor_type: 'system',
       action: 'PURGE_SOFT_DELETED',
