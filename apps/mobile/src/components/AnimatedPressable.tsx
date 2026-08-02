@@ -12,7 +12,7 @@ import { useReduceMotion } from '../hooks/useReduceMotion'
 // so JSX prop checking on <AnimatedView> stays intact.
 const AnimatedView = Animated.createAnimatedComponent(
   Pressable as any,
-) as ComponentType<PressableProps & { className?: string }>
+) as ComponentType<PressableProps>
 
 /** Press-scale wrapper (0.96 spring) shared by buttons/cards/icons. Skips the scale under Reduce Motion. */
 export function AnimatedPressable({
