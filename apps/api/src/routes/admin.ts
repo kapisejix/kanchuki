@@ -2833,7 +2833,11 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         action: 'CREATE',
         resource_type: 'AiProviderConfig',
         resource_id: row.id,
-        metadata: { label: row.label, provider_type: row.provider_type, model_name: row.model_name },
+        metadata: {
+          label: row.label,
+          provider_type: row.provider_type,
+          model_name: row.model_name,
+        },
         ip_address: request.ip,
       },
     });
@@ -2906,9 +2910,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /admin/ai-providers/reorder ────────────────────────────
   // Accept an ordered list of ids; rewrites priority 1..N in that order.
   server.post('/ai-providers/reorder', async (request) => {
-    const body = z
-      .object({ ordered_ids: z.array(z.string()).min(1).max(100) })
-      .parse(request.body);
+    const body = z.object({ ordered_ids: z.array(z.string()).min(1).max(100) }).parse(request.body);
 
     await prisma.$transaction(
       body.ordered_ids.map((id, index) =>
