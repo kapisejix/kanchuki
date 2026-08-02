@@ -66,10 +66,16 @@ export default function RetailerOnboardScreen() {
         ],
       )
     } catch (err) {
-      Alert.alert(
-        'Failed to Onboard',
-        err instanceof Error ? err.message : 'Something went wrong. Check the phone number and try again.',
-      )
+      // errors.ts policy: never surface raw err.message on screen. Show the
+      // API's curated message only when the server actually responded
+      // (status > 0 — a TeamApiError with body.error?.message); for network
+      // failures (status 0) fall back to the friendly generic string.
+      const apiErr = err as { status?: number } | undefined
+      const msg =
+        err instanceof Error && apiErr?.status && apiErr.status > 0
+          ? err.message
+          : 'Something went wrong. Check the phone number and try again.'
+      Alert.alert('Failed to Onboard', msg)
     } finally {
       setSaving(false)
     }
