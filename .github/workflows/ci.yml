@@ -26,6 +26,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: bash scripts/check-delete-guard.sh
+      # Blocks commits that introduce live credential patterns (leaked role
+      # passwords, DB URLs with real-looking passwords, API keys) — scans the
+      # FULL tracked tree including docs/*.md and scripts/*.sql. Added
+      # 2026-08-02 after GitGuardian flagged role passwords that had been in
+      # INFRA-SETUP.md / setup-role-separation.sql since 2026-07-26; the guard
+      # previously excluded exactly those file types.
+      - run: bash scripts/check-secrets-guard.sh --all
       # Blocks PRs that add a RELATIVE /v1/ fetch to the web app (no /v1
       # routes/rewrites on the web origin — such calls 404 and silently
       # break features, e.g. the 2026-08-01 checkout-status bug).
