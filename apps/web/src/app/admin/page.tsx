@@ -135,6 +135,13 @@ export default function AdminDashboard() {
           fetch(`${API_URL}/v1/admin/stats`, { headers }).then((r) => r.json()),
           fetch(`${API_URL}/v1/admin/usage`, { headers }).then((r) => r.json()),
         ])
+        // Guard: a 500 from the API returns { error: {...} } with no .data.
+        // Writing undefined into state used to crash the render below on
+        // `stats.total_retailers` — instead surface a readable message.
+        if (!s?.data || !u?.data) {
+          setError('The API returned an error while loading dashboard stats. Check the API service health.')
+          return
+        }
         setStats(s.data)
         setUsage(u.data)
       } catch (err) {
