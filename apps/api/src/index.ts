@@ -88,7 +88,7 @@ await server.register(helmet, {
 
 await server.register(cors, {
   origin:
-    process.env.NODE_ENV === 'production' ? [process.env.WEB_URL ?? '', /\.kanchuki\.app$/] : true,
+    process.env.NODE_ENV === 'production' ? [process.env.WEB_URL ?? '', /(^|\.)kanchuki\.app$/] : true,
   credentials: true,
 });
 
