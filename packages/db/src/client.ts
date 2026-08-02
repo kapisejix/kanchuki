@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
   replicaPrisma: PrismaClient | undefined
+  purgePrisma: PrismaClient | undefined
 }
 
 export const prisma =
@@ -50,4 +51,40 @@ export function getReplicaPrisma(): PrismaClient {
 
 if (process.env['NODE_ENV'] !== 'production') {
   globalForPrisma.prisma = prisma
+}
+
+/**
+ * Purge-cron Prisma client — connects to PURGE_DATABASE_URL (the narrowly
+ * scoped `kanchuki_purge` role: SELECT/INSERT/UPDATE inherited from
+ * `kanchuki_app`, plus DELETE on exactly the tables the purge cron hard-deletes
+ * — no TRUNCATE, no DROP, no DDL).
+ *
+ * SECURITY §19: the main DATABASE_URL must keep the DELETE-less `kanchuki_app`
+ * role, and `kanchuki_migrator` must stay human-only — so the 30-day purge cron
+ * (apps/api/src/jobs/purge-soft-deleted.ts) is the ONLY consumer of this client.
+ *
+ * Falls back to the primary client when PURGE_DATABASE_URL is unset (local dev
+ * without the scoped role). In that case the cron still runs with whatever
+ * privileges the dev DATABASE_URL has — which, once role separation is applied,
+ * is no DELETE, so the purge would fail with permission denied.
+ */
+export function getPurgePrisma(): PrismaClient {
+  const purgeUrl = process.env['PURGE_DATABASE_URL']
+  if (!purgeUrl) {
+    console.warn(
+      '[db] PURGE_DATABASE_URL is not set — purge cron will run with the primary client. ' +
+        'Under SECURITY §19 the primary role (kanchuki_app) has no DELETE, so the purge will ' +
+        'fail with permission denied. Set PURGE_DATABASE_URL to a kanchuki_purge-scoped URL.',
+    )
+    return prisma
+  }
+
+  if (!globalForPrisma.purgePrisma) {
+    globalForPrisma.purgePrisma = new PrismaClient({
+      datasources: { db: { url: purgeUrl } },
+      log: process.env['NODE_ENV'] === 'development' ? ['error', 'warn'] : ['error'],
+    })
+  }
+
+  return globalForPrisma.purgePrisma
 }

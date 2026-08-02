@@ -3,6 +3,8 @@
 **Generated:** July 26, 2026  
 **Session Scope:** F-013 through F-017 + Database Health Page + Infrastructure Setup + Docs Updates
 
+> **Update (2026-08-02) — production DB outage resolved.** Root cause: Supabase's pooler requires `<role>.<project_ref>` usernames — the bare `kanchuki_app` in `DATABASE_URL` was rejected with `password authentication failed`. All pooler URLs in this report, `docs/INFRA-SETUP.md`, and `scripts/setup-role-separation.sql` now use `kanchuki_app.thpqcylmcxokajxoerjx` (migrator: `kanchuki_migrator.thpqcylmcxokajxoerjx`). The SQL was also made idempotent, gained the missing sequence grants, and now creates the scoped `kanchuki_purge` role for the 30-day purge cron (`PURGE_DATABASE_URL`). Run `scripts/setup-role-separation.sql` in the Supabase SQL Editor before pointing `DATABASE_URL` at the app role. See `docs/PROGRESS.md` 2026-08-02.
+
 ---
 
 ## ✅ Final Validation Results
@@ -195,7 +197,7 @@ Update these files from superuser to `kanchuki_app`:
 
 New value:
 ```
-DATABASE_URL=postgresql://kanchuki_app:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+DATABASE_URL=postgresql://kanchuki_app.thpqcylmcxokajxoerjx:KanchukiApp_R3stricted!@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
 ```
 
 ### 3. Redeploy API on Railway
