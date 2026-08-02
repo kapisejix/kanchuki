@@ -128,19 +128,23 @@ beforeEach(() => {
 describe('CatalogScreen', () => {
   it('renders loading spinner while fetching', () => {
     mockLoading()
-    const tree = render(React.createElement(CatalogScreen))
+    // JSX rather than React.createElement: render()'s ReactElement type resolves
+    // a React 18 @types/react copy (via @types/react-dom@18) while createElement
+    // returns React 19's FunctionComponentElement — a known mixed-types mismatch.
+    // JSX.Element (<T = any>) bridges the two type universes cleanly.
+    const tree = render(<CatalogScreen />)
     expect(tree.toJSON()).toMatchSnapshot('loading-state')
   })
 
   it('renders empty state when no products', () => {
     mockEmpty()
-    const tree = render(React.createElement(CatalogScreen))
+    const tree = render(<CatalogScreen />)
     expect(tree.toJSON()).toMatchSnapshot('empty-state')
   })
 
   it('renders product grid with items', () => {
     mockProducts()
-    const tree = render(React.createElement(CatalogScreen))
+    const tree = render(<CatalogScreen />)
     expect(tree.toJSON()).toMatchSnapshot('product-grid')
   })
 
@@ -195,7 +199,7 @@ describe('CatalogScreen', () => {
         ai_tagged: true,
       },
     ])
-    const tree = render(React.createElement(CatalogScreen))
+    const tree = render(<CatalogScreen />)
     expect(tree.toJSON()).toMatchSnapshot('mixed-products')
   })
 })

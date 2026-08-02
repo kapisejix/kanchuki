@@ -1,10 +1,18 @@
-import type { ReactNode } from 'react'
-import type { GestureResponderEvent, Insets, StyleProp, ViewStyle } from 'react-native'
+import type { ComponentType, ReactNode } from 'react'
+import type { GestureResponderEvent, Insets, PressableProps, StyleProp, ViewStyle } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { Pressable } from 'react-native'
 import { useReduceMotion } from '../hooks/useReduceMotion'
 
-const AnimatedView = Animated.createAnimatedComponent(Pressable)
+// RN 0.81 types Pressable as ForwardRefExoticComponent<PressableProps & RefAttributes<View>>,
+// which matches none of reanimated 4.1.7's createAnimatedComponent overloads (they only
+// accept FunctionComponent | ComponentClass | ComponentType, typed against the React 18
+// @types/react copy hoisted for @types/react-dom, so the generic inference breaks).
+// Cast through `any` to bypass the broken overload resolution, then re-type the result
+// so JSX prop checking on <AnimatedView> stays intact.
+const AnimatedView = Animated.createAnimatedComponent(
+  Pressable as any,
+) as ComponentType<PressableProps & { className?: string }>
 
 /** Press-scale wrapper (0.96 spring) shared by buttons/cards/icons. Skips the scale under Reduce Motion. */
 export function AnimatedPressable({
