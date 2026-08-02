@@ -1,5 +1,5 @@
-import { prisma } from '@kanchuki/db';
 import type { ProviderUsedInfo } from '@kanchuki/ai';
+import { prisma } from '@kanchuki/db';
 import { incrementUsage } from './quota.js';
 
 // F-023: weighted AI usage recording. The failover engine (packages/ai)
@@ -31,10 +31,7 @@ export function recordAiUsage(retailerId: string) {
     // detect extract and per-item tag extracts).
     if (info.resource_type === 'AI_TAGGING_CALL') {
       incrementUsage(retailerId, 'AI_TAGGING_CALL', info.credits_per_call).catch((err) => {
-        console.error(
-          `[ai-usage] failed to record AI_TAGGING_CALL usage for ${retailerId}:`,
-          err,
-        );
+        console.error(`[ai-usage] failed to record AI_TAGGING_CALL usage for ${retailerId}:`, err);
       });
     }
 

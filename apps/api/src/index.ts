@@ -88,7 +88,9 @@ await server.register(helmet, {
 
 await server.register(cors, {
   origin:
-    process.env.NODE_ENV === 'production' ? [process.env.WEB_URL ?? '', /(^|\.)kanchuki\.app$/] : true,
+    process.env.NODE_ENV === 'production'
+      ? [process.env.WEB_URL ?? '', /(^|\.)kanchuki\.app$/]
+      : true,
   credentials: true,
 });
 
@@ -97,7 +99,9 @@ await server.register(cors, {
 // fallback below regenerates on every process start, silently invalidating
 // every admin CSRF cookie (and logged-in session) on each restart/deploy.
 if (!process.env.COOKIE_SECRET && process.env.NODE_ENV === 'production') {
-  throw new Error('COOKIE_SECRET must be set in production (admin CSRF cookies would rotate on every restart otherwise)');
+  throw new Error(
+    'COOKIE_SECRET must be set in production (admin CSRF cookies would rotate on every restart otherwise)',
+  );
 }
 await server.register(cookie, {
   secret:
