@@ -61,7 +61,7 @@ export default function AiUsagePage() {
         </div>
         <p className="text-sm text-gray-500">
           Per-retailer × per-model AI consumption (weighted credits). Shows exactly which AI served
-          each retailer's tagging, color-detection and item-detection calls — useful for spotting
+          each retailer&apos;s tagging, color-detection and item-detection calls — useful for spotting
           quota pressure and tuning the AI Providers list.
         </p>
       </div>

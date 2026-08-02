@@ -251,9 +251,9 @@ export default function AiProvidersPage() {
           </div>
           <p className="text-sm text-gray-500">
             Models the AI tagging engine tries, in priority order (1 = first). When a provider is
-            out of credits / rate-limited / down, the next one is tried automatically. Each model's
+            out of credits / rate-limited / down, the next one is tried automatically. Each model&apos;s
             <span className="font-mono"> credits_per_call</span> weights how fast it drains a
-            retailer's AI quota — expensive models cost more credits.
+            retailer&apos;s AI quota — expensive models cost more credits.
           </p>
         </div>
         <motion.button
@@ -285,7 +285,7 @@ export default function AiProvidersPage() {
             <strong>Text-only model{textOnlyActive.length > 1 ? 's' : ''} in the active chain:</strong>{' '}
             {textOnlyActive.map((r) => r.label).join(', ')}. AI tagging sends product images, so
             every call to {textOnlyActive.length > 1 ? 'these models' : 'this model'} fails over to
-            the next provider — or fails entirely if it's the only one. Swap in a vision-capable
+            the next provider — or fails entirely if it&apos;s the only one. Swap in a vision-capable
             model.
           </p>
         </div>
