@@ -420,6 +420,7 @@ export default function ProductDetailScreen() {
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['products'] })
+    void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
   }
 
   const handleSave = async () => {

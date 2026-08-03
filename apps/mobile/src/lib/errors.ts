@@ -2,9 +2,14 @@ import { Alert } from 'react-native'
 
 // Generic message to the user, real error to the dev console only (__DEV__ strips in
 // production builds) — never surface raw err.message on screen.
-export function showError(err: unknown, fallback: string, title = 'Error'): void {
+export function showError(
+  err: unknown,
+  fallback: string,
+  title = 'Error',
+  onDismiss?: () => void,
+): void {
   if (__DEV__) console.error(title, err)
-  Alert.alert(title, fallback)
+  Alert.alert(title, fallback, onDismiss ? [{ text: 'OK', onPress: onDismiss }] : undefined)
 }
 
 // For inline UI error text (no Alert) — same rule: log the real error dev-side only,

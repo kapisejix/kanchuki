@@ -63,7 +63,21 @@ export async function getSecret(keyName: string): Promise<string | undefined> {
   const row = await prisma.integrationSetting.findFirst({
     where: { key_name: keyName, is_active: true },
   })
-  const value = row ? decryptSecret(row.encrypted_value) : process.env[keyName]
+  let value: string | undefined
+  if (row) {
+    try {
+      value = decryptSecret(row.encrypted_value)
+    } catch (err) {
+      // A corrupted/mismatched-key secret is functionally "no key configured"
+      // for this name — degrade to the env fallback instead of throwing.
+      // Uncaught here, this used to abort the entire AI failover chain before
+      // it tried any other configured provider (providers.ts configuredAdapters).
+      console.error(`[secrets] Failed to decrypt "${keyName}", falling back to env:`, err)
+      value = process.env[keyName]
+    }
+  } else {
+    value = process.env[keyName]
+  }
   cache.set(keyName, { value, at: Date.now() })
   return value
 }

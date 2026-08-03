@@ -322,6 +322,7 @@ export default function AddProductScreen() {
       }
 
       void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
 
       Alert.alert(
         'Product Added!',

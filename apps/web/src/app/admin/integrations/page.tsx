@@ -86,7 +86,10 @@ export default function IntegrationsPage() {
         ...(await adminMutateOptions()),
         method: 'DELETE',
       })
-      if (!res.ok) throw new Error('Delete failed')
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message ?? `Delete failed (${res.status})`)
+      }
       setStatus(`✅ ${row.label} removed — using .env fallback`)
       await load()
     } catch (err) {

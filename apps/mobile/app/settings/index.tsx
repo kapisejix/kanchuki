@@ -13,10 +13,11 @@ import {
   BarChart2, AlertTriangle, ShieldCheck, ImagePlus, FileText, MessageCircle,
   FolderKanban, Truck,
 } from 'lucide-react-native'
-import { retailerApi, clearToken, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
+import { retailerApi, clearToken, clearRequestCache, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { SettingsSkeleton } from '../../src/components/Skeleton'
 import { getItem, deleteItem } from '../../src/lib/storage'
+import { clearPersistedCache } from '../../src/lib/offline-persister'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
@@ -803,10 +804,15 @@ export default function SettingsScreen() {
           // (e.g. the owner, on a shared shop tablet) would inherit a stale
           // staff_role and get incorrectly restricted.
           await Promise.all([
+            deleteItem('refresh_token'),
+            deleteItem('retailer_id'),
             deleteItem('staff_role'),
             deleteItem('staff_name'),
             deleteItem('staff_retailer_id'),
           ])
+          clearRequestCache()
+          queryClient.clear()
+          await clearPersistedCache()
           router.replace('/auth/phone')
         },
       },

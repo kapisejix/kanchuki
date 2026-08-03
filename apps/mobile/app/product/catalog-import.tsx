@@ -344,6 +344,7 @@ export default function CatalogImportScreen() {
       })
 
       void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
       setStep('done')
     } catch (err) {
       setStep('reviewing')
@@ -725,6 +726,7 @@ export default function CatalogImportScreen() {
           <AnimatedPressable
             onPress={() => {
               void queryClient.invalidateQueries({ queryKey: ['products'] })
+              void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
               router.replace('/')
             }}
             className="py-4 rounded-2xl items-center bg-ink-600"

@@ -59,9 +59,10 @@ export default function OtpScreen() {
         router.replace(result.is_new ? '/onboarding' : '/')
       }
     } catch (err) {
-      showError(err, 'Invalid OTP', 'Incorrect OTP')
-      setOtp('')
-      inputRef.current?.focus()
+      showError(err, 'Invalid OTP', 'Incorrect OTP', () => {
+        setOtp('')
+        inputRef.current?.focus()
+      })
     } finally {
       setLoading(false)
     }

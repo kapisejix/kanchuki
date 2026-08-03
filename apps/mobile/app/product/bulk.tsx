@@ -191,6 +191,7 @@ export default function BulkImportScreen() {
 
     // Invalidate product queries so catalog refreshes
     void queryClient.invalidateQueries({ queryKey: ['products'] })
+    void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
 
     // All done — transition to summary screen
     setCompleted(doneCount)
@@ -447,6 +448,7 @@ export default function BulkImportScreen() {
             <AnimatedPressable
               onPress={() => {
                 void queryClient.invalidateQueries({ queryKey: ['products'] })
+                void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
                 router.replace('/')
               }}
               className="py-4 rounded-2xl items-center bg-ink-600"

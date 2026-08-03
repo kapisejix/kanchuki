@@ -176,6 +176,7 @@ export default function BulkOnboardScreen() {
       )
       setSessionCreated((n) => n + result.data.total_created)
       void queryClient.invalidateQueries({ queryKey: ['products'] })
+      void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
       setItems([])
       setSourceUrl('')
       setStep('location')
