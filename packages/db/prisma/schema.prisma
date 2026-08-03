@@ -317,6 +317,8 @@ model Product {
   id          String        @id @default(cuid())
   retailer_id String
   name        String?
+  sku         String?
+  description String?
   price_min   Int? // stored as paise (₹1500 = 150000)
   price_max   Int?
   mrp         Int?
@@ -324,6 +326,7 @@ model Product {
 
   // AI-generated (editable)
   category         String?
+  subtype          String? // finer-grained garment type, e.g. "Lehenga Skirt", "Kurta Set", "Suit with Dupatta"
   product_type     String?
   primary_color    String?
   secondary_colors String[]
@@ -380,9 +383,11 @@ model Product {
   interactions     CustomerInteraction[]
   order_items      OrderItem[]
 
+  @@unique([retailer_id, sku])
   @@index([retailer_id])
   @@index([retailer_id, status])
   @@index([retailer_id, category])
+  @@index([retailer_id, subtype])
   @@index([retailer_id, category_id])
   @@index([retailer_id, deleted_at])
   @@map("products")

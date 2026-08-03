@@ -163,6 +163,7 @@ export async function detectItems(
     description: g.description,
     tags: {
       category: nullable(g.category),
+      subtype: null,
       product_type: null,
       primary_color: nullable(g.primary_color),
       secondary_colors: g.secondary_colors ?? [],
@@ -177,6 +178,8 @@ export async function detectItems(
       is_catalog_image: garments.length > 1,
       search_tags: g.search_tags ?? [],
       confidence_notes: null,
+      product_name: null,
+      short_description: null,
     },
   }))
 }

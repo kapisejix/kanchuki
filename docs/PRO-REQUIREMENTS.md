@@ -1275,3 +1275,9 @@ Beyond retailer/customer management, permission matrix, and DB guardrails, worth
 - **Notification template management** — the SMS/email/WhatsApp template copy sent to retailers, editable without a deploy
 
 These are backlog candidates, not committed features — flag to user for prioritization before building.
+
+---
+
+## 13. AI Tagging Expansion — Subtype, Auto SKU/Name/Description, Slider Fix, Color-Tap, Catalog Redesign (IN PROGRESS 2026-08-03)
+
+Full spec, rationale, and exact file:line targets: `CLAUDE.md` "IN PROGRESS" section + approved plan `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md` (not duplicated here to avoid drift between two copies). Backend (DB schema, AI tagging schema, SKU generator, all 3 write paths, public API facet counts) is done and tested; web catalog listing redesign and all mobile changes are not started. See CLAUDE.md for the resume command.

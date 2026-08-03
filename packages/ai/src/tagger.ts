@@ -15,7 +15,9 @@ const SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion with deep know
 Your task is to analyze the product image and extract structured attributes accurately.
 Always be specific — "Cotton Silk Blend" is better than "Mixed Fabric".
 If unsure about a field, return null rather than guessing.
-Include both English and common Hindi transliterations in search_tags.`
+Include both English and common Hindi transliterations in search_tags.
+Also generate a retail-ready product_name and short_description — concise and
+factual, no marketing fluff ("stunning", "must-have", etc.).`
 
 const EXTRACT_SCHEMA: AiJsonSchema = {
   name: 'extract_product_attributes',
@@ -30,6 +32,13 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
           'Blouse', "Men's Kurta Pajama", 'Sherwani', 'Kids Ethnic Wear',
           'Readymade Suit', 'Other',
         ],
+      },
+      subtype: {
+        type: 'string',
+        description:
+          'Finer-grained garment type than category, e.g. "Lehenga Skirt", "Lehenga Choli", ' +
+          '"Kurta Set", "Kurti", "Suit with Dupatta", "Sharara Set", "Palazzo Set", "Anarkali Suit", ' +
+          '"Co-ord Set", "Dhoti Set". Be as specific as the photo allows.',
       },
       product_type: {
         type: 'string',
@@ -103,6 +112,18 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
         items: { type: 'string' },
         description: '6-8 searchable keywords: colors, fabrics, occasions, style in English + Hindi transliterations',
       },
+      product_name: {
+        type: 'string',
+        description:
+          '3-6 word retail product title combining color + a notable design detail + subtype, ' +
+          'e.g. "Peach Floral Lehenga Skirt", "Off-White Linen Kurta".',
+      },
+      short_description: {
+        type: 'string',
+        description:
+          '1-2 sentence product listing description covering fabric, design/pattern, color, and ' +
+          'a suggested occasion or styling note. Factual, no marketing fluff.',
+      },
     },
     required: ['category', 'primary_color', 'occasions', 'search_tags', 'is_catalog_image'],
   },
@@ -152,6 +173,7 @@ export async function tagProductImages(
 
   return {
     category: nullable(raw['category']),
+    subtype: nullable(raw['subtype']),
     product_type: nullable(raw['product_type']),
     primary_color: nullable(raw['primary_color']),
     secondary_colors: (raw['secondary_colors'] as string[]) ?? [],
@@ -166,6 +188,8 @@ export async function tagProductImages(
     is_catalog_image: (raw['is_catalog_image'] as boolean) ?? false,
     search_tags: (raw['search_tags'] as string[]) ?? [],
     confidence_notes: null,
+    product_name: nullable(raw['product_name']),
+    short_description: nullable(raw['short_description']),
   }
 }
 

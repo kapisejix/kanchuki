@@ -102,6 +102,7 @@ export interface ProductVariantItem {
 
 export interface AiTagResult {
   category: string | null
+  subtype: string | null
   product_type: string | null
   primary_color: string | null
   secondary_colors: string[]
@@ -116,6 +117,8 @@ export interface AiTagResult {
   is_catalog_image: boolean
   search_tags: string[]
   confidence_notes: string | null
+  product_name: string | null
+  short_description: string | null
 }
 
 // ─── Customers ───────────────────────────────────────────────────
@@ -192,9 +195,9 @@ export interface PublicCollection {
   page: number
   page_size: number
   filters: {
-    categories: string[]
-    occasions: string[]
-    colors: string[]
+    categories: { value: string; count: number }[]
+    occasions: { value: string; count: number }[]
+    colors: { value: string; count: number }[]
   }
 }
 
@@ -208,6 +211,7 @@ export interface PublicProduct {
   price_max: number | null
   status: ProductStatus
   category: string | null
+  subtype: string | null
   primary_color: string | null
   occasions: string[]
   location: string | null

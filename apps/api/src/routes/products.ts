@@ -74,7 +74,11 @@ const CreateProductSchema = z.object({
   price_min: z.number().int().min(0).max(100_000_000).optional(),
   price_max: z.number().int().min(0).max(100_000_000).optional(),
   mrp: z.number().int().min(0).max(100_000_000).optional(),
+  name: z.string().max(150).optional(),
+  sku: z.string().max(40).optional(),
+  description: z.string().max(1000).optional(),
   category: z.string().max(100).optional(),
+  subtype: z.string().max(100).optional(),
   product_type: z.string().max(50).optional(),
   primary_color: z.string().max(50).optional(),
   secondary_colors: z.array(z.string().max(50)).max(10).optional(),
@@ -241,19 +245,27 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       if (!cat) throw forbidden('Category does not belong to your store');
     }
 
-    const product = await prisma.product.create({
-      data: {
-        retailer_id: retailerId,
-        metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
-        ...rest,
-        photos: {
-          create: [
-            { url: photo_url, r2_key: photo_r2_key, is_primary: true, retailer_id: retailerId },
-          ],
+    let product;
+    try {
+      product = await prisma.product.create({
+        data: {
+          retailer_id: retailerId,
+          metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
+          ...rest,
+          photos: {
+            create: [
+              { url: photo_url, r2_key: photo_r2_key, is_primary: true, retailer_id: retailerId },
+            ],
+          },
         },
-      },
-      include: { photos: true, section: { select: { name: true } } },
-    });
+        include: { photos: true, section: { select: { name: true } } },
+      });
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code === 'P2002') {
+        throw validationError('This SKU is already in use', 'sku');
+      }
+      throw err;
+    }
 
     // Best-effort — a failed usage-counter write shouldn't fail an upload
     // that already succeeded.
@@ -482,14 +494,22 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const { metadata, ...rest } = body.data;
-    const updated = await prisma.product.update({
-      where: { id },
-      data: {
-        metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
-        ...rest,
-      },
-      include: { photos: true, section: { select: { name: true } } },
-    });
+    let updated;
+    try {
+      updated = await prisma.product.update({
+        where: { id },
+        data: {
+          metadata: metadata !== undefined ? (metadata as Prisma.InputJsonValue) : undefined,
+          ...rest,
+        },
+        include: { photos: true, section: { select: { name: true } } },
+      });
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code === 'P2002') {
+        throw validationError('This SKU is already in use', 'sku');
+      }
+      throw err;
+    }
 
     const embeddingFields = [
       'category',

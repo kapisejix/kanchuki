@@ -343,6 +343,40 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 
 ---
 
+## IN PROGRESS (started 2026-08-03): AI Tagging Expansion — Subtype/SKU/Description/Name + Slider Fix + Color-Tap + Catalog Redesign
+
+**Not yet complete — resume from here.** Full approved plan (rationale, exact file:line targets for every remaining piece): `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md`.
+
+User asked AI tagging to also produce: garment **subtype** (finer than `category` — "Lehenga Skirt", "Kurta Set", "Suit with Dupatta"), auto **SKU**, auto short **description**, auto **name**, plus fix a mobile photo-slider bug (new color-variant photos don't appear), add tap-primary-photo-to-detect-color, and redesign the customer web catalog listing to match a competitor reference (count-bearing category chips + badge/name card overlay). Reference screenshots and the competitor name ("Jooldo") are in the plan file, not copied here.
+
+### Done this session (backend fully wired, all touched suites green)
+| Area | Files | Summary |
+|---|---|---|
+| DB | `packages/db/prisma/schema.prisma`, `migrations/043_product_ai_fields/` | `Product.subtype/sku/description` added (nullable), `@@unique([retailer_id, sku])`, `@@index([retailer_id, subtype])`. Prisma client regenerated |
+| AI schema | `packages/shared/src/types/index.ts` (`AiTagResult`, `PublicProduct.subtype`, `PublicCollection.filters` now `{value,count}[]`), `packages/ai/src/tagger.ts` (`EXTRACT_SCHEMA` + prompt + mapping gained `subtype`/`product_name`/`short_description` — one extra field set on the *same* vision call, no new API cost), `packages/ai/src/detector.ts` (type-only fix; its preliminary per-item tags get overwritten by `tagProductImageUrl` anyway, confirmed by reading `detectCropAndTag`, so no schema duplication needed there) | Subtype is free-text/open-vocabulary, not an enum — same treatment as the existing `primary_color`/`fabric_estimate` fields |
+| SKU generator | `apps/api/src/lib/sku.ts` (new), `sku.test.ts` (new, 10/10 passing) | `generateSku`/`withUniqueSku` (P2002-retry, single-item path) + `createSkuSequencer` (per-batch prefix cache, bulk-import path). 2-letter prefix from subtype/category + zero-padded per-retailer sequence, e.g. `LS0001` |
+| Write paths | `apps/api/src/jobs/tag-product.ts`, `apps/api/src/routes/catalog-import.ts`, `apps/api/src/routes/products.ts` | `tag-product.ts` fills name/sku/description/subtype **only when currently null** (never clobbers a retailer edit on re-tag). `catalog-import.ts` bulk-create-products now sets these + generates SKU via the sequencer; detect-items/import-pdf pass the new tag fields through automatically (typed passthrough). `products.ts` Create/UpdateProductSchema accept all 4 fields; a SKU unique-constraint collision now returns a clean 422 (`validationError`) instead of an unhandled 500 |
+| Public API | `apps/api/src/routes/public.ts` | `buildFacets()` returns `{value,count}[]` per category/occasion/color (drives "All (10)" style chip counts); `PublicProduct`/`toPublicProductSummary` gained `subtype` |
+
+**Verified:** `apps/api` `tsc --noEmit` clean; vitest green — `sku.test.ts` (10), `tag-product.test.ts` (6), `products.test.ts` (8), `public.test.ts` (5), `security.test.ts` (24), `admin.login.test.ts` (14).
+
+### Known red right now (expected — next task, not a regression)
+`apps/web` `tsc --noEmit` fails: `FilterBar.tsx` (`categories`/`occasions`/`colors` props still typed `string[]`) and `CollectionView.tsx` (passes the new `{value,count}[]` shape into those props) disagree, plus 2 test fixtures (`src/app/c/[slug]/components/__tests__/CollectionView.test.tsx`, `e2e/customer-collection.spec.ts`) build `PublicProduct`/`filters` fixtures in the old shape. This is mid-refactor, not a surprise — fixing `FilterBar.tsx`/`CollectionView.tsx` (next task below) resolves it; the 2 test fixtures need their fixture data updated to match.
+
+### Remaining (not started)
+1. **`apps/web/src/app/c/[slug]/components/FilterBar.tsx`** — render `{value} ({count})` per chip; make the category chip row always visible above the grid (not gated behind the Filter-icon toggle), matching the reference screenshot.
+2. **`apps/web/src/app/c/[slug]/components/CollectionView.tsx`** `ProductCard` — top-left pill badge (`subtype ?? category`) over the photo, bottom gradient-overlay caption with product `name` (replacing the current gray category-dot row), keep price line.
+3. Update the 2 web test fixtures above to the new `PublicProduct`/`filters` shape once #1–#2 land.
+4. **`apps/mobile/app/product/[id].tsx`** — three separate pieces: (a) `editedName/editedSku/editedDescription/editedSubtype` state + inputs + save payload, same pattern as existing `editedCategory` etc.; (b) photo-slider bug fix — merge `product.photos` + every variant's `photo_url` permanently into `displayPhotos` (currently a variant photo only shows while its swatch is actively tapped via `variantPreviewUrl`, never a permanent list member — that's the root cause), rework the swatch-tap handler to `goToPhoto(index)` instead of injecting a synthetic entry, delete the now-dead injection branch + its `useEffect`; (c) tap-primary-photo-to-detect-color — small `Palette`-icon button overlaid on the first photo, calls the already-existing `productApi.detectColor()`, shows result via the existing `resolveFashionColor()` swatch-circle pattern, confirms into `editedColor` rather than auto-saving.
+5. **`apps/mobile/app/product/catalog-import.tsx`** — extend `ReviewItem` + the two `edits`-seeding spots + per-item UI + save payload with `subtype`/`product_name`/`short_description` (SKU stays server-generated, not editable here).
+6. Once everything above ships: add the matching entries to `docs/PRO-REQUIREMENTS.md` and `docs/PLAN.md` (this file already has the full writeup — those two still need theirs, per the "docs must track commits" rule below).
+
+### To resume
+Tell Claude Code: **"Read `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md` and the 'IN PROGRESS' entry in CLAUDE.md, then continue from task 8 (FilterBar.tsx) in the task list."**
+Files to open first: `apps/web/src/app/c/[slug]/components/FilterBar.tsx`, `apps/web/src/app/c/[slug]/components/CollectionView.tsx`, `apps/mobile/app/product/[id].tsx`, `apps/mobile/app/product/catalog-import.tsx`.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

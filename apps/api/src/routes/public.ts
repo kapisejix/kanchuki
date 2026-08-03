@@ -59,6 +59,7 @@ async function toPublicProductSummary(p: {
   price_max: number | null;
   status: string;
   category: string | null;
+  subtype: string | null;
   primary_color: string | null;
   occasions: string[];
   location_notes: string | null;
@@ -74,6 +75,7 @@ async function toPublicProductSummary(p: {
     price_max: p.price_max,
     status: p.status,
     category: p.category,
+    subtype: p.subtype,
     primary_color: p.primary_color,
     occasions: p.occasions,
     location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
@@ -82,20 +84,25 @@ async function toPublicProductSummary(p: {
   };
 }
 
-// Distinct filter-chip options — always computed from the full unfiltered
-// product set for the collection/category so picking one filter doesn't
-// shrink the options for the others (matches prior client-side behavior).
+// Distinct filter-chip options with counts — always computed from the full
+// unfiltered product set for the collection/category so picking one filter
+// doesn't shrink the options for the others (matches prior client-side
+// behavior). Counts drive the "All (10)", "Kurta (1)" chip labels.
+function countBy<T>(values: T[]): { value: T; count: number }[] {
+  const counts = new Map<T, number>();
+  for (const v of values) counts.set(v, (counts.get(v) ?? 0) + 1);
+  return Array.from(counts, ([value, count]) => ({ value, count })).sort(
+    (a, b) => b.count - a.count,
+  );
+}
+
 function buildFacets(
   products: { category: string | null; occasions: string[]; primary_color: string | null }[],
 ) {
   return {
-    categories: Array.from(
-      new Set(products.map((p) => p.category).filter((c): c is string => c !== null)),
-    ),
-    occasions: Array.from(new Set(products.flatMap((p) => p.occasions))),
-    colors: Array.from(
-      new Set(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),
-    ),
+    categories: countBy(products.map((p) => p.category).filter((c): c is string => c !== null)),
+    occasions: countBy(products.flatMap((p) => p.occasions)),
+    colors: countBy(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),
   };
 }
 

@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { addTaggingJob } from '../jobs/index.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { createSkuSequencer } from '../lib/sku.js';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
 // ─── Types ────────────────────────────────────────────────────────
@@ -29,6 +30,9 @@ interface DetectedItemResponse {
   duplicate_of_product_id: string | null;
   tags: {
     category: string | null;
+    subtype: string | null;
+    product_name: string | null;
+    short_description: string | null;
     primary_color: string | null;
     secondary_colors: string[];
     fabric_estimate: string | null;
@@ -66,6 +70,9 @@ const BulkCreateProductsSchema = z.object({
         cropped_r2_key: z.string().min(1),
         cropped_url: z.string().url(),
         category: z.string().nullable().optional(),
+        subtype: z.string().nullable().optional(),
+        product_name: z.string().nullable().optional(),
+        short_description: z.string().nullable().optional(),
         primary_color: z.string().nullable().optional(),
         fabric_estimate: z.string().nullable().optional(),
         pattern: z.string().nullable().optional(),
@@ -413,29 +420,40 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     // Create products in parallel, 10 at a time
     const created: Array<{ id: string; cropped_url: string }> = [];
 
-    const productData = items.map((item) => ({
-      retailer_id: retailerId,
-      status: 'AVAILABLE' as const,
-      category: item.category ?? undefined,
-      primary_color: item.primary_color ?? undefined,
-      fabric_estimate: item.fabric_estimate ?? undefined,
-      pattern: item.pattern ?? undefined,
-      occasions: item.occasions ?? undefined,
-      search_tags: item.search_tags ?? undefined,
-      sizes: item.sizes ?? undefined,
-      price_min: item.price_min ?? undefined,
-      price_max: item.price_max ?? undefined,
-      section_id: resolveSectionId(item.section_id),
-      photos: {
-        create: {
-          retailer_id: retailerId,
-          is_primary: true,
-          r2_key: item.cropped_r2_key,
-          url: item.cropped_url,
-          phash: item.phash ?? undefined,
+    // Shares one count-per-prefix cache across the whole batch instead of a
+    // DB round trip per item (and avoids intra-batch SKU collisions when
+    // several items share a prefix, e.g. 5 kurtas in one import).
+    const nextSku = createSkuSequencer(retailerId);
+
+    const productData = await Promise.all(
+      items.map(async (item) => ({
+        retailer_id: retailerId,
+        status: 'AVAILABLE' as const,
+        category: item.category ?? undefined,
+        subtype: item.subtype ?? undefined,
+        name: item.product_name ?? undefined,
+        description: item.short_description ?? undefined,
+        sku: await nextSku(item.subtype ?? item.category),
+        primary_color: item.primary_color ?? undefined,
+        fabric_estimate: item.fabric_estimate ?? undefined,
+        pattern: item.pattern ?? undefined,
+        occasions: item.occasions ?? undefined,
+        search_tags: item.search_tags ?? undefined,
+        sizes: item.sizes ?? undefined,
+        price_min: item.price_min ?? undefined,
+        price_max: item.price_max ?? undefined,
+        section_id: resolveSectionId(item.section_id),
+        photos: {
+          create: {
+            retailer_id: retailerId,
+            is_primary: true,
+            r2_key: item.cropped_r2_key,
+            url: item.cropped_url,
+            phash: item.phash ?? undefined,
+          },
         },
-      },
-    }));
+      })),
+    );
 
     for (let i = 0; i < productData.length; i += 10) {
       const batch = productData.slice(i, i + 10);

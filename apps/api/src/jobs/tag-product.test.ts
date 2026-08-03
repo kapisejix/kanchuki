@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockUpdateManyPhoto = vi.fn();
 const mockUpdateProduct = vi.fn();
+const mockFindUniqueProduct = vi.fn();
+const mockCountProduct = vi.fn();
 const mockTagProductImageUrls = vi.fn();
 const mockAddEmbeddingJob = vi.fn();
 
@@ -16,7 +18,7 @@ const mockUpsertUsageCounter = vi.fn().mockResolvedValue({});
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     productPhoto: { updateMany: mockUpdateManyPhoto },
-    product: { update: mockUpdateProduct },
+    product: { update: mockUpdateProduct, findUnique: mockFindUniqueProduct, count: mockCountProduct },
     retailer: { findUniqueOrThrow: mockFindUniqueOrThrowRetailer },
     retailerLimitOverride: { findUnique: mockFindUniqueOverride },
     planLimit: { findUnique: mockFindUniquePlanLimit },
@@ -53,6 +55,7 @@ const baseData = {
 
 const fakeTags = {
   category: 'Kurti',
+  subtype: 'Kurti',
   product_type: 'Readymade',
   primary_color: 'Pink',
   secondary_colors: [],
@@ -67,11 +70,20 @@ const fakeTags = {
   is_catalog_image: false,
   search_tags: ['pink kurti'],
   confidence_notes: null,
+  product_name: 'Pink Printed Kurti',
+  short_description: 'A pink printed cotton kurti, great for casual wear.',
 };
 
 beforeEach(() => {
   mockUpdateManyPhoto.mockReset().mockResolvedValue({ count: 1 });
   mockUpdateProduct.mockReset().mockResolvedValue({});
+  mockFindUniqueProduct.mockReset().mockResolvedValue({
+    name: null,
+    sku: null,
+    description: null,
+    subtype: null,
+  });
+  mockCountProduct.mockReset().mockResolvedValue(0);
   mockTagProductImageUrls.mockReset();
   mockAddEmbeddingJob.mockReset().mockResolvedValue(undefined);
   mockFindUniqueOverride.mockReset().mockResolvedValue(null);
@@ -133,6 +145,42 @@ describe('handleTagProduct', () => {
         metadata: { design_number: 'DN-2201', is_catalog_image: false },
       }),
     });
+  });
+
+  it('fills name/sku/description/subtype when currently unset', async () => {
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+
+    await handleTagProduct(baseData);
+
+    expect(mockUpdateProduct).toHaveBeenCalledWith({
+      where: { id: 'prod_1' },
+      data: expect.objectContaining({
+        name: 'Pink Printed Kurti',
+        description: 'A pink printed cotton kurti, great for casual wear.',
+        subtype: 'Kurti',
+        sku: 'KP0001',
+      }),
+    });
+  });
+
+  it('never overwrites a retailer-edited name/sku/description/subtype on re-tag', async () => {
+    mockFindUniqueProduct.mockResolvedValue({
+      name: 'Retailer Custom Name',
+      sku: 'CUSTOM-1',
+      description: 'Retailer written description',
+      subtype: 'Custom Subtype',
+    });
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+
+    await handleTagProduct(baseData);
+
+    const call = mockUpdateProduct.mock.calls[0]?.[0];
+    expect(call.data).not.toHaveProperty('name');
+    expect(call.data).not.toHaveProperty('sku');
+    expect(call.data).not.toHaveProperty('description');
+    expect(call.data).not.toHaveProperty('subtype');
+    // count() shouldn't even be queried — sku was already set.
+    expect(mockCountProduct).not.toHaveBeenCalled();
   });
 
   it('marks product failed and rethrows when tagging fails', async () => {

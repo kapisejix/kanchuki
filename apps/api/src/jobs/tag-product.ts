@@ -8,6 +8,7 @@ import {
 import { type Prisma, prisma } from '@kanchuki/db';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
+import { withUniqueSku } from '../lib/sku.js';
 import { addEmbeddingJob } from './index.js';
 import type { TaggingJobData } from './index.js';
 
@@ -63,33 +64,50 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       }
     }
 
-    // Update product with AI tags
-    await prisma.product.update({
+    // Only fill name/sku/description/subtype when still unset — never
+    // clobber a retailer's manual edit on a later re-tag/retry.
+    const current = await prisma.product.findUnique({
       where: { id: product_id },
-      data: {
-        ai_tagged: true,
-        ai_tag_error: null,
-        category: tags.category,
-        product_type: tags.product_type,
-        primary_color: tags.primary_color,
-        secondary_colors: tags.secondary_colors,
-        fabric_estimate: tags.fabric_estimate,
-        pattern: tags.pattern,
-        embellishments: tags.embellishments,
-        neck_style: tags.neck_style,
-        sleeve_type: tags.sleeve_type,
-        occasions: tags.occasions,
-        search_tags: tags.search_tags,
-        ...(tags.design_number_visible
-          ? {
-              metadata: {
-                design_number: tags.design_number_visible,
-                is_catalog_image: tags.is_catalog_image,
-              },
-            }
-          : {}),
-      },
+      select: { name: true, sku: true, description: true, subtype: true },
     });
+
+    const writeProductTags = (sku?: string) =>
+      prisma.product.update({
+        where: { id: product_id },
+        data: {
+          ai_tagged: true,
+          ai_tag_error: null,
+          category: tags.category,
+          product_type: tags.product_type,
+          primary_color: tags.primary_color,
+          secondary_colors: tags.secondary_colors,
+          fabric_estimate: tags.fabric_estimate,
+          pattern: tags.pattern,
+          embellishments: tags.embellishments,
+          neck_style: tags.neck_style,
+          sleeve_type: tags.sleeve_type,
+          occasions: tags.occasions,
+          search_tags: tags.search_tags,
+          ...(current?.subtype == null ? { subtype: tags.subtype } : {}),
+          ...(current?.name == null ? { name: tags.product_name } : {}),
+          ...(current?.description == null ? { description: tags.short_description } : {}),
+          ...(sku ? { sku } : {}),
+          ...(tags.design_number_visible
+            ? {
+                metadata: {
+                  design_number: tags.design_number_visible,
+                  is_catalog_image: tags.is_catalog_image,
+                },
+              }
+            : {}),
+        },
+      });
+
+    if (current?.sku == null) {
+      await withUniqueSku(retailer_id, tags.subtype ?? tags.category, writeProductTags);
+    } else {
+      await writeProductTags();
+    }
 
     await prisma.productPhoto.updateMany({
       where: { product_id, is_primary: true },

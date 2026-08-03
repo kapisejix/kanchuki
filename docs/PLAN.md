@@ -19,6 +19,10 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
+**IN PROGRESS (2026-08-03):** AI tagging expansion (subtype/SKU/description/name auto-generation, photo-slider fix, color-tap detection, catalog listing redesign) — backend done + tested, web/mobile UI not started. Full detail: `CLAUDE.md` "IN PROGRESS" section, `docs/PRO-REQUIREMENTS.md` §13.
+
+---
+
 ## Phase 0: MVP (Month 1–4)
 
 **Goal:** 50 paying retailers, prove product-market fit  
