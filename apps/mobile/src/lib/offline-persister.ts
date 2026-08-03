@@ -13,41 +13,22 @@
  * - Write errors are non-fatal (logged, not thrown)
  */
 
-import { Paths } from 'expo-file-system'
+import { Paths, File, Directory } from 'expo-file-system'
 
 // ─── Paths ────────────────────────────────────────────────────
-// Use string URIs from Paths.document.uri to avoid passing fake objects
-// to the real File/Directory constructors (which expect .uri property).
-// The real constructors come from a lightweight require at the point of
-// use — they're cached by Node/RN after the first call.
+// URIs are computed lazily (not at module load) so importing this module
+// never touches the filesystem — on web expo-file-system's
+// documentDirectory warns and returns '', and any runtime failure is
+// swallowed by the callers' try/catch. File/Directory are the exported
+// classes (present on native and web builds); importing them statically
+// keeps this module mockable in vitest, same as mutation-queue.ts.
 
-const CACHE_DIR_URI = `${Paths.document.uri}kanchuki-cache/`
-const CACHE_FILE_URI = `${CACHE_DIR_URI}rq-cache.json`
-
-/** Lazy-acquired reference to the real expo-file-system `File` class */
-function getFileClass(): new (...args: unknown[]) => {
-  uri: string
-  exists: boolean
-  create(opts?: Record<string, boolean>): void
-  write(content: string, opts?: Record<string, string>): void
-  text(): Promise<string>
-  delete(): void
-} {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('expo-file-system') as { File: never }
-  return mod.File
+function cacheDirUri(): string {
+  return `${Paths.document.uri}kanchuki-cache/`
 }
 
-/** Lazy-acquired reference to the real expo-file-system `Directory` class */
-function getDirectoryClass(): new (...args: unknown[]) => {
-  uri: string
-  exists: boolean
-  create(opts?: Record<string, boolean>): void
-  delete(): void
-} {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('expo-file-system') as { Directory: never }
-  return mod.Directory
+function cacheFileUri(): string {
+  return `${cacheDirUri()}rq-cache.json`
 }
 
 // ─── Types ─────────────────────────────────────────────────────
@@ -70,10 +51,9 @@ const CURRENT_VERSION = 1
 
 /** Ensure the cache directory exists. Creates it (with intermediates) if missing. */
 function ensureCacheDir(): void {
-  const DirClass = getDirectoryClass()
-  const dir = new DirClass(CACHE_DIR_URI)
-  if (!(dir as { exists: boolean }).exists) {
-    ;(dir as { create: (opts: Record<string, boolean>) => void }).create({
+  const dir = new Directory(cacheDirUri())
+  if (!dir.exists) {
+    dir.create({
       intermediates: true,
       idempotent: true,
     })
@@ -81,11 +61,9 @@ function ensureCacheDir(): void {
 }
 
 /** Get a File handle for the cache file (does NOT create the file). */
- 
-function cacheFile(): any {
-  const FileClass = getFileClass()
+function cacheFile(): File {
   ensureCacheDir()
-  return new FileClass(CACHE_FILE_URI)
+  return new File(cacheFileUri())
 }
 
 // ─── Persist ───────────────────────────────────────────────────
@@ -96,7 +74,6 @@ function cacheFile(): any {
  * Filters to only queries that still have gcTime remaining.
  * Errors are non-fatal — silently logged.
  */
- 
 export function persistQueryCache(queryClient: any): void {
   try {
     const allQueries = queryClient.getQueryCache().getAll()
@@ -135,15 +112,15 @@ export function persistQueryCache(queryClient: any): void {
     }
 
     const file = cacheFile()
-    if (!(file as { exists: boolean }).exists) {
-      ;(file as { create: (opts: Record<string, boolean>) => void }).create({
+    if (!file.exists) {
+      file.create({
         intermediates: true,
         overwrite: true,
       })
     }
     // iOS native File.write(_:) takes exactly one argument — passing an
     // options object throws InvalidArgsNumberException at the native layer.
-    ;(file as { write: (c: string) => void }).write(JSON.stringify(payload))
+    file.write(JSON.stringify(payload))
   } catch (err) {
     console.warn(
       '[offline-persister] Failed to persist cache:',
@@ -160,13 +137,12 @@ export function persistQueryCache(queryClient: any): void {
  * Called once on app start before screens render.
  * Returns true if data was restored, false if no cache was found.
  */
- 
 export async function restoreQueryCache(queryClient: any): Promise<boolean> {
   try {
     const file = cacheFile()
-    if (!(file as { exists: boolean }).exists) return false
+    if (!file.exists) return false
 
-    const content = await (file as { text: () => Promise<string> }).text()
+    const content = await file.text()
     const payload = JSON.parse(content) as PersistedCache
 
     // Version check — clear and bail if format changed
@@ -210,8 +186,8 @@ export async function restoreQueryCache(queryClient: any): Promise<boolean> {
 export async function clearPersistedCache(): Promise<void> {
   try {
     const file = cacheFile()
-    if ((file as { exists: boolean }).exists) {
-      ;(file as { delete: () => void }).delete()
+    if (file.exists) {
+      file.delete()
     }
   } catch {
     // Best-effort

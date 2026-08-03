@@ -10,7 +10,7 @@
  * useSyncQueue() replays the queue once the device reconnects.
  */
 
-import { Paths } from 'expo-file-system'
+import { Paths, File, Directory } from 'expo-file-system'
 
 function queueDirUri(): string {
   return `${Paths.document.uri}kanchuki-cache/`
@@ -18,28 +18,6 @@ function queueDirUri(): string {
 
 function queueFileUri(): string {
   return `${queueDirUri()}mutation-queue.json`
-}
-
-function getFileClass(): new (...args: unknown[]) => {
-  uri: string
-  exists: boolean
-  create(opts?: Record<string, boolean>): void
-  write(content: string): void
-  text(): Promise<string>
-} {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('expo-file-system') as { File: never }
-  return mod.File
-}
-
-function getDirectoryClass(): new (...args: unknown[]) => {
-  uri: string
-  exists: boolean
-  create(opts?: Record<string, boolean>): void
-} {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require('expo-file-system') as { Directory: never }
-  return mod.Directory
 }
 
 export interface PendingStatusMutation {
@@ -50,24 +28,22 @@ export interface PendingStatusMutation {
 }
 
 
-function queueFile(): any {
-  const DirClass = getDirectoryClass()
-  const dir = new DirClass(queueDirUri())
-  if (!(dir as { exists: boolean }).exists) {
-    ;(dir as { create: (opts: Record<string, boolean>) => void }).create({
+function queueFile(): File {
+  const dir = new Directory(queueDirUri())
+  if (!dir.exists) {
+    dir.create({
       intermediates: true,
       idempotent: true,
     })
   }
-  const FileClass = getFileClass()
-  return new FileClass(queueFileUri())
+  return new File(queueFileUri())
 }
 
 export async function getQueue(): Promise<PendingStatusMutation[]> {
   try {
     const file = queueFile()
-    if (!(file as { exists: boolean }).exists) return []
-    const content = await (file as { text: () => Promise<string> }).text()
+    if (!file.exists) return []
+    const content = await file.text()
     return JSON.parse(content) as PendingStatusMutation[]
   } catch {
     return []
@@ -77,13 +53,13 @@ export async function getQueue(): Promise<PendingStatusMutation[]> {
 async function writeQueue(queue: PendingStatusMutation[]): Promise<void> {
   try {
     const file = queueFile()
-    if (!(file as { exists: boolean }).exists) {
-      ;(file as { create: (opts: Record<string, boolean>) => void }).create({
+    if (!file.exists) {
+      file.create({
         intermediates: true,
         overwrite: true,
       })
     }
-    ;(file as { write: (c: string) => void }).write(JSON.stringify(queue))
+    file.write(JSON.stringify(queue))
   } catch (err) {
     console.warn(
       '[mutation-queue] Failed to persist:',
@@ -92,7 +68,14 @@ async function writeQueue(queue: PendingStatusMutation[]): Promise<void> {
   }
 }
 
-/** Queue a product status change for replay once back online. */
+/**
+ * Queue a product status change for replay once back online.
+ *
+ * NOTE: the read-modify-write (getQueue → push → writeQueue) is not
+ * atomic — two near-simultaneous enqueues could drop one entry. This is
+ * acceptable for a low-frequency offline queue that useSyncQueue() drains
+ * one mutation at a time.
+ */
 export async function enqueueStatusMutation(productId: string, status: string): Promise<void> {
   const queue = await getQueue()
   queue.push({ id: `${productId}-${Date.now()}`, productId, status, queuedAt: Date.now() })
