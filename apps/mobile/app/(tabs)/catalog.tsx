@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, memo } from 'react'
+import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -19,7 +20,6 @@ import { productApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
-import { formatPriceRange } from '@kanchuki/shared'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
@@ -128,7 +128,7 @@ const CatalogCard = memo(function CatalogCard({
           </Text>
           {product.section && (
             <View className="flex-row items-center gap-1">
-              <MapPin size={10} color="#ABA39C" />
+              <MapPin size={10} color={COLORS.sand[400]} />
               <Text className="text-xs text-sand-400" numberOfLines={1}>{product.section.name}</Text>
             </View>
           )}
@@ -371,7 +371,7 @@ export default function CatalogScreen() {
           accessibilityLabel="Filters"
           accessibilityRole="button"
         >
-          <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : '#847B75'} />
+          <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : COLORS.sand[600]} />
         </AnimatedPressable>
       </View>
 
@@ -442,7 +442,7 @@ export default function CatalogScreen() {
                           </AnimatedPressable>
                         )}
                         <AnimatedPressable onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
-                          <X size={16} color="#ABA39C" />
+                          <X size={16} color={COLORS.sand[400]} />
                         </AnimatedPressable>
                       </View>
                     </View>

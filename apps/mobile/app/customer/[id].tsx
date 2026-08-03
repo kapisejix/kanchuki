@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FABRIC_TYPES, OCCASION_TYPES, formatPrice, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -16,7 +17,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
 import { customerApi, sizeChartApi, collectionApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
-import { FABRIC_TYPES, OCCASION_TYPES, formatPrice } from '@kanchuki/shared'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -291,7 +291,7 @@ export default function CustomerDetailScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color="#4B4039" />
+          <X size={22} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Customer</Text>
         <AnimatedPressable
@@ -322,14 +322,14 @@ export default function CustomerDetailScreen() {
                 onChangeText={setName}
                 placeholder="Customer name"
                 className="text-base font-bold text-sand-900"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
               />
               <Text className="text-xs text-sand-400 mt-0.5">{customer.phone}</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
                 placeholder="email@example.com (optional)"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -344,7 +344,7 @@ export default function CustomerDetailScreen() {
               value={addressLine1}
               onChangeText={setAddressLine1}
               placeholder="Shop/Home address (optional)"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
             />
             <View className="flex-row gap-3">
@@ -352,14 +352,14 @@ export default function CustomerDetailScreen() {
                 value={city}
                 onChangeText={setCity}
                 placeholder="City"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
               />
               <TextInput
                 value={state}
                 onChangeText={setState}
                 placeholder="State"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
               />
             </View>
@@ -383,7 +383,7 @@ export default function CustomerDetailScreen() {
           <View className="bg-white rounded-2xl p-4 border border-sand-100">
             <View className="flex-row items-center justify-between mb-3">
               <View className="flex-row items-center gap-2">
-                <Heart size={16} color="#BF6973" />
+                <Heart size={16} color={COLORS.rust[500]} />
                 <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                   AI Match
                 </Text>
@@ -479,7 +479,7 @@ export default function CustomerDetailScreen() {
               onChangeText={setColorInput}
               onSubmitEditing={addColor}
               placeholder="e.g. Maroon"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
             <AnimatedPressable
@@ -488,7 +488,7 @@ export default function CustomerDetailScreen() {
               accessibilityLabel="Add color"
               accessibilityRole="button"
             >
-              <Plus size={16} color="#4B4039" />
+              <Plus size={16} color={COLORS.sand[700]} />
             </AnimatedPressable>
           </View>
         </View>
@@ -582,7 +582,7 @@ export default function CustomerDetailScreen() {
               onChangeText={setBudgetMin}
               placeholder="Min"
               keyboardType="numeric"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
             <TextInput
@@ -590,7 +590,7 @@ export default function CustomerDetailScreen() {
               onChangeText={setBudgetMax}
               placeholder="Max"
               keyboardType="numeric"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
             />
           </View>
@@ -683,7 +683,7 @@ export default function CustomerDetailScreen() {
             <View className="gap-2">
               {customer.interactions.slice(0, 8).map((i) => (
                 <View key={i.id} className="flex-row items-center gap-2">
-                  <Clock size={12} color="#ABA39C" />
+                  <Clock size={12} color={COLORS.sand[400]} />
                   <Text className="text-xs text-sand-600 flex-1">
                     {i.type}
                     {i.product ? ` · ${i.product.category ?? ''} ${i.product.primary_color ?? ''}` : ''}
@@ -709,7 +709,7 @@ export default function CustomerDetailScreen() {
             multiline
             numberOfLines={2}
             className="text-sm text-sand-900"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
           />
         </View>
 
@@ -718,7 +718,7 @@ export default function CustomerDetailScreen() {
           onPress={handleDelete}
           className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
         >
-          <Trash2 size={16} color="#A24854" />
+          <Trash2 size={16} color={COLORS.rust[600]} />
           <Text className="text-rust-600 font-semibold text-sm">Delete Customer</Text>
         </AnimatedPressable>
       </View>
@@ -734,7 +734,7 @@ export default function CustomerDetailScreen() {
           {/* Modal Header */}
           <View className="flex-row items-center justify-between px-4 pb-4">
             <AnimatedPressable onPress={() => setShowManualForm(false)} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={22} color="#4B4039" />
+              <X size={22} color={COLORS.sand[700]} />
             </AnimatedPressable>
             <Text className="text-base font-bold text-sand-900">Manual Measurements</Text>
             <AnimatedPressable
@@ -762,7 +762,7 @@ export default function CustomerDetailScreen() {
                 placeholder="e.g. 162"
                 keyboardType="numeric"
                 className="text-lg font-bold text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
               />
             </View>
 
@@ -780,7 +780,7 @@ export default function CustomerDetailScreen() {
                     placeholder="e.g. 92"
                     keyboardType="numeric"
                     className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#ABA39C"
+                    placeholderTextColor={COLORS.sand[400]}
                   />
                 </View>
                 <View>
@@ -791,7 +791,7 @@ export default function CustomerDetailScreen() {
                     placeholder="e.g. 76"
                     keyboardType="numeric"
                     className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#ABA39C"
+                    placeholderTextColor={COLORS.sand[400]}
                   />
                 </View>
                 <View>
@@ -802,7 +802,7 @@ export default function CustomerDetailScreen() {
                     placeholder="e.g. 100"
                     keyboardType="numeric"
                     className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#ABA39C"
+                    placeholderTextColor={COLORS.sand[400]}
                   />
                 </View>
               </View>
@@ -822,7 +822,7 @@ export default function CustomerDetailScreen() {
                     placeholder="e.g. 78"
                     keyboardType="numeric"
                     className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#ABA39C"
+                    placeholderTextColor={COLORS.sand[400]}
                   />
                 </View>
                 <View>
@@ -833,7 +833,7 @@ export default function CustomerDetailScreen() {
                     placeholder="e.g. 102"
                     keyboardType="numeric"
                     className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#ABA39C"
+                    placeholderTextColor={COLORS.sand[400]}
                   />
                 </View>
                 <View>
@@ -844,7 +844,7 @@ export default function CustomerDetailScreen() {
                     placeholder="e.g. 78"
                     keyboardType="numeric"
                     className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor="#ABA39C"
+                    placeholderTextColor={COLORS.sand[400]}
                   />
                 </View>
               </View>

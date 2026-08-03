@@ -1,11 +1,11 @@
 import { useState, useCallback, memo } from 'react'
+import { formatPrice, COLORS } from '@kanchuki/shared'
 import { View, Text, FlatList, TextInput } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Plus, Search, ChevronRight, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
-import { formatPrice } from '@kanchuki/shared'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Customer = {
@@ -64,7 +64,7 @@ const CustomerCard = memo(function CustomerCard({
         {/* City / State */}
         {locationStr && (
           <View className="flex-row items-center gap-1 mt-0.5">
-            <MapPin size={10} color="#ABA39C" />
+            <MapPin size={10} color={COLORS.sand[400]} />
             <Text className="text-xs text-sand-400" numberOfLines={1}>{locationStr}</Text>
           </View>
         )}
@@ -90,7 +90,7 @@ const CustomerCard = memo(function CustomerCard({
         )}
       </View>
 
-      <ChevronRight size={16} color="#CDC6BF" />
+      <ChevronRight size={16} color={COLORS.sand[300]} />
     </AnimatedPressable>
   )
 })
@@ -140,12 +140,12 @@ export default function CustomersScreen() {
       {/* Search */}
       <View className="bg-white px-4 py-3 border-b border-sand-100">
         <View className="flex-row items-center bg-sand-100 rounded-xl px-3 py-2.5 gap-2">
-          <Search size={16} color="#ABA39C" />
+          <Search size={16} color={COLORS.sand[400]} />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search by name or phone..."
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
             className="flex-1 text-sm text-sand-900"
           />
         </View>

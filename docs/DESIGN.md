@@ -415,16 +415,17 @@ Retailer can switch to "TV Mode" — optimized for 40"+ screens connected to tab
 
 ## Design Tokens
 
-**Web (`apps/web/tailwind.config.ts`) — live as of 2026-07-28:**
+**Web (`apps/web/tailwind.config.ts`) — "Black & Gold Elegance", live as of 2026-08-03** (previous repaints: Loom 2026-07-28 → Red Elegance 2026-07-29 → this one; this block was stale through both of those, corrected now):
 
 ```typescript
 colors: {
-  ink:      { /* 50–900 scale, oklch hue 265 */ 600: 'oklch(35% 0.12 265)' },
-  rust:     { /* 50–900 scale, oklch hue 25  */ 600: 'oklch(48% 0.16 25)' },
-  turmeric: { /* 50–900 scale, oklch hue 85  */ 400: 'oklch(78% 0.15 85)' },
-  stone:    { /* 50–900 scale, near-neutral  */ 500: 'oklch(55% 0.01 265)' },
-  cotton: 'oklch(97% 0.01 90)',
-  charcoal: 'oklch(20% 0.01 265)',
+  ink:      { /* 50–900 hex scale */ 600: 'var(--color-ink, #14213D)' },  // deep navy, primary
+  rust:     { /* 50–900 hex scale */ 600: '#FCA311' },                     // regal gold, hero accent
+  turmeric: { /* 50–900 hex scale */ 600: '#8A5A12' },                     // antique gold/bronze, grounding accent
+  sand:     { /* 50–900 hex scale */ 200: '#E5E5E5' },                     // neutral grey
+  cotton: '#FFFFFF',   // luminous white
+  charcoal: '#000000', // bold black
+  glow: '#FFC94D', veil: '#0B1322', // decorative hero-wash only (was icy/petal)
 },
 fontFamily: {
   sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],     // Inter
@@ -438,7 +439,9 @@ borderRadius: {
 }
 ```
 
-**Mobile (`apps/mobile/tailwind.config.js`) — wired, but not pixel-identical to web.** Has its own full `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` scale (hex, not oklch — RN's style engine can't parse `oklch()` at all, see that file's comment). `ink` (navy/primary) is pixel-matched to web via the same `--color-ink-600` runtime CSS var (admin-configurable branding, set live through NativeWind's `vars()`). `rust`/`turmeric`/`sand` are NOT currently kept in sync with web's values — this is tracked as open work (see `docs/design/emil-design.md` §3.4, "shared token gap"); until resolved, don't assume mobile's accent colors match whatever web is currently showing.
+Every ramp is plain hex now (oklch dropped this pass) — removes the hand-conversion step between web and mobile that the previous two repaints each had to redo.
+
+**Mobile (`apps/mobile/tailwind.config.js`) — pixel-identical to web as of this pass.** Same `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` hex values, copied literally (no oklch→hex conversion needed anymore, since web dropped oklch too). `ink` stays wired to the same admin-configurable `--color-ink-600` CSS var via NativeWind's `vars()`. Shared-token package (`packages/shared`) still not built (`docs/design/emil-design.md` §3.4) — these two files are still kept in sync by hand, just a lower-risk hand-sync than before.
 
 ---
 

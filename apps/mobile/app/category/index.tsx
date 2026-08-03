@@ -1,4 +1,5 @@
 import { View, Text, FlatList } from 'react-native'
+import { COLORS } from '@kanchuki/shared'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -28,7 +29,7 @@ export default function CategoryListScreen() {
           style={{ paddingTop: insets.top + 12 }}
         >
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color="#4B4039" />
+            <ChevronLeft size={24} color={COLORS.sand[700]} />
           </AnimatedPressable>
         </View>
         {isLoading ? (

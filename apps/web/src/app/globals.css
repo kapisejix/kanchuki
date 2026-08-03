@@ -9,15 +9,16 @@
      and unreadable against our light backgrounds. */
   color-scheme: light;
 
-  /* "Red Elegance" palette (docs/design/emil-design.md §3.1, revised 2026-07-29).
-     Mirrors apps/web/tailwind.config.ts for the handful of spots (scrollbar,
-     hero texture, logomark) that need a raw CSS value instead of a class. */
-  --color-ink: #1E2A3D;
-  --color-rust: oklch(52% 0.12 14);
-  --color-turmeric: #6E5742;
-  --color-cotton: #FBFAF8;
-  --color-charcoal: #14100D;
-  --color-sand: oklch(59% 0.015 58);
+  /* "Black & Gold Elegance" palette (docs/design/emil-design.md §3.1, revised
+     2026-08-03). Mirrors apps/web/tailwind.config.ts for the handful of spots
+     (scrollbar, hero texture, logomark) that need a raw CSS value instead of
+     a class. */
+  --color-ink: #14213D;
+  --color-rust: #FCA311;
+  --color-turmeric: #8A5A12;
+  --color-cotton: #FFFFFF;
+  --color-charcoal: #000000;
+  --color-sand: #737373;
 }
 
 * {

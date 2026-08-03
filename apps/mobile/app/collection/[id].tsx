@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
+import { normalizeIndianPhone, COLORS } from '@kanchuki/shared'
 import { View, Text, ScrollView, FlatList, Image, Linking, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Eye, Heart, MessageCircle, Link2, Users, Edit, Trash2, Search, Check, ChevronLeft } from 'lucide-react-native'
-import { normalizeIndianPhone } from '@kanchuki/shared'
 import { collectionApi, customerApi, retailerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
@@ -107,7 +107,7 @@ function EditModal({
               onChangeText={setTitle}
               placeholder="Collection name"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               autoFocus
             />
           </View>
@@ -122,7 +122,7 @@ function EditModal({
               placeholder="30"
               keyboardType="numeric"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
             />
           </View>
 
@@ -285,12 +285,12 @@ function ShareModal({
             <>
               <Text className="text-lg font-bold text-sand-900 mb-3">Share with Customers</Text>
               <View className="flex-row items-center bg-sand-100 rounded-xl px-3 py-2.5 gap-2 mb-3">
-                <Search size={16} color="#ABA39C" />
+                <Search size={16} color={COLORS.sand[400]} />
                 <TextInput
                   value={search}
                   onChangeText={setSearch}
                   placeholder="Search by name or phone..."
-                  placeholderTextColor="#ABA39C"
+                  placeholderTextColor={COLORS.sand[400]}
                   className="flex-1 text-sm text-sand-900"
                 />
               </View>
@@ -410,7 +410,7 @@ export default function CollectionDetailScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color="#4B4039" />
+          <ChevronLeft size={24} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <View className="flex-row gap-2">
           <AnimatedPressable
@@ -427,7 +427,7 @@ export default function CollectionDetailScreen() {
             accessibilityLabel="Delete collection"
             accessibilityRole="button"
           >
-            <Trash2 size={16} color="#A24854" />
+            <Trash2 size={16} color={COLORS.rust[600]} />
           </AnimatedPressable>
         </View>
       </View>
@@ -436,8 +436,8 @@ export default function CollectionDetailScreen() {
         <View className="flex-row flex-wrap px-4 pt-4 gap-3">
           <Stat icon={<Eye size={16} color={primaryColor} />} label="Views" value={collection.view_count} />
           <Stat icon={<Users size={16} color="#E3262D" />} label="Visitors" value={collection.unique_viewer_count} />
-          <Stat icon={<Heart size={16} color="#BF6973" />} label="Favorites" value={collection.favorite_count} />
-          <Stat icon={<MessageCircle size={16} color="#946A4B" />} label="Enquiries" value={collection.enquiry_count} />
+          <Stat icon={<Heart size={16} color={COLORS.rust[500]} />} label="Favorites" value={collection.favorite_count} />
+          <Stat icon={<MessageCircle size={16} color={COLORS.turmeric[500]} />} label="Enquiries" value={collection.enquiry_count} />
         </View>
 
         {/* Share */}
@@ -466,7 +466,7 @@ export default function CollectionDetailScreen() {
             onPress={handleDelete}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-rust-50 border border-rust-100 py-3 rounded-xl"
           >
-            <Trash2 size={16} color="#A24854" />
+            <Trash2 size={16} color={COLORS.rust[600]} />
             <Text className="text-rust-600 text-sm font-semibold">Delete</Text>
           </AnimatedPressable>
         </View>

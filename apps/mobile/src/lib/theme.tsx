@@ -7,7 +7,7 @@ import { getItem, setItem } from './storage'
 // needed there. useTheme()/getPrimaryColor() below are for the remaining
 // spots that bypass className entirely: raw `color="#hex"` props (icon
 // libraries, ActivityIndicator) and inline style objects.
-const DEFAULT_PRIMARY = '#1E2A3D'
+const DEFAULT_PRIMARY = '#14213D'
 const STORAGE_KEY = 'theme_primary_color'
 
 const ThemeContext = createContext<{ primaryColor: string }>({ primaryColor: DEFAULT_PRIMARY })

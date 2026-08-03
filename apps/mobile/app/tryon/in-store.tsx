@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { PLAN_LIMITS, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -27,7 +28,6 @@ import ProductCard from '../../src/components/ProductCard'
 import { productApi, tryOnApi, retailerApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
-import { PLAN_LIMITS } from '@kanchuki/shared'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
@@ -279,7 +279,7 @@ export default function InStoreTryOnScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color="#4B4039" />
+          <X size={22} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {step === 'select' && 'Select Product'}

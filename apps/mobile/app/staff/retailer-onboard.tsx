@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, TextInput,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -89,7 +90,7 @@ export default function RetailerOnboardScreen() {
     return (
       <View className="flex-1 bg-ink-50 items-center justify-center px-6">
         <View className="w-20 h-20 bg-turmeric-100 rounded-full items-center justify-center mb-4">
-          <CheckCircle2 size={40} color="#946A4B" />
+          <CheckCircle2 size={40} color={COLORS.turmeric[500]} />
         </View>
         <Text className="text-xl font-bold text-sand-900 text-center">Retailer Onboarded!</Text>
         <Text className="text-sand-500 text-sm mt-2 text-center">
@@ -117,7 +118,7 @@ export default function RetailerOnboardScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color="#4B4039" />
+            <ChevronLeft size={24} color={COLORS.sand[700]} />
           </AnimatedPressable>
           <View>
             <Text className="text-base font-bold text-sand-900">New Retailer</Text>
@@ -138,7 +139,7 @@ export default function RetailerOnboardScreen() {
               value={shopName}
               onChangeText={setShopName}
               placeholder="e.g. Sharma Saree Center"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               className={inputClass}
               autoFocus
             />
@@ -147,7 +148,7 @@ export default function RetailerOnboardScreen() {
           {/* Phone */}
           <View className="bg-white rounded-2xl p-4 border border-sand-100">
             <View className="flex-row items-center gap-2 mb-2">
-              <Phone size={16} color="#946A4B" />
+              <Phone size={16} color={COLORS.turmeric[500]} />
               <Text className={labelClass}>Mobile Number *</Text>
             </View>
             <View className="flex-row items-center border border-sand-200 rounded-xl px-4">
@@ -157,7 +158,7 @@ export default function RetailerOnboardScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="9876543210"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 keyboardType="phone-pad"
                 maxLength={10}
                 className="flex-1 py-3.5 text-sm text-sand-900"
@@ -175,7 +176,7 @@ export default function RetailerOnboardScreen() {
               value={ownerName}
               onChangeText={setOwnerName}
               placeholder="e.g. Rajesh Sharma"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               className={inputClass}
             />
           </View>
@@ -184,14 +185,14 @@ export default function RetailerOnboardScreen() {
           <View className="flex-row gap-3">
             <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100">
               <View className="flex-row items-center gap-2 mb-2">
-                <MapPin size={16} color="#946A4B" />
+                <MapPin size={16} color={COLORS.turmeric[500]} />
                 <Text className={labelClass}>City *</Text>
               </View>
               <TextInput
                 value={city}
                 onChangeText={setCity}
                 placeholder="e.g. Jaipur"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 className={inputClass}
               />
             </View>
@@ -201,7 +202,7 @@ export default function RetailerOnboardScreen() {
                 value={state}
                 onChangeText={setState}
                 placeholder="e.g. Rajasthan"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 className={inputClass}
               />
             </View>
@@ -214,7 +215,7 @@ export default function RetailerOnboardScreen() {
               value={pincode}
               onChangeText={setPincode}
               placeholder="302001"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               keyboardType="number-pad"
               maxLength={6}
               className={inputClass}

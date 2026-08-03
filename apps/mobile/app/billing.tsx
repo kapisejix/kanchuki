@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { View, Text, ScrollView, Linking, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -125,7 +126,7 @@ export default function BillingScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color="#4B4039" />
+          <ChevronLeft size={24} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">Plans & Billing</Text>
       </View>
@@ -139,11 +140,11 @@ export default function BillingScreen() {
           }`}>
             <View className="flex-row items-center gap-2 mb-1">
               {isCancelled ? (
-                <XCircle size={18} color="#A24854" />
+                <XCircle size={18} color={COLORS.rust[600]} />
               ) : isActive ? (
-                <CreditCard size={18} color="#7D5334" />
+                <CreditCard size={18} color={COLORS.turmeric[600]} />
               ) : (
-                <ShieldAlert size={18} color="#7D5334" />
+                <ShieldAlert size={18} color={COLORS.turmeric[600]} />
               )}
               <Text className={`font-bold text-sm ${
                 isCancelled ? 'text-rust-700' :
@@ -223,7 +224,7 @@ export default function BillingScreen() {
               <View className="mt-3 gap-2">
                 {(PLAN_FEATURES[p.plan] ?? []).map((f) => (
                   <View key={f} className="flex-row items-center gap-2">
-                    <Check size={15} color="#946A4B" />
+                    <Check size={15} color={COLORS.turmeric[500]} />
                     <Text className="text-sm text-sand-600">{f}</Text>
                   </View>
                 ))}

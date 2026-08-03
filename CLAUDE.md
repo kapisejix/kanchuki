@@ -395,6 +395,21 @@ User asked AI tagging to also produce: garment **subtype** (finer than `category
 
 ---
 
+## Built: "Black & Gold Elegance" Brand Repaint + Shared `COLORS` Module (2026-08-03)
+
+**User-driven repaint** — third palette in this project's history (Loom → Red Elegance → this one), from a user-supplied 5-swatch reference: bold black (`#000000`), deep navy (`#14213D`), regal gold (`#FCA311`), light grey (`#E5E5E5`), luminous white (`#FFFFFF`). Full scope confirmed with the user as "full repaint of live app," not just a preview.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Design tokens** | `apps/web/tailwind.config.ts`, `apps/mobile/tailwind.config.js` | Same `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` key names as Red Elegance (repaints className usage for free) — `ink`=deep navy, `rust`=regal gold (was secondary, now primary hero accent), `turmeric`=antique gold/bronze (grounding accent, no separate swatch given), `sand`=neutral grey. Every ramp moved from oklch to plain hex this pass — removes the web/mobile hand-conversion step. Decorative hero-wash tokens `icy`/`petal` renamed `glow`/`veil` (gold glow / navy-black shadow — a cool wash no longer fit) |
+| **Brand chrome** | `globals.css`, `layout.tsx`, `icon.svg`, `manifest.json`, mobile `app.json`, `theme.tsx`, header configs across `_layout.tsx`/`orders/[id].tsx`, `admin-settings.ts` default, admin theme settings page | Favicon, PWA theme/background color, splash screen, admin-configurable brand color default, and header tint/background across every mobile screen updated to match. Also fixed a stray leftover cyan shadow tint (`rgb(8 145 178)`) in `tailwind.config.ts` that predated even the Loom repaint and had never been caught |
+| **Shared `COLORS` module (new)** | `packages/shared/src/colors.ts` (new), `packages/shared/src/index.ts` | Closes part of the shared-token gap tracked in `docs/design/emil-design.md` §3.4: ~40 `apps/mobile` screens were hardcoding raw hex directly in RN literal props (`color=`, `placeholderTextColor=`, inline `style` objects — spots a Tailwind `className` can't reach). All migrated to `import { COLORS } from '@kanchuki/shared'`, so the next repaint edits one file instead of ~40. Tailwind configs still hardcode their own copy of the same values on purpose — those load at build time before `@kanchuki/shared`'s `dist/` is guaranteed built, and wiring that import wasn't safely verifiable without a live Metro/Next build in this environment |
+| **Docs** | `docs/DESIGN.md` (Design Tokens section), `docs/design/emil-design.md` §3.1/§3.4 | Both updated with current values — `docs/DESIGN.md`'s token block had been stale since the Loom→Red Elegance switch (never corrected); fixed as part of this pass, not left stale a second time |
+
+**Session note:** the mobile hex→`COLORS` migration was scripted (PowerShell bulk find/replace across ~40 files); the first attempt had two bugs — a broken replace clobbered 14 files' pre-existing imports (lost names like `formatPriceRange`, `PRODUCT_CATEGORIES`), and the file glob briefly touched 8 `node_modules` vendor files. Both fully recovered (originals restored from `git show HEAD`, vendor files restored) before verification. **Verified:** `apps/mobile` `tsc --noEmit` clean, `vitest run` 25/25 passing (1 unrelated pre-existing suite failure — a Rolldown/Vite JSX-parse error inside `expo-linear-gradient`'s vendor build output, predates this session and unrelated to the color changes). No RN simulator/browser available in this environment — UI unverified visually on device; verify before treating as final.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

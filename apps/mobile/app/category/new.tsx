@@ -1,10 +1,10 @@
 import { useState } from 'react'
+import { PRODUCT_CATEGORIES, COLORS } from '@kanchuki/shared'
 import { View, Text, TextInput, ActivityIndicator, Image } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
 import { ImagePlus, Check } from 'lucide-react-native'
-import { PRODUCT_CATEGORIES } from '@kanchuki/shared'
 import { categoryApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -75,7 +75,7 @@ export default function NewCategoryScreen() {
             ) : imageUrl ? (
               <Image source={{ uri: imageUrl }} style={{ width: 112, height: 112 }} resizeMode="cover" />
             ) : (
-              <ImagePlus size={26} color="#ABA39C" />
+              <ImagePlus size={26} color={COLORS.sand[400]} />
             )}
           </AnimatedPressable>
           <Text className="text-xs text-sand-400 mt-1.5">
@@ -91,7 +91,7 @@ export default function NewCategoryScreen() {
             value={name}
             onChangeText={setName}
             placeholder="e.g. Wedding Sarees"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
             className="bg-white px-4 py-3 rounded-xl text-sm text-sand-900 border border-sand-100"
             maxLength={100}
           />

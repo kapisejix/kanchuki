@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -224,11 +225,11 @@ export default function BulkImportScreen() {
       case 'uploading':
         return <ActivityIndicator size="small" color={primaryColor} />
       case 'creating':
-        return <ActivityIndicator size="small" color="#946A4B" />
+        return <ActivityIndicator size="small" color={COLORS.turmeric[500]} />
       case 'done':
-        return <Check size={18} color="#946A4B" />
+        return <Check size={18} color={COLORS.turmeric[500]} />
       case 'failed':
-        return <AlertTriangle size={18} color="#BF6973" />
+        return <AlertTriangle size={18} color={COLORS.rust[500]} />
     }
   }
 
@@ -261,7 +262,7 @@ export default function BulkImportScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={step === 'importing' ? '#CDC6BF' : '#4B4039'} />
+          <X size={22} color={step === 'importing' ? COLORS.sand[300] : COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {step === 'pick' && 'Bulk Import'}
@@ -434,7 +435,7 @@ export default function BulkImportScreen() {
                 onPress={() => handleRetry()}
                 className="py-4 rounded-2xl items-center border-2 border-sand-200 flex-row justify-center gap-2"
               >
-                <AlertTriangle size={18} color="#4B4039" />
+                <AlertTriangle size={18} color={COLORS.sand[700]} />
                 <Text className="text-sand-700 font-semibold">Retry Failed ({failed})</Text>
               </AnimatedPressable>
             )}

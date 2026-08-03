@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { AppState } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { Home, Grid3X3, Users, Link2, ShoppingBag, BarChart3 } from 'lucide-react-native'
@@ -7,7 +8,7 @@ import { ordersApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
-const MUTED = '#ABA39C'
+const MUTED = COLORS.sand[400]
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
@@ -48,12 +49,12 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: MUTED,
         tabBarStyle: {
           backgroundColor: '#ffffff',
-          borderTopColor: '#F2EEE9',
+          borderTopColor: COLORS.sand[100],
           height: 60 + insets.bottom,
           paddingBottom: 8 + insets.bottom,
         },
         headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: '#14100D',
+        headerTintColor: COLORS.charcoal,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
       }}

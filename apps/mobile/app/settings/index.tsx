@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, TextInput,
   ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, Image,
@@ -153,7 +154,7 @@ function ProfileEditModal({
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Edit Profile</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color="#ABA39C" />
+              <X size={20} color={COLORS.sand[400]} />
             </AnimatedPressable>
           </View>
 
@@ -170,7 +171,7 @@ function ProfileEditModal({
                 ) : logoUrl ? (
                   <Image source={{ uri: logoUrl }} style={{ width: 80, height: 80 }} resizeMode="cover" />
                 ) : (
-                  <ImagePlus size={22} color="#ABA39C" />
+                  <ImagePlus size={22} color={COLORS.sand[400]} />
                 )}
               </AnimatedPressable>
               <Text className="text-[10px] text-sand-400 mt-1.5">
@@ -191,7 +192,7 @@ function ProfileEditModal({
                   <Image source={{ uri: bannerUrl }} style={{ width: '100%', height: 112 }} resizeMode="cover" />
                 ) : (
                   <View className="items-center">
-                    <ImagePlus size={22} color="#ABA39C" />
+                    <ImagePlus size={22} color={COLORS.sand[400]} />
                     <Text className="text-[10px] text-sand-400 mt-1">Tap to add store banner</Text>
                   </View>
                 )}
@@ -267,7 +268,7 @@ function Field({
         placeholder={placeholder}
         keyboardType={keyboardType}
         className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-        placeholderTextColor="#ABA39C"
+        placeholderTextColor={COLORS.sand[400]}
       />
     </View>
   )
@@ -394,23 +395,23 @@ function KycDocRow({
         ) : url ? (
           <Image source={{ uri: url }} style={{ width: 44, height: 44 }} resizeMode="cover" />
         ) : (
-          <FileText size={18} color="#ABA39C" />
+          <FileText size={18} color={COLORS.sand[400]} />
         )}
       </View>
       <View className="flex-1">
         <Text className="text-sm font-semibold text-sand-900">{label}</Text>
         <Text className="text-xs text-sand-400 mt-0.5">{url ? 'Uploaded — tap to replace' : hint}</Text>
       </View>
-      {url && <Check size={16} color="#946A4B" />}
+      {url && <Check size={16} color={COLORS.turmeric[500]} />}
     </AnimatedPressable>
   )
 }
 
 const KYC_STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  NOT_SUBMITTED: { label: 'Not Submitted', color: '#847B75', bg: '#F2EEE9' },
-  PENDING: { label: 'Pending Review', color: '#7D5334', bg: '#EFDECE' },
-  VERIFIED: { label: 'Verified', color: '#7D5334', bg: '#EFDECE' },
-  REJECTED: { label: 'Rejected', color: '#A24854', bg: '#FAE1E4' },
+  NOT_SUBMITTED: { label: 'Not Submitted', color: COLORS.sand[600], bg: COLORS.sand[100] },
+  PENDING: { label: 'Pending Review', color: COLORS.turmeric[600], bg: COLORS.turmeric[100] },
+  VERIFIED: { label: 'Verified', color: COLORS.turmeric[600], bg: COLORS.turmeric[100] },
+  REJECTED: { label: 'Rejected', color: COLORS.rust[600], bg: COLORS.rust[100] },
 }
 
 function KycModal({
@@ -434,7 +435,7 @@ function KycModal({
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Identity Verification</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color="#ABA39C" />
+              <X size={20} color={COLORS.sand[400]} />
             </AnimatedPressable>
           </View>
 
@@ -560,7 +561,7 @@ function WhatsAppApiModal({
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">WhatsApp Business API</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color="#ABA39C" />
+              <X size={20} color={COLORS.sand[400]} />
             </AnimatedPressable>
           </View>
 
@@ -647,7 +648,7 @@ function DeleteAccountModal({
             onChangeText={setConfirm}
             placeholder='Type "DELETE" to confirm'
             className="bg-rust-50 border border-rust-200 px-4 py-3 rounded-xl text-sm text-sand-900"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
             autoCapitalize="characters"
           />
           <View className="flex-row gap-3">
@@ -695,7 +696,7 @@ function SettingsRow({
         <Text className={`text-sm font-semibold ${destructive ? 'text-rust-600' : 'text-sand-900'}`}>{label}</Text>
         {subtitle && <Text className="text-xs text-sand-400 mt-0.5">{subtitle}</Text>}
       </View>
-      <ChevronRight size={18} color="#ABA39C" />
+      <ChevronRight size={18} color={COLORS.sand[400]} />
     </AnimatedPressable>
   )
 }
@@ -734,7 +735,7 @@ function UsageSection() {
       {activeResources.map((r) => {
         const pct = Math.min(Math.round((r.used / r.limit) * 100), 100)
         const isOver = r.used >= r.limit
-        const barColor = isOver ? '#A24854' : pct > 80 ? '#7D5334' : primaryColor
+        const barColor = isOver ? COLORS.rust[600] : pct > 80 ? COLORS.turmeric[600] : primaryColor
         return (
           <View key={r.resource_type} className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1">
@@ -754,7 +755,7 @@ function UsageSection() {
             </View>
             {isOver && (
               <View className="flex-row items-center gap-1 mt-1">
-                <AlertTriangle size={10} color="#A24854" />
+                <AlertTriangle size={10} color={COLORS.rust[600]} />
                 <Text className="text-[10px] text-rust-600">Limit reached. Upgrade or contact support.</Text>
               </View>
             )}
@@ -839,7 +840,7 @@ export default function SettingsScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color="#4B4039" />
+            <ChevronLeft size={24} color={COLORS.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Settings</Text>
         </View>
@@ -869,7 +870,7 @@ export default function SettingsScreen() {
               />
 
               <SettingsRow
-                icon={<CreditCard size={18} color="#946A4B" />}
+                icon={<CreditCard size={18} color={COLORS.turmeric[500]} />}
                 label="Plans & Billing"
                 subtitle={`${retailer?.plan ?? 'STARTER'} · ${retailer?.plan_status ?? 'TRIAL'}`}
                 onPress={() => router.push('/billing')}
@@ -890,7 +891,7 @@ export default function SettingsScreen() {
               />
 
               <SettingsRow
-                icon={<MessageCircle size={18} color="#946A4B" />}
+                icon={<MessageCircle size={18} color={COLORS.turmeric[500]} />}
                 label="WhatsApp Business API"
                 subtitle={retailer?.whatsapp_api_configured ? 'Connected — bulk send enabled' : 'Not connected — one-by-one only'}
                 onPress={() => setShowWhatsAppApi(true)}
@@ -911,7 +912,7 @@ export default function SettingsScreen() {
 
           {!isStaff && (
             <SettingsRow
-              icon={<Users size={18} color="#946A4B" />}
+              icon={<Users size={18} color={COLORS.turmeric[500]} />}
               label="Team Members"
               subtitle="Manage shop staff"
               onPress={() => router.push('/settings/staff')}
@@ -936,7 +937,7 @@ export default function SettingsScreen() {
 
           {!isStaff && (
             <SettingsRow
-              icon={<Trash2 size={18} color="#A24854" />}
+              icon={<Trash2 size={18} color={COLORS.rust[600]} />}
               label="Recently Deleted"
               subtitle="Restore or permanently remove products"
               onPress={() => router.push('/settings/deleted-products')}
@@ -948,14 +949,14 @@ export default function SettingsScreen() {
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">Actions</Text>
 
           <SettingsRow
-            icon={<LogOut size={18} color="#847B75" />}
+            icon={<LogOut size={18} color={COLORS.sand[600]} />}
             label="Logout"
             onPress={handleLogout}
           />
 
           {!isStaff && (
             <SettingsRow
-              icon={<Trash2 size={18} color="#A24854" />}
+              icon={<Trash2 size={18} color={COLORS.rust[600]} />}
               label="Delete Account"
               destructive
               onPress={() => setShowDelete(true)}

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { View, Text, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -80,7 +81,7 @@ export default function StoreProfileScreen() {
     <ScrollView className="flex-1 bg-ink-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
       <View className="flex-row items-center justify-between px-4 mb-4">
         <AnimatedPressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center" accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color="#4B4039" />
+          <X size={22} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Store QR Code</Text>
         <View className="w-10" />

@@ -10,11 +10,11 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 const HEX_RE = /^#[0-9A-Fa-f]{6}$/
 
 // A few sane starting points — not a constraint, admin can type any hex below.
-const PRESETS = ['#1E2A3D', '#D41E2A', '#0F5132', '#4C1D95', '#7C2D12']
+const PRESETS = ['#14213D', '#D41E2A', '#0F5132', '#4C1D95', '#7C2D12']
 
 export default function ThemeSettingsPage() {
   const [savedColor, setSavedColor] = useState<string | null>(null)
-  const [color, setColor] = useState('#1E2A3D')
+  const [color, setColor] = useState('#14213D')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saveResult, setSaveResult] = useState<string | null>(null)

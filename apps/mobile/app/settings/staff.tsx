@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, FlatList, TextInput,
   ActivityIndicator, Alert, Modal,
@@ -51,7 +52,7 @@ function AddStaffModal({
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Add Team Member</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color="#ABA39C" />
+              <X size={20} color={COLORS.sand[400]} />
             </AnimatedPressable>
           </View>
 
@@ -62,7 +63,7 @@ function AddStaffModal({
               onChangeText={setName}
               placeholder="e.g. Ramesh"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
               autoFocus
             />
           </View>
@@ -76,7 +77,7 @@ function AddStaffModal({
               keyboardType="numeric"
               maxLength={10}
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
             />
           </View>
 
@@ -161,7 +162,7 @@ export default function StaffScreen() {
           accessibilityLabel={`Remove ${item.name}`}
           accessibilityRole="button"
         >
-          <Trash2 size={16} color="#A24854" />
+          <Trash2 size={16} color={COLORS.rust[600]} />
         </AnimatedPressable>
       </View>
     ),
@@ -177,7 +178,7 @@ export default function StaffScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color="#4B4039" />
+            <ChevronLeft size={24} color={COLORS.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Team Members</Text>
         </View>
@@ -188,7 +189,7 @@ export default function StaffScreen() {
           <CustomerListSkeleton />
         ) : staff.length === 0 ? (
           <View className="items-center py-16">
-            <User size={40} color="#CDC6BF" />
+            <User size={40} color={COLORS.sand[300]} />
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No team members yet.{'\n'}Add shop staff to help manage the catalog.
             </Text>

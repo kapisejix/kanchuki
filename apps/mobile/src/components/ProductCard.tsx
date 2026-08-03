@@ -24,7 +24,7 @@ import { AnimatedPressable } from './AnimatedPressable'
 
 // iOS shadow (Android keeps its own `elevation` prop, RN can't share one style key for both).
 const CARD_SHADOW: ViewStyle = {
-  shadowColor: '#0C121C',
+  shadowColor: '#060A15',
   shadowOffset: { width: 0, height: 3 },
   shadowOpacity: 0.1,
   shadowRadius: 8,

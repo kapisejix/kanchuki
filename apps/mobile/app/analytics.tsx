@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -122,7 +123,7 @@ function MiniBarChart({
               className="w-full rounded-t-md"
               style={{
                 height,
-                backgroundColor: d.value > 0 ? color : '#F2EEE9',
+                backgroundColor: d.value > 0 ? color : COLORS.sand[100],
                 opacity: d.value > 0 ? 0.5 + (d.value / max) * 0.5 : 1,
               }}
             />
@@ -142,7 +143,7 @@ function CategoryBreakdown({
   data: { category: string; count: number }[]
 }) {
   const { primaryColor } = useTheme()
-  const COLORS = [primaryColor, '#7D5334', '#893540', '#665B55', '#F75D59', '#BF6973']
+  const CHART_COLORS = [primaryColor, COLORS.turmeric[600], COLORS.rust[700], COLORS.sand[600], '#F75D59', COLORS.rust[500]]
   const total = data.reduce((s, d) => s + d.count, 0)
   if (total === 0) return null
 
@@ -157,7 +158,7 @@ function CategoryBreakdown({
           <View key={d.category} className="flex-row items-center gap-2 mb-2">
             <View
               className="w-2.5 h-2.5 rounded-full"
-              style={{ backgroundColor: COLORS[i % COLORS.length] }}
+              style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
             />
             <Text className="flex-1 text-sm text-sand-700">{d.category}</Text>
             <Text className="text-xs font-semibold text-sand-900">{d.count}</Text>
@@ -166,7 +167,7 @@ function CategoryBreakdown({
                 className="h-full rounded-full"
                 style={{
                   width: `${pct}%`,
-                  backgroundColor: COLORS[i % COLORS.length],
+                  backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
                 }}
               />
             </View>
@@ -210,19 +211,19 @@ const CollectionCard = memo(function CollectionCard({
 
       <View className="flex-row gap-3">
         <View className="flex-row items-center gap-1">
-          <Eye size={12} color="#ABA39C" />
+          <Eye size={12} color={COLORS.sand[400]} />
           <Text className="text-xs text-sand-500">{item.view_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <MessageCircle size={12} color="#ABA39C" />
+          <MessageCircle size={12} color={COLORS.sand[400]} />
           <Text className="text-xs text-sand-500">{item.enquiry_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Heart size={12} color="#ABA39C" />
+          <Heart size={12} color={COLORS.sand[400]} />
           <Text className="text-xs text-sand-500">{item.favorite_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Package size={12} color="#ABA39C" />
+          <Package size={12} color={COLORS.sand[400]} />
           <Text className="text-xs text-sand-500">{item.product_count}</Text>
         </View>
       </View>
@@ -309,21 +310,21 @@ export default function AnalyticsScreen() {
             subtitle="Across all collections"
           />
           <StatCard
-            icon={<MessageCircle size={18} color="#946A4B" />}
+            icon={<MessageCircle size={18} color={COLORS.turmeric[500]} />}
             label="Total Enquiries (7d)"
             value={totalEnquiries.toLocaleString('en-IN')}
-            color="#946A4B"
+            color={COLORS.turmeric[500]}
             subtitle="Customer enquiries"
           />
           <StatCard
-            icon={<Package size={18} color="#946A4B" />}
+            icon={<Package size={18} color={COLORS.turmeric[500]} />}
             label="Active Products"
             value={
               (analytics?.status_breakdown
                 ?.find((s) => s.status === 'AVAILABLE')
                 ?.count ?? 0).toLocaleString('en-IN')
             }
-            color="#946A4B"
+            color={COLORS.turmeric[500]}
           />
           <StatCard
             icon={<BarChart3 size={18} color="#E3262D" />}
@@ -366,7 +367,7 @@ export default function AnalyticsScreen() {
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Daily Enquiries
               </Text>
-              <MessageCircle size={16} color="#946A4B" />
+              <MessageCircle size={16} color={COLORS.turmeric[500]} />
             </View>
             <MiniBarChart
               data={trends.map((d) => ({
@@ -374,7 +375,7 @@ export default function AnalyticsScreen() {
                 value: d.enquiries,
               }))}
               maxValue={Math.max(...trends.map((d) => d.enquiries), 1)}
-              color="#946A4B"
+              color={COLORS.turmeric[500]}
             />
           </View>
         )}
@@ -392,7 +393,7 @@ export default function AnalyticsScreen() {
                 Plan Usage
               </Text>
               <View className="flex-row items-center gap-1">
-                <Store size={12} color="#ABA39C" />
+                <Store size={12} color={COLORS.sand[400]} />
                 <Text className="text-xs text-sand-500 font-medium">
                   {analytics.plan.plan}
                 </Text>
@@ -457,7 +458,7 @@ export default function AnalyticsScreen() {
         {/* Empty state */}
         {(analytics?.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0) === 0 && (
           <View className="items-center py-10">
-            <BarChart3 size={48} color="#CDC6BF" />
+            <BarChart3 size={48} color={COLORS.sand[300]} />
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No data yet.{'\n'}Start by adding products and sharing collections.
             </Text>

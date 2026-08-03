@@ -1,5 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
+  OCCASION_TYPES,
+  PRODUCT_CATEGORIES,
+  FABRIC_TYPES,
+  PATTERN_TYPES,
+  PIECE_TAGGABLE_CATEGORIES,
+  SIZE_OPTIONS,
+  formatPriceRange,
+  resolveFashionColor,
+  COLORS,
+} from '@kanchuki/shared'
+import {
   View,
   Text,
   TextInput,
@@ -21,16 +32,6 @@ import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
-import {
-  OCCASION_TYPES,
-  PRODUCT_CATEGORIES,
-  FABRIC_TYPES,
-  PATTERN_TYPES,
-  PIECE_TAGGABLE_CATEGORIES,
-  SIZE_OPTIONS,
-  formatPriceRange,
-  resolveFashionColor,
-} from '@kanchuki/shared'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -675,7 +676,7 @@ export default function ProductDetailScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color="#4B4039" />
+          <ChevronLeft size={24} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
         <AnimatedPressable
@@ -767,7 +768,7 @@ export default function ProductDetailScreen() {
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
-              <ChevronLeft size={20} color="#4B4039" />
+              <ChevronLeft size={20} color={COLORS.sand[700]} />
             </AnimatedPressable>
           )}
 
@@ -780,7 +781,7 @@ export default function ProductDetailScreen() {
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
-              <ChevronRight size={20} color="#4B4039" />
+              <ChevronRight size={20} color={COLORS.sand[700]} />
             </AnimatedPressable>
           )}
 
@@ -803,9 +804,9 @@ export default function ProductDetailScreen() {
               style={{ elevation: 3, zIndex: 10 }}
             >
               {detectingColor ? (
-                <ActivityIndicator size="small" color="#4B4039" />
+                <ActivityIndicator size="small" color={COLORS.sand[700]} />
               ) : (
-                <Palette size={16} color="#4B4039" />
+                <Palette size={16} color={COLORS.sand[700]} />
               )}
             </AnimatedPressable>
           )}
@@ -838,7 +839,7 @@ export default function ProductDetailScreen() {
                 accessibilityRole="button"
                 hitSlop={6}
               >
-                <X size={14} color="#847B75" />
+                <X size={14} color={COLORS.sand[600]} />
               </AnimatedPressable>
             </View>
           )}
@@ -1165,7 +1166,7 @@ export default function ProductDetailScreen() {
               onChangeText={dirty(setEditedName)}
               placeholder="e.g. Peach Floral Lehenga Skirt"
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
             />
           </View>
           <View>
@@ -1175,7 +1176,7 @@ export default function ProductDetailScreen() {
               onChangeText={dirty(setEditedSubtype)}
               placeholder="e.g. Lehenga Skirt, Kurta Set, Suit with Dupatta"
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
             />
           </View>
           <View>
@@ -1186,7 +1187,7 @@ export default function ProductDetailScreen() {
               placeholder="e.g. LS0001"
               autoCapitalize="characters"
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
             />
           </View>
           <View>
@@ -1198,7 +1199,7 @@ export default function ProductDetailScreen() {
               multiline
               numberOfLines={3}
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor="#ABA39C"
+              placeholderTextColor={COLORS.sand[400]}
             />
           </View>
         </View>
@@ -1280,7 +1281,7 @@ export default function ProductDetailScreen() {
             onChangeText={dirty(setEditedColor)}
             placeholder="e.g. Bottle Green, Navy Blue, Rani Pink"
             className="text-sm text-sand-900"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
           />
         </View>
 
@@ -1396,14 +1397,14 @@ export default function ProductDetailScreen() {
             placeholder="e.g. 1500"
             keyboardType="numeric"
             className="text-lg font-bold text-sand-900"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
           />
         </View>
 
         {/* Location */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center gap-1.5 mb-2">
-            <MapPin size={12} color="#847B75" />
+            <MapPin size={12} color={COLORS.sand[600]} />
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Store Location
             </Text>
@@ -1413,7 +1414,7 @@ export default function ProductDetailScreen() {
             onChangeText={dirty(setLocation)}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
             className="text-sm text-sand-900"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
           />
         </View>
 
@@ -1493,7 +1494,7 @@ export default function ProductDetailScreen() {
             multiline
             numberOfLines={2}
             className="text-sm text-sand-900"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
           />
         </View>
 
@@ -1515,9 +1516,9 @@ export default function ProductDetailScreen() {
           className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
         >
           {deleting ? (
-            <ActivityIndicator size="small" color="#A24854" />
+            <ActivityIndicator size="small" color={COLORS.rust[600]} />
           ) : (
-            <Trash2 size={16} color="#A24854" />
+            <Trash2 size={16} color={COLORS.rust[600]} />
           )}
           <Text className="text-rust-600 font-semibold text-sm">
             {deleting ? 'Deleting…' : 'Delete Product'}

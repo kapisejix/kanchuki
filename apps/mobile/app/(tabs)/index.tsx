@@ -1,4 +1,5 @@
 import { View, Text, ScrollView, RefreshControl } from 'react-native'
+import { COLORS } from '@kanchuki/shared'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban } from 'lucide-react-native'
@@ -108,19 +109,19 @@ export default function HomeScreen() {
             onPress={() => router.push('/analytics')}
           />
           <StatCard
-            icon={<MessageCircle size={16} color="#946A4B" />}
+            icon={<MessageCircle size={16} color={COLORS.turmeric[500]} />}
             label="Enquiries"
             value={stats?.enquiries_this_month ?? 0}
-            color="#946A4B"
+            color={COLORS.turmeric[500]}
             onPress={() => router.push('/analytics')}
           />
         </View>
         <View className="flex-row gap-3 mt-3">
           <StatCard
-            icon={<Package size={16} color="#946A4B" />}
+            icon={<Package size={16} color={COLORS.turmeric[500]} />}
             label="Products"
             value={stats?.total_products_available ?? 0}
-            color="#946A4B"
+            color={COLORS.turmeric[500]}
             onPress={() => router.push('/catalog')}
           />
           <StatCard
@@ -177,11 +178,11 @@ export default function HomeScreen() {
             accent="#FFF1F1"
           />
           <QuickAction
-            icon={<Users size={22} color="#946A4B" />}
+            icon={<Users size={22} color={COLORS.turmeric[500]} />}
             label="Add Customer"
             sublabel="Save preferences"
             onPress={() => router.push('/customer/add')}
-            accent="#F8F0E8"
+            accent={COLORS.turmeric[50]}
           />
           <QuickAction
             icon={<Link2 size={22} color="#E3262D" />}
@@ -191,11 +192,11 @@ export default function HomeScreen() {
             accent="#FFF1F1"
           />
           <QuickAction
-            icon={<ShoppingBag size={22} color="#946A4B" />}
+            icon={<ShoppingBag size={22} color={COLORS.turmeric[500]} />}
             label="Orders"
             sublabel={`${pendingOrders} pending · Manage fulfillment`}
             onPress={() => router.push('/(tabs)/orders')}
-            accent="#F8F0E8"
+            accent={COLORS.turmeric[50]}
           />
           <QuickAction
             icon={<Ruler size={22} color="#E3262D" />}
@@ -205,18 +206,18 @@ export default function HomeScreen() {
             accent="#FFF1F1"
           />
           <QuickAction
-            icon={<QrCode size={22} color="#A24854" />}
+            icon={<QrCode size={22} color={COLORS.rust[600]} />}
             label="Store QR Code"
             sublabel="Scan to view your catalog"
             onPress={() => router.push('/store-profile')}
-            accent="#FDF2F3"
+            accent={COLORS.rust[50]}
           />
           <QuickAction
-            icon={<Settings size={22} color="#847B75" />}
+            icon={<Settings size={22} color={COLORS.sand[600]} />}
             label="Settings"
             sublabel="Profile · Billing · Staff"
             onPress={() => router.push('/settings')}
-            accent="#F2EEE9"
+            accent={COLORS.sand[100]}
           />
         </View>
       </View>

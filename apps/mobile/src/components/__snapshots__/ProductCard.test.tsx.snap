@@ -22,7 +22,7 @@ exports[`ProductCard > renders placeholder when imageUrl is null > no-image-plac
           "elevation": 2,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,
@@ -102,7 +102,7 @@ exports[`ProductCard > renders selected state with checkmark overlay > selected-
           "elevation": 2,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,
@@ -206,7 +206,7 @@ exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] =
           "elevation": 2,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,
@@ -303,7 +303,7 @@ exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `
           "elevation": 2,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,
@@ -407,7 +407,7 @@ exports[`ProductCard > renders with all props combined > all-props-combined 1`] 
           "elevation": 3,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,
@@ -526,7 +526,7 @@ exports[`ProductCard > renders with an image URL > with-image-url 1`] = `
           "elevation": 2,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,
@@ -619,7 +619,7 @@ exports[`ProductCard > renders with custom height and placeholder icon > custom-
           "elevation": 2,
         },
         {
-          "shadowColor": "#0C121C",
+          "shadowColor": "#060A15",
           "shadowOffset": {
             "height": 3,
             "width": 0,

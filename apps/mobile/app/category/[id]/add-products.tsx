@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import { View, Text, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -10,7 +11,6 @@ import { useGridColumns } from '../../../src/hooks/useIsTablet'
 import { productApi, categoryApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
-import { formatPriceRange } from '@kanchuki/shared'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 
@@ -66,7 +66,7 @@ export default function AddProductsToCategoryScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color="#4B4039" />
+          <ChevronLeft size={24} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">Add Products</Text>
       </View>

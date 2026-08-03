@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, TextInput, ScrollView,
   ActivityIndicator, Linking, RefreshControl,
@@ -54,7 +55,7 @@ function RequestForm() {
           placeholder="e.g. 500"
           keyboardType="number-pad"
           className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-          placeholderTextColor="#ABA39C"
+          placeholderTextColor={COLORS.sand[400]}
           maxLength={6}
         />
       </View>
@@ -70,7 +71,7 @@ function RequestForm() {
           multiline
           numberOfLines={3}
           className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-          placeholderTextColor="#ABA39C"
+          placeholderTextColor={COLORS.sand[400]}
           maxLength={2000}
         />
       </View>
@@ -114,7 +115,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
     return (
       <View className="items-center pt-8">
         <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
-          <Clock size={28} color="#7D5334" />
+          <Clock size={28} color={COLORS.turmeric[600]} />
         </View>
         <Text className="text-xl font-bold text-sand-900 text-center">Request received</Text>
         <Text className="text-sand-500 text-base mt-2 text-center leading-5">
@@ -162,7 +163,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
       <View className="pt-4">
         <View className="items-center mb-4">
           <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
-            <Check size={28} color="#7D5334" />
+            <Check size={28} color={COLORS.turmeric[600]} />
           </View>
           <Text className="text-xl font-bold text-sand-900 text-center">Payment received</Text>
         </View>
@@ -202,7 +203,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
   return (
     <View className="items-center pt-8">
       <View className="w-16 h-16 bg-turmeric-100 rounded-2xl items-center justify-center mb-4">
-        <Check size={28} color="#7D5334" />
+        <Check size={28} color={COLORS.turmeric[600]} />
       </View>
       <Text className="text-xl font-bold text-sand-900 text-center">Visit confirmed</Text>
       <Text className="text-sand-500 text-base mt-2 text-center leading-5">
@@ -241,7 +242,7 @@ export default function CatalogUploadScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color="#4B4039" />
+            <ChevronLeft size={24} color={COLORS.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Catalog Upload Help</Text>
         </View>

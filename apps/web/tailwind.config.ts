@@ -9,80 +9,86 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // "Red Elegance" palette (docs/design/emil-design.md §3.1, revised 2026-07-29).
-        // Token names kept from the earlier Loom pass — only the hues changed —
-        // so every existing `ink-*`/`rust-*`/`turmeric-*` usage repaints for free.
-        // `stone` was renamed to `sand`: admin (`apps/web/src/app/admin/**`) already
-        // uses Tailwind's *built-in* `stone-*` scale for its neutrals, and this file's
-        // color overrides are project-wide — keeping the marketing neutral under a
-        // different key is what keeps the admin dashboard's palette untouched.
+        // "Black & Gold Elegance" palette (docs/design/emil-design.md §3.1,
+        // revised 2026-08-03 from the given 5-swatch reference: bold black,
+        // deep navy, regal gold, light grey, luminous white). Token names
+        // kept from the Loom/Red Elegance passes before it — only the hues
+        // changed — so every existing `ink-*`/`rust-*`/`turmeric-*` usage
+        // repaints for free. All ramps are plain hex (dropped oklch this
+        // pass): removes the hand-conversion step that made mobile/web
+        // parity error-prone (docs/design/emil-design.md §3.4) — mobile's
+        // ramp below is now a literal copy, not a derived one.
+        // `stone` was renamed to `sand`: admin (`apps/web/src/app/admin/**`)
+        // already uses Tailwind's *built-in* `stone-*` scale for its neutrals,
+        // and this file's color overrides are project-wide — keeping the
+        // marketing neutral under a different key is what keeps the admin
+        // dashboard's palette untouched.
         ink: {
-          // Navy — primary brand/action color (revised 2026-07-29, was "Flaming
-          // Cherry" red). Hex, not oklch, to stay pixel-identical with the mobile
-          // scale in apps/mobile/tailwind.config.js (RN's style engine can't parse
-          // oklch at all — see that file's comment).
-          50: '#F3F5F8',
-          100: '#E2E7ED',
-          200: '#C7D0DA',
-          300: '#A4B2C0',
-          400: '#7B8CA0',
-          500: '#4E6178',
+          // Deep navy — primary brand/action color, anchored on the
+          // reference swatch's #14213D.
+          50: '#EEF1F6',
+          100: '#DCE2EC',
+          200: '#B9C4D6',
+          300: '#8FA0BC',
+          400: '#5E7196',
+          500: '#2C3F60',
           // References the same --color-ink custom property globals.css sets
           // (and RootLayout overrides per-request from the admin theme API) —
           // one lever for admin-configurable branding instead of two.
-          600: 'var(--color-ink, #1E2A3D)',
-          700: '#182233',
-          800: '#121A27',
-          900: '#0C121C',
+          600: 'var(--color-ink, #14213D)',
+          700: '#101A30',
+          800: '#0B1322',
+          900: '#060A15',
         },
         rust: {
-          // Juicy Details — secondary accent. Darkened a step past the raw
-          // swatch (#D5777D) at the 600/700 text tiers so small colored
-          // text still clears WCAG AA (4.5:1) against the cotton background.
-          50: 'oklch(97% 0.012 8)',
-          100: 'oklch(93% 0.028 9)',
-          200: 'oklch(87% 0.05 10)',
-          300: 'oklch(79% 0.075 11)',
-          400: 'oklch(70% 0.095 12)',
-          500: 'oklch(62% 0.11 13)',
-          600: 'oklch(52% 0.12 14)',
-          700: 'oklch(45% 0.115 15)',
-          800: 'oklch(36% 0.09 16)',
-          900: 'oklch(27% 0.065 17)',
+          // Regal Gold — primary hero accent (CTAs, links, active nav),
+          // anchored on the reference swatch's #FCA311.
+          50: '#FFF9EE',
+          100: '#FFF0D1',
+          200: '#FEE0A3',
+          300: '#FDCB6E',
+          400: '#FDB93F',
+          500: '#FCAB22',
+          600: '#FCA311',
+          700: '#D6860A',
+          800: '#9C6308',
+          900: '#634006',
         },
         turmeric: {
-          // Tobacco Brown — tertiary/grounding accent.
-          50: 'oklch(96% 0.014 68)',
-          100: 'oklch(91% 0.028 66)',
-          200: 'oklch(84% 0.042 64)',
-          300: 'oklch(74% 0.055 62)',
-          400: 'oklch(64% 0.065 60)',
-          500: 'oklch(56% 0.07 58)',
-          600: 'oklch(48% 0.072 56)',
-          700: '#6E5742',
-          800: 'oklch(32% 0.045 52)',
-          900: 'oklch(23% 0.03 50)',
+          // Antique gold / bronze — tertiary grounding accent (badges,
+          // checkmarks, star fill), a deeper step off the same gold hue.
+          50: '#FBF3E8',
+          100: '#F3E1C6',
+          200: '#E6C595',
+          300: '#D5A263',
+          400: '#C0813F',
+          500: '#A66528',
+          600: '#8A5A12',
+          700: '#6E4710',
+          800: '#4E320C',
+          900: '#2E1D07',
         },
         sand: {
-          // Warm neutral (was `stone`, cool oklch hue 265) — reads with the
-          // cocoa/cherry family instead of fighting it.
-          50: 'oklch(98% 0.006 75)',
-          100: 'oklch(95% 0.008 70)',
-          200: 'oklch(90% 0.01 66)',
-          300: 'oklch(83% 0.012 63)',
-          400: 'oklch(72% 0.014 60)',
-          500: 'oklch(59% 0.015 58)',
-          600: 'oklch(48% 0.017 55)',
-          700: 'oklch(38% 0.019 52)',
-          800: 'oklch(28% 0.02 50)',
-          900: 'oklch(20% 0.018 48)',
+          // Neutral grey (was warm-biased under Red Elegance) — anchored on
+          // the reference swatch's #E5E5E5, reads clean against black/navy/gold.
+          50: '#FCFCFC',
+          100: '#F5F5F5',
+          200: '#E5E5E5',
+          300: '#D4D4D4',
+          400: '#B8B8B8',
+          500: '#969696',
+          600: '#737373',
+          700: '#525252',
+          800: '#333333',
+          900: '#1A1A1A',
         },
-        cotton: '#FBFAF8',
-        charcoal: '#14100D',
-        // Decorative-only cool notes from the Red Elegance swatch — used
-        // sparingly (hero wash) since the rest of the palette is warm.
-        icy: '#C5E8FC',
-        petal: '#CBBBCF',
+        cotton: '#FFFFFF',
+        charcoal: '#000000',
+        // Decorative-only hero-wash notes (was `icy`/`petal`, Red Elegance's
+        // two cool notes — renamed, a cool sky/petal wash no longer fits a
+        // black-and-gold identity). A soft gold glow + a navy-black shadow.
+        glow: '#FFC94D',
+        veil: '#0B1322',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
@@ -93,8 +99,11 @@ const config: Config = {
         '3xl': '1.5rem',
       },
       boxShadow: {
-        soft: '0 8px 24px -10px rgb(8 145 178 / 0.18)',
-        'soft-lg': '0 16px 40px -12px rgb(8 145 178 / 0.22)',
+        // Was a stray rgb(8 145 178 / ...) — cyan, a leftover from before the
+        // Loom repaint that neither Loom nor Red Elegance ever caught. Navy-
+        // tinted now, to actually match the shipping palette.
+        soft: '0 8px 24px -10px rgb(20 33 61 / 0.18)',
+        'soft-lg': '0 16px 40px -12px rgb(20 33 61 / 0.22)',
         selvedge: '0 1px 2px oklch(20% 0 0 / 6%)',
       },
       animation: {

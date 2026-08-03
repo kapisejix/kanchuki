@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { SIZE_OPTIONS, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -32,7 +33,6 @@ import {
   type CatalogDetectedItem,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
-import { SIZE_OPTIONS } from '@kanchuki/shared'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
@@ -389,7 +389,7 @@ export default function CatalogImportScreen() {
         {/* Error state */}
         {error && (
           <View className="bg-rust-50 border border-rust-200 rounded-2xl p-4 mt-6 flex-row items-start gap-3">
-            <AlertTriangle size={18} color="#BF6973" className="mt-0.5" />
+            <AlertTriangle size={18} color={COLORS.rust[500]} className="mt-0.5" />
             <View className="flex-1">
               <Text className="text-sm font-semibold text-rust-800">
                 Detection failed
@@ -431,7 +431,7 @@ export default function CatalogImportScreen() {
           className="bg-white rounded-2xl border border-sand-100 p-4 flex-row items-center gap-4"
         >
           <View className="w-14 h-14 bg-turmeric-50 rounded-2xl items-center justify-center">
-            <FileText size={28} color="#7D5334" />
+            <FileText size={28} color={COLORS.turmeric[600]} />
           </View>
           <View className="flex-1">
             <Text className="text-base font-bold text-sand-900">
@@ -677,7 +677,7 @@ export default function CatalogImportScreen() {
                 onPress={() => setEditingIndex(index)}
                 className="border-t border-sand-100 py-2.5 flex-row items-center justify-center gap-1.5"
               >
-                <Edit3 size={14} color="#847B75" />
+                <Edit3 size={14} color={COLORS.sand[600]} />
                 <Text className="text-xs text-sand-500 font-medium">
                   Edit details
                 </Text>
@@ -811,7 +811,7 @@ export default function CatalogImportScreen() {
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <X size={22} color="#4B4039" />
+          <X size={22} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {stepTitles[step]}
@@ -854,7 +854,7 @@ function EditField({
         value={value}
         onChangeText={onChange}
         className="bg-sand-50 border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
-        placeholderTextColor="#ABA39C"
+        placeholderTextColor={COLORS.sand[400]}
         keyboardType={keyboardType}
       />
     </View>

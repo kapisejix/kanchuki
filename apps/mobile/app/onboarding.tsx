@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { PRODUCT_CATEGORIES, INDIAN_STATES, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -13,7 +14,6 @@ import {
 import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { retailerApi } from '../src/lib/api'
-import { PRODUCT_CATEGORIES, INDIAN_STATES } from '@kanchuki/shared'
 import { useReduceMotion } from '../src/hooks/useReduceMotion'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { GradientButton } from '../src/components/GradientButton'
@@ -368,7 +368,7 @@ export default function OnboardingScreen() {
                 onChangeText={setShopName}
                 placeholder="e.g. Priya Fashion House"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 autoFocus
                 maxLength={200}
               />
@@ -381,7 +381,7 @@ export default function OnboardingScreen() {
                 onChangeText={setOwnerName}
                 placeholder="e.g. Priya Sharma (optional)"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 maxLength={200}
               />
             </View>
@@ -395,7 +395,7 @@ export default function OnboardingScreen() {
                 onChangeText={(t) => setReferralCode(t.toUpperCase())}
                 placeholder="Referred by a Kanchuki salesperson?"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 tracking-wide"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 autoCapitalize="characters"
                 maxLength={20}
               />
@@ -435,7 +435,7 @@ export default function OnboardingScreen() {
                 }}
                 placeholder="e.g. Surat, Jaipur, Ludhiana"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 autoFocus
                 maxLength={100}
               />
@@ -529,7 +529,7 @@ export default function OnboardingScreen() {
                 placeholder="e.g. 1500"
                 keyboardType="number-pad"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 maxLength={6}
               />
               <Text className="text-xs text-sand-400 mt-2 px-1">
@@ -553,7 +553,7 @@ export default function OnboardingScreen() {
                 onChangeText={(t) => setGstin(t.toUpperCase())}
                 placeholder="15-digit GSTIN"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 font-mono tracking-widest"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 autoCapitalize="characters"
                 maxLength={15}
                 autoFocus
@@ -564,7 +564,7 @@ export default function OnboardingScreen() {
             </View>
 
             <GradientBorderCard
-              fill="#F8F0E8"
+              fill={COLORS.turmeric[50]}
               colors={['#EFDECE00', '#946A4B66', '#EFDECE00']}
               style={{ marginTop: 24 }}
             >

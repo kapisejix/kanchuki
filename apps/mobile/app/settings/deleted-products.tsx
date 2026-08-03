@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import {
   View, Text, FlatList, Image,
   Alert,
@@ -7,7 +8,6 @@ import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { RotateCcw, Trash2, PackageX, ChevronLeft } from 'lucide-react-native'
-import { formatPriceRange } from '@kanchuki/shared'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { productApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
@@ -73,7 +73,7 @@ export default function DeletedProductsScreen() {
           <Image source={{ uri: item.photos[0].url }} className="w-14 h-14 rounded-xl mr-3" resizeMode="cover" />
         ) : (
           <View className="w-14 h-14 rounded-xl bg-sand-100 items-center justify-center mr-3">
-            <PackageX size={20} color="#ABA39C" />
+            <PackageX size={20} color={COLORS.sand[400]} />
           </View>
         )}
         <View className="flex-1">
@@ -100,7 +100,7 @@ export default function DeletedProductsScreen() {
           accessibilityLabel="Permanently delete"
           accessibilityRole="button"
         >
-          <Trash2 size={16} color="#A24854" />
+          <Trash2 size={16} color={COLORS.rust[600]} />
         </AnimatedPressable>
       </View>
     ),
@@ -115,7 +115,7 @@ export default function DeletedProductsScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color="#4B4039" />
+            <ChevronLeft size={24} color={COLORS.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Recently Deleted</Text>
         </View>
@@ -126,7 +126,7 @@ export default function DeletedProductsScreen() {
           <CustomerListSkeleton />
         ) : products.length === 0 ? (
           <View className="items-center py-16">
-            <PackageX size={40} color="#CDC6BF" />
+            <PackageX size={40} color={COLORS.sand[300]} />
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No deleted products.{'\n'}Items removed by you or your team show up here.
             </Text>

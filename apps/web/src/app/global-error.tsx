@@ -21,7 +21,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body style={{ margin: 0, background: '#FBFAF8', fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <body style={{ margin: 0, background: '#FFFFFF', fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div
           style={{
             minHeight: '60vh',
@@ -37,7 +37,7 @@ export default function GlobalError({
               width: '100%',
               background: '#fff',
               borderRadius: 16,
-              border: '1px solid #E8E2D8',
+              border: '1px solid #E5E5E5',
               padding: 32,
               textAlign: 'center',
             }}
@@ -48,7 +48,7 @@ export default function GlobalError({
                 height: 48,
                 margin: '0 auto 16px',
                 borderRadius: 12,
-                background: '#1E2A3D',
+                background: '#14213D',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -56,14 +56,14 @@ export default function GlobalError({
             >
               <span style={{ color: '#fff', fontWeight: 700, fontSize: 18 }}>K</span>
             </div>
-            <h1 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 8px', color: '#0C121C' }}>
+            <h1 style={{ fontSize: 18, fontWeight: 600, margin: '0 0 8px', color: '#060A15' }}>
               Something went wrong
             </h1>
-            <p style={{ fontSize: 14, color: '#7B8CA0', margin: '0 0 8px' }}>
+            <p style={{ fontSize: 14, color: '#5E7196', margin: '0 0 8px' }}>
               {error.message || 'An unexpected error occurred.'}
             </p>
             {error.digest && (
-              <p style={{ fontSize: 12, color: '#A4B2C0', fontFamily: 'monospace', margin: '0 0 16px' }}>
+              <p style={{ fontSize: 12, color: '#8FA0BC', fontFamily: 'monospace', margin: '0 0 16px' }}>
                 Digest: {error.digest}
               </p>
             )}
@@ -71,7 +71,7 @@ export default function GlobalError({
               onClick={reset}
               style={{
                 padding: '10px 20px',
-                background: '#1E2A3D',
+                background: '#14213D',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 999,

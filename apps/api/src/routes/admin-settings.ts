@@ -120,7 +120,7 @@ const DEFAULT_AI_CONFIG: Record<
 const THEME_SETTING_KEY = 'app_theme';
 
 const DEFAULT_THEME: { primary_color: string } = {
-  primary_color: '#1E2A3D',
+  primary_color: '#14213D',
 };
 
 const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;

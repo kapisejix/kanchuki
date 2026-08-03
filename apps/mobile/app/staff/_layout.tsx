@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router'
+import { COLORS } from '@kanchuki/shared'
 
 export default function StaffLayout() {
   return (
@@ -6,7 +7,7 @@ export default function StaffLayout() {
       screenOptions={{
         headerShown: false,
         headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: '#14100D',
+        headerTintColor: COLORS.charcoal,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
       }}

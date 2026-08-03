@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -35,15 +36,15 @@ export default function OrdersScreen() {
   > = {
     PENDING_PAYMENT: {
       label: 'Pending Payment',
-      color: '#7D5334',
-      bg: '#F8F0E8',
-      icon: <Clock size={14} color="#7D5334" />,
+      color: COLORS.turmeric[600],
+      bg: COLORS.turmeric[50],
+      icon: <Clock size={14} color={COLORS.turmeric[600]} />,
     },
     PAID: {
       label: 'Paid',
-      color: '#7D5334',
-      bg: '#F8F0E8',
-      icon: <CreditCard size={14} color="#7D5334" />,
+      color: COLORS.turmeric[600],
+      bg: COLORS.turmeric[50],
+      icon: <CreditCard size={14} color={COLORS.turmeric[600]} />,
     },
     FULFILLED: {
       label: 'Fulfilled',
@@ -53,9 +54,9 @@ export default function OrdersScreen() {
     },
     CANCELLED: {
       label: 'Cancelled',
-      color: '#A24854',
-      bg: '#FDF2F3',
-      icon: <XCircle size={14} color="#A24854" />,
+      color: COLORS.rust[600],
+      bg: COLORS.rust[50],
+      icon: <XCircle size={14} color={COLORS.rust[600]} />,
     },
   }
 
@@ -156,7 +157,7 @@ export default function OrdersScreen() {
       >
         <View className="flex-row gap-2">
           {[
-            { key: null, label: `All (${allOrders.length})`, color: '#847B75', bg: '#F2EEE9' },
+            { key: null, label: `All (${allOrders.length})`, color: COLORS.sand[600], bg: COLORS.sand[100] },
             ...Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({
               key,
               label: `${cfg.label} (${counts[key as keyof typeof counts]})`,
@@ -193,7 +194,7 @@ export default function OrdersScreen() {
         />
       ) : orders.length === 0 ? (
         <View className="flex-1 items-center justify-center px-4 pt-20">
-          <PackageCheck size={48} color="#CDC6BF" />
+          <PackageCheck size={48} color={COLORS.sand[300]} />
           <Text className="text-sand-400 text-base mt-3 font-medium">
             No orders {filter ? `with status "${filter}"` : 'yet'}
           </Text>
@@ -238,13 +239,13 @@ export default function OrdersScreen() {
                 {/* Customer info */}
                 <View className="px-4 pb-2">
                   <View className="flex-row items-center gap-2 mb-1">
-                    <User size={14} color="#847B75" />
+                    <User size={14} color={COLORS.sand[600]} />
                     <Text className="text-sm font-semibold text-sand-900">
                       {order.customer_name ?? 'Customer'}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-2">
-                    <Phone size={14} color="#847B75" />
+                    <Phone size={14} color={COLORS.sand[600]} />
                     <Text className="text-xs text-sand-500">
                       {order.customer_phone ?? '—'}
                     </Text>
@@ -283,7 +284,7 @@ export default function OrdersScreen() {
                   </View>
                   {order.gst_invoice_number && (
                     <View className="flex-row items-center gap-1 mt-1">
-                      <FileText size={11} color="#ABA39C" />
+                      <FileText size={11} color={COLORS.sand[400]} />
                       <Text className="text-xs text-sand-400">
                         GST: {order.gst_invoice_number}
                       </Text>
@@ -325,7 +326,7 @@ export default function OrdersScreen() {
                     >
                       <XCircle
                         size={14}
-                        color={order.status === 'PAID' ? '#A24854' : '#847B75'}
+                        color={order.status === 'PAID' ? COLORS.rust[600] : COLORS.sand[600]}
                       />
                       <Text
                         className={`text-xs font-semibold ${

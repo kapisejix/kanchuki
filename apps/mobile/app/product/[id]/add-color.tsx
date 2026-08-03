@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { View, Text, TextInput, StyleSheet, ActivityIndicator } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'
@@ -217,7 +218,7 @@ export default function AddColorVariantScreen() {
             value={color}
             onChangeText={setColor}
             placeholder="e.g. Maroon, Bottle Green, Mustard"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
             className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
             autoFocus
           />

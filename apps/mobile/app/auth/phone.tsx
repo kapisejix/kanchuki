@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -74,7 +75,7 @@ export default function PhoneScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="10-digit mobile number"
-                placeholderTextColor="#ABA39C"
+                placeholderTextColor={COLORS.sand[400]}
                 keyboardType="phone-pad"
                 maxLength={10}
                 className="flex-1 text-base text-sand-900 font-medium"

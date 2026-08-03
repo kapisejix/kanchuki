@@ -126,17 +126,19 @@ Pick **one** accent as primary, not five competing hero colors. Recommendation: 
 
 This directly replaces the mismatched values in `apps/web/src/app/globals.css`, and becomes the first real content of the shared tokens file (3.4).
 
-**Implementation note (2026-07-29 — "Red Elegance" re-hue):** the code that actually shipped kept the Tailwind key names from the *first* Loom pass (`ink`, `rust`, `turmeric`, `stone`) rather than the `indigo`/`madder` names proposed above — treat the table above as the reasoning, not the literal source of truth. Those same keys were then re-hued to a second palette ("Red Elegance": icy sky blue, sweet petal, juicy coral, tobacco brown, flaming cherry, cocoa) picked by the user, and `stone` was renamed to `sand` (admin's neutrals use Tailwind's *built-in* `stone-*` scale, which must stay untouched — see `apps/web/tailwind.config.ts` comment). Current values, `apps/web/tailwind.config.ts` / `globals.css`:
+**Implementation note (2026-07-29 — "Red Elegance" re-hue):** the code that actually shipped kept the Tailwind key names from the *first* Loom pass (`ink`, `rust`, `turmeric`, `stone`) rather than the `indigo`/`madder` names proposed above — treat the table above as the reasoning, not the literal source of truth. Those same keys were then re-hued to a second palette ("Red Elegance": icy sky blue, sweet petal, juicy coral, tobacco brown, flaming cherry, cocoa) picked by the user, and `stone` was renamed to `sand` (admin's neutrals use Tailwind's *built-in* `stone-*` scale, which must stay untouched — see `apps/web/tailwind.config.ts` comment).
+
+**Implementation note (2026-08-03 — "Black & Gold Elegance" re-hue, supersedes Red Elegance):** re-hued a third time from a user-supplied 5-swatch reference — bold black (`#000000`), deep navy (`#14213D`), regal gold (`#FCA311`), light grey (`#E5E5E5`), luminous white (`#FFFFFF`). Same Tailwind keys again (`ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal`), only the hues and, this time, the *format* changed: every ramp moved from oklch to plain hex, since mobile could never parse oklch anyway (3.4) — one fewer hand-conversion step per repaint going forward. `icy`/`petal` (Red Elegance's two cool decorative notes) didn't fit a black-and-gold identity and were renamed `glow`/`veil` (gold glow / navy-black shadow). Current values, `apps/web/tailwind.config.ts` / `globals.css` / `apps/mobile/tailwind.config.js` (now a literal copy of web, not a derived one):
 
 | Token | Base value | Use | Note |
 |---|---|---|---|
-| `ink` (primary) | `#1E2A3D` at the 600 tier | primary buttons, links, active nav, brand accent | navy, replacing the earlier "Flaming Cherry" red (2026-07-29) |
-| `rust` (secondary) | `oklch(52% 0.12 14)` at 600 | secondary accent — section tags, step labels | darkened past the raw swatch hex (`#D5777D`) so 600/700 text tiers clear WCAG AA 4.5:1 on `cotton`; the lighter true-to-swatch tone lives at 400/500 for decorative use |
-| `turmeric` (tertiary) | `#6E5742` at the 700 tier | grounding accent — badges, checkmarks, star fill | exact "Tobacco Brown" hex |
-| `sand` (neutral, was `stone`) | warm oklch ramp, hue ~50-75 | body text, borders, muted text (marketing only) | replaces the old cool oklch hue-265 ramp; **does not** touch admin's `stone-*` |
-| `cotton` | `#FBFAF8` | page background | |
-| `charcoal` | `#14100D` | body text / inverted (dark) section backgrounds | pulled from the swatch's own dark-mode `--bg`, since it needed to work as a full section background, not just text |
-| `icy` / `petal` | `#C5E8FC` / `#CBBBCF` | decorative-only cool wash (hero background), used sparingly since the rest of the palette is warm | not a full 10-step scale — flat colors |
+| `ink` (primary) | `#14213D` at the 600 tier | primary buttons, links, active nav, brand accent | deep navy, exact reference swatch hex |
+| `rust` (secondary → primary hero accent) | `#FCA311` at the 600 tier | hero accent — CTAs, links, section tags | regal gold, exact reference swatch hex |
+| `turmeric` (tertiary) | `#8A5A12` at the 600 tier | grounding accent — badges, checkmarks, star fill | antique gold/bronze, a deeper step off the same gold hue (no separate swatch given) |
+| `sand` (neutral) | `#E5E5E5` at the 200 tier | body text, borders, muted text | neutral grey, exact reference swatch hex — no longer warm-biased like Red Elegance's `sand` |
+| `cotton` | `#FFFFFF` | page background | exact "luminous white" swatch |
+| `charcoal` | `#000000` | body text / inverted (dark) section backgrounds | exact "bold black" swatch |
+| `glow` / `veil` (was `icy`/`petal`) | `#FFC94D` / `#0B1322` | decorative-only hero wash, used sparingly | gold glow + navy-black shadow — not a full 10-step scale, flat colors |
 
 ### 3.2 Typography
 
@@ -170,6 +172,8 @@ Today: web tokens live in `globals.css`, mobile has none, nothing shares. Fix:
 3. Delete the stale palette/font claims in `docs/DESIGN.md` and replace with whatever you actually approve from this doc — CLAUDE.md's own instruction #10 ("docs must track commits") applies here too: a design doc that lies about the palette is worse than no design doc.
 
 This single change is what prevents this whole exercise from rotting the way DESIGN.md already has.
+
+**Partially closed (2026-08-03, during the Black & Gold Elegance repaint):** step 1 exists now — `packages/shared/src/colors.ts` exports a `COLORS` object (same `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` shape) — but scoped to what was actually causing pain: the ~40 `apps/mobile` screens hardcoding raw hex in RN literal props (`color=`, `placeholderTextColor=`, inline `style` objects) that a Tailwind className can't reach. Every one of those was migrated to `import { COLORS } from '@kanchuki/shared'`. Step 2 is **not** done — `tailwind.config.ts`/`tailwind.config.js` still hardcode their own copy of the same values, deliberately: those configs load at each platform's build time (Next's SWC / Metro), before `@kanchuki/shared`'s `dist/` output is guaranteed to exist, and wiring that import without a verified build-order guarantee risks breaking the whole app's styling (the exact failure mode §3.1 already warns about, from the oklch-in-Metro incident). Three files to edit on a future repaint now, not one — `tailwind.config.ts`, `tailwind.config.js`, `colors.ts` — down from ~45.
 
 ### 3.5 Spacing, radius, elevation
 

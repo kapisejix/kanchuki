@@ -4,7 +4,7 @@ import { AnimatedPressable } from './AnimatedPressable'
 import { useTheme } from '../lib/theme'
 
 const SHADOW: ViewStyle = {
-  shadowColor: '#1E2A3D',
+  shadowColor: '#14213D',
   shadowOffset: { width: 0, height: 6 },
   shadowOpacity: 0.25,
   shadowRadius: 12,
@@ -30,7 +30,7 @@ export function GradientButton({
 }) {
   const { primaryColor } = useTheme()
   const isDisabled = disabled || loading
-  const gradientColors = colors ?? [primaryColor, '#182233']
+  const gradientColors = colors ?? [primaryColor, '#101A30']
 
   return (
     <AnimatedPressable

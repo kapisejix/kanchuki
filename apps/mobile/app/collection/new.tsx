@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -15,7 +16,6 @@ import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { GradientButton } from '../../src/components/GradientButton'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { formatPriceRange } from '@kanchuki/shared'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
@@ -78,7 +78,7 @@ export default function NewCollectionScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color="#4B4039" />
+          <ChevronLeft size={24} color={COLORS.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">New Collection</Text>
       </View>
@@ -88,7 +88,7 @@ export default function NewCollectionScreen() {
             value={title}
             onChangeText={setTitle}
             placeholder="Collection title (e.g. Wedding Specials)"
-            placeholderTextColor="#ABA39C"
+            placeholderTextColor={COLORS.sand[400]}
             className="bg-sand-100 rounded-xl px-3 py-2.5 text-sm text-sand-900"
             maxLength={200}
           />

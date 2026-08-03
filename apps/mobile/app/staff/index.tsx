@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, RefreshControl,
   ActivityIndicator, Alert,
@@ -159,10 +160,10 @@ export default function StaffDashboard() {
                 accent="#FFF1F1"
               />
               <StatCard
-                icon={<Ticket size={18} color="#946A4B" />}
+                icon={<Ticket size={18} color={COLORS.turmeric[500]} />}
                 label="Active Tickets"
                 value={totalTickets}
-                accent="#F8F0E8"
+                accent={COLORS.turmeric[50]}
               />
               <StatCard
                 icon={<Package size={18} color="#E3262D" />}
@@ -213,14 +214,14 @@ export default function StaffDashboard() {
                     Confirmed on-site visits assigned to you
                   </Text>
                 </View>
-                <ChevronRight size={16} color="#CDC6BF" />
+                <ChevronRight size={16} color={COLORS.sand[300]} />
               </AnimatedPressable>
             </View>
 
             {/* Ticket alerts */}
             {ticketStats && ticketStats.requires_visit > 0 && (
               <View className="mx-4 mt-5 bg-turmeric-50 border border-turmeric-200 rounded-2xl px-4 py-3.5 flex-row items-start gap-3">
-                <AlertCircle size={18} color="#7D5334" className="mt-0.5" />
+                <AlertCircle size={18} color={COLORS.turmeric[600]} className="mt-0.5" />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-turmeric-800">
                     {ticketStats.requires_visit} visit-required ticket{ticketStats.requires_visit !== 1 ? 's' : ''}
@@ -247,7 +248,7 @@ export default function StaffDashboard() {
 
               {retailers.length === 0 ? (
                 <View className="bg-white rounded-2xl p-8 border border-sand-100 items-center">
-                  <Store size={40} color="#CDC6BF" />
+                  <Store size={40} color={COLORS.sand[300]} />
                   <Text className="text-sand-400 text-sm mt-4 text-center">
                     No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get started.
                   </Text>
@@ -268,11 +269,11 @@ export default function StaffDashboard() {
                         <Text className="text-sm font-semibold text-sand-900">{r.shop_name}</Text>
                         <View className="flex-row items-center gap-3 mt-1">
                           <View className="flex-row items-center gap-1">
-                            <MapPin size={11} color="#ABA39C" />
+                            <MapPin size={11} color={COLORS.sand[400]} />
                             <Text className="text-xs text-sand-400">{r.city}</Text>
                           </View>
                           <View className="flex-row items-center gap-1">
-                            <Phone size={11} color="#ABA39C" />
+                            <Phone size={11} color={COLORS.sand[400]} />
                             <Text className="text-xs text-sand-400">{r.phone}</Text>
                           </View>
                         </View>
@@ -285,7 +286,7 @@ export default function StaffDashboard() {
                           })}
                         </Text>
                       </View>
-                      <ChevronRight size={16} color="#CDC6BF" style={{ marginLeft: 8 }} />
+                      <ChevronRight size={16} color={COLORS.sand[300]} style={{ marginLeft: 8 }} />
                     </AnimatedPressable>
                   ))}
                 </View>

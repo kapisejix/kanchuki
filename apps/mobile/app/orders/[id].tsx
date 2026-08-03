@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -103,15 +104,15 @@ export default function OrderDetailScreen() {
   const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
     PENDING_PAYMENT: {
       label: 'Pending Payment',
-      color: '#7D5334',
-      bg: '#F8F0E8',
-      icon: <Clock size={16} color="#7D5334" />,
+      color: COLORS.turmeric[600],
+      bg: COLORS.turmeric[50],
+      icon: <Clock size={16} color={COLORS.turmeric[600]} />,
     },
     PAID: {
       label: 'Paid',
-      color: '#7D5334',
-      bg: '#F8F0E8',
-      icon: <CreditCard size={16} color="#7D5334" />,
+      color: COLORS.turmeric[600],
+      bg: COLORS.turmeric[50],
+      icon: <CreditCard size={16} color={COLORS.turmeric[600]} />,
     },
     FULFILLED: {
       label: 'Fulfilled',
@@ -121,9 +122,9 @@ export default function OrderDetailScreen() {
     },
     CANCELLED: {
       label: 'Cancelled',
-      color: '#A24854',
-      bg: '#FDF2F3',
-      icon: <XCircle size={16} color="#A24854" />,
+      color: COLORS.rust[600],
+      bg: COLORS.rust[50],
+      icon: <XCircle size={16} color={COLORS.rust[600]} />,
     },
   }
 
@@ -202,12 +203,12 @@ export default function OrderDetailScreen() {
           title: 'Order Details',
           headerShown: true,
           headerStyle: { backgroundColor: '#ffffff' },
-          headerTintColor: '#14100D',
+          headerTintColor: COLORS.charcoal,
           headerTitleStyle: { fontWeight: '700', fontSize: 17 },
           headerShadowVisible: false,
           headerLeft: () => (
             <AnimatedPressable onPress={() => router.back()} hitSlop={8} className="mr-2" accessibilityLabel="Go back" accessibilityRole="button">
-              <ChevronLeft size={24} color="#4B4039" />
+              <ChevronLeft size={24} color={COLORS.sand[700]} />
             </AnimatedPressable>
           ),
         }}
@@ -244,13 +245,13 @@ export default function OrderDetailScreen() {
           </View>
           <View className="px-4 py-3">
             <View className="flex-row items-center gap-2 mb-2">
-              <User size={15} color="#847B75" />
+              <User size={15} color={COLORS.sand[600]} />
               <Text className="text-sm font-semibold text-sand-900">
                 {order.customer_name ?? 'Customer'}
               </Text>
             </View>
             <View className="flex-row items-center gap-2">
-              <Phone size={15} color="#847B75" />
+              <Phone size={15} color={COLORS.sand[600]} />
               <Text className="text-sm text-sand-600">{order.customer_phone ?? '—'}</Text>
             </View>
           </View>
@@ -260,7 +261,7 @@ export default function OrderDetailScreen() {
         {address && (
           <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
             <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
-              <MapPin size={14} color="#847B75" />
+              <MapPin size={14} color={COLORS.sand[600]} />
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Shipping Address
               </Text>
@@ -280,7 +281,7 @@ export default function OrderDetailScreen() {
         {/* ─── Items Breakdown ───────────────────────────────── */}
         <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
           <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
-            <ShoppingBag size={14} color="#847B75" />
+            <ShoppingBag size={14} color={COLORS.sand[600]} />
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Items ({order.items.length})
             </Text>
@@ -309,7 +310,7 @@ export default function OrderDetailScreen() {
         {/* ─── Amount Summary ────────────────────────────────── */}
         <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
           <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
-            <Receipt size={14} color="#847B75" />
+            <Receipt size={14} color={COLORS.sand[600]} />
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Payment Summary
             </Text>
@@ -338,14 +339,14 @@ export default function OrderDetailScreen() {
         {order.gst_invoice_number && (
           <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
             <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
-              <FileText size={14} color="#847B75" />
+              <FileText size={14} color={COLORS.sand[600]} />
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 GST Invoice
               </Text>
             </View>
             <View className="px-4 py-3">
               <View className="flex-row items-center gap-2 mb-1">
-                <Hash size={13} color="#ABA39C" />
+                <Hash size={13} color={COLORS.sand[400]} />
                 <Text className="text-sm font-mono text-sand-900">
                   {order.gst_invoice_number}
                 </Text>
@@ -360,7 +361,7 @@ export default function OrderDetailScreen() {
         {/* ─── Payment Timeline ──────────────────────────────── */}
         <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
           <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
-            <CalendarDays size={14} color="#847B75" />
+            <CalendarDays size={14} color={COLORS.sand[600]} />
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Timeline
             </Text>
@@ -407,7 +408,7 @@ export default function OrderDetailScreen() {
         {(order.razorpay_order_id || order.razorpay_payment_id) && (
           <View className="mx-4 mb-3 bg-white rounded-2xl border border-sand-100 overflow-hidden">
             <View className="px-4 py-3 border-b border-sand-50 flex-row items-center gap-2">
-              <Hash size={14} color="#847B75" />
+              <Hash size={14} color={COLORS.sand[600]} />
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Payment Details
               </Text>
@@ -462,7 +463,7 @@ export default function OrderDetailScreen() {
               disabled={updateStatus.isPending}
               className="py-3.5 rounded-2xl border border-rust-200 bg-rust-50 items-center flex-row justify-center gap-2"
             >
-              <XCircle size={18} color="#A24854" />
+              <XCircle size={18} color={COLORS.rust[600]} />
               <Text className="text-rust-600 font-semibold text-base">
                 {order.status === 'PAID' ? 'Cancel & Refund' : 'Cancel Order'}
               </Text>

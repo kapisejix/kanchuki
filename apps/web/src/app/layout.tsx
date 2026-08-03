@@ -58,7 +58,7 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#1E2A3D',
+  themeColor: '#14213D',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -72,7 +72,7 @@ export const viewport: Viewport = {
 const API_ORIGIN = process.env['API_URL'] || process.env['NEXT_PUBLIC_API_URL'] || ''
 const R2_ORIGIN = process.env['NEXT_PUBLIC_R2_PUBLIC_URL'] ?? ''
 
-const DEFAULT_PRIMARY_COLOR = '#1E2A3D'
+const DEFAULT_PRIMARY_COLOR = '#14213D'
 
 // Admin-configurable brand color (apps/web/src/app/admin/settings/theme) —
 // read server-side on each request (60s revalidate) and injected as the

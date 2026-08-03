@@ -1,4 +1,5 @@
 import '../global.css'
+import { COLORS } from '@kanchuki/shared'
 import { useEffect, useRef } from 'react'
 import { Stack, router } from 'expo-router'
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
@@ -75,8 +76,8 @@ function AppShell() {
       <Stack
         screenOptions={{
           headerShown: false,
-          headerStyle: { backgroundColor: '#FBFAF8' },
-          headerTintColor: '#14100D',
+          headerStyle: { backgroundColor: '#FFFFFF' },
+          headerTintColor: COLORS.charcoal,
           headerTitleStyle: { fontWeight: '700', fontSize: 17, fontFamily: 'Inter_700Bold' },
           headerShadowVisible: false,
         }}

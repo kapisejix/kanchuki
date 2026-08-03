@@ -111,10 +111,10 @@ function Navbar() {
 function Hero() {
   return (
     <section className="relative min-h-[90vh] flex items-center pt-24 sm:pt-28 pb-16 sm:pb-20 overflow-hidden bg-cotton">
-      {/* Dawn wash — the palette's two cool notes (icy sky, sweet petal) laid
-          in faint from opposite corners, echoing the Red Elegance swatch's
-          own hero-panel gradient without copying its literal layout. */}
-      <div className="absolute inset-0 bg-gradient-to-br from-icy/25 via-transparent to-petal/20 pointer-events-none" />
+      {/* Regal wash — a soft gold glow fading to a navy-black shadow across
+          opposite corners, echoing Black & Gold Elegance's own hero-panel
+          gradient without copying its literal layout. */}
+      <div className="absolute inset-0 bg-gradient-to-br from-glow/20 via-transparent to-veil/15 pointer-events-none" />
 
       {/* Woven texture — a crosshatch of hairlines standing in for the
           glass/gradient-blob hero background most AI-SaaS sites use.

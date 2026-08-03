@@ -4,8 +4,8 @@
   "description": "AI-powered fashion collections for Indian clothing stores",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#FBFAF8",
-  "theme_color": "#1E2A3D",
+  "background_color": "#FFFFFF",
+  "theme_color": "#14213D",
   "icons": [
     {
       "src": "/icons/icon-192.png",

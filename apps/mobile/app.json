@@ -7,7 +7,7 @@
     "scheme": "kanchuki",
     "userInterfaceStyle": "light",
     "splash": {
-      "backgroundColor": "#FBFAF8"
+      "backgroundColor": "#FFFFFF"
     },
     "android": {
       "package": "app.kanchuki.retailer",
