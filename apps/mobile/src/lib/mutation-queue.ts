@@ -12,8 +12,13 @@
 
 import { Paths } from 'expo-file-system'
 
-const QUEUE_DIR_URI = `${Paths.document.uri}kanchuki-cache/`
-const QUEUE_FILE_URI = `${QUEUE_DIR_URI}mutation-queue.json`
+function queueDirUri(): string {
+  return `${Paths.document.uri}kanchuki-cache/`
+}
+
+function queueFileUri(): string {
+  return `${queueDirUri()}mutation-queue.json`
+}
 
 function getFileClass(): new (...args: unknown[]) => {
   uri: string
@@ -47,7 +52,7 @@ export interface PendingStatusMutation {
 
 function queueFile(): any {
   const DirClass = getDirectoryClass()
-  const dir = new DirClass(QUEUE_DIR_URI)
+  const dir = new DirClass(queueDirUri())
   if (!(dir as { exists: boolean }).exists) {
     ;(dir as { create: (opts: Record<string, boolean>) => void }).create({
       intermediates: true,
@@ -55,7 +60,7 @@ function queueFile(): any {
     })
   }
   const FileClass = getFileClass()
-  return new FileClass(QUEUE_FILE_URI)
+  return new FileClass(queueFileUri())
 }
 
 export async function getQueue(): Promise<PendingStatusMutation[]> {
