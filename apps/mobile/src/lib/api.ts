@@ -852,6 +852,9 @@ export type CatalogDetectedItem = {
   duplicate_of_product_id: string | null
   tags: {
     category: string | null
+    subtype: string | null
+    product_name: string | null
+    short_description: string | null
     primary_color: string | null
     secondary_colors: string[]
     fabric_estimate: string | null
@@ -937,6 +940,9 @@ export const catalogImportApi = {
       primary_color?: string | null
       fabric_estimate?: string | null
       pattern?: string | null
+      subtype?: string | null
+      product_name?: string | null
+      short_description?: string | null
       occasions?: string[]
       search_tags?: string[]
       sizes?: string[]

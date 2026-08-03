@@ -2,90 +2,103 @@
 
 import { PUBLIC_PRICE_BUCKETS } from '@kanchuki/shared'
 
-interface Props {
-  categories: string[]
-  occasions: string[]
-  colors: string[]
+// Facet option shape returned by the public API: a value plus how many
+// products carry it (drives the "All (10)", "Kurta (1)" chip labels).
+export interface FilterOption {
+  value: string
+  count: number
+}
+
+function chipClass(active: boolean): string {
+  return `flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
+    active
+      ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+      : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
+  }`
+}
+
+// Always-visible category chip row rendered above the product grid — the
+// category filter is the primary browse axis, so it's never hidden behind
+// the filter toggle. The "All" chip carries the collection total.
+interface CategoryChipsProps {
+  categories: FilterOption[]
   filterCategory: string | null
+  totalCount: number
+  onCategoryChange: (category: string | null) => void
+}
+
+export function CategoryChips({
+  categories,
+  filterCategory,
+  totalCount,
+  onCategoryChange,
+}: CategoryChipsProps) {
+  if (categories.length === 0) return null
+
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide" role="group" aria-label="Filter by category">
+      <span className="text-xs text-gray-500 flex-shrink-0">Category:</span>
+      <button
+        onClick={() => onCategoryChange(null)}
+        className={chipClass(filterCategory === null)}
+      >
+        All ({totalCount})
+      </button>
+      {categories.map((category) => (
+        <button
+          key={category.value}
+          onClick={() => onCategoryChange(filterCategory === category.value ? null : category.value)}
+          className={chipClass(filterCategory === category.value)}
+        >
+          {category.value} ({category.count})
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// Secondary filters (occasion / price / color) — revealed behind the filter
+// toggle. The category row lives in CategoryChips above the grid instead.
+interface FilterBarProps {
+  occasions: FilterOption[]
+  colors: FilterOption[]
   filterOccasion: string | null
   filterPrice: string | null
   filterColor: string | null
-  onCategoryChange: (category: string | null) => void
   onOccasionChange: (occasion: string | null) => void
   onPriceChange: (price: string | null) => void
   onColorChange: (color: string | null) => void
 }
 
 export function FilterBar({
-  categories,
   occasions,
   colors,
-  filterCategory,
   filterOccasion,
   filterPrice,
   filterColor,
-  onCategoryChange,
   onOccasionChange,
   onPriceChange,
   onColorChange,
-}: Props) {
+}: FilterBarProps) {
   return (
     <div className="mt-2 space-y-2">
-      {/* Category filter */}
-      {categories.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <span className="text-xs text-gray-500 flex-shrink-0">Category:</span>
-          <button
-            onClick={() => onCategoryChange(null)}
-            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-              filterCategory === null
-                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-            }`}
-          >
-            All
-          </button>
-          {categories.map((category) => (
-            <button
-              key={category}
-              onClick={() => onCategoryChange(filterCategory === category ? null : category)}
-              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-                filterCategory === category
-                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-              }`}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Occasion filter */}
       {occasions.length > 1 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           <span className="text-xs text-gray-500 flex-shrink-0">For:</span>
           <button
             onClick={() => onOccasionChange(null)}
-            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-              filterOccasion === null
-                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-            }`}
+            className={chipClass(filterOccasion === null)}
           >
             All
           </button>
           {occasions.map((occasion) => (
             <button
-              key={occasion}
-              onClick={() => onOccasionChange(filterOccasion === occasion ? null : occasion)}
-              className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-                filterOccasion === occasion
-                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-              }`}
+              key={occasion.value}
+              onClick={() => onOccasionChange(filterOccasion === occasion.value ? null : occasion.value)}
+              className={chipClass(filterOccasion === occasion.value)}
             >
-              {occasion}
+              {occasion.value} ({occasion.count})
             </button>
           ))}
         </div>
@@ -96,11 +109,7 @@ export function FilterBar({
         <span className="text-xs text-gray-500 flex-shrink-0">Price:</span>
         <button
           onClick={() => onPriceChange(null)}
-          className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-            filterPrice === null
-              ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-              : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-          }`}
+          className={chipClass(filterPrice === null)}
         >
           All
         </button>
@@ -108,11 +117,7 @@ export function FilterBar({
           <button
             key={bucket.label}
             onClick={() => onPriceChange(filterPrice === bucket.label ? null : bucket.label)}
-            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-              filterPrice === bucket.label
-                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-            }`}
+            className={chipClass(filterPrice === bucket.label)}
           >
             {bucket.label}
           </button>
@@ -125,29 +130,25 @@ export function FilterBar({
           <span className="text-xs text-gray-500 flex-shrink-0">Color:</span>
           <button
             onClick={() => onColorChange(null)}
-            className={`flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-              filterColor === null
-                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-            }`}
+            className={chipClass(filterColor === null)}
           >
             All
           </button>
           {colors.map((color) => (
             <button
-              key={color}
-              onClick={() => onColorChange(filterColor === color ? null : color)}
+              key={color.value}
+              onClick={() => onColorChange(filterColor === color.value ? null : color.value)}
               className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-                filterColor === color
+                filterColor === color.value
                   ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
                   : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
               }`}
             >
               <span
                 className="w-2.5 h-2.5 rounded-full border border-current/30"
-                style={{ backgroundColor: color.toLowerCase() }}
+                style={{ backgroundColor: color.value.toLowerCase() }}
               />
-              {color}
+              {color.value} ({color.count})
             </button>
           ))}
         </div>

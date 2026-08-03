@@ -44,6 +44,7 @@ function makeProduct(i: number): PublicProduct {
     price_max: 59900 + n * 1000,
     status: 'AVAILABLE',
     category: 'Anarkali Suit',
+    subtype: 'Festive Kurti',
     primary_color: 'Maroon',
     occasions: ['Festive'],
     location: null,
@@ -73,7 +74,11 @@ function collectionFor(slug: string, page: number): PublicCollection {
     total: PRODUCT_COUNT,
     page,
     page_size: PAGE_SIZE,
-    filters: { categories: ['Anarkali Suit'], occasions: ['Festive'], colors: ['Maroon'] },
+    filters: {
+      categories: [{ value: 'Anarkali Suit', count: PRODUCT_COUNT }],
+      occasions: [{ value: 'Festive', count: PRODUCT_COUNT }],
+      colors: [{ value: 'Maroon', count: PRODUCT_COUNT }],
+    },
   }
 }
 

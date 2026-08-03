@@ -19,7 +19,7 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
-**IN PROGRESS (2026-08-03):** AI tagging expansion (subtype/SKU/description/name auto-generation, photo-slider fix, color-tap detection, catalog listing redesign) — backend done + tested, web/mobile UI not started. Full detail: `CLAUDE.md` "IN PROGRESS" section, `docs/PRO-REQUIREMENTS.md` §13.
+**BUILT (2026-08-03):** AI tagging expansion (subtype/SKU/description/name auto-generation, photo-slider fix, color-tap detection, catalog listing redesign) — backend + web catalog redesign + mobile edit screen all shipped and verified. Full detail: `CLAUDE.md` "Built" section, `docs/PRO-REQUIREMENTS.md` §13.
 
 ---
 
@@ -144,14 +144,16 @@ Admin-configurable tagging models + per-provider usage so AI tagging never halts
 ### Remaining (operational — not code)
 - [ ] 10-retailer pilot + onboarding tutorial iteration *(requires real retailer feedback)*
 
-### Built — F-018/F-019, approved 2026-07-28, built 2026-07-28
-See `docs/PRO-REQUIREMENTS.md` §10.9–10.10 for full spec.
+### Built — F-018/F-019/F-020 + admin theme, built 2026-07-28→07-30
+See `docs/PRO-REQUIREMENTS.md` §10.9–10.11 for full spec.
 - [x] F-018: `TeamMember.referral_code` + optional/skippable referral field in retailer onboarding wizard, resolves to `onboarded_by_id`
 - [x] F-019: `SupportTicket.ticket_type` (`GENERAL`/`CATALOG_UPLOAD`) + quote/slot/payment fields (migration 040)
 - [x] F-019: `CatalogUploadPriceTier` admin-editable price table + `/admin/catalog-upload-tiers` grid (mirrors `/admin/plan-limits`)
 - [x] F-019: retailer-facing request flow — skippable onboarding step + dashboard "Catalog Upload Help" button (mobile)
 - [x] F-019: admin quote + slot-proposal on the existing ticket API (`PATCH /team/tickets/:id`), filterable by `ticket_type`
 - [x] F-019: Razorpay Payment Link payment-first gate before a visit slot is confirmed
+- [x] F-020: delegated on-site access — catalog-upload visits mint a short-lived `catalogDelegateCanAccess` token so the field agent can act on the retailer's account (built 2026-07-30)
+- [x] Admin-configurable platform theme — `/admin/settings/theme` + public `/v1/public/theme` + mobile `useTheme()` rebrand without an app rebuild (built 2026-07-29)
 
 ---
 

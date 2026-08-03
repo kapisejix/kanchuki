@@ -14,7 +14,7 @@ import {
   saveWishlist,
   wishlistKey,
 } from '../lib/wishlist';
-import { FilterBar } from './FilterBar';
+import { CategoryChips, FilterBar } from './FilterBar';
 import { PageTransitionWrapper } from '@/components/PageTransitionWrapper';
 
 // Lazy-load sheet and modal — only fetched when user taps a product or try-on.
@@ -287,17 +287,15 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
             </div>
           </div>
 
-          {/* Filter Bar */}
+          {/* Secondary filters (occasion / price / color) — category chips
+              render unconditionally above the grid in CategoryChips. */}
           {showFilters && (
             <FilterBar
-              categories={collection.filters.categories}
               occasions={collection.filters.occasions}
               colors={collection.filters.colors}
-              filterCategory={filterCategory}
               filterOccasion={filterOccasion}
               filterPrice={filterPrice}
               filterColor={filterColor}
-              onCategoryChange={setFilterCategory}
               onOccasionChange={setFilterOccasion}
               onPriceChange={setFilterPrice}
               onColorChange={setFilterColor}
@@ -313,6 +311,19 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
             {collection.description}
           </p>
         )}
+
+        {/* Always-visible category chip bar (count-bearing, matches the
+            reference browse layout) — independent of the filter toggle. */}
+        <div className="mb-4 -mx-1 px-1">
+          <CategoryChips
+            categories={collection.filters.categories}
+            filterCategory={filterCategory}
+            // Static collection total — category chip counts are static server
+            // facets, so the "All" chip must not shrink when other filters apply.
+            totalCount={collection.total}
+            onCategoryChange={setFilterCategory}
+          />
+        </div>
 
         {products.length === 0 ? (
           <div className="text-center py-20 px-6">
@@ -452,6 +463,7 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
   const isSold = product.status === 'SOLD';
   const isReserved = product.status === 'RESERVED';
   const isUnavailable = isSold || isReserved;
+  const badgeLabel = product.subtype ?? product.category;
 
   return (
     <div
@@ -486,6 +498,19 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
           </div>
         )}
 
+        {/* Subtype badge — small white pill over the photo (matches the
+            reference card style). Sits below the status ribbon when the
+            product is sold/reserved so both stay readable. */}
+        {badgeLabel && (
+          <span
+            className={`absolute left-2.5 bg-white/95 backdrop-blur-sm text-gray-800 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm ${
+              isUnavailable ? 'top-11' : 'top-2.5'
+            }`}
+          >
+            {badgeLabel}
+          </span>
+        )}
+
         {/* Status badge ribbon */}
         {isSold && (
           <div className="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
@@ -516,6 +541,13 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
             />
           </button>
         )}
+
+        {/* Bottom gradient-overlay caption with the product name */}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent pt-12 px-2.5 pb-2">
+          <p className="text-white text-xs font-semibold leading-snug line-clamp-2 drop-shadow-sm">
+            {product.name ?? product.category ?? 'Product'}
+          </p>
+        </div>
       </div>
 
       {/* Try-On button — hide for SOLD, show as disabled for RESERVED */}
@@ -536,9 +568,9 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
         </div>
       )}
 
-      {/* Info */}
+      {/* Info — price line (name now lives in the image caption above) */}
       <div className="p-2.5 pt-2">
-        <div className="flex items-center gap-1.5 mb-1">
+        <div className="flex items-center gap-1.5">
           {product.primary_color && (
             <span
               className="w-2.5 h-2.5 rounded-full border border-gray-200 flex-shrink-0"
@@ -546,19 +578,16 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
               title={product.primary_color}
             />
           )}
-          <p className="text-xs text-gray-500 truncate">
-            {product.category ?? product.occasions[0] ?? 'Product'}
+          <p
+            className={`font-display text-sm font-bold tabular-nums ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+          >
+            {formatPriceRange(product.price_min, product.price_max)}
           </p>
           {isSold && <span className="text-[10px] text-red-400 font-semibold ml-auto">Sold</span>}
           {isReserved && (
             <span className="text-[10px] text-amber-500 font-semibold ml-auto">Reserved</span>
           )}
         </div>
-        <p
-          className={`font-display text-sm font-bold tabular-nums ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}
-        >
-          {formatPriceRange(product.price_min, product.price_max)}
-        </p>
       </div>
     </div>
   );

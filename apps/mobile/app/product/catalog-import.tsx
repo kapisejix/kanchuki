@@ -45,6 +45,9 @@ type ReviewItem = {
   original: CatalogDetectedItem
   approved: boolean
   edits: {
+    product_name: string
+    subtype: string
+    short_description: string
     category: string
     primary_color: string
     fabric_estimate: string
@@ -162,6 +165,9 @@ export default function CatalogImportScreen() {
           original: item,
           approved: !item.is_duplicate,
           edits: {
+            product_name: item.tags.product_name ?? '',
+            subtype: item.tags.subtype ?? '',
+            short_description: item.tags.short_description ?? '',
             category: item.tags.category ?? '',
             primary_color: item.tags.primary_color ?? '',
             fabric_estimate: item.tags.fabric_estimate ?? '',
@@ -226,6 +232,9 @@ export default function CatalogImportScreen() {
           original: item,
           approved: true,
           edits: {
+            product_name: item.tags.product_name ?? '',
+            subtype: item.tags.subtype ?? '',
+            short_description: item.tags.short_description ?? '',
             category: item.tags.category ?? '',
             primary_color: item.tags.primary_color ?? '',
             fabric_estimate: item.tags.fabric_estimate ?? '',
@@ -315,6 +324,9 @@ export default function CatalogImportScreen() {
         approved.map((item) => ({
           cropped_r2_key: item.original.cropped_r2_key,
           cropped_url: item.original.cropped_url,
+          product_name: item.edits.product_name || null,
+          subtype: item.edits.subtype || null,
+          short_description: item.edits.short_description || null,
           category: item.edits.category || null,
           primary_color: item.edits.primary_color || null,
           fabric_estimate: item.edits.fabric_estimate || null,
@@ -536,6 +548,11 @@ export default function CatalogImportScreen() {
                     <Text className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full">
                       {item.original.tags.category}
                     </Text>
+                    {item.original.tags.subtype && (
+                      <Text className="text-xs bg-turmeric-50 text-turmeric-700 px-2 py-0.5 rounded-full">
+                        {item.original.tags.subtype}
+                      </Text>
+                    )}
                     {item.original.tags.primary_color && (
                       <Text className="text-xs bg-sand-100 text-sand-600 px-2 py-0.5 rounded-full">
                         {item.original.tags.primary_color}
@@ -567,6 +584,21 @@ export default function CatalogImportScreen() {
             {/* Expandable editor */}
             {editingIndex === index && (
               <View className="px-3 pb-3 gap-2.5 border-t border-sand-100 pt-3">
+                <EditField
+                  label="Name"
+                  value={item.edits.product_name}
+                  onChange={(v) => updateEdit(index, 'product_name', v)}
+                />
+                <EditField
+                  label="Subtype"
+                  value={item.edits.subtype}
+                  onChange={(v) => updateEdit(index, 'subtype', v)}
+                />
+                <EditField
+                  label="Short description"
+                  value={item.edits.short_description}
+                  onChange={(v) => updateEdit(index, 'short_description', v)}
+                />
                 <EditField
                   label="Category"
                   value={item.edits.category}

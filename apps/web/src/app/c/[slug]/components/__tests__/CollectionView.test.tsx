@@ -48,6 +48,7 @@ function makeProduct(i: number): PublicCollection['products'][number] {
     price_max: 59900 + i * 1000,
     status: 'AVAILABLE',
     category: 'Anarkali Suit',
+    subtype: 'Festive Kurti',
     primary_color: 'Maroon',
     occasions: ['Festive'],
     location: null,
@@ -71,7 +72,11 @@ const COLLECTION: PublicCollection = {
   total: 3,
   page: 1,
   page_size: 12,
-  filters: { categories: ['Anarkali Suit'], occasions: ['Festive'], colors: ['Maroon'] },
+  filters: {
+    categories: [{ value: 'Anarkali Suit', count: 3 }],
+    occasions: [{ value: 'Festive', count: 3 }],
+    colors: [{ value: 'Maroon', count: 3 }],
+  },
 }
 
 // Mirrors app/c/[slug]/layout.tsx's route-change keying: the page subtree is

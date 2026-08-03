@@ -250,11 +250,13 @@ Both extend the existing Phase 0.5 internal-team system (`TeamMember`, `onboarde
 
 Explicitly not in scope for these two: a generic non-catalog on-site maintenance charge and a standalone commission-per-sale engine were raised during scoping but not confirmed — treat as backlog, not implied by this entry.
 
+**F-020 delegated on-site access (built 2026-07-30, commit `44e3b1b`):** F-019's scheduled visit now mints a short-lived delegated-access token so the visiting team member can act on the retailer's account (`catalogDelegateCanAccess` allowlist in `apps/api/src/plugins/auth.ts`) instead of the retailer handing over their real login. Spec `docs/PRO-REQUIREMENTS.md` §10.11.
+
 ---
 
 ## Built: Marketing Page Redesign — Loom Design System (Option A)
 
-**Built 2026-07-28** — design direction decided + implemented. Full audit, four direction options with pros/cons, and the chosen system spec live in `docs/design/emil-design.md`.
+**Built 2026-07-29** (design direction decided 2026-07-28). Full audit, four direction options with pros/cons, and the chosen system spec live in `docs/design/emil-design.md`.
 
 Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber palette that didn't match the live cyan code (see doc Part 1). Presented four creative directions (A Loom/textile-native, B Ledger/mercantile, C Studio Neon/fashion-editorial, D Quiet Atelier/minimal-premium) with honest pros/cons; user picked **Option A — Loom** (natural-dye palette, selvedge-edge cards, drape transitions, thin-line icons, serif+grotesk pairing). B/C/D stay documented in the doc as alternatives, not deleted.
 
@@ -271,6 +273,10 @@ Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber pale
 **Not yet done** (see the doc's own punch list): `docs/DESIGN.md` itself still has stale violet/amber values, not yet corrected to match the Loom tokens now live in code. Shared web/mobile token package (`packages/shared`) not built — mobile (`apps/mobile`) still has no design tokens at all. Founder-story/About page (etymology angle, doc §2.5) not built — needs the real founder story as input, won't be invented. Admin panel and retailer mobile app deliberately untouched — the doc argues those surfaces should stay motion/decoration-restrained, unlike marketing/customer-facing surfaces.
 
 ---
+
+## Built: Admin-Configurable Platform Theme (2026-07-29)
+
+Whole-platform rebrand without an app rebuild: `GET/PUT /admin/settings/theme` (audit-log-as-key-value-store pattern, `apps/api/src/routes/admin-settings.ts`) + public `GET /v1/public/theme` read endpoint + admin settings page + `apps/mobile/src/lib/theme.tsx` (fetched at launch) — ~30 retailer-app screens consume `useTheme()` instead of hardcoded colors. Commit `0f92646`.
 
 ## Built: Product-Level WhatsApp Share Button (F-006 gap) + Ratings Reviewed
 
@@ -339,17 +345,19 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 | **Admin DB-down guards** | `apps/web/src/app/admin/{page,retailers/page,activity/page,retailers/[id]/activity/page}.tsx` + `error.tsx`/`global-error.tsx`/`admin/error.tsx` | Every admin fetch now guards `!res.ok`/`Array.isArray(json?.data)` so a 500 `{error}` body can't crash renders with `undefined.length` — this was crashing the production admin panel during the outage |
 | **Brand assets** | `apps/web/src/app/{icon.svg,apple-icon.png,robots.ts}`, `apps/web/public/{favicon.ico,og-image.png}`, PWA icons, `apps/web/src/app/layout.tsx`, `scripts/generate-brand-assets.mjs` | Loom-brand favicon (SVG + PNG-in-ICO), iOS apple-icon, PWA icons regenerated from stale pre-Loom cyan → brand-correct ink/turmeric, `robots.txt` (Disallow `/admin /api/ /offline`), OG/Twitter meta + 1200×630 `og-image.png` resolved via `metadataBase` (`NEXT_PUBLIC_SITE_URL` fallback `https://kanchuki.app`) |
 
+| **Cron consolidation** | `apps/api/src/jobs/index.ts`, `packages/shared/src/constants/index.ts` | 4 cron-only workers (cleanup/order-expiry/purge/backup) collapsed into one `QUEUES.MAINTENANCE` worker dispatching on `job.name` (was stacking Redis connections per replica); tryOn/FashionDNA/GhostMannequin feature workers paused — producers stay wired, unprocessed until re-enabled |
+
 **Verified:** api + db `tsc --noEmit` 0 errors, db vitest 10/10, delete-guard + secrets-guard pass, live smoke test 8/11 while DB down (the 3 DB-backed checks flip green once the role exists).
 
 ---
 
-## IN PROGRESS (started 2026-08-03): AI Tagging Expansion — Subtype/SKU/Description/Name + Slider Fix + Color-Tap + Catalog Redesign
+## Built: 2026-08-03 — AI Tagging Expansion — Subtype/SKU/Description/Name + Slider Fix + Color-Tap + Catalog Redesign
 
-**Not yet complete — resume from here.** Full approved plan (rationale, exact file:line targets for every remaining piece): `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md`.
+Full approved plan (rationale, exact file:line targets): `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md`. Reference competitor ("Jooldo") screenshots live in the plan file.
 
-User asked AI tagging to also produce: garment **subtype** (finer than `category` — "Lehenga Skirt", "Kurta Set", "Suit with Dupatta"), auto **SKU**, auto short **description**, auto **name**, plus fix a mobile photo-slider bug (new color-variant photos don't appear), add tap-primary-photo-to-detect-color, and redesign the customer web catalog listing to match a competitor reference (count-bearing category chips + badge/name card overlay). Reference screenshots and the competitor name ("Jooldo") are in the plan file, not copied here.
+User asked AI tagging to also produce: garment **subtype** (finer than `category` — "Lehenga Skirt", "Kurta Set", "Suit with Dupatta"), auto **SKU**, auto short **description**, auto **name**, plus fix a mobile photo-slider bug (new color-variant photos don't appear), add tap-primary-photo-to-detect-color, and redesign the customer web catalog listing (count-bearing category chips + badge/name card overlay). All shipped 2026-08-03.
 
-### Done this session (backend fully wired, all touched suites green)
+### Backend
 | Area | Files | Summary |
 |---|---|---|
 | DB | `packages/db/prisma/schema.prisma`, `migrations/043_product_ai_fields/` | `Product.subtype/sku/description` added (nullable), `@@unique([retailer_id, sku])`, `@@index([retailer_id, subtype])`. Prisma client regenerated |
@@ -358,22 +366,21 @@ User asked AI tagging to also produce: garment **subtype** (finer than `category
 | Write paths | `apps/api/src/jobs/tag-product.ts`, `apps/api/src/routes/catalog-import.ts`, `apps/api/src/routes/products.ts` | `tag-product.ts` fills name/sku/description/subtype **only when currently null** (never clobbers a retailer edit on re-tag). `catalog-import.ts` bulk-create-products now sets these + generates SKU via the sequencer; detect-items/import-pdf pass the new tag fields through automatically (typed passthrough). `products.ts` Create/UpdateProductSchema accept all 4 fields; a SKU unique-constraint collision now returns a clean 422 (`validationError`) instead of an unhandled 500 |
 | Public API | `apps/api/src/routes/public.ts` | `buildFacets()` returns `{value,count}[]` per category/occasion/color (drives "All (10)" style chip counts); `PublicProduct`/`toPublicProductSummary` gained `subtype` |
 
-**Verified:** `apps/api` `tsc --noEmit` clean; vitest green — `sku.test.ts` (10), `tag-product.test.ts` (6), `products.test.ts` (8), `public.test.ts` (5), `security.test.ts` (24), `admin.login.test.ts` (14).
+### Web customer PWA — catalog listing redesign (tasks 8/9)
+| Files | Summary |
+|---|---|
+| `apps/web/src/app/c/[slug]/components/FilterBar.tsx` | New `FilterOption {value,count}` shape; chips render `{value} ({count})`; standalone always-visible `CategoryChips` row above the grid with an "All ({total})" chip; occasion/price/color stay behind the filter toggle |
+| `apps/web/src/app/c/[slug]/components/CollectionView.tsx` | `CategoryChips` rendered unconditionally above the grid; `ProductCard` gains a top-left `subtype ?? category` white pill badge over the photo + a bottom gradient-overlay name caption (replacing the gray category-dot row); price line kept below; sold/reserved ribbons unchanged (badge shifts down under them) |
+| Test fixtures | `CollectionView.test.tsx`, `e2e/customer-collection.spec.ts` updated to the new `PublicProduct.subtype` + `{value,count}[]` filters shape |
 
-### Known red right now (expected — next task, not a regression)
-`apps/web` `tsc --noEmit` fails: `FilterBar.tsx` (`categories`/`occasions`/`colors` props still typed `string[]`) and `CollectionView.tsx` (passes the new `{value,count}[]` shape into those props) disagree, plus 2 test fixtures (`src/app/c/[slug]/components/__tests__/CollectionView.test.tsx`, `e2e/customer-collection.spec.ts`) build `PublicProduct`/`filters` fixtures in the old shape. This is mid-refactor, not a surprise — fixing `FilterBar.tsx`/`CollectionView.tsx` (next task below) resolves it; the 2 test fixtures need their fixture data updated to match.
+### Mobile retailer app (tasks 4/5)
+| Files | Summary |
+|---|---|
+| `apps/mobile/src/lib/api.ts` | `CatalogDetectedItem.tags` + `bulkCreateProducts` item type gained `subtype`/`product_name`/`short_description` |
+| `apps/mobile/app/product/[id].tsx` | (a) Editable Name/Subtype/SKU/Description ("Product Info" card) hydrated from `product.name/sku/description/subtype`, included in the `PUT /products/:id` payload; (b) **photo-slider fix** — `displayPhotos` permanently merges `product.photos` + every variant's `photo_url` (deduped by URL), the transient `variantPreviewUrl` injection branch + its scroll `useEffect` deleted, swatch tap now `goToPhoto(index)`; (c) **tap-photo color detect** — `Palette` button overlaid on the carousel calls the existing `productApi.detectColor()`, result shown as a `resolveFashionColor()` swatch chip with a "Use" confirm that writes into `editedColor` (never auto-saves). Follow-up hardening: an `isDirty` guard (all 15 form setters routed through a `dirty()` wrapper) stops the 3s AI-tagging poll refetch from wiping unsaved edits mid-typing; cleared on Save/product change, and transient gallery state (photo index, color chip) only resets on product change |
+| `apps/mobile/app/product/catalog-import.tsx` | Bulk review `ReviewItem.edits` + both seeding spots + per-item editor + save payload extended with `product_name`/`subtype`/`short_description` (SKU stays server-generated); subtype chip shown on the item header |
 
-### Remaining (not started)
-1. **`apps/web/src/app/c/[slug]/components/FilterBar.tsx`** — render `{value} ({count})` per chip; make the category chip row always visible above the grid (not gated behind the Filter-icon toggle), matching the reference screenshot.
-2. **`apps/web/src/app/c/[slug]/components/CollectionView.tsx`** `ProductCard` — top-left pill badge (`subtype ?? category`) over the photo, bottom gradient-overlay caption with product `name` (replacing the current gray category-dot row), keep price line.
-3. Update the 2 web test fixtures above to the new `PublicProduct`/`filters` shape once #1–#2 land.
-4. **`apps/mobile/app/product/[id].tsx`** — three separate pieces: (a) `editedName/editedSku/editedDescription/editedSubtype` state + inputs + save payload, same pattern as existing `editedCategory` etc.; (b) photo-slider bug fix — merge `product.photos` + every variant's `photo_url` permanently into `displayPhotos` (currently a variant photo only shows while its swatch is actively tapped via `variantPreviewUrl`, never a permanent list member — that's the root cause), rework the swatch-tap handler to `goToPhoto(index)` instead of injecting a synthetic entry, delete the now-dead injection branch + its `useEffect`; (c) tap-primary-photo-to-detect-color — small `Palette`-icon button overlaid on the first photo, calls the already-existing `productApi.detectColor()`, shows result via the existing `resolveFashionColor()` swatch-circle pattern, confirms into `editedColor` rather than auto-saving.
-5. **`apps/mobile/app/product/catalog-import.tsx`** — extend `ReviewItem` + the two `edits`-seeding spots + per-item UI + save payload with `subtype`/`product_name`/`short_description` (SKU stays server-generated, not editable here).
-6. Once everything above ships: add the matching entries to `docs/PRO-REQUIREMENTS.md` and `docs/PLAN.md` (this file already has the full writeup — those two still need theirs, per the "docs must track commits" rule below).
-
-### To resume
-Tell Claude Code: **"Read `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md` and the 'IN PROGRESS' entry in CLAUDE.md, then continue from task 8 (FilterBar.tsx) in the task list."**
-Files to open first: `apps/web/src/app/c/[slug]/components/FilterBar.tsx`, `apps/web/src/app/c/[slug]/components/CollectionView.tsx`, `apps/mobile/app/product/[id].tsx`, `apps/mobile/app/product/catalog-import.tsx`.
+**Verified 2026-08-03:** `apps/web` `tsc --noEmit` clean (this was the known red before tasks 8/9) + CollectionView unit test green; `apps/mobile` `tsc --noEmit` clean (no RN simulator available — UI unverified on device); `apps/api` `tsc --noEmit` clean + vitest green (`sku.test.ts` 10, `tag-product.test.ts` 6, `products.test.ts` 8, `public.test.ts` 5, plus the security/admin.login suites from the backend session). **Customer e2e run 2026-08-03:** `playwright test -c playwright.customer.config.ts` (prod `turbo build` + `next start` on :3100 + spec-booted API stub on :3001) — 2/2 passed: collection page renders + interactions are client-side (no full reload), and collection pages work offline via the service worker.
 
 ---
 

@@ -16,7 +16,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag, Camera } from 'lucide-react-native'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag, Camera, X } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
@@ -43,6 +43,10 @@ type Photo = { id: string; url: string; is_primary: boolean; piece_type: 'upper'
 type Variant = { id: string; color: string; photo_url: string | null }
 type Product = {
   id: string
+  name: string | null
+  sku: string | null
+  description: string | null
+  subtype: string | null
   category: string | null
   category_id: string | null
   product_type: string | null
@@ -119,11 +123,27 @@ export default function ProductDetailScreen() {
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
 
   // Editable AI fields
+  const [editedName, setEditedName] = useState('')
+  const [editedSku, setEditedSku] = useState('')
+  const [editedDescription, setEditedDescription] = useState('')
+  const [editedSubtype, setEditedSubtype] = useState('')
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
   const [editedColor, setEditedColor] = useState('')
   const [editedFabric, setEditedFabric] = useState<string | null>(null)
   const [editedPattern, setEditedPattern] = useState<string | null>(null)
   const [editedCategoryId, setEditedCategoryId] = useState<string | null>(null)
+
+  // Unsaved-edit guard: the 3s AI-tagging poll returns a fresh product object
+  // on every tick — once the retailer edits any field, stop re-hydrating the
+  // form from the server so their typing is never wiped mid-poll. Cleared on
+  // Save and on product change, so the post-save refetch re-hydrates.
+  const [isDirty, setIsDirty] = useState(false)
+  const markDirty = useCallback(() => setIsDirty(true), [])
+  const dirty = <T,>(setter: (value: T | ((prev: T) => T)) => void) =>
+    (value: T | ((prev: T) => T)) => {
+      markDirty()
+      setter(value)
+    }
 
   const { data: categoriesData } = useQuery({
     queryKey: ['categories', 'list'],
@@ -133,10 +153,12 @@ export default function ProductDetailScreen() {
 
   // Photo gallery state — tracks which photo is selected in the gallery
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
-  // When a color variant is tapped, show its photo URL if available
-  const [variantPreviewUrl, setVariantPreviewUrl] = useState<string | null>(null)
-  const [variantPreviewColor, setVariantPreviewColor] = useState<string | null>(null)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
+  // Tap-photo color detection — detected color is confirmed into editedColor,
+  // never auto-saved.
+  const [detectingColor, setDetectingColor] = useState(false)
+  const [detectedColor, setDetectedColor] = useState<string | null>(null)
+  const [colorDetectError, setColorDetectError] = useState<string | null>(null)
   // Measured on layout rather than trusting the static Dimensions snapshot —
   // if the rendered carousel width ever differs from SCREEN_WIDTH (safe-area
   // insets, split-screen, tablet), scrollTo's computed x lands on the wrong
@@ -199,28 +221,32 @@ export default function ProductDetailScreen() {
     spinDragStartX.current = null
   }, [])
 
-  // Get all displayable images (product photos + variant preview appended)
+  // Get all displayable images: product photos permanently merged with every
+  // variant's photo (deduped by URL). A newly added color-variant photo is
+  // always a member of the carousel — no need to tap its swatch first (that
+  // was the old transient injection bug). Variant photos carry their color
+  // so the badge/thumbnail label still work.
   const displayPhotos = (() => {
     const base = product?.photos ?? []
-    if (variantPreviewUrl) {
-      const alreadyInBase = base.some((p) => p.url === variantPreviewUrl)
-      if (!alreadyInBase) {
-        const result: (Photo & { is_variant_preview: boolean; variant_color: string | null })[] = [
-          ...base.map((p) => ({ ...p, is_variant_preview: false, variant_color: null })),
-          {
-            id: 'variant-preview',
-            url: variantPreviewUrl,
-            is_primary: false,
-            piece_type: null,
-            is_variant_preview: true,
-            variant_color: variantPreviewColor,
-          },
-        ]
-        displayPhotosRef.current = result.length
-        return result
-      }
+    const seen = new Set<string>()
+    const result: (Photo & { is_variant_preview: boolean; variant_color: string | null })[] = []
+    for (const p of base) {
+      if (seen.has(p.url)) continue
+      seen.add(p.url)
+      result.push({ ...p, is_variant_preview: false, variant_color: null })
     }
-    const result = base.map((p) => ({ ...p, is_variant_preview: false, variant_color: null }))
+    for (const v of product?.variants ?? []) {
+      if (!v.photo_url || seen.has(v.photo_url)) continue
+      seen.add(v.photo_url)
+      result.push({
+        id: `variant-${v.id}`,
+        url: v.photo_url,
+        is_primary: false,
+        piece_type: null,
+        is_variant_preview: true,
+        variant_color: v.color,
+      })
+    }
     displayPhotosRef.current = result.length
     return result
   })()
@@ -230,8 +256,9 @@ export default function ProductDetailScreen() {
     return bust ? `${photo.url}${photo.url.includes('?') ? '&' : '?'}cb=${bust}` : photo.url
   }
 
-  const currentPhotoUrl = displayPhotos[selectedPhotoIndex]?.url ?? null
-  const currentPhotoIsVariant = (displayPhotos[selectedPhotoIndex] as { is_variant_preview?: boolean } | undefined)?.is_variant_preview ?? false
+  const currentPhoto = displayPhotos[selectedPhotoIndex] ?? null
+  const currentPhotoUrl = currentPhoto?.url ?? null
+  const currentPhotoIsVariant = currentPhoto?.is_variant_preview ?? false
 
   const goToPhoto = useCallback((index: number) => {
     const count = displayPhotosRef.current
@@ -243,18 +270,6 @@ export default function ProductDetailScreen() {
     setSelectedPhotoIndex(clamped)
     carouselRef.current?.scrollTo({ x: clamped * carouselWidth, animated: true })
   }, [carouselWidth])
-
-  // When a variant is selected, scroll the carousel to the variant photo
-  // after the state update has rendered the new displayPhotos array.
-  useEffect(() => {
-    if (variantPreviewUrl && product) {
-      const variantIdx = displayPhotos.length - 1
-      if (variantIdx >= (product.photos.length ?? 0)) {
-        setSelectedPhotoIndex(variantIdx)
-        carouselRef.current?.scrollTo({ x: variantIdx * carouselWidth, animated: true })
-      }
-    }
-  }, [variantPreviewUrl]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync the fullscreen viewer's scroll position to whichever photo is
   // currently selected every time it opens.
@@ -279,6 +294,13 @@ export default function ProductDetailScreen() {
       currentScaleRef.current = 1
     }
   }, [selectedPhotoIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // A detected color belongs to the photo it was detected on — clear the chip
+  // when the user swipes to another photo.
+  useEffect(() => {
+    setDetectedColor(null)
+    setColorDetectError(null)
+  }, [selectedPhotoIndex])
 
   // Keep mutable refs in sync with Animated values for pan start offset
   const latestPanX = useRef(0)
@@ -400,8 +422,21 @@ export default function ProductDetailScreen() {
     }
   }, [scaleAnim, panXAnim, panYAnim])
 
+  // Hydrate the editable fields from the server. The 3s AI-tagging poll
+  // returns a fresh product object on every tick; once the retailer has
+  // edited anything (isDirty) we hold the form so their typing isn't wiped
+  // mid-poll. Save clears the flag, letting the post-save refetch re-hydrate.
+  // A product change (new id) always re-hydrates.
+  const hydratedProductId = useRef<string | null>(null)
   useEffect(() => {
     if (!product) return
+    const firstHydrate = hydratedProductId.current !== product.id
+    if (firstHydrate) {
+      hydratedProductId.current = product.id
+      setIsDirty(false)
+    }
+    if (!firstHydrate && isDirty) return
+
     setPrice(product.price_min ? String(product.price_min / 100) : '')
     setLocation(product.location_notes ?? '')
     setNotes(product.notes ?? '')
@@ -412,11 +447,20 @@ export default function ProductDetailScreen() {
     setEditedFabric(product.fabric_estimate)
     setEditedPattern(product.pattern)
     setEditedCategoryId(product.category_id)
-    setSelectedPhotoIndex(0)
-    setVariantPreviewUrl(null)
-    setVariantPreviewColor(null)
+    setEditedName(product.name ?? '')
+    setEditedSku(product.sku ?? '')
+    setEditedDescription(product.description ?? '')
+    setEditedSubtype(product.subtype ?? '')
+    if (firstHydrate) {
+      // Transient gallery state only resets for a new product — never on a
+      // poll (a poll must not yank the retailer back to photo 0 mid-browse
+      // or dismiss a just-detected color).
+      setSelectedPhotoIndex(0)
+      setDetectedColor(null)
+      setColorDetectError(null)
+    }
     setImageErrors(new Set())
-  }, [product])
+  }, [product, isDirty])
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ['products'] })
@@ -431,6 +475,10 @@ export default function ProductDetailScreen() {
       await productApi.update(product.id, {
         price_min: priceInPaise,
         price_max: priceInPaise,
+        name: editedName || undefined,
+        sku: editedSku || undefined,
+        description: editedDescription || undefined,
+        subtype: editedSubtype || undefined,
         category: editedCategory ?? undefined,
         primary_color: editedColor || undefined,
         fabric_estimate: editedFabric ?? undefined,
@@ -442,6 +490,7 @@ export default function ProductDetailScreen() {
         sizes: selectedSizes,
       })
       invalidate()
+      setIsDirty(false)
       Alert.alert('Saved', 'Product updated.')
     } catch (err) {
       showError(err, 'Failed to save')
@@ -477,6 +526,29 @@ export default function ProductDetailScreen() {
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
     } catch (err) {
       showError(err, 'Failed to tag photo')
+    }
+  }
+
+  // Tap-the-photo color detection: runs the quick AI color-only detect on the
+  // currently shown photo, then lets the retailer confirm it into the Color
+  // field (editedColor) rather than saving automatically.
+  const handleDetectColor = async () => {
+    const photoUrl = currentPhotoUrl
+    if (!photoUrl || detectingColor) return
+    setDetectingColor(true)
+    setColorDetectError(null)
+    try {
+      const res = await productApi.detectColor(photoUrl)
+      const color = res.data?.color ?? null
+      if (color) {
+        setDetectedColor(color)
+      } else {
+        setColorDetectError('No color detected — try another photo.')
+      }
+    } catch (err) {
+      showError(err, 'Color detection failed')
+    } finally {
+      setDetectingColor(false)
     }
   }
 
@@ -713,10 +785,71 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Variant badge */}
-          {currentPhotoIsVariant && variantPreviewColor && (
+          {currentPhotoIsVariant && currentPhoto?.variant_color && (
             <View className="absolute top-3 left-3 bg-ink-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
               <Palette size={12} color="white" />
-              <Text className="text-white text-xs font-semibold">{variantPreviewColor}</Text>
+              <Text className="text-white text-xs font-semibold">{currentPhoto.variant_color}</Text>
+            </View>
+          )}
+
+          {/* Detect color from the current photo */}
+          {!isZoomed && (
+            <AnimatedPressable
+              onPress={() => void handleDetectColor()}
+              disabled={detectingColor}
+              accessibilityLabel="Detect color from photo"
+              accessibilityRole="button"
+              className="absolute right-3 top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
+              style={{ elevation: 3, zIndex: 10 }}
+            >
+              {detectingColor ? (
+                <ActivityIndicator size="small" color="#4B4039" />
+              ) : (
+                <Palette size={16} color="#4B4039" />
+              )}
+            </AnimatedPressable>
+          )}
+
+          {/* Detected-color confirm chip */}
+          {detectedColor && (
+            <View
+              className="absolute right-3 bottom-12 bg-white/95 rounded-2xl px-3 py-2 flex-row items-center gap-2 shadow-md"
+              style={{ elevation: 4, zIndex: 10 }}
+            >
+              <View
+                className="w-6 h-6 rounded-full border-2 border-white"
+                style={{ backgroundColor: resolveFashionColor(detectedColor) }}
+              />
+              <Text className="text-xs font-semibold text-sand-900 max-w-[120px]" numberOfLines={1}>
+                {detectedColor}
+              </Text>
+              <AnimatedPressable
+                onPress={() => {
+                  dirty(setEditedColor)(detectedColor)
+                  setDetectedColor(null)
+                }}
+                className="bg-ink-600 px-2.5 py-1 rounded-full"
+              >
+                <Text className="text-white text-[10px] font-bold">Use</Text>
+              </AnimatedPressable>
+              <AnimatedPressable
+                onPress={() => setDetectedColor(null)}
+                accessibilityLabel="Dismiss detected color"
+                accessibilityRole="button"
+                hitSlop={6}
+              >
+                <X size={14} color="#847B75" />
+              </AnimatedPressable>
+            </View>
+          )}
+
+          {/* Color-detection error hint */}
+          {colorDetectError && (
+            <View
+              className="absolute left-3 right-3 bottom-12 bg-rust-50/95 rounded-xl px-3 py-1.5"
+              style={{ zIndex: 10 }}
+            >
+              <Text className="text-rust-600 text-[10px] text-center">{colorDetectError}</Text>
             </View>
           )}
 
@@ -758,17 +891,12 @@ export default function ProductDetailScreen() {
             <View className="flex-row gap-2">
               {displayPhotos.map((photo, idx) => {
                 const isSelected = idx === selectedPhotoIndex
-                const isVariant = 'is_variant_preview' in photo && photo.is_variant_preview
+                const isVariant = photo.is_variant_preview
                 return (
                   <AnimatedPressable
                     key={photo.id}
                     onPress={() => {
                       goToPhoto(idx)
-                      // If clicking a non-variant thumbnail, clear variant preview
-                      if (!isVariant) {
-                        setVariantPreviewUrl(null)
-                        setVariantPreviewColor(null)
-                      }
                     }}
                     className={`w-16 h-16 rounded-lg overflow-hidden border-2 ${
                       isSelected ? 'border-ink-600' : 'border-sand-200'
@@ -782,7 +910,7 @@ export default function ProductDetailScreen() {
                     {isVariant && (
                       <View className="absolute bottom-0 left-0 right-0 bg-ink-600/80 py-0.5">
                         <Text className="text-white text-[8px] text-center font-medium">
-                          {variantPreviewColor ?? ''}
+                          {photo.variant_color ?? ''}
                         </Text>
                       </View>
                     )}
@@ -827,7 +955,7 @@ export default function ProductDetailScreen() {
         {/* Piece tagging for each photo */}
               {displayPhotos.map((photo, displayIdx) => {
           if (selectedPhotoIndex !== displayIdx) return null
-          if (photo.id === 'variant-preview' || !isPieceTaggable(product.category)) return null
+          if (photo.is_variant_preview || !isPieceTaggable(product.category)) return null
           return (
             <View key={`piece-tag-${photo.id}`} className="px-3 py-2 bg-white flex-row gap-2">
               {(['upper', 'lower'] as const).map((piece) => {
@@ -957,26 +1085,20 @@ export default function ProductDetailScreen() {
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View className="flex-row gap-3">
                 {product.variants.map((variant) => {
-                  const isActive = variantPreviewUrl === variant.photo_url
+                  // Variant photos are permanent members of displayPhotos, so
+                  // the swatch just jumps the carousel to that photo.
+                  const variantPhotoIndex = variant.photo_url
+                    ? displayPhotos.findIndex((p) => p.url === variant.photo_url)
+                    : -1
+                  const isActive = variantPhotoIndex === selectedPhotoIndex
                   return (
                     <AnimatedPressable
                       key={variant.id}
                       onPress={() => {
-                        if (variant.photo_url) {
-                          if (isActive) {
-                            // Deselect — go back to product photos at index 0
-                            setVariantPreviewUrl(null)
-                            setVariantPreviewColor(null)
-                            goToPhoto(0)
-                          } else {
-                            // Set variant preview + scroll carousel to last position
-                            setVariantPreviewUrl(variant.photo_url)
-                            setVariantPreviewColor(variant.color)
-                            // After state update, the displayPhotos includes the variant
-                            // as the last item. Scroll to it smoothly.
-                            const variantIndex = displayPhotos.length // will be last position
-                            requestAnimationFrame(() => goToPhoto(variantIndex))
-                          }
+                        if (variantPhotoIndex >= 0) {
+                          // Tapping the already-active variant returns to the
+                          // first photo; otherwise jump to its photo.
+                          goToPhoto(isActive ? 0 : variantPhotoIndex)
                         }
                       }}
                       className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
@@ -1011,8 +1133,11 @@ export default function ProductDetailScreen() {
               AI Summary
             </Text>
           </View>
+          {product.name ? (
+            <Text className="text-sm font-semibold text-sand-700">{product.name}</Text>
+          ) : null}
           <Text className="text-base font-bold text-sand-900">
-            {product.category ?? 'Uncategorized'}
+            {product.subtype ?? product.category ?? 'Uncategorized'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
           <Text className="text-sm text-sand-500 mt-0.5">
@@ -1028,6 +1153,56 @@ export default function ProductDetailScreen() {
           </Text>
         </View>
 
+        {/* Product info — name / subtype / SKU / description (editable AI fields) */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-2">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
+            Product Info
+          </Text>
+          <View>
+            <Text className="text-xs font-medium text-sand-500 mb-1">Name</Text>
+            <TextInput
+              value={editedName}
+              onChangeText={dirty(setEditedName)}
+              placeholder="e.g. Peach Floral Lehenga Skirt"
+              className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
+              placeholderTextColor="#ABA39C"
+            />
+          </View>
+          <View>
+            <Text className="text-xs font-medium text-sand-500 mb-1">Subtype</Text>
+            <TextInput
+              value={editedSubtype}
+              onChangeText={dirty(setEditedSubtype)}
+              placeholder="e.g. Lehenga Skirt, Kurta Set, Suit with Dupatta"
+              className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
+              placeholderTextColor="#ABA39C"
+            />
+          </View>
+          <View>
+            <Text className="text-xs font-medium text-sand-500 mb-1">SKU</Text>
+            <TextInput
+              value={editedSku}
+              onChangeText={dirty(setEditedSku)}
+              placeholder="e.g. LS0001"
+              autoCapitalize="characters"
+              className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
+              placeholderTextColor="#ABA39C"
+            />
+          </View>
+          <View>
+            <Text className="text-xs font-medium text-sand-500 mb-1">Description</Text>
+            <TextInput
+              value={editedDescription}
+              onChangeText={dirty(setEditedDescription)}
+              placeholder="Short description for the customer listing..."
+              multiline
+              numberOfLines={3}
+              className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
+              placeholderTextColor="#ABA39C"
+            />
+          </View>
+        </View>
+
         {/* Category (editable) */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
@@ -1039,7 +1214,7 @@ export default function ProductDetailScreen() {
               return (
                 <AnimatedPressable
                   key={cat}
-                  onPress={() => setEditedCategory(selected ? null : cat)}
+                  onPress={() => dirty(setEditedCategory)(selected ? null : cat)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -1077,7 +1252,7 @@ export default function ProductDetailScreen() {
                 return (
                   <AnimatedPressable
                     key={cat.id}
-                    onPress={() => setEditedCategoryId(selected ? null : cat.id)}
+                    onPress={() => dirty(setEditedCategoryId)(selected ? null : cat.id)}
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -1102,7 +1277,7 @@ export default function ProductDetailScreen() {
           </Text>
           <TextInput
             value={editedColor}
-            onChangeText={setEditedColor}
+            onChangeText={dirty(setEditedColor)}
             placeholder="e.g. Bottle Green, Navy Blue, Rani Pink"
             className="text-sm text-sand-900"
             placeholderTextColor="#ABA39C"
@@ -1120,7 +1295,7 @@ export default function ProductDetailScreen() {
               return (
                 <AnimatedPressable
                   key={fab}
-                  onPress={() => setEditedFabric(selected ? null : fab)}
+                  onPress={() => dirty(setEditedFabric)(selected ? null : fab)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -1148,7 +1323,7 @@ export default function ProductDetailScreen() {
               return (
                 <AnimatedPressable
                   key={pat}
-                  onPress={() => setEditedPattern(selected ? null : pat)}
+                  onPress={() => dirty(setEditedPattern)(selected ? null : pat)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -1217,7 +1392,7 @@ export default function ProductDetailScreen() {
           </Text>
           <TextInput
             value={price}
-            onChangeText={setPrice}
+            onChangeText={dirty(setPrice)}
             placeholder="e.g. 1500"
             keyboardType="numeric"
             className="text-lg font-bold text-sand-900"
@@ -1235,7 +1410,7 @@ export default function ProductDetailScreen() {
           </View>
           <TextInput
             value={location}
-            onChangeText={setLocation}
+            onChangeText={dirty(setLocation)}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
             className="text-sm text-sand-900"
             placeholderTextColor="#ABA39C"
@@ -1254,7 +1429,7 @@ export default function ProductDetailScreen() {
                 <AnimatedPressable
                   key={size}
                   onPress={() =>
-                    setSelectedSizes((prev) =>
+                    dirty(setSelectedSizes)((prev) =>
                       selected ? prev.filter((s) => s !== size) : [...prev, size],
                     )
                   }
@@ -1286,7 +1461,7 @@ export default function ProductDetailScreen() {
                 <AnimatedPressable
                   key={occ}
                   onPress={() =>
-                    setSelectedOccasions((prev) =>
+                    dirty(setSelectedOccasions)((prev) =>
                       selected ? prev.filter((o) => o !== occ) : [...prev, occ],
                     )
                   }
@@ -1313,7 +1488,7 @@ export default function ProductDetailScreen() {
           </Text>
           <TextInput
             value={notes}
-            onChangeText={setNotes}
+            onChangeText={dirty(setNotes)}
             placeholder="Any additional notes for your staff..."
             multiline
             numberOfLines={2}

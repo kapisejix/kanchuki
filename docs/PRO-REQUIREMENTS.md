@@ -180,7 +180,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-001e: Ghost-Mannequin AI Generation (Packed/Flat-Lay → Full Catalog Image)
-**Status:** Planned (not built)
+**Status:** Planned (not built) — job + Snappyit client scaffolded (`apps/api/src/jobs/ghost-mannequin.ts`, `packages/ai/src/snappyit.ts`) but the worker is paused as of 2026-08-02 (consolidated-cron change, `8b7a5be`) — not functional.
 **Priority:** P2 (nice-to-have, not MVP-blocking)
 **Vendor:** Snappyit API (evaluated 2026-07-25 vs WearView/bitStudio/Scenario — Snappyit chosen for confirmed public API + lowest cost; WearView/Scenario had no confirmed public developer API at eval time)
 
@@ -305,7 +305,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - Enquiry creates pre-filled WhatsApp message to retailer
 - No personal data stored without explicit consent
 
-**Known gap (flagged 2026-07-24, not yet fixed):** "Enquire about N items" resolves favorited-product name/price from a session-only cache of fetched grid pages (`lib/wishlist.ts` stores only product IDs). A product favorited on a page never re-fetched this session won't resolve into the enquiry message. Planned fix: store a small product summary (id, name, price_min, price_max, category) in the wishlist instead of a bare id, resolved at heart-click time from the product object already in hand — deletes the session-cache workaround entirely rather than patching around it. Not built yet.
+**Known gap (fixed 2026-07-25):** "Enquire about N items" once resolved favorited-product name/price from a session-only cache of fetched grid pages (`lib/wishlist.ts` stored only product IDs), so a product favorited on a page never re-fetched this session wouldn't resolve into the enquiry message. Fixed by storing a small product summary (id, name, price_min, price_max, category) in the wishlist at heart-click time (`CollectionView.tsx::toggleFavorite()` → `productToWishlistItem()`, commit `4f9cfb0`); the session cache (`productCacheRef`) remains only as a cold-load fallback. See the duplicate note below.
 
 ---
 
@@ -1278,6 +1278,6 @@ These are backlog candidates, not committed features — flag to user for priori
 
 ---
 
-## 13. AI Tagging Expansion — Subtype, Auto SKU/Name/Description, Slider Fix, Color-Tap, Catalog Redesign (IN PROGRESS 2026-08-03)
+## 13. AI Tagging Expansion — Subtype, Auto SKU/Name/Description, Slider Fix, Color-Tap, Catalog Redesign (BUILT 2026-08-03)
 
-Full spec, rationale, and exact file:line targets: `CLAUDE.md` "IN PROGRESS" section + approved plan `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md` (not duplicated here to avoid drift between two copies). Backend (DB schema, AI tagging schema, SKU generator, all 3 write paths, public API facet counts) is done and tested; web catalog listing redesign and all mobile changes are not started. See CLAUDE.md for the resume command.
+Full spec, rationale, and exact file:line targets: `CLAUDE.md` "Built" section + approved plan `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md` (not duplicated here to avoid drift between two copies). **Status: BUILT 2026-08-03.** Backend (DB schema, AI tagging schema, SKU generator, all 3 write paths, public API facet counts) + web catalog listing redesign (FilterBar `{value,count}` chips + always-visible category row, ProductCard subtype badge + name caption) + mobile (editable name/subtype/SKU/description on product detail, photo-slider variant-photo fix, tap-photo color detect, catalog-import review fields) all shipped and verified (`apps/web` + `apps/mobile` + `apps/api` tsc clean; web unit + api vitest green).
