@@ -25,6 +25,7 @@ import { productApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 // Retries a flaky network step up to `attempts` times with a short backoff.
 // Bulk import fires many sequential requests back-to-back — a single
@@ -339,20 +340,12 @@ export default function BulkImportScreen() {
             className="bg-white border-t border-sand-100 px-4 pt-4"
             style={{ paddingBottom: 16 + insets.bottom }}
           >
-            <AnimatedPressable
+            <GradientButton
+              label={`Import ${photos.length > 0 ? `${photos.length} Product${photos.length !== 1 ? 's' : ''}` : ''}`}
               onPress={() => void handleImport()}
               disabled={photos.length === 0}
-              className={`py-4 rounded-2xl items-center flex-row justify-center gap-2 ${
-                photos.length > 0 ? 'bg-ink-600' : 'bg-sand-200'
-              }`}
-            >
-              <Upload size={18} color={photos.length > 0 ? 'white' : '#ABA39C'} />
-              <Text
-                className={`font-bold text-base ${photos.length > 0 ? 'text-white' : 'text-sand-400'}`}
-              >
-                Import {photos.length > 0 ? `${photos.length} Product${photos.length !== 1 ? 's' : ''}` : ''}
-              </Text>
-            </AnimatedPressable>
+              icon={<Upload size={18} color="white" />}
+            />
           </View>
         </>
       )}

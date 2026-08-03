@@ -11,6 +11,7 @@ import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { staffApi, type StaffMember } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 // ─── Add Staff Modal ───────────────────────────────────────────────
 
@@ -87,19 +88,14 @@ function AddStaffModal({
             >
               <Text className="text-sand-700 font-semibold">Cancel</Text>
             </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => createStaff.mutate()}
-              disabled={!name.trim() || phone.replace(/\D/g, '').length !== 10 || createStaff.isPending}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${
-                name.trim() && phone.replace(/\D/g, '').length === 10 ? 'bg-ink-600' : 'bg-sand-200'
-              }`}
-            >
-              {createStaff.isPending ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text className="text-white font-semibold">Add</Text>
-              )}
-            </AnimatedPressable>
+            <View className="flex-1">
+              <GradientButton
+                label="Add"
+                onPress={() => createStaff.mutate()}
+                disabled={!name.trim() || phone.replace(/\D/g, '').length !== 10}
+                loading={createStaff.isPending}
+              />
+            </View>
           </View>
         </View>
       </View>

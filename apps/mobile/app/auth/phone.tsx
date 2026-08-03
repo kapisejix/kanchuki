@@ -3,17 +3,19 @@ import {
   View,
   Text,
   TextInput,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { authApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 export default function PhoneScreen() {
+  const insets = useSafeAreaInsets()
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -34,10 +36,20 @@ export default function PhoneScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white"
     >
-      <View className="flex-1 px-6 pt-20 pb-10 justify-between">
+      <ScrollView
+        className="flex-1 px-6"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'space-between',
+          paddingTop: insets.top + 40,
+          paddingBottom: insets.bottom + 24,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Top */}
         <View>
           {/* Logo */}
@@ -79,25 +91,18 @@ export default function PhoneScreen() {
 
         {/* Bottom CTA */}
         <View>
-          <AnimatedPressable
+          <GradientButton
+            label="Send OTP →"
             onPress={() => void handleSend()}
-            disabled={!isValid || loading}
-            className={`py-4 rounded-2xl items-center justify-center flex-row gap-2 ${
-              isValid && !loading ? 'bg-ink-600' : 'bg-sand-200'
-            }`}
-          >
-            {loading
-              ? <ActivityIndicator color="white" />
-              : <Text className={`text-base font-bold ${isValid ? 'text-white' : 'text-sand-400'}`}>
-                  Send OTP →
-                </Text>}
-          </AnimatedPressable>
+            disabled={!isValid}
+            loading={loading}
+          />
 
           <Text className="text-center text-xs text-sand-400 mt-4 px-4">
             By continuing, you agree to our Terms of Service and Privacy Policy
           </Text>
         </View>
-      </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }

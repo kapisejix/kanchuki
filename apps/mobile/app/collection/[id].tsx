@@ -10,6 +10,7 @@ import { showError } from '../../src/lib/errors'
 import { CollectionDetailSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 type CollectionDetail = {
   id: string
@@ -327,19 +328,14 @@ function ShareModal({
                 />
               )}
               {apiConfigured && (
-                <AnimatedPressable
-                  disabled={selected.size === 0 || bulkSending}
-                  onPress={() => void handleBulkSend()}
-                  className={`mt-4 py-3.5 rounded-xl items-center ${selected.size > 0 ? 'bg-ink-600' : 'bg-sand-200'}`}
-                >
-                  {bulkSending ? (
-                    <ActivityIndicator size="small" color="white" />
-                  ) : (
-                    <Text className={`font-semibold ${selected.size > 0 ? 'text-white' : 'text-sand-400'}`}>
-                      Send via WhatsApp Business API ({selected.size})
-                    </Text>
-                  )}
-                </AnimatedPressable>
+                <View className="mt-4">
+                  <GradientButton
+                    label={`Send via WhatsApp Business API (${selected.size})`}
+                    disabled={selected.size === 0}
+                    loading={bulkSending}
+                    onPress={() => void handleBulkSend()}
+                  />
+                </View>
               )}
               <AnimatedPressable
                 disabled={selected.size === 0}

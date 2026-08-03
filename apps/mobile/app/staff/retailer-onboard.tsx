@@ -12,6 +12,7 @@ import {
 import { teamApi } from '../../src/lib/team-api'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 export default function RetailerOnboardScreen() {
   const { primaryColor } = useTheme()
@@ -241,24 +242,13 @@ export default function RetailerOnboardScreen() {
         className="bg-white border-t border-sand-100 px-4 py-4"
         style={{ paddingBottom: insets.bottom + 12 }}
       >
-        <AnimatedPressable
+        <GradientButton
+          label="Onboard Retailer"
           onPress={() => void handleSubmit()}
-          disabled={!isFormValid || saving}
-          className={`py-4 rounded-2xl items-center justify-center flex-row gap-2 ${
-            isFormValid && !saving ? 'bg-ink-600' : 'bg-sand-200'
-          }`}
-        >
-          {saving ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <>
-              <UserPlus size={20} color={isFormValid ? 'white' : '#ABA39C'} />
-              <Text className={`text-base font-bold ${isFormValid ? 'text-white' : 'text-sand-400'}`}>
-                Onboard Retailer
-              </Text>
-            </>
-          )}
-        </AnimatedPressable>
+          disabled={!isFormValid}
+          loading={saving}
+          icon={<UserPlus size={20} color="white" />}
+        />
       </View>
     </KeyboardAvoidingView>
   )

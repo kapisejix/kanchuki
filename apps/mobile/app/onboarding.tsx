@@ -4,7 +4,6 @@ import {
   Text,
   TextInput,
   ScrollView,
-  ActivityIndicator,
   Alert,
   Animated,
   Dimensions,
@@ -17,6 +16,9 @@ import { retailerApi } from '../src/lib/api'
 import { PRODUCT_CATEGORIES, INDIAN_STATES } from '@kanchuki/shared'
 import { useReduceMotion } from '../src/hooks/useReduceMotion'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
+import { GradientButton } from '../src/components/GradientButton'
+import { GradientBorderCard } from '../src/components/GradientBorderCard'
+import { LinearGradient } from 'expo-linear-gradient'
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6
 const TOTAL_STEPS = 6
@@ -399,13 +401,19 @@ export default function OnboardingScreen() {
               />
             </View>
 
-            <View className="mt-6 bg-ink-50 rounded-2xl p-4">
-              <Text className="text-ink-700 text-sm font-medium">✨ What happens next?</Text>
-              <Text className="text-ink-600 text-sm mt-1 leading-5">
-                Add your shop details, then take a photo of any product — AI will automatically
-                tag it with category, color, fabric & occasion.
-              </Text>
-            </View>
+            <GradientBorderCard
+              fill="#F3F5F8"
+              colors={['#E2E7ED00', '#4E617866', '#E2E7ED00']}
+              style={{ marginTop: 24 }}
+            >
+              <View className="p-4">
+                <Text className="text-ink-700 text-sm font-medium">✨ What happens next?</Text>
+                <Text className="text-ink-600 text-sm mt-1 leading-5">
+                  Add your shop details, then take a photo of any product — AI will automatically
+                  tag it with category, color, fabric & occasion.
+                </Text>
+              </View>
+            </GradientBorderCard>
           </View>
         )
 
@@ -555,13 +563,19 @@ export default function OnboardingScreen() {
               </Text>
             </View>
 
-            <View className="mt-6 bg-turmeric-50 rounded-2xl p-4">
-              <Text className="text-turmeric-800 text-sm font-medium">💡 GST invoice tip</Text>
-              <Text className="text-turmeric-700 text-sm mt-1 leading-5">
-                When a customer enquires about a product, Kanchuki can generate a GST invoice
-                automatically. Add your GSTIN now or skip and do it later from Settings.
-              </Text>
-            </View>
+            <GradientBorderCard
+              fill="#F8F0E8"
+              colors={['#EFDECE00', '#946A4B66', '#EFDECE00']}
+              style={{ marginTop: 24 }}
+            >
+              <View className="p-4">
+                <Text className="text-turmeric-800 text-sm font-medium">💡 GST invoice tip</Text>
+                <Text className="text-turmeric-700 text-sm mt-1 leading-5">
+                  When a customer enquires about a product, Kanchuki can generate a GST invoice
+                  automatically. Add your GSTIN now or skip and do it later from Settings.
+                </Text>
+              </View>
+            </GradientBorderCard>
 
             <AnimatedPressable
               onPress={async () => {
@@ -630,10 +644,15 @@ export default function OnboardingScreen() {
       case 6:
         return (
           <View className="pt-2 items-center">
-            {/* Big celebration emoji */}
-            <View className="w-24 h-24 bg-ink-100 rounded-3xl items-center justify-center mb-6">
+            {/* Big celebration emoji — signature gradient moment */}
+            <LinearGradient
+              colors={['#4E6178', '#121A27']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ width: 96, height: 96, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}
+            >
               <Text className="text-5xl">🎉</Text>
-            </View>
+            </LinearGradient>
 
             <Text className="text-2xl font-bold text-sand-900 text-center">
               {"You're all set!"}
@@ -779,27 +798,14 @@ export default function OnboardingScreen() {
               <Text className="text-sand-600 text-lg">←</Text>
             </AnimatedPressable>
           )}
-          <AnimatedPressable
-            onPress={() => void handleNext()}
-            disabled={!canProceed() || saving || showConfetti}
-            className={`flex-1 py-4 rounded-2xl items-center justify-center ${
-              canProceed() && !saving ? 'bg-ink-600' : 'bg-sand-200'
-            }`}
-          >
-            {saving ? (
-              <ActivityIndicator color="white" />
-            ) : showConfetti ? (
-              <Text className="text-white font-bold text-base">{"🎉 You're in!"}</Text>
-            ) : (
-              <Text
-                className={`font-bold text-base ${
-                  canProceed() ? 'text-white' : 'text-sand-400'
-                }`}
-              >
-                {step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'}
-              </Text>
-            )}
-          </AnimatedPressable>
+          <View className="flex-1">
+            <GradientButton
+              label={showConfetti ? "🎉 You're in!" : step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'}
+              onPress={() => void handleNext()}
+              disabled={!canProceed() || showConfetti}
+              loading={saving}
+            />
+          </View>
         </View>
         <Text className="text-center text-xs text-sand-400 mt-2">
           Step {step} of {TOTAL_STEPS}

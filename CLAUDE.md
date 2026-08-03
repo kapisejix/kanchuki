@@ -384,6 +384,17 @@ User asked AI tagging to also produce: garment **subtype** (finer than `category
 
 ---
 
+## Built: `apps/mobile` Design Polish Pass — P0/P1 fixed, P3 started (2026-08-03)
+
+**Audited 2026-08-03 via `/impeccable audit` (native path), source-level, no simulator** (registration-screen overflow report + a color/gradient/animation polish request). Full scored findings (13/20 → fixes below) live in `docs/DESIGN.md` → "Audit: `apps/mobile` Design Pass — 2026-08-03". `apps/mobile` `tsc --noEmit` clean after every step (no RN simulator in this environment — UI unverified on device).
+
+- **P0 fixed:** `app/auth/phone.tsx` + `app/auth/otp.tsx` — added `ScrollView` + `useSafeAreaInsets` (replacing hardcoded `pt-*`/`pb-*`), fixed Android `KeyboardAvoidingView` behavior (`'height'` instead of `undefined`).
+- **P1 fixed:** `GradientButton` promoted to the primary CTA on all 8 screens using the flat `bg-ink-600`/`bg-sand-200` conditional pattern — `auth/phone.tsx`, `auth/otp.tsx`, `onboarding.tsx`, `product/bulk.tsx`, `staff/retailer-onboard.tsx`, `settings/staff.tsx`, `collection/[id].tsx`, `category/[id]/add-products.tsx`.
+- **P2 — color-drift finding retracted** (verified false via oklch→hex conversion, see `docs/DESIGN.md`). **Tablet decision (user, 2026-08-03): commit to tablet.** `app.json` `orientation` changed `"portrait"` → `"default"`. Screen-by-screen `useIsTablet`/`useGridColumns` coverage is still 5/~40 screens — **not extended in this pass**, tracked as open follow-up (no simulator here to verify a blind ~35-screen sweep).
+- **P3 started:** new `apps/mobile/src/components/GradientBorderCard.tsx` (subtle gradient-edge card — outer-gradient/inner-fill trick, since RN has no `background-clip`; pattern sourced from the `css-border-gradient` skill in `github.com/MengTo/Skills`, taste rules followed: 1px border, low-alpha stops, one hierarchy level). Applied to `onboarding.tsx`'s two info cards (step 1, step 4) + a signature `LinearGradient` hero treatment on the step-6 celebration icon. **Not done:** icon-specific micro-animation (favorite/bell/checkmark) — skipped this pass, no clearly interactive favorite/bell control exists yet in the retailer app to attach it to (those live in the customer web PWA); revisit if/when one does.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

@@ -12,6 +12,7 @@ import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
 import { formatPriceRange } from '@kanchuki/shared'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
+import { GradientButton } from '../../../src/components/GradientButton'
 
 type Product = {
   id: string
@@ -115,15 +116,12 @@ export default function AddProductsToCategoryScreen() {
           className="bg-white px-4 pt-3 border-t border-sand-100"
           style={{ paddingBottom: 12 + insets.bottom }}
         >
-          <AnimatedPressable
+          <GradientButton
+            label={`Add ${selected.size || ''} Product${selected.size === 1 ? '' : 's'}`.trim()}
             disabled={!canAssign}
+            loading={assign.isPending}
             onPress={() => assign.mutate()}
-            className={`py-3.5 rounded-xl items-center ${canAssign ? 'bg-ink-600' : 'bg-sand-200'}`}
-          >
-            <Text className={`font-semibold ${canAssign ? 'text-white' : 'text-sand-400'}`}>
-              {assign.isPending ? 'Adding…' : `Add ${selected.size || ''} Product${selected.size === 1 ? '' : 's'}`.trim()}
-            </Text>
-          </AnimatedPressable>
+          />
         </View>
     </View>
   )

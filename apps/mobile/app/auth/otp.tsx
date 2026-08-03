@@ -3,18 +3,21 @@ import {
   View,
   Text,
   TextInput,
+  ScrollView,
   KeyboardAvoidingView,
   Platform,
-  ActivityIndicator,
   Alert,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { authApi, setToken } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 export default function OtpScreen() {
+  const insets = useSafeAreaInsets()
   const { phone } = useLocalSearchParams<{ phone: string }>()
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
@@ -84,10 +87,20 @@ export default function OtpScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white"
     >
-      <View className="flex-1 px-6 pt-16 pb-10 justify-between">
+      <ScrollView
+        className="flex-1 px-6"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'space-between',
+          paddingTop: insets.top + 32,
+          paddingBottom: insets.bottom + 24,
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
         {/* Top */}
         <View>
           <AnimatedPressable
@@ -159,20 +172,13 @@ export default function OtpScreen() {
         </View>
 
         {/* Verify button */}
-        <AnimatedPressable
+        <GradientButton
+          label="Verify & Continue →"
           onPress={() => void handleVerify(otp)}
-          disabled={otp.length !== 6 || loading}
-          className={`py-4 rounded-2xl items-center justify-center ${
-            otp.length === 6 && !loading ? 'bg-ink-600' : 'bg-sand-200'
-          }`}
-        >
-          {loading
-            ? <ActivityIndicator color="white" />
-            : <Text className={`text-base font-bold ${otp.length === 6 ? 'text-white' : 'text-sand-400'}`}>
-                Verify & Continue →
-              </Text>}
-        </AnimatedPressable>
-      </View>
+          disabled={otp.length !== 6}
+          loading={loading}
+        />
+      </ScrollView>
     </KeyboardAvoidingView>
   )
 }

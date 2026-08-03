@@ -439,3 +439,63 @@ borderRadius: {
 ```
 
 **Mobile (`apps/mobile/tailwind.config.js`) — wired, but not pixel-identical to web.** Has its own full `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` scale (hex, not oklch — RN's style engine can't parse `oklch()` at all, see that file's comment). `ink` (navy/primary) is pixel-matched to web via the same `--color-ink-600` runtime CSS var (admin-configurable branding, set live through NativeWind's `vars()`). `rust`/`turmeric`/`sand` are NOT currently kept in sync with web's values — this is tracked as open work (see `docs/design/emil-design.md` §3.4, "shared token gap"); until resolved, don't assume mobile's accent colors match whatever web is currently showing.
+
+---
+
+## Audit: `apps/mobile` Design Pass — 2026-08-03
+
+`/impeccable audit` (native/React Native path) run against `apps/mobile`, source-level (no simulator in this environment — findings are code-verified, not visually verified on device). Triggered by a user report: "most screens are out of the mobile screen" during retailer registration, plus a request for a color/gradient/animation/motion polish pass. **Nothing in this section has been fixed yet — audit only, per user request ("report first, development after").**
+
+### Score
+
+| # | Dimension | Score | Key finding |
+|---|-----------|-------|-------------|
+| 1 | Accessibility | 3/4 | Labels + Reduce Motion fixed 2026-07-31; Dynamic Type scaling unverified (no device) |
+| 2 | Performance | 3/4 | FlatList virtualization + blurhash/cache in `ProductCard` are solid; no issues found |
+| 3 | Appearance & Theming | 3/4 | Tokens exist and are correctly hand-synced (verified via oklch→hex conversion — see correction below); 0 dark mode; gradient/shadow CTA treatment on only 12/~40 screens |
+| 4 | Platform Conformance | 3/4 | Single icon set (Lucide), Expo Router idiomatic nav, 5-item tab bar — no web-shaped controls found |
+| 5 | Adaptivity | 2/4 | `app.json` sets `supportsTablet: true` + `orientation: "portrait"` (locked) together — tablet claimed but portrait-locked and only 5/~40 screens are grid-adaptive (`useIsTablet`/`useGridColumns`, per 2026-07-31 pass) |
+| **Total** | | **13/20** | **Acceptable — significant work needed** |
+
+### P0 — registration screen overflow (the reported bug)
+
+**`apps/mobile/app/auth/phone.tsx`** and **`apps/mobile/app/auth/otp.tsx`** — the very first screens a retailer sees — are the *only two full screens in the app* built as a fixed `flex-1 ... justify-between` layout with **no `ScrollView`** and **no `useSafeAreaInsets`** (confirmed by grep against all ~40 screens; every other screen either uses `ScrollView` or a virtualized `FlatList`). Top padding is a hardcoded `pt-20`/`pt-16`, bottom a hardcoded `pb-10` — neither adapts to notch/Dynamic Island/gesture-nav insets or to a taller system font size. On a short device (budget Android, common in this app's target market) or with accessibility font scaling on, the logo+heading+input block and the CTA+terms block are both pinned to opposite ends of a box that has nowhere to shrink — content clips or overlaps, and there is no scroll to recover it. This is exactly the reported symptom, and it is isolated to these two screens (`onboarding.tsx`, the step-by-step shop-setup flow that follows, already does this correctly — `ScrollView` + `useSafeAreaInsets` for its bottom bar).
+
+Secondary compounding issue, same two files: `KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}` — on Android, `behavior` is `undefined`, so keyboard avoidance relies entirely on `windowSoftInputMode`/`adjustResize` rather than an explicit RN-level fallback. Combined with no `ScrollView`, if resize doesn't kick in on a given Android build the phone-number input or OTP boxes can end up hidden behind the keyboard.
+
+**Fix direction** (not yet applied): wrap both screens' content in `ScrollView` (`keyboardShouldPersistTaps="handled"`, matching `onboarding.tsx`'s pattern), swap the hardcoded `pt-*`/`pb-*` for `useSafeAreaInsets()`, and add explicit `behavior="height"` for Android in `KeyboardAvoidingView`.
+
+### P1 — CTA visual hierarchy inconsistency
+
+`GradientButton` (gradient fill + shadow + press-scale) exists and works well, but is used on only 12 of ~40 screens. The other ~28 use a flat `bg-ink-600 rounded-2xl` `AnimatedPressable` with no shadow — same interaction feel (press-scale is universal via `AnimatedPressable`, applied nearly everywhere), but visibly different weight/depth for what's semantically the same "primary action" role. Registration (`phone.tsx`, `otp.tsx`, `onboarding.tsx`) is flat; a first-time user's very first CTA doesn't get the app's best button.
+
+### P2 — tablet/orientation contradiction (color-drift finding retracted)
+
+**Correction (2026-08-03, same session):** the original version of this section claimed `rust`/`turmeric`/`sand` drift between `apps/mobile/tailwind.config.js` and `apps/web/tailwind.config.ts`. That was wrong — inherited from this doc's own stale "Design Tokens" section above, which still described the old "Loom" palette. Web actually repainted to "Red Elegance" on 2026-07-29 (see `docs/design/emil-design.md`), and mobile's hex values were correctly hand-synced to it: verified by converting web's oklch stops to sRGB hex directly (CSS Color 4 algorithm) — every stop checked (`rust-50/600/900`, `turmeric-50/500/900`, `sand-50/600/900`) is a pixel-exact match to mobile's hex. Only `ink` uses a live CSS-var mechanism; the rest are static but *correct*. The "Design Tokens" section above still needs a manual pass to replace its Loom-era swatch block with the current Red Elegance one — flagged, not fixed in this pass (out of scope of the mobile audit).
+
+- `app.json`: **decided 2026-08-03 — committing to tablet.** `orientation` changed from locked `"portrait"` to `"default"` (sensor-based). `supportsTablet: true` (iOS) now matches reality for orientation; screen-by-screen tablet-adaptive layout coverage is still only 5/~40 screens — extending `useIsTablet`/`useGridColumns` to the rest is tracked as follow-up work, not done in this pass (no RN simulator in this environment to verify a blind sweep of ~35 screens).
+- Zero `useColorScheme`/dark-mode usage anywhere in `apps/mobile` (known, previously declined).
+
+### P3 — motion/polish gaps (the "make it feel professional" ask)
+
+- **Icon animation:** zero icon-specific micro-animation exists — every icon gets the same generic `AnimatedPressable` press-scale (0.96 spring) and nothing else. No favorite-heart bounce, no bell-badge pulse on new enquiry, no checkmark pop on save.
+- **Product slider:** already well-built — `apps/mobile/app/product/[id].tsx` has a swipeable `ScrollView` carousel, pagination dots, synced thumbnail strip, prev/next arrows, and pinch-to-zoom. Genuinely good; polish opportunity only (snap easing, dot scale-on-active), not a gap.
+- **Gradients:** `expo-linear-gradient` is installed and used in exactly one place (`GradientButton`). No gradient backgrounds/headers/hero moments anywhere else — the "Loom" palette (`ink`→`ink-800`, `turmeric` accents) has room for a signature gradient treatment on hero/empty-state/celebration moments (onboarding step 6 confetti screen is the obvious first candidate).
+- No haptics (`expo-haptics` not installed — would be a new dependency, not currently justified without a specific request).
+
+### Positive findings
+
+- `AnimatedPressable` press-scale is applied almost universally (39/~40 screens) — interaction feedback is consistent even where visual weight (gradient vs flat) isn't.
+- `FlatList` used correctly everywhere lists appear (no manual `ScrollView`-wrapped-map anti-pattern).
+- `ProductCard` handles the Android elevation/rounded-corner clipping bug correctly (separate outer/inner nodes) and has blurhash + error-state + cache-policy handling — genuinely solid.
+- Prior 2026-07-31 audit's a11y-label and Reduce Motion fixes hold up — re-verified, not regressed.
+- Single icon library (Lucide, thin-line) used consistently — no icon-set drift.
+
+### Recommended actions (priority order)
+
+1. **[P0] `/impeccable adapt`** — fix `auth/phone.tsx` + `auth/otp.tsx`: add `ScrollView`, swap fixed padding for `useSafeAreaInsets`, fix Android `KeyboardAvoidingView` behavior.
+2. **[P1] `/impeccable polish`** — extend `GradientButton` to every screen's primary CTA (registration first), so visual weight matches semantic importance app-wide.
+3. **[P2] `/impeccable colorize`** or a shared-token package — resolve the mobile/web `rust`/`turmeric`/`sand` drift; decide tablet support for real (`adapt`) or drop the claim.
+4. **[P3] `/impeccable animate`** — icon micro-animations (favorite heart, notification badge, save checkmark) and a gradient treatment for hero/celebration moments (onboarding step 6 first), using the already-installed Reanimated 4 + `expo-linear-gradient` — no new dependencies needed.
+
+Re-run `/impeccable audit` after fixes to confirm the score moved off 13/20.
