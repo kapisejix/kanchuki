@@ -1,4 +1,5 @@
 import { Component, type ReactNode, type ErrorInfo } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { View, Text, TouchableOpacity } from 'react-native'
 import { AlertTriangle, RefreshCw } from 'lucide-react-native'
 
@@ -39,7 +40,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         <View className="flex-1 items-center justify-center bg-ink-50 px-8">
           <View className="w-16 h-16 bg-rust-100 rounded-3xl items-center justify-center mb-4">
-            <AlertTriangle size={32} color="#BF6973" />
+            <AlertTriangle size={32} color={COLORS.danger} />
           </View>
           <Text className="text-lg font-bold text-sand-900 text-center mb-2">
             Something went wrong

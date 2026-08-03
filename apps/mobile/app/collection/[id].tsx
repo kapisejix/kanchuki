@@ -56,6 +56,7 @@ function EditModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { colors } = useTheme()
   const [title, setTitle] = useState(collection?.title ?? '')
   const [expiryDays, setExpiryDays] = useState('30')
   const [saving, setSaving] = useState(false)
@@ -107,7 +108,7 @@ function EditModal({
               onChangeText={setTitle}
               placeholder="Collection name"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
               autoFocus
             />
           </View>
@@ -122,7 +123,7 @@ function EditModal({
               placeholder="30"
               keyboardType="numeric"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
 
@@ -165,7 +166,7 @@ function ShareModal({
   collection: CollectionDetail | null
   onClose: () => void
 }) {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [queue, setQueue] = useState<CustomerLite[] | null>(null)
@@ -285,12 +286,12 @@ function ShareModal({
             <>
               <Text className="text-lg font-bold text-sand-900 mb-3">Share with Customers</Text>
               <View className="flex-row items-center bg-sand-100 rounded-xl px-3 py-2.5 gap-2 mb-3">
-                <Search size={16} color={COLORS.sand[400]} />
+                <Search size={16} color={colors.sand[400]} />
                 <TextInput
                   value={search}
                   onChangeText={setSearch}
                   placeholder="Search by name or phone..."
-                  placeholderTextColor={COLORS.sand[400]}
+                  placeholderTextColor={colors.sand[400]}
                   className="flex-1 text-sm text-sand-900"
                 />
               </View>
@@ -358,7 +359,7 @@ function ShareModal({
 }
 
 export default function CollectionDetailScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -410,7 +411,7 @@ export default function CollectionDetailScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={COLORS.sand[700]} />
+          <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <View className="flex-row gap-2">
           <AnimatedPressable
@@ -427,7 +428,7 @@ export default function CollectionDetailScreen() {
             accessibilityLabel="Delete collection"
             accessibilityRole="button"
           >
-            <Trash2 size={16} color={COLORS.rust[600]} />
+            <Trash2 size={16} color={colors.rust[600]} />
           </AnimatedPressable>
         </View>
       </View>
@@ -435,9 +436,9 @@ export default function CollectionDetailScreen() {
         {/* Stats */}
         <View className="flex-row flex-wrap px-4 pt-4 gap-3">
           <Stat icon={<Eye size={16} color={primaryColor} />} label="Views" value={collection.view_count} />
-          <Stat icon={<Users size={16} color="#E3262D" />} label="Visitors" value={collection.unique_viewer_count} />
-          <Stat icon={<Heart size={16} color={COLORS.rust[500]} />} label="Favorites" value={collection.favorite_count} />
-          <Stat icon={<MessageCircle size={16} color={COLORS.turmeric[500]} />} label="Enquiries" value={collection.enquiry_count} />
+          <Stat icon={<Users size={16} color={colors.danger} />} label="Visitors" value={collection.unique_viewer_count} />
+          <Stat icon={<Heart size={16} color={colors.rust[500]} />} label="Favorites" value={collection.favorite_count} />
+          <Stat icon={<MessageCircle size={16} color={colors.turmeric[500]} />} label="Enquiries" value={collection.enquiry_count} />
         </View>
 
         {/* Share */}
@@ -466,7 +467,7 @@ export default function CollectionDetailScreen() {
             onPress={handleDelete}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-rust-50 border border-rust-100 py-3 rounded-xl"
           >
-            <Trash2 size={16} color={COLORS.rust[600]} />
+            <Trash2 size={16} color={colors.rust[600]} />
             <Text className="text-rust-600 text-sm font-semibold">Delete</Text>
           </AnimatedPressable>
         </View>

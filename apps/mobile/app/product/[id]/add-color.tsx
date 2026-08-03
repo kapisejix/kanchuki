@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus } from 'lucide-react-native'
 import { productApi, uploadImageToR2, readLocalImage } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
+import { useTheme } from '../../../src/lib/theme'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 
@@ -18,6 +19,7 @@ import { GradientButton } from '../../../src/components/GradientButton'
 type Step = 'camera' | 'detecting' | 'manual' | 'saving'
 
 export default function AddColorVariantScreen() {
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const [step, setStep] = useState<Step>('camera')
@@ -218,7 +220,7 @@ export default function AddColorVariantScreen() {
             value={color}
             onChangeText={setColor}
             placeholder="e.g. Maroon, Bottle Green, Mustard"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             className="bg-white/10 text-white px-4 py-3 rounded-xl text-base"
             autoFocus
           />

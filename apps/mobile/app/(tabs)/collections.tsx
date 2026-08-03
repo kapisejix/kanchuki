@@ -1,5 +1,4 @@
 import { useCallback, memo, useState, useEffect } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -44,6 +43,7 @@ function EditCollectionModal({
   onClose: () => void
   onSaved: () => void
 }) {
+  const { colors } = useTheme()
   const [title, setTitle] = useState(collection?.title ?? '')
   const [expiryDays, setExpiryDays] = useState('30')
   const [saving, setSaving] = useState(false)
@@ -96,7 +96,7 @@ function EditCollectionModal({
               onChangeText={setTitle}
               placeholder="Collection name"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
               autoFocus
             />
           </View>
@@ -111,7 +111,7 @@ function EditCollectionModal({
               placeholder="30"
               keyboardType="numeric"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
 
@@ -156,7 +156,7 @@ const CollectionCard = memo(function CollectionCard({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   return (
     <AnimatedPressable onPress={onPress} className="bg-white rounded-2xl p-4 border border-sand-100">
       {/* Title + status */}
@@ -183,15 +183,15 @@ const CollectionCard = memo(function CollectionCard({
       {/* Stats row */}
       <View className="flex-row gap-4 mb-3">
         <View className="flex-row items-center gap-1">
-          <Eye size={14} color={COLORS.sand[400]} />
+          <Eye size={14} color={colors.sand[400]} />
           <Text className="text-xs text-sand-500">{item.view_count} views</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <MessageCircle size={14} color={COLORS.sand[400]} />
+          <MessageCircle size={14} color={colors.sand[400]} />
           <Text className="text-xs text-sand-500">{item.enquiry_count} enquiries</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Clock size={14} color={COLORS.sand[400]} />
+          <Clock size={14} color={colors.sand[400]} />
           <Text className="text-xs text-sand-400">{daysUntil(item.expires_at)}</Text>
         </View>
       </View>
@@ -204,7 +204,7 @@ const CollectionCard = memo(function CollectionCard({
             onPress={onShare}
             className="flex-1 flex-row items-center justify-center gap-2 bg-turmeric-50 border border-turmeric-100 py-2.5 rounded-xl"
           >
-            <Link2 size={14} color={COLORS.turmeric[600]} />
+            <Link2 size={14} color={colors.turmeric[600]} />
             <Text className="text-turmeric-700 text-sm font-semibold">Share</Text>
           </AnimatedPressable>
         )}
@@ -226,7 +226,7 @@ const CollectionCard = memo(function CollectionCard({
           accessibilityLabel="Delete collection"
           accessibilityRole="button"
         >
-          <Trash2 size={14} color={COLORS.rust[600]} />
+          <Trash2 size={14} color={colors.rust[600]} />
         </AnimatedPressable>
       </View>
     </AnimatedPressable>
@@ -236,6 +236,7 @@ const CollectionCard = memo(function CollectionCard({
 // ── Collections Screen ─────────────────────────────────────────────
 
 export default function CollectionsScreen() {
+  const { colors } = useTheme()
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<Collection | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -310,7 +311,7 @@ export default function CollectionsScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16">
-        <Link2 size={40} color={COLORS.sand[300]} />
+        <Link2 size={40} color={colors.sand[300]} />
         <Text className="text-sand-400 text-sm mt-4 text-center">
           No collections yet.{'\n'}Create one to share products with customers.
         </Text>
@@ -322,7 +323,7 @@ export default function CollectionsScreen() {
         </AnimatedPressable>
       </View>
     ),
-    [],
+    [colors],
   )
 
   return (

@@ -36,7 +36,7 @@ function EditCategoryModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)
@@ -100,7 +100,7 @@ function EditCategoryModal({
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Edit Category</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color={COLORS.sand[400]} />
+              <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
           </View>
 
@@ -115,7 +115,7 @@ function EditCategoryModal({
               ) : imageUrl ? (
                 <Image source={{ uri: imageUrl }} style={{ width: 96, height: 96 }} resizeMode="cover" />
               ) : (
-                <ImagePlus size={22} color={COLORS.sand[400]} />
+                <ImagePlus size={22} color={colors.sand[400]} />
               )}
             </AnimatedPressable>
             <Text className="text-[10px] text-sand-400 mt-1.5">Tap to change photo</Text>
@@ -154,7 +154,7 @@ function EditCategoryModal({
 
 export default function CategoryDetailScreen() {
   const columns = useGridColumns()
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -214,7 +214,7 @@ export default function CategoryDetailScreen() {
           style={{ paddingTop: insets.top + 12 }}
         >
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={COLORS.sand[700]} />
+            <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
           <View className="flex-row items-center gap-4">
             <AnimatedPressable
@@ -232,7 +232,7 @@ export default function CategoryDetailScreen() {
               accessibilityLabel="Delete category"
               accessibilityRole="button"
             >
-              {deleting ? <ActivityIndicator size="small" color={COLORS.rust[600]} /> : <Trash2 size={20} color={COLORS.rust[600]} />}
+              {deleting ? <ActivityIndicator size="small" color={colors.rust[600]} /> : <Trash2 size={20} color={colors.rust[600]} />}
             </AnimatedPressable>
           </View>
         </View>

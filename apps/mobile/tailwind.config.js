@@ -36,7 +36,11 @@ module.exports = {
           300: '#FDCB6E',
           400: '#FDB93F',
           500: '#FCAB22',
-          600: '#FCA311',
+          // CSS var, not a static hex — ThemeProvider (src/lib/theme.tsx) sets
+          // --color-rust-600 at runtime via nativewind's vars() from the
+          // admin-configured theme API, so every bg-rust-600/text-rust-600/
+          // border-rust-600 usage across the app updates without a rebuild.
+          600: 'var(--color-rust-600, #FCA311)',
           700: '#D6860A',
           800: '#9C6308',
           900: '#634006',
@@ -48,14 +52,16 @@ module.exports = {
           300: '#D5A263',
           400: '#C0813F',
           500: '#A66528',
-          600: '#8A5A12',
+          // Admin-configurable via --color-turmeric-600 (same mechanism as ink).
+          600: 'var(--color-turmeric-600, #8A5A12)',
           700: '#6E4710',
           800: '#4E320C',
           900: '#2E1D07',
         },
         sand: {
           50: '#FCFCFC',
-          100: '#F5F5F5',
+          // Admin-configurable surface fill via --color-sand-100.
+          100: 'var(--color-sand-100, #F5F5F5)',
           200: '#E5E5E5',
           300: '#D4D4D4',
           400: '#B8B8B8',
@@ -65,8 +71,9 @@ module.exports = {
           800: '#333333',
           900: '#1A1A1A',
         },
-        cotton: '#FFFFFF',
-        charcoal: '#000000',
+        // Admin-configurable page background / body text via the same vars.
+        cotton: 'var(--color-cotton, #FFFFFF)',
+        charcoal: 'var(--color-charcoal, #000000)',
       },
       fontFamily: {
         // Loaded via @expo-google-fonts/inter in app/_layout.tsx.

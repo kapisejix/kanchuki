@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import { AppState } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { Home, Grid3X3, Users, Link2, ShoppingBag, BarChart3 } from 'lucide-react-native'
@@ -8,11 +7,9 @@ import { ordersApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
-const MUTED = COLORS.sand[400]
-
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const [pendingCount, setPendingCount] = useState(0)
 
   // Fetch pending order count for the badge on the Orders tab.
@@ -46,15 +43,15 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: primaryColor,
-        tabBarInactiveTintColor: MUTED,
+        tabBarInactiveTintColor: colors.sand[400],
         tabBarStyle: {
-          backgroundColor: '#ffffff',
-          borderTopColor: COLORS.sand[100],
+          backgroundColor: colors.cotton,
+          borderTopColor: colors.sand[100],
           height: 60 + insets.bottom,
           paddingBottom: 8 + insets.bottom,
         },
-        headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: COLORS.charcoal,
+        headerStyle: { backgroundColor: colors.cotton },
+        headerTintColor: colors.charcoal,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
       }}

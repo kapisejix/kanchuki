@@ -1,13 +1,14 @@
 import { Stack } from 'expo-router'
-import { COLORS } from '@kanchuki/shared'
+import { useTheme } from '../../src/lib/theme'
 
 export default function StaffLayout() {
+  const { colors } = useTheme()
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        headerStyle: { backgroundColor: '#ffffff' },
-        headerTintColor: COLORS.charcoal,
+        headerStyle: { backgroundColor: colors.cotton },
+        headerTintColor: colors.charcoal,
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
         headerShadowVisible: false,
       }}

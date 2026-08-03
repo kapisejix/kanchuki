@@ -76,7 +76,7 @@ async function compressPhoto(uri: string): Promise<string> {
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function BulkImportScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [step, setStep] = useState<Step>('pick')
   const [photos, setPhotos] = useState<PhotoItem[]>([])
@@ -225,11 +225,11 @@ export default function BulkImportScreen() {
       case 'uploading':
         return <ActivityIndicator size="small" color={primaryColor} />
       case 'creating':
-        return <ActivityIndicator size="small" color={COLORS.turmeric[500]} />
+        return <ActivityIndicator size="small" color={colors.turmeric[500]} />
       case 'done':
-        return <Check size={18} color={COLORS.turmeric[500]} />
+        return <Check size={18} color={colors.turmeric[500]} />
       case 'failed':
-        return <AlertTriangle size={18} color={COLORS.rust[500]} />
+        return <AlertTriangle size={18} color={colors.rust[500]} />
     }
   }
 
@@ -262,7 +262,7 @@ export default function BulkImportScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={step === 'importing' ? COLORS.sand[300] : COLORS.sand[700]} />
+          <X size={22} color={step === 'importing' ? colors.sand[300] : colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {step === 'pick' && 'Bulk Import'}
@@ -435,7 +435,7 @@ export default function BulkImportScreen() {
                 onPress={() => handleRetry()}
                 className="py-4 rounded-2xl items-center border-2 border-sand-200 flex-row justify-center gap-2"
               >
-                <AlertTriangle size={18} color={COLORS.sand[700]} />
+                <AlertTriangle size={18} color={colors.sand[700]} />
                 <Text className="text-sand-700 font-semibold">Retry Failed ({failed})</Text>
               </AnimatedPressable>
             )}

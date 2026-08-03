@@ -13,9 +13,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { authApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 import { GradientButton } from '../../src/components/GradientButton'
 
 export default function PhoneScreen() {
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
@@ -75,7 +77,7 @@ export default function PhoneScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="10-digit mobile number"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 keyboardType="phone-pad"
                 maxLength={10}
                 className="flex-1 text-base text-sand-900 font-medium"

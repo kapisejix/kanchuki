@@ -22,6 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 import { ProductAddSkeleton } from '../../src/components/Skeleton'
 import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -65,6 +66,7 @@ const SCAN_BURST_COUNT = 5
 const SCAN_BURST_INTERVAL_MS = 200
 
 export default function AddProductScreen() {
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [step, setStep] = useState<Step>('camera')
@@ -730,7 +732,7 @@ export default function AddProductScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={COLORS.sand[700]} />
+          <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
         <GradientButton
@@ -811,7 +813,7 @@ export default function AddProductScreen() {
             placeholder="e.g. 1500"
             keyboardType="numeric"
             className="text-lg font-bold text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
@@ -825,7 +827,7 @@ export default function AddProductScreen() {
             onChangeText={setLocation}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
             className="text-sm text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
@@ -946,7 +948,7 @@ export default function AddProductScreen() {
             multiline
             numberOfLines={2}
             className="text-sm text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 

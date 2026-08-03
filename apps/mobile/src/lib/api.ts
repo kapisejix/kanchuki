@@ -1,6 +1,7 @@
 import { router } from 'expo-router'
 import { File } from 'expo-file-system'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
+import type { PlatformTheme } from '@kanchuki/shared'
 import { getItem, setItem, deleteItem } from './storage'
 import { cachedJsonRequest, clearRequestCache } from './request-cache'
 
@@ -1116,9 +1117,9 @@ export const categoryApi = {
     }),
 }
 
-// ─── Theme (admin-configurable brand color, F-020) ─────────────────
+// ─── Theme (admin-configurable brand palette) ─────────────────────
 
 export const themeApi = {
   get: () =>
-    request<{ data: { primary_color: string } }>('/v1/public/theme', { getCacheTtlMs: 60_000 }),
+    request<{ data: Partial<PlatformTheme> }>('/v1/public/theme', { getCacheTtlMs: 60_000 }),
 }

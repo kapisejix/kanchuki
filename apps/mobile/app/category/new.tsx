@@ -12,7 +12,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
 export default function NewCategoryScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const [name, setName] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)
@@ -75,7 +75,7 @@ export default function NewCategoryScreen() {
             ) : imageUrl ? (
               <Image source={{ uri: imageUrl }} style={{ width: 112, height: 112 }} resizeMode="cover" />
             ) : (
-              <ImagePlus size={26} color={COLORS.sand[400]} />
+              <ImagePlus size={26} color={colors.sand[400]} />
             )}
           </AnimatedPressable>
           <Text className="text-xs text-sand-400 mt-1.5">
@@ -91,7 +91,7 @@ export default function NewCategoryScreen() {
             value={name}
             onChangeText={setName}
             placeholder="e.g. Wedding Sarees"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             className="bg-white px-4 py-3 rounded-xl text-sm text-sand-900 border border-sand-100"
             maxLength={100}
           />

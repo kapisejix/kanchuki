@@ -81,7 +81,7 @@ const STATUS_OPTIONS: { value: Product['status']; label: string }[] = [
 ]
 
 export default function ProductDetailScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -676,7 +676,7 @@ export default function ProductDetailScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={COLORS.sand[700]} />
+          <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Product Details</Text>
         <AnimatedPressable
@@ -768,7 +768,7 @@ export default function ProductDetailScreen() {
               className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
-              <ChevronLeft size={20} color={COLORS.sand[700]} />
+              <ChevronLeft size={20} color={colors.sand[700]} />
             </AnimatedPressable>
           )}
 
@@ -781,7 +781,7 @@ export default function ProductDetailScreen() {
               className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
               style={{ elevation: 3, zIndex: 10 }}
             >
-              <ChevronRight size={20} color={COLORS.sand[700]} />
+              <ChevronRight size={20} color={colors.sand[700]} />
             </AnimatedPressable>
           )}
 
@@ -804,9 +804,9 @@ export default function ProductDetailScreen() {
               style={{ elevation: 3, zIndex: 10 }}
             >
               {detectingColor ? (
-                <ActivityIndicator size="small" color={COLORS.sand[700]} />
+                <ActivityIndicator size="small" color={colors.sand[700]} />
               ) : (
-                <Palette size={16} color={COLORS.sand[700]} />
+                <Palette size={16} color={colors.sand[700]} />
               )}
             </AnimatedPressable>
           )}
@@ -839,7 +839,7 @@ export default function ProductDetailScreen() {
                 accessibilityRole="button"
                 hitSlop={6}
               >
-                <X size={14} color={COLORS.sand[600]} />
+                <X size={14} color={colors.sand[600]} />
               </AnimatedPressable>
             </View>
           )}
@@ -1166,7 +1166,7 @@ export default function ProductDetailScreen() {
               onChangeText={dirty(setEditedName)}
               placeholder="e.g. Peach Floral Lehenga Skirt"
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
           <View>
@@ -1176,7 +1176,7 @@ export default function ProductDetailScreen() {
               onChangeText={dirty(setEditedSubtype)}
               placeholder="e.g. Lehenga Skirt, Kurta Set, Suit with Dupatta"
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
           <View>
@@ -1187,7 +1187,7 @@ export default function ProductDetailScreen() {
               placeholder="e.g. LS0001"
               autoCapitalize="characters"
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
           <View>
@@ -1199,7 +1199,7 @@ export default function ProductDetailScreen() {
               multiline
               numberOfLines={3}
               className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
         </View>
@@ -1281,7 +1281,7 @@ export default function ProductDetailScreen() {
             onChangeText={dirty(setEditedColor)}
             placeholder="e.g. Bottle Green, Navy Blue, Rani Pink"
             className="text-sm text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
@@ -1397,14 +1397,14 @@ export default function ProductDetailScreen() {
             placeholder="e.g. 1500"
             keyboardType="numeric"
             className="text-lg font-bold text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
         {/* Location */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center gap-1.5 mb-2">
-            <MapPin size={12} color={COLORS.sand[600]} />
+            <MapPin size={12} color={colors.sand[600]} />
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
               Store Location
             </Text>
@@ -1414,7 +1414,7 @@ export default function ProductDetailScreen() {
             onChangeText={dirty(setLocation)}
             placeholder="e.g. Rack B · Shelf 3 · Stack 2"
             className="text-sm text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
@@ -1494,7 +1494,7 @@ export default function ProductDetailScreen() {
             multiline
             numberOfLines={2}
             className="text-sm text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
@@ -1516,9 +1516,9 @@ export default function ProductDetailScreen() {
           className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
         >
           {deleting ? (
-            <ActivityIndicator size="small" color={COLORS.rust[600]} />
+            <ActivityIndicator size="small" color={colors.rust[600]} />
           ) : (
-            <Trash2 size={16} color={COLORS.rust[600]} />
+            <Trash2 size={16} color={colors.rust[600]} />
           )}
           <Text className="text-rust-600 font-semibold text-sm">
             {deleting ? 'Deleting…' : 'Delete Product'}
@@ -1773,7 +1773,7 @@ function RelatedProductsSection({
   excludeId: string
   onSelect: (id: string) => void
 }) {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const [related, setRelated] = useState<RelatedProduct[]>([])
   const [loadingRelated, setLoadingRelated] = useState(true)
 

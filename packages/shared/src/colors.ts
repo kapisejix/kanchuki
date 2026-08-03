@@ -66,4 +66,13 @@ export const COLORS = {
   charcoal: '#000000',
   glow: '#FFC94D',
   veil: '#0B1322',
+  // ── Semantic status colors ────────────────────────────────────
+  // Deliberately NOT part of the admin-configurable brand palette: they
+  // carry meaning (destructive action, error state, chart series), not
+  // brand. Replacing raw literals like '#E3262D' with these keys keeps
+  // every surface consistent and gives the next repaint one place to edit.
+  danger: '#E3262D',
+  dangerSurface: '#FFF1F1',
+  dangerTint: '#FFDFDD',
+  chartAccent: '#F75D59',
 } as const

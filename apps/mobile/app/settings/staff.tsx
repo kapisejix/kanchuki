@@ -11,6 +11,7 @@ import { Plus, Trash2, X, User, ChevronLeft } from 'lucide-react-native'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { staffApi, type StaffMember } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -23,6 +24,7 @@ function AddStaffModal({
   visible: boolean
   onClose: () => void
 }) {
+  const { colors } = useTheme()
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const queryClient = useQueryClient()
@@ -52,7 +54,7 @@ function AddStaffModal({
           <View className="flex-row items-center justify-between">
             <Text className="text-lg font-bold text-sand-900">Add Team Member</Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color={COLORS.sand[400]} />
+              <X size={20} color={colors.sand[400]} />
             </AnimatedPressable>
           </View>
 
@@ -63,7 +65,7 @@ function AddStaffModal({
               onChangeText={setName}
               placeholder="e.g. Ramesh"
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
               autoFocus
             />
           </View>
@@ -77,7 +79,7 @@ function AddStaffModal({
               keyboardType="numeric"
               maxLength={10}
               className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
             />
           </View>
 
@@ -107,6 +109,7 @@ function AddStaffModal({
 // ─── Main Staff Screen ─────────────────────────────────────────────
 
 export default function StaffScreen() {
+  const { colors } = useTheme()
   const [showAdd, setShowAdd] = useState(false)
   const queryClient = useQueryClient()
   const insets = useSafeAreaInsets()
@@ -162,7 +165,7 @@ export default function StaffScreen() {
           accessibilityLabel={`Remove ${item.name}`}
           accessibilityRole="button"
         >
-          <Trash2 size={16} color={COLORS.rust[600]} />
+          <Trash2 size={16} color={colors.rust[600]} />
         </AnimatedPressable>
       </View>
     ),
@@ -178,7 +181,7 @@ export default function StaffScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={COLORS.sand[700]} />
+            <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Team Members</Text>
         </View>
@@ -189,7 +192,7 @@ export default function StaffScreen() {
           <CustomerListSkeleton />
         ) : staff.length === 0 ? (
           <View className="items-center py-16">
-            <User size={40} color={COLORS.sand[300]} />
+            <User size={40} color={colors.sand[300]} />
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No team members yet.{'\n'}Add shop staff to help manage the catalog.
             </Text>

@@ -25,7 +25,7 @@ type DeletedProduct = {
 }
 
 export default function DeletedProductsScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
 
@@ -73,7 +73,7 @@ export default function DeletedProductsScreen() {
           <Image source={{ uri: item.photos[0].url }} className="w-14 h-14 rounded-xl mr-3" resizeMode="cover" />
         ) : (
           <View className="w-14 h-14 rounded-xl bg-sand-100 items-center justify-center mr-3">
-            <PackageX size={20} color={COLORS.sand[400]} />
+            <PackageX size={20} color={colors.sand[400]} />
           </View>
         )}
         <View className="flex-1">
@@ -100,7 +100,7 @@ export default function DeletedProductsScreen() {
           accessibilityLabel="Permanently delete"
           accessibilityRole="button"
         >
-          <Trash2 size={16} color={COLORS.rust[600]} />
+          <Trash2 size={16} color={colors.rust[600]} />
         </AnimatedPressable>
       </View>
     ),
@@ -115,7 +115,7 @@ export default function DeletedProductsScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={COLORS.sand[700]} />
+            <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Recently Deleted</Text>
         </View>
@@ -126,7 +126,7 @@ export default function DeletedProductsScreen() {
           <CustomerListSkeleton />
         ) : products.length === 0 ? (
           <View className="items-center py-16">
-            <PackageX size={40} color={COLORS.sand[300]} />
+            <PackageX size={40} color={colors.sand[300]} />
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No deleted products.{'\n'}Items removed by you or your team show up here.
             </Text>

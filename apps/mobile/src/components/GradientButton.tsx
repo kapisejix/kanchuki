@@ -3,14 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { AnimatedPressable } from './AnimatedPressable'
 import { useTheme } from '../lib/theme'
 
-const SHADOW: ViewStyle = {
-  shadowColor: '#14213D',
-  shadowOffset: { width: 0, height: 6 },
-  shadowOpacity: 0.25,
-  shadowRadius: 12,
-  elevation: 6,
-}
-
 /** Primary CTA — gradient fill (theme color → darker shade) + shadow + press-scale. One shared button for every screen's main action instead of a bespoke TouchableOpacity per form. */
 export function GradientButton({
   label,
@@ -28,9 +20,18 @@ export function GradientButton({
   /** Override gradient stops (defaults to theme primary → its 700 shade) */
   colors?: [string, string]
 }) {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors: themeColors } = useTheme()
   const isDisabled = disabled || loading
-  const gradientColors = colors ?? [primaryColor, '#101A30']
+  const gradientColors = colors ?? [primaryColor, themeColors.ink[700]]
+  // Shadow follows the theme primary (computed per-render so it repaints
+  // live when the admin palette changes).
+  const shadow: ViewStyle = {
+    shadowColor: themeColors.ink[700],
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 6,
+  }
 
   return (
     <AnimatedPressable
@@ -38,7 +39,7 @@ export function GradientButton({
       disabled={isDisabled}
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled }}
-      style={isDisabled ? undefined : SHADOW}
+      style={isDisabled ? undefined : shadow}
     >
       <LinearGradient
         colors={gradientColors}

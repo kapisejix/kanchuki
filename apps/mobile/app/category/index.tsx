@@ -8,9 +8,11 @@ import ProductCard from '../../src/components/ProductCard'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
 import { categoryApi, type ProductCategory } from '../../src/lib/api'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
+import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function CategoryListScreen() {
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const columns = useGridColumns()
   const { data, isLoading } = useQuery({
@@ -29,7 +31,7 @@ export default function CategoryListScreen() {
           style={{ paddingTop: insets.top + 12 }}
         >
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={COLORS.sand[700]} />
+            <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
         </View>
         {isLoading ? (

@@ -18,13 +18,14 @@
  */
 
 import React, { memo, useState, useEffect } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { View, Text, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
 import { AnimatedPressable } from './AnimatedPressable'
 
 // iOS shadow (Android keeps its own `elevation` prop, RN can't share one style key for both).
 const CARD_SHADOW: ViewStyle = {
-  shadowColor: '#060A15',
+  shadowColor: COLORS.ink[900],
   shadowOffset: { width: 0, height: 3 },
   shadowOpacity: 0.1,
   shadowRadius: 8,

@@ -26,7 +26,7 @@ type Product = {
 
 export default function AddProductsToCategoryScreen() {
   const columns = useGridColumns()
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
@@ -66,7 +66,7 @@ export default function AddProductsToCategoryScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={COLORS.sand[700]} />
+          <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">Add Products</Text>
       </View>

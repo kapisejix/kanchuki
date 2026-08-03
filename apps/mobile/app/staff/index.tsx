@@ -21,7 +21,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 // ─── Staff Dashboard ─────────────────────────────────────────────
 
 export default function StaffDashboard() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [staffInfo, setStaffInfo] = useState<{ name: string; role: string } | null>(null)
   const [loadingInfo, setLoadingInfo] = useState(true)
@@ -105,7 +105,7 @@ export default function StaffDashboard() {
               <Text className="text-ink-100 text-xs">Staff Dashboard</Text>
               <Text className="text-white text-lg font-bold mt-0.5">{displayName}</Text>
               <View className="flex-row items-center gap-1.5 mt-0.5">
-                <MapPin size={11} color="#FFDFDD" />
+                <MapPin size={11} color={colors.dangerTint} />
                 <Text className="text-ink-200 text-xs flex-1" numberOfLines={1}>
                   {territoriesLabel}
                 </Text>
@@ -157,19 +157,19 @@ export default function StaffDashboard() {
                 icon={<Store size={18} color={primaryColor} />}
                 label="Retailers"
                 value={retailers.length}
-                accent="#FFF1F1"
+                accent={colors.ink[50]}
               />
               <StatCard
-                icon={<Ticket size={18} color={COLORS.turmeric[500]} />}
+                icon={<Ticket size={18} color={colors.turmeric[500]} />}
                 label="Active Tickets"
                 value={totalTickets}
-                accent={COLORS.turmeric[50]}
+                accent={colors.turmeric[50]}
               />
               <StatCard
-                icon={<Package size={18} color="#E3262D" />}
+                icon={<Package size={18} color={colors.danger} />}
                 label="Open Issues"
                 value={ticketStats?.open ?? 0}
-                accent="#FFF1F1"
+                accent={colors.dangerSurface}
                 pulse={ticketStats && ticketStats.open > 0}
               />
             </View>
@@ -214,14 +214,14 @@ export default function StaffDashboard() {
                     Confirmed on-site visits assigned to you
                   </Text>
                 </View>
-                <ChevronRight size={16} color={COLORS.sand[300]} />
+                <ChevronRight size={16} color={colors.sand[300]} />
               </AnimatedPressable>
             </View>
 
             {/* Ticket alerts */}
             {ticketStats && ticketStats.requires_visit > 0 && (
               <View className="mx-4 mt-5 bg-turmeric-50 border border-turmeric-200 rounded-2xl px-4 py-3.5 flex-row items-start gap-3">
-                <AlertCircle size={18} color={COLORS.turmeric[600]} className="mt-0.5" />
+                <AlertCircle size={18} color={colors.turmeric[600]} className="mt-0.5" />
                 <View className="flex-1">
                   <Text className="text-sm font-semibold text-turmeric-800">
                     {ticketStats.requires_visit} visit-required ticket{ticketStats.requires_visit !== 1 ? 's' : ''}
@@ -248,7 +248,7 @@ export default function StaffDashboard() {
 
               {retailers.length === 0 ? (
                 <View className="bg-white rounded-2xl p-8 border border-sand-100 items-center">
-                  <Store size={40} color={COLORS.sand[300]} />
+                  <Store size={40} color={colors.sand[300]} />
                   <Text className="text-sand-400 text-sm mt-4 text-center">
                     No retailers in your territory yet.{'\n'}Tap &quot;New Retailer&quot; to get started.
                   </Text>
@@ -269,11 +269,11 @@ export default function StaffDashboard() {
                         <Text className="text-sm font-semibold text-sand-900">{r.shop_name}</Text>
                         <View className="flex-row items-center gap-3 mt-1">
                           <View className="flex-row items-center gap-1">
-                            <MapPin size={11} color={COLORS.sand[400]} />
+                            <MapPin size={11} color={colors.sand[400]} />
                             <Text className="text-xs text-sand-400">{r.city}</Text>
                           </View>
                           <View className="flex-row items-center gap-1">
-                            <Phone size={11} color={COLORS.sand[400]} />
+                            <Phone size={11} color={colors.sand[400]} />
                             <Text className="text-xs text-sand-400">{r.phone}</Text>
                           </View>
                         </View>
@@ -286,7 +286,7 @@ export default function StaffDashboard() {
                           })}
                         </Text>
                       </View>
-                      <ChevronRight size={16} color={COLORS.sand[300]} style={{ marginLeft: 8 }} />
+                      <ChevronRight size={16} color={colors.sand[300]} style={{ marginLeft: 8 }} />
                     </AnimatedPressable>
                   ))}
                 </View>

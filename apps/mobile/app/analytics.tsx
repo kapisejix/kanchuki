@@ -1,5 +1,4 @@
 import { memo } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -109,6 +108,7 @@ function MiniBarChart({
   maxValue: number
   color: string
 }) {
+  const { colors } = useTheme()
   const max = Math.max(maxValue, 1)
   return (
     <View className="flex-row items-end gap-1.5 h-24">
@@ -123,7 +123,7 @@ function MiniBarChart({
               className="w-full rounded-t-md"
               style={{
                 height,
-                backgroundColor: d.value > 0 ? color : COLORS.sand[100],
+                backgroundColor: d.value > 0 ? color : colors.sand[100],
                 opacity: d.value > 0 ? 0.5 + (d.value / max) * 0.5 : 1,
               }}
             />
@@ -142,8 +142,15 @@ function CategoryBreakdown({
 }: {
   data: { category: string; count: number }[]
 }) {
-  const { primaryColor } = useTheme()
-  const CHART_COLORS = [primaryColor, COLORS.turmeric[600], COLORS.rust[700], COLORS.sand[600], '#F75D59', COLORS.rust[500]]
+  const { primaryColor, colors } = useTheme()
+  const CHART_COLORS = [
+    primaryColor,
+    colors.turmeric[600],
+    colors.rust[700],
+    colors.sand[600],
+    colors.chartAccent,
+    colors.rust[500],
+  ]
   const total = data.reduce((s, d) => s + d.count, 0)
   if (total === 0) return null
 
@@ -185,6 +192,7 @@ const CollectionCard = memo(function CollectionCard({
 }: {
   item: Analytics['recent_collections'][0]
 }) {
+  const { colors } = useTheme()
   return (
     <AnimatedPressable
       onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
@@ -211,19 +219,19 @@ const CollectionCard = memo(function CollectionCard({
 
       <View className="flex-row gap-3">
         <View className="flex-row items-center gap-1">
-          <Eye size={12} color={COLORS.sand[400]} />
+          <Eye size={12} color={colors.sand[400]} />
           <Text className="text-xs text-sand-500">{item.view_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <MessageCircle size={12} color={COLORS.sand[400]} />
+          <MessageCircle size={12} color={colors.sand[400]} />
           <Text className="text-xs text-sand-500">{item.enquiry_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Heart size={12} color={COLORS.sand[400]} />
+          <Heart size={12} color={colors.sand[400]} />
           <Text className="text-xs text-sand-500">{item.favorite_count}</Text>
         </View>
         <View className="flex-row items-center gap-1">
-          <Package size={12} color={COLORS.sand[400]} />
+          <Package size={12} color={colors.sand[400]} />
           <Text className="text-xs text-sand-500">{item.product_count}</Text>
         </View>
       </View>
@@ -265,7 +273,7 @@ function PlanUsageBar({
 // ── Analytics Screen ───────────────────────────────────────────────
 
 export default function AnalyticsScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['analytics'],
     queryFn: () => analyticsApi.getAnalytics(),
@@ -310,30 +318,30 @@ export default function AnalyticsScreen() {
             subtitle="Across all collections"
           />
           <StatCard
-            icon={<MessageCircle size={18} color={COLORS.turmeric[500]} />}
+            icon={<MessageCircle size={18} color={colors.turmeric[500]} />}
             label="Total Enquiries (7d)"
             value={totalEnquiries.toLocaleString('en-IN')}
-            color={COLORS.turmeric[500]}
+            color={colors.turmeric[500]}
             subtitle="Customer enquiries"
           />
           <StatCard
-            icon={<Package size={18} color={COLORS.turmeric[500]} />}
+            icon={<Package size={18} color={colors.turmeric[500]} />}
             label="Active Products"
             value={
               (analytics?.status_breakdown
                 ?.find((s) => s.status === 'AVAILABLE')
                 ?.count ?? 0).toLocaleString('en-IN')
             }
-            color={COLORS.turmeric[500]}
+            color={colors.turmeric[500]}
           />
           <StatCard
-            icon={<BarChart3 size={18} color="#E3262D" />}
+            icon={<BarChart3 size={18} color={colors.danger} />}
             label="Total Products"
             value={
               (analytics?.status_breakdown
                 ?.reduce((s, g) => s + g.count, 0) ?? 0).toLocaleString('en-IN')
             }
-            color="#E3262D"
+            color={colors.danger}
           />
         </View>
 
@@ -367,7 +375,7 @@ export default function AnalyticsScreen() {
               <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
                 Daily Enquiries
               </Text>
-              <MessageCircle size={16} color={COLORS.turmeric[500]} />
+              <MessageCircle size={16} color={colors.turmeric[500]} />
             </View>
             <MiniBarChart
               data={trends.map((d) => ({
@@ -375,7 +383,7 @@ export default function AnalyticsScreen() {
                 value: d.enquiries,
               }))}
               maxValue={Math.max(...trends.map((d) => d.enquiries), 1)}
-              color={COLORS.turmeric[500]}
+              color={colors.turmeric[500]}
             />
           </View>
         )}
@@ -393,7 +401,7 @@ export default function AnalyticsScreen() {
                 Plan Usage
               </Text>
               <View className="flex-row items-center gap-1">
-                <Store size={12} color={COLORS.sand[400]} />
+                <Store size={12} color={colors.sand[400]} />
                 <Text className="text-xs text-sand-500 font-medium">
                   {analytics.plan.plan}
                 </Text>
@@ -458,7 +466,7 @@ export default function AnalyticsScreen() {
         {/* Empty state */}
         {(analytics?.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0) === 0 && (
           <View className="items-center py-10">
-            <BarChart3 size={48} color={COLORS.sand[300]} />
+            <BarChart3 size={48} color={colors.sand[300]} />
             <Text className="text-sand-400 text-sm mt-4 text-center">
               No data yet.{'\n'}Start by adding products and sharing collections.
             </Text>

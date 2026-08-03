@@ -1,27 +1,27 @@
 import '../global.css'
-import { COLORS } from '@kanchuki/shared'
-import { useEffect, useRef } from 'react'
-import { Stack, router } from 'expo-router'
-import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
-import { AppState, Platform, Text, TextInput, View } from 'react-native'
-import { GestureHandlerRootView } from 'react-native-gesture-handler'
-import { SafeAreaProvider } from 'react-native-safe-area-context'
 import {
-  useFonts,
   Inter_400Regular,
   Inter_500Medium,
   Inter_600SemiBold,
   Inter_700Bold,
+  useFonts,
 } from '@expo-google-fonts/inter'
+import type { PlatformTheme } from '@kanchuki/shared'
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
+import { Stack, router } from 'expo-router'
+import { vars } from 'nativewind'
+import { useEffect, useRef, useState } from 'react'
+import { AppState, Platform, Text, TextInput, View } from 'react-native'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
+import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { getToken } from '../src/lib/api'
-import { getItem } from '../src/lib/storage'
+import { CatalogDelegateBanner } from '../src/components/CatalogDelegateBanner'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { NetworkBanner } from '../src/components/NetworkBanner'
-import { CatalogDelegateBanner } from '../src/components/CatalogDelegateBanner'
-import { ThemeProvider, useTheme } from '../src/lib/theme'
-import { vars } from 'nativewind'
-import { restoreQueryCache, persistQueryCache } from '../src/lib/offline-persister'
 import { useSyncQueue } from '../src/hooks/useSyncQueue'
+import { persistQueryCache, restoreQueryCache } from '../src/lib/offline-persister'
+import { getItem } from '../src/lib/storage'
+import { loadPersistedPalette, ThemeProvider, useTheme } from '../src/lib/theme'
 
 // ponytail: RN has no CSS-style View→Text font inheritance, and NativeWind's
 // className "inheritance" only covers CSS vars — not fontFamily. Patching the
@@ -63,21 +63,41 @@ function SyncQueueGate() {
   return null
 }
 
-// Rendered inside ThemeProvider so useTheme() resolves. Sets --color-ink-600
-// via nativewind's vars() so every bg-ink-600/text-ink-600/border-ink-600
-// class in the app tree below picks up the admin-configured color live —
-// no per-screen edits needed.
+// Rendered inside ThemeProvider so useTheme() resolves. Sets the six brand
+// CSS vars via nativewind's vars() so every bg-ink-600/text-ink-600/
+// border-ink-600/bg-cotton/text-charcoal/bg-rust-600/… class in the app
+// tree below picks up the admin-configured palette live — no per-screen
+// edits needed. The var fallbacks match the defaults in tailwind.config.js.
 function AppShell() {
-  const { primaryColor } = useTheme()
+  const {
+    primaryColor,
+    accentColor,
+    tertiaryColor,
+    backgroundColor,
+    textColor,
+    surfaceColor,
+    colors,
+  } = useTheme()
   return (
-    <View className="flex-1 bg-cotton" style={vars({ '--color-ink-600': primaryColor })}>
+    <View
+      className="flex-1 bg-cotton"
+      style={vars({
+        '--color-ink-600': primaryColor,
+        '--color-rust-600': accentColor,
+        '--color-turmeric-600': tertiaryColor,
+        '--color-cotton': backgroundColor,
+        '--color-charcoal': textColor,
+        '--color-sand-100': surfaceColor,
+      })}
+    >
       <NetworkBanner />
       <CatalogDelegateBanner />
       <Stack
         screenOptions={{
           headerShown: false,
-          headerStyle: { backgroundColor: '#FFFFFF' },
-          headerTintColor: COLORS.charcoal,
+          // RN style props can't read CSS vars — use the reactive theme values.
+          headerStyle: { backgroundColor: colors.cotton },
+          headerTintColor: colors.charcoal,
           headerTitleStyle: { fontWeight: '700', fontSize: 17, fontFamily: 'Inter_700Bold' },
           headerShadowVisible: false,
         }}
@@ -105,6 +125,29 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   })
+
+  // Hydrate the persisted per-user palette BEFORE the first render so the
+  // app launches already-themed — the admin's last-saved palette shows
+  // instantly (a SecureStore read, not a network fetch). Gating render on
+  // readiness (like fonts) means there is never a default-theme flash.
+  // ThemeProvider also re-syncs in the background and reacts to account
+  // switches on shared devices.
+  const [paletteReady, setPaletteReady] = useState(false)
+  const [initialPalette, setInitialPalette] = useState<PlatformTheme | null>(null)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const retailerId = await getItem('retailer_id').catch(() => null)
+      const cached = await loadPersistedPalette(retailerId).catch(() => null)
+      if (!cancelled) {
+        setInitialPalette(cached)
+        setPaletteReady(true)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // ── Rehydrate offline cache on mount ──────────────────────────
   useEffect(() => {
@@ -159,7 +202,7 @@ export default function RootLayout() {
     return () => sub.remove()
   }, [])
 
-  if (!fontsLoaded) return null
+  if (!fontsLoaded || !paletteReady) return null
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -167,7 +210,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <SyncQueueGate />
           <ErrorBoundary>
-            <ThemeProvider>
+            <ThemeProvider initialPalette={initialPalette}>
               <AppShell />
             </ThemeProvider>
           </ErrorBoundary>

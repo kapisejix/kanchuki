@@ -15,6 +15,7 @@ import { router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { retailerApi } from '../src/lib/api'
 import { useReduceMotion } from '../src/hooks/useReduceMotion'
+import { useTheme } from '../src/lib/theme'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { GradientButton } from '../src/components/GradientButton'
 import { GradientBorderCard } from '../src/components/GradientBorderCard'
@@ -194,6 +195,7 @@ function StepIndicator({
 
 // ─── Main Screen ──────────────────────────────────────────────────
 export default function OnboardingScreen() {
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const reduceMotion = useReduceMotion()
   const [step, setStep] = useState<Step>(1)
@@ -368,7 +370,7 @@ export default function OnboardingScreen() {
                 onChangeText={setShopName}
                 placeholder="e.g. Priya Fashion House"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 autoFocus
                 maxLength={200}
               />
@@ -381,7 +383,7 @@ export default function OnboardingScreen() {
                 onChangeText={setOwnerName}
                 placeholder="e.g. Priya Sharma (optional)"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 maxLength={200}
               />
             </View>
@@ -395,15 +397,15 @@ export default function OnboardingScreen() {
                 onChangeText={(t) => setReferralCode(t.toUpperCase())}
                 placeholder="Referred by a Kanchuki salesperson?"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 tracking-wide"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 autoCapitalize="characters"
                 maxLength={20}
               />
             </View>
 
             <GradientBorderCard
-              fill="#F3F5F8"
-              colors={['#E2E7ED00', '#4E617866', '#E2E7ED00']}
+              fill={colors.sand[100]}
+              colors={[`${colors.sand[200]}00`, `${colors.ink[400]}66`, `${colors.sand[200]}00`]}
               style={{ marginTop: 24 }}
             >
               <View className="p-4">
@@ -435,7 +437,7 @@ export default function OnboardingScreen() {
                 }}
                 placeholder="e.g. Surat, Jaipur, Ludhiana"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 autoFocus
                 maxLength={100}
               />
@@ -529,7 +531,7 @@ export default function OnboardingScreen() {
                 placeholder="e.g. 1500"
                 keyboardType="number-pad"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 maxLength={6}
               />
               <Text className="text-xs text-sand-400 mt-2 px-1">
@@ -553,7 +555,7 @@ export default function OnboardingScreen() {
                 onChangeText={(t) => setGstin(t.toUpperCase())}
                 placeholder="15-digit GSTIN"
                 className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 font-mono tracking-widest"
-                placeholderTextColor={COLORS.sand[400]}
+                placeholderTextColor={colors.sand[400]}
                 autoCapitalize="characters"
                 maxLength={15}
                 autoFocus
@@ -564,8 +566,8 @@ export default function OnboardingScreen() {
             </View>
 
             <GradientBorderCard
-              fill={COLORS.turmeric[50]}
-              colors={['#EFDECE00', '#946A4B66', '#EFDECE00']}
+              fill={colors.turmeric[50]}
+              colors={[`${colors.turmeric[100]}00`, `${colors.rust[600]}66`, `${colors.turmeric[100]}00`]}
               style={{ marginTop: 24 }}
             >
               <View className="p-4">
@@ -646,7 +648,7 @@ export default function OnboardingScreen() {
           <View className="pt-2 items-center">
             {/* Big celebration emoji — signature gradient moment */}
             <LinearGradient
-              colors={['#4E6178', '#121A27']}
+              colors={[colors.ink[400], colors.ink[800]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{ width: 96, height: 96, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}

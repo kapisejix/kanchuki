@@ -27,7 +27,7 @@ const PLAN_FEATURES: Record<string, string[]> = {
 }
 
 export default function BillingScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [period, setPeriod] = useState<'monthly' | 'annual'>('monthly')
   const [buyingResource, setBuyingResource] = useState<string | null>(null)
@@ -126,7 +126,7 @@ export default function BillingScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={COLORS.sand[700]} />
+          <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">Plans & Billing</Text>
       </View>
@@ -140,11 +140,11 @@ export default function BillingScreen() {
           }`}>
             <View className="flex-row items-center gap-2 mb-1">
               {isCancelled ? (
-                <XCircle size={18} color={COLORS.rust[600]} />
+                <XCircle size={18} color={colors.rust[600]} />
               ) : isActive ? (
-                <CreditCard size={18} color={COLORS.turmeric[600]} />
+                <CreditCard size={18} color={colors.turmeric[600]} />
               ) : (
-                <ShieldAlert size={18} color={COLORS.turmeric[600]} />
+                <ShieldAlert size={18} color={colors.turmeric[600]} />
               )}
               <Text className={`font-bold text-sm ${
                 isCancelled ? 'text-rust-700' :
@@ -224,7 +224,7 @@ export default function BillingScreen() {
               <View className="mt-3 gap-2">
                 {(PLAN_FEATURES[p.plan] ?? []).map((f) => (
                   <View key={f} className="flex-row items-center gap-2">
-                    <Check size={15} color={COLORS.turmeric[500]} />
+                    <Check size={15} color={colors.turmeric[500]} />
                     <Text className="text-sm text-sand-600">{f}</Text>
                   </View>
                 ))}

@@ -19,7 +19,7 @@ type Slot = 'front' | 'back'
 type Step = 'height' | 'camera' | 'preview' | 'uploading' | 'done'
 
 export default function MeasurementCaptureScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
   const queryClient = useQueryClient()
@@ -115,7 +115,7 @@ export default function MeasurementCaptureScreen() {
     return (
       <View className="flex-1 bg-ink-50 px-6" style={{ paddingTop: insets.top + 24 }}>
         <AnimatedPressable onPress={() => router.back()} className="mb-6" accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={COLORS.sand[700]} />
+          <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
 
         <View className="items-center mb-8">
@@ -139,7 +139,7 @@ export default function MeasurementCaptureScreen() {
             placeholder="e.g. 162"
             keyboardType="numeric"
             className="text-lg font-bold text-sand-900"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
           />
         </View>
 
@@ -346,7 +346,7 @@ export default function MeasurementCaptureScreen() {
   return (
     <View className="flex-1 bg-ink-50 items-center justify-center px-8">
       <View className="w-16 h-16 bg-turmeric-100 rounded-full items-center justify-center mb-4">
-        <Check size={28} color={COLORS.turmeric[600]} />
+        <Check size={28} color={colors.turmeric[600]} />
       </View>
       <Text className="text-lg font-bold text-sand-900 text-center">Measurement queued</Text>
       <Text className="text-sm text-sand-500 text-center mt-1">

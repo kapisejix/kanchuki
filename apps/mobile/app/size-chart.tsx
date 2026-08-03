@@ -34,7 +34,7 @@ function emptyRow(sortOrder: number): SizeChartRow {
 }
 
 export default function SizeChartScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [category, setCategory] = useState<SizeChartCategory>('UPPER')
@@ -86,7 +86,7 @@ export default function SizeChartScreen() {
     <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top }}>
       <View className="flex-row items-center px-4 py-3 border-b border-sand-100 bg-white">
         <AnimatedPressable onPress={() => router.back()} className="mr-3" accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={22} color={COLORS.sand[700]} />
+          <ChevronLeft size={22} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-lg font-bold text-sand-900">Size Charts</Text>
       </View>
@@ -124,7 +124,7 @@ export default function SizeChartScreen() {
                   value={row.size_label}
                   onChangeText={(v) => updateRow(index, 'size_label', v)}
                   placeholder="Size label (e.g. M)"
-                  placeholderTextColor={COLORS.sand[400]}
+                  placeholderTextColor={colors.sand[400]}
                   className="text-base font-bold text-sand-900 flex-1"
                 />
                 <AnimatedPressable
@@ -132,7 +132,7 @@ export default function SizeChartScreen() {
                   accessibilityLabel="Remove size row"
                   accessibilityRole="button"
                 >
-                  <Trash2 size={18} color={COLORS.rust[600]} />
+                  <Trash2 size={18} color={colors.rust[600]} />
                 </AnimatedPressable>
               </View>
 
@@ -143,7 +143,7 @@ export default function SizeChartScreen() {
                     value={row[`${axis.key}_min_cm` as keyof SizeChartRow]?.toString() ?? ''}
                     onChangeText={(v) => updateRow(index, `${axis.key}_min_cm` as keyof SizeChartRow, v)}
                     placeholder="min cm"
-                    placeholderTextColor={COLORS.sand[400]}
+                    placeholderTextColor={colors.sand[400]}
                     keyboardType="numeric"
                     className="flex-1 bg-sand-50 rounded-lg px-3 py-2 text-sm text-sand-900"
                   />
@@ -152,7 +152,7 @@ export default function SizeChartScreen() {
                     value={row[`${axis.key}_max_cm` as keyof SizeChartRow]?.toString() ?? ''}
                     onChangeText={(v) => updateRow(index, `${axis.key}_max_cm` as keyof SizeChartRow, v)}
                     placeholder="max cm"
-                    placeholderTextColor={COLORS.sand[400]}
+                    placeholderTextColor={colors.sand[400]}
                     keyboardType="numeric"
                     className="flex-1 bg-sand-50 rounded-lg px-3 py-2 text-sm text-sand-900"
                   />

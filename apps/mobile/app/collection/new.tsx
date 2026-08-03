@@ -33,7 +33,7 @@ const EXPIRY_OPTIONS = [7, 30, 90] as const
 
 export default function NewCollectionScreen() {
   const columns = useGridColumns()
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const [title, setTitle] = useState('')
   const [expiresDays, setExpiresDays] = useState<number>(30)
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -78,7 +78,7 @@ export default function NewCollectionScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={COLORS.sand[700]} />
+          <ChevronLeft size={24} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900 ml-3">New Collection</Text>
       </View>
@@ -88,7 +88,7 @@ export default function NewCollectionScreen() {
             value={title}
             onChangeText={setTitle}
             placeholder="Collection title (e.g. Wedding Specials)"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             className="bg-sand-100 rounded-xl px-3 py-2.5 text-sm text-sand-900"
             maxLength={200}
           />

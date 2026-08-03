@@ -29,7 +29,7 @@ type RetailerMe = {
 }
 
 export default function HomeScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
@@ -109,26 +109,26 @@ export default function HomeScreen() {
             onPress={() => router.push('/analytics')}
           />
           <StatCard
-            icon={<MessageCircle size={16} color={COLORS.turmeric[500]} />}
+            icon={<MessageCircle size={16} color={colors.turmeric[500]} />}
             label="Enquiries"
             value={stats?.enquiries_this_month ?? 0}
-            color={COLORS.turmeric[500]}
+            color={colors.turmeric[500]}
             onPress={() => router.push('/analytics')}
           />
         </View>
         <View className="flex-row gap-3 mt-3">
           <StatCard
-            icon={<Package size={16} color={COLORS.turmeric[500]} />}
+            icon={<Package size={16} color={colors.turmeric[500]} />}
             label="Products"
             value={stats?.total_products_available ?? 0}
-            color={COLORS.turmeric[500]}
+            color={colors.turmeric[500]}
             onPress={() => router.push('/catalog')}
           />
           <StatCard
-            icon={<Users size={16} color="#E3262D" />}
+            icon={<Users size={16} color={colors.danger} />}
             label="Customers"
             value={stats?.total_customers ?? 0}
-            color="#E3262D"
+            color={colors.danger}
             onPress={() => router.push('/customers')}
           />
         </View>
@@ -168,56 +168,56 @@ export default function HomeScreen() {
             label="Add Product"
             sublabel="Photo + AI tagging"
             onPress={() => router.push('/product/add')}
-            accent="#FFF1F1"
+            accent={colors.ink[50]}
           />
           <QuickAction
             icon={<FolderKanban size={22} color={primaryColor} />}
             label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
             sublabel="Add Category"
             onPress={() => router.push('/category')}
-            accent="#FFF1F1"
+            accent={colors.ink[50]}
           />
           <QuickAction
-            icon={<Users size={22} color={COLORS.turmeric[500]} />}
+            icon={<Users size={22} color={colors.turmeric[500]} />}
             label="Add Customer"
             sublabel="Save preferences"
             onPress={() => router.push('/customer/add')}
-            accent={COLORS.turmeric[50]}
+            accent={colors.turmeric[50]}
           />
           <QuickAction
-            icon={<Link2 size={22} color="#E3262D" />}
+            icon={<Link2 size={22} color={colors.danger} />}
             label="New Collection"
             sublabel="Share on WhatsApp"
             onPress={() => router.push('/collection/new')}
-            accent="#FFF1F1"
+            accent={colors.dangerSurface}
           />
           <QuickAction
-            icon={<ShoppingBag size={22} color={COLORS.turmeric[500]} />}
+            icon={<ShoppingBag size={22} color={colors.turmeric[500]} />}
             label="Orders"
             sublabel={`${pendingOrders} pending · Manage fulfillment`}
             onPress={() => router.push('/(tabs)/orders')}
-            accent={COLORS.turmeric[50]}
+            accent={colors.turmeric[50]}
           />
           <QuickAction
-            icon={<Ruler size={22} color="#E3262D" />}
+            icon={<Ruler size={22} color={colors.danger} />}
             label="Size Charts"
             sublabel="S–10XL per category"
             onPress={() => router.push('/size-chart')}
-            accent="#FFF1F1"
+            accent={colors.dangerSurface}
           />
           <QuickAction
-            icon={<QrCode size={22} color={COLORS.rust[600]} />}
+            icon={<QrCode size={22} color={colors.rust[600]} />}
             label="Store QR Code"
             sublabel="Scan to view your catalog"
             onPress={() => router.push('/store-profile')}
-            accent={COLORS.rust[50]}
+            accent={colors.rust[50]}
           />
           <QuickAction
-            icon={<Settings size={22} color={COLORS.sand[600]} />}
+            icon={<Settings size={22} color={colors.sand[600]} />}
             label="Settings"
             sublabel="Profile · Billing · Staff"
             onPress={() => router.push('/settings')}
-            accent={COLORS.sand[100]}
+            accent={colors.sand[100]}
           />
         </View>
       </View>

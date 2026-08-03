@@ -43,7 +43,7 @@ type Product = {
 }
 
 export default function InStoreTryOnScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { productId: preselectedProductId } = useLocalSearchParams<{ productId?: string }>()
   const [step, setStep] = useState<Step>(preselectedProductId ? 'capture' : 'select')
@@ -279,7 +279,7 @@ export default function InStoreTryOnScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={COLORS.sand[700]} />
+          <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">
           {step === 'select' && 'Select Product'}

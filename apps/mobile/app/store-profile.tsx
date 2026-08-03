@@ -17,7 +17,7 @@ type RetailerMe = { storefront_collection_id: string | null }
 type CollectionRow = { id: string; title: string; status: string; product_count: number }
 
 export default function StoreProfileScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const qrRef = useRef<any>(null)
@@ -81,7 +81,7 @@ export default function StoreProfileScreen() {
     <ScrollView className="flex-1 bg-ink-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
       <View className="flex-row items-center justify-between px-4 mb-4">
         <AnimatedPressable onPress={() => router.back()} className="w-10 h-10 items-center justify-center" accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={COLORS.sand[700]} />
+          <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">Store QR Code</Text>
         <View className="w-10" />

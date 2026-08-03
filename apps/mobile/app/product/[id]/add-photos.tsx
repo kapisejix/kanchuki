@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
 import { View, Text, ActivityIndicator, ScrollView, Alert } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { CameraView, useCameraPermissions } from 'expo-camera'

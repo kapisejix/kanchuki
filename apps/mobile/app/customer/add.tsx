@@ -7,10 +7,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, MapPin } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
+import { useTheme } from '../../src/lib/theme'
 import { GradientButton } from '../../src/components/GradientButton'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function AddCustomerScreen() {
+  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [name, setName] = useState('')
@@ -53,7 +55,7 @@ export default function AddCustomerScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={COLORS.sand[700]} />
+          <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">New Customer</Text>
         <GradientButton label="Save" onPress={() => void handleSave()} loading={saving} />
@@ -66,7 +68,7 @@ export default function AddCustomerScreen() {
             value={name}
             onChangeText={setName}
             placeholder="Customer name"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             className="text-base text-sand-900"
             autoFocus
           />
@@ -78,7 +80,7 @@ export default function AddCustomerScreen() {
             value={phone}
             onChangeText={setPhone}
             placeholder="10-digit mobile number"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             keyboardType="phone-pad"
             className="text-base text-sand-900"
           />
@@ -90,7 +92,7 @@ export default function AddCustomerScreen() {
             value={email}
             onChangeText={setEmail}
             placeholder="email@example.com"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -101,14 +103,14 @@ export default function AddCustomerScreen() {
         {/* Address section */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center gap-1.5 mb-3">
-            <MapPin size={14} color={COLORS.sand[600]} />
+            <MapPin size={14} color={colors.sand[600]} />
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">Address (optional)</Text>
           </View>
           <TextInput
             value={addressLine1}
             onChangeText={setAddressLine1}
             placeholder="Shop/Home address"
-            placeholderTextColor={COLORS.sand[400]}
+            placeholderTextColor={colors.sand[400]}
             className="text-sm text-sand-900 mb-3 bg-sand-50 rounded-xl px-3 py-2"
           />
           <View className="flex-row gap-3">
@@ -116,14 +118,14 @@ export default function AddCustomerScreen() {
               value={city}
               onChangeText={setCity}
               placeholder="City"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
               className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
             />
             <TextInput
               value={state}
               onChangeText={setState}
               placeholder="State"
-              placeholderTextColor={COLORS.sand[400]}
+              placeholderTextColor={colors.sand[400]}
               className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
             />
           </View>

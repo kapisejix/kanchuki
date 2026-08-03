@@ -27,7 +27,7 @@ function readyForSession(ticket: SupportTicket, myId: string): boolean {
 }
 
 export default function CatalogTicketsScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [starting, setStarting] = useState<string | null>(null)
 
@@ -78,7 +78,7 @@ export default function CatalogTicketsScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={COLORS.sand[700]} />
+            <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Catalog Upload Jobs</Text>
         </View>
@@ -94,7 +94,7 @@ export default function CatalogTicketsScreen() {
         >
           {tickets.length === 0 ? (
             <View className="items-center py-16">
-              <Package size={40} color={COLORS.sand[300]} />
+              <Package size={40} color={colors.sand[300]} />
               <Text className="text-sand-400 text-sm mt-4 text-center px-8">
                 No confirmed catalog upload visits assigned to you right now.
               </Text>
@@ -110,7 +110,7 @@ export default function CatalogTicketsScreen() {
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-1 mb-1">
-                    <MapPin size={12} color={COLORS.sand[400]} />
+                    <MapPin size={12} color={colors.sand[400]} />
                     <Text className="text-xs text-sand-400">{t.retailer.city}</Text>
                   </View>
                   <Text className="text-xs text-sand-500 mb-3">

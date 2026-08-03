@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { COLORS } from '@kanchuki/shared'
 import { RefreshControl, ScrollView, View } from 'react-native'
 import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated'
 import { useReduceMotion } from '../hooks/useReduceMotion'
@@ -110,13 +111,13 @@ export function HomeScreenSkeleton() {
       {/* Hero banner */}
       <View className="bg-ink-600 px-4 pt-4 pb-8 rounded-b-3xl">
         <View className="flex-row items-center gap-3">
-          <Skeleton className="w-12 h-12 rounded-2xl" style={{ backgroundColor: '#ffffff30' }} />
+          <Skeleton className="w-12 h-12 rounded-2xl" style={{ backgroundColor: `${COLORS.cotton}30` }} />
           <View className="gap-1.5">
-            <Skeleton className="h-3 w-24 rounded-md" style={{ backgroundColor: '#ffffff30' }} />
-            <Skeleton className="h-5 w-40 rounded-md" style={{ backgroundColor: '#ffffff30' }} />
+            <Skeleton className="h-3 w-24 rounded-md" style={{ backgroundColor: `${COLORS.cotton}30` }} />
+            <Skeleton className="h-5 w-40 rounded-md" style={{ backgroundColor: `${COLORS.cotton}30` }} />
           </View>
         </View>
-        <Skeleton className="h-6 w-52 rounded-lg mt-4" style={{ backgroundColor: '#ffffff30' }} />
+        <Skeleton className="h-6 w-52 rounded-lg mt-4" style={{ backgroundColor: `${COLORS.cotton}30` }} />
       </View>
 
       {/* Stats row */}

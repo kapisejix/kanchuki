@@ -45,7 +45,7 @@ type ReviewItem = {
 }
 
 export default function BulkOnboardScreen() {
-  const { primaryColor } = useTheme()
+  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const params = useLocalSearchParams<{ target?: string }>()
@@ -230,7 +230,7 @@ export default function BulkOnboardScreen() {
 
       {error && (
         <View className="bg-rust-50 border border-rust-200 rounded-2xl p-4 mt-4 flex-row items-start gap-3">
-          <AlertTriangle size={18} color={COLORS.rust[500]} />
+          <AlertTriangle size={18} color={colors.rust[500]} />
           <Text className="text-xs text-rust-600 flex-1">{error}</Text>
         </View>
       )}
@@ -298,7 +298,7 @@ export default function BulkOnboardScreen() {
         onPress={() => router.push('/product/catalog-import')}
         className="flex-row items-center justify-center gap-2 mt-4 py-2"
       >
-        <FileText size={16} color={COLORS.sand[600]} />
+        <FileText size={16} color={colors.sand[600]} />
         <Text className="text-sand-500 text-sm">Restocking from a supplier PDF instead?</Text>
       </AnimatedPressable>
     </ScrollView>
@@ -352,7 +352,7 @@ export default function BulkOnboardScreen() {
                 </AnimatedPressable>
                 {item.original.is_duplicate && (
                   <View className="flex-row items-center gap-1 mt-1">
-                    <AlertTriangle size={12} color={COLORS.turmeric[600]} />
+                    <AlertTriangle size={12} color={colors.turmeric[600]} />
                     <Text className="text-xs text-turmeric-600">Looks already catalogued</Text>
                   </View>
                 )}
@@ -397,7 +397,7 @@ export default function BulkOnboardScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={COLORS.sand[700]} />
+          <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">{stepTitles[step]}</Text>
         <View className="w-6" />
