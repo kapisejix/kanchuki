@@ -17,6 +17,7 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
+import { adminAuthPreHandler } from './admin.js';
 
 // ─── Rate Limit Config (in-memory with DB persistence) ─────────────
 // Stored as a JSONB row in a new `admin_settings` key-value table.
@@ -152,8 +153,10 @@ async function saveSetting(key: string, value: Record<string, unknown>): Promise
 // ─── Route Registration ──────────────────────────────────────────
 
 export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
-  // Also require admin auth (same hook pattern as admin.ts — this plugin
-  // is registered under the same prefix, so the admin.ts preHandler applies).
+  // Fastify preHandler hooks don't cross sibling-plugin boundaries even
+  // under the same prefix — this plugin needs its own copy of admin.ts's
+  // auth hook (IP allowlist + key/session + CSRF), not a comment assuming it.
+  server.addHook('preHandler', adminAuthPreHandler);
 
   // ═══════════════════════════════════════════════════════════════
   //  Rate Limit Live Tuning

@@ -303,7 +303,11 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
       const { productId } = request.params as { productId: string };
 
       const p = await prisma.product.findFirst({
-        where: { id: productId, deleted_at: null, retailer: { deleted_at: null } },
+        where: {
+          id: productId,
+          deleted_at: null,
+          retailer: { deleted_at: null, is_suspended: false },
+        },
         include: {
           photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] },
           spin_frames: { orderBy: { frame_index: 'asc' } },
@@ -712,7 +716,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
       const { productId } = request.params as { productId: string };
 
       const product = await prisma.product.findFirst({
-        where: { id: productId, deleted_at: null },
+        where: { id: productId, deleted_at: null, retailer: { is_suspended: false } },
         select: { category: true, retailer_id: true },
       });
       if (!product || !product.category) return { data: [] };

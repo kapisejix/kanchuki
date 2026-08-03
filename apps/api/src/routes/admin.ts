@@ -99,46 +99,56 @@ export function isIpAllowlisted(ip: string | undefined): boolean {
   return raw.split(',').some((entry) => ipInCidr(ip, entry.trim()));
 }
 
+// Shared admin preHandler (IP allowlist + key/session + CSRF). Fastify hooks
+// don't cross sibling plugin boundaries, so every plugin registered under
+// /v1/admin must install this itself — see adminSettingsRoutes in
+// admin-settings.ts, which previously assumed this hook applied and was
+// fully unauthenticated as a result.
+export async function adminAuthPreHandler(
+  request: import('fastify').FastifyRequest,
+  _reply: import('fastify').FastifyReply,
+): Promise<void> {
+  // IP allowlist check (SECURITY §8) — applies to ALL admin routes including login
+  // to prevent reconnaissance from non-allowlisted IPs.
+  if (!isIpAllowlisted(request.ip)) throw forbidden('Access denied — IP not allowlisted');
+
+  // Skip auth for login endpoint — use request.url (raw URL) for reliability
+  if (request.url === '/v1/admin/login') return;
+
+  const key = request.headers['x-admin-key'] as string | undefined;
+  if (!key || !(validAdminKey(key) || (await verifyAdminSession(key)))) {
+    throw forbidden('Invalid admin key');
+  }
+
+  // CSRF protection (SECURITY §4):
+  // The admin uses header-based auth (x-admin-key), which is inherently
+  // CSRF-safe because custom headers cannot be sent cross-origin without
+  // CORS preflight. As defense-in-depth, we also require a SameSite cookie
+  // CSRF token on mutating requests (POST, PUT, PATCH, DELETE).
+  //
+  // GET/HEAD/OPTIONS are idempotent — no CSRF risk.
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method.toUpperCase())) {
+    const csrfCookie = request.cookies['csrf-token'];
+    const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
+
+    if (!csrfCookie || !csrfHeader) {
+      throw forbidden(
+        'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
+      );
+    }
+    // Timing-safe comparison (S-004) — prevent oracle attacks via response-time variance
+    const a = Buffer.from(csrfCookie);
+    const b = Buffer.from(csrfHeader);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      throw forbidden(
+        'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
+      );
+    }
+  }
+}
+
 export const adminRoutes: FastifyPluginAsync = async (server) => {
-  server.addHook('preHandler', async (request, _reply) => {
-    // IP allowlist check (SECURITY §8) — applies to ALL admin routes including login
-    // to prevent reconnaissance from non-allowlisted IPs.
-    if (!isIpAllowlisted(request.ip)) throw forbidden('Access denied — IP not allowlisted');
-
-    // Skip auth for login endpoint — use request.url (raw URL) for reliability
-    if (request.url === '/v1/admin/login') return;
-
-    const key = request.headers['x-admin-key'] as string | undefined;
-    if (!key || !(validAdminKey(key) || (await verifyAdminSession(key)))) {
-      throw forbidden('Invalid admin key');
-    }
-
-    // CSRF protection (SECURITY §4):
-    // The admin uses header-based auth (x-admin-key), which is inherently
-    // CSRF-safe because custom headers cannot be sent cross-origin without
-    // CORS preflight. As defense-in-depth, we also require a SameSite cookie
-    // CSRF token on mutating requests (POST, PUT, PATCH, DELETE).
-    //
-    // GET/HEAD/OPTIONS are idempotent — no CSRF risk.
-    if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method.toUpperCase())) {
-      const csrfCookie = request.cookies['csrf-token'];
-      const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
-
-      if (!csrfCookie || !csrfHeader) {
-        throw forbidden(
-          'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
-        );
-      }
-      // Timing-safe comparison (S-004) — prevent oracle attacks via response-time variance
-      const a = Buffer.from(csrfCookie);
-      const b = Buffer.from(csrfHeader);
-      if (a.length !== b.length || !timingSafeEqual(a, b)) {
-        throw forbidden(
-          'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
-        );
-      }
-    }
-  });
+  server.addHook('preHandler', adminAuthPreHandler);
 
   // ─── POST /admin/login ───────────────────────────────────────────
   // Authenticate with email + password (scrypt) + optional TOTP.
@@ -1055,9 +1065,27 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── DELETE /admin/catalog-upload-tiers/:id ──────────────────────
   server.delete<{ Params: { id: string } }>('/catalog-upload-tiers/:id', async (request, reply) => {
-    await prisma.catalogUploadPriceTier
+    const tier = await prisma.catalogUploadPriceTier
       .delete({ where: { id: request.params.id } })
       .catch(() => null);
+
+    if (tier) {
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          action: 'DELETE',
+          resource_type: 'CatalogUploadPriceTier',
+          resource_id: tier.id,
+          metadata: {
+            min_items: tier.min_items,
+            max_items: tier.max_items,
+            price_inr: tier.price_inr,
+          },
+          ip_address: request.ip,
+        },
+      });
+    }
+
     return reply.status(204).send();
   });
 
@@ -1712,9 +1740,16 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       const timerPromise = new Promise<never>((_, reject) => {
         timer = setTimeout(() => reject(new Error('Query timed out after 30 seconds')), 30000);
       });
-      const result = (await Promise.race([replica.$queryRawUnsafe(sql), timerPromise]).finally(() =>
-        clearTimeout(timer),
-      )) as unknown[];
+      // SET TRANSACTION READ ONLY makes Postgres itself reject any write —
+      // including writable CTEs (`WITH x AS (DELETE ... RETURNING *) SELECT ...`)
+      // that slip past the keyword check above.
+      const result = (await Promise.race([
+        replica.$transaction(async (tx) => {
+          await tx.$executeRawUnsafe('SET TRANSACTION READ ONLY');
+          return tx.$queryRawUnsafe(sql);
+        }),
+        timerPromise,
+      ]).finally(() => clearTimeout(timer))) as unknown[];
 
       rows = Array.isArray(result) ? result : [result];
     } catch (err) {

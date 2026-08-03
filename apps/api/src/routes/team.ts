@@ -462,6 +462,11 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       if (!target) throw notFound('Team member');
       const shared = target.territories.some((t) => tm.territoryIds.includes(t.territory_id));
       if (!shared || !MANAGER_ROLES.includes(tm.role)) throw forbidden('Cannot edit this member');
+
+      // Managers may only assign territories within their own scope.
+      if (body.data.territory_ids?.some((id) => !tm.territoryIds.includes(id))) {
+        throw forbidden('Cannot assign territories outside your own scope');
+      }
     }
 
     const { territory_ids, ...rest } = body.data;

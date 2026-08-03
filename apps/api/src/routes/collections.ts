@@ -211,10 +211,13 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!collection) throw notFound('Collection');
 
-    const updated = await prisma.collectionEnquiry.update({
-      where: { id: enquiryId },
+    const { count } = await prisma.collectionEnquiry.updateMany({
+      where: { id: enquiryId, collection_id: id },
       data: { status: body.data.status },
     });
+    if (count === 0) throw notFound('Enquiry');
+
+    const updated = await prisma.collectionEnquiry.findUnique({ where: { id: enquiryId } });
     return { data: updated };
   });
 
