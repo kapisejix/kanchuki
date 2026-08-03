@@ -104,6 +104,13 @@ vi.mock('@kanchuki/db', () => ({
   listActiveAiProviders: vi.fn(async () => SEEDED_ROWS),
 }))
 
+// ssrfSafeFetch resolves the hostname before calling fetch — stub it to a
+// public IP so the cdn.example.com fixture below doesn't hit real DNS.
+vi.mock('node:dns/promises', () => {
+  const lookup = vi.fn().mockResolvedValue([{ address: '93.184.216.34', family: 4 }])
+  return { lookup, default: { lookup } }
+})
+
 const { tagProductImages, detectColor } = await import('./tagger.js')
 const { __resetProviderHealth } = await import('./providers.js')
 

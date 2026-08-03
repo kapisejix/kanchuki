@@ -6,6 +6,7 @@ import {
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { getSecret } from '@kanchuki/db'
+import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 
 // F-012: access key pair resolves through getSecret() (DB-first, .env
 // fallback) via an async credentials provider — the AWS SDK's documented
@@ -91,8 +92,8 @@ export async function copyUrlToR2(
   key: string,
   contentType: string,
 ): Promise<void> {
-  const res = await fetch(sourceUrl)
+  const res = await ssrfSafeFetch(sourceUrl)
   if (!res.ok) throw new Error(`Failed to fetch ${sourceUrl}: ${res.status}`)
-  const buffer = Buffer.from(await res.arrayBuffer())
+  const buffer = await readCappedBuffer(res)
   await uploadBuffer(key, buffer, contentType)
 }

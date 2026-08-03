@@ -1,6 +1,7 @@
 import { getSecret } from '@kanchuki/db'
 import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
 import { uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
+import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 
 // ─── Configuration ─────────────────────────────────────────────
 // Fashion V-Tone v1.5 (Apache 2.0, maskless, CPU-capable)
@@ -142,10 +143,9 @@ async function triggerVTON(request: TryOnRequest): Promise<TryOnResult> {
 // ─── Download helper ──────────────────────────────────────────
 
 async function downloadBufferFromUrl(url: string): Promise<Buffer> {
-  const res = await fetch(url)
+  const res = await ssrfSafeFetch(url)
   if (!res.ok) throw new Error(`Failed to fetch result image: ${res.status}`)
-  const arrayBuffer = await res.arrayBuffer()
-  return Buffer.from(arrayBuffer)
+  return readCappedBuffer(res)
 }
 
 // ─── Public API ────────────────────────────────────────────────

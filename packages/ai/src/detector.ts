@@ -6,6 +6,7 @@ import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
 import { tagProductImageUrl, type TaggingCallOpts } from './tagger.js'
 import { uploadBuffer, publicUrl } from './r2.js'
 import { computePhash } from './phash.js'
+import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 
 // Lazy import: sharp's native dlopen can crash on Windows+pnpm. Deferring the
 // import to first-use avoids the crash when loading modules that merely import
@@ -121,10 +122,10 @@ export async function detectItems(
   imageUrl: string,
   opts?: TaggingCallOpts,
 ): Promise<DetectedItem[]> {
-  const res = await fetch(imageUrl)
+  const res = await ssrfSafeFetch(imageUrl)
   if (!res.ok) throw new Error(`Failed to fetch image for detection: ${res.status}`)
 
-  const buffer = Buffer.from(await res.arrayBuffer())
+  const buffer = await readCappedBuffer(res)
   const contentType = res.headers.get('content-type') ?? 'image/jpeg'
   const mediaType = (
     contentType.startsWith('image/png') ? 'image/png'
@@ -225,9 +226,9 @@ export async function getImageDimensions(imageBuffer: Buffer): Promise<{ width: 
  * Fetch an image buffer from a URL.
  */
 export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
-  const res = await fetch(imageUrl)
+  const res = await ssrfSafeFetch(imageUrl)
   if (!res.ok) throw new Error(`Failed to fetch image: ${res.status}`)
-  return Buffer.from(await res.arrayBuffer())
+  return readCappedBuffer(res)
 }
 
 /**

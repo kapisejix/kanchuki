@@ -2,6 +2,7 @@ import { createHash } from 'crypto'
 import type { AiTagResult } from '@kanchuki/shared'
 import { runVisionAsk, runVisionExtract } from './providers.js'
 import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
+import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 
 const SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion with deep knowledge of:
 - Indian apparel categories (unstitched suits, kurtis, sarees, lehengas, sherwanis, etc.)
@@ -194,7 +195,7 @@ export async function tagProductImages(
 }
 
 async function fetchTaggableImage(imageUrl: string): Promise<TaggableImage> {
-  const res = await fetch(imageUrl)
+  const res = await ssrfSafeFetch(imageUrl)
   if (!res.ok) throw new Error(`Failed to fetch image for tagging: ${res.status}`)
 
   const contentType = res.headers.get('content-type') ?? 'image/jpeg'
@@ -204,7 +205,7 @@ async function fetchTaggableImage(imageUrl: string): Promise<TaggableImage> {
     : 'image/jpeg'
   ) as 'image/jpeg' | 'image/png' | 'image/webp'
 
-  return { buffer: Buffer.from(await res.arrayBuffer()), mediaType }
+  return { buffer: await readCappedBuffer(res), mediaType }
 }
 
 /** Tag via URL(s) — fetches image(s) and uses base64 (SDK v0.30 lacks url source type) */
