@@ -65,6 +65,8 @@ vi.mock('../jobs/index.js', () => ({
   addTaggingJob: vi.fn(),
 }));
 
+import { addTaggingJob } from '../jobs/index.js';
+
 vi.mock('../lib/quota.js', () => ({
   checkQuota: vi.fn(),
   incrementUsage: vi.fn(),
@@ -105,6 +107,53 @@ describe('GET /products/deleted', () => {
     const res = await app.inject({ method: 'GET', url: '/v1/products/deleted' });
     expect(res.statusCode).toBe(403);
     expect(mockProductFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('POST /products/:id/retag', () => {
+  it('re-queues the tagging job for the primary photo and clears the previous outcome', async () => {
+    (addTaggingJob as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+    mockProductFindFirst.mockResolvedValue({
+      id: 'p1',
+      photos: [
+        { id: 'ph1', url: 'https://cdn.example.com/p1.jpg', r2_key: 'k1', is_primary: true },
+      ],
+    });
+    mockProductUpdate.mockResolvedValue({ id: 'p1', ai_tagged: false, ai_tag_error: null });
+    const app = await buildApp(null);
+    const res = await app.inject({ method: 'POST', url: '/v1/products/p1/retag' });
+    expect(res.statusCode).toBe(202);
+    expect(res.json().data).toEqual({ retag_queued: true });
+    expect(mockProductUpdate).toHaveBeenCalledWith({
+      where: { id: 'p1' },
+      data: { ai_tagged: false, ai_tag_error: null },
+    });
+    expect(addTaggingJob).toHaveBeenCalledWith({
+      product_id: 'p1',
+      retailer_id: RETAILER_ID,
+      photo_url: 'https://cdn.example.com/p1.jpg',
+      r2_key: 'k1',
+      auto_cleanup: false,
+    });
+    await app.close();
+  });
+
+  it('404s when the product does not exist', async () => {
+    mockProductFindFirst.mockResolvedValue(null);
+    const app = await buildApp(null);
+    const res = await app.inject({ method: 'POST', url: '/v1/products/missing/retag' });
+    expect(res.statusCode).toBe(404);
+    expect(addTaggingJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('422s when the product has no primary photo to tag', async () => {
+    mockProductFindFirst.mockResolvedValue({ id: 'p1', photos: [] });
+    const app = await buildApp(null);
+    const res = await app.inject({ method: 'POST', url: '/v1/products/p1/retag' });
+    expect(res.statusCode).toBe(422);
+    expect(addTaggingJob).not.toHaveBeenCalled();
     await app.close();
   });
 });

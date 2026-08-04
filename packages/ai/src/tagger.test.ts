@@ -132,6 +132,65 @@ describe('tagProductImages', () => {
     expect(result.embellishments).toEqual([])
     expect(result.is_catalog_image).toBe(false)
   })
+
+  it('derives a product_name fallback from color + category when the model omits it', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({
+        category: 'Kurti',
+        primary_color: 'Pink',
+        occasions: ['Casual'],
+        search_tags: ['pink kurti'],
+        is_catalog_image: false,
+        // product_name/short_description/subtype deliberately missing
+      }),
+    )
+
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
+    expect(result.product_name).toBe('Pink Kurti')
+    expect(result.short_description).toBe('Pink. Ideal for casual.')
+    expect(result.subtype).toBeNull() // no forced fallback — UI uses category
+  })
+
+  it('keeps a model-provided product_name/description and never blanks them', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({
+        category: 'Lehenga',
+        subtype: 'Lehenga Skirt',
+        primary_color: 'Peach',
+        fabric_estimate: 'Organza',
+        pattern: 'Embroidered',
+        occasions: ['Wedding'],
+        search_tags: ['peach lehenga'],
+        is_catalog_image: false,
+        product_name: 'Peach Floral Lehenga Skirt',
+        short_description: 'Peach organza lehenga skirt with floral embroidery, ideal for weddings.',
+      }),
+    )
+
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
+    expect(result.product_name).toBe('Peach Floral Lehenga Skirt')
+    expect(result.short_description).toBe(
+      'Peach organza lehenga skirt with floral embroidery, ideal for weddings.',
+    )
+    expect(result.subtype).toBe('Lehenga Skirt')
+  })
+
+  it('leaves name/description null only when nothing is known at all', async () => {
+    mockCreate.mockResolvedValue(
+      toolUseResponse({
+        category: null,
+        subtype: null,
+        primary_color: null,
+        occasions: [],
+        search_tags: [],
+        is_catalog_image: false,
+      }),
+    )
+
+    const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
+    expect(result.product_name).toBeNull()
+    expect(result.short_description).toBeNull()
+  })
 })
 
 describe('tagProductImageUrl(s)', () => {

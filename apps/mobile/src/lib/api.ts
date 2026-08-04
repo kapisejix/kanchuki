@@ -477,6 +477,13 @@ export const productApi = {
       body: JSON.stringify({ r2_key: r2Key }),
     }),
 
+  /** Retailer-triggered re-run of AI tagging — fills blank name/subtype/
+   * SKU/description and refreshes category/color/fabric/pattern/occasions. */
+  retag: (id: string) =>
+    request<{ data: { retag_queued: boolean } }>(`/v1/products/${id}/retag`, {
+      method: 'POST',
+    }),
+
   /** Quick color-only AI detect — pre-fills color field on "Add Color" screen */
   detectColor: (imageUrl: string) =>
     request<{ data: { color: string | null } }>('/v1/products/detect-color', {

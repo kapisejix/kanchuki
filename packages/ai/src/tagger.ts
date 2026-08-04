@@ -126,7 +126,16 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
           'a suggested occasion or styling note. Factual, no marketing fluff.',
       },
     },
-    required: ['category', 'primary_color', 'occasions', 'search_tags', 'is_catalog_image'],
+    required: [
+      'category',
+      'subtype',
+      'primary_color',
+      'occasions',
+      'search_tags',
+      'is_catalog_image',
+      'product_name',
+      'short_description',
+    ],
   },
 }
 
@@ -172,7 +181,7 @@ export async function tagProductImages(
   // Claude sometimes fills optional string fields with the literal word "null" instead of omitting them
   const nullable = (v: unknown): string | null => (v == null || v === 'null' ? null : (v as string))
 
-  return {
+  const result: AiTagResult = {
     category: nullable(raw['category']),
     subtype: nullable(raw['subtype']),
     product_type: nullable(raw['product_type']),
@@ -192,6 +201,32 @@ export async function tagProductImages(
     product_name: nullable(raw['product_name']),
     short_description: nullable(raw['short_description']),
   }
+
+  // product_name/short_description are required in the schema above, but some
+  // providers still skip string fields with null/empty. Deterministic fallbacks
+  // keep the catalog listing never-blank: name falls back to "{color} {subtype
+  // | category}" and description to a factual "fabric · pattern · color (+ a
+  // suggested occasion)" line. Subtype stays null when genuinely unknown — the
+  // UI already falls back to category for display.
+  if (!result.product_name) {
+    const fallback = [result.primary_color, result.subtype ?? result.category]
+      .filter(Boolean)
+      .join(' ')
+    result.product_name = fallback || null
+  }
+  if (!result.short_description) {
+    const detail = [result.fabric_estimate, result.pattern, result.primary_color]
+      .filter(Boolean)
+      .join(' · ')
+    const occasion = result.occasions[0]
+    result.short_description = detail
+      ? `${detail}.${occasion ? ` Ideal for ${occasion.toLowerCase()}.` : ''}`
+      : occasion
+        ? `Ideal for ${occasion.toLowerCase()}.`
+        : null
+  }
+
+  return result
 }
 
 async function fetchTaggableImage(imageUrl: string): Promise<TaggableImage> {

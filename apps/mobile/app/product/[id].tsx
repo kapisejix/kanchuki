@@ -114,6 +114,7 @@ export default function ProductDetailScreen() {
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
+  const [retagging, setRetagging] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   // Manual crop + white-background cleanup for a photo already on the
@@ -497,6 +498,25 @@ export default function ProductDetailScreen() {
       showError(err, 'Failed to save')
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Re-runs AI tagging for this product (retag endpoint → same background
+  // tag-product job). Refreshes category/color/fabric/pattern/occasions and
+  // fills any blank name/subtype/SKU/description — the job only writes those
+  // when null, so a retailer edit is never clobbered. The 3s poll picks up
+  // ai_tagged:false → "AI tagging in progress..." → completed tags re-hydrate
+  // the form (unless the retailer has unsaved edits, guarded by isDirty).
+  const handleRetag = async () => {
+    if (!product || retagging) return
+    setRetagging(true)
+    try {
+      await productApi.retag(product.id)
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      showError(err, 'Failed to start re-tagging')
+    } finally {
+      setRetagging(false)
     }
   }
 
@@ -1152,6 +1172,27 @@ export default function ProductDetailScreen() {
           <Text className="text-lg font-bold text-ink-600 mt-2">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
+
+          {/* Re-run AI tagging — fills blank name/subtype/SKU/description
+              (hidden while a tagging job is already running) */}
+          {(product.ai_tagged || product.ai_tag_error) && (
+            <AnimatedPressable
+              onPress={() => void handleRetag()}
+              disabled={retagging}
+              accessibilityLabel="Re-tag this product with AI"
+              accessibilityRole="button"
+              className="mt-3 flex-row items-center justify-center gap-1.5 bg-ink-50 rounded-xl py-2"
+            >
+              {retagging ? (
+                <ActivityIndicator size="small" color={primaryColor} />
+              ) : (
+                <Wand2 size={14} color={primaryColor} />
+              )}
+              <Text className="text-ink-700 text-xs font-semibold">
+                {retagging ? 'Re-tagging...' : 'Re-tag with AI'}
+              </Text>
+            </AnimatedPressable>
+          )}
         </View>
 
         {/* Product info — name / subtype / SKU / description (editable AI fields) */}
