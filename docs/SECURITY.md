@@ -549,9 +549,9 @@ Before each major release:
 
 ---
 
-## 11. L2 Ecommerce Checkout — Retailer Payment Credentials (F-302/F-307, planned)
+## 11. L2 Ecommerce Checkout — Retailer Payment Credentials (F-302 built, F-307 planned)
 
-**Status:** Architecture decided 2026-07-24, not yet built. Recorded here so the design is threat-modeled before implementation starts, not after.
+**Status:** Architecture decided 2026-07-24; F-302 Stage A (direct-to-retailer) shipped (`apps/api/src/routes/checkout.ts` + `checkout/` submodules). F-307/Stage B (Razorpay Route, merchant-of-record) remains not built — blocked on legal/Razorpay compliance confirmation per the F-302 entry in `CLAUDE.md`.
 
 ### 11.1 Why direct-to-retailer first (Stage A)
 

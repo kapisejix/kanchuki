@@ -75,8 +75,8 @@ Retailer sells an item in the physical shop; nothing updates the digital catalog
 - [x] **Manual backup/restore** — admin dashboard page (`/admin/database/backup`) with "Create Backup" button and restore with confirmation dialog + audit log
 - [x] **Backup status page** — `/admin/database/status` — last backup time, next backup time, status, size, retention
 - [ ] **Provision backup database** *(manual infra — need second Postgres instance)*
-- [ ] **Scheduled backup cron** *(BullMQ job or system cron — not wired yet)*
-- [ ] **Backup alerts** *(email/SMS notification on failure — not built)*
+- [x] **Scheduled backup cron** — daily (3 AM UTC) + weekly (Sunday 4 AM UTC) BullMQ jobs, `apps/api/src/jobs/index.ts`
+- [x] **Backup alerts** — `backup-database.ts` writes an `audit_log` alert entry with consecutive-failure tracking (threshold 2+)
 
 ### Month S2: Admin Query Console + Database Management — ✅ **Built**
 

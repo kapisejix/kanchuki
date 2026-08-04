@@ -43,7 +43,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - Customer mobile web page (view, favorite, enquire)
 - Basic in-store AI search ("cotton pink suits under ₹2000")
 - Product sizes (S/M/L/XL/XXL/XXXL checkboxes on add/edit product, same list shown on customer product detail page) — built 2026-07-26, see `docs/PROGRESS.md`
-- Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, planned): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — see `docs/PRO-REQUIREMENTS.md`
+- Guided bulk onboarding for large stores (500–3000+ SKUs, F-001d, built): rack/shelf batch-photo capture reusing F-001c multi-item detection + supplier PDF/catalog reuse reusing F-001b import — `apps/mobile/app/product/bulk-onboard.tsx` — see `docs/PRO-REQUIREMENTS.md`
 - Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009) + generalized quota/limits system (F-010) — see `docs/PRO-REQUIREMENTS.md`
 - Ghost-mannequin AI catalog image generation for packed/unopened stock, via Snappyit API (F-001e, planned) — retailer unpacks once per design, AI generates full worn catalog image reused across all restocked units — see `docs/PRO-REQUIREMENTS.md`
 
@@ -330,7 +330,7 @@ Distinct from F-021's Google review link — this uses the Business Profile API'
 
 **Follow-up pass, same day (commit `39e5ea8`):** `accessibilityState` on the 16 selection chips (fixed — screen readers now announce toggle state, not just the checkmark). Mobile/web `rust`/`turmeric`/`sand` token drift checked and found already resolved (doc claim was stale, not a real gap). Tab bar cut 6→5 (`analytics` moved to a top-level route, reachable via a Home header icon). Tablet/window adaptivity added (`useIsTablet`/`useGridColumns`, wired into all 5 product/category grids). New `AnimatedPressable`/`GradientButton` primitives (Reanimated press-scale + `expo-linear-gradient`), applied to the shared `ProductCard` (iOS shadow added — it had none, only Android `elevation`) and the 3 highest-traffic primary CTAs (product/customer save, collection create). No dark mode — user chose a light-only gradient/shadow/animation direction instead. Primitives + high-traffic screens only, not all 48 hand-migrated (no RN simulator in this environment to verify a blind full sweep). See `docs/design/design-work.md` for full detail.
 
-**Still open:** dark mode (declined for this pass, may revisit later), full tablet-adaptivity coverage beyond the 5 grid screens, remaining ~45 screens' buttons/icons not yet migrated to `GradientButton`/`AnimatedPressable`.
+**Still open:** dark mode (declined for this pass, may revisit later), full tablet-adaptivity coverage beyond the 5 grid screens. The "~45 screens not yet migrated" gap noted here is stale — the codemod in commit `e162f03` (later the same day) migrated all remaining `TouchableOpacity` usage across 38 files to `AnimatedPressable`; 0 `TouchableOpacity` remain in `apps/mobile/app`.
 
 ---
 
