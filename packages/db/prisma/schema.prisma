@@ -753,6 +753,7 @@ model TeamMember {
   id            String   @id @default(cuid())
   name          String
   email         String   @unique
+  phone         String?  @unique // 2026-08-04: phone-OTP mobile login for field agents (auth.ts /otp/verify), alongside the email+password /team/login path
   password_hash String
   role          TeamRole
   is_active     Boolean  @default(true)

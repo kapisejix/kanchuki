@@ -52,6 +52,15 @@ const TerritorySchema = z.object({
 const CreateMemberSchema = z.object({
   name: z.string().min(1).max(200),
   email: z.string().email(),
+  // 2026-08-04: optional phone enables phone-OTP login into the mobile staff
+  // screens (auth.ts /otp/verify) — normalized to the same Indian format
+  // the OTP flow uses so lookups always match.
+  phone: z
+    .string()
+    .min(10)
+    .max(15)
+    .optional()
+    .transform((v) => (v ? normalizeIndianPhone(v) : undefined)),
   password: z.string().min(8).max(128),
   role: z.enum([
     'SUPER_ADMIN',
@@ -70,6 +79,14 @@ const UpdateMemberSchema = z.object({
   max_retailers: z.number().int().min(1).max(10000).nullable().optional(),
   territory_ids: z.array(z.string()).max(100).optional(),
   referral_code: z.string().min(4).max(20).nullable().optional(), // F-018
+  // 2026-08-04: set/clear the phone used for OTP login into mobile staff screens
+  phone: z
+    .string()
+    .min(10)
+    .max(15)
+    .nullable()
+    .optional()
+    .transform((v) => (v ? normalizeIndianPhone(v) : null)),
 });
 
 // F-018: short code a retailer can type at self-serve signup. Auto-generated
@@ -379,6 +396,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       data: {
         name: body.data.name,
         email: body.data.email.toLowerCase(),
+        phone: body.data.phone,
         password_hash: hashPassword(body.data.password),
         role: body.data.role,
         max_retailers: body.data.max_retailers,
@@ -415,6 +433,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         is_active: true,
         max_retailers: true,
@@ -486,6 +505,7 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
           id: true,
           name: true,
           email: true,
+          phone: true,
           role: true,
           is_active: true,
           max_retailers: true,

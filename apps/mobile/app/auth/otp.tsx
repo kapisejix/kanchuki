@@ -40,14 +40,36 @@ export default function OtpScreen() {
     try {
       const { data: result } = await authApi.verifyOtp(phone, code)
       await setToken(result.access_token)
-      await setItem('refresh_token', result.refresh_token)
+      // TeamMember logins have no Supabase session → no refresh token (their
+      // team JWT expires in 12h like the /team/login path). Only store one
+      // when the backend actually returned one, and never keep a stale one
+      // from a previous retailer login.
+      if (result.refresh_token) {
+        await setItem('refresh_token', result.refresh_token)
+      } else {
+        await deleteItem('refresh_token')
+      }
 
       if (result.is_staff && result.staff) {
-        // Staff login — store staff context and redirect to staff dashboard
+        // Staff (retailer's own shop employee) login — store staff context
+        // and redirect to staff dashboard
         await setItem('staff_role', result.staff.role)
         await setItem('staff_name', result.staff.name)
         await setItem('staff_retailer_id', result.staff.retailer_id)
         await setItem('retailer_id', result.staff.retailer_id)
+        router.replace('/staff')
+      } else if (result.is_staff && result.team_member) {
+        // TeamMember (Kanchuki's own field/sales/support agent) logged in via
+        // phone OTP. access_token is a team JWT — the staff screens' teamApi
+        // sends it to /team/* directly. No retailer scoping; clear any stale
+        // retailer/staff context from a previous login on this device so the
+        // agent is never shown the retailer UI or a stale shop identity.
+        await setItem('staff_role', result.team_member.role)
+        await setItem('staff_name', result.team_member.name)
+        await Promise.all([
+          deleteItem('staff_retailer_id'),
+          deleteItem('retailer_id'),
+        ])
         router.replace('/staff')
       } else if (result.retailer) {
         // Retailer owner login — existing flow. Clear any staff context left

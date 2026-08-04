@@ -4,6 +4,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
 import { AppError, validationError } from '../plugins/error-handler.js';
+import { signTeamToken } from '../plugins/team-auth.js';
 
 const PhoneSchema = z.object({
   phone: z
@@ -120,6 +121,40 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
             retailer_id: staffMember.retailer_id,
             retailer_shop_name: staffMember.retailer.shop_name,
             retailer_city: staffMember.retailer.city,
+          },
+        },
+      });
+    }
+
+    // ── TeamMember Login (Kanchuki's own field/sales/support agents) ──
+    // 2026-08-04 (auth bridge Option A): the mobile app's only sign-in is
+    // phone OTP, but the staff screens under app/staff/* call /team/* routes
+    // which require a team JWT. If this phone belongs to an active
+    // TeamMember, mint that JWT here so agents can reach the catalog-upload
+    // (F-019/F-020) and staff screens from their own phone.
+    //
+    // SECURITY: the token returned is a TEAM_JWT (signed with
+    // TEAM_JWT_SECRET), deliberately NOT the Supabase session token — team
+    // routes accept it while every retailer route (Supabase-verified)
+    // rejects it, and vice versa, so Staff and TeamMember identities can
+    // never cross-authorize each other's routes. The Supabase auth user
+    // created by the OTP verify is simply never linked to this TeamMember.
+    const teamMember = await prisma.teamMember.findFirst({
+      where: { phone, is_active: true },
+      select: { id: true, name: true, email: true, role: true },
+    });
+
+    if (teamMember) {
+      const teamToken = await signTeamToken({ sub: teamMember.id, role: teamMember.role });
+      return reply.status(200).send({
+        data: {
+          access_token: teamToken,
+          is_staff: true,
+          team_member: {
+            id: teamMember.id,
+            name: teamMember.name,
+            email: teamMember.email,
+            role: teamMember.role,
           },
         },
       });

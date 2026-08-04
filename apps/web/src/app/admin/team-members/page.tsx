@@ -38,6 +38,7 @@ type TeamMember = {
   id: string
   name: string
   email: string
+  phone: string | null
   role: TeamRole
   is_active: boolean
   max_retailers: number | null
@@ -89,6 +90,7 @@ function MemberModal({
 }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<TeamRole>('MARKETING_AGENT')
   const [maxRetailers, setMaxRetailers] = useState('100')
@@ -101,6 +103,7 @@ function MemberModal({
     if (editMember) {
       setName(editMember.name)
       setEmail(editMember.email)
+      setPhone(editMember.phone ?? '')
       setPassword('')
       setRole(editMember.role)
       setMaxRetailers(String(editMember.max_retailers ?? ''))
@@ -108,6 +111,7 @@ function MemberModal({
     } else {
       setName('')
       setEmail('')
+      setPhone('')
       setPassword('')
       setRole('MARKETING_AGENT')
       setMaxRetailers('100')
@@ -127,6 +131,7 @@ function MemberModal({
           body: JSON.stringify({
             territory_ids: selectedTerritories,
             ...(maxRetailers ? { max_retailers: Number(maxRetailers) } : { max_retailers: null }),
+            ...(phone.trim() ? { phone: phone.trim() } : { phone: null }),
           }),
         })
         if (!res.ok) {
@@ -144,6 +149,7 @@ function MemberModal({
             role,
             max_retailers: Number(maxRetailers) || undefined,
             territory_ids: selectedTerritories,
+            ...(phone.trim() ? { phone: phone.trim() } : {}),
           }),
         })
         if (!res.ok) {
@@ -251,6 +257,23 @@ function MemberModal({
                   </div>
                 </>
               )}
+
+              {/* Phone — enables phone-OTP login into the mobile staff
+                  screens. Optional; email+password stays the primary
+                  credential. Show in both create and edit. */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+                  Phone{' '}
+                  <span className="text-gray-400 font-normal">(for OTP login to mobile staff screens)</span>
+                </label>
+                <input
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="10-digit mobile number"
+                  inputMode="tel"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+                />
+              </div>
 
               {/* Role */}
               {!editMember && (
