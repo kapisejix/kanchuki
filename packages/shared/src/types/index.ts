@@ -209,6 +209,9 @@ export interface PublicProduct {
   name: string | null
   price_min: number | null
   price_max: number | null
+  // F-024: virtual query-time flags (created_at within 30 days / mrp > price)
+  is_new_arrival: boolean
+  on_sale: boolean
   status: ProductStatus
   category: string | null
   subtype: string | null

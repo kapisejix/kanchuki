@@ -1,6 +1,7 @@
 import { type TeamRole, prisma } from '@kanchuki/db';
 import { normalizeIndianPhone } from '@kanchuki/shared';
 import { getCatalogUploadPromo } from './admin-settings.js';
+import { seedDefaultCategories } from '../lib/default-categories.js';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -556,6 +557,10 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       update: {}, // retailer already exists (e.g. re-visit) — attribution isn't overwritten
       select: { id: true, shop_name: true, phone: true, territory_id: true, onboarded_by_id: true },
     });
+
+    // F-024: agent-created retailers get the default Shop-By-Categories
+    // template seeded too (idempotent, safe on the upsert's update path).
+    await seedDefaultCategories(retailer.id);
 
     let overCapacity = false;
     if (tm.id !== 'admin-key') {

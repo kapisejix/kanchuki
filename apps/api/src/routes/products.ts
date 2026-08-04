@@ -13,6 +13,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addSpinFrameJob, addTaggingJob } from '../jobs/index.js';
+import { isNewArrival, NEW_ARRIVAL_DAYS } from '../lib/product-flags.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { hasFeature } from '../lib/features.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
@@ -104,14 +105,6 @@ const UpdateProductSchema = CreateProductSchema.partial().omit({
   photo_r2_key: true,
   photo_url: true,
 });
-
-const NEW_ARRIVAL_DAYS = 30;
-
-function isNewArrival(createdAt: Date | string): boolean {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - NEW_ARRIVAL_DAYS);
-  return new Date(createdAt) >= cutoff;
-}
 
 const ListProductsQuerySchema = z.object({
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),

@@ -311,6 +311,26 @@ model ProductCategory {
   @@map("product_categories")
 }
 
+// ─── F-024: admin-editable GLOBAL template for retailer category defaults ─
+// Copied into every new retailer's ProductCategory rows at onboarding (and
+// backfilled once for existing retailers via migration 045). AI tagging
+// (tag-product.ts) matches its free-text category result against the
+// retailer's own ProductCategory list and sets category_id — so the
+// storefront "Shop By Categories" grid fills itself without the retailer
+// picking categories by hand. Admin edits here are forward-only (new
+// signups only), same precedent as plan_limits/PlanFeature.
+model DefaultProductCategory {
+  id         String   @id @default(cuid())
+  name       String   @unique
+  sort_order Int      @default(0)
+  is_active  Boolean  @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("default_product_categories")
+}
+
 // ─── PRODUCTS ────────────────────────────────────────────────────
 
 model Product {

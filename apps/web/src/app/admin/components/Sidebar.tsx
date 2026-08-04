@@ -35,6 +35,7 @@ import {
   Package,
   Palette,
   Bot,
+  LayoutGrid,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +72,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
       { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
       { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
+      { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
     ],
   },

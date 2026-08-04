@@ -7,6 +7,7 @@ import {
 } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
 import { recordAiUsage } from '../lib/ai-usage.js';
+import { resolveCategoryId } from '../lib/default-categories.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { withUniqueSku } from '../lib/sku.js';
 import { addEmbeddingJob } from './index.js';
@@ -68,8 +69,25 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // clobber a retailer's manual edit on a later re-tag/retry.
     const current = await prisma.product.findUnique({
       where: { id: product_id },
-      select: { name: true, sku: true, description: true, subtype: true },
+      select: {
+        name: true,
+        sku: true,
+        description: true,
+        subtype: true,
+        category_id: true,
+      },
     });
+
+    // F-024: auto-assign the merchandising category. Same never-clobber rule
+    // as the name fields — only set category_id when the retailer hasn't
+    // already picked one. resolveCategoryId matches the AI's free-text
+    // category against the retailer's own ProductCategory list (seeded
+    // defaults + custom rows), so the storefront "Shop By Categories" grid
+    // fills itself. No match → null, manual assignment as today.
+    const matchedCategoryId =
+      current?.category_id == null
+        ? await resolveCategoryId(retailer_id, tags.category)
+        : current.category_id;
 
     const writeProductTags = (sku?: string) =>
       prisma.product.update({
@@ -78,6 +96,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           ai_tagged: true,
           ai_tag_error: null,
           category: tags.category,
+          category_id: matchedCategoryId,
           product_type: tags.product_type,
           primary_color: tags.primary_color,
           secondary_colors: tags.secondary_colors,

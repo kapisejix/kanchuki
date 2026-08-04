@@ -51,6 +51,8 @@ function makeProduct(i: number): PublicCollection['products'][number] {
     subtype: 'Festive Kurti',
     primary_color: 'Maroon',
     occasions: ['Festive'],
+    is_new_arrival: i < 3,
+    on_sale: i % 2 === 0,
     location: null,
     primary_photo_url: `https://cdn-test.r2.dev/design-${i}.jpg`,
     has_360: false,

@@ -3,6 +3,7 @@ import { normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
+import { seedDefaultCategories } from '../lib/default-categories.js';
 import { AppError, validationError } from '../plugins/error-handler.js';
 import { signTeamToken } from '../plugins/team-auth.js';
 
@@ -206,6 +207,14 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
         'This account has been suspended. Please contact support for assistance.',
         403,
       );
+    }
+
+    // F-024: on signup, seed this retailer's Shop-By-Categories from the
+    // admin-editable global template (idempotent — a repeat login while
+    // still brand-new just no-ops; a retailer who deleted a default keeps
+    // it deleted once shop_name is set).
+    if (retailer.shop_name === '') {
+      await seedDefaultCategories(retailer.id);
     }
 
     return reply.status(200).send({

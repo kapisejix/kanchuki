@@ -6,6 +6,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../plugins/error-handler.js';
 import { getTheme } from './admin-settings.js';
+import { isNewArrival, isOnSale } from '../lib/product-flags.js';
 
 // Helper: generate a display-ready URL — uses stored public_url when valid,
 // falls back to presigned GET URL when R2_PUBLIC_URL is not set.
@@ -57,6 +58,8 @@ async function toPublicProductSummary(p: {
   name: string | null;
   price_min: number | null;
   price_max: number | null;
+  mrp: number | null;
+  created_at: Date;
   status: string;
   category: string | null;
   subtype: string | null;
@@ -73,6 +76,10 @@ async function toPublicProductSummary(p: {
     name: p.name,
     price_min: p.price_min,
     price_max: p.price_max,
+    // F-024 (Option A): New Arrivals/Sale are query-time virtual filters, not
+    // AI-assignable categories — a photo can't reveal stock age or discount.
+    is_new_arrival: isNewArrival(p.created_at),
+    on_sale: isOnSale({ mrp: p.mrp, price_min: p.price_min }),
     status: p.status,
     category: p.category,
     subtype: p.subtype,
@@ -331,6 +338,9 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
           name: p.name,
           price_min: p.price_min,
           price_max: p.price_max,
+          // F-024 (Option A): virtual query-time flags, same as the grid summary
+          is_new_arrival: isNewArrival(p.created_at),
+          on_sale: isOnSale({ mrp: p.mrp, price_min: p.price_min }),
           status: p.status,
           category: p.category,
           primary_color: p.primary_color,

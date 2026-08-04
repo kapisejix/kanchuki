@@ -1089,6 +1089,106 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
     return reply.status(204).send();
   });
 
+  // ─── GET /admin/default-categories ──────────────────────────────
+  // F-024: admin-editable GLOBAL template for the retailer Shop-By-
+  // Categories defaults. Copied into new retailers at onboarding; AI
+  // tagging auto-assigns category_id against the retailer's own list.
+  server.get('/default-categories', async () => {
+    const categories = await prisma.defaultProductCategory.findMany({
+      orderBy: { sort_order: 'asc' },
+    });
+    return { data: categories };
+  });
+
+  // ─── POST /admin/default-categories ─────────────────────────────
+  server.post('/default-categories', async (request) => {
+    const body = z
+      .object({
+        name: z.string().min(1).max(100),
+        sort_order: z.number().int().min(0).optional(),
+        is_active: z.boolean().optional(),
+      })
+      .parse(request.body);
+
+    const category = await prisma.defaultProductCategory
+      .create({
+        data: {
+          name: body.name.trim(),
+          sort_order: body.sort_order ?? 0,
+          is_active: body.is_active ?? true,
+        },
+      })
+      .catch(() => null);
+    if (!category) throw validationError('A default category with this name already exists', 'name');
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'CREATE',
+        resource_type: 'DefaultProductCategory',
+        resource_id: category.id,
+        metadata: { name: category.name, sort_order: category.sort_order },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: category };
+  });
+
+  // ─── PATCH /admin/default-categories/:id ────────────────────────
+  server.patch<{ Params: { id: string } }>('/default-categories/:id', async (request) => {
+    const body = z
+      .object({
+        name: z.string().min(1).max(100).optional(),
+        sort_order: z.number().int().min(0).optional(),
+        is_active: z.boolean().optional(),
+      })
+      .parse(request.body);
+
+    const category = await prisma.defaultProductCategory
+      .update({
+        where: { id: request.params.id },
+        data: body.name !== undefined ? { ...body, name: body.name.trim() } : body,
+      })
+      .catch(() => null);
+    if (!category) throw notFound('Default category');
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UPDATE',
+        resource_type: 'DefaultProductCategory',
+        resource_id: category.id,
+        metadata: { name: category.name, sort_order: category.sort_order, is_active: category.is_active },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: category };
+  });
+
+  // ─── DELETE /admin/default-categories/:id ───────────────────────
+  server.delete<{ Params: { id: string } }>('/default-categories/:id', async (request, reply) => {
+    const category = await prisma.defaultProductCategory
+      .delete({ where: { id: request.params.id } })
+      .catch(() => null);
+
+    if (category) {
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          action: 'DELETE',
+          resource_type: 'DefaultProductCategory',
+          resource_id: category.id,
+          metadata: { name: category.name },
+          ip_address: request.ip,
+        },
+      });
+    }
+
+    return reply.status(204).send();
+  });
+
   // ─── GET /admin/retailers/:id/activity ──────────────────────────
   // F-014: AuditLog entries for a specific retailer, most recent first.
   // Includes both retailer actions and admin actions on this retailer.

@@ -47,6 +47,8 @@ function makeProduct(i: number): PublicProduct {
     subtype: 'Festive Kurti',
     primary_color: 'Maroon',
     occasions: ['Festive'],
+    is_new_arrival: n <= 3,
+    on_sale: n % 2 === 0,
     location: null,
     // Host matches the SW's `*.r2.dev` CacheFirst matcher so photos actually
     // get cached and survive an offline reload (asserted via naturalWidth).

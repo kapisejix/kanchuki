@@ -5,14 +5,7 @@ import { extractBudgetFromQuery, normalizeSearchQuery } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { validationError } from '../plugins/error-handler.js';
-
-const NEW_ARRIVAL_DAYS = 30;
-
-function isNewArrival(createdAt: Date | string): boolean {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - NEW_ARRIVAL_DAYS);
-  return new Date(createdAt) >= cutoff;
-}
+import { isNewArrival } from '../lib/product-flags.js';
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(500),
