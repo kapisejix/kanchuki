@@ -7,7 +7,7 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, detectColor } from '@kanchuki/ai';
-import { Prisma, prisma, vaultDelete } from '@kanchuki/db';
+import { getPurgePrisma, Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import { R2_PATHS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
@@ -727,8 +727,17 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       deleted_by: request.retailerId,
     });
 
+    // F-017 guardrail: `products` has a BEFORE DELETE trigger that blocks hard
+    // deletes unless the session sets app.allow_hard_delete — and the shared
+    // `prisma` client's role (kanchuki_app) has DELETE revoked entirely under
+    // SECURITY §19 role separation. getPurgePrisma() is the scoped role built
+    // for exactly this (same pattern as apps/api/src/jobs/purge-soft-deleted.ts).
+    const purgeDb = getPurgePrisma();
     try {
-      await prisma.product.delete({ where: { id } });
+      await purgeDb.$transaction([
+        purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+        purgeDb.product.delete({ where: { id } }),
+      ]);
     } catch (err) {
       // Products referenced by a past order or a shared collection can't be
       // hard-deleted (FK constraint) — it's already off the catalog via

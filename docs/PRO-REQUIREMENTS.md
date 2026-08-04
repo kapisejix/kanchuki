@@ -1281,3 +1281,83 @@ These are backlog candidates, not committed features — flag to user for priori
 ## 13. AI Tagging Expansion — Subtype, Auto SKU/Name/Description, Slider Fix, Color-Tap, Catalog Redesign (BUILT 2026-08-03)
 
 Full spec, rationale, and exact file:line targets: `CLAUDE.md` "Built" section + approved plan `C:\Users\Dell\.claude\plans\wiggly-floating-meerkat.md` (not duplicated here to avoid drift between two copies). **Status: BUILT 2026-08-03.** Backend (DB schema, AI tagging schema, SKU generator, all 3 write paths, public API facet counts) + web catalog listing redesign (FilterBar `{value,count}` chips + always-visible category row, ProductCard subtype badge + name caption) + mobile (editable name/subtype/SKU/description on product detail, photo-slider variant-photo fix, tap-photo color detect, catalog-import review fields) all shipped and verified (`apps/web` + `apps/mobile` + `apps/api` tsc clean; web unit + api vitest green).
+
+---
+
+## 14. F-024 DB-Backed Default Shop-By Categories + AI Auto-Category Assignment — 🔴 Reviewed 2026-08-04, NOT STARTED
+
+**User ask (verbatim intent):** the "Shop By Categories" nav list must live in the database, not as a hardcoded array in code, and AI tagging must auto-assign each uploaded product to the right one so the retailer never manually picks a category. Retailer can still add their own on top (already possible today).
+
+**Requested default set (15 garment-type entries + 2 special entries):**
+Kurta Sets, Salwar Suits, Short Kurtis, Kurta, Co-ords, Plus Sizes, Dresses, Bottoms, Lehengas, Loungewear, Sarees, Shirts for Women, Tops for Women, **New Arrivals**, **Sale**.
+
+### What already exists (checked by reading the code, not assumed)
+
+- `ProductCategory` (`packages/db/prisma/schema.prisma:295`) is **already** a DB-backed, per-retailer, admin/retailer-editable merchandising group — full CRUD at `apps/api/src/routes/categories.ts`, drives `Product.category_id` (the customer-facing "browse by category" nav). This is a different field from `Product.category` (free-text AI garment-type tag like "Saree"/"Kurti", sourced from `PRODUCT_CATEGORIES` in `packages/shared/src/constants/index.ts:37` — that hardcoded array is a *fine* AI-vocabulary constant, not the thing the user is asking to move to DB).
+- Gap confirmed: nothing seeds `ProductCategory` rows for a new retailer today (list starts empty until the retailer manually adds one via the mobile "Add Category" screen, `apps/mobile/app/category/new.tsx`). Nothing in `apps/api/src/jobs/tag-product.ts` touches `category_id` — AI tagging currently never assigns a merchandising category, confirming the gap is real, not stale-doc noise (see `docs/PROGRESS.md` doc-staleness pattern).
+
+### Design (ladder-first — reuses `ProductCategory`/`categories.ts` wholesale, no parallel category system)
+
+1. **New global template table**, e.g. `DefaultProductCategory` (`id`, `name`, `sort_order`, `is_active`) — admin-editable grid, same pattern already shipped 3x in this codebase (`PlanFeature`, `CatalogUploadPriceTier`, `AiProviderConfig`). Seed migration inserts the 15 garment-type names (not "New Arrivals"/"Sale" — see below). Admin can add/remove/reorder the *template* without touching code.
+2. **Retailer onboarding** copies the current active `DefaultProductCategory` rows into that retailer's own `ProductCategory` rows (one-time, at signup — same moment `Staff`/theme defaults etc. already get provisioned). A one-off backfill migration does the same for existing retailers with zero categories, so nobody regresses.
+3. **AI auto-assignment — no new AI plumbing needed.** `tagger.ts`'s vision call already returns `category` (free-text) each run. `tag-product.ts` additionally does a case-insensitive match of the returned category name against **that retailer's current `ProductCategory` list** (defaults + any custom ones — one mechanism handles both, no default-vs-custom special-casing) and sets `category_id` when it finds one. No match → `category_id` stays null, retailer assigns manually exactly like today. This also means a retailer's custom category ("Bridal Wear") becomes an AI target for free the moment it exists, matching the "retailer can add more" ask without extra code.
+4. **"New Arrivals" and "Sale" are not garment types — flagging before anyone builds this wrong.** A photo cannot tell you a product is newly stocked or discounted; these two are date/price-derived, not AI-taggable. Two honest options, needs a decision before coding:
+   - **A (recommended, cheaper — and there's already a working precedent in this exact codebase):** keep them out of `ProductCategory`/AI entirely — compute at query time as virtual filter chips, same as the existing occasion/color/price facets. **"New Arrivals" specifically doesn't need new logic at all** — `isNewArrival()` already exists (`apps/api/src/routes/products.ts:110`, `created_at` within 30 days) and is already wired into the retailer-facing mobile catalog filter (`docs/PROGRESS.md` 2026-07-16 #6). It has just never been exposed on the *customer-facing* public API (`apps/api/src/routes/public.ts`) that the Shop-By-Categories nav actually renders — so the real work here is porting the existing helper to `public.ts`, not building fresh. It's currently duplicated once already (`apps/api/src/routes/search.ts:11`) — adding it to `public.ts` makes a 3rd copy, which is the rule-of-three trigger to extract it into one shared helper instead. "Sale" (`mrp > price_min`) is new but trivially the same shape.
+   - **B:** seed them as real `ProductCategory` rows too, but leave `category_id` assignment to the retailer only for these two (AI never targets them) — matches the visual "15-tile grid" request more literally but needs the retailer to manually re-curate both every time stock/price changes, which real retailers won't keep up with.
+
+### Not decided yet / explicitly not started
+
+- Table/model naming above (`DefaultProductCategory`) is a proposal, not final.
+- Option A vs B for New Arrivals/Sale needs a call.
+- Whether the admin template edit retroactively pushes to existing retailers' `ProductCategory` rows, or only affects future signups (existing precedent — `PlanFeature`/`plan_limits` changes are forward-only, not retroactive — lean same way here, flag if the user wants retroactive push).
+
+**Do not start coding without explicit go-ahead** — this is a reviewed/scoped entry, not an approved plan. When approved: DB migration → `ecc:database-reviewer`; `tag-product.ts` category-match logic + onboarding seed → `ecc:typescript-reviewer`/`ecc:api-design`; admin template grid UI → reuse the existing plan-features/catalog-upload-tiers admin page pattern (no new design system work needed, `impeccable` not required for an admin-only checkbox/reorder grid per this project's established "admin stays motion/decoration-restrained" stance, see the Loom design-system entry in `CLAUDE.md`).
+
+---
+
+## 15. F-025 Scan-to-Sell — Offline Sale Reconciliation via SKU/QR Scan — 🔴 Reviewed 2026-08-04, APPROVED DESIGN, NOT STARTED
+
+**Problem:** retailer sells an item in the physical shop (not through the app). Nothing tells the digital catalog. Item stays `AVAILABLE`, customers keep enquiring/ordering a product that's gone. `Product.status` (`AVAILABLE`/`SOLD`/`RESERVED`/`NOT_SURE`) and a manual status toggle already exist (`apps/mobile/app/product/[id].tsx`, `apps/mobile/app/(tabs)/catalog.tsx`) and are already offline-safe (`apps/mobile/src/lib/mutation-queue.ts` replays "Mark Sold" once back online). Gap is the *trigger*: today the retailer must open the app, search/scroll to find the product, then tap status — friction real shop owners skip under load, so the catalog drifts stale.
+
+**Options researched** (full comparison: manual toggle / barcode-QR scan / full POS / RFID / AI photo-diff of the rack / WhatsApp text command) — see session research 2026-08-04. AI-vision "auto-detect what's missing from a rack photo" was explicitly rejected as the primary mechanism: unreliable (an item moved ≠ an item sold; occlusion/lighting), burns AI credit budget per scan (locked cost constraint), and a false SOLD costs a real sale — worse than a stale AVAILABLE costs one annoyed enquiry. Full POS/RFID rejected as disproportionate for this ICP (1-3 person shops, no POS today). WhatsApp text-command ("SOLD KS0032") is the closest zero-friction alternative but is blocked on Meta Cloud API, which is Phase 2, not built.
+
+**Decided approach: scan-to-sell, folded into the existing product-detail screen — no new dedicated screen.** Scanning only replaces the "find the product" step; everything after (the SOLD toggle, the offline queue, the UI) is reused unchanged.
+
+**How it works:**
+1. Retailer taps a new scan icon (catalog tab, next to search).
+2. `expo-camera`'s `CameraView` opens in barcode-scan mode — **already an installed dependency** (`apps/mobile/package.json`), no new package needed.
+3. Scans a QR/SKU tag on the rack card. SKU is already auto-generated per product at tagging time (`apps/api/src/lib/sku.ts`, e.g. `LS0001`) and unique per retailer (`@@unique([retailer_id, sku])`, `schema.prisma:386`) — the tag just needs to encode that existing string, nothing new to generate.
+4. App resolves SKU → product id via a small addition to the existing `GET /products` list endpoint (exact-match `sku` query param) — not a new route, reuses `apps/api/src/routes/products.ts`.
+5. Navigates straight into the existing `product/[id].tsx` screen for that product.
+6. Retailer taps the existing status control → `SOLD`. Offline: already queued and replayed by the existing mutation queue, zero new offline handling needed.
+
+**Staff/team-member permission (added 2026-08-04, user request):** shop staff (F-009 `Staff` model, not the retailer owner) must be able to scan-to-sell too — most offline sales happen at the counter, which is staff, not the owner. Checked and this is already the default: the product status-update route (`PATCH /products/:id`) has **no** `request.staffRole !== null` gate, unlike the trash-related routes (`GET /products/deleted`, `restore`, `purge` — all explicitly owner-only, see F-026 bug below for how that gate broke one of them). So scan-to-sell inherits staff access automatically once built — no new permission code needed. The one thing to verify when building: the new SKU-lookup query param on `GET /products` must **not** pick up an owner-only gate by copy-paste from the nearby trash routes — it needs the same no-gate behavior as the existing list/detail endpoints staff already use today.
+
+**New pieces required (small, all additive to existing code):** one scan-icon button + camera screen in the mobile app; one SKU exact-match query param on the existing products list endpoint; a printable QR/SKU tag surface at product-tagging time (sticker/label — design open, could be as simple as a print-friendly view of the SKU + QR, no physical hardware integration required).
+
+**Explicitly not built by this feature:** GST invoice generation for offline sales. Checked — only the online-order path (`checkout.ts`) generates a GST-relevant invoice today; offline sales have no invoice flow at all. Flagged as a natural future hook (retailer already legally needs to issue a GST invoice per the platform's locked GST-compliance requirement — attaching invoice generation to this same scan flow later would give the retailer a reason to use it beyond bookkeeping hygiene) but deliberately out of scope for this entry — scope creep risk, decide separately if wanted.
+
+**Do not start coding without explicit go-ahead** — design is decided (folded-in, not a dedicated screen), but no code written yet. When approved: mobile scan screen + navigation → `ecc:react-reviewer`/react-native conventions; SKU query param addition → `ecc:typescript-reviewer`/`ecc:api-design` (trivial, one optional filter on an existing endpoint); label/tag print surface → design pass if it needs to look good, otherwise cosmetic-only.
+
+---
+
+## 16. F-026 BUG — Mobile "Recently Deleted" → Permanently Delete throws APIError — 🔴 Found + root-caused 2026-08-04, NOT FIXED
+
+**Report:** retailer opens Settings → Recently Deleted on the Expo mobile app, tries to permanently delete a product, gets a generic `APIError`, delete doesn't happen.
+
+**Root cause (confirmed by reading the code path end to end, not guessed):** `apps/api/src/routes/products.ts:730-731`, the purge route calls `prisma.product.delete({ where: { id } })` directly:
+
+```
+try {
+  await prisma.product.delete({ where: { id } });
+} catch (err) {
+  if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') { ... }
+```
+
+F-017's DB guardrail migration (`packages/db/prisma/migrations/037_db_guardrails/migration.sql`) put a `BEFORE DELETE OR TRUNCATE` trigger on the `products` table (`prevent_hard_delete()`) that raises an exception on **any** hard delete unless the session first runs `SET app.allow_hard_delete = 'true'`. This route never sets that flag, so the trigger fires and raises on every purge attempt. The `catch` block only handles Prisma's `P2003` (foreign-key-constraint) error code — the trigger's `RAISE EXCEPTION` surfaces as a different, uncaught Prisma error class, so it falls through as an unhandled 500, which the mobile client shows as the generic `APIError`.
+
+This is a regression introduced by F-017 (shipped 2026-07-26, "Database Guardrails") — the guardrail work correctly locked down accidental/malicious hard deletes but never circled back to update this one legitimate caller. The fix pattern already exists and works elsewhere in this codebase: `apps/api/src/jobs/purge-soft-deleted.ts` (the automated 15-day purge cron) wraps its hard deletes with `db.$executeRawUnsafe("SET app.allow_hard_delete = 'true';")` in the same transaction/connection before deleting.
+
+**Fix approach (not applied yet — code change, needs go-ahead separately from the two feature entries above):** wrap `apps/api/src/routes/products.ts`'s purge route in a `prisma.$transaction` that sets `app.allow_hard_delete = 'true'` on that transaction's connection before calling `.delete()` — same bypass, scoped to this one request instead of a long-running cron connection. Keep the existing `P2003` catch (a product referenced by a past order/collection genuinely can't be hard-deleted, and that's the correct, already-handled behavior) — the transaction wrapper only fixes the trigger block, doesn't change the legitimate FK-block case.
+
+**Not investigated (out of scope for root-cause, worth a quick check when fixing):** whether the 2026-08-02 role-separation work (`kanchuki_app` losing DELETE grants) has actually been applied in production yet (`CLAUDE.md`'s DB-outage entry says the setup SQL was still pending as of that session) — if it has, this route needs the DB grant question answered too, not just the trigger bypass, since `kanchuki_app`'s connection may not have DELETE privilege on `products` at all regardless of the trigger.

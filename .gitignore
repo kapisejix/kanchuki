@@ -80,3 +80,6 @@ tryon-multipiece-result.jpg
 
 # Fashion V-Tone model weights (downloaded at build/deploy time)
 services/fashion-vtone/weights/
+
+# Downloaded third-party agent skills (keep out of the repo — they carry their own .git)
+VibeSec-Skill/

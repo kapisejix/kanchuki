@@ -56,8 +56,10 @@ if (process.env['NODE_ENV'] !== 'production') {
  * — no TRUNCATE, no DROP, no DDL).
  *
  * SECURITY §19: the main DATABASE_URL must keep the DELETE-less `kanchuki_app`
- * role, and `kanchuki_migrator` must stay human-only — so the 30-day purge cron
- * (apps/api/src/jobs/purge-soft-deleted.ts) is the ONLY consumer of this client.
+ * role, and `kanchuki_migrator` must stay human-only — so this client is only
+ * for code paths that hard-delete on purpose: the 15-day purge cron
+ * (apps/api/src/jobs/purge-soft-deleted.ts) and the retailer-initiated
+ * "delete permanently" route (apps/api/src/routes/products.ts `/:id/purge`).
  *
  * Falls back to the primary client when PURGE_DATABASE_URL is unset (local dev
  * without the scoped role). In that case the cron still runs with whatever

@@ -632,4 +632,29 @@ Source: user's 7-item list for the customer-facing web PWA (`apps/web/src/app/c/
 **Review:** Opening a product (`ProductDetailSheet`) is pure React state (`setSelectedProduct`, in `CollectionView.tsx`) — no route push, no browser history entry. So a hardware/browser Back press while the sheet is open doesn't close the sheet first; it does a full page-level back navigation, past the category product listing straight to whatever page preceded it (the category grid). This is a standard PWA modal-history bug: any overlay opened via component state instead of a route/history entry gets skipped by Back.
 **Fix:** `ProductDetailSheet.tsx` pushes a history entry on mount and listens for `popstate` to close the sheet; the sheet's own close controls (X, back-arrow) trigger a browser `history.back()` instead of calling `onClose` directly, so Back always closes the sheet as its own step before it can navigate the underlying page away.
 
+---
+
+## 2026-08-04 — Staff catalog-upload research: mobile auth gap found + 500-item free offer (TODAY'S TASK LIST — nothing coded yet)
+
+User asked how a staff member visits a retailer's store and uploads their catalog from their own phone. Answer traced against the real F-019 (paid on-site catalog upload)/F-020 (delegated on-site access) code rather than the CLAUDE.md summary of it, since this project has a known doc-staleness pattern. Full writeup: `docs/staff-retailer.md`. Nothing below is committed — this is the open punch list for today.
+
+**Confirmed working (no action needed):** ticket lifecycle (`retailers.ts` `/me/catalog-upload-request*`), admin quoting (`PATCH /team/tickets/:id`), Razorpay payment + slot confirm, `routeTicket()` auto-assignment, the delegated 8h JWT (`signCatalogUploadToken`/`verifyCatalogUploadToken`, `apps/api/src/plugins/team-auth.ts`), the mobile session-swap (`apps/mobile/src/lib/catalog-delegate.ts`), the route allowlist + per-request revocation check (`CATALOG_DELEGATE_ALLOWED_ROUTES`, `apps/api/src/plugins/auth.ts`), the audit-log hook, the `CatalogDelegateBanner`. All read end-to-end, all correct.
+
+### Task 1 (blocking) — `TeamMember` field agents have no mobile login path
+**Root cause, verified by reading the auth chain, not assumed:** `apps/mobile/app/staff/*` screens call `teamApi` → `/team/*` routes → require a JWT from `POST /team/login` (email+password, `TeamMember` = Kanchuki's own field/sales/support agents). The mobile app's only sign-in screen (`app/auth/otp.tsx`, phone OTP) only checks the **`Staff`** model (F-009, a retailer's *own shop employee* — different model, different actor) and returns a Supabase token, which `verifyTeamToken()` rejects. Net effect: a real Kanchuki agent cannot log into the app and reach `catalog-tickets.tsx` today, despite that screen being fully built and correct.
+
+**Two fix options, need a decision before any code:**
+- **Option A** — add phone+OTP to `TeamMember` (extend `auth.ts` to also check `TeamMember`, migration for `TeamMember.phone`). Touches: Database, Backend/API, Security (merging two auth systems onto one endpoint — mandatory review, must guarantee `Staff` and `TeamMember` tokens can never cross-authorize each other's routes).
+- **Option B (ponytail pick — smaller, safer)** — add one email+password mobile screen hitting the *already-working* `/team/login`. Zero backend/schema change. Touches: Mobile/Frontend (one screen, reuse `auth/phone.tsx` layout), light Security pass on token storage only.
+- Skills/agents for whichever gets approved: `ecc:database-reviewer` (only if A), `ecc:typescript-reviewer`/`ecc:api-design` (only if A), `ecc:react-reviewer` (B, or A's redirect-logic change), `ecc:security-reviewer`/`security-review` (mandatory either way — this is an auth-boundary change).
+
+### Task 2 — 500 free catalog items per retailer, limited time (decision made, not enforced)
+**Two gaps found, not assumed:**
+- `CatalogUploadPriceTier` grid (Admin UI) is reference-only — `PATCH /team/tickets/:id` never reads it. Editing the tier grid to `₹0` for 0–500 items does **not** auto-quote anything.
+- No expiry field exists anywhere for a promo window — "limited time" has zero system representation today.
+
+**Today, zero-code path:** whoever quotes a `CATALOG_UPLOAD` ticket manually sets `quoted_price_inr: 0` when `item_count_requested <= 500`, and manually reverts after the (manually tracked) promo end date.
+
+**If it should become system-enforced** (not requested yet, noted as an option): add `promo_free_item_limit`/`promo_expires_at` via the existing admin-settings key-value pattern (same shape as the theme config), have the quoting route compute the ₹0 default itself. Skills if built: `ecc:database-reviewer` (2 nullable fields), `ecc:api-design`/`ecc:typescript-reviewer` (one conditional in quoting), `ecc:frontend-patterns`/`impeccable` (only if the tier-grid page needs a visible expiry/countdown UI), `security-review` (low risk, but it's a payment-quoting path — never skip per this repo's own money-path policy).
+
 **Verified after build:** `apps/web` `tsc --noEmit`, manual code read of the new bottom-bar/detail-sheet render paths (no live browser in this environment — Playwright MCP available but not run this pass; visually confirm on a phone before calling this fully done).

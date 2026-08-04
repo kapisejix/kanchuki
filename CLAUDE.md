@@ -430,6 +430,184 @@ User-reported 7-item list for the customer-facing web PWA (`apps/web/src/app/c/[
 
 ---
 
+## OPEN — 2026-08-04: Staff/Retailer catalog-upload — auth gap found + 500-item free offer
+
+**Reviewed today, nothing coded yet — today's task list.** Full research +
+guideline: `docs/staff-retailer.md`. Verified by reading the actual auth
+chain end to end (not from doc/memory claims), per the "doc staleness"
+pattern this project keeps hitting.
+
+**Context:** F-019 (paid on-site catalog upload) + F-020 (delegated
+catalog-upload session) are fully built — ticket lifecycle, Razorpay
+payment, `routeTicket()` assignment, the delegated JWT, the mobile
+`catalog-tickets.tsx`/`catalog-delegate.ts` flow, the audit hook — all real
+and correct. Tracing the *login* path in front of all of that surfaced a gap
+none of the prior F-019/F-020 entries caught.
+
+### Task 1 — Bridge the mobile login gap for `TeamMember` field agents (blocking)
+
+**Finding:** `apps/mobile/app/staff/*` screens (`catalog-tickets.tsx`,
+`retailer-onboard.tsx`, `index.tsx`) all call `teamApi` → `/team/*` routes,
+which require a JWT from `POST /team/login` (email+password, `TeamMember`
+model = Kanchuki's own field/sales/support agents). But the mobile app's
+only sign-in path (`app/auth/otp.tsx`, phone OTP) only ever checks the
+**`Staff`** model (F-009 — a retailer's own shop employee) and hands out a
+Supabase session token, which `verifyTeamToken()` rejects. Net effect:
+**no real Kanchuki field agent can currently log into the mobile app and
+reach the catalog-upload screens that were built for them.**
+
+Two ways to close it — needs a decision before coding:
+
+| Option | What it touches | Domains/skills |
+|---|---|---|
+| A. Add phone+OTP to `TeamMember` (reuse the existing Supabase OTP flow, extend `auth.ts` to also check `TeamMember` alongside `Staff`) | DB migration (`TeamMember.phone`, unique index), `apps/api/src/routes/auth.ts`, `apps/mobile/app/auth/otp.tsx` redirect logic | **Database** (schema/migration review — `ecc:database-reviewer`), **Backend/API** (`ecc:typescript-reviewer`, `ecc:api-design`), **Security** (bridging two auth systems onto one endpoint is exactly the kind of boundary bug that hides privilege leaks — mandatory `ecc:security-reviewer` / `security-review` pass before merge, must confirm `Staff` vs `TeamMember` tokens can never be confused downstream) |
+| B. Add an email+password login screen to the mobile app hitting the existing `/team/login` (no backend/schema change at all — endpoint already works, just unreachable from mobile) | One new mobile screen + storing the returned JWT under the existing token slot | **Mobile/Frontend** (`ecc:react-reviewer` / `react-native` conventions, reuse `auth/phone.tsx` layout patterns), **Security** (lighter — no new auth surface, just wiring an existing one; still worth a quick `security-review` pass on token storage) |
+
+Ponytail read: **B is the lazier, smaller, safer diff** — reuses a
+backend endpoint that already exists and works, touches one screen, no
+migration, no second auth system merged into one endpoint. A is only worth
+it if the product goal is "field agents never touch a password" — not
+stated as a requirement yet. Recommend B unless told otherwise.
+
+**Do not start coding either option without explicit go-ahead** — this is
+listed as today's task, not yet approved for implementation.
+
+### Task 2 — 500-item free catalog upload, all retailers, limited time
+
+**Decision, not enforced by anything today.** Two gaps found by reading the
+quoting code, not assumed:
+
+- `CatalogUploadPriceTier` (Admin → Catalog Upload Tiers) is reference data
+  only — `PATCH /team/tickets/:id` (the actual quoting endpoint) never
+  reads it. Editing the tier grid to `0–500 items = ₹0` does **not**
+  auto-quote anything.
+- No expiry field exists anywhere for this offer. "Limited time" has no
+  system representation — it relies entirely on whoever quotes tickets
+  remembering the cutoff.
+
+**Today, zero code needed:** whoever quotes `CATALOG_UPLOAD` tickets
+manually sets `quoted_price_inr: 0` for any ticket with
+`item_count_requested <= 500`, and reverts to normal pricing after the
+promo's manually-tracked end date.
+
+**If this should become system-enforced instead of tribal knowledge** (own
+decision, not yet requested): add a `promo_free_item_limit` +
+`promo_expires_at` pair — reuses the exact key-value settings pattern
+already live for `admin-settings.ts` (theme config) rather than a new
+table. Quoting route would then compute the ₹0 default itself instead of a
+human doing it per ticket.
+
+| Domain | Skill/agent if built |
+|---|---|
+| Database | `ecc:database-reviewer` — trivial addition (2 nullable fields on an existing settings row), but still route schema changes through review per this repo's own AI Agent Instructions (§ "Always check `docs/DATABASE.md`") |
+| Backend/API | `ecc:typescript-reviewer`, `ecc:api-design` — one conditional in the quoting/pay flow |
+| Admin UI/Design | `ecc:frontend-patterns` or `impeccable` if the tier-grid page needs a visible countdown/expiry field, otherwise cosmetic only |
+| Security | Low risk — admin-only mutation, same trust boundary as existing plan-limit editing. Still worth a `security-review` pass given it touches a payment-quoting path (money path = never skip, per this file's own "Operational Control Policy") |
+
+---
+
+## OPEN — 2026-08-04: F-024 DB-Backed Default Shop-By Categories + AI Auto-Category Assignment
+
+**Reviewed today, nothing coded yet.** Full design + open decisions:
+`docs/PRO-REQUIREMENTS.md` §14, roadmap slot `docs/PLAN.md` (Future,
+post-Phase-0).
+
+**User ask:** move the "Shop By Categories" default list to the database
+instead of a hardcoded array, and have AI tagging auto-assign each new
+product to the right one so retailers stop picking a category by hand.
+Retailer-added custom categories keep working exactly as today.
+
+**Requested default set:** Kurta Sets, Salwar Suits, Short Kurtis, Kurta,
+Co-ords, Plus Sizes, Dresses, Bottoms, Lehengas, Loungewear, Sarees, Shirts
+for Women, Tops for Women, New Arrivals, Sale.
+
+**What's already there (verified by reading code, not memory):**
+`ProductCategory` (`packages/db/prisma/schema.prisma:295`) is already a
+DB-backed, per-retailer, CRUD-able merchandising group
+(`apps/api/src/routes/categories.ts`) driving `Product.category_id` — this
+is the right target, distinct from the existing hardcoded
+`PRODUCT_CATEGORIES` AI-vocabulary array
+(`packages/shared/src/constants/index.ts:37`, a different, free-text field).
+Gap: nothing seeds `ProductCategory` for new retailers, and
+`apps/api/src/jobs/tag-product.ts` never touches `category_id` — AI never
+assigns a merchandising category today.
+
+**Proposed design (reuses `ProductCategory`/`categories.ts` wholesale, no
+parallel system):** new admin-editable global template table
+(`DefaultProductCategory`, same pattern as `PlanFeature`/`AiProviderConfig`)
+seeds the 15 garment-type names into every new retailer at onboarding (+
+one backfill migration for existing retailers with zero categories).
+`tag-product.ts` matches the AI's returned category name against **that
+retailer's own current category list** (defaults + custom, one mechanism,
+no special-casing) and sets `category_id` on a hit; no match leaves it null
+for manual assignment, same as today.
+
+**Flagged before anyone builds this wrong:** "New Arrivals" and "Sale"
+aren't garment types — a photo can't reveal stock-date or discount status.
+Recommend computing them as virtual query-time filters in `public.ts`
+(same pattern as the existing occasion/color/price facets) rather than
+real AI-assigned category rows — cheaper and can't go stale. Alternative
+(seed as real rows, retailer-curated only) also written up, not
+recommended.
+
+| Domain | Skill/agent if built |
+|---|---|
+| Database | `ecc:database-reviewer` — new template table + per-retailer seed migration, route through `docs/DATABASE.md` review per this file's own AI Agent Instructions |
+| Backend/API | `ecc:typescript-reviewer`, `ecc:api-design` — `tag-product.ts` category-match logic, onboarding seed step |
+| AI tagging | `packages/ai/src/tagger.ts` already returns free-text `category` per call — no new AI/vision plumbing needed, just consuming the existing result differently |
+| Admin UI | Reuse the existing plan-features/catalog-upload-tiers admin grid pattern — no new design system work, admin panel stays motion/decoration-restrained per the Loom design-system entry in this file |
+| Security | Low — admin-only template edit, same trust boundary as existing plan-limit editing |
+
+**Do not start coding without explicit go-ahead** — reviewed/scoped entry
+only.
+
+---
+
+## OPEN — 2026-08-04: F-025 Scan-to-Sell (offline sale reconciliation) + F-026 BUG (Recently Deleted purge fails)
+
+Full design + root cause: `docs/PRO-REQUIREMENTS.md` §15–16, roadmap
+`docs/PLAN.md`.
+
+**F-025 — how to mark items sold after an offline (in-shop) sale.**
+`Product.status` (`SOLD` etc.) and a manual toggle already exist and are
+already offline-safe (`apps/mobile/src/lib/mutation-queue.ts`); the gap is
+the trigger — retailer must open the app and search for the product.
+Researched barcode/QR scan, full POS, RFID, AI photo-diff-of-the-rack, and
+WhatsApp text-command; rejected AI-photo-diff as unreliable + costs AI
+budget + a false SOLD loses a real sale, rejected POS/RFID as
+disproportionate for this ICP, WhatsApp command blocked on Meta Cloud API
+(Phase 2, not built). **Decided: scan folded into the existing
+`product/[id].tsx` screen** — retailer scans the product's existing
+auto-generated SKU (`apps/api/src/lib/sku.ts`) via `expo-camera` (already
+installed, no new dependency), app resolves SKU → product via a small
+addition to the existing products list endpoint, lands on the existing
+screen, taps the existing SOLD toggle. **Shop staff get this by default** —
+`PATCH /products/:id` has no owner-only gate today (unlike the trash
+routes below), so no new permission code needed; just don't accidentally
+copy an owner-only gate onto the new SKU-lookup param.
+
+**F-026 BUG — mobile Settings → Recently Deleted → permanent delete throws
+`APIError`.** Root-caused by reading the code, not guessed:
+`apps/api/src/routes/products.ts` purge route calls `prisma.product.delete()`
+directly. F-017's DB guardrail trigger (`037_db_guardrails` migration,
+shipped 2026-07-26) blocks every hard delete on `products` unless
+`SET app.allow_hard_delete = 'true'` is set first — this route never sets
+it, the trigger's exception isn't the `P2003` code the route's `catch`
+checks for, so it falls through as an unhandled 500 the mobile client
+shows as `APIError`. This is an F-017 regression on a route that predates
+it. Fix pattern already exists and works in
+`apps/api/src/jobs/purge-soft-deleted.ts` — wrap the purge route's delete
+in a `$transaction` that sets the same bypass flag first, keep the
+existing `P2003` catch (that one's correct — a product in a past
+order/collection genuinely can't hard-delete). Worth a quick check when
+fixing: whether the 2026-08-02 role-separation SQL (`kanchuki_app` losing
+DELETE grants) has actually been applied in production yet — if so this
+route needs the grant question answered too, not just the trigger bypass.
+
+**Not fixed/built yet — both need explicit go-ahead to start coding.**
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

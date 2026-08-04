@@ -39,6 +39,13 @@ vi.mock('@kanchuki/db', () => ({
     retailer: { findUniqueOrThrow: vi.fn() },
     auditLog: { create: vi.fn() },
   },
+  // F-026: purge route uses the scoped purge-role client (bypasses the F-017
+  // guardrail trigger + the DELETE-less kanchuki_app role) instead of `prisma`.
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+    product: { delete: mockProductDelete },
+    $transaction: (ops: Promise<unknown>[]) => Promise.all(ops),
+  }),
   Prisma: { PrismaClientKnownRequestError: MockPrismaClientKnownRequestError },
 }));
 
