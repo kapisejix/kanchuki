@@ -162,29 +162,26 @@ that decision, not fixed, per "no coding" for this pass.
 
 ## Current limited-time offer: first 500 catalog items free (all retailers)
 
-Decision, not yet built into any enforcement: **the first 500 product items
-uploaded per retailer are free**, for a limited time. Two things worth being
-precise about, since neither is automatic:
+**System-enforced as of 2026-08-04 (commit `f0ab109`)** — no longer manual
+quoting discipline:
 
-- **The `CatalogUploadPriceTier` grid (Admin → Catalog Upload Tiers) is
-  reference data only.** Setting a `min_items:1, max_items:500, price_inr:0`
-  row there does **not** auto-fill `quoted_price_inr` on any ticket —
-  confirmed by reading `team.ts`: the ticket-quoting route
-  (`PATCH /team/tickets/:id`) never reads `CatalogUploadPriceTier` at all.
-  Whoever quotes a ticket still has to manually type `quoted_price_inr: 0`
-  for it to actually be free. Updating the tier grid is worth doing (it's
-  what admins reference while quoting), but it doesn't enforce anything by
-  itself.
-- **There is no offer start/end date anywhere in the schema.** "Limited
-  time" is not a system concept here — nothing will automatically start
-  charging again when the promo ends. Whoever quotes tickets needs to be
-  told the cutoff date directly (calendar reminder, team message, etc.);
-  the system will happily keep quoting ₹0 forever if nobody's told to stop.
-- Applies per ticket: if `item_count_requested <= 500`, quote `0`; above
-  500, quote the normal tiered price for the excess (or however the
-  business wants to split partial-free/partial-paid — the ticket has one
-  `quoted_price_inr` field, not a per-item split, so a >500-item request is
-  one manual decision per ticket, not something the system computes).
+- `promo_free_item_limit` + `promo_expires_at` live in the admin-settings
+  key-value store (`GET/PUT /admin/settings/catalog-upload-promo`, same
+  pattern as the theme config).
+- The quoting route (`PATCH /team/tickets/:id`) reads the promo itself and
+  forces `quoted_price_inr: 0` when the promo is live and
+  `item_count_requested <= promo_free_item_limit` — the response carries
+  `promo_applied` so quoters can see it happened. Expired or over-limit
+  falls back to the normal manual/tiered price, same as before.
+- Admin → Catalog Upload Tiers gained a promo card (limit + expiry + live
+  badge) so the cutoff has a real UI, not a calendar reminder. The
+  retailer-facing `POST /me/catalog-upload-request` response includes the
+  current promo too.
+- Still a single `quoted_price_inr` field per ticket, not a per-item split —
+  an over-limit request (e.g. 700 items) still needs one manual decision
+  for the excess, the promo only auto-zeroes the in-limit case.
+- Tests: `catalog-upload-promo.test.ts` (within-limit force, over-limit
+  manual, expired, unconfigured).
 
 ## Why this design and not something simpler
 
@@ -235,8 +232,3 @@ precise about, since neither is automatic:
   currently admin-web-panel only (`PATCH /team/tickets/:id`). Not required
   for the flow to work, just an ergonomics gap for managers who live in the
   field app.
-- No system-level "free tier"/promo-window concept — see "Current
-  limited-time offer" above. The ₹0-quote-per-ticket approach covers today's
-  500-item promo with zero new code, but there's no expiry enforcement or
-  per-item free/paid split; a second promo, or one with an automatic cutoff,
-  would need real schema/logic, not just manual quoting discipline.
