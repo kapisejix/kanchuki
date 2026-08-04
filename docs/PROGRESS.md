@@ -710,3 +710,19 @@ Audited every open env/secret item (LAUNCH-READINESS-AUDIT §3/§5, omp-review B
 **Fix (commit `e7c88a8`):** new `scripts/generate-production-secrets.ts` — prints fresh 192-bit hex values for `COOKIE_SECRET`, `ADMIN_API_KEY`, `TEAM_JWT_SECRET`, `REVALIDATION_SECRET`, `ENCRYPTION_MASTER_KEY`, `RAZORPAY_WEBHOOK_SECRET` as Railway-ready `KEY="value"` lines, plus the still-manual checklist (admin hash/TOTP via `generate-admin-hash.ts`, key rotation, DB role switch, replica/vault URLs). `.env.example` now documents `COOKIE_SECRET` and points to the generator.
 
 **Remaining operator work (production, needs a human per Operational Control Policy):** run the generator in the Railway dashboard, rotate the dev-exposed keys, point `DATABASE_URL` at `kanchuki_app` (staging test first), provision replica + vault instances, set `WEB_URL` to the real domain. The code-side debt is now zero — everything left is config in the hosting dashboard.
+---
+
+## 2026-08-04 — Route-module split: `admin.ts` (3125) + `checkout.ts` (1092) → domain modules (commit `912090e`)
+
+Pure mechanical refactor — **zero route-body logic changes**, verified by 258/258 API tests + full typecheck + both guard scripts + biome clean.
+
+| File | Before | After |
+|---|---|---|
+| `apps/api/src/routes/admin.ts` | 3125 lines, ~60 routes | 163-line aggregator (login + CSRF token) that registers 10 domain modules |
+| `apps/api/src/routes/admin-auth.ts` (new) | — | Auth helpers (`validAdminKey`, session sign/verify, IP allowlist, `adminAuthPreHandler`) — re-exported from `admin.ts` for back-compat (`team.ts`, tests, `admin-settings.ts` import from `./admin.js`) |
+| `apps/api/src/routes/admin/<domain>.ts` (new, ×10) | — | retailers, plans, activity, media, data, integrations, backups, moderation, ai, misc — each a self-installing plugin with its own `adminAuthPreHandler` |
+| `apps/api/src/routes/checkout.ts` | 1092 lines, 11 routes | 15-line aggregator registering 4 domain modules |
+| `apps/api/src/routes/checkout/checkout-helpers.ts` (new) | — | Shared helpers (`razorpayAsRetailer`, webhook signature verify, GST math, invoice gen) + schemas (`ConnectPaymentAccountSchema`, `CreateOrderSchema`, `UpdateOrderStatusSchema`, `RazorpayOrder`) |
+| `apps/api/src/routes/checkout/<domain>.ts` (new, ×4) | — | payment-account, flow (create/verify order + public order lookup), webhook (owns the raw-body content-type parser — its only consumer), orders (+ public retailer-status route, unauthenticated same as before) |
+
+Reproducible via `scripts/split-admin-routes.mjs` / `scripts/split-checkout-routes.mjs` (import pruning, `../` → `../../` path rewrite, helper-usage-based imports, CRLF-safe). Route auth unchanged: checkout has no plugin-level hook — `/retailers/*` gets `request.retailerId` from the global decorator, `/public/*` stays public.
