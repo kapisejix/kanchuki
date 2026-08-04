@@ -521,10 +521,10 @@ function WhatsAppApiModal({
     retailerApi
       .getWhatsAppApiConfig()
       .then((res) => {
-        setConfigured(res.data.configured)
-        setPhoneNumberId(res.data.whatsapp_api_phone_number_id ?? '')
-        setTemplateName(res.data.whatsapp_api_template_name ?? '')
-        setTemplateLang(res.data.whatsapp_api_template_lang ?? 'en_US')
+        setConfigured(res.data?.configured ?? false)
+        setPhoneNumberId(res.data?.whatsapp_api_phone_number_id ?? '')
+        setTemplateName(res.data?.whatsapp_api_template_name ?? '')
+        setTemplateLang(res.data?.whatsapp_api_template_lang ?? 'en_US')
       })
       .finally(() => setLoading(false))
   }, [visible])

@@ -188,7 +188,7 @@ function ShareModal({
     enabled: visible,
     staleTime: 60_000,
   })
-  const apiConfigured = waApiData?.data.configured ?? false
+  const apiConfigured = waApiData?.data?.configured ?? false
 
   const toggle = (id: string) => {
     setSelected((prev) => {
