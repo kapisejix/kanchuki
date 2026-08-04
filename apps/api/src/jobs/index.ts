@@ -2,6 +2,7 @@ import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { handleBackupDatabase } from './backup-database.js';
+import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
 import { handleExpirePendingOrders } from './expire-pending-orders.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
@@ -252,6 +253,8 @@ export async function startWorkers(): Promise<void> {
       switch (job.name) {
         case 'cleanup-training-data':
           return handleCleanupTrainingData();
+        case 'backfill-missing-ai-fields':
+          return handleBackfillMissingAiFields();
         case 'expire-pending-orders':
           return handleExpirePendingOrders();
         case 'purge-soft-deleted':
@@ -287,6 +290,20 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 2 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // AI-fields backfill (2026-08-04): re-queue tag jobs for products tagged
+  // before migration 043 so name/subtype/SKU/description backfill themselves.
+  // Runs 30 min after cleanup; each run is capped (250 jobs) and idempotent,
+  // so repeated daily runs drain the backlog without flooding the AI queue.
+  await getMaintenanceQueue().add(
+    'backfill-missing-ai-fields',
+    {},
+    {
+      repeat: { pattern: '30 2 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
