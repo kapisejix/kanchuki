@@ -45,6 +45,14 @@ const serwist = new Serwist({
       matcher: ({ url }) => url.pathname.startsWith('/c/'),
       handler: new NetworkFirst({ cacheName: 'collection-pages', networkTimeoutSeconds: 3 }),
     },
+    // Full-page category browse (/store/[slug]/categories/...) — same bug
+    // class as the /admin fix below: defaultCache caches RSC prefetch/nav
+    // payloads by URL only, so a stale payload got served on click and the
+    // page hung until a hard reload bypassed the SW cache.
+    {
+      matcher: ({ url }) => url.pathname.startsWith('/store/'),
+      handler: new NetworkFirst({ cacheName: 'store-pages', networkTimeoutSeconds: 3 }),
+    },
     // Admin panel isn't part of the offline-capable customer PWA — defaultCache
     // below caches Next.js RSC/navigation fetches by URL only, so a cached
     // response from one nav method leaked into the other and admin pages

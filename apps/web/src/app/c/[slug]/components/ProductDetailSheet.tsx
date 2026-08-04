@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2 } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
@@ -110,13 +110,35 @@ export function ProductDetailSheet({
     }
   }, [])
 
+  // Opening this sheet is pure component state, not a route change — with no
+  // history entry pushed, the phone/browser Back button skipped straight past
+  // it to whatever page preceded the current one (e.g. the category grid)
+  // instead of just closing the sheet. Push a history entry on mount and
+  // close on popstate; the sheet's own close buttons trigger history.back()
+  // so Back is always the single source of truth for closing.
+  useEffect(() => {
+    let poppedByUser = false
+    window.history.pushState({ kanchukiProductSheet: true }, '')
+    const handlePopState = () => {
+      poppedByUser = true
+      onClose()
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      if (!poppedByUser) window.history.back()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const closeSheet = useCallback(() => window.history.back(), [])
+
   const isSold = product.status === 'SOLD'
   const isReserved = product.status === 'RESERVED'
 
   const spinFrames = detail?.spin_frames ?? []
   const variants = detail?.variants ?? []
   const fabricEstimate = detail?.fabric_estimate ?? null
-  const searchTags = detail?.search_tags ?? []
   const sizes = detail?.sizes ?? []
 
   // Build photos array: detail photos (once loaded) + optionally a variant
@@ -316,7 +338,7 @@ export function ProductDetailSheet({
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col"
-      onClick={onClose}
+      onClick={closeSheet}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
@@ -333,7 +355,7 @@ export function ProductDetailSheet({
 
         {/* Back button */}
         <button
-          onClick={onClose}
+          onClick={closeSheet}
           className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
                      transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
           aria-label="Back to catalog"
@@ -343,7 +365,7 @@ export function ProductDetailSheet({
 
         {/* Close button */}
         <button
-          onClick={onClose}
+          onClick={closeSheet}
           className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
                      transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
           aria-label="Close"
@@ -586,11 +608,31 @@ export function ProductDetailSheet({
             </div>
           </div>
 
-          {/* Attribute chips */}
-          <div className="flex flex-wrap gap-2">
-            {product.primary_color && <Chip label={product.primary_color} />}
-            {fabricEstimate && <Chip label={fabricEstimate} />}
-            {product.occasions.slice(0, 2).map((o) => <Chip key={o} label={o} />)}
+          {/* AI Summary — generated at tagging time */}
+          {detail?.description && (
+            <div className="bg-cyan-50/60 border border-cyan-100 rounded-2xl px-3.5 py-3">
+              <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1.5 mb-1">
+                <Sparkles size={13} />
+                AI Summary
+              </p>
+              <p className="text-sm text-gray-700 leading-relaxed">{detail.description}</p>
+            </div>
+          )}
+
+          {/* Product Info — structured AI-tagged fields, replaces a raw tag cloud */}
+          <div className="bg-gray-50 border border-gray-100 rounded-2xl px-3.5 py-3">
+            <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5 mb-2">
+              <Info size={13} />
+              Product Info
+            </p>
+            <div className="space-y-1.5">
+              {product.name && <InfoRow label="Name" value={product.name} />}
+              {product.subtype && <InfoRow label="Type" value={product.subtype} />}
+              {fabricEstimate && <InfoRow label="Fabric" value={fabricEstimate} />}
+              {product.occasions.length > 0 && (
+                <InfoRow label="Occasion" value={product.occasions.join(', ')} />
+              )}
+            </div>
           </div>
 
           {/* Sizes */}
@@ -653,19 +695,6 @@ export function ProductDetailSheet({
             </div>
           )}
 
-          {/* Tags */}
-          {searchTags.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {searchTags.slice(0, 8).map((tag) => (
-                <span
-                  key={tag}
-                  className="text-xs bg-cyan-50 text-cyan-700 px-2 py-1 rounded-full"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
 
         {/* Try-On CTA — disabled for SOLD */}
@@ -691,37 +720,66 @@ export function ProductDetailSheet({
           </div>
         )}
 
-        {/* Add to Cart — shown when checkout is enabled */}
-        {checkoutEnabled && !isSold && (
-          <div className="px-4 pt-2">
-            <button
-              onClick={() => {
-                const cart = loadCart(slug)
-                cart.set(
-                  product.id,
-                  productToCartItem({
-                    id: product.id,
-                    name: product.name,
-                    price_min: product.price_min,
-                    category: product.category,
-                    primary_photo_url: product.primary_photo_url,
-                  }),
-                )
-                saveCart(slug, cart)
-                router.push(`/c/${slug}/cart`)
-              }}
-              disabled={isReserved}
-              className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-base active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-                isReserved
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-cyan-500'
-              }`}
-            >
-              <ShoppingCart size={20} />
-              {isReserved ? 'Reserved' : 'Add to Cart'}
-            </button>
-          </div>
-        )}
+        {/* 3-button CTA row — Buy Now / Select / Enquire, replaces the old
+            stacked Add-to-Cart + Enquire full-width buttons. Always rendered
+            (matches the previous Enquire-always-visible-but-disabled pattern)
+            so the row layout stays consistent for sold-out products too. */}
+        <div className="px-4 pt-2 flex items-stretch gap-2">
+          <button
+            onClick={() => {
+              if (isSold || isReserved || !checkoutEnabled) return
+              const cart = loadCart(slug)
+              cart.set(
+                product.id,
+                productToCartItem({
+                  id: product.id,
+                  name: product.name,
+                  price_min: product.price_min,
+                  category: product.category,
+                  primary_photo_url: product.primary_photo_url,
+                }),
+              )
+              saveCart(slug, cart)
+              router.push(`/c/${slug}/cart`)
+            }}
+            disabled={isSold || isReserved || !checkoutEnabled}
+            title={!checkoutEnabled ? "Online checkout isn't set up for this store yet" : undefined}
+            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              isSold || isReserved || !checkoutEnabled
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-cyan-500'
+            }`}
+          >
+            <ShoppingCart size={18} />
+            {isSold ? 'Sold Out' : isReserved ? 'Reserved' : 'Buy Now'}
+          </button>
+          <button
+            onClick={() => !isSold && onFavorite(product.id)}
+            disabled={isSold}
+            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rose-400 ${
+              isSold
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : isFavorited
+                  ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                  : 'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-rose-50 hover:border-rose-200'
+            }`}
+          >
+            <Heart size={18} className={isFavorited && !isSold ? 'fill-rose-500' : ''} />
+            Select
+          </button>
+          <button
+            onClick={handleEnquire}
+            disabled={isSold}
+            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
+              isSold
+                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                : 'bg-green-500 hover:bg-green-600 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-green-500'
+            }`}
+          >
+            <MessageCircle size={18} />
+            {isSold ? 'Sold Out' : 'Enquire'}
+          </button>
+        </div>
 
         {/* Related Products — same category from same retailer */}
         {relatedProducts.length > 0 && (
@@ -729,7 +787,7 @@ export function ProductDetailSheet({
             <div className="border-t border-gray-100 pt-4 mb-3">
               <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
                 <ShoppingCart size={14} className="text-cyan-600" />
-                More {product.category ?? 'in this category'}
+                Related suits
               </h3>
             </div>
             <div className="flex gap-3 overflow-x-auto -mx-4 px-4 pb-2 scrollbar-hide snap-x snap-mandatory">
@@ -775,26 +833,7 @@ export function ProductDetailSheet({
           </div>
         )}
 
-        {/* Enquire CTA — disabled for SOLD */}
-        <div className={`px-4 pb-6 pt-2 ${isSold || checkoutEnabled ? 'pt-2' : 'pt-4'}`}>
-          <button
-            onClick={handleEnquire}
-            disabled={isSold}
-            className={`w-full font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 transition-all text-base active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-              isSold
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600 text-white shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 focus-visible:ring-green-500'
-            }`}
-          >
-            <MessageCircle size={20} />
-            {isSold ? 'Sold Out' : isReserved ? 'Enquire About This Item' : 'Enquire on WhatsApp'}
-          </button>
-          <p className="text-center text-xs text-gray-400 mt-2">
-            {isSold
-              ? 'This item has been sold. Check other items in the collection.'
-              : 'Opens WhatsApp with your enquiry pre-filled'}
-          </p>
-        </div>
+        <div className="pb-6" />
       </div>
 
       {/* Fullscreen 360 spin popup */}
@@ -887,10 +926,11 @@ export function ProductDetailSheet({
   )
 }
 
-function Chip({ label }: { label: string }) {
+function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <span className="text-xs bg-gray-50 border border-gray-100 text-gray-700 px-3 py-1.5 rounded-full font-medium">
-      {label}
-    </span>
+    <div className="flex items-baseline gap-2 text-sm">
+      <span className="text-gray-400 w-16 flex-shrink-0">{label}</span>
+      <span className="text-gray-800 font-medium">{value}</span>
+    </div>
   )
 }

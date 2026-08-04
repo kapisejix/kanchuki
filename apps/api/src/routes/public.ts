@@ -336,6 +336,7 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
           primary_color: p.primary_color,
           secondary_colors: p.secondary_colors,
           fabric_estimate: p.fabric_estimate,
+          description: p.description,
           occasions: p.occasions,
           search_tags: p.search_tags,
           sizes: p.sizes,

@@ -390,27 +390,50 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
         )}
       </main>
 
-      {/* ── Sticky Bottom Bar ── */}
+      {/* ── Sticky Bottom Bar — 3 buttons in one row: Buy Now / Selected / Enquire ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 safe-area-inset-bottom shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
-        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between gap-3">
+        <div className="max-w-md mx-auto px-3 py-3 flex items-center gap-2">
+          {checkoutEnabled ? (
+            <Link
+              href={`/c/${slug}/cart`}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-cyan-600 hover:bg-cyan-700 text-white
+                         font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+            >
+              <ShoppingBag size={17} />
+              <span className="text-[11px] leading-tight">Buy Now</span>
+            </Link>
+          ) : (
+            <div
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-gray-100 text-gray-400
+                         font-semibold py-2.5 rounded-2xl cursor-not-allowed"
+              title="Online checkout isn't set up for this store yet — use Enquire instead"
+            >
+              <ShoppingBag size={17} />
+              <span className="text-[11px] leading-tight">Buy Now</span>
+            </div>
+          )}
           <Link
             href={`/c/${slug}/wishlist`}
-            className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 flex-shrink-0 bg-gray-50
-                       border border-gray-100 rounded-2xl px-4 py-3.5 hover:bg-rose-50 hover:border-rose-200
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-gray-700 font-semibold
+                       bg-gray-50 border border-gray-100 rounded-2xl py-2.5 hover:bg-rose-50 hover:border-rose-200
                        transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
           >
-            <Heart size={16} className="text-rose-500 fill-rose-500" />
-            Selected{favorites.size > 0 && ` (${favorites.size})`}
+            <Heart size={17} className="text-rose-500 fill-rose-500" />
+            <span className="text-[11px] leading-tight">
+              Selected{favorites.size > 0 && ` (${favorites.size})`}
+            </span>
           </Link>
           <button
             onClick={handleEnquireAll}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold
-                       py-3.5 px-4 rounded-2xl flex items-center justify-center gap-2
-                       shadow-soft-lg transition-all active:scale-[0.98] hover:-translate-y-0.5
+            className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-green-500 hover:bg-green-600 text-white
+                       font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
           >
-            <MessageCircle size={18} />
-            {favorites.size > 0 ? `Enquire about ${favorites.size} items` : 'Enquire on WhatsApp'}
+            <MessageCircle size={17} />
+            <span className="text-[11px] leading-tight">
+              Enquire{favorites.size > 0 && ` (${favorites.size})`}
+            </span>
           </button>
         </div>
       </div>

@@ -153,6 +153,7 @@ const PRODUCT_DETAIL: PublicProductDetail = {
   ...ALL_PRODUCTS[0],
   secondary_colors: [],
   fabric_estimate: 'Raw Silk',
+  description: 'Elegant maroon silk suit with gold zari embroidery, ideal for festive occasions.',
   search_tags: ['maroon', 'festive'],
   sizes: ['S', 'M', 'L', 'XL'],
   photos: [ALL_PRODUCTS[0].primary_photo_url],

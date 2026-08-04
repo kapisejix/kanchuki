@@ -222,6 +222,7 @@ export interface PublicProduct {
 export interface PublicProductDetail extends PublicProduct {
   secondary_colors: string[]
   fabric_estimate: string | null
+  description: string | null
   search_tags: string[]
   sizes: string[]
   photos: string[]

@@ -414,6 +414,22 @@ User asked AI tagging to also produce: garment **subtype** (finer than `category
 
 ---
 
+## Built: Customer Web PWA — catalog nav bug + bottom bar + cart wiring + product detail redesign + back-button fix (2026-08-04)
+
+User-reported 7-item list for the customer-facing web PWA (`apps/web/src/app/c/[slug]`, `/store/[slug]/categories/...`). Full review notes + status per item: `docs/PROGRESS.md` "2026-08-04 — Customer Web PWA" entry.
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Category page (`/store/[slug]/categories/[categoryId]`) needs a hard refresh to load | ✅ Fixed — added a `/store/` NetworkFirst matcher to `sw.ts` (`apps/web/src/app/sw.ts`), same fix pattern as `/admin` |
+| 2 | Catalog bottom bar: 3 buttons (Buy Now / Selected N / Enquire N) in one row with icons | ✅ Built — `CollectionView.tsx` bottom bar redesigned to 3 buttons; Buy Now links to `/c/[slug]/cart`, disabled (not hidden) when the retailer has no checkout connected |
+| 3 | Is the shopping cart fully functional? | ✅ Confirmed already built end-to-end (F-302 Stage A) — gap was reachability from the catalog page, closed by #2, no cart/checkout code changes needed |
+| 4/5/6 | Product detail: AI Summary + "Product Info" (replaces raw tag chips) + 3-button row; keep price/category/share/like; rename "More {category}" → "Related suits" | ✅ Built — `description` added to `PublicProductDetail` (`packages/shared/src/types/index.ts`) + `GET /public/products/:productId` (`apps/api/src/routes/public.ts`); `ProductDetailSheet.tsx` gained AI Summary + Product Info blocks (replacing attribute chips + raw tag cloud), Buy Now/Select/Enquire 3-button row (replacing stacked Add-to-Cart/Enquire), related-section heading renamed. Color-circle swatches were already built (`resolveFashionColor`). SKU deliberately kept internal-only, not exposed to customers |
+| 7 | Mobile back button skips the product catalog, lands on category screen | ✅ Fixed — `ProductDetailSheet.tsx` now pushes a history entry on open and closes on `popstate`; its own close buttons call `history.back()` instead of `onClose` directly |
+
+**Verified:** `packages/shared`/`apps/api`/`apps/web` `tsc --noEmit` all clean, `CollectionView.test.tsx` passing. **Not verified:** no live browser/phone check in this environment — visually confirm the 3-button rows, AI Summary/Product Info sections, and the back-button fix on a real phone before calling this fully done.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs
