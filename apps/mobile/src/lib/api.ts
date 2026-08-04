@@ -363,12 +363,13 @@ export const productApi = {
       timeoutMs: 30_000,
     }),
 
-  list: (params?: { status?: string; category?: string; category_id?: string; is_new_arrival?: boolean; cursor?: string; limit?: number }) => {
+  list: (params?: { status?: string; category?: string; category_id?: string; is_new_arrival?: boolean; sku?: string; cursor?: string; limit?: number }) => {
     const qs = new URLSearchParams()
     if (params?.status) qs.set('status', params.status)
     if (params?.category) qs.set('category', params.category)
     if (params?.category_id) qs.set('category_id', params.category_id)
     if (params?.is_new_arrival) qs.set('is_new_arrival', 'true')
+    if (params?.sku) qs.set('sku', params.sku)
     if (params?.cursor) qs.set('cursor', params.cursor)
     if (params?.limit) qs.set('limit', String(params.limit))
     return request<{ data: unknown[]; pagination: unknown }>(`/v1/products?${qs}`, {

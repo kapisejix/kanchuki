@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, MapPin, SlidersHorizontal, X, Trash2 } from 'lucide-react-native'
+import { Plus, MapPin, SlidersHorizontal, X, Trash2, ScanLine } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
@@ -364,8 +364,16 @@ export default function CatalogScreen() {
         </View>
       ) : null}
 
-      {/* Header — filter icon only, top right */}
-      <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center justify-end">
+      {/* Header — scan (F-025) + filter icons, top right */}
+      <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center justify-end gap-2">
+        <AnimatedPressable
+          onPress={() => router.push('/product/scan')}
+          className="w-10 h-10 rounded-xl items-center justify-center bg-sand-100 border border-sand-100"
+          accessibilityLabel="Scan product SKU to mark sold"
+          accessibilityRole="button"
+        >
+          <ScanLine size={16} color={colors.sand[600]} />
+        </AnimatedPressable>
         <AnimatedPressable
           onPress={() => setShowFilters((v) => !v)}
           className={`w-10 h-10 rounded-xl items-center justify-center border ${

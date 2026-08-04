@@ -111,6 +111,11 @@ const ListProductsQuerySchema = z.object({
   category: z.string().optional(),
   category_id: z.string().optional(),
   is_new_arrival: z.coerce.boolean().optional(),
+  // F-025 scan-to-sell: exact-match SKU lookup (SKUs are auto-generated per
+  // retailer, e.g. LS0001, @@unique([retailer_id, sku])). Same no-owner-gate
+  // behavior as the rest of this list endpoint — shop staff (Staff model)
+  // may scan-to-sell too, per F-025. Do NOT copy an owner-only gate here.
+  sku: z.string().trim().min(1).max(64).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(20),
 });
@@ -311,7 +316,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     const query = ListProductsQuerySchema.safeParse(request.query);
     if (!query.success) throw validationError(query.error.issues[0]?.message ?? 'Invalid query');
 
-    const { status, category, category_id, cursor, limit, is_new_arrival } = query.data;
+    const { status, category, category_id, cursor, limit, is_new_arrival, sku } = query.data;
 
     // When is_new_arrival filter is active, compute the cutoff date so the
     // query only returns products created within the last 30 days — no cron,
@@ -333,6 +338,8 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
         ...(category ? { category } : {}),
         ...(category_id ? { category_id } : {}),
         ...(arrivalCutoff ? { created_at: { gte: arrivalCutoff } } : {}),
+        // SKUs are stored uppercase — normalize what the scanner read
+        ...(sku ? { sku: sku.toUpperCase() } : {}),
         ...(cursor ? { id: { gt: cursor } } : {}),
       },
       include: {

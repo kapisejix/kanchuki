@@ -227,3 +227,59 @@ describe('DELETE /products/:id/purge', () => {
     await app.close();
   });
 });
+
+describe('GET /products — F-025 SKU lookup', () => {
+  const skuProduct = {
+    id: 'p1',
+    sku: 'LS0001',
+    photos: [],
+    section: null,
+    created_at: new Date(),
+    mrp: null,
+    price_min: null,
+    price_max: null,
+    name: null,
+    category: null,
+    primary_color: null,
+    occasions: [],
+    location_notes: null,
+    status: 'AVAILABLE',
+    _count: { spin_frames: 0 },
+  };
+
+  it('filters by exact SKU, normalizing lowercase scan input to uppercase', async () => {
+    mockProductFindMany.mockResolvedValue([skuProduct]);
+    const app = await buildApp(null);
+    const res = await app.inject({ method: 'GET', url: '/v1/products?sku=ls0001' });
+    expect(res.statusCode).toBe(200);
+    expect(mockProductFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          retailer_id: RETAILER_ID,
+          deleted_at: null,
+          sku: 'LS0001',
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('is usable by shop staff — the SKU param carries NO owner-only gate (scan-to-sell at the counter)', async () => {
+    mockProductFindMany.mockResolvedValue([skuProduct]);
+    const app = await buildApp('salesperson');
+    const res = await app.inject({ method: 'GET', url: '/v1/products?sku=LS0001' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data).toHaveLength(1);
+    await app.close();
+  });
+
+  it('returns an empty list for an unknown SKU', async () => {
+    mockProductFindMany.mockResolvedValue([]);
+    const app = await buildApp(null);
+    const res = await app.inject({ method: 'GET', url: '/v1/products?sku=NOPE99' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toHaveLength(0);
+    await app.close();
+  });
+});

@@ -27,7 +27,8 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag, Camera, X } from 'lucide-react-native'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag, Camera, X, Tag } from 'lucide-react-native'
+import QRCode from 'react-native-qrcode-svg'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
@@ -192,6 +193,10 @@ export default function ProductDetailScreen() {
       if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
     }
   }, [])
+
+  // F-025: printable SKU/QR tag modal — the sticker a retailer prints once
+  // per design and sticks on the rack card, then scans to mark sold.
+  const [skuTagOpen, setSkuTagOpen] = useState(false)
 
   // ── 360° spin viewer — drag-to-rotate through spin_frames, mirrors the
   // web customer PWA's Product360Viewer (apps/web/.../Product360Viewer.tsx) ─
@@ -1222,14 +1227,30 @@ export default function ProductDetailScreen() {
           </View>
           <View>
             <Text className="text-xs font-medium text-sand-500 mb-1">SKU</Text>
-            <TextInput
-              value={editedSku}
-              onChangeText={dirty(setEditedSku)}
-              placeholder="e.g. LS0001"
-              autoCapitalize="characters"
-              className="text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
-              placeholderTextColor={colors.sand[400]}
-            />
+            <View className="flex-row items-center gap-2">
+              <TextInput
+                value={editedSku}
+                onChangeText={dirty(setEditedSku)}
+                placeholder="e.g. LS0001"
+                autoCapitalize="characters"
+                className="flex-1 text-sm text-sand-900 border border-sand-100 rounded-xl px-3 py-2.5"
+                placeholderTextColor={colors.sand[400]}
+              />
+              {/* F-025: print a QR/SKU tag for the rack card — scan-to-sell
+                  (product/scan.tsx) reads this to jump straight to this
+                  product so the retailer can mark it sold at the counter. */}
+              {product.sku ? (
+                <AnimatedPressable
+                  onPress={() => setSkuTagOpen(true)}
+                  className="flex-row items-center gap-1.5 bg-ink-50 border border-ink-100 rounded-xl px-3 py-2.5"
+                  accessibilityLabel="Show printable SKU tag"
+                  accessibilityRole="button"
+                >
+                  <Tag size={14} color={primaryColor} />
+                  <Text className="text-ink-700 text-xs font-semibold">Print Tag</Text>
+                </AnimatedPressable>
+              ) : null}
+            </View>
           </View>
           <View>
             <Text className="text-xs font-medium text-sand-500 mb-1">Description</Text>
@@ -1783,6 +1804,37 @@ export default function ProductDetailScreen() {
             <View style={{ backgroundColor: 'rgba(0,0,0,0.6)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 }}>
               <Text style={{ color: 'white', fontSize: 11, fontWeight: '600' }}>Drag to rotate · 360°</Text>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* F-025: printable SKU/QR tag modal — white, print/screenshot friendly */}
+      <Modal
+        visible={skuTagOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSkuTagOpen(false)}
+      >
+        <View className="flex-1 bg-black/60 items-center justify-center px-8">
+          <View className="bg-white rounded-2xl p-8 items-center w-full max-w-sm">
+            <Text className="text-[10px] font-semibold text-sand-500 uppercase tracking-widest mb-4">
+              Rack Tag · Scan to Sell
+            </Text>
+            {product.sku && <QRCode value={product.sku} size={180} />}
+            <Text className="text-2xl font-bold text-sand-900 mt-5 tracking-widest">
+              {product.sku ?? ''}
+            </Text>
+            {product.name ? (
+              <Text className="text-xs text-sand-500 mt-1 text-center" numberOfLines={2}>
+                {product.name}
+              </Text>
+            ) : null}
+            <AnimatedPressable
+              onPress={() => setSkuTagOpen(false)}
+              className="mt-6 bg-ink-600 px-6 py-2.5 rounded-xl"
+            >
+              <Text className="text-white text-sm font-semibold">Done</Text>
+            </AnimatedPressable>
           </View>
         </View>
       </Modal>

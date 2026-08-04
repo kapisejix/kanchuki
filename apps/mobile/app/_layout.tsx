@@ -106,6 +106,7 @@ function AppShell() {
         <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
         <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
         <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="product/scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
         <Stack.Screen name="product/[id]" />
         <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
