@@ -1,3 +1,4 @@
+import { deleteObject } from '@kanchuki/ai';
 import { getPurgePrisma } from '@kanchuki/db';
 
 /**
@@ -30,7 +31,9 @@ const db = getPurgePrisma();
  * - Results are logged to the audit trail.
  *
  * Tables purged (in dependency order — children before parents):
- *   1. product_variants, product_photos, product_embeddings  → children of products
+ *   1. product_variants, product_photos, product_spin_frames, product_embeddings → children of products
+ *      (r2_key of every photo/spin-frame/variant is fetched first and its R2 object
+ *      deleted after the DB purge — best-effort, see purgeR2Objects())
  *   2. products                                              → main business table
  *   3. collection_products, collection_views, collection_enquiries → children of collections
  *   4. collections                                           → main business table
@@ -40,7 +43,7 @@ const db = getPurgePrisma();
  *   8. retailers                                             → main business table (last, FK target)
  */
 
-const PURGE_AFTER_DAYS = 30;
+const PURGE_AFTER_DAYS = 15;
 const BATCH_SIZE = 100;
 
 interface PurgeResult {
@@ -92,6 +95,38 @@ async function purgeTable(table: string, cutoff: Date, extraWhere?: string): Pro
 }
 
 /**
+ * R2 objects are never removed by DB cascade — fetch the r2_key of every
+ * child row about to be purged (product_photos/spin_frames/variants) before
+ * deleting it, so the Cloudflare object can be cleaned up too. Best-effort:
+ * a failed R2 delete shouldn't block the DB purge, so callers fire this
+ * after the DB delete already succeeded.
+ */
+async function fetchR2Keys(
+  childTable: string,
+  childFkColumn: string,
+  parentTable: string,
+  cutoff: Date,
+): Promise<string[]> {
+  const rows = await db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+    `SELECT r2_key FROM "${childTable}"
+     WHERE "${childFkColumn}" IN (
+       SELECT id FROM "${parentTable}" WHERE deleted_at IS NOT NULL AND deleted_at < $1
+     ) AND r2_key IS NOT NULL`,
+    cutoff,
+  );
+  return rows.map((r) => r.r2_key).filter((k): k is string => k != null);
+}
+
+async function purgeR2Objects(keys: string[]): Promise<number> {
+  const results = await Promise.allSettled(keys.map((key) => deleteObject(key)));
+  const failed = results.filter((r) => r.status === 'rejected');
+  if (failed.length > 0) {
+    console.error(`[purge-soft-deleted] ${failed.length}/${keys.length} R2 deletes failed`, failed);
+  }
+  return keys.length - failed.length;
+}
+
+/**
  * Delete child records referencing a parent table via FK.
  * Uses raw SQL with the session flag and subquery to match soft-deleted parents.
  */
@@ -124,15 +159,28 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   );
 
   // ── 1. Purge products + children ──────────────────────────────
+  // Grab R2 keys before the rows disappear — cascade/explicit delete removes
+  // the DB record but never touches the Cloudflare object.
+  const r2Keys = [
+    ...(await fetchR2Keys('product_photos', 'product_id', 'products', cutoff)),
+    ...(await fetchR2Keys('product_spin_frames', 'product_id', 'products', cutoff)),
+    ...(await fetchR2Keys('product_variants', 'product_id', 'products', cutoff)),
+  ];
+
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging product children...');
   await purgeChildren('product_variants', 'product_id', 'products', cutoff);
   await purgeChildren('product_photos', 'product_id', 'products', cutoff);
+  await purgeChildren('product_spin_frames', 'product_id', 'products', cutoff);
   await purgeChildren('product_embeddings', 'product_id', 'products', cutoff);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging products...');
   const totalProducts = await purgeTable('products', cutoff);
+
+  // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
+  console.log(`[purge-soft-deleted] Deleting ${r2Keys.length} R2 objects...`);
+  const totalR2Deleted = await purgeR2Objects(r2Keys);
 
   // ── 2. Purge collections + children ─────────────────────────
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
@@ -181,6 +229,7 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
         customers_deleted: totalCustomers,
         retailers_deleted: totalRetailers,
         collections_deleted: totalCollections,
+        r2_objects_deleted: totalR2Deleted,
         batch_size: BATCH_SIZE,
         purge_after_days: PURGE_AFTER_DAYS,
       },
@@ -190,7 +239,7 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log(
     `[purge-soft-deleted] Complete: ${totalProducts} products, ${totalCollections} collections, ` +
-      `${totalCustomers} customers, ${totalRetailers} retailers purged`,
+      `${totalCustomers} customers, ${totalRetailers} retailers, ${totalR2Deleted} R2 objects purged`,
   );
 
   return {

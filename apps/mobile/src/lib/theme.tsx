@@ -32,7 +32,7 @@ const LEGACY_GLOBAL_KEY = 'theme_palette';
 const LEGACY_COLOR_KEY = 'theme_primary_color';
 
 function cacheKeyFor(retailerId: string | null): string {
-  return retailerId ? `theme_palette:${retailerId}` : 'theme_palette:anon';
+  return retailerId ? `theme_palette.${retailerId}` : 'theme_palette.anon';
 }
 
 /**
