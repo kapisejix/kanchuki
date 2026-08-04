@@ -687,3 +687,26 @@ Per user instruction ("review deeply → ask questions → develop one by one, c
 **Deploy notes:** migrations `044` + `045` need `prisma migrate deploy` (migrator role); the promo must be configured by an admin (Admin → Catalog Upload Tiers) to take effect; field agents get phone-based login only after an admin sets their phone in Admin → Team Members.
 
 **Post-build verification re-run (2026-08-04, after all commits landed):** all 100% green — API `tsc` clean + vitest **254/254** (16 files), web `tsc` clean + vitest **72/72** (13 files), mobile `tsc` clean + vitest **25/25** (1 pre-existing unrelated file-level failure: Rolldown cannot parse `expo-linear-gradient`'s vendor `build/LinearGradient.js` — documented, predates this session, zero tests fail), `packages/db` 10 passed / 4 conditional-skipped + `prisma validate` 🚀, `packages/ai` 49/49, `packages/shared` `tsc -b` clean. Guard scripts all pass: delete-guard ✅, secrets-guard ✅, v1-fetch-guard ✅. All tasks marked ✅ done in CLAUDE.md / docs/PLAN.md / docs/PRO-REQUIREMENTS.md are backed by this passing verification.
+
+---
+
+## 2026-08-04 — #1 AI-fields blank bug root-caused + backfill shipped (4037e49); #2 ops-hardening secrets generator (e7c88a8)
+
+### #1 — "AI-tagged name/subtype/SKU/description blank on device" — ROOT CAUSED + FIXED
+
+Full code-path audit (verified by reading code + git history, not doc/memory claims):
+- The 2026-08-02 worker consolidation (`8b7a5be`) **never touched the AI_TAGGING worker** — it only paused tryOn/FashionDNA/GhostMannequin and collapsed the 4 cron-only workers into `QUEUES.MAINTENANCE`. The tagging worker is registered in `startWorkers()` with concurrency 3 and consuming.
+- Entire chain verified correct end-to-end: producer enqueues on product create + on `/products/:id/retag` ✓, `checkQuota` fails open (no plan row = unlimited) ✓, `handleTagProduct` fills only-null fields (never clobbers edits) ✓, tagger has deterministic never-blank fallbacks for name/description ✓, SKU generator ✓, mobile sends `undefined` not `''` on save ✓, mobile hydrate re-runs on the 3s poll when not dirty ✓.
+- **Conclusion:** the current code is correct. The blank fields were products tagged **before migration 043 / the 2026-08-03 AI-fields build** — the old tagger prompt returned no `product_name`/`short_description`/`subtype` and never generated an SKU, so those columns stayed `NULL` forever. The per-product retag endpoint fixed one at a time; there was no bulk path.
+
+**Fix (commit `4037e49`):** new `apps/api/src/jobs/backfill-missing-ai-fields.ts` — cursor-batched (50/batch), capped (250 jobs/run), re-queues a tag-product job for every `ai_tagged=true` product with any of the four fields `NULL`. Safe by construction: only touches completed-tag products, handler never clobbers edits, `auto_cleanup: false`, runs through the normal quota/credits gate. Wired into the maintenance worker as `backfill-missing-ai-fields` (daily 2:30 AM UTC) so it drains the backlog over a few runs after deploy. 4 new unit tests; full API suite 258/258.
+
+### #2 — Operational hardening: one-shot secrets generator
+
+Audited every open env/secret item (LAUNCH-READINESS-AUDIT §3/§5, omp-review B-*/S-*):
+- **Fail-closed confirmed in code:** `TEAM_JWT_SECRET` missing → team auth plugin throws (login can't silently mis-issue tokens) ✓; `COOKIE_SECRET` missing in production → startup throws (2026-08-01 fix) ✓; admin TOTP is optional-by-design (`ADMIN_TOTP_SECRET` unset → no 2FA, audit wants it set) ✓; vault gracefully warns + skips when `VAULT_DATABASE_URL` unset ✓; Razorpay webhook secret is per-retailer via F-012 (Admin → Integrations) + platform-level env ✓.
+- **Gap found + fixed:** `COOKIE_SECRET` was **missing from `.env.example`** despite being required at production startup — a deploy following the example would fail to boot. Added it + a pointer to the new generator.
+
+**Fix (commit `e7c88a8`):** new `scripts/generate-production-secrets.ts` — prints fresh 192-bit hex values for `COOKIE_SECRET`, `ADMIN_API_KEY`, `TEAM_JWT_SECRET`, `REVALIDATION_SECRET`, `ENCRYPTION_MASTER_KEY`, `RAZORPAY_WEBHOOK_SECRET` as Railway-ready `KEY="value"` lines, plus the still-manual checklist (admin hash/TOTP via `generate-admin-hash.ts`, key rotation, DB role switch, replica/vault URLs). `.env.example` now documents `COOKIE_SECRET` and points to the generator.
+
+**Remaining operator work (production, needs a human per Operational Control Policy):** run the generator in the Railway dashboard, rotate the dev-exposed keys, point `DATABASE_URL` at `kanchuki_app` (staging test first), provision replica + vault instances, set `WEB_URL` to the real domain. The code-side debt is now zero — everything left is config in the hosting dashboard.
