@@ -1341,7 +1341,7 @@ Kurta Sets, Salwar Suits, Short Kurtis, Kurta, Co-ords, Plus Sizes, Dresses, Bot
 
 ---
 
-## 16. F-026 BUG — Mobile "Recently Deleted" → Permanently Delete throws APIError — 🔴 Found + root-caused 2026-08-04, NOT FIXED
+## 16. F-026 BUG — Mobile "Recently Deleted" → Permanently Delete throws APIError — ✅ FIXED 2026-08-04 (commit `ac50fe8`)
 
 **Report:** retailer opens Settings → Recently Deleted on the Expo mobile app, tries to permanently delete a product, gets a generic `APIError`, delete doesn't happen.
 
@@ -1358,6 +1358,6 @@ F-017's DB guardrail migration (`packages/db/prisma/migrations/037_db_guardrails
 
 This is a regression introduced by F-017 (shipped 2026-07-26, "Database Guardrails") — the guardrail work correctly locked down accidental/malicious hard deletes but never circled back to update this one legitimate caller. The fix pattern already exists and works elsewhere in this codebase: `apps/api/src/jobs/purge-soft-deleted.ts` (the automated 15-day purge cron) wraps its hard deletes with `db.$executeRawUnsafe("SET app.allow_hard_delete = 'true';")` in the same transaction/connection before deleting.
 
-**Fix approach (not applied yet — code change, needs go-ahead separately from the two feature entries above):** wrap `apps/api/src/routes/products.ts`'s purge route in a `prisma.$transaction` that sets `app.allow_hard_delete = 'true'` on that transaction's connection before calling `.delete()` — same bypass, scoped to this one request instead of a long-running cron connection. Keep the existing `P2003` catch (a product referenced by a past order/collection genuinely can't be hard-deleted, and that's the correct, already-handled behavior) — the transaction wrapper only fixes the trigger block, doesn't change the legitimate FK-block case.
+**Fix applied (2026-08-04, commit `ac50fe8`):** the purge route now uses `getPurgePrisma()` (the `kanchuki_purge` scoped role — see below) and wraps the delete in a `$transaction` that runs `SET app.allow_hard_delete = 'true'` on that transaction's connection before calling `.delete()` — same bypass, scoped to this one request instead of a long-running cron connection. The existing `P2003` catch is kept (a product referenced by a past order/collection genuinely can't be hard-deleted, and that's the correct, already-handled behavior) — the transaction wrapper only fixes the trigger block, doesn't change the legitimate FK-block case. `apps/api/src/routes/products.test.ts` carries a regression comment for the purge route.
 
-**Not investigated (out of scope for root-cause, worth a quick check when fixing):** whether the 2026-08-02 role-separation work (`kanchuki_app` losing DELETE grants) has actually been applied in production yet (`CLAUDE.md`'s DB-outage entry says the setup SQL was still pending as of that session) — if it has, this route needs the DB grant question answered too, not just the trigger bypass, since `kanchuki_app`'s connection may not have DELETE privilege on `products` at all regardless of the trigger.
+**Role-separation question — resolved by the same fix:** the route now runs through `getPurgePrisma()` (`PURGE_DATABASE_URL`, the `kanchuki_purge` scoped role from 2026-08-02), which has DELETE on exactly the purge tables — so even under live role separation (`kanchuki_app` without DELETE grants) this legitimate caller keeps working, identical to the purge cron. It falls back to the shared client with a warning if `PURGE_DATABASE_URL` is unset.

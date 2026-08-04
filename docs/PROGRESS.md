@@ -658,3 +658,13 @@ User asked how a staff member visits a retailer's store and uploads their catalo
 **If it should become system-enforced** (not requested yet, noted as an option): add `promo_free_item_limit`/`promo_expires_at` via the existing admin-settings key-value pattern (same shape as the theme config), have the quoting route compute the ₹0 default itself. Skills if built: `ecc:database-reviewer` (2 nullable fields), `ecc:api-design`/`ecc:typescript-reviewer` (one conditional in quoting), `ecc:frontend-patterns`/`impeccable` (only if the tier-grid page needs a visible expiry/countdown UI), `security-review` (low risk, but it's a payment-quoting path — never skip per this repo's own money-path policy).
 
 **Verified after build:** `apps/web` `tsc --noEmit`, manual code read of the new bottom-bar/detail-sheet render paths (no live browser in this environment — Playwright MCP available but not run this pass; visually confirm on a phone before calling this fully done).
+
+---
+
+## 2026-08-04 — F-026 BUG fixed + committed (docs sync)
+
+**F-026: mobile Settings → Recently Deleted → permanent delete threw `APIError` — ✅ FIXED (commit `ac50fe8`).** The purge route in `apps/api/src/routes/products.ts` called `prisma.product.delete()` directly; F-017's guardrail trigger blocked it (no `SET app.allow_hard_delete`), and the raised exception isn't a `P2003` so the route's catch didn't handle it → unhandled 500 → generic `APIError` on device. Fixed by porting the purge-cron pattern into the route: `getPurgePrisma()` (the `kanchuki_purge` scoped role, resolving the role-separation grant question at the same time) + `$transaction` with `SET app.allow_hard_delete = 'true'` before the `.delete()`. Existing `P2003` catch kept — a product in a past order/collection still correctly can't hard-delete.
+
+**Docs updated this session (status was stale — fix shipped without doc updates):** PLAN.md, PRO-REQUIREMENTS.md §16, CLAUDE.md all moved F-026 from 🔴 NOT FIXED → ✅ FIXED with the commit reference. PROGRESS.md entry added.
+
+**Also shipped this session (commit `d8042f6`):** detected-color circle on the product *create* flow — `apps/mobile/app/product/add.tsx` now runs `productApi.detectColor()` on the just-uploaded photo and shows a `resolveFashionColor` swatch chip overlaid on the edit-form photo preview (pre-fills `primary_color` on save), instead of showing no color until the retailer reopens the product after background AI tagging. Detection is fire-and-forget — a miss just means the background job fills it later.

@@ -563,7 +563,7 @@ only.
 
 ---
 
-## OPEN — 2026-08-04: F-025 Scan-to-Sell (offline sale reconciliation) + F-026 BUG (Recently Deleted purge fails)
+## 2026-08-04: F-025 Scan-to-Sell (OPEN — not started) + F-026 BUG (✅ FIXED)
 
 Full design + root cause: `docs/PRO-REQUIREMENTS.md` §15–16, roadmap
 `docs/PLAN.md`.
@@ -587,24 +587,23 @@ routes below), so no new permission code needed; just don't accidentally
 copy an owner-only gate onto the new SKU-lookup param.
 
 **F-026 BUG — mobile Settings → Recently Deleted → permanent delete throws
-`APIError`.** Root-caused by reading the code, not guessed:
-`apps/api/src/routes/products.ts` purge route calls `prisma.product.delete()`
+`APIError`. — ✅ FIXED (commit `ac50fe8`, 2026-08-04).** Root-caused by
+reading the code, not guessed:
+`apps/api/src/routes/products.ts` purge route called `prisma.product.delete()`
 directly. F-017's DB guardrail trigger (`037_db_guardrails` migration,
 shipped 2026-07-26) blocks every hard delete on `products` unless
-`SET app.allow_hard_delete = 'true'` is set first — this route never sets
+`SET app.allow_hard_delete = 'true'` is set first — this route never set
 it, the trigger's exception isn't the `P2003` code the route's `catch`
-checks for, so it falls through as an unhandled 500 the mobile client
-shows as `APIError`. This is an F-017 regression on a route that predates
-it. Fix pattern already exists and works in
-`apps/api/src/jobs/purge-soft-deleted.ts` — wrap the purge route's delete
-in a `$transaction` that sets the same bypass flag first, keep the
-existing `P2003` catch (that one's correct — a product in a past
-order/collection genuinely can't hard-delete). Worth a quick check when
-fixing: whether the 2026-08-02 role-separation SQL (`kanchuki_app` losing
-DELETE grants) has actually been applied in production yet — if so this
-route needs the grant question answered too, not just the trigger bypass.
+checks for, so it fell through as an unhandled 500 the mobile client
+showed as `APIError`. Fixed by porting the purge-cron pattern
+(`apps/api/src/jobs/purge-soft-deleted.ts`) into the route: it now runs
+`getPurgePrisma()` (the `kanchuki_purge` scoped role, which answers the
+role-separation grant question too) and wraps the delete in a
+`$transaction` that sets `SET app.allow_hard_delete = 'true'` on that
+connection first. Existing `P2003` catch kept intact (a product in a past
+order/collection genuinely can't hard-delete — correct behavior).
 
-**Not fixed/built yet — both need explicit go-ahead to start coding.**
+**F-025 not built yet — needs explicit go-ahead to start coding.**
 
 ---
 
