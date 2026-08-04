@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { OCCASION_TYPES, PRODUCT_CATEGORIES, SIZE_OPTIONS, COLORS } from '@kanchuki/shared'
+import { OCCASION_TYPES, PRODUCT_CATEGORIES, SIZE_OPTIONS, COLORS, resolveFashionColor } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -86,6 +86,10 @@ export default function AddProductScreen() {
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null)
   const [aiTags, setAiTags] = useState<AiTags | null>(null)
   const [aiError, setAiError] = useState<string | null>(null)
+  // Quick color-only detect on the just-uploaded photo — the edit form shows
+  // a color circle right away instead of waiting for the background AI
+  // tagging job (which only fills primary_color after the product is saved).
+  const [detectedColor, setDetectedColor] = useState<string | null>(null)
   const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
     stage: 'preparing',
     percent: 0,
@@ -272,6 +276,21 @@ export default function AddProductScreen() {
       // AI tagging happens server-side via BullMQ after product creation
       setAiTags(null)
       setStep('edit')
+
+      // Best-effort color detect on the photo we just uploaded. Detection
+      // needs a public URL (the backend fetches the image), which only exists
+      // now — the local capture URI can't be sent. Never blocks or fails the
+      // upload flow: a miss just means the color circle shows up after the
+      // background tagging job instead.
+      const publicUrl = info.public_url
+      void (async () => {
+        try {
+          const res = await productApi.detectColor(publicUrl)
+          if (res.data?.color) setDetectedColor(res.data.color)
+        } catch {
+          // Silent — background AI tagging fills primary_color later.
+        }
+      })()
     } catch (err) {
       spinnerRotate.stopAnimation()
       logError(err)
@@ -295,7 +314,7 @@ export default function AddProductScreen() {
         price_min: priceInPaise,
         price_max: priceInPaise,
         category: aiTags?.category ?? undefined,
-        primary_color: aiTags?.primary_color ?? undefined,
+        primary_color: detectedColor ?? aiTags?.primary_color ?? undefined,
         fabric_estimate: aiTags?.fabric_estimate ?? undefined,
         occasions: selectedOccasions.length > 0 ? selectedOccasions : (aiTags?.occasions ?? []),
         search_tags: aiTags?.search_tags ?? [],
@@ -752,6 +771,31 @@ export default function AddProductScreen() {
               <ActivityIndicator size="small" color="white" />
               <Text className="text-white text-xs">AI tagging...</Text>
             </View>
+            {/* Detected-color circle — shows the dominant color of the photo
+                just captured, mirroring the tap-to-detect chip on the edit
+                screen. Dismissing it just skips pre-filling the color. */}
+            {detectedColor && (
+              <View
+                className="absolute bottom-3 left-3 bg-white/95 rounded-full pl-1.5 pr-2 py-1 flex-row items-center gap-1.5 shadow-sm"
+                style={{ elevation: 3 }}
+              >
+                <View
+                  className="w-5 h-5 rounded-full border-2 border-white"
+                  style={{ backgroundColor: resolveFashionColor(detectedColor) }}
+                />
+                <Text className="text-xs font-semibold text-sand-900 max-w-[140px]" numberOfLines={1}>
+                  {detectedColor}
+                </Text>
+                <AnimatedPressable
+                  onPress={() => setDetectedColor(null)}
+                  accessibilityLabel="Remove detected color"
+                  accessibilityRole="button"
+                  hitSlop={6}
+                >
+                  <X size={14} color={colors.sand[600]} />
+                </AnimatedPressable>
+              </View>
+            )}
           </View>
         )}
 
