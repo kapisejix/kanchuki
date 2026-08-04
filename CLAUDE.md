@@ -430,12 +430,12 @@ User-reported 7-item list for the customer-facing web PWA (`apps/web/src/app/c/[
 
 ---
 
-## OPEN — 2026-08-04: Staff/Retailer catalog-upload — auth gap found + 500-item free offer
+## ✅ BUILT 2026-08-04: Staff/Retailer catalog-upload — auth gap closed + 500-item free offer enforced
 
-**Reviewed today, nothing coded yet — today's task list.** Full research +
-guideline: `docs/staff-retailer.md`. Verified by reading the actual auth
-chain end to end (not from doc/memory claims), per the "doc staleness"
-pattern this project keeps hitting.
+**Both tasks shipped this session (commits `c99a6c6`, `f0ab109`).** Original
+research + guideline: `docs/staff-retailer.md`. Verified by reading the
+actual auth chain end to end (not from doc/memory claims), per the "doc
+staleness" pattern this project keeps hitting.
 
 **Context:** F-019 (paid on-site catalog upload) + F-020 (delegated
 catalog-upload session) are fully built — ticket lifecycle, Razorpay
@@ -463,14 +463,19 @@ Two ways to close it — needs a decision before coding:
 | A. Add phone+OTP to `TeamMember` (reuse the existing Supabase OTP flow, extend `auth.ts` to also check `TeamMember` alongside `Staff`) | DB migration (`TeamMember.phone`, unique index), `apps/api/src/routes/auth.ts`, `apps/mobile/app/auth/otp.tsx` redirect logic | **Database** (schema/migration review — `ecc:database-reviewer`), **Backend/API** (`ecc:typescript-reviewer`, `ecc:api-design`), **Security** (bridging two auth systems onto one endpoint is exactly the kind of boundary bug that hides privilege leaks — mandatory `ecc:security-reviewer` / `security-review` pass before merge, must confirm `Staff` vs `TeamMember` tokens can never be confused downstream) |
 | B. Add an email+password login screen to the mobile app hitting the existing `/team/login` (no backend/schema change at all — endpoint already works, just unreachable from mobile) | One new mobile screen + storing the returned JWT under the existing token slot | **Mobile/Frontend** (`ecc:react-reviewer` / `react-native` conventions, reuse `auth/phone.tsx` layout patterns), **Security** (lighter — no new auth surface, just wiring an existing one; still worth a quick `security-review` pass on token storage) |
 
-Ponytail read: **B is the lazier, smaller, safer diff** — reuses a
-backend endpoint that already exists and works, touches one screen, no
-migration, no second auth system merged into one endpoint. A is only worth
-it if the product goal is "field agents never touch a password" — not
-stated as a requirement yet. Recommend B unless told otherwise.
-
-**Do not start coding either option without explicit go-ahead** — this is
-listed as today's task, not yet approved for implementation.
+Ponytail read at review time: **B is the lazier, smaller, safer diff** —
+reuses a backend endpoint that already exists and works, touches one
+screen, no migration, no second auth system merged into one endpoint.
+**User chose A.** Shipped as **Option A** (commit `c99a6c6`): migration
+`044_team_member_phone` adds `TeamMember.phone @unique`; `auth.ts
+/otp/verify` checks `TeamMember` after `Staff` and before the retailer
+upsert, minting a team JWT (`signTeamToken`) — the critical guard is that
+an agent's phone can never create a Retailer row, and Staff/TeamMember
+tokens stay cryptographically separate (Supabase session vs TEAM_JWT
+secret). Mobile `otp.tsx` routes `team_member` logins to `/staff` with no
+stale retailer context; `POST/PATCH /team/members` + admin Team Members UI
+gain the optional phone field. Tests: `auth-team.test.ts` (4, incl. the
+no-retailer-upsert guard).
 
 ### Task 2 — 500-item free catalog upload, all retailers, limited time
 
@@ -485,17 +490,18 @@ quoting code, not assumed:
   system representation — it relies entirely on whoever quotes tickets
   remembering the cutoff.
 
-**Today, zero code needed:** whoever quotes `CATALOG_UPLOAD` tickets
-manually sets `quoted_price_inr: 0` for any ticket with
-`item_count_requested <= 500`, and reverts to normal pricing after the
-promo's manually-tracked end date.
-
-**If this should become system-enforced instead of tribal knowledge** (own
-decision, not yet requested): add a `promo_free_item_limit` +
-`promo_expires_at` pair — reuses the exact key-value settings pattern
-already live for `admin-settings.ts` (theme config) rather than a new
-table. Quoting route would then compute the ₹0 default itself instead of a
-human doing it per ticket.
+**Shipped as system-enforced (commit `f0ab109`)** — no more tribal
+knowledge: `promo_free_item_limit` + `promo_expires_at` live in the
+existing admin-settings key-value store (`GET/PUT
+/admin/settings/catalog-upload-promo`, same pattern as the theme config).
+The quoting route (`PATCH /team/tickets/:id`) computes the ₹0 default
+itself: when the promo is live and `item_count_requested <= free limit`,
+`quoted_price_inr` is FORCED to 0 (response carries `promo_applied`);
+expired/over-limit falls back to manual pricing. Admin UI: promo card on
+Admin → Catalog Upload Tiers (limit + expiry + live badge). Retailer's
+POST `/me/catalog-upload-request` response includes the current promo.
+Tests: `catalog-upload-promo.test.ts` (4 — within-limit force, over-limit
+manual, expired, unconfigured).
 
 | Domain | Skill/agent if built |
 |---|---|
@@ -506,11 +512,10 @@ human doing it per ticket.
 
 ---
 
-## OPEN — 2026-08-04: F-024 DB-Backed Default Shop-By Categories + AI Auto-Category Assignment
+## ✅ BUILT 2026-08-04: F-024 DB-Backed Default Shop-By Categories + AI Auto-Category Assignment
 
-**Reviewed today, nothing coded yet.** Full design + open decisions:
-`docs/PRO-REQUIREMENTS.md` §14, roadmap slot `docs/PLAN.md` (Future,
-post-Phase-0).
+Full design + build table: `docs/PRO-REQUIREMENTS.md` §14, roadmap slot
+`docs/PLAN.md` (Future, post-Phase-0). Commit `be02012`.
 
 **User ask:** move the "Shop By Categories" default list to the database
 instead of a hardcoded array, and have AI tagging auto-assign each new
@@ -558,12 +563,23 @@ recommended.
 | Admin UI | Reuse the existing plan-features/catalog-upload-tiers admin grid pattern — no new design system work, admin panel stays motion/decoration-restrained per the Loom design-system entry in this file |
 | Security | Low — admin-only template edit, same trust boundary as existing plan-limit editing |
 
-**Do not start coding without explicit go-ahead** — reviewed/scoped entry
-only.
+**F-024 build summary:** new `DefaultProductCategory` admin-editable global
+template (migration `045`, seeded with the 13 garment-type defaults —
+**not** New Arrivals/Sale, which are computed at query time, Option A);
+`seedDefaultCategories()` copies the template into every new retailer's
+`ProductCategory` at signup (`auth.ts` self-serve + `team.ts` agent-created)
+plus a one-off backfill for existing zero-category retailers; `tag-product.ts`
+maps the AI's free-text category to the retailer's own category list
+(case-insensitive, `resolveCategoryId`) and sets `category_id` only when
+still null (never clobbers a manual pick); admin CRUD endpoints + grid page
+(Admin → Default Categories) with audit logs. Also extracted the third copy
+of the 30-day new-arrival helper into `lib/product-flags.ts`
+(`isNewArrival`/`isOnSale`) and exposed `is_new_arrival` + `on_sale` on
+`PublicProduct`/detail.
 
 ---
 
-## 2026-08-04: F-025 Scan-to-Sell (OPEN — not started) + F-026 BUG (✅ FIXED)
+## ✅ BUILT 2026-08-04: F-025 Scan-to-Sell + F-026 BUG (✅ FIXED)
 
 Full design + root cause: `docs/PRO-REQUIREMENTS.md` §15–16, roadmap
 `docs/PLAN.md`.
@@ -603,7 +619,17 @@ role-separation grant question too) and wraps the delete in a
 connection first. Existing `P2003` catch kept intact (a product in a past
 order/collection genuinely can't hard-delete — correct behavior).
 
-**F-025 not built yet — needs explicit go-ahead to start coding.**
+**F-025 shipped (commit `53f627c`):** `GET /products?sku=` exact-match lookup
+(uppercase-normalized, deliberately NO owner-only gate — shop staff can
+scan-to-sell at the counter); new `product/scan.tsx` barcode/QR screen
+(`expo-camera`, already a dep — QR/ean13/ean8/code128/code39/upc/pdf417,
+plus a manual SKU entry fallback) opened from a scan icon in the catalog
+tab header, resolving SKU → existing `product/[id].tsx` where the existing
+SOLD toggle + offline mutation queue do the rest; and a "Print Tag" button
+on the product detail screen that shows a print-friendly SKU+QR rack tag
+(`react-native-qrcode-svg`). GST invoice for offline sales remains the
+deliberately-deferred future hook, unchanged. Tests: 3 SKU-lookup cases in
+`products.test.ts`.
 
 ---
 

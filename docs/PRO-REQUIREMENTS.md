@@ -1284,7 +1284,7 @@ Full spec, rationale, and exact file:line targets: `CLAUDE.md` "Built" section +
 
 ---
 
-## 14. F-024 DB-Backed Default Shop-By Categories + AI Auto-Category Assignment — 🔴 Reviewed 2026-08-04, NOT STARTED
+## 14. F-024 DB-Backed Default Shop-By Categories + AI Auto-Category Assignment — ✅ BUILT 2026-08-04 (commit `be02012`)
 
 **User ask (verbatim intent):** the "Shop By Categories" nav list must live in the database, not as a hardcoded array in code, and AI tagging must auto-assign each uploaded product to the right one so the retailer never manually picks a category. Retailer can still add their own on top (already possible today).
 
@@ -1315,7 +1315,7 @@ Kurta Sets, Salwar Suits, Short Kurtis, Kurta, Co-ords, Plus Sizes, Dresses, Bot
 
 ---
 
-## 15. F-025 Scan-to-Sell — Offline Sale Reconciliation via SKU/QR Scan — 🔴 Reviewed 2026-08-04, APPROVED DESIGN, NOT STARTED
+## 15. F-025 Scan-to-Sell — Offline Sale Reconciliation via SKU/QR Scan — ✅ BUILT 2026-08-04 (commit `53f627c`)
 
 **Problem:** retailer sells an item in the physical shop (not through the app). Nothing tells the digital catalog. Item stays `AVAILABLE`, customers keep enquiring/ordering a product that's gone. `Product.status` (`AVAILABLE`/`SOLD`/`RESERVED`/`NOT_SURE`) and a manual status toggle already exist (`apps/mobile/app/product/[id].tsx`, `apps/mobile/app/(tabs)/catalog.tsx`) and are already offline-safe (`apps/mobile/src/lib/mutation-queue.ts` replays "Mark Sold" once back online). Gap is the *trigger*: today the retailer must open the app, search/scroll to find the product, then tap status — friction real shop owners skip under load, so the catalog drifts stale.
 
