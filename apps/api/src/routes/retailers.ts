@@ -13,6 +13,7 @@ import {
   validationError,
 } from '../plugins/error-handler.js';
 import { routeTicket } from './team.js';
+import { getCatalogUploadPromo } from './admin-settings.js';
 
 // F-019: platform's own Razorpay account (retailer pays Kanchuki), not the
 // F-302 retailer-connected-account rail. ponytail: raw fetch, mirrors billing.ts.
@@ -1027,7 +1028,11 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
       select: CATALOG_TICKET_SELECT,
     });
 
-    return reply.status(201).send({ data: ticket });
+    // Surface the current limited-time free-item offer (2026-08-04) so the
+    // mobile dashboard can show "first N items free" against this request.
+    const promo = await getCatalogUploadPromo();
+
+    return reply.status(201).send({ data: { ...ticket, promo } });
   });
 
   // ── GET /me/catalog-upload-request ──────────────────────────────

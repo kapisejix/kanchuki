@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Package, Save, Loader2, Plus, Trash2 } from 'lucide-react'
+import { Package, Save, Loader2, Plus, Trash2, Gift, CalendarClock } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -20,6 +20,48 @@ export default function CatalogUploadTiersPage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [newTier, setNewTier] = useState({ min_items: '', max_items: '', price_inr: '' })
+  // Limited-time free offer (F-019 Task 2): auto-quoted ₹0 by the backend
+  // for catalog requests within the free limit while the window is live.
+  const [promo, setPromo] = useState({ free_item_limit: '', expires_at: '' })
+  const [promoActive, setPromoActive] = useState(false)
+  const [promoLoading, setPromoLoading] = useState(true)
+  const [promoSaving, setPromoSaving] = useState(false)
+  const [promoStatus, setPromoStatus] = useState('')
+
+  const loadPromo = async () => {
+    const res = await fetch(`${API_URL}/v1/admin/settings/catalog-upload-promo`, adminGetOptions())
+    const json = await res.json()
+    const p = json.data
+    setPromo({
+      free_item_limit: p.free_item_limit != null ? String(p.free_item_limit) : '',
+      expires_at: p.expires_at ? p.expires_at.slice(0, 16) : '', // datetime-local format
+    })
+    setPromoActive(!!p.active)
+    setPromoLoading(false)
+  }
+
+  const savePromo = async () => {
+    setPromoSaving(true)
+    setPromoStatus('')
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/settings/catalog-upload-promo`, {
+        ...(await adminMutateOptions()),
+        method: 'PUT',
+        body: JSON.stringify({
+          free_item_limit: promo.free_item_limit ? Number(promo.free_item_limit) : null,
+          expires_at: promo.expires_at ? new Date(promo.expires_at).toISOString() : null,
+        }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      const json = await res.json()
+      setPromoActive(!!json.data.active)
+      setPromoStatus(`✅ ${json.data.active ? 'Promo is LIVE' : 'Promo saved (not active)'}`)
+    } catch (err) {
+      setPromoStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+    } finally {
+      setPromoSaving(false)
+    }
+  }
 
   const load = async () => {
     const res = await fetch(`${API_URL}/v1/admin/catalog-upload-tiers`, adminGetOptions())
@@ -30,6 +72,7 @@ export default function CatalogUploadTiersPage() {
 
   useEffect(() => {
     load()
+    loadPromo()
   }, [])
 
   const updateTier = (id: string, patch: Partial<Tier>) => {
@@ -128,6 +171,89 @@ export default function CatalogUploadTiersPage() {
           {status}
         </div>
       )}
+
+      {/* Limited-time free offer — auto-enforced by the quoting route */}
+      <div
+        className={`bg-white/80 backdrop-blur-xl rounded-2xl border p-6 ${
+          promoActive ? 'border-green-300/80 shadow-lg shadow-green-500/10' : 'border-gray-200/80'
+        }`}
+      >
+        <div className="flex items-start justify-between gap-4 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                promoActive ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'
+              }`}
+            >
+              <Gift size={18} />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-gray-900">Limited-Time Free Offer</h2>
+              <p className="text-xs text-gray-500">
+                Auto-quoted ₹0 by the system for catalog requests within the free limit — no manual quoting
+                needed while the window is live. Expired/over-limit requests fall back to manual pricing.
+              </p>
+            </div>
+          </div>
+          {!promoLoading && (
+            <span
+              className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full ${
+                promoActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              {promoActive ? '● Live' : 'Inactive'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-end gap-4">
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">Free item limit</label>
+            <input
+              type="number"
+              value={promo.free_item_limit}
+              onChange={(e) => setPromo((p) => ({ ...p, free_item_limit: e.target.value }))}
+              placeholder="e.g. 500"
+              className="w-32 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Empty = offer disabled</p>
+          </div>
+          <div>
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5">
+              <CalendarClock size={12} className="inline mr-1 -mt-0.5" />
+              Offer ends (local time)
+            </label>
+            <input
+              type="datetime-local"
+              value={promo.expires_at}
+              onChange={(e) => setPromo((p) => ({ ...p, expires_at: e.target.value }))}
+              className="w-56 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Empty = runs until cleared</p>
+          </div>
+          <button
+            onClick={savePromo}
+            disabled={promoSaving}
+            className={`text-sm font-semibold px-5 py-2.5 rounded-xl transition-all flex items-center gap-2 disabled:opacity-60 ${
+              promoActive
+                ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg shadow-green-500/25'
+                : 'bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white shadow-lg shadow-cyan-500/25'
+            }`}
+          >
+            {promoSaving ? <Loader2 size={15} className="animate-spin" /> : <Save size={15} />}
+            Save Offer
+          </button>
+          {promoStatus && (
+            <span
+              className={`text-xs font-medium ${
+                promoStatus.startsWith('✅') ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
+              {promoStatus}
+            </span>
+          )}
+        </div>
+      </div>
 
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <table className="w-full text-sm">

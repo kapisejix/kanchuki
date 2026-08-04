@@ -1,5 +1,6 @@
 import { type TeamRole, prisma } from '@kanchuki/db';
 import { normalizeIndianPhone } from '@kanchuki/shared';
+import { getCatalogUploadPromo } from './admin-settings.js';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -846,6 +847,8 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
         status: true,
         assigned_to_id: true,
         region_scope_id: true,
+        ticket_type: true,
+        item_count_requested: true,
         retailer: { select: { territory_id: true } },
       },
     });
@@ -891,7 +894,24 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
     if (body.data.note !== undefined) {
       update.note = body.data.note;
     }
-    if (body.data.quoted_price_inr !== undefined) {
+    // 2026-08-04 (F-019 Task 2): system-enforced limited-time free offer.
+    // When the promo is live (free_item_limit set, window not expired) and
+    // this catalog request is within the free limit, the quote is FORCED to
+    // ₹0 — computed here instead of relying on whoever quotes the ticket
+    // remembering the promo cutoff. promo_applied rides the response so the
+    // admin UI can show why the price came out 0. Above the limit (or when
+    // the promo is off/expired) the manual quoted_price_inr stands.
+    let promoApplied = false;
+    const promo = await getCatalogUploadPromo();
+    if (
+      promo.active &&
+      existing.ticket_type === 'CATALOG_UPLOAD' &&
+      existing.item_count_requested !== null &&
+      existing.item_count_requested <= (promo.free_item_limit as number)
+    ) {
+      update.quoted_price_inr = 0;
+      promoApplied = true;
+    } else if (body.data.quoted_price_inr !== undefined) {
       update.quoted_price_inr = body.data.quoted_price_inr;
     }
     if (body.data.proposed_slots !== undefined) {
@@ -919,9 +939,12 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    request.log.info({ ticket_id: ticket.id, status: ticket.status }, 'Support ticket updated');
+    request.log.info(
+      { ticket_id: ticket.id, status: ticket.status, promo_applied: promoApplied },
+      'Support ticket updated',
+    );
 
-    return { data: ticket };
+    return { data: { ...ticket, promo_applied: promoApplied } };
   });
 
   // ── GET /team/tickets/stats ─────────────────────────────────────
