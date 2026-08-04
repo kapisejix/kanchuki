@@ -725,4 +725,23 @@ Pure mechanical refactor — **zero route-body logic changes**, verified by 258/
 | `apps/api/src/routes/checkout/checkout-helpers.ts` (new) | — | Shared helpers (`razorpayAsRetailer`, webhook signature verify, GST math, invoice gen) + schemas (`ConnectPaymentAccountSchema`, `CreateOrderSchema`, `UpdateOrderStatusSchema`, `RazorpayOrder`) |
 | `apps/api/src/routes/checkout/<domain>.ts` (new, ×4) | — | payment-account, flow (create/verify order + public order lookup), webhook (owns the raw-body content-type parser — its only consumer), orders (+ public retailer-status route, unauthenticated same as before) |
 
+---
+
+## 2026-08-04 — Route cleanup finished: remaining 6 oversized route files split, size guard wired into CI
+
+Continuation of the same route-split effort (`912090e` above) — this session split the 6 files the guard was still failing on, then wired `scripts/check-route-size.sh` into CI so the split stays enforced going forward. Same mechanical, zero-logic-change approach: route bodies moved verbatim, only imports/paths adjusted per new file depth.
+
+| File | Before | After |
+|---|---|---|
+| `apps/api/src/routes/products.ts` | 1142 lines | 22-line aggregator registering 5 domain modules (`products/products-{crud,trash,media,variants,ai}.ts` + shared `products-helpers.ts`) |
+| `apps/api/src/routes/retailers.ts` | 1144 lines | 21-line aggregator registering 7 domain modules (`retailers/retailers-{profile,uploads,whatsapp,stats,settings,sections,catalog-upload}.ts`) |
+| `apps/api/src/routes/team.ts` | 1212 lines | 19-line aggregator registering 6 domain modules (`team/team-{session,territories,members,retailers,tickets,reporting}.ts` + shared `team-helpers.ts`). `teamAuthPreHandler` extracted from the former inline `addHook` body so every module can re-add it (matches the `admin.ts` split convention); `routeTicket` (consumed externally by `retailers.ts`) moved into `team-tickets.ts` and re-exported through the aggregator |
+| `apps/api/src/routes/admin-settings.ts` | 1202 lines | 33-line aggregator registering 9 domain modules (`admin-settings/{rate-limits,catalog-promo,theme,ai-config,operations,deployments,ticket-reporting,backups,notifications}.ts` + shared `settings-store.ts`). `getCatalogUploadPromo`/`getTheme`/`getCachedRateLimits`/`DEFAULT_RATE_LIMITS`/`DEFAULT_AI_CONFIG` (consumed externally by `team.ts`/`public.ts`/`retailers.ts`) re-exported through the aggregator, unchanged import paths |
+| `apps/api/src/routes/public.ts` | 891 lines | 20-line aggregator registering 5 domain modules (`public/public-{misc,collections,products,retailers,catalog-payment}.ts` + shared `public-helpers.ts`) |
+| `apps/api/src/routes/admin/admin-retailers.ts` | 845 lines | 15-line aggregator registering 3 domain modules (`admin/admin-retailers/admin-retailers-{list,detail,management}.ts`) — one level deeper than the other 5, since this file was itself already a leaf of the `912090e` `admin.ts` split |
+
+**CI wiring:** `.github/workflows/ci.yml`'s `quality` job now runs `bash scripts/check-route-size.sh` alongside the existing delete-guard/secrets-guard/v1-fetch-guard steps — the script's own header comment had claimed CI called it since `912090e`, but the step was never actually added until now.
+
+**Verified:** guard script passes clean (0 violations across all of `apps/api/src/routes/**`), `apps/api` `tsc --noEmit` clean, full API vitest suite **258/258** (17 files) — identical pass count to the pre-split baseline, confirming no route behavior changed.
+
 Reproducible via `scripts/split-admin-routes.mjs` / `scripts/split-checkout-routes.mjs` (import pruning, `../` → `../../` path rewrite, helper-usage-based imports, CRLF-safe). Route auth unchanged: checkout has no plugin-level hook — `/retailers/*` gets `request.retailerId` from the global decorator, `/public/*` stays public.

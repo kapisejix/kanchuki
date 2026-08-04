@@ -26,6 +26,9 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint
       - run: bash scripts/check-delete-guard.sh
+      # Keeps apps/api/src/routes/* split into domain modules — fails if any
+      # route file creeps past 800 lines (see 912090e's admin.ts/checkout.ts split).
+      - run: bash scripts/check-route-size.sh
       # Blocks commits that introduce live credential patterns (leaked role
       # passwords, DB URLs with real-looking passwords, API keys) — scans the
       # FULL tracked tree including docs/*.md and scripts/*.sql. Added
