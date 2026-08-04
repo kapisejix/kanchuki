@@ -113,7 +113,7 @@ proposes an immediate slot — the pay step still runs but Razorpay settles a
 ₹0 order instantly, and the rest of the flow (routing, delegated token,
 upload) is identical.
 
-## Is it the same mobile app the retailer uses? (verified 2026-08-04)
+## Is it the same mobile app the retailer uses? (verified 2026-08-04, gap since fixed — see "Open follow-ups" below)
 
 **Intent: yes, one app, phone-OTP login, redirected by role.** That's how
 `apps/mobile/app/_layout.tsx` and `app/auth/otp.tsx` are wired — after OTP
@@ -217,16 +217,17 @@ precise about, since neither is automatic:
 
 ## Open follow-ups
 
-**Blocking (confirmed 2026-08-04):**
+**Fixed 2026-08-04 (commit `c99a6c6`):**
 
-- **No login path for `TeamMember` agents on mobile** — see "Is it the same
-  mobile app" above. Until this is bridged (phone-OTP support added to
-  `TeamMember`, or an email+password screen added to the mobile app), no
-  real Kanchuki field agent can reach `/staff/catalog-tickets.tsx` with a
-  working session, which means the entire on-site catalog-upload flow this
-  doc describes cannot actually run end-to-end on a real device today,
-  despite every downstream piece (ticket routing, delegated token, upload
-  screens, audit log) being correctly built.
+- **`TeamMember` mobile login gap — closed.** Option A shipped: migration
+  `044` adds `TeamMember.phone @unique`; `auth.ts` `/otp/verify` now checks
+  `TeamMember` after `Staff` and before the retailer upsert, minting a real
+  team JWT. An agent's phone can never create a Retailer row; `Staff` vs
+  `TeamMember` tokens stay cryptographically separate. Mobile `otp.tsx`
+  routes `team_member` logins to `/staff` with no stale retailer context.
+  A field agent can now reach `/staff/catalog-tickets.tsx` with a working
+  session end to end, once an admin sets their phone number in
+  Admin → Team Members.
 
 **Not blocking, just not built:**
 
