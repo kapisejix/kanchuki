@@ -4,8 +4,8 @@ import { Prisma } from '@kanchuki/db';
 import { extractBudgetFromQuery, normalizeSearchQuery } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { validationError } from '../plugins/error-handler.js';
 import { isNewArrival } from '../lib/product-flags.js';
+import { validationError } from '../plugins/error-handler.js';
 
 const SearchSchema = z.object({
   query: z.string().min(1).max(500),

@@ -119,5 +119,4 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
 
     return { data: row };
   });
-
 };

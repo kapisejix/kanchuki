@@ -4,9 +4,9 @@ import { type Prisma, getSecret, prisma } from '@kanchuki/db';
 import { PUBLIC_PRICE_BUCKETS, buildEnquiryMessage, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { isNewArrival, isOnSale } from '../lib/product-flags.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 import { getTheme } from './admin-settings.js';
-import { isNewArrival, isOnSale } from '../lib/product-flags.js';
 
 // Helper: generate a display-ready URL — uses stored public_url when valid,
 // falls back to presigned GET URL when R2_PUBLIC_URL is not set.

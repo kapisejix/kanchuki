@@ -842,5 +842,4 @@ export const adminRetailersRoutes: FastifyPluginAsync = async (server) => {
     request.log.info({ customer_id: customerId }, 'Customer unblocked');
     return { data: { is_blocked: false } };
   });
-
 };

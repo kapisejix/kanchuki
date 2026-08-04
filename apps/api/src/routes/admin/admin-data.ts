@@ -517,5 +517,4 @@ export const adminDataRoutes: FastifyPluginAsync = async (server) => {
       },
     };
   });
-
 };

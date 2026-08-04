@@ -12,8 +12,8 @@ import {
   notFound,
   validationError,
 } from '../plugins/error-handler.js';
-import { routeTicket } from './team.js';
 import { getCatalogUploadPromo } from './admin-settings.js';
+import { routeTicket } from './team.js';
 
 // F-019: platform's own Razorpay account (retailer pays Kanchuki), not the
 // F-302 retailer-connected-account rail. ponytail: raw fetch, mirrors billing.ts.

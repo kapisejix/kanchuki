@@ -19,7 +19,7 @@ import { adminAuthPreHandler } from '../admin-auth.js';
 export const adminIntegrationsRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
 
-type IntegrationKeyEntry = (typeof INTEGRATION_KEYS)[number];
+  type IntegrationKeyEntry = (typeof INTEGRATION_KEYS)[number];
   // ─── GET /admin/integrations ─────────────────────────────────────
   // F-012: super-admin-only credential vault. Values are never returned —
   // only masked_preview. Every catalog key not yet configured here is
@@ -172,5 +172,4 @@ type IntegrationKeyEntry = (typeof INTEGRATION_KEYS)[number];
     request.log.info({ key_name: existing.key_name }, 'Integration setting deleted');
     return reply.status(204).send();
   });
-
 };

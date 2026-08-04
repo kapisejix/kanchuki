@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
 import cookie from '@fastify/cookie';
+import { DEFAULT_PLATFORM_THEME } from '@kanchuki/shared';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PLATFORM_THEME } from '@kanchuki/shared';
 import { errorHandler } from '../plugins/error-handler.js';
 import { adminSettingsRoutes } from './admin-settings.js';
 
@@ -72,12 +72,10 @@ beforeEach(() => {
   process.env.ADMIN_API_KEY = ADMIN_KEY;
   themeStore = null;
 
-  mockAuditLogFindFirst.mockImplementation(
-    async (args: AuditLogFindFirstArgs) => {
-      if (args?.where?.action !== THEME_SETTING_ACTION) return null;
-      return themeStore ? { metadata: themeStore } : null;
-    },
-  );
+  mockAuditLogFindFirst.mockImplementation(async (args: AuditLogFindFirstArgs) => {
+    if (args?.where?.action !== THEME_SETTING_ACTION) return null;
+    return themeStore ? { metadata: themeStore } : null;
+  });
 
   mockAuditLogCreate.mockImplementation(async (args: AuditLogCreateArgs) => {
     if (args?.data?.action === THEME_SETTING_ACTION) {

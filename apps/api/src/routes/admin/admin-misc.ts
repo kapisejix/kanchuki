@@ -48,7 +48,8 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
         },
       })
       .catch(() => null);
-    if (!category) throw validationError('A default category with this name already exists', 'name');
+    if (!category)
+      throw validationError('A default category with this name already exists', 'name');
 
     await prisma.auditLog.create({
       data: {
@@ -88,7 +89,11 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
         action: 'UPDATE',
         resource_type: 'DefaultProductCategory',
         resource_id: category.id,
-        metadata: { name: category.name, sort_order: category.sort_order, is_active: category.is_active },
+        metadata: {
+          name: category.name,
+          sort_order: category.sort_order,
+          is_active: category.is_active,
+        },
         ip_address: request.ip,
       },
     });
@@ -123,5 +128,4 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
   // priority order. Each row = provider type + model + API key name + weighted
   // credit cost. Admin adds any OpenAI-protocol provider via OPENAI_COMPAT
   // + base_url (OpenRouter, DeepSeek, Mistral, Groq, ...).
-
 };

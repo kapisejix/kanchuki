@@ -93,5 +93,4 @@ export const adminModerationRoutes: FastifyPluginAsync = async (server) => {
       },
     };
   });
-
 };

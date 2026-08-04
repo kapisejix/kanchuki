@@ -171,5 +171,4 @@ export const adminAiRoutes: FastifyPluginAsync = async (server) => {
 
     return { data: { reordered: body.ordered_ids.length } };
   });
-
 };

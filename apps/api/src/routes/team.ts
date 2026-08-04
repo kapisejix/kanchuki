@@ -1,10 +1,9 @@
 import { type TeamRole, prisma } from '@kanchuki/db';
 import { normalizeIndianPhone } from '@kanchuki/shared';
-import { getCatalogUploadPromo } from './admin-settings.js';
-import { seedDefaultCategories } from '../lib/default-categories.js';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { seedDefaultCategories } from '../lib/default-categories.js';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
 import {
   hashPassword,
@@ -13,6 +12,7 @@ import {
   verifyPassword,
   verifyTeamToken,
 } from '../plugins/team-auth.js';
+import { getCatalogUploadPromo } from './admin-settings.js';
 import { validAdminKey, verifyAdminSession } from './admin.js';
 
 declare module 'fastify' {

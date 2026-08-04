@@ -7,15 +7,15 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING, detectColor } from '@kanchuki/ai';
-import { getPurgePrisma, Prisma, prisma, vaultDelete } from '@kanchuki/db';
+import { Prisma, getPurgePrisma, prisma, vaultDelete } from '@kanchuki/db';
 import { R2_PATHS, SIZE_OPTIONS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addSpinFrameJob, addTaggingJob } from '../jobs/index.js';
-import { isNewArrival, NEW_ARRIVAL_DAYS } from '../lib/product-flags.js';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { hasFeature } from '../lib/features.js';
+import { NEW_ARRIVAL_DAYS, isNewArrival } from '../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import {
   featureUnavailable,
@@ -243,7 +243,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
       if (!cat) throw forbidden('Category does not belong to your store');
     }
 
-    let product;
+    let product: Awaited<ReturnType<typeof prisma.product.create>>;
     try {
       product = await prisma.product.create({
         data: {
@@ -494,7 +494,7 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const { metadata, ...rest } = body.data;
-    let updated;
+    let updated: Awaited<ReturnType<typeof prisma.product.update>>;
     try {
       updated = await prisma.product.update({
         where: { id },

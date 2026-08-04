@@ -184,5 +184,4 @@ export const adminActivityRoutes: FastifyPluginAsync = async (server) => {
       },
     };
   });
-
 };

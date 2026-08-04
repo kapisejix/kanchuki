@@ -26,7 +26,9 @@ const mockTeamMemberFindFirst = vi.hoisted(() => vi.fn());
 const mockRetailerFindUnique = vi.hoisted(() => vi.fn());
 // Deliberately throws: any TeamMember/Staff login path must never reach the
 // retailer upsert. Only unknown (self-serve) phones should hit it.
-const mockRetailerUpsert = vi.hoisted(() => vi.fn().mockRejectedValue(new Error('retailer.upsert must not be called')));
+const mockRetailerUpsert = vi.hoisted(() =>
+  vi.fn().mockRejectedValue(new Error('retailer.upsert must not be called')),
+);
 const mockRetailerUpdate = vi.hoisted(() => vi.fn());
 const mockVerifyOtp = vi.hoisted(() => vi.fn());
 const mockSignTeamToken = vi.hoisted(() => vi.fn());

@@ -4,13 +4,24 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { verifySync } from 'otplib';
+import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
 import { verifyPassword } from '../plugins/team-auth.js';
-import { z } from 'zod';
 import { signAdminSession } from './admin-auth.js';
-import { verifySync } from 'otplib';
 import { adminAuthPreHandler } from './admin-auth.js';
-import { adminRetailersRoutes, adminPlansRoutes, adminMiscRoutes, adminActivityRoutes, adminMediaRoutes, adminDataRoutes, adminIntegrationsRoutes, adminBackupsRoutes, adminModerationRoutes, adminAiRoutes } from './admin/index.js';
+import {
+  adminActivityRoutes,
+  adminAiRoutes,
+  adminBackupsRoutes,
+  adminDataRoutes,
+  adminIntegrationsRoutes,
+  adminMediaRoutes,
+  adminMiscRoutes,
+  adminModerationRoutes,
+  adminPlansRoutes,
+  adminRetailersRoutes,
+} from './admin/index.js';
 
 export {
   validAdminKey,

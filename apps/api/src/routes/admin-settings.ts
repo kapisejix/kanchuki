@@ -146,7 +146,10 @@ const HEX_COLOR_RE = /^#[0-9A-Fa-f]{6}$/;
 
 const THEME_BODY_SCHEMA = z
   .object({
-    primary_color: z.string().regex(HEX_COLOR_RE, 'Must be a 6-digit hex color like #1E2A3D').optional(),
+    primary_color: z
+      .string()
+      .regex(HEX_COLOR_RE, 'Must be a 6-digit hex color like #1E2A3D')
+      .optional(),
     accent_color: z.string().regex(HEX_COLOR_RE, 'Must be a 6-digit hex color').optional(),
     tertiary_color: z.string().regex(HEX_COLOR_RE, 'Must be a 6-digit hex color').optional(),
     background_color: z.string().regex(HEX_COLOR_RE, 'Must be a 6-digit hex color').optional(),
@@ -286,9 +289,7 @@ export const adminSettingsRoutes: FastifyPluginAsync = async (server) => {
     const current = await getCatalogUploadPromo();
     const merged = {
       free_item_limit:
-        body.free_item_limit !== undefined
-          ? body.free_item_limit
-          : current.free_item_limit,
+        body.free_item_limit !== undefined ? body.free_item_limit : current.free_item_limit,
       expires_at: body.expires_at !== undefined ? body.expires_at : current.expires_at,
     };
     await saveSetting(CATALOG_UPLOAD_PROMO_SETTING_KEY, merged);
@@ -1169,7 +1170,9 @@ export interface CatalogUploadPromo {
 }
 
 export async function getCatalogUploadPromo(): Promise<CatalogUploadPromo> {
-  const saved = (await getSetting(CATALOG_UPLOAD_PROMO_SETTING_KEY)) as Partial<CatalogUploadPromo> | null;
+  const saved = (await getSetting(
+    CATALOG_UPLOAD_PROMO_SETTING_KEY,
+  )) as Partial<CatalogUploadPromo> | null;
   const freeItemLimit = saved?.free_item_limit ?? null;
   const expiresAt = saved?.expires_at ?? null;
   const expired = expiresAt !== null && new Date(expiresAt).getTime() <= Date.now();

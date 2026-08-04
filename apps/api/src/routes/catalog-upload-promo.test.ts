@@ -49,7 +49,11 @@ beforeEach(() => {
   process.env.TEAM_JWT_SECRET = 'test-team-secret';
   process.env.ADMIN_API_KEY = 'test-admin-key';
   // Auth preHandler loads the token's member from DB to build territoryIds
-  mockTeamMemberFindUnique.mockResolvedValue({ id: 'admin_1', role: 'SUPER_ADMIN', is_active: true });
+  mockTeamMemberFindUnique.mockResolvedValue({
+    id: 'admin_1',
+    role: 'SUPER_ADMIN',
+    is_active: true,
+  });
 });
 
 const SUPER_ADMIN = { id: 'admin_1', role: 'SUPER_ADMIN', is_active: true };
