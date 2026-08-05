@@ -1,0 +1,108 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+
+export const metadata: Metadata = {
+  title: 'Privacy Policy | Kanchuki',
+  description: 'How Kanchuki collects, uses, and protects retailer and customer data.',
+}
+
+export default function PrivacyPolicyPage() {
+  return (
+    <div className="min-h-screen bg-cotton text-ink-900">
+      <div className="mx-auto max-w-2xl px-6 py-16">
+        <Link href="/" className="text-sm text-rust-600 hover:underline">
+          &larr; Back to Kanchuki
+        </Link>
+
+        <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
+        <p className="mt-2 text-sm text-ink-500">Last updated: August 5, 2026</p>
+
+        <div className="mt-8 space-y-6 text-ink-700">
+          <p>
+            Kanchuki (&quot;we&quot;, &quot;us&quot;) provides an AI-powered catalog and commerce
+            platform for clothing retailers in India. This policy explains what we collect from
+            retailers and their customers, why, and how it&apos;s handled.
+          </p>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-ink-900">
+              What we collect
+            </h2>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>
+                <strong>Retailer account data:</strong> phone number (for OTP login), business
+                name, address, and GST details (for invoicing).
+              </li>
+              <li>
+                <strong>Product photos:</strong> uploaded by retailers to build their catalog.
+                Photos are processed by AI vision providers (e.g. Anthropic Claude, OpenAI,
+                Google Gemini) to auto-tag category, color, and fabric.
+              </li>
+              <li>
+                <strong>Customer data:</strong> name, phone number, and style/budget preferences
+                captured by a retailer when adding a customer to their CRM.
+              </li>
+              <li>
+                <strong>Try-on photos:</strong> only collected with your explicit consent, used to
+                generate virtual try-on previews. You can revoke this consent at any time from{' '}
+                <Link href="/consent/revoke" className="text-rust-600 hover:underline">
+                  the consent management page
+                </Link>
+                .
+              </li>
+              <li>
+                <strong>Payment data:</strong> processed directly by Razorpay; Kanchuki does not
+                store card or UPI credentials.
+              </li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-ink-900">
+              How we use it
+            </h2>
+            <p>
+              To operate the catalog, customer CRM, WhatsApp collection links, checkout, and
+              virtual try-on features a retailer has enabled — and nothing beyond that. We do not
+              sell personal data.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-ink-900">
+              Third parties we share data with
+            </h2>
+            <ul className="list-disc space-y-1 pl-5">
+              <li>AI vision providers, to tag product photos.</li>
+              <li>Cloudflare R2, to store product and try-on images.</li>
+              <li>Razorpay, to process payments.</li>
+              <li>Supabase, for authentication and database hosting.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-ink-900">
+              Deletion &amp; retention
+            </h2>
+            <p>
+              Deleted products, customers, and photos are soft-deleted immediately and
+              permanently purged after 15 days. A copy is kept in a write-only backup vault for
+              that period in case of accidental deletion, then it is purged too.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-ink-900">Contact</h2>
+            <p>
+              Questions about this policy or your data:{' '}
+              <a href="mailto:privacy@kanchuki.app" className="text-rust-600 hover:underline">
+                privacy@kanchuki.app
+              </a>
+              .
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
