@@ -281,14 +281,14 @@ export default function OnboardingScreen() {
         shop_name: shopName.trim(),
         owner_name: ownerName.trim() || undefined,
         referral_code: referralCode.trim() || undefined,
-        onboarding_step: 1,
       })
+      await retailerApi.updateOnboarding(1)
       goToStep(nextStep)
       return
     }
 
     if (step < TOTAL_STEPS) {
-      await retailerApi.update({ onboarding_step: nextStep })
+      await retailerApi.updateOnboarding(nextStep)
       goToStep(nextStep)
       return
     }
@@ -303,8 +303,8 @@ export default function OnboardingScreen() {
         state: state || undefined,
         gstin: gstin.trim() || undefined,
         categories: selectedCategories,
-        onboarding_step: 6,
       })
+      await retailerApi.updateOnboarding(6, true)
       setShowConfetti(true)
       setTimeout(() => {
         router.replace('/')
@@ -582,7 +582,7 @@ export default function OnboardingScreen() {
             <AnimatedPressable
               onPress={async () => {
                 // Persist step 5 progress before skipping
-                await retailerApi.update({ onboarding_step: 5 }).catch(() => {})
+                await retailerApi.updateOnboarding(5).catch(() => {})
                 goToStep(6 as Step)
               }}
               className="mt-4 py-3"

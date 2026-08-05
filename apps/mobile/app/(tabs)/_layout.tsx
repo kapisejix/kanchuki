@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { AppState } from 'react-native'
+import { AppState, View, ActivityIndicator } from 'react-native'
 import { Tabs, router } from 'expo-router'
+import { useQuery } from '@tanstack/react-query'
 import { Home, Grid3X3, Users, Link2, ShoppingBag, BarChart3 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ordersApi } from '../../src/lib/api'
+import { ordersApi, retailerApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
@@ -11,6 +12,23 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets()
   const { primaryColor, colors } = useTheme()
   const [pendingCount, setPendingCount] = useState(0)
+
+  // Gate: retailer must finish the registration/onboarding form before the
+  // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
+  // lands straight on the tabs. Same query key as (tabs)/index.tsx's own
+  // getMe() call, so this doesn't cost an extra network round trip.
+  const { data: meData, isLoading: meLoading } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+  })
+  const onboardingCompleted = (meData?.data as { onboarding_completed?: boolean } | undefined)
+    ?.onboarding_completed
+
+  useEffect(() => {
+    if (!meLoading && onboardingCompleted === false) {
+      router.replace('/onboarding')
+    }
+  }, [meLoading, onboardingCompleted])
 
   // Fetch pending order count for the badge on the Orders tab.
   // Refetches on app foreground so the badge stays current.
@@ -28,6 +46,9 @@ export default function TabsLayout() {
   }
 
   useEffect(() => {
+    // Skip while the onboarding gate is still deciding — no point badging a
+    // dashboard that isn't about to render.
+    if (meLoading || onboardingCompleted === false) return
     void fetchPendingCount()
     const interval = setInterval(() => void fetchPendingCount(), 30_000)
     const sub = AppState.addEventListener('change', (state) => {
@@ -37,7 +58,15 @@ export default function TabsLayout() {
       clearInterval(interval)
       sub.remove()
     }
-  }, [])
+  }, [meLoading, onboardingCompleted])
+
+  if (meLoading || onboardingCompleted === false) {
+    return (
+      <View className="flex-1 items-center justify-center bg-cotton">
+        <ActivityIndicator color={primaryColor} />
+      </View>
+    )
+  }
 
   return (
     <Tabs
