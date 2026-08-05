@@ -137,14 +137,20 @@ export default function RootLayout() {
   const [initialPalette, setInitialPalette] = useState<PlatformTheme | null>(null)
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
+    const boot = (async () => {
       const retailerId = await getItem('retailer_id').catch(() => null)
-      const cached = await loadPersistedPalette(retailerId).catch(() => null)
+      return loadPersistedPalette(retailerId).catch(() => null)
+    })()
+    // ponytail: SecureStore.getItemAsync can hang indefinitely on some Android
+    // Keystore states (no reject, just never settles) — without this timeout
+    // the fontsLoaded/paletteReady render gate below stays blank white forever.
+    const timeout = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+    Promise.race([boot, timeout]).then((cached) => {
       if (!cancelled) {
         setInitialPalette(cached)
         setPaletteReady(true)
       }
-    })()
+    })
     return () => {
       cancelled = true
     }
@@ -203,7 +209,13 @@ export default function RootLayout() {
     return () => sub.remove()
   }, [])
 
-  if (!fontsLoaded || !paletteReady) return null
+  // ponytail: previously gated first paint on fontsLoaded/paletteReady. A
+  // stuck SecureStore.getItemAsync call on some Android Keystore states
+  // blocks the JS thread itself (not just its own promise), so even the
+  // setTimeout-based race above never got a chance to fire and the app
+  // never painted. Never block first paint on an unreliable native call —
+  // render immediately with defaults, theme/fonts apply once ready.
+  void fontsLoaded
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
