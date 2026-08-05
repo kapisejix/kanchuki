@@ -207,12 +207,23 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!product) throw notFound('Product');
 
-    // Generate presigned URLs for all photos
+    // Generate presigned URLs for all photos. original_url resolves the
+    // pre-cleanup raw upload preserved by preserveOriginalPhoto() (see
+    // lib/photo-cleanup.ts) — null for photos that were never bg-cleaned.
     const photosWithUrls = await Promise.all(
-      (product.photos ?? []).map(async (photo) => ({
-        ...photo,
-        url: (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url,
-      })),
+      (product.photos ?? []).map(async (photo) => {
+        const originalR2Key = (photo.metadata as Record<string, unknown> | null)?.[
+          'original_r2_key'
+        ];
+        return {
+          ...photo,
+          url: (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url,
+          original_url:
+            typeof originalR2Key === 'string'
+              ? await photoUrlToDisplay({ url: '', r2_key: originalR2Key })
+              : null,
+        };
+      }),
     );
 
     // Generate presigned URLs for spin frames (same fallback as photos)

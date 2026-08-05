@@ -8,6 +8,7 @@ import {
 import { type Prisma, prisma } from '@kanchuki/db';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
+import { preserveOriginalPhoto } from '../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { withUniqueSku } from '../lib/sku.js';
 import { addEmbeddingJob } from './index.js';
@@ -57,6 +58,13 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           ? withBg.background_image.image_url
           : undefined;
         const raw = await fetchImageBuffer(photo_url);
+        const photoRow = await prisma.productPhoto.findFirst({
+          where: { product_id, retailer_id, r2_key },
+          select: { id: true, metadata: true },
+        });
+        if (photoRow) {
+          await preserveOriginalPhoto(photoRow.id, r2_key, photoRow.metadata, raw);
+        }
         const cleaned = await cleanupProductPhoto(raw, bgUrl);
         await uploadBuffer(r2_key, cleaned, 'image/jpeg');
         await incrementUsage(retailer_id, 'BG_REMOVAL');

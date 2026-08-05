@@ -1,6 +1,12 @@
 // Auto-split from app/product/[id].tsx (1944 lines) — shared types for the
 // product detail screen and its sub-components.
-export type Photo = { id: string; url: string; is_primary: boolean; piece_type: 'upper' | 'lower' | null }
+export type Photo = {
+  id: string
+  url: string
+  is_primary: boolean
+  piece_type: 'upper' | 'lower' | null
+  original_url?: string | null
+}
 export type Variant = { id: string; color: string; photo_url: string | null }
 export type Product = {
   id: string

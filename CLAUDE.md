@@ -651,6 +651,20 @@ Both modes take:
 
 ---
 
+## Planned — NOT started: Multi-Photo Ken Burns Effect (product photos → pseudo-video)
+
+**Requested 2026-08-05. DO NOT START until user says go ahead.**
+
+User wants: retailer clicks 3 photos of one product → auto-combine into short "video-like" loop (pan+zoom+crossfade between shots), not a real encoded video file. Wants it in **both** mobile retailer app and web customer PWA.
+
+**Proposed approach (discussed, not built):** Ken Burns effect — each photo scale 1→1.15 + translate over ~2.5s, crossfade opacity into next photo, loop 3 photos. No server cost, no AI call, no video encode.
+- **Mobile (`apps/mobile`):** Reanimated (already a dep, used for `AnimatedPressable`/`GradientButton`) — animate scale/translate/opacity per photo, likely on product detail (`app/product/[id].tsx`) or catalog card.
+- **Web (`apps/web` customer PWA):** pure CSS `@keyframes` transform+opacity crossfade, no JS lib needed — likely `CollectionView.tsx` product card and/or `ProductDetailSheet.tsx` hero.
+
+**Explicitly out of scope for this version:** exporting a real downloadable/shareable mp4 (would need ffmpeg server-side render, real compute cost) — only asked for an in-UI animated loop.
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

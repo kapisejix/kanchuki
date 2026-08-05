@@ -13,6 +13,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addSpinFrameJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
+import { preserveOriginalPhoto } from '../../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import {
@@ -134,6 +135,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       : undefined;
     try {
       const raw = await fetchImageBuffer(photo.url);
+      await preserveOriginalPhoto(photo.id, photo.r2_key, photo.metadata, raw);
       const cleaned = await cleanupProductPhoto(raw, bgUrl);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
     } catch (err) {
@@ -183,6 +185,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     if (photo) {
       await checkQuota(request.retailerId, 'BG_REMOVAL');
       const raw = await fetchImageBuffer(photo.url);
+      await preserveOriginalPhoto(photo.id, photo.r2_key, photo.metadata, raw);
       const cleaned = await cleanupProductPhoto(raw, bgUrl);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
       await incrementUsage(request.retailerId, 'BG_REMOVAL');

@@ -200,11 +200,30 @@ export default function ProductDetailScreen() {
   const displayPhotos = (() => {
     const base = product?.photos ?? []
     const seen = new Set<string>()
-    const result: (Photo & { is_variant_preview: boolean; variant_color: string | null })[] = []
+    const result: (Photo & {
+      is_variant_preview: boolean
+      variant_color: string | null
+      is_original_preview: boolean
+    })[] = []
     for (const p of base) {
       if (seen.has(p.url)) continue
       seen.add(p.url)
-      result.push({ ...p, is_variant_preview: false, variant_color: null })
+      result.push({ ...p, is_variant_preview: false, variant_color: null, is_original_preview: false })
+      // Raw pre-cleanup upload, preserved when background removal ran
+      // (apps/api/src/lib/photo-cleanup.ts) — shown as its own slider entry
+      // right after the cleaned version, not swapped in place of it.
+      if (p.original_url && !seen.has(p.original_url)) {
+        seen.add(p.original_url)
+        result.push({
+          id: `${p.id}-original`,
+          url: p.original_url,
+          is_primary: false,
+          piece_type: null,
+          is_variant_preview: false,
+          variant_color: null,
+          is_original_preview: true,
+        })
+      }
     }
     for (const v of product?.variants ?? []) {
       if (!v.photo_url || seen.has(v.photo_url)) continue
@@ -216,6 +235,7 @@ export default function ProductDetailScreen() {
         piece_type: null,
         is_variant_preview: true,
         variant_color: v.color,
+        is_original_preview: false,
       })
     }
     displayPhotosRef.current = result.length
@@ -230,6 +250,7 @@ export default function ProductDetailScreen() {
   const currentPhoto = displayPhotos[selectedPhotoIndex] ?? null
   const currentPhotoUrl = currentPhoto?.url ?? null
   const currentPhotoIsVariant = currentPhoto?.is_variant_preview ?? false
+  const currentPhotoIsOriginal = currentPhoto?.is_original_preview ?? false
 
   const goToPhoto = useCallback((index: number) => {
     const count = displayPhotosRef.current
@@ -782,6 +803,13 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
+          {/* Original (pre-cleanup) badge */}
+          {currentPhotoIsOriginal && (
+            <View className="absolute top-3 left-3 bg-sand-700/90 px-3 py-1 rounded-full">
+              <Text className="text-white text-xs font-semibold">Original</Text>
+            </View>
+          )}
+
           {/* Detect color from the current photo */}
           {!isZoomed && (
             <AnimatedPressable
@@ -882,6 +910,7 @@ export default function ProductDetailScreen() {
               {displayPhotos.map((photo, idx) => {
                 const isSelected = idx === selectedPhotoIndex
                 const isVariant = photo.is_variant_preview
+                const isOriginal = photo.is_original_preview
                 return (
                   <AnimatedPressable
                     key={photo.id}
@@ -902,6 +931,11 @@ export default function ProductDetailScreen() {
                         <Text className="text-white text-[8px] text-center font-medium">
                           {photo.variant_color ?? ''}
                         </Text>
+                      </View>
+                    )}
+                    {isOriginal && (
+                      <View className="absolute bottom-0 left-0 right-0 bg-sand-700/80 py-0.5">
+                        <Text className="text-white text-[8px] text-center font-medium">Original</Text>
                       </View>
                     )}
                   </AnimatedPressable>
@@ -945,7 +979,7 @@ export default function ProductDetailScreen() {
         {/* Piece tagging for each photo */}
               {displayPhotos.map((photo, displayIdx) => {
           if (selectedPhotoIndex !== displayIdx) return null
-          if (photo.is_variant_preview || !isPieceTaggable(product.category)) return null
+          if (photo.is_variant_preview || photo.is_original_preview || !isPieceTaggable(product.category)) return null
           return (
             <View key={`piece-tag-${photo.id}`} className="px-3 py-2 bg-white flex-row gap-2">
               {(['upper', 'lower'] as const).map((piece) => {
@@ -1008,7 +1042,7 @@ export default function ProductDetailScreen() {
       )}
 
       {/* Manual crop + white-background cleanup for the currently viewed photo */}
-      {!currentPhotoIsVariant && displayPhotos[selectedPhotoIndex] && (
+      {!currentPhotoIsVariant && !currentPhotoIsOriginal && displayPhotos[selectedPhotoIndex] && (
         <AnimatedPressable
           onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
           disabled={cleaningPhotoId !== null}
