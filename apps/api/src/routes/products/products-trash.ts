@@ -1,6 +1,7 @@
 // Auto-split from products.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { Prisma, getPurgePrisma, prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { isRealOwner } from '../../plugins/auth.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 
 export const productsTrashRoutes: FastifyPluginAsync = async (server) => {
@@ -8,8 +9,7 @@ export const productsTrashRoutes: FastifyPluginAsync = async (server) => {
   // Any staff member can soft-delete (DELETE /:id above); only the retailer
   // owner can see the removed list and restore or permanently purge from it.
   server.get('/deleted', async (request) => {
-    if (request.staffRole !== null)
-      throw forbidden('Only the shop owner can view deleted products');
+    if (!isRealOwner(request)) throw forbidden('Only the shop owner can view deleted products');
 
     const products = await prisma.product.findMany({
       where: { retailer_id: request.retailerId, deleted_at: { not: null } },
@@ -22,7 +22,7 @@ export const productsTrashRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── PATCH /products/:id/restore — owner-only ─────────────────────
   server.patch('/:id/restore', async (request) => {
-    if (request.staffRole !== null) throw forbidden('Only the shop owner can restore products');
+    if (!isRealOwner(request)) throw forbidden('Only the shop owner can restore products');
     const { id } = request.params as { id: string };
 
     const existing = await prisma.product.findFirst({
@@ -51,7 +51,7 @@ export const productsTrashRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── DELETE /products/:id/purge — owner-only, permanent ───────────
   server.delete('/:id/purge', async (request, reply) => {
-    if (request.staffRole !== null)
+    if (!isRealOwner(request))
       throw forbidden('Only the shop owner can permanently delete products');
     const { id } = request.params as { id: string };
 

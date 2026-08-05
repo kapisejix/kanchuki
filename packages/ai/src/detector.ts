@@ -287,6 +287,7 @@ export async function detectCropAndTag(
       const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
       await uploadBuffer(r2Key, cleaned, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
+      await opts?.beforeCall?.()
       const tags = await tagProductImageUrl(sourceImageUrl, opts)
       const phash = await computePhash(cleaned)
       return [{ bbox: { x_pct: 0, y_pct: 0, w_pct: 100, h_pct: 100 }, description: 'Full image', tags, croppedUrl, r2Key, phash }]
@@ -298,12 +299,15 @@ export async function detectCropAndTag(
     const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
     await uploadBuffer(r2Key, cleaned, 'image/jpeg')
     const croppedUrl = publicUrl(r2Key)
+    await opts?.beforeCall?.()
     const tags = await tagProductImageUrl(croppedUrl, opts)
     const phash = await computePhash(cleaned)
     return [{ ...item, tags, croppedUrl, r2Key, phash }]
   }
 
-  // Multiple items — crop each one, upload, tag
+  // Multiple items — crop each one, upload, tag. beforeCall re-checks quota
+  // per item so a fan-out from one photo can't blow past the budget the
+  // route only verified headroom for once, up front.
   const results: Array<DetectedItem & { croppedUrl: string; r2Key: string; phash: string }> = []
 
   for (const item of items) {
@@ -313,6 +317,7 @@ export async function detectCropAndTag(
       const r2Key = `catalog-import/${retailerId}/${createHash('sha256').update(cleaned).digest('hex').slice(0, 16)}.jpg`
       await uploadBuffer(r2Key, cleaned, 'image/jpeg')
       const croppedUrl = publicUrl(r2Key)
+      await opts?.beforeCall?.()
       const tags = await tagProductImageUrl(croppedUrl, opts)
       const phash = await computePhash(cleaned)
       results.push({ ...item, tags, croppedUrl, r2Key, phash })

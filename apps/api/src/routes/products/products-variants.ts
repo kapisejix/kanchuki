@@ -1,5 +1,5 @@
 // Auto-split from products.ts (scripts/check-route-size.sh) — route bodies verbatim.
-import { prisma } from '@kanchuki/db';
+import { getPurgePrisma, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../plugins/error-handler.js';
@@ -92,7 +92,15 @@ export const productsVariantsRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!variant) throw notFound('Variant');
 
-    await prisma.productVariant.delete({ where: { id: variantId } });
+    // F-017 guardrail: product_variants has a BEFORE DELETE trigger (SECURITY
+    // §19) blocking hard deletes unless app.allow_hard_delete is set on the
+    // session — kanchuki_app has DELETE revoked, so use the scoped purge role
+    // (same pattern as products-trash.ts's /:id/purge route).
+    const purgeDb = getPurgePrisma();
+    await purgeDb.$transaction([
+      purgeDb.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
+      purgeDb.productVariant.delete({ where: { id: variantId } }),
+    ]);
 
     await prisma.auditLog.create({
       data: {

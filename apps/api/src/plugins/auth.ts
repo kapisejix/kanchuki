@@ -205,6 +205,15 @@ export function catalogDelegateCanAccess(method: string, routeUrl: string): bool
   return matchesRules(method, routeUrl, CATALOG_DELEGATE_ALLOWED_ROUTES);
 }
 
+// A delegated catalog-upload session gets staffRole = null — the same
+// sentinel value a real retailer owner has — because it isn't a Staff row.
+// Any route-level "owner only" check must use this instead of a bare
+// `staffRole !== null` comparison, or a delegate token (meant to be narrower
+// than even the salesperson allowlist) reads as a real owner.
+export function isRealOwner(request: FastifyRequest): boolean {
+  return request.staffRole === null && !request.catalogDelegate;
+}
+
 // ─── Plugin ───────────────────────────────────────────────────────
 
 /**

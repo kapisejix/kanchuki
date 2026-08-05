@@ -74,6 +74,21 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
     });
     if (existing) throw validationError('Email already in use', 'email');
 
+    // A TeamMember phone that collides with a real Retailer account would
+    // let auth.ts's OTP flow route that person's login as staff/team access
+    // instead of their own retailer signup (same class as staff.ts's guard).
+    if (body.data.phone) {
+      const retailerWithPhone = await prisma.retailer.findFirst({
+        where: { phone: body.data.phone, deleted_at: null },
+        select: { id: true },
+      });
+      if (retailerWithPhone)
+        throw validationError(
+          'This phone number is already registered as a retailer account',
+          'phone',
+        );
+    }
+
     // F-018: agents get a referral code automatically; other roles only if given one.
     // ponytail: no collision retry — 36^6 code space vs. dozens of agents, not worth it.
     const referralCode =
@@ -174,6 +189,18 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       if (body.data.territory_ids?.some((id) => !tm.territoryIds.includes(id))) {
         throw forbidden('Cannot assign territories outside your own scope');
       }
+    }
+
+    if (body.data.phone) {
+      const retailerWithPhone = await prisma.retailer.findFirst({
+        where: { phone: body.data.phone, deleted_at: null },
+        select: { id: true },
+      });
+      if (retailerWithPhone)
+        throw validationError(
+          'This phone number is already registered as a retailer account',
+          'phone',
+        );
     }
 
     const { territory_ids, ...rest } = body.data;

@@ -161,18 +161,21 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // ── 1. Purge products + children ──────────────────────────────
   // Grab R2 keys before the rows disappear — cascade/explicit delete removes
   // the DB record but never touches the Cloudflare object.
-  const r2Keys = [
-    ...(await fetchR2Keys('product_photos', 'product_id', 'products', cutoff)),
-    ...(await fetchR2Keys('product_spin_frames', 'product_id', 'products', cutoff)),
-    ...(await fetchR2Keys('product_variants', 'product_id', 'products', cutoff)),
-  ];
+  const [photoKeys, spinFrameKeys, variantKeys] = await Promise.all([
+    fetchR2Keys('product_photos', 'product_id', 'products', cutoff),
+    fetchR2Keys('product_spin_frames', 'product_id', 'products', cutoff),
+    fetchR2Keys('product_variants', 'product_id', 'products', cutoff),
+  ]);
+  const r2Keys = [...photoKeys, ...spinFrameKeys, ...variantKeys];
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging product children...');
-  await purgeChildren('product_variants', 'product_id', 'products', cutoff);
-  await purgeChildren('product_photos', 'product_id', 'products', cutoff);
-  await purgeChildren('product_spin_frames', 'product_id', 'products', cutoff);
-  await purgeChildren('product_embeddings', 'product_id', 'products', cutoff);
+  await Promise.all([
+    purgeChildren('product_variants', 'product_id', 'products', cutoff),
+    purgeChildren('product_photos', 'product_id', 'products', cutoff),
+    purgeChildren('product_spin_frames', 'product_id', 'products', cutoff),
+    purgeChildren('product_embeddings', 'product_id', 'products', cutoff),
+  ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging products...');
@@ -185,9 +188,11 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // ── 2. Purge collections + children ─────────────────────────
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging collection children...');
-  await purgeChildren('collection_products', 'collection_id', 'collections', cutoff);
-  await purgeChildren('collection_views', 'collection_id', 'collections', cutoff);
-  await purgeChildren('collection_enquiries', 'collection_id', 'collections', cutoff);
+  await Promise.all([
+    purgeChildren('collection_products', 'collection_id', 'collections', cutoff),
+    purgeChildren('collection_views', 'collection_id', 'collections', cutoff),
+    purgeChildren('collection_enquiries', 'collection_id', 'collections', cutoff),
+  ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging collections...');
@@ -196,9 +201,11 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // ── 3. Purge customers + children ────────────────────────────
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging customer children...');
-  await purgeChildren('customer_interactions', 'customer_id', 'customers', cutoff);
-  await purgeChildren('customer_measurements', 'customer_id', 'customers', cutoff);
-  await purgeChildren('customer_fashion_dna', 'customer_id', 'customers', cutoff);
+  await Promise.all([
+    purgeChildren('customer_interactions', 'customer_id', 'customers', cutoff),
+    purgeChildren('customer_measurements', 'customer_id', 'customers', cutoff),
+    purgeChildren('customer_fashion_dna', 'customer_id', 'customers', cutoff),
+  ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging customers...');
@@ -207,11 +214,13 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // ── 4. Purge retailers + children ────────────────────────────
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging retailer children...');
-  await purgeChildren('staff', 'retailer_id', 'retailers', cutoff);
-  await purgeChildren('store_sections', 'retailer_id', 'retailers', cutoff);
-  await purgeChildren('product_categories', 'retailer_id', 'retailers', cutoff);
-  await purgeChildren('try_on_usage_logs', 'retailer_id', 'retailers', cutoff);
-  await purgeChildren('usage_counters', 'retailer_id', 'retailers', cutoff);
+  await Promise.all([
+    purgeChildren('staff', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('store_sections', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('product_categories', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('try_on_usage_logs', 'retailer_id', 'retailers', cutoff),
+    purgeChildren('usage_counters', 'retailer_id', 'retailers', cutoff),
+  ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging retailers...');

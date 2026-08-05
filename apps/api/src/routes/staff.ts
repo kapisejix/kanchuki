@@ -46,6 +46,17 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     if (existing)
       throw validationError('A staff member with this phone number already exists', 'phone');
 
+    // A Staff row with someone else's phone silently hijacks their future
+    // login (auth.ts checks Staff before creating a new Retailer) — block it
+    // at the one point it's actually preventable: a phone already tied to a
+    // real retailer account can never be added as staff here.
+    const retailerWithPhone = await prisma.retailer.findFirst({
+      where: { phone: normalizedPhone, deleted_at: null },
+      select: { id: true },
+    });
+    if (retailerWithPhone)
+      throw validationError('This phone number is already registered as a retailer account', 'phone');
+
     const staff = await prisma.staff.create({
       data: { retailer_id: retailerId, ...body.data, phone: normalizedPhone },
     });
@@ -77,9 +88,20 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
     const body = StaffSchema.partial().safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const data = body.data.phone
-      ? { ...body.data, phone: normalizeIndianPhone(body.data.phone) }
-      : body.data;
+    let data = body.data;
+    if (body.data.phone) {
+      const normalizedPhone = normalizeIndianPhone(body.data.phone);
+      const retailerWithPhone = await prisma.retailer.findFirst({
+        where: { phone: normalizedPhone, deleted_at: null },
+        select: { id: true },
+      });
+      if (retailerWithPhone)
+        throw validationError(
+          'This phone number is already registered as a retailer account',
+          'phone',
+        );
+      data = { ...body.data, phone: normalizedPhone };
+    }
 
     const updated = await prisma.staff.update({ where: { id }, data });
 

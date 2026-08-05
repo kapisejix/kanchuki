@@ -382,6 +382,16 @@ export const teamTicketsRoutes: FastifyPluginAsync = async (server) => {
       if (!['SUPPORT_AGENT', 'SUPPORT_MANAGER'].includes(tm.role)) {
         throw forbidden('Only support team members can update tickets');
       }
+      // A SUPPORT_AGENT may only touch a ticket already assigned to them, or
+      // an unassigned one (picking it up) — not a colleague's in-flight
+      // ticket. SUPPORT_MANAGER can act on any ticket in their territory.
+      if (
+        tm.role === 'SUPPORT_AGENT' &&
+        existing.assigned_to_id &&
+        existing.assigned_to_id !== tm.id
+      ) {
+        throw forbidden('Only the assigned agent or a manager can update this ticket');
+      }
     }
 
     const update: Record<string, unknown> = {};

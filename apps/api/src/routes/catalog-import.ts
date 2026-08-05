@@ -197,6 +197,7 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     try {
       const items = await detectCropAndTag(image_url, retailerId, {
         onProviderUsed: recordAiUsage(retailerId),
+        beforeCall: async () => checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits()),
       });
       incrementUsage(retailerId, 'IMAGE_CROP', items.length).catch((err) => {
         request.log.error({ err, retailer_id: retailerId }, 'Failed to record crop usage');
@@ -260,6 +261,8 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
             if (!pageImg) continue;
             const items = await detectCropAndTag(pageImg, retailerId, {
               onProviderUsed: recordAiUsage(retailerId),
+              beforeCall: async () =>
+                checkQuota(retailerId, 'AI_TAGGING_CALL', await reserveAiCredits()),
             });
             for (const item of items) {
               allItems.push({
@@ -412,9 +415,9 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         throw planLimitExceeded('products');
       }
     }
-    // F-010: additive — no-op until plan_limits has a PRODUCT_UPLOAD row for
-    // this plan (seeded for STARTER/GROWTH/PRO already). The PLAN_LIMITS
-    // check above stays authoritative.
+    // F-010: real quota gate — seed-plan-limits.ts seeds a PRODUCT_UPLOAD row
+    // per plan. The PLAN_LIMITS check above stays authoritative for the exact
+    // per-retailer number; this is what RetailerLimitOverride/addons hook into.
     await checkQuota(retailerId, 'PRODUCT_UPLOAD', items.length);
 
     // Create products in parallel, 10 at a time

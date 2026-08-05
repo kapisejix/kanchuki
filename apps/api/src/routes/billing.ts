@@ -43,13 +43,18 @@ async function razorpay<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+/** Constant-time compare for hex-encoded HMAC signatures — avoids a timing side-channel. */
+function hexEquals(expected: string, actual: string): boolean {
+  const a = Buffer.from(expected);
+  const b = Buffer.from(actual);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
 async function verifyWebhookSignature(rawBody: string, signature: string): Promise<boolean> {
   const secret = (await getSecret('RAZORPAY_WEBHOOK_SECRET')) ?? '';
   if (!secret || !signature) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
-  const a = Buffer.from(expected);
-  const b = Buffer.from(signature);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return hexEquals(expected, signature);
 }
 
 function periodEnd(start: Date, period: Period): Date {
@@ -413,7 +418,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       .update(`${razorpay_payment_link_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    if (expected !== razorpay_signature) {
+    if (!hexEquals(expected, razorpay_signature)) {
       request.log.warn({ razorpay_payment_link_id }, 'Payment link callback signature mismatch');
       return reply.status(401).send({
         error: {
@@ -591,7 +596,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest('hex');
 
-    if (expected !== razorpay_signature) {
+    if (!hexEquals(expected, razorpay_signature)) {
       throw validationError('Payment signature verification failed');
     }
 

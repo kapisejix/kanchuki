@@ -279,7 +279,11 @@ export const checkoutFlowRoutes: FastifyPluginAsync = async (server) => {
         .update(`${razorpay_order_id}|${razorpay_payment_id}`)
         .digest('hex');
 
-      if (expected !== razorpay_signature) {
+      const expectedBuf = Buffer.from(expected);
+      const actualBuf = Buffer.from(razorpay_signature);
+      const signatureValid =
+        expectedBuf.length === actualBuf.length && timingSafeEqual(expectedBuf, actualBuf);
+      if (!signatureValid) {
         throw validationError('Payment verification failed');
       }
 

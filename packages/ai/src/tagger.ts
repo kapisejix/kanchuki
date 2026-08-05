@@ -152,6 +152,9 @@ export type TaggableImage = {
 export interface TaggingCallOpts {
   /** Called with the winning provider (for per-call usage attribution). */
   onProviderUsed?: (info: ProviderUsedInfo) => void
+  /** Called before each AI call this request will make — throw to abort
+   *  remaining calls (e.g. quota exhausted mid multi-item/multi-page batch). */
+  beforeCall?: () => Promise<void>
 }
 
 /** Tag a product from one or more images (e.g. front + back) using the configured AI providers. */

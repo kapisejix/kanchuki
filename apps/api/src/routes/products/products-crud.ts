@@ -35,9 +35,11 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     if (currentCount >= retailer.max_products) {
       throw planLimitExceeded('products');
     }
-    // F-010: generalized quota gate, additive for now — plan_limits has no
-    // seed row for PRODUCT_UPLOAD yet so this is a no-op until an admin adds
-    // one. The max_products check above stays authoritative until then.
+    // F-010: generalized quota gate — seed-plan-limits.ts seeds a real
+    // PRODUCT_UPLOAD row per plan (LIFETIME cap mirroring max_products), so
+    // this is live enforcement, not a no-op. Kept alongside the max_products
+    // check above (which stays authoritative for the exact number) since
+    // this is also what RetailerLimitOverride/addon purchases hook into.
     await checkQuota(retailerId, 'PRODUCT_UPLOAD');
 
     const body = CreateProductSchema.safeParse(request.body);
@@ -245,6 +247,10 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── GET /products/:id/interested-customers ──────────────────────
   server.get('/:id/interested-customers', async (request) => {
+    // F-020: a delegated catalog-upload session must not reach customer PII
+    // for a retailer whose real login was never shared (see auth.ts).
+    if (request.catalogDelegate) throw forbidden('This session can only manage the catalog');
+
     const { id } = request.params as { id: string };
     const retailerId = request.retailerId;
 
