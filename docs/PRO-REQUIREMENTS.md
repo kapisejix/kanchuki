@@ -1361,3 +1361,19 @@ This is a regression introduced by F-017 (shipped 2026-07-26, "Database Guardrai
 **Fix applied (2026-08-04, commit `ac50fe8`):** the purge route now uses `getPurgePrisma()` (the `kanchuki_purge` scoped role — see below) and wraps the delete in a `$transaction` that runs `SET app.allow_hard_delete = 'true'` on that transaction's connection before calling `.delete()` — same bypass, scoped to this one request instead of a long-running cron connection. The existing `P2003` catch is kept (a product referenced by a past order/collection genuinely can't be hard-deleted, and that's the correct, already-handled behavior) — the transaction wrapper only fixes the trigger block, doesn't change the legitimate FK-block case. `apps/api/src/routes/products.test.ts` carries a regression comment for the purge route.
 
 **Role-separation question — resolved by the same fix:** the route now runs through `getPurgePrisma()` (`PURGE_DATABASE_URL`, the `kanchuki_purge` scoped role from 2026-08-02), which has DELETE on exactly the purge tables — so even under live role separation (`kanchuki_app` without DELETE grants) this legitimate caller keeps working, identical to the purge cron. It falls back to the shared client with a warning if `PURGE_DATABASE_URL` is unset.
+
+---
+
+## 17. Standalone Product-Photo Cleanup Script — ✅ BUILT 2026-08-05 18:04 IST (not an app feature)
+
+**Not part of the product** — a personal CLI tool, `scripts/batch-clean-photos.py`, built ad hoc this session for manually cleaning raw retailer product photos before catalog upload. Not wired into any app surface, no route/UI/DB touched. Documented here only so it's discoverable next session. `pip install rembg pillow`.
+
+**What it does:** two modes, one per run —
+- **Default:** rembg background removal → composite onto a flat `--bg` color or a `--bg-image` backdrop photo (cover-cropped) + soft drop shadow.
+- **`--blur RADIUS`:** portrait mode — subject stays sharp, the shot's own background gets gaussian-blurred instead of removed. More forgiving than the swap mode on cluttered rack shots (a bad segmentation edge just looks soft, not obviously pasted).
+
+Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tested and confirmed rembg segments by saliency, not subject identity, so it keeps overlapping neighbor garments/mannequins as "foreground" too; crop only fixes clutter that doesn't physically touch the subject) and `--shine` (contrast/saturation/brightness boost + a soft screen-blended highlight on the subject only, via stdlib-adjacent `PIL.ImageEnhance`/`ImageChops` — no new dependency).
+
+**Explicitly discussed and not built:** compositing the garment onto a stock/AI human-model photo. That's virtual try-on (pose-aware garment transfer), not background work — a flat paste ignores body pose/perspective/drape and looks obviously fake. This project already has the real path half-built (RunPod CatVTON, confirmed working end-to-end in an earlier session — see `docs/PROGRESS.md`) or the planned self-hosted Fashion V-Tone v1.5 engine (`docs/TECH-STACK.md`); real per-run RunPod cost means don't build this without an explicit ask.
+
+**Verified:** ran end-to-end on 3 real retailer product photos across all mode/flag combinations, outputs saved at `scripts/demo/2026-08-05/`.

@@ -745,3 +745,17 @@ Continuation of the same route-split effort (`912090e` above) — this session s
 **Verified:** guard script passes clean (0 violations across all of `apps/api/src/routes/**`), `apps/api` `tsc --noEmit` clean, full API vitest suite **258/258** (17 files) — identical pass count to the pre-split baseline, confirming no route behavior changed.
 
 Reproducible via `scripts/split-admin-routes.mjs` / `scripts/split-checkout-routes.mjs` (import pruning, `../` → `../../` path rewrite, helper-usage-based imports, CRLF-safe). Route auth unchanged: checkout has no plugin-level hook — `/retailers/*` gets `request.retailerId` from the global decorator, `/public/*` stays public.
+
+---
+
+## 2026-08-05 18:04 IST — Standalone product-photo cleanup script (`scripts/batch-clean-photos.py`)
+
+Not an app feature — a personal CLI tool for cleaning raw retailer product photos (mannequin/rack shots) before catalog upload, built ad hoc from a user request in this session. `pip install rembg pillow`.
+
+Two modes, pick one per run:
+- **Default:** rembg background removal → composite onto `--bg` flat color or `--bg-image` backdrop photo (cover-cropped) + soft drop shadow.
+- **`--blur RADIUS`:** portrait mode — subject stays sharp, the shot's own background gets gaussian-blurred instead of removed/swapped. Tested more forgiving than the swap mode on cluttered rack shots (bad segmentation edges look "soft" instead of obviously pasted).
+
+Both take `--crop x1,y1,x2,y2` (pre-trim before segmentation — rembg segments by saliency not subject identity, so overlapping neighbor garments/mannequins in-frame get kept as foreground; crop only helps when clutter doesn't physically touch the subject, tested and confirmed it can't split two touching objects) and `--shine` (`ImageEnhance` contrast/saturation/brightness + a soft `ImageChops.screen` highlight on the subject only — first pass overshot to a white haze, tuned down to Color 1.12/Contrast 1.08/Brightness 1.03/ellipse fill 70).
+
+Tested end-to-end on 3 real retailer photos across all mode combos — outputs saved at `scripts/demo/2026-08-05/`. Discussed and explicitly skipped: pasting the garment onto a stock/AI human-model photo — that's virtual try-on (pose-aware garment transfer), not background compositing, and a flat paste looks obviously fake. Real version would reuse this project's existing RunPod CatVTON setup or the planned self-hosted Fashion V-Tone v1.5 engine — not built, revisit only if asked given real per-run RunPod cost.

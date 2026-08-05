@@ -633,6 +633,24 @@ deliberately-deferred future hook, unchanged. Tests: 3 SKU-lookup cases in
 
 ---
 
+## Built: Standalone Product-Photo Cleanup Script (2026-08-05 18:04 IST)
+
+**Not wired into the app** — a standalone CLI tool for manually cleaning up raw retailer product photos before catalog upload, built ad hoc this session. Lives at `scripts/batch-clean-photos.py`, `pip install rembg pillow`.
+
+Modes (mutually exclusive, pick one per run):
+- **Default:** rembg background removal → composite onto `--bg` flat color or `--bg-image` backdrop photo (cover-cropped) + soft drop shadow.
+- **`--blur RADIUS`:** portrait mode — keeps the shot's own background, gaussian-blurs it, subject stays sharp. No removal/swap. More forgiving on cluttered rack shots than the swap mode (bad segmentation edges just look "under-blurred" instead of obviously pasted).
+
+Both modes take:
+- `--crop x1,y1,x2,y2` — pre-trim to the subject before segmentation. rembg segments by saliency, not by subject identity, so other high-contrast garments/mannequins touching or overlapping the target in-frame get kept as "foreground" too. Crop only helps when the clutter doesn't physically overlap the subject — it can't separate two touching objects (e.g. neighboring kurtis on the same rack). No fix shipped for that; either shoot against a clear wall (free, recommended) or swap to a prompted segmenter like SAM (bigger lift, not built).
+- `--shine` — `ImageEnhance` contrast/saturation/brightness bump + a soft diagonal highlight (`ImageChops.screen`) over the subject only. Tuned down once already (first pass blew out to a white haze) — current values: Color 1.12, Contrast 1.08, Brightness 1.03, ellipse fill 70.
+
+**Explicitly out of scope, discussed not built:** pasting the garment onto an AI/stock human model photo (a "virtual try-on," not background compositing — flat-pasting a cutout onto a human photo looks obviously fake since it ignores body pose/perspective/drape). Real version needs pose-aware garment transfer — this project already has that infra half-built and cost-tested: RunPod CatVTON (confirmed working end-to-end in an earlier session, but real money per run, avoid blind retries) or the planned self-hosted Fashion V-Tone v1.5 VTO engine (`docs/TECH-STACK.md`). Revisit that path only if asked.
+
+**Demo outputs saved:** `scripts/demo/2026-08-05/` (5 sample runs — flat bg, custom bg-image, blur, and two shine variants).
+
+---
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs
