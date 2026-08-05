@@ -30,4 +30,8 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm exec turbo build --filter=@kanchuki/api
 
 EXPOSE 3001
-CMD ["node", "apps/api/dist/index.js"]
+# --max-old-space-size caps V8's heap below the Railway container memory
+# limit (2GB after the 2026-08-05 OOM bump) so a real leak throws a
+# catchable "JS heap out of memory" crash with a heap summary in the logs,
+# instead of the cgroup silently SIGKILLing the process with no trace.
+CMD ["node", "--max-old-space-size=1536", "apps/api/dist/index.js"]
