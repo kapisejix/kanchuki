@@ -27,59 +27,23 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, ShoppingBag, Camera, X, Tag } from 'lucide-react-native'
-import QRCode from 'react-native-qrcode-svg'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, Camera, X, Tag } from 'lucide-react-native'
 import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { RelatedProductsSection } from '../../src/components/product-detail/RelatedProducts'
+import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
+import { STATUS_OPTIONS, type Photo, type Product } from '../../src/components/product-detail/types'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
 // ponytail: manual per-photo top/bottom crop not supported for now — retake with add-photos instead.
 const CROP_PIECE_ENABLED = false
 
-type Photo = { id: string; url: string; is_primary: boolean; piece_type: 'upper' | 'lower' | null }
-type Variant = { id: string; color: string; photo_url: string | null }
-type Product = {
-  id: string
-  name: string | null
-  sku: string | null
-  description: string | null
-  subtype: string | null
-  category: string | null
-  category_id: string | null
-  product_type: string | null
-  primary_color: string | null
-  fabric_estimate: string | null
-  pattern: string | null
-  occasions: string[]
-  sizes: string[]
-  price_min: number | null
-  price_max: number | null
-  status: 'AVAILABLE' | 'SOLD' | 'RESERVED' | 'NOT_SURE'
-  location_notes: string | null
-  notes: string | null
-  ai_tagged: boolean
-  ai_tag_error: string | null
-  spin_status: string | null
-  spin_error: string | null
-  photos: Photo[]
-  spin_frames: { id: string; url: string }[]
-  variants: Variant[]
-  section: { name: string } | null
-}
-
 const SCREEN_WIDTH = Dimensions.get('window').width
-
-const STATUS_OPTIONS: { value: Product['status']; label: string }[] = [
-  { value: 'AVAILABLE', label: 'Available' },
-  { value: 'RESERVED', label: 'Reserved' },
-  { value: 'SOLD', label: 'Sold' },
-  { value: 'NOT_SURE', label: 'Not Sure' },
-]
 
 export default function ProductDetailScreen() {
   const { primaryColor, colors } = useTheme()
@@ -1809,135 +1773,12 @@ export default function ProductDetailScreen() {
       </Modal>
 
       {/* F-025: printable SKU/QR tag modal — white, print/screenshot friendly */}
-      <Modal
-        visible={skuTagOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setSkuTagOpen(false)}
-      >
-        <View className="flex-1 bg-black/60 items-center justify-center px-8">
-          <View className="bg-white rounded-2xl p-8 items-center w-full max-w-sm">
-            <Text className="text-[10px] font-semibold text-sand-500 uppercase tracking-widest mb-4">
-              Rack Tag · Scan to Sell
-            </Text>
-            {product.sku && <QRCode value={product.sku} size={180} />}
-            <Text className="text-2xl font-bold text-sand-900 mt-5 tracking-widest">
-              {product.sku ?? ''}
-            </Text>
-            {product.name ? (
-              <Text className="text-xs text-sand-500 mt-1 text-center" numberOfLines={2}>
-                {product.name}
-              </Text>
-            ) : null}
-            <AnimatedPressable
-              onPress={() => setSkuTagOpen(false)}
-              className="mt-6 bg-ink-600 px-6 py-2.5 rounded-xl"
-            >
-              <Text className="text-white text-sm font-semibold">Done</Text>
-            </AnimatedPressable>
-          </View>
-        </View>
-      </Modal>
-    </View>
-  )
-}
-
-// ─── Related Products Section ─────────────────────────────────────
-
-interface RelatedProduct {
-  id: string
-  name: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-  category: string | null
-  primary_color: string | null
-}
-
-const RELATED_API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
-
-function RelatedProductsSection({
-  category,
-  excludeId,
-  onSelect,
-}: {
-  category: string
-  excludeId: string
-  onSelect: (id: string) => void
-}) {
-  const { primaryColor, colors } = useTheme()
-  const [related, setRelated] = useState<RelatedProduct[]>([])
-  const [loadingRelated, setLoadingRelated] = useState(true)
-
-  useEffect(() => {
-    let cancelled = false
-    const fetchRelated = async () => {
-      try {
-        const res = await fetch(
-          `${RELATED_API_URL}/v1/public/products/${excludeId}/related`,
-        )
-        if (!res.ok) return
-        const json = (await res.json()) as { data: RelatedProduct[] }
-        if (!cancelled && json?.data) setRelated(json.data)
-      } catch {
-        // silently fail
-      } finally {
-        if (!cancelled) setLoadingRelated(false)
-      }
-    }
-    fetchRelated()
-    return () => {
-      cancelled = true
-    }
-  }, [excludeId])
-
-  if (loadingRelated || related.length === 0) return null
-
-  return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <View className="flex-row items-center gap-2 mb-3">
-        <ShoppingBag size={14} color={primaryColor} />
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-          More {category}
-        </Text>
-      </View>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row gap-3">
-          {related.map((rp) => (
-            <AnimatedPressable
-              key={rp.id}
-              onPress={() => onSelect(rp.id)}
-              className="w-28"
-            >
-              <View className="w-28 h-36 rounded-xl overflow-hidden bg-sand-100 border border-sand-200">
-                {rp.primary_photo_url ? (
-                  <Image
-                    source={{ uri: rp.primary_photo_url }}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                  />
-                ) : (
-                  <View className="flex-1 items-center justify-center">
-                    <Text className="text-sand-300">👗</Text>
-                  </View>
-                )}
-                {rp.status === 'SOLD' && (
-                  <View className="absolute top-1 left-1 bg-rust-500 rounded-full px-1.5 py-0.5">
-                    <Text className="text-white text-[8px] font-bold">Sold</Text>
-                  </View>
-                )}
-              </View>
-              <Text className="text-xs font-bold text-sand-900 mt-1.5 tabular-nums">
-                {rp.price_min ? `₹${(rp.price_min / 100).toLocaleString('en-IN')}` : ''}
-              </Text>
-              {rp.primary_color && (
-                <Text className="text-[10px] text-sand-500 truncate">{rp.primary_color}</Text>
-              )}
-            </AnimatedPressable>
-          ))}
-        </View>
-      </ScrollView>
+      <SkuTagModal
+        open={skuTagOpen}
+        onClose={() => setSkuTagOpen(false)}
+        sku={product.sku}
+        name={product.name}
+      />
     </View>
   )
 }
