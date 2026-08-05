@@ -37,6 +37,7 @@ const {
   mockAiProviderUpdate,
   mockAiProviderDelete,
   mockAiUsageGroupBy,
+  mockHardDeleteRetailer,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
   mockRetailerFindMany: vi.fn(),
@@ -69,7 +70,13 @@ const {
   mockAiProviderUpdate: vi.fn(),
   mockAiProviderDelete: vi.fn(),
   mockAiUsageGroupBy: vi.fn(),
+  mockHardDeleteRetailer: vi.fn(),
 }));
+
+// hardDeleteRetailer uses a separate scoped-role Prisma client
+// (getPurgePrisma(), not the mocked `prisma` above) — mock the job function
+// itself rather than trying to stub its raw-SQL internals.
+vi.mock('../jobs/purge-retailer-now.js', () => ({ hardDeleteRetailer: mockHardDeleteRetailer }));
 
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
@@ -362,7 +369,7 @@ describe('GET /admin/retailers', () => {
 // ─── DELETE /admin/retailers ───────────────────────────────────────
 
 describe('DELETE /admin/retailers', () => {
-  it('bulk soft-deletes retailers and archives their collections/staff', async () => {
+  it('hard-deletes retailers via hardDeleteRetailer after a vault snapshot', async () => {
     mockRetailerFindMany.mockResolvedValue([
       {
         id: 'retailer_1',
@@ -380,9 +387,7 @@ describe('DELETE /admin/retailers', () => {
       },
     ]);
     mockCollectionFindMany.mockResolvedValue([]);
-    mockRetailerUpdateMany.mockResolvedValue({ count: 2 });
-    mockCollectionUpdateMany.mockResolvedValue({ count: 0 });
-    mockStaffUpdateMany.mockResolvedValue({ count: 0 });
+    mockHardDeleteRetailer.mockResolvedValue(undefined);
 
     const app = await buildApp();
     const res = await app.inject({
@@ -394,10 +399,13 @@ describe('DELETE /admin/retailers', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json().data.deleted).toBe(2);
-    expect(mockRetailerUpdateMany).toHaveBeenCalledWith(
+    expect(mockHardDeleteRetailer).toHaveBeenCalledWith('retailer_1');
+    expect(mockHardDeleteRetailer).toHaveBeenCalledWith('retailer_2');
+    expect(mockHardDeleteRetailer).toHaveBeenCalledTimes(2);
+    // Vault snapshot must happen before the row is gone for good.
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ id: { in: ['retailer_1', 'retailer_2'] } }),
-        data: expect.objectContaining({ deleted_at: expect.any(Date) }),
+        data: expect.objectContaining({ action: 'HARD_DELETE', resource_type: 'Retailer' }),
       }),
     );
     await app.close();

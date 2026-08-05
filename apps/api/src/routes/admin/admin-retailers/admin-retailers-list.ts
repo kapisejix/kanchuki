@@ -2,6 +2,7 @@
 import { prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { hardDeleteRetailer } from '../../../jobs/purge-retailer-now.js';
 import { adminAuthPreHandler } from '../../admin-auth.js';
 
 export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
@@ -129,13 +130,18 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── DELETE /admin/retailers ─────────────────────────────────────
-  // Bulk soft-delete retailers from the admin grid. Archives their
-  // collections and deactivates staff, same as the retailer self-delete
-  // flow (DELETE /retailers/me) — products/customers/billing kept for GST audit.
+  // Admin delete is a HARD delete — distinct from the retailer's own
+  // self-delete (DELETE /retailers/me), which stays soft (GST audit).
+  // The whole row (and its unique phone/auth_user_id) must actually be gone
+  // so the retailer can sign up again from scratch with the same phone
+  // number — a soft-delete here left that phone permanently stuck (the
+  // login upsert kept finding the dead row and handing back a token the
+  // auth middleware then rejected). F-016 vault snapshot still happens
+  // first, so the full payload survives in the separate insert-only vault
+  // DB even though the primary row is gone for good.
   server.delete('/retailers', async (request) => {
     const body = z.object({ ids: z.array(z.string()).min(1).max(100) }).parse(request.body);
 
-    // Capture full before-state for vault snapshots + audit log
     const retailersBefore = await prisma.retailer.findMany({
       where: { id: { in: body.ids }, deleted_at: null },
     });
@@ -143,55 +149,43 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
       where: { retailer_id: { in: body.ids }, deleted_at: null },
     });
 
-    await prisma.$transaction([
-      prisma.retailer.updateMany({
-        where: { id: { in: body.ids }, deleted_at: null },
-        data: { deleted_at: new Date() },
-      }),
-      prisma.collection.updateMany({
-        where: { retailer_id: { in: body.ids }, deleted_at: null },
-        data: { deleted_at: new Date(), status: 'ARCHIVED' },
-      }),
-      prisma.staff.updateMany({
-        where: { retailer_id: { in: body.ids }, is_active: true },
-        data: { is_active: false },
-      }),
-    ]);
-
-    // F-016: Vault snapshot each deleted retailer (fire-and-forget)
-    Promise.allSettled(
-      retailersBefore.map((r) =>
+    // F-016: vault snapshot BEFORE the hard delete — awaited (not
+    // fire-and-forget) since there's no soft-deleted row left as a fallback
+    // if this silently lost the race. vaultDelete() never throws.
+    await Promise.all([
+      ...retailersBefore.map((r) =>
         vaultDelete({
           source_table: 'retailers',
           source_id: r.id,
           retailer_id: r.id,
           payload: r as unknown as Record<string, unknown>,
-          delete_reason: 'admin_bulk_delete',
+          delete_reason: 'admin_hard_delete',
           deleted_by: 'admin',
         }),
       ),
-    );
-    // F-016: Vault snapshot each archived collection (fire-and-forget)
-    Promise.allSettled(
-      collectionsBefore.map((c) =>
+      ...collectionsBefore.map((c) =>
         vaultDelete({
           source_table: 'collections',
           source_id: c.id,
           retailer_id: c.retailer_id,
           payload: c as unknown as Record<string, unknown>,
-          delete_reason: 'admin_bulk_delete',
+          delete_reason: 'admin_hard_delete',
           deleted_by: 'admin',
         }),
       ),
-    );
+    ]);
+
+    for (const id of retailersBefore.map((r) => r.id)) {
+      await hardDeleteRetailer(id);
+    }
 
     await prisma.auditLog.create({
       data: {
         actor_type: 'admin',
-        action: 'BULK_DELETE',
+        action: 'HARD_DELETE',
         resource_type: 'Retailer',
         metadata: {
-          count: body.ids.length,
+          count: retailersBefore.length,
           before: retailersBefore.map((r) => ({
             id: r.id,
             shop_name: r.shop_name,
@@ -204,8 +198,8 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    request.log.info({ retailer_ids: body.ids }, 'Bulk retailer delete');
-    return { data: { deleted: body.ids.length } };
+    request.log.info({ retailer_ids: body.ids }, 'Admin hard-deleted retailers');
+    return { data: { deleted: retailersBefore.length } };
   });
 
   // ─── GET /admin/customers ───────────────────────────────────────

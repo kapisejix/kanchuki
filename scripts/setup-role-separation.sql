@@ -108,17 +108,26 @@ END
 $$;
 GRANT kanchuki_app TO kanchuki_purge;
 
--- Exactly the tables the purge cron hard-deletes (children before parents —
--- see the table list in purge-soft-deleted.ts). Tables added later need an
--- explicit GRANT DELETE here too; default privileges do NOT cover this role.
+-- Every table the purge cron (purge-soft-deleted.ts) or the admin
+-- hard-delete-retailer action (purge-retailer-now.ts) deletes from
+-- (children before parents). Tables added later need an explicit
+-- GRANT DELETE here too; default privileges do NOT cover this role.
+-- product_spin_frames was missing from this grant even though the cron
+-- already tried to delete from it — that call has been silently/loudly
+-- failing with permission denied every run; fixed here (2026-08-05).
 GRANT DELETE ON TABLE
-  product_variants, product_photos, product_embeddings,
+  product_variants, product_photos, product_spin_frames, product_embeddings,
   products,
+  order_items, orders,
   collection_products, collection_views, collection_enquiries,
   collections,
+  try_on_usage_logs, try_on_jobs,
   customer_interactions, customer_measurements, customer_fashion_dna,
   customers,
-  staff, store_sections, product_categories, try_on_usage_logs, usage_counters,
+  subscription_payments, subscriptions,
+  size_chart_rows, size_charts,
+  support_tickets, ai_usage_logs, quota_addon_purchases,
+  staff, store_sections, product_categories, usage_counters,
   retailers
 TO kanchuki_purge;
 
