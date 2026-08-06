@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ghost Mannequin — Current Situation &amp; No-API Options</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --ink: #14213D;
+    --gold: #FCA311;
+    --bg: #FFFFFF;
+    --panel: #F7F7F8;
+    --border: #E5E5E5;
+    --text: #1a1a1a;
+    --muted: #5a5f6b;
+    --danger: #b3261e;
+    --danger-bg: #fdecea;
+    --good: #1e6b3a;
+    --good-bg: #eaf7ee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12141a;
+      --panel: #1a1d26;
+      --border: #2b2f3a;
+      --text: #e8e9ec;
+      --muted: #9aa0ad;
+      --danger: #ff8a80;
+      --danger-bg: #3a1e1c;
+      --good: #7ee0a0;
+      --good-bg: #12301f;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 40px 24px 100px; }
+  header.hero {
+    border-bottom: 3px solid var(--gold);
+    padding-bottom: 24px;
+    margin-bottom: 32px;
+  }
+  header.hero h1 {
+    font-size: 1.9rem;
+    margin: 0 0 8px;
+    color: var(--ink);
+  }
+  @media (prefers-color-scheme: dark) { header.hero h1 { color: #fff; } }
+  .meta { color: var(--muted); font-size: 0.9rem; }
+  .meta strong { color: var(--text); }
+  .callout {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 20px 0;
+  }
+  .callout.danger { background: var(--danger-bg); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); }
+  .callout.good { background: var(--good-bg); border-color: color-mix(in srgb, var(--good) 35%, var(--border)); }
+  h2 {
+    margin-top: 48px;
+    font-size: 1.4rem;
+    color: var(--ink);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+  }
+  @media (prefers-color-scheme: dark) { h2 { color: #fff; } }
+  h3 { font-size: 1.1rem; margin-top: 28px; }
+  code {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 0.88em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  pre {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 0.85rem;
+  }
+  blockquote {
+    margin: 12px 0;
+    padding: 10px 18px;
+    border-left: 3px solid var(--muted);
+    color: var(--muted);
+    font-style: italic;
+    background: var(--panel);
+    border-radius: 0 6px 6px 0;
+  }
+  .table-scroll { overflow-x: auto; margin: 16px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 640px;
+    font-size: 0.92rem;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--ink);
+    color: #fff;
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: var(--panel); }
+  .tier-a { color: var(--good); font-weight: 700; }
+  .tier-b { color: var(--gold); font-weight: 700; }
+  .tier-c { color: var(--danger); font-weight: 700; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+  .badge.dead { background: var(--danger-bg); color: var(--danger); }
+  .badge.live { background: var(--good-bg); color: var(--good); }
+  .status-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin: 20px 0;
+  }
+  .status-row {
+    display: grid;
+    grid-template-columns: 240px 1fr auto;
+    gap: 16px;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  @media (max-width: 700px) {
+    .status-row { grid-template-columns: 1fr; }
+  }
+  .status-row .name { font-weight: 600; }
+  .status-row .file { color: var(--muted); font-size: 0.85rem; font-family: ui-monospace, monospace; }
+  ol, ul { padding-left: 22px; }
+  li { margin: 6px 0; }
+  a { color: var(--gold); }
+  footer {
+    margin-top: 60px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <h1>Ghost Mannequin Feature — Current Situation &amp; No-API Self-Hosted Options</h1>
+  <div class="meta">
+    <strong>Date:</strong> 2026-08-06 &nbsp;·&nbsp;
+    <strong>Status:</strong> Research only — no code changed producing this document &nbsp;·&nbsp;
+    <strong>Companion:</strong> <code>ghost-mannequin-research.md</code>
+  </div>
+</header>
+
+<p>The admin photo-cleanup test page throws <code>SNAPPYIT_API_KEY is not configured</code>
+the moment "ghost mannequin" is ticked. You didn't ask for Snappyit, no key was ever
+supplied, and this document explains exactly why the code depends on it — and what a
+Snappyit-free, self-hosted answer running on the Hetzner CX43 box you already pay for
+actually looks like.</p>
+
+<h2>1. What is actually happening right now</h2>
+
+<h3>1.1 The error is not a bug — it's a dead integration</h3>
+<p><code>packages/ai/src/snappyit.ts</code> calls
+<code>https://snappyit.ai/api/v1/ghost-mannequin</code>. The comment already sitting in
+that file, written by whoever built it, says:</p>
+<blockquote>"Confirmed: snappyit.ai domain (moved from snappyit.app in 2026). The
+<code>/api/v1/ghost-mannequin</code> path is <strong>inferred from industry
+patterns</strong>; actual endpoint <strong>to be confirmed during
+integration</strong>."</blockquote>
+
+<p>That is an admission the endpoint was guessed, never verified against a real API.
+This session's research confirms why it was never confirmed:
+<strong>Snappyit does not have a public developer API.</strong></p>
+
+<div class="callout danger">
+  <strong>Verified 2026-08-06:</strong> Snappyit's own pricing page sells only consumer
+  credit packs ($6.90–$48.90/mo, 100–1,150 credits) through a web dashboard. No
+  mention of "API," API keys, or programmatic/batch access anywhere on the page.
+  There is no developer portal. A search for one surfaces an unrelated company
+  (<code>snappy.com</code>, a business gift-card API) that happens to share a similar name.
+</div>
+
+<p>So the honest state of F-001e as shipped: it is wired to call an endpoint that was
+never confirmed to exist, on a vendor that — as far as this research can find — has
+no API to call in the first place. <code>SNAPPYIT_API_KEY</code> was never "missing
+configuration" in the normal sense; there was never a key to get. Setting an env var
+would not fix this — the URL it posts to is a guess.</p>
+
+<div class="callout good">
+  <strong>This is on the project, not on you.</strong> F-001e was written into
+  <code>CLAUDE.md</code> months ago as "via Snappyit API (planned)" and nobody
+  validated that claim before code was built against it. You're not moving in
+  circles by changing your mind — the plan itself was built on an unverified premise.
+</div>
+
+<h3>1.2 What's real vs. what's a stub, precisely</h3>
+<div class="status-grid">
+  <div class="status-row">
+    <div class="name">Background removal + backdrop swap + shadow + shine</div>
+    <div class="file"><code>scripts/batch-clean-photos.py</code></div>
+    <span class="badge live">REAL &amp; WORKING</span>
+  </div>
+  <div class="status-row">
+    <div class="name">Ghost mannequin (hollow neckline/sleeve effect)</div>
+    <div class="file"><code>packages/ai/src/snappyit.ts</code><br><code>apps/api/src/jobs/ghost-mannequin.ts</code></div>
+    <span class="badge dead">DEAD — always throws</span>
+  </div>
+  <div class="status-row">
+    <div class="name">"Generate on model" (V-Tone, self-hosted)</div>
+    <div class="file"><code>apps/api/src/jobs/admin-tryon.ts</code><br><code>services/fashion-vtone</code></div>
+    <span class="badge live">REAL, but wrong task — see §2</span>
+  </div>
+</div>
+<p>Nothing in the app today produces a real ghost-mannequin (invisible mannequin /
+hollow-body) image. The checkbox exists in the admin UI; the backend it calls
+cannot succeed.</p>
+
+<h2>2. Why V-Tone doesn't cover this either</h2>
+<p>V-Tone is a <strong>virtual try-on</strong> engine: garment photo + a photo of a
+<strong>person/model</strong> → the garment shown worn by that person. Ghost mannequin
+is the opposite kind of shot — the garment shown as if worn by nobody visible at all.
+V-Tone has no invisible-mannequin mode.</p>
+<div class="callout danger">
+  <strong>Measured live, 2026-08-06:</strong> a real end-to-end V-Tone run on the CX43
+  took <strong>32.3 minutes for one image</strong> (30 diffusion timesteps, CPU-only, no
+  GPU on this box). It's also single-request-blocking — a second job waits for the
+  first. For a catalog feature meant to run per-SKU across hundreds of products,
+  that's not usable — confirming "vtone (which is not usable)" is correct, for this job.
+</div>
+
+<h2>3. Deep research: no-API self-hosted options that actually work</h2>
+<p>There is a real, permissively-licensed, self-hostable class of tool for this — split
+into three honest quality tiers rather than just tool names.</p>
+
+<div class="table-scroll">
+<table>
+  <tr><th>Tier</th><th>Technique</th><th>Needs</th><th>AI required?</th></tr>
+  <tr>
+    <td class="tier-a">A — True ghost mannequin<br>(studio standard)</td>
+    <td>Garment shot twice — once on a mannequin, once with the interior neck/collar
+      photographed after slightly lifting the garment. The two are layered so the
+      interior shows real fabric, not a guess.</td>
+    <td>2 real photos per SKU + compositing script</td>
+    <td><strong>No</strong> — pure alpha-masking &amp; layering</td>
+  </tr>
+  <tr>
+    <td class="tier-b">B — Single-photo AI approximation</td>
+    <td>One photo → background/mannequin removed → hollow interior (neckline, cuffs,
+      waist) <em>inpainted</em> with plausible fabric-colored shading.</td>
+    <td>1 photo + a small inpainting model</td>
+    <td>Yes, but CPU-feasible (§3.2)</td>
+  </tr>
+  <tr>
+    <td class="tier-c">C — Full AI reconstruction</td>
+    <td>One photo of a <em>worn</em> garment → a diffusion model hallucinates a
+      canonical "flat"/ghost view from a single view (2024–2025 "Virtual Try-Off"
+      research, e.g. TryOffDiff, CVPR'25).</td>
+    <td>1 photo + a full diffusion pipeline</td>
+    <td>Yes — same model class as V-Tone, same CPU cost problem</td>
+  </tr>
+</table>
+</div>
+
+<p><strong>Snappyit / Photoroom / Pixelcut sell you Tier B</strong>, wrapped in a UI,
+charged per credit. If they were running Tier-C-heavy compute, a $6.90/mo plan with
+instant turnaround wouldn't be economical for them either.</p>
+
+<h3>3.2 Tier B is the realistic, CPU-only, no-API answer</h3>
+<p><strong>IOPaint</strong> (formerly "lama-cleaner"), Apache 2.0, self-hosted,
+Python — <a href="https://github.com/Sanster/IOPaint" target="_blank" rel="noopener">github.com/Sanster/IOPaint</a>.
+Packages the <strong>LaMa</strong> inpainting model (a small CNN, not a diffusion
+model).</p>
+<ul>
+  <li><strong>License:</strong> Apache 2.0 — same free-to-self-host category as V-Tone and <code>rembg</code>, already proven acceptable in this project.</li>
+  <li><strong>CPU speed:</strong> independently benchmarked at <strong>~25 seconds/image</strong> on CPU (HD images, 7–10% masked). A completely different order of magnitude from the 30-minute diffusion runs — LaMa is a small CNN, not a multi-step diffusion sampler.</li>
+  <li><strong>Pipeline it would need:</strong>
+    <ol>
+      <li><code>rembg</code> (already in use) — cut the garment out from its background/mannequin.</li>
+      <li>A <strong>mask</strong> over the neckline/sleeve-opening/waist areas — approximated heuristically (silhouette minus a shrunk interior region), or reused per garment shape since most kurtis/suits/sarees in one category share similar neckline geometry.</li>
+      <li>Feed cutout + mask to IOPaint's LaMa model → it fills the hollow area with plausible fabric texture.</li>
+      <li>Composite onto a backdrop exactly like <code>batch-clean-photos.py</code> already does today.</li>
+    </ol>
+  </li>
+  <li><strong>Resource fit for CX43</strong> (8 shared vCPU, 16GB RAM, no GPU, €12/mo — the box already running V-Tone): trivially fits. LaMa's published benchmark hardware is far less than a CX43. This is the one AI option in this document proportionate to the hardware already bought.</li>
+</ul>
+<div class="callout">
+  <strong>Honest quality ceiling:</strong> this is an approximation, not a true 3D
+  reconstruction — it won't recreate exact fabric folds the way a real second photo
+  (Tier A) or a heavier diffusion model (Tier C) would. For catalog thumbnails at
+  typical e-commerce size this is plausibly good enough — it's functionally the same
+  tier of quality the $7–35/mo SaaS tools were about to be paid for anyway.
+</div>
+
+<h3>3.3 Tier C (diffusion-based) — researched, not recommended</h3>
+<p>Academic work (TryOffDiff, CVPR 2025 —
+<a href="https://github.com/rizavelioglu/tryoffdiff" target="_blank" rel="noopener">github.com/rizavelioglu/tryoffdiff</a>,
+license: SSPL) reconstructs a garment's canonical shape from a single worn photo using
+Stable Diffusion as a base — the closest thing to "real AI" ghost-mannequin generation.</p>
+<div class="callout danger">
+  Same wall already hit and measured: Stable Diffusion-class inpainting on CPU only,
+  independently benchmarked at <strong>~20–22 minutes/image</strong> on hardware
+  comparable to the CX43's shared vCPUs. Swapping "try-on" for "try-off" doesn't change
+  the underlying cost — diffusion sampling is what's slow on CPU, not the specific
+  task. <strong>Do not build this tier without adding a GPU.</strong>
+</div>
+
+<h2>4. Price &amp; resource comparison</h2>
+<div class="table-scroll">
+<table>
+  <tr>
+    <th>Option</th><th>Type</th><th>Cost</th><th>Hardware</th>
+    <th>Per-image speed</th><th>3rd-party API key?</th><th>Quality tier</th>
+  </tr>
+  <tr>
+    <td><strong>Snappyit (as wired today)</strong></td>
+    <td>SaaS, credits</td>
+    <td>$6.90–$48.90/mo (~$0.06–0.10/img)</td>
+    <td>None (their servers)</td>
+    <td>Seconds (their infra)</td>
+    <td><strong>Yes — doesn't exist to get.</strong> No dev API found; current code is non-functional.</td>
+    <td class="tier-b">B</td>
+  </tr>
+  <tr>
+    <td>Photoroom / Pixelcut / similar (researched, not integrated)</td>
+    <td>SaaS, credits</td>
+    <td>~$6–35/mo tiers</td>
+    <td>None (their servers)</td>
+    <td>Seconds</td>
+    <td>Unverified — same "consumer app, not dev API" pattern is common</td>
+    <td class="tier-b">B</td>
+  </tr>
+  <tr>
+    <td><strong>V-Tone (already self-hosted, CX43)</strong></td>
+    <td>Self-hosted diffusion, repurposed</td>
+    <td>€0 extra (already running)</td>
+    <td>CX43: 8 shared vCPU, 16GB RAM, no GPU</td>
+    <td><strong>~32 min/img, measured live</strong></td>
+    <td>No</td>
+    <td>Wrong task</td>
+  </tr>
+  <tr>
+    <td><strong>IOPaint / LaMa (researched, not built)</strong></td>
+    <td>Self-hosted, small CNN inpainting</td>
+    <td>€0 extra (same CX43)</td>
+    <td>Same CX43, far below capacity</td>
+    <td><strong>~25 sec/img, published benchmark</strong></td>
+    <td>No</td>
+    <td class="tier-b">B</td>
+  </tr>
+  <tr>
+    <td>TryOffDiff / diffusion ghost mannequin (researched, not built)</td>
+    <td>Self-hosted diffusion</td>
+    <td>€0 on CX43 CPU (too slow); GPU box ~€184/mo (e.g. Hetzner GEX44 — already declined once for V-Tone)</td>
+    <td>CPU: runs, impractically slow. GPU: fast, extra cost</td>
+    <td>~20–22 min/img CPU; seconds–minutes GPU</td>
+    <td>No</td>
+    <td class="tier-c">C</td>
+  </tr>
+  <tr>
+    <td><strong>True ghost mannequin, 2-photo compositing</strong></td>
+    <td>No AI — pure image layering</td>
+    <td>€0</td>
+    <td>Any machine, even a phone</td>
+    <td>Effectively instant</td>
+    <td>No</td>
+    <td class="tier-a">A — the real technique</td>
+  </tr>
+</table>
+</div>
+
+<h2>5. Straight answer: what's the best fit</h2>
+<ol>
+  <li><strong>Stop pretending Snappyit works.</strong> It's not a configuration gap — the integration targets a product with no API to integrate with. Recommend removing the "ghost mannequin" checkbox from the admin photo-cleanup page and the <code>snappyit.ts</code>/<code>ghost-mannequin.ts</code> files until a real path is chosen; leaving them produces this exact error forever.</li>
+  <li><strong>The proportionate, no-API, CPU-only answer is IOPaint/LaMa (Tier B).</strong> Runs comfortably on the CX43 already paid for, at ~25 sec/image — fast enough for real batch catalog use, unlike V-Tone or any diffusion route. Quality is an <em>approximation</em> of ghost mannequin, the same tier the cheap SaaS tools sell.</li>
+  <li><strong>If retailers take one extra photo per new design</strong> (the interior-neckline shot), Tier A gives the real professional-grade result other ghost-mannequin services sell by hand — zero ongoing compute cost, zero model-quality risk, at the cost of one extra shot per design (matches F-001e's existing "unpack once per design" premise).</li>
+  <li><strong>Full diffusion-quality reconstruction (Tier C) needs a GPU to be usable</strong> — the exact tradeoff already declined once for V-Tone (GPU ≈€184/mo vs €12/mo CPU box). Nothing found here changes that calculus for ghost mannequin specifically.</li>
+</ol>
+
+<footer>
+  This document implements nothing. Companion Markdown source:
+  <code>docs/photo-feature/ghost-mannequin-research.md</code>. Say which tier to build
+  and it can be scoped as its own task.
+</footer>
+
+</div>
+</body>
+</html>

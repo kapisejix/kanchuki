@@ -19,7 +19,13 @@ import { promisify } from 'node:util';
 
 import type { FastifyPluginAsync } from 'fastify';
 
-import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
+import {
+  compressImageToTarget,
+  publicUrl,
+  readCappedBuffer,
+  ssrfSafeFetch,
+  uploadBuffer,
+} from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
@@ -72,28 +78,33 @@ const SCRIPT_PATH = fileURLToPath(
   new URL('../../../../../scripts/batch-clean-photos.py', import.meta.url),
 );
 
-async function runPython(args: string[]): Promise<void> {
+async function runPython(args: string[], timeoutMs = 180_000): Promise<void> {
   for (const bin of ['python3', 'python']) {
     try {
       // 180s, not 60s: the first-ever run on a dev machine is a cold start —
       // `import rembg` + onnxruntime can take 30s+ alone, then the ~170MB
       // u2net model loads, then CPU inference runs. A 60s execFile cap
       // killed the whole run with a bare "Command failed" and no detail.
-      await execFileAsync(bin, [SCRIPT_PATH, ...args], { timeout: 180_000 });
+      // --ghost-mannequin gets a longer cap (see caller) — its first-ever
+      // run also downloads + loads the LaMa checkpoint on top of rembg's.
+      await execFileAsync(bin, [SCRIPT_PATH, ...args], { timeout: timeoutMs });
       return;
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue; // try next binary
       // Surface the script's real failure in the error message — execFile's
       // default "Command failed: ..." hides stderr entirely, which made the
       // admin panel error useless for diagnosing Python-side crashes.
-      const e = err as NodeJS.ErrnoException & { stderr?: string; killed?: boolean };
+      const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string; killed?: boolean };
+      // The script's real per-photo failure reason ("FAILED: ...") is a
+      // print() — it lands on stdout, not stderr. Surface both.
+      const detail = [e.stdout, e.stderr].map((s) => s?.trim()).filter(Boolean).join(' | ');
       throw new Error(
-        `photo-cleanup script failed${e.killed ? ' (killed — hit the 180s cap)' : ''}${e.stderr ? `: ${e.stderr.trim().slice(0, 500)}` : ''}`,
+        `photo-cleanup script failed${e.killed ? ` (killed — hit the ${timeoutMs / 1000}s cap)` : ''}${detail ? `: ${detail.slice(0, 800)}` : ''}`,
       );
     }
   }
   throw new Error(
-    'python3/python not found on this host. Install Python + `pip install rembg pillow` to use this test tool.',
+    'python3/python not found on this host. Install Python + `pip install rembg pillow simple-lama-inpainting` to use this test tool.',
   );
 }
 
@@ -132,6 +143,14 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           background_url: z.string().url(),
           shine: z.boolean().default(false),
           blur: z.number().int().min(1).max(100).optional(),
+          // Ghost mannequin: fills the hollow neckline/sleeve/waist gaps in
+          // the garment silhouette via local LaMa inpainting (no 3rd-party
+          // API/key — see docs/photo-feature/ghost-mannequin-research.md
+          // for why the earlier Snappyit integration was dead on arrival).
+          // Passed straight through to batch-clean-photos.py's
+          // --ghost-mannequin flag, which forces composite mode (blur is
+          // ignored when set).
+          ghost_mannequin: z.boolean().default(false),
         })
         .parse(request.body);
 
@@ -157,14 +176,18 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
         await writeFile(bgPath, bgBuf);
 
         const args = [inputDir, outputDir];
-        if (body.blur !== undefined) {
+        if (!body.ghost_mannequin && body.blur !== undefined) {
           args.push('--blur', String(body.blur));
         } else {
           args.push('--bg-image', bgPath);
         }
         if (body.shine) args.push('--shine');
+        if (body.ghost_mannequin) args.push('--ghost-mannequin');
 
-        await runPython(args);
+        // Ghost mannequin's first-ever run also downloads + loads the LaMa
+        // checkpoint on top of rembg's — same cold-start shape as the u2net
+        // download, give it more room than the default 180s cap.
+        await runPython(args, body.ghost_mannequin ? 600_000 : 180_000);
 
         // Compress the cleaned output to ≤80KB (quality-first) before it
         // lands in R2 — this is a test tool, the result is a preview, and

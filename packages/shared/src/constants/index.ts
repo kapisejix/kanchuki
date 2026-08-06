@@ -299,6 +299,11 @@ export const INTEGRATION_KEYS = [
     label: 'Groq API Key',
   },
   {
+    key_name: 'SNAPPYIT_API_KEY',
+    category: 'AI',
+    label: 'Snappyit API Key (ghost-mannequin generation, F-001e)',
+  },
+  {
     key_name: 'TOGETHER_API_KEY',
     category: 'AI',
     label: 'Together AI API Key',

@@ -31,15 +31,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # rembg[cpu] (not bare rembg) pulls the onnxruntime CPU backend — without it
 # rembg raises "No onnxruntime backend found". Bookworm's Python is PEP-668
 # externally-managed, so --break-system-packages is required for pip installs.
-RUN python3 -m pip install --no-cache-dir --break-system-packages "rembg[cpu]" pillow
+#
+# simple-lama-inpainting powers --ghost-mannequin (local LaMa hollow-fill,
+# replaces the dead Snappyit integration — see
+# docs/photo-feature/ghost-mannequin-research.md). Heavier than it looks:
+# unlike rembg's onnxruntime-only setup, this pulls in full CPU PyTorch +
+# OpenCV as transitive deps, not just a small ONNX model — expect a
+# noticeably bigger image than rembg alone.
+RUN python3 -m pip install --no-cache-dir --break-system-packages "rembg[cpu]" pillow simple-lama-inpainting
 
-# Pre-bake the u2net ONNX model (~170MB) into the image at build time. rembg
-# would otherwise download it to ~/.u2net on first use — at request time that
-# would burn the route's 60s exec budget on a GitHub download (and fail on a
-# slow egress). Baked here, the model loads straight from disk per run.
-# HOME=/root in this image, which is where rembg looks for ~/.u2net/u2net.onnx.
-RUN mkdir -p /root/.u2net \
-    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx', '/root/.u2net/u2net.onnx')"
+# Pre-bake the u2net ONNX model (~170MB) and the LaMa checkpoint (~196MB)
+# into the image at build time. Both libraries would otherwise download
+# their model on first use — at request time that would burn the route's
+# exec budget on a GitHub download (and fail on slow egress). Baked here,
+# both load straight from disk per run. HOME=/root in this image: rembg
+# looks under ~/.u2net, torch.hub (which simple-lama-inpainting uses) looks
+# under ~/.cache/torch/hub/checkpoints.
+RUN mkdir -p /root/.u2net /root/.cache/torch/hub/checkpoints \
+    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx', '/root/.u2net/u2net.onnx')" \
+    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/enesmsahin/simple-lama-inpainting/releases/download/v0.1.0/big-lama.pt', '/root/.cache/torch/hub/checkpoints/big-lama.pt')"
 
 WORKDIR /app
 
