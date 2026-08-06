@@ -1,0 +1,14 @@
+FROM node:22-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ffmpeg \
+        python3 \
+        python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir --break-system-packages "rembg[cpu]" pillow
+
+RUN mkdir -p /root/.u2net \
+    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx', '/root/.u2net/u2net.onnx')"
+
+RUN python3 -c "import rembg, PIL; print('rembg', rembg.__version__, '| pillow', PIL.__version__); import os; print('u2net.onnx bytes:', os.path.getsize('/root/.u2net/u2net.onnx'))"

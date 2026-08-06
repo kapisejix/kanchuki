@@ -120,8 +120,9 @@ export default function PhotoCleanupTestPage() {
         </div>
         <p className="text-sm text-gray-500">
           Runs <code className="text-xs">scripts/batch-clean-photos.py</code> against an uploaded product
-          photo (bg-removal + shadow + composite onto a backdrop, or portrait blur). Needs Python + rembg
-          installed on the API host — local/dev only, not wired into the Railway deploy.
+          photo (bg-removal + shadow + composite onto a backdrop, or portrait blur). Python + rembg are wired
+          into the API container (Dockerfile) — runs are serialized so only one cleanup process is in memory
+          at a time. If the API host has no Python, the run fails with a clear error.
         </p>
       </div>
 
