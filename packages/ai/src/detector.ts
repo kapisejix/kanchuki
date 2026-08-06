@@ -6,6 +6,7 @@ import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
 import { tagProductImageUrl, type TaggingCallOpts } from './tagger.js'
 import { uploadBuffer, publicUrl } from './r2.js'
 import { computePhash } from './phash.js'
+import { compressImageToTarget } from './image-compress.js'
 import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 
 // Lazy import: sharp's native dlopen can crash on Windows+pnpm. Deferring the
@@ -252,7 +253,8 @@ export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: s
       const bg = await fetchImageBuffer(backgroundImageUrl)
       const { width, height } = await s(cutout).metadata()
       const bgResized = await s(bg).resize(width, height, { fit: 'cover' }).toBuffer()
-      return s(bgResized).composite([{ input: cutout }]).jpeg({ quality: 88 }).toBuffer()
+      const composite = await s(bgResized).composite([{ input: cutout }]).jpeg({ quality: 88 }).toBuffer()
+      return (await compressImageToTarget(composite)).buffer
     } catch (err) {
       // ponytail: best-effort — bad/unreachable background image falls back
       // to the white backdrop rather than failing the whole photo cleanup.
@@ -260,7 +262,11 @@ export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: s
     }
   }
 
-  return s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
+  const flattened = await s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
+  // Quality-first compression to ≤80KB (packages/ai/src/image-compress.ts)
+  // keeps the product photo small in storage; catalog images never need the
+  // full original detail for web/mobile display.
+  return (await compressImageToTarget(flattened)).buffer
 }
 
 /**

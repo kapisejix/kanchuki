@@ -19,7 +19,7 @@ import { promisify } from 'node:util';
 
 import type { FastifyPluginAsync } from 'fastify';
 
-import { publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
+import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
 import { R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { validationError } from '../../plugins/error-handler.js';
@@ -125,7 +125,12 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
 
         await runPython(args);
 
-        const resultBuf = await readFile(join(outputDir, 'product.jpg'));
+        // Compress the cleaned output to ≤80KB (quality-first) before it
+        // lands in R2 — this is a test tool, the result is a preview, and
+        // every stored byte counts (see scripts/compress-r2-images.ts).
+        const { buffer: resultBuf } = await compressImageToTarget(
+          await readFile(join(outputDir, 'product.jpg')),
+        );
         const key = R2_PATHS.photoCleanupTest(`${randomUUID()}.jpg`);
         await uploadBuffer(key, resultBuf, 'image/jpeg');
 
