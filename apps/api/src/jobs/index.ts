@@ -15,6 +15,7 @@ import { handleGenerateEmbedding } from './generate-embedding.js';
 // Re-enable: uncomment these 3 imports + the matching Worker block.
 // import { handleGhostMannequin } from './ghost-mannequin.js';
 import type { GhostMannequinJobData } from './ghost-mannequin.js';
+import { handleMeasureR2Storage } from './measure-r2-storage.js';
 // import { handleProcessTryOn } from './process-tryon.js';
 import type { TryOnJobData } from './process-tryon.js';
 import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
@@ -184,6 +185,20 @@ export async function addCompressR2ImagesJob(data?: CompressR2ImagesJobData): Pr
   });
 }
 
+// On-demand trigger for the maintenance worker's measure-r2-storage case —
+// used by the admin Storage Report "Re-measure" button to recompute live R2
+// storage totals without waiting for anything scheduled.
+export async function addMeasureR2StorageJob(): Promise<void> {
+  await getMaintenanceQueue().add(
+    'measure-r2-storage',
+    {},
+    {
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+}
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -283,6 +298,8 @@ export async function startWorkers(): Promise<void> {
           const data = (job.data ?? {}) as CompressR2ImagesJobData;
           return handleCompressR2Images(data);
         }
+        case 'measure-r2-storage':
+          return handleMeasureR2Storage();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }

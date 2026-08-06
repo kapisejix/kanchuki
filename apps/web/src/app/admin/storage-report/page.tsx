@@ -8,9 +8,11 @@ import {
   Clock,
   DatabaseBackup,
   FileImage,
+  Gauge,
   HardDrive,
   Loader2,
   RefreshCw,
+  RotateCcw,
   TrendingDown,
   XCircle,
   Zap,
@@ -49,6 +51,18 @@ type CompressionSummary = {
   last_run_ok: boolean | null;
 };
 
+type StorageMeasurement = {
+  id: string;
+  measured_at: string;
+  bucket: string;
+  total_objects: number;
+  total_bytes: number;
+  image_objects: number;
+  image_bytes: number;
+  image_pct: number;
+  by_prefix: { prefix: string; count: number; bytes: number; image_bytes: number }[];
+};
+
 function formatBytes(bytes: number): string {
   if (bytes <= 0) return '0 B';
   if (bytes < 1024) return `${bytes} B`;
@@ -73,8 +87,10 @@ export default function StorageReportPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [running, setRunning] = useState(false);
+  const [measuring, setMeasuring] = useState(false);
   const [polling, setPolling] = useState(false);
   const [queuedMsg, setQueuedMsg] = useState('');
+  const [measurement, setMeasurement] = useState<StorageMeasurement | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
@@ -86,6 +102,7 @@ export default function StorageReportPage() {
       const json = await res.json();
       setSummary(json.data.summary);
       setRuns(json.data.runs ?? []);
+      setMeasurement(json.data.live_measurement ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load storage report');
     } finally {
@@ -166,6 +183,67 @@ export default function StorageReportPage() {
     }
   };
 
+  // Manual "Re-measure" — enqueues the measure-r2-storage job (lists the
+  // whole bucket), then polls until a NEW R2_STORAGE_MEASURE audit row lands.
+  const reMeasure = async () => {
+    if (measuring || polling) return;
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setMeasuring(true);
+    setPolling(false);
+    setError('');
+    setQueuedMsg('');
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/storage-report/measure`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: '{}',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}: ${res.statusText}`);
+      setQueuedMsg(json.data?.message ?? 'Storage measurement enqueued — measuring the bucket…');
+      setMeasuring(false);
+      setPolling(true);
+
+      // Poll until a new measurement lands (bucket listing can take a while);
+      // give up after ~1 minute with a neutral message.
+      const before = measurement?.id ?? null;
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts += 1;
+        try {
+          const res2 = await fetch(`${API_URL}/v1/admin/storage-report`, adminGetOptions());
+          if (!res2.ok) throw new Error('reload failed');
+          const j = await res2.json();
+          const latestId = (j.data.live_measurement?.id as string | undefined) ?? null;
+          if (latestId !== before) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setPolling(false);
+            setMeasurement(j.data.live_measurement ?? null);
+            setQueuedMsg('✓ Storage measured — live totals below.');
+            return;
+          }
+        } catch {
+          // keep polling; the measurement stays stale until the job lands
+        }
+        if (attempts >= 12) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setPolling(false);
+          setQueuedMsg(
+            'The measurement may still be running or may have failed — check the API logs, then refresh this page.',
+          );
+        }
+      }, 5000);
+    } catch (err) {
+      setMeasuring(false);
+      setError(err instanceof Error ? err.message : 'Failed to enqueue storage measurement');
+    }
+  };
+
   const savingsPct =
     summary && summary.total_bytes_before > 0
       ? (summary.total_bytes_saved / summary.total_bytes_before) * 100
@@ -228,6 +306,113 @@ export default function StorageReportPage() {
           <span>{queuedMsg}</span>
         </div>
       )}
+
+      {/* Live R2 storage — measure-r2-storage job totals */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden">
+        <div className="p-4 border-b border-gray-100 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Gauge size={16} className="text-cyan-500" />
+            <h2 className="text-sm font-semibold text-gray-700">Live R2 storage</h2>
+            {measurement && (
+              <span className="text-[10px] text-gray-400">
+                measured {formatDate(measurement.measured_at)}
+              </span>
+            )}
+          </div>
+          <motion.button
+            onClick={reMeasure}
+            disabled={measuring || polling}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            title="List the bucket and recompute live storage totals"
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+          >
+            {measuring ? <Loader2 size={13} className="animate-spin" /> : <RotateCcw size={13} />}
+            Re-measure
+          </motion.button>
+        </div>
+
+        {measurement ? (
+          <div className="p-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-[11px] text-gray-500 font-medium">Total storage</p>
+                <p className="text-xl font-bold text-gray-900 mt-0.5">
+                  {formatBytes(measurement.total_bytes)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-[11px] text-gray-500 font-medium">Total objects</p>
+                <p className="text-xl font-bold text-gray-900 mt-0.5">
+                  {measurement.total_objects.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-[11px] text-gray-500 font-medium">Image storage</p>
+                <p className="text-xl font-bold text-gray-900 mt-0.5">
+                  {formatBytes(measurement.image_bytes)}
+                  <span className="text-xs font-normal text-gray-400 ml-1">
+                    ({measurement.image_pct.toFixed(1)}%)
+                  </span>
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-gray-50/50 p-3">
+                <p className="text-[11px] text-gray-500 font-medium">Image objects</p>
+                <p className="text-xl font-bold text-gray-900 mt-0.5">
+                  {measurement.image_objects.toLocaleString()}
+                </p>
+              </div>
+            </div>
+
+            {measurement.by_prefix.length > 0 && (
+              <div className="mt-4">
+                <p className="text-[10px] uppercase tracking-wide text-gray-400 font-medium mb-1">
+                  Top prefixes by storage
+                </p>
+                <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-100">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 bg-white">
+                      <tr className="text-left text-gray-400 border-b border-gray-100">
+                        <th className="px-3 py-1.5 font-medium">Prefix</th>
+                        <th className="px-3 py-1.5 font-medium text-right">Objects</th>
+                        <th className="px-3 py-1.5 font-medium text-right">Bytes</th>
+                        <th className="px-3 py-1.5 font-medium text-right">Image bytes</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {measurement.by_prefix.slice(0, 10).map((p) => (
+                        <tr key={p.prefix} className="border-b border-gray-50 last:border-0">
+                          <td className="px-3 py-1.5 font-mono text-[11px] text-gray-600">
+                            {p.prefix}
+                          </td>
+                          <td className="px-3 py-1.5 text-right text-gray-500">
+                            {p.count.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-1.5 text-right text-gray-600 whitespace-nowrap">
+                            {formatBytes(p.bytes)}
+                          </td>
+                          <td className="px-3 py-1.5 text-right text-gray-500 whitespace-nowrap">
+                            {formatBytes(p.image_bytes)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-6 text-center">
+            <Gauge size={28} className="mx-auto text-gray-300 mb-2" />
+            <p className="text-sm text-gray-500 font-medium">No storage measurement yet</p>
+            <p className="text-xs text-gray-400 mt-1 max-w-sm mx-auto leading-relaxed">
+              Re-measure lists the whole bucket and shows live totals — total/object count, the
+              image split, and a per-prefix breakdown — alongside the compression savings below.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Summary cards */}
       {!loading && summary && (

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { parseCompressionRun, summarizeCompressionRuns } from './admin-storage.js';
+import {
+  parseCompressionRun,
+  parseStorageMeasurement,
+  summarizeCompressionRuns,
+} from './admin-storage.js';
 
 // Contract: parse the COMPRESS_R2_IMAGES audit metadata (written by the daily
 // cron) into typed runs, and roll those up into a summary — treating
@@ -160,5 +164,50 @@ describe('summarizeCompressionRuns', () => {
       last_run_at: null,
       last_run_ok: null,
     });
+  });
+});
+
+describe('parseStorageMeasurement', () => {
+  const measureMeta = {
+    bucket: 'kanchuki-prod',
+    total_objects: 12_345,
+    total_bytes: 1_500_000_000,
+    image_objects: 10_000,
+    image_bytes: 900_000_000,
+    image_pct: 60,
+    by_prefix: [
+      { prefix: 'retailers', count: 11_000, bytes: 1_300_000_000, image_bytes: 850_000_000 },
+      { prefix: 'backups', count: 200, bytes: 200_000_000, image_bytes: 0 },
+    ],
+    duration_seconds: 8.4,
+  };
+
+  it('maps a measurement audit entry onto a typed snapshot', () => {
+    const m = parseStorageMeasurement('log-m1', new Date('2026-08-08T06:15:00Z'), measureMeta);
+
+    expect(m).toEqual({
+      id: 'log-m1',
+      measured_at: '2026-08-08T06:15:00.000Z',
+      bucket: 'kanchuki-prod',
+      total_objects: 12_345,
+      total_bytes: 1_500_000_000,
+      image_objects: 10_000,
+      image_bytes: 900_000_000,
+      image_pct: 60,
+      by_prefix: [
+        { prefix: 'retailers', count: 11_000, bytes: 1_300_000_000, image_bytes: 850_000_000 },
+        { prefix: 'backups', count: 200, bytes: 200_000_000, image_bytes: 0 },
+      ],
+    });
+  });
+
+  it('survives null metadata (no measurement recorded yet)', () => {
+    const m = parseStorageMeasurement('log-m2', new Date(), null);
+
+    expect(m.total_objects).toBe(0);
+    expect(m.total_bytes).toBe(0);
+    expect(m.image_pct).toBe(0);
+    expect(m.by_prefix).toEqual([]);
+    expect(m.bucket).toBe('unknown');
   });
 });
