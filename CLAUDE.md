@@ -722,6 +722,26 @@ User ask: every stored image under 80KB with the highest possible quality, to cu
 
 ---
 
+## ✅ MIGRATED 2026-08-06: Fashion V-Tone moved off Railway → self-hosted on Hetzner CX43
+
+**Why:** Railway Hobby's throttled/shared CPU gave ~26min/try-on (see live-test finding above). Deep-research pass (CX43: 8 shared AMD EPYC vCPU @2GHz, 16GB RAM, 160GB NVMe, **no GPU**) confirmed RAM/disk were never the bottleneck — only CPU speed matters, and CX43's dedicated-ish cores beat Railway's throttled hobby container for €12/mo vs a GPU box (Hetzner GEX44, €184/mo) that would've blown the pricing-tier AI-cost budget. Commit `dd0972d`.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Server** | Hetzner Cloud, `ubuntu-16gb-nbg1-1` (CX43, id `159605128`), IP `2.28.56.91`, region nbg1 | Docker + compose plugin installed manually via SSH (key-only auth — password auth was a dead end, `ssh-copy-id` from PowerShell silently failed to write `authorized_keys`; fixed by reset-password + manual `>> authorized_keys` append). `ufw` locked to 22 (SSH) + 8000 (V-Tone) only |
+| **Deploy** | `services/fashion-vtone/docker-compose.yml` (now committed — was untracked/never pushed, which broke the first `git clone`-based deploy attempt on the box) | `docker compose -f services/fashion-vtone/docker-compose.yml --env-file services/fashion-vtone/.env up -d --build`, repo cloned to `/opt/kanchuki` from the public GitHub remote (no deploy key needed) |
+| **Auth gate (new)** | `services/fashion-vtone/app.py`, `packages/ai/src/tryon.ts` | CX43 has no static outbound IP for Railway to be firewall-allowlisted against (unlike a same-cloud setup), and the service had zero auth. Added `VTONE_SHARED_SECRET` — `/try-on` 401s without a matching `X-Vtone-Key` header. `callVTONOnce` sends it via `getSecret('VTONE_SHARED_SECRET')` (same DB-first/env-fallback pattern as `VTONE_API_URL`, F-012). New admin-manageable key registered in `packages/shared/src/constants/index.ts` `INTEGRATION_KEYS` |
+| **Config live** | Railway API service (`supportive-love`) env vars | `VTONE_API_URL=http://2.28.56.91:8000`, `VTONE_SHARED_SECRET=<set, not in this file>`. Old Railway `fashion-vtone` service (id `e6afdefd`) **deleted** — V-Tone no longer runs on Railway at all |
+| **Timeout** | `packages/ai/src/tryon.ts` | `callVTONOnce`'s hardcoded 120s `AbortSignal.timeout` (flagged as broken in the live-test finding above) replaced with `VTONE_CALL_TIMEOUT_MS`, defaulting to 30min — CPU inference legitimately takes that long, aborting mid-run wastes the whole call |
+
+**Real end-to-end test (2026-08-06):** POST `/try-on` with real R2-hosted images + valid header → `200 OK`, **`Try-on completed in 1936819ms` (~32.3 min)**, 30 timesteps, 512×768 person / 512×512 garment. Confirms the full chain (auth → download → DWPose → human parser → diffusion → response) works correctly on CX43. Same ballpark as the Railway number — expected, since CX43 has no GPU either; this migration fixed cost and CPU throttling, not the fundamental CPU-vs-GPU latency gap. GPU remains the only path to the original 10-30s target, and remains out of budget (see research above).
+
+**Known rough edges hit during this deploy (for next time):** (1) a single long-lived local `curl`/`ssh` connection over WAN silently dies around the 10min mark on an otherwise-idle TCP connection (NAT/middlebox idle reap, not a Railway or CX43 issue) — the server-side request keeps running and completes regardless, so results from a dropped client aren't lost, just unobservable from that connection. Route long-poll/long-request testing through `ssh -o ServerAliveInterval=20` or run the curl from `localhost` on the box itself. (2) The service is single-request-blocking (no worker concurrency) — a second `/try-on` call while one is in flight has to wait, it doesn't queue or reject.
+
+**Not yet done:** no TLS in front of port 8000 (plain HTTP, auth-gated by shared secret only) — fine for now, revisit if this box gets more than one caller. No `HF_TOKEN` set — `fashn-human-parser` cold-start hits unauthenticated HF Hub rate limits (worked fine this session, but is a future flake risk).
+
+---
+
 ## Planned — NOT started: Multi-Photo Ken Burns Effect (product photos → pseudo-video)
 
 **Requested 2026-08-05. DO NOT START until user says go ahead.**
