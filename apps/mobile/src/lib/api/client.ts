@@ -164,13 +164,17 @@ export async function uploadImageToR2(
   options?: { compress?: boolean },
 ): Promise<void> {
   // Client-side ≤80KB compression (quality-first, see compress-image.ts).
-  // Runs for image/* uploads unless explicitly disabled — measurement photos
-  // and KYC documents opt out (AI measurement accuracy + document legibility
-  // first, same exclusion the server-side batch pass uses). Compression is
-  // best-effort: a failure uploads the original rather than failing the
-  // retailer's upload.
+  // Deliberately restricted to image/jpeg: the compressor always outputs
+  // JPEG, so compressing a PNG/WebP call would store JPEG bytes under a
+  // PNG/WebP content type. Every main product/photo/category/try-on flow
+  // already hardcodes 'image/jpeg' — those get compressed. PNG/WebP sources
+  // (and non-images like PDFs/videos) upload untouched, preserving their
+  // alpha/format; the server-side batch pass catches them later.
+  // Opt-outs (measurement photos, KYC docs) keep full detail — same
+  // exclusion the server-side batch pass uses. Best-effort: a compression
+  // failure uploads the original rather than failing the retailer's upload.
   let uploadUri = localUri
-  if (contentType.startsWith('image/') && (options?.compress ?? true)) {
+  if (contentType === 'image/jpeg' && (options?.compress ?? true)) {
     try {
       uploadUri = await compressImageForUpload(localUri)
     } catch (err) {
