@@ -180,7 +180,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-001e: Ghost-Mannequin AI Generation (Packed/Flat-Lay → Full Catalog Image)
-**Status:** Planned (not built) — job + Snappyit client scaffolded (`apps/api/src/jobs/ghost-mannequin.ts`, `packages/ai/src/snappyit.ts`) but the worker is paused as of 2026-08-02 (consolidated-cron change, `8b7a5be`) — not functional.
+**Status:** Planned (not built) — job + Snappyit client scaffolded (`apps/api/src/jobs/ghost-mannequin.ts`, `packages/ai/src/snappyit.ts`) but the worker is paused as of 2026-08-02 (consolidated-cron change, `8b7a5be`) — not functional. Snappyit itself later confirmed to have no public API at all — see `docs/photo-feature/ghost-mannequin-research.md`. A local LaMa-inpainting version of the hollow-gap-fill step now exists and works (`scripts/batch-clean-photos.py --ghost-mannequin`, commit `0c66a7f`), reachable today only from the admin photo-cleanup **test tool** (`apps/web/src/app/admin/photo-cleanup-test`) — it is NOT wired into this retailer-facing flow (steps 1–4 below), which stays not-built.
 **Priority:** P2 (nice-to-have, not MVP-blocking)
 **Vendor:** Snappyit API (evaluated 2026-07-25 vs WearView/bitStudio/Scenario — Snappyit chosen for confirmed public API + lowest cost; WearView/Scenario had no confirmed public developer API at eval time)
 

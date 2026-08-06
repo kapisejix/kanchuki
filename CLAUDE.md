@@ -665,6 +665,25 @@ Wires the standalone script above into an admin-panel test page so the user can 
 
 **Known limitation, not fixed:** the Railway API container has no Python/rembg installed (deliberately — see the script's own entry above on container memory-cap history). The page's UI and upload flow work in production; "Run cleanup" itself only works where Python is installed (currently: local dev only). Deploying Python to the prod API container is its own infra decision, not made here.
 
+### Built: `--ghost-mannequin` mode (2026-08-06, commit `0c66a7f`) + two bugs fixed same day
+
+Fills backdrop-colored gaps in a garment silhouette (hollow neckline/sleeve/waist showing the studio backdrop through them) via **local LaMa inpainting** — no 3rd-party API/key. Replaces a dead Snappyit integration (Snappyit turned out to have no public API at all — see `docs/photo-feature/ghost-mannequin-research.md`).
+
+| Layer | Files | Summary |
+|---|---|---|
+| Detection | `scripts/batch-clean-photos.py` — `sample_backdrop_color()`, `detect_hollow_regions()` | Compares pixel color to the sampled backdrop (4-corner average) rather than relying on rembg's alpha mask shape — verified against a real photo that rembg outputs one solid blob regardless of interior color, so the mask-gap approach (first version) never worked |
+| Fill | `apply_ghost_mannequin()` | Lazy-loads `simple_lama_inpainting.SimpleLama` (only on `--ghost-mannequin`, avoids checkpoint cost otherwise), inpaints just the detected holes, crops LaMa's padded output back to source size |
+| Self-check | `scripts/test_ghost_mannequin.py` | Pure geometry test (no model download needed) — 2/2 passing |
+| Wired | `apps/api/src/routes/admin/admin-photo-cleanup.ts`, `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | New `ghost_mannequin` checkbox/flag, forces composite mode (blur ignored when set), 600s timeout (vs 180s default — first run also downloads the LaMa checkpoint) |
+
+**CONFIRMED LIMITATION (tested on a real photo, not assumed):** does NOT remove a visible mannequin neck/stand or hanger of a different color than the backdrop — that's erasing an *object*, a different unsolved problem from filling a backdrop-colored *gap*. Use `--crop` to trim such hardware out of frame meanwhile.
+
+**Bug 1 — ENOENT masked the real Python error (fixed, same commit):** `batch-clean-photos.py`'s `main()` caught per-photo exceptions, printed `FAILED: ...`, but always exited 0. The Node caller (`runPython()`) saw success and tried to read an output file that was never written → confusing `ENOENT` instead of the real crash reason. Fixed: `sys.exit(1)` when `failed` is non-empty; Node side now surfaces both `stdout` **and** `stderr` (the `FAILED:` line is a `print()`, lands on stdout — the old code only checked stderr).
+
+**Bug 2 — wrong Python binary silently picked (fixed, follow-up commit same day):** with bug 1 fixed, the user hit `FAILED: product.jpg: No module named 'simple_lama_inpainting'` — looked like a real bug but was environment-selection: this dev box has **two Python installs**, `python3` resolves to a Windows Store alias (`pythoncore-3.14`, no deps installed) and `python` resolves to the real env with `rembg`/`simple_lama_inpainting` (`Python313`). `runPython()` tries `python3` first, found it (no `ENOENT`), got a real-looking error, and threw immediately without trying `python`. Fixed: any `"No module named"` in the combined stdout+stderr (whether an uncaught top-level traceback OR caught by the script's own per-photo `try/except` and printed as a `FAILED:` line — the LaMa import is lazy, inside the try block, so it's the latter in practice) is now treated as "this binary's environment is broken," and the loop tries the next binary instead of surfacing a misleading error. Verified end-to-end: `python3` fails clean → falls through → `python` succeeds, `1/1 cleaned`.
+
+**Not yet done:** Railway prod container still has no Python (see "Known limitation" above) — `--ghost-mannequin` untested outside local dev.
+
 ### Bug hit + fixed: admin panel "refresh → login screen" + `CSRF token fetch failed: HTTP 403`
 
 **Symptom reported by user:** "Failed to get upload URL" on the photo-cleanup page, `CSRF token fetch failed: HTTP 403` on `GET http://localhost:3001/v1/admin/csrf-token` on every retry, and the admin panel bouncing back to the login screen on every page refresh even right after a successful login.

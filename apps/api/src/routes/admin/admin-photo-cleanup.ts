@@ -79,6 +79,7 @@ const SCRIPT_PATH = fileURLToPath(
 );
 
 async function runPython(args: string[], timeoutMs = 180_000): Promise<void> {
+  let lastEnvError: string | undefined;
   for (const bin of ['python3', 'python']) {
     try {
       // 180s, not 60s: the first-ever run on a dev machine is a cold start —
@@ -90,21 +91,33 @@ async function runPython(args: string[], timeoutMs = 180_000): Promise<void> {
       await execFileAsync(bin, [SCRIPT_PATH, ...args], { timeout: timeoutMs });
       return;
     } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue; // try next binary
-      // Surface the script's real failure in the error message — execFile's
-      // default "Command failed: ..." hides stderr entirely, which made the
-      // admin panel error useless for diagnosing Python-side crashes.
+      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue; // binary doesn't exist, try next
       const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string; killed?: boolean };
       // The script's real per-photo failure reason ("FAILED: ...") is a
       // print() — it lands on stdout, not stderr. Surface both.
       const detail = [e.stdout, e.stderr].map((s) => s?.trim()).filter(Boolean).join(' | ');
+      // A dev box can have multiple Python installs under different names
+      // (e.g. a Windows Store `python3` alias vs a real `python` with deps
+      // installed). "No module named ..." — whether it's an uncaught
+      // top-level traceback OR caught by the script's own per-photo
+      // try/except and printed as "FAILED: ... No module named ..." (the
+      // real shape hit in practice: --ghost-mannequin's LaMa import is
+      // lazy, inside the try block) — means THIS BINARY's environment is
+      // missing a dependency, not a real per-photo image failure. Try the
+      // next binary instead of surfacing a misleading error.
+      if (!e.killed && detail.includes('No module named')) {
+        lastEnvError = detail;
+        continue;
+      }
       throw new Error(
         `photo-cleanup script failed${e.killed ? ` (killed — hit the ${timeoutMs / 1000}s cap)` : ''}${detail ? `: ${detail.slice(0, 800)}` : ''}`,
       );
     }
   }
   throw new Error(
-    'python3/python not found on this host. Install Python + `pip install rembg pillow simple-lama-inpainting` to use this test tool.',
+    lastEnvError
+      ? `no working python3/python found (all installs crashed): ${lastEnvError.slice(0, 800)}. Install Python + \`pip install rembg pillow simple-lama-inpainting\` to use this test tool.`
+      : 'python3/python not found on this host. Install Python + `pip install rembg pillow simple-lama-inpainting` to use this test tool.',
   );
 }
 
