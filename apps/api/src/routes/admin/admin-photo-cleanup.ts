@@ -34,11 +34,21 @@ const SCRIPT_PATH = fileURLToPath(
 async function runPython(args: string[]): Promise<void> {
   for (const bin of ['python3', 'python']) {
     try {
-      await execFileAsync(bin, [SCRIPT_PATH, ...args], { timeout: 60_000 });
+      // 180s, not 60s: the first-ever run on a dev machine is a cold start —
+      // `import rembg` + onnxruntime can take 30s+ alone, then the ~170MB
+      // u2net model loads, then CPU inference runs. A 60s execFile cap
+      // killed the whole run with a bare "Command failed" and no detail.
+      await execFileAsync(bin, [SCRIPT_PATH, ...args], { timeout: 180_000 });
       return;
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue; // try next binary
-      throw err;
+      // Surface the script's real failure in the error message — execFile's
+      // default "Command failed: ..." hides stderr entirely, which made the
+      // admin panel error useless for diagnosing Python-side crashes.
+      const e = err as NodeJS.ErrnoException & { stderr?: string; killed?: boolean };
+      throw new Error(
+        `photo-cleanup script failed${e.killed ? ' (killed — hit the 180s cap)' : ''}${e.stderr ? `: ${e.stderr.trim().slice(0, 500)}` : ''}`,
+      );
     }
   }
   throw new Error(
