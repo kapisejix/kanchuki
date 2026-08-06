@@ -25,7 +25,11 @@ try {
   // no .env — rely on process env
 }
 
-const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp']
+// JPEG only, deliberately: compressImageToTarget always outputs JPEG, and
+// storing JPEG bytes under a .png/.webp key with its original content type
+// breaks strict decoders — same rule as the mobile client compressor and the
+// daily maintenance cron (apps/api/src/jobs/compress-r2-images.ts).
+const IMAGE_EXTS = ['.jpg', '.jpeg']
 const EXCLUDE_SUBSTRINGS = ['measurements/', '/kyc/', 'backups/', 'catalog-pdf']
 const CONCURRENCY = 4
 
@@ -89,13 +93,13 @@ async function processObject(key: string, size: number, outcomes: Outcome[]): Pr
       return
     }
     if (apply) {
-      const contentType = lower.endsWith('.png') ? 'image/png' : lower.endsWith('.webp') ? 'image/webp' : 'image/jpeg'
+      // Only JPEG keys reach here (IMAGE_EXTS above) — matches the compressor's output.
       await r2.send(
         new PutObjectCommand({
           Bucket: bucket,
           Key: key,
           Body: result.buffer,
-          ContentType: contentType,
+          ContentType: 'image/jpeg',
         }),
       )
     }

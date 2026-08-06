@@ -3,6 +3,7 @@ import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
+import { handleCompressR2Images } from './compress-r2-images.js';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
 import { handleExpirePendingOrders } from './expire-pending-orders.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
@@ -263,6 +264,8 @@ export async function startWorkers(): Promise<void> {
           const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
           return handleBackupDatabase(data.type ?? 'daily');
         }
+        case 'compress-r2-images':
+          return handleCompressR2Images();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -315,6 +318,20 @@ export async function startWorkers(): Promise<void> {
     { type: 'daily' },
     {
       repeat: { pattern: '0 3 * * *', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // R2 image compression pass daily at 4:30 AM UTC (after the backups at
+  // 3:00/4:00 AM). Re-compresses any image that landed in the bucket over
+  // 80KB since the last pass — bulk imports and legacy objects that bypass
+  // the client/server compression paths. In-place overwrite, URLs unchanged.
+  await getMaintenanceQueue().add(
+    'compress-r2-images',
+    {},
+    {
+      repeat: { pattern: '30 4 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

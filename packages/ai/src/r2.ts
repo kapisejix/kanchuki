@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { getSecret } from '@kanchuki/db'
@@ -83,6 +84,31 @@ export async function uploadBuffer(
 /** Public CDN URL for a key (works only if bucket has public access) */
 export function publicUrl(key: string): string {
   return `${PUBLIC_URL}/${key}`
+}
+
+/**
+ * List every object in the bucket (cursor-paginated, MaxKeys 1000 per call).
+ * Returns { key, size } pairs. Used by the daily R2 compression cron and
+ * the storage measurement tool.
+ */
+export async function listObjects(): Promise<{ key: string; size: number }[]> {
+  const bucket = await getBucket();
+  const objects: { key: string; size: number }[] = [];
+  let continuation: string | undefined;
+  do {
+    const res = await r2.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        ContinuationToken: continuation,
+        MaxKeys: 1000,
+      }),
+    );
+    for (const obj of res.Contents ?? []) {
+      if (obj.Key) objects.push({ key: obj.Key, size: obj.Size ?? 0 });
+    }
+    continuation = res.IsTruncated ? res.NextContinuationToken : undefined;
+  } while (continuation);
+  return objects;
 }
 
 /** Fetch a URL's bytes and store them at an R2 key. Used to persist a
