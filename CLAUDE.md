@@ -702,6 +702,24 @@ User ask: every stored image under 80KB with the highest possible quality, to cu
 
 ---
 
+## ✅ BUILT 2026-08-06: Fashion V-Tone LIVE on Railway + "Generate on model" admin tool
+
+**User approved option #1 (self-hosted V-Tone) after cost check** — the $5 Hobby plan has ~$2/mo headroom but an always-on 3rd service would blow it, so V-Tone runs **serverless with autosleep** (sleeps after 10 min idle, wakes on request) and a **workspace hard limit** was set (soft $8 / hard $10) so a runaway can never surprise-bill. Commits `9a9e923` (feature) + `ce01a15` (storage report run-now, earlier).
+
+| Layer | Files | Summary |
+|---|---|---|
+| **V-Tone infra** | Railway service `fashion-vtone` (id `e6afdefd`) | Built from `services/fashion-vtone/Dockerfile` (repo-root context, watch pattern set). Domain `fashion-vtone-production.up.railway.app:8000`. R2 creds copied from the API service (incl. `R2_ENDPOINT` built from `R2_ACCOUNT_ID`). **Gotcha hit + fixed:** Railway injects `PORT=8080` which overrode the Dockerfile's `ENV PORT=8000` — Uvicorn bound 8080 while the domain targeted 8000 → 502. Fixed with explicit `PORT=8000` variable. Also: `railway environment config --json` shows template defaults (RAILPACK) even for the API service that clearly builds from a Dockerfile — the authoritative config write is `railway environment edit --json '{"services":{"<id>":{...}}}'` (dot-path `--service-config` calls silently no-op'd); verify by reading the same JSON back |
+| **Engine override** | `packages/ai/src/tryon.ts` | `TryOnRequest.vtoneCategory?: 'tops'|'bottoms'|'one-pieces'` — explicit V-Tone category that wins over the heuristic mapping (the admin picker must be honored exactly; the heuristic only returns tops/one-pieces) |
+| **Job** | `apps/api/src/jobs/admin-tryon.ts` (new) + test | `handleAdminTryOn({job_id, model_url, product_url, category})` — runs `triggerTryOn`, fetches the result with **SSRF-safe `ssrfSafeFetch`+`readCappedBuffer`** (NOT `downloadBuffer`, which takes an R2 key, not a URL — the reviewer caught this), re-encodes to ≤80KB JPEG, uploads under `admin/photo-cleanup-tests/<job_id>-onmodel.jpg`, writes an `ADMIN_TRYON` audit entry on success **and** failure (both best-effort; attempts=1 so exactly one row per job). Registered on the MAINTENANCE queue via `addAdminTryOnJob()` + worker case |
+| **API** | `apps/api/src/routes/admin/admin-photo-cleanup.ts` + test | `POST /photo-cleanup/tryon` (zod-validated, enqueues, 503 `QUEUE_UNAVAILABLE` on Redis down) + `GET /photo-cleanup/tryon-results` (ADMIN_TRYON audit feed, take 50, pure `parseTryOnResult` — rows without a result_url render as failed, never a broken tile) |
+| **Web UI** | `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | "Generate on model" panel (model-photo dropzone + tops/bottoms/one-pieces select) + per-cleanup-result **"On model"** button → enqueues + polls the feed up to 3 min (double-click-safe: interval cleared at start, attempts counted only on successful fetches) → result appears in the on-model feed, clickable into the lightbox. Model photo uploaded once per session, reused across runs |
+
+**Verified:** api tsc 0, web tsc 0, tests 8/8 (3 job + 4 parse + new fetch-failure case), biome clean on new code (remaining flags are the accepted baseline). API + web + vtone all deployed SUCCESS on `9a9e923`; `VTONE_API_URL=https://fashion-vtone-production.up.railway.app` set on the API service. Pipeline log confirmed loading: device cpu, TryOnModel+DWPose+FashnHumanParser all loaded.
+
+**Setup note:** to change the V-Tone domain, update `VTONE_API_URL` on the API service (it's also the F-012 integration key admins see under Admin → Integrations). Autosleep wakes the service on first request after idle — the admin page's 3-min poll absorbs the cold-start delay.
+
+---
+
 ## Planned — NOT started: Multi-Photo Ken Burns Effect (product photos → pseudo-video)
 
 **Requested 2026-08-05. DO NOT START until user says go ahead.**
