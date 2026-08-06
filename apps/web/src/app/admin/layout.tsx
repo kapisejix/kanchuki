@@ -48,21 +48,42 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
 
-  // Check for existing session on mount
+  // Check for existing session on mount.
+  //
+  // The check deliberately hits GET /v1/admin/session — a DB-free endpoint
+  // that only verifies the stored key — NOT /v1/admin/stats (DB-backed).
+  // Previously any database hiccup made stats return 500, the check treated
+  // that as "logged out", wiped admin_key, and the panel bounced to the
+  // login screen on every refresh; every admin API call then went out with
+  // an empty x-admin-key and 403'd ("CSRF token fetch failed: HTTP 403").
+  // Only a definitive 401/403 means the key itself is invalid.
   useEffect(() => {
     const saved = sessionStorage.getItem('admin_key')
     if (!saved) {
       setCheckingSession(false)
       return
     }
-    fetch(`${API_URL}/v1/admin/stats`, {
+    fetch(`${API_URL}/v1/admin/session`, {
       headers: { 'x-admin-key': saved },
     })
       .then((r) => {
-        if (r.ok) setAuthed(true)
-        else sessionStorage.removeItem('admin_key')
+        if (r.status === 401 || r.status === 403) {
+          // Key is genuinely invalid/expired — clear it and log in again.
+          sessionStorage.removeItem('admin_key')
+          setAuthed(false)
+        } else {
+          // 2xx = valid session. 5xx (DB hiccup in a dependency) or any
+          // other status is NOT a session failure — keep the key and show
+          // the panel; page-level errors surface on their own.
+          setAuthed(true)
+        }
       })
-      .catch(() => sessionStorage.removeItem('admin_key'))
+      .catch(() => {
+        // Network failure — keep the key and show the panel optimistically.
+        // Wiping the session here locked the admin out whenever the API was
+        // briefly unreachable.
+        setAuthed(true)
+      })
       .finally(() => setCheckingSession(false))
   }, [])
 

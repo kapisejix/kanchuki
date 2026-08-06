@@ -8,7 +8,7 @@ import { verifySync } from 'otplib';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
 import { verifyPassword } from '../plugins/team-auth.js';
-import { signAdminSession } from './admin-auth.js';
+import { adminSessionEmail, signAdminSession } from './admin-auth.js';
 import { adminAuthPreHandler } from './admin-auth.js';
 import {
   adminActivityRoutes,
@@ -28,6 +28,7 @@ export {
   validAdminKey,
   signAdminSession,
   verifyAdminSession,
+  adminSessionEmail,
   ipInCidr,
   isIpAllowlisted,
   adminAuthPreHandler,
@@ -136,6 +137,21 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
       };
     },
   );
+
+  // ─── GET /admin/session ───────────────────────────────────────
+  // DB-free session validity check for the admin panel's refresh gate.
+  // The panel previously validated against GET /admin/stats — a
+  // DB-backed endpoint — so any database hiccup 500'd the check and the
+  // panel logged the admin out on every page refresh (and every admin API
+  // call then 403'd with an empty x-admin-key). Session validity is purely
+  // key/JWT auth (enforced by adminAuthPreHandler above) and never touches
+  // the database.
+  server.get('/session', async (request) => {
+    const email = await adminSessionEmail(
+      request.headers['x-admin-key'] as string | undefined,
+    );
+    return { data: { authenticated: true, ...(email ? { email } : {}) } };
+  });
 
   // ─── GET /admin/csrf-token ────────────────────────────────────
   // Returns a fresh CSRF token (set as cookie + response body) for the admin

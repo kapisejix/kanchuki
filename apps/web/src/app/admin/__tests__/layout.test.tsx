@@ -20,11 +20,11 @@ vi.mock('next/dynamic', () => ({
 // the shared module state, and usePathname() reads it on every render.
 const nav = createControllablePathname('/admin')
 
-const STATS_URL = expect.stringContaining('/v1/admin/stats')
+const SESSION_URL = expect.stringContaining('/v1/admin/session')
 
-function statsFetchCount(fetchMock: ReturnType<typeof vi.fn>): number {
+function sessionFetchCount(fetchMock: ReturnType<typeof vi.fn>): number {
   return fetchMock.mock.calls.filter(
-    (call) => typeof call[0] === 'string' && call[0].includes('/v1/admin/stats'),
+    (call) => typeof call[0] === 'string' && call[0].includes('/v1/admin/session'),
   ).length
 }
 
@@ -59,7 +59,7 @@ describe('AdminLayout auth/session check', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('renders the admin shell when a stored key passes the stats check', async () => {
+  it('renders the admin shell when a stored key passes the session check', async () => {
     sessionStorage.setItem('admin_key', 'k-test')
     render(
       <AdminLayout>
@@ -73,14 +73,15 @@ describe('AdminLayout auth/session check', () => {
     expect(screen.getByText('Shell content')).toBeInTheDocument()
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument()
 
-    // The session check validates the stored key against the stats endpoint
+    // The session check validates the stored key against the DB-free
+    // session endpoint (not the DB-backed /v1/admin/stats)
     expect(fetchMock).toHaveBeenCalledWith(
-      STATS_URL,
+      SESSION_URL,
       expect.objectContaining({ headers: { 'x-admin-key': 'k-test' } }),
     )
   })
 
-  it('clears the stored key and shows login when the stats check is rejected (401)', async () => {
+  it('clears the stored key and shows login when the session check is rejected (401)', async () => {
     sessionStorage.setItem('admin_key', 'k-bad')
     fetchMock.mockResolvedValueOnce({
       ok: false,
@@ -94,13 +95,38 @@ describe('AdminLayout auth/session check', () => {
     expect(screen.queryByText('Dashboard')).not.toBeInTheDocument()
   })
 
-  it('clears the stored key and shows login when the stats request fails (network)', async () => {
+  it('keeps the key and shows the shell when the session check hits a 500 (DB hiccup is NOT logout)', async () => {
+    sessionStorage.setItem('admin_key', 'k-db-down')
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { message: 'database down' } }),
+    })
+
+    render(
+      <AdminLayout>
+        <div>Shell content</div>
+      </AdminLayout>,
+    )
+    // This is the regression the old /stats gate had: a DB-backed check
+    // 500'd and logged the admin out on every refresh.
+    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Shell content')).toBeInTheDocument()
+    expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument()
+    expect(sessionStorage.getItem('admin_key')).toBe('k-db-down')
+  })
+
+  it('keeps the key and shows the shell when the session request fails (network)', async () => {
     sessionStorage.setItem('admin_key', 'k-offline')
     fetchMock.mockRejectedValueOnce(new Error('network down'))
 
-    render(<AdminLayout>content</AdminLayout>)
-    expect(await screen.findByTestId('login-screen')).toBeInTheDocument()
-    expect(sessionStorage.getItem('admin_key')).toBeNull()
+    render(
+      <AdminLayout>
+        <div>Shell content</div>
+      </AdminLayout>,
+    )
+    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    expect(sessionStorage.getItem('admin_key')).toBe('k-offline')
   })
 
   it('shows the session-check spinner while validating — no flash of the login screen', async () => {
@@ -132,7 +158,7 @@ describe('AdminLayout auth/session check', () => {
     expect(await screen.findByText('Page one')).toBeInTheDocument()
     expect(screen.getByText('Dashboard')).toBeInTheDocument()
     // One session check on mount, before any navigation
-    expect(statsFetchCount(fetchMock)).toBe(1)
+    expect(sessionFetchCount(fetchMock)).toBe(1)
 
     // Capture the shell chrome DOM nodes — these must survive the route
     // change as the SAME element instances (the sidebar/header are not
@@ -170,6 +196,6 @@ describe('AdminLayout auth/session check', () => {
     expect(labelSpan('Retailers')).toHaveClass('text-cyan-400')
     expect(labelSpan('Dashboard')).toHaveClass('text-gray-400')
     // The layout stayed mounted, so the session check did NOT re-run
-    expect(statsFetchCount(fetchMock)).toBe(1)
+    expect(sessionFetchCount(fetchMock)).toBe(1)
   })
 })

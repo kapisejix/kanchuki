@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
+import { resetAdminFetchCache } from '@/lib/admin-fetch'
 import {
   LayoutDashboard,
   Store,
@@ -151,6 +152,9 @@ export function Sidebar({
     // `authed` state, so the dashboard would stay mounted. onLogout tells the
     // layout to flip back to the login screen.
     sessionStorage.removeItem('admin_key')
+    // The CSRF cookie+token pair is tied to the old session — drop the
+    // cached token so the next login starts clean.
+    resetAdminFetchCache()
     router.push('/admin')
     onLogout()
   }

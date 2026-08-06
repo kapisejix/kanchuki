@@ -12,6 +12,7 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react'
+import { resetAdminFetchCache } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -53,6 +54,10 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
       const token = json?.data?.token
       if (!token) throw new Error('No token returned')
 
+      // A previous session's cached CSRF cookie+token pair must not ride
+      // across the re-login — drop it so the first mutation fetches a fresh
+      // pair under the new session.
+      resetAdminFetchCache()
       sessionStorage.setItem('admin_key', token)
       onLogin(token)
     } catch (err) {

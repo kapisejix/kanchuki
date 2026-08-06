@@ -8,27 +8,45 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 let cachedCsrfToken: string | null = null
 let csrfFetchPromise: Promise<string> | null = null
+// The admin_key the cached token was fetched with. The csrf-token cookie and
+// the response token are set together on each GET /csrf-token call, so the
+// cached pair is only valid for the session key it was minted under — if the
+// admin re-logs-in after a bounce (new JWT), the old cached pair must not be
+// reused (the old cookie may be gone, so mutations would 403 on CSRF).
+let cachedCsrfKey = ''
 
 function adminKey(): string {
   return sessionStorage.getItem('admin_key') ?? ''
 }
 
 async function ensureCsrfToken(): Promise<string> {
-  if (cachedCsrfToken) return cachedCsrfToken
+  const key = adminKey()
+  if (cachedCsrfToken && cachedCsrfKey === key) return cachedCsrfToken
   if (csrfFetchPromise) return csrfFetchPromise
 
   csrfFetchPromise = (async () => {
     const res = await fetch(`${API_URL}/v1/admin/csrf-token`, {
-      headers: { 'x-admin-key': adminKey() },
+      headers: { 'x-admin-key': key },
       credentials: 'include',
     })
     if (!res.ok) throw new Error(`CSRF token fetch failed: HTTP ${res.status}`)
     const json = await res.json()
     cachedCsrfToken = json.data.csrf_token as string
+    cachedCsrfKey = key
     return cachedCsrfToken
   })()
 
   return csrfFetchPromise
+}
+
+// Drop the cached CSRF token so the next mutating call re-fetches a fresh
+// cookie+token pair. Call on login and logout — the previous session's
+// cached pair would otherwise ride along across a re-login and can mismatch
+// the current csrf-token cookie.
+export function resetAdminFetchCache(): void {
+  cachedCsrfToken = null
+  csrfFetchPromise = null
+  cachedCsrfKey = ''
 }
 
 /** Headers + credentials for a read-only (GET) admin request. */

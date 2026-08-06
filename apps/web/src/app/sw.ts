@@ -61,6 +61,16 @@ const serwist = new Serwist({
       matcher: ({ url }) => url.pathname.startsWith('/admin'),
       handler: new NetworkOnly(),
     },
+    // Admin API calls go to a separate origin (the API service), so the
+    // pathname there is /v1/admin/... not /admin/... — the rule above never
+    // matches them and they fell into defaultCache, which cached a stale
+    // 403 (e.g. from a since-expired session) and replayed it forever on
+    // every retry/re-login. Host-agnostic pathname match catches it
+    // regardless of which origin NEXT_PUBLIC_API_URL points at.
+    {
+      matcher: ({ url }) => url.pathname.startsWith('/v1/admin'),
+      handler: new NetworkOnly(),
+    },
     ...defaultCache,
   ],
   fallbacks: {
