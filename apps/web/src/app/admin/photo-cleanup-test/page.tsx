@@ -253,7 +253,16 @@ function Dropzone({
   label?: string
   hint?: string
   file: File | null
-  inputRef: React.RefObject<HTMLInputElement>
+  // Plain structural ref shape, NOT `React.RefObject<HTMLInputElement>` (the
+  // literal instantiation fails to assign from `useRef<HTMLInputElement>(null)`
+  // under React 19 types, which the Railway Linux build hoists from the
+  // Expo/mobile workspace) and NOT `React.Ref<HTMLInputElement>` (admits
+  // callback refs with no `.current`). Both @types/react versions resolve
+  // RefObject<HTMLInputElement> and RefObject<HTMLInputElement | null> to
+  // this exact `{ readonly current: HTMLInputElement | null }` shape, so a
+  // structural type accepts either — this mismatch failed `next build`'s
+  // type-check on every web deploy since the page landed (deploy 7b58b78e).
+  inputRef: { readonly current: HTMLInputElement | null }
   onPick: (f: File) => void
   compact?: boolean
   disabled?: boolean
