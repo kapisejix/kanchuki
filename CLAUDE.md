@@ -651,6 +651,30 @@ Both modes take:
 
 ---
 
+## Built: Admin Photo Cleanup Test Page (2026-08-06, commit `3a3f863`, pushed to main)
+
+Wires the standalone script above into an admin-panel test page so the user can iterate without asking for a fresh prompt each time — new product/background/sample photos, run, compare in-browser.
+
+| Layer | Files | Summary |
+|---|---|---|
+| Backend | `apps/api/src/routes/admin/admin-photo-cleanup.ts` | `POST /v1/admin/photo-cleanup/run` — downloads product+background photo (SSRF-safe fetch), writes to a temp dir, shells out to `scripts/batch-clean-photos.py` (reused as-is, no reimplementation), uploads result to R2, returns `{ result_url }`. Reuses the existing `/admin/background-images/upload-url` presign endpoint for uploads — no new upload plumbing |
+| R2 path | `packages/shared/src/constants/index.ts` | `R2_PATHS.photoCleanupTest` added |
+| Registration | `apps/api/src/routes/admin.ts`, `apps/api/src/routes/admin/index.ts` | new route module registered alongside the other admin domain modules |
+| Frontend | `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | Upload/select product, sample (reference-only, client-side, never uploaded), background (upload new or pick from the existing Background Images library); Shine/Blur toggles; results shown as a before→after media-library-style grid, session-only (no new DB table — it's a test tool) |
+| Nav | `apps/web/src/app/admin/components/Sidebar.tsx` | "Photo Cleanup Test" added under the Catalog group |
+
+**Known limitation, not fixed:** the Railway API container has no Python/rembg installed (deliberately — see the script's own entry above on container memory-cap history). The page's UI and upload flow work in production; "Run cleanup" itself only works where Python is installed (currently: local dev only). Deploying Python to the prod API container is its own infra decision, not made here.
+
+### Bug hit + fixed: admin panel "refresh → login screen" + `CSRF token fetch failed: HTTP 403`
+
+**Symptom reported by user:** "Failed to get upload URL" on the photo-cleanup page, `CSRF token fetch failed: HTTP 403` on `GET http://localhost:3001/v1/admin/csrf-token` on every retry, and the admin panel bouncing back to the login screen on every page refresh even right after a successful login.
+
+**Root cause (verified by curl reproduction against a local API, not guessed):** the admin auth/CSRF chain on the API is correct (session JWT passes, CSRF cookie+header pair passes, mutations correctly 403 without CSRF). The real bug was the **admin layout's session gate**: `apps/web/src/app/admin/layout.tsx` validated the stored `admin_key` on every refresh by calling `GET /v1/admin/stats` — a **DB-backed** endpoint (counts retailers/products/collections). Any database hiccup makes it return 500, and the old layout treated *any* non-ok (500, network error) as "logged out", deleting `admin_key` from `sessionStorage`. Result: DB flake → next refresh logs the admin out → every admin API call (including the CSRF-token fetch the photo page fires before upload) goes out with an **empty `x-admin-key`** → 403 "Invalid admin key" → re-login only lasts until the next refresh. An earlier diagnosis blaming Serwist's `defaultCache` for caching the 403 was **wrong** — `defaultCache` ends with a catch-all `NetworkOnly` GET rule, so it never cached those cross-origin API calls; the `/v1/admin` `NetworkOnly` matcher added to `sw.ts` is kept but was never the cure.
+
+**Fix:** (1) new DB-free `GET /v1/admin/session` endpoint (key/JWT check only, never touches Postgres) + `adminSessionEmail()` helper in `admin-auth.ts`; (2) layout validates against `/v1/admin/session` and only wipes the key on a definitive 401/403 — 5xx/network keep the key and show the panel optimistically; (3) `admin-fetch.ts` CSRF cache is now keyed to the admin_key it was minted under + `resetAdminFetchCache()` called on login/logout so a re-login never reuses a stale cookie+token pair. Web layout tests updated (7 pass); API admin tests 45/45 pass. **Deploy note:** on a browser that already hit the bug, one hard refresh (or SW unregister) is still needed for the new bundle. `admin.login.test.ts` has a pre-existing collection failure (its `@kanchuki/db` mock lacks `getPurgePrisma`, added to the import chain by the route-split refactor) — unrelated to this fix, needs its own patch. The stale root `.env` preview `WEB_URL` was fixed (now `https://kanchuki.app`) — but the real leak source was a **process-level `WEB_URL` env var** inherited from the parent shell/IDE (User+Machine scopes were empty; Node's `--env-file` never overrides existing env vars). Fixed in `apps/api/scripts/dev.mjs`: it now deletes an inherited `WEB_URL` from the child env so `.env` is the single source of truth for dev boots (verified — no more preview-URL startup warning). Railway prod still needs `COOKIE_SECRET` set (server refuses to boot without it) and `WEB_URL=https://kanchuki.app` for CORS.
+
+---
+
 ## Planned — NOT started: Multi-Photo Ken Burns Effect (product photos → pseudo-video)
 
 **Requested 2026-08-05. DO NOT START until user says go ahead.**
