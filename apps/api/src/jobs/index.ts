@@ -1,10 +1,10 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { handleBackupDatabase } from './backup-database.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
-import { handleCompressR2Images } from './compress-r2-images.js';
+import { handleBackupDatabase } from './backup-database.js';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
+import { handleCompressR2Images } from './compress-r2-images.js';
 import { handleExpirePendingOrders } from './expire-pending-orders.js';
 import { handleExtractMeasurement } from './extract-measurement.js';
 import type { MeasurementJobData } from './extract-measurement.js';
@@ -169,6 +169,21 @@ export async function addGhostMannequinJob(data: GhostMannequinJobData): Promise
   });
 }
 
+export interface CompressR2ImagesJobData {
+  /** 'admin' = manual trigger from the Storage Report page, 'schedule' = cron. */
+  triggered_by?: 'schedule' | 'admin';
+}
+
+// On-demand trigger for the maintenance worker's compress-r2-images case —
+// used by the admin Storage Report "Run compression now" button so a pass can
+// be forced after a bulk import instead of waiting for the 4:30 AM cron.
+export async function addCompressR2ImagesJob(data?: CompressR2ImagesJobData): Promise<void> {
+  await getMaintenanceQueue().add('compress-r2-images', data ?? {}, {
+    removeOnComplete: { count: 10 },
+    removeOnFail: { count: 10 },
+  });
+}
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -264,8 +279,10 @@ export async function startWorkers(): Promise<void> {
           const data = (job.data ?? {}) as { type?: 'daily' | 'weekly' | 'manual' };
           return handleBackupDatabase(data.type ?? 'daily');
         }
-        case 'compress-r2-images':
-          return handleCompressR2Images();
+        case 'compress-r2-images': {
+          const data = (job.data ?? {}) as CompressR2ImagesJobData;
+          return handleCompressR2Images(data);
+        }
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }

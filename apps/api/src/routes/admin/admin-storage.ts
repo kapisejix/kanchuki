@@ -1,5 +1,7 @@
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { addCompressR2ImagesJob } from '../../jobs/index.js';
+import { AppError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
 /**
@@ -15,6 +17,8 @@ import { adminAuthPreHandler } from '../admin-auth.js';
 export interface CompressionRun {
   id: string;
   created_at: string;
+  /** 'admin' = manual trigger from this page, 'schedule' = the 4:30 AM cron */
+  triggered_by: 'schedule' | 'admin';
   /** true when R2 was unconfigured and the pass no-op'd (no bucket scan) */
   skipped_unconfigured: boolean;
   scanned: number;
@@ -62,6 +66,7 @@ export function parseCompressionRun(
   return {
     id,
     created_at: createdAt.toISOString(),
+    triggered_by: m.triggered_by === 'admin' ? 'admin' : 'schedule',
     skipped_unconfigured: m.skipped_unconfigured === true,
     scanned: num(m.scanned),
     compressed: num(m.compressed),
@@ -91,8 +96,7 @@ export function summarizeCompressionRuns(runs: CompressionRun[]): CompressionSum
     last_run_at: runs[0]?.created_at ?? null,
     // null when there is no run OR the latest run was an unconfigured no-op —
     // an env gap is not a failure, and the card must not show an amber alert.
-    last_run_ok:
-      runs[0] && !runs[0].skipped_unconfigured ? runs[0].failed === 0 : null,
+    last_run_ok: runs[0] && !runs[0].skipped_unconfigured ? runs[0].failed === 0 : null,
   };
 }
 
@@ -112,5 +116,50 @@ export const adminStorageRoutes: FastifyPluginAsync = async (server) => {
 
     const runs = rows.map((r) => parseCompressionRun(r.id, r.created_at, r.metadata));
     return { data: { summary: summarizeCompressionRuns(runs), runs } };
+  });
+
+  // ─── POST /admin/storage-report/run ─────────────────────────────
+  // Manual "Run compression now" — enqueues the same maintenance job the
+  // 4:30 AM cron fires, so an admin can force a pass right after a bulk
+  // import instead of waiting for the schedule. The job writes its usual
+  // COMPRESS_R2_IMAGES audit entry with triggered_by: 'admin', which this
+  // report page surfaces as a manual run. R2 unconfigured is fine — the job
+  // no-ops with a skipped_unconfigured audit entry rather than erroring.
+  server.post('/storage-report/run', async (request) => {
+    try {
+      await addCompressR2ImagesJob({ triggered_by: 'admin' });
+    } catch (err) {
+      request.log.error({ err }, 'Failed to enqueue compression job from admin UI');
+      throw new AppError(
+        'QUEUE_UNAVAILABLE',
+        'The compression job queue is unavailable (Redis down?). Try again shortly.',
+        503,
+      );
+    }
+
+    // Audit the admin intent (best-effort — the run's own audit entry is the
+    // source of truth for the report; this one just records who pressed it).
+    try {
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          action: 'COMPRESS_R2_IMAGES_RUN',
+          resource_type: 'R2Storage',
+          metadata: { triggered_from: 'admin-ui' },
+          ip_address: request.ip,
+        },
+      });
+    } catch (err) {
+      request.log.error({ err }, 'Failed to audit manual compression trigger');
+    }
+
+    request.log.info('Compression pass enqueued from admin UI');
+    return {
+      data: {
+        queued: true,
+        message:
+          'Compression pass enqueued — the maintenance worker will run it and the result appears in the table below when finished.',
+      },
+    };
   });
 };

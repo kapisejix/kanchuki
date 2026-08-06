@@ -1,6 +1,6 @@
 'use client';
 
-import { adminGetOptions } from '@/lib/admin-fetch';
+import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle,
@@ -13,14 +13,16 @@ import {
   RefreshCw,
   TrendingDown,
   XCircle,
+  Zap,
 } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001';
 
 type CompressionRun = {
   id: string;
   created_at: string;
+  triggered_by: 'schedule' | 'admin';
   skipped_unconfigured: boolean;
   scanned: number;
   compressed: number;
@@ -70,6 +72,10 @@ export default function StorageReportPage() {
   const [summary, setSummary] = useState<CompressionSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [running, setRunning] = useState(false);
+  const [polling, setPolling] = useState(false);
+  const [queuedMsg, setQueuedMsg] = useState('');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -89,7 +95,76 @@ export default function StorageReportPage() {
 
   useEffect(() => {
     load();
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, [load]);
+
+  // Manual "Run compression now" — enqueues the same maintenance job the
+  // 4:30 AM cron fires, then polls the report until a NEW run row appears
+  // (the job writes its audit entry only when the whole pass completes).
+  const runNow = async () => {
+    if (running || polling) return;
+    // A previous poll must never be left running — a second click mid-poll
+    // would otherwise enqueue a redundant pass AND orphan the first interval.
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    setRunning(true);
+    setPolling(false);
+    setError('');
+    setQueuedMsg('');
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/storage-report/run`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: '{}',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json?.error?.message ?? `HTTP ${res.status}: ${res.statusText}`);
+      setQueuedMsg(json.data?.message ?? 'Compression pass enqueued — watching for it to finish…');
+      setRunning(false);
+      setPolling(true);
+
+      // Poll until the pass lands a new COMPRESS_R2_IMAGES audit row (could
+      // take minutes on a large bucket); give up after ~1 minute and let the
+      // admin refresh manually.
+      const before = runs[0]?.id ?? null;
+      let attempts = 0;
+      pollRef.current = setInterval(async () => {
+        attempts += 1;
+        try {
+          const res2 = await fetch(`${API_URL}/v1/admin/storage-report`, adminGetOptions());
+          if (!res2.ok) throw new Error('reload failed');
+          const j = await res2.json();
+          const latestId = (j.data.runs?.[0]?.id as string | undefined) ?? null;
+          if (latestId !== before) {
+            if (pollRef.current) clearInterval(pollRef.current);
+            pollRef.current = null;
+            setPolling(false);
+            setRuns(j.data.runs ?? []);
+            setSummary(j.data.summary);
+            setQueuedMsg('✓ Compression pass finished — results are in the table below.');
+            return;
+          }
+        } catch {
+          // keep polling; the report stays stale until the pass completes
+        }
+        if (attempts >= 12) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          pollRef.current = null;
+          setPolling(false);
+          setQueuedMsg(
+            'The pass may still be running or may have failed — check the API logs, then refresh this page to see any recorded run.',
+          );
+        }
+      }, 5000);
+    } catch (err) {
+      setRunning(false);
+      setError(err instanceof Error ? err.message : 'Failed to enqueue compression run');
+    }
+  };
 
   const savingsPct =
     summary && summary.total_bytes_before > 0
@@ -112,25 +187,45 @@ export default function StorageReportPage() {
           <p className="text-sm text-gray-500">
             Daily R2 compression savings — read from the{' '}
             <code className="text-xs">COMPRESS_R2_IMAGES</code> audit entries written by the
-            maintenance cron (4:30 AM UTC).
+            maintenance cron (4:30 AM UTC) or triggered manually below.
           </p>
         </div>
-        <motion.button
-          onClick={load}
-          disabled={loading}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-          className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          Refresh
-        </motion.button>
+        <div className="flex items-center gap-2">
+          <motion.button
+            onClick={runNow}
+            disabled={running || polling}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            title="Enqueue the compression pass immediately (runs in the maintenance worker)"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-500 rounded-xl transition-colors disabled:opacity-50"
+          >
+            {running ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} />}
+            Run compression now
+          </motion.button>
+          <motion.button
+            onClick={load}
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-gray-600 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-all"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </motion.button>
+        </div>
       </div>
 
       {error && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-600 text-sm rounded-xl px-4 py-3">
           <XCircle size={15} />
           <span>{error}</span>
+        </div>
+      )}
+
+      {queuedMsg && (
+        <div className="flex items-center gap-2 bg-cyan-50 border border-cyan-200 text-cyan-700 text-sm rounded-xl px-4 py-3">
+          <Zap size={15} className="shrink-0" />
+          <span>{queuedMsg}</span>
         </div>
       )}
 
@@ -254,8 +349,13 @@ export default function StorageReportPage() {
                       key={r.id}
                       className="border-b border-gray-50 last:border-0 hover:bg-gray-50/60"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap text-xs text-gray-500">
-                        {formatDate(r.created_at)}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="text-xs text-gray-500">{formatDate(r.created_at)}</div>
+                        {r.triggered_by === 'admin' && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-600 border border-blue-100 mt-0.5">
+                            <Zap size={9} /> manual
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         {r.skipped_unconfigured ? (

@@ -134,4 +134,22 @@ describe('handleCompressR2Images', () => {
     expect(audit.data.action).toBe('COMPRESS_R2_IMAGES');
     expect(audit.data.metadata.bytes_saved).toBe(70 * 1024);
   });
+
+  it('records the trigger source in the audit metadata (admin vs schedule)', async () => {
+    process.env.R2_ACCOUNT_ID = 'acct';
+    mockListObjects.mockResolvedValue([]);
+
+    await handleCompressR2Images(); // cron-style call, no options
+    const cronAudit = mockAuditCreate.mock.calls[0]![0] as {
+      data: { metadata: Record<string, unknown> };
+    };
+    expect(cronAudit.data.metadata.triggered_by).toBe('schedule');
+
+    mockAuditCreate.mockClear();
+    await handleCompressR2Images({ triggered_by: 'admin' }); // Storage Report button
+    const adminAudit = mockAuditCreate.mock.calls[0]![0] as {
+      data: { metadata: Record<string, unknown> };
+    };
+    expect(adminAudit.data.metadata.triggered_by).toBe('admin');
+  });
 });

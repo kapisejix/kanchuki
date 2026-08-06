@@ -69,7 +69,14 @@ function isExcluded(key: string): boolean {
   return EXCLUDE_SUBSTRINGS.some((s) => key.includes(s));
 }
 
-export async function handleCompressR2Images(): Promise<CompressR2Result> {
+/**
+ * Run the compression pass. `options.triggered_by` distinguishes a manual
+ * admin trigger (Storage Report → "Run compression now") from the 4:30 AM
+ * cron — recorded in the audit metadata so the report can badge manual runs.
+ */
+export async function handleCompressR2Images(options?: {
+  triggered_by?: 'schedule' | 'admin';
+}): Promise<CompressR2Result> {
   const base: CompressR2Result = {
     scanned: 0,
     compressed: 0,
@@ -159,6 +166,7 @@ export async function handleCompressR2Images(): Promise<CompressR2Result> {
         resource_type: 'R2Storage',
         metadata: {
           ...base,
+          triggered_by: options?.triggered_by ?? 'schedule',
           duration_seconds: (Date.now() - start) / 1000,
           max_bytes: MAX_BYTES,
           exclusions: EXCLUDE_SUBSTRINGS,

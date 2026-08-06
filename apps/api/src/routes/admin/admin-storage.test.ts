@@ -15,6 +15,7 @@ const meta = {
   bytes_after: 34_000_000,
   bytes_saved: 61_000_000,
   skipped_unconfigured: false,
+  triggered_by: 'schedule',
   duration_seconds: 96.5,
   max_bytes: 81920,
   exclusions: ['measurements/', '/kyc/'],
@@ -27,6 +28,7 @@ describe('parseCompressionRun', () => {
     expect(run).toEqual({
       id: 'log-1',
       created_at: '2026-08-06T04:30:00.000Z',
+      triggered_by: 'schedule',
       skipped_unconfigured: false,
       scanned: 345,
       compressed: 273,
@@ -47,6 +49,16 @@ describe('parseCompressionRun', () => {
     expect(run.scanned).toBe(0);
     expect(run.bytes_saved).toBe(0);
     expect(run.failed).toBe(0);
+    expect(run.triggered_by).toBe('schedule'); // missing field defaults to cron
+  });
+
+  it('flags runs triggered manually from the admin UI', () => {
+    const run = parseCompressionRun('log-4', new Date('2026-08-08T06:15:00Z'), {
+      ...meta,
+      triggered_by: 'admin',
+    });
+
+    expect(run.triggered_by).toBe('admin');
   });
 
   it('flags skipped_unconfigured runs (R2 not configured — no bucket scan happened)', () => {
