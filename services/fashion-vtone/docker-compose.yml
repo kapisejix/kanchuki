@@ -1,0 +1,58 @@
+# ──────────────────────────────────────────────────────────────
+# Fashion V-Tone v1.5 — standalone host deployment (Hetzner etc.)
+# ──────────────────────────────────────────────────────────────
+# Build context must be the REPO ROOT (the Dockerfile COPYs
+# services/fashion-vtone/* paths).
+#
+# Usage from repo root:
+#   docker compose -f services/fashion-vtone/docker-compose.yml up -d --build
+#
+# Required env (copy from your API's R2 config — the service uploads
+# try-on results straight to the same bucket):
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY,
+#   R2_BUCKET_NAME, R2_PUBLIC_URL
+#   (R2_ENDPOINT is derived from R2_ACCOUNT_ID; set it explicitly if yours differs)
+#
+# Port 8000 must be reachable from the API service. No static Railway
+# egress IP to firewall-allowlist, so auth is a shared secret instead:
+# set VTONE_SHARED_SECRET here and as the same-named key on the API
+# service (Admin -> Integrations, or Railway env var) — app.py rejects
+# /try-on requests missing a matching X-Vtone-Key header. Still plain
+# HTTP; put Caddy/nginx in front for TLS if that matters for this box.
+services:
+  vtone:
+    build:
+      context: ../..
+      dockerfile: services/fashion-vtone/Dockerfile
+    image: kanchuki-vtone:latest
+    container_name: kanchuki-vtone
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      # Empty = auto-detect (uses CUDA when present, else CPU).
+      VTONE_DEVICE: "${VTONE_DEVICE:-}"
+      # Empty = no auth (fine for local dev only, never leave empty on a
+      # publicly reachable box).
+      VTONE_SHARED_SECRET: "${VTONE_SHARED_SECRET:-}"
+      # Weights are baked into the image at build time; this only matters
+      # if you run the container without the baked layer.
+      VTONE_WEIGHTS_DIR: "${VTONE_WEIGHTS_DIR:-/app/weights}"
+      R2_ENDPOINT: "${R2_ENDPOINT:-https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com}"
+      R2_ACCESS_KEY_ID: "${R2_ACCESS_KEY_ID:?set R2_ACCESS_KEY_ID}"
+      R2_SECRET_ACCESS_KEY: "${R2_SECRET_ACCESS_KEY:?set R2_SECRET_ACCESS_KEY}"
+      R2_BUCKET_NAME: "${R2_BUCKET_NAME:?set R2_BUCKET_NAME}"
+      R2_PUBLIC_URL: "${R2_PUBLIC_URL:?set R2_PUBLIC_URL}"
+    # The Dockerfile has a HEALTHCHECK; compose runs it natively.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 30s
+      timeout: 120s
+      retries: 6
+      start_period: 300s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

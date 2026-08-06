@@ -309,6 +309,7 @@ export const INTEGRATION_KEYS = [
     label: 'NVIDIA NIM API Key (free Llama 3.2 Vision fallbacks)',
   },
   { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
+  { key_name: 'VTONE_SHARED_SECRET', category: 'AI', label: 'Fashion V-Tone Shared Secret' },
   { key_name: 'RAZORPAY_KEY_ID', category: 'PAYMENT', label: 'Razorpay Key ID' },
   { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },
   { key_name: 'RAZORPAY_WEBHOOK_SECRET', category: 'PAYMENT', label: 'Razorpay Webhook Secret' },

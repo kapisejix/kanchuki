@@ -11,6 +11,21 @@ import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 async function getVtoneApiUrl(): Promise<string> {
   return (await getSecret('VTONE_API_URL')) ?? ''
 }
+
+async function getVtoneSharedSecret(): Promise<string | undefined> {
+  return getSecret('VTONE_SHARED_SECRET')
+}
+
+// How long a single V-Tone inference call may take before the API aborts it.
+// Defaults to 30 minutes: self-hosted CPU inference is slow (measured ~52s
+// per diffusion step, 30 steps ≈ 26 min on a shared Railway CPU). A GPU box
+// finishes in ~10-30s, but aborting an in-flight CPU run wastes the whole
+// inference, so err generous. Override with VTONE_CALL_TIMEOUT_MS.
+const VTONE_CALL_TIMEOUT_MS = (() => {
+  const raw = process.env['VTONE_CALL_TIMEOUT_MS']
+  const parsed = raw ? Number.parseInt(raw, 10) : NaN
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 30 * 60 * 1000
+})()
 const R2_TRYON_PREFIX = 'tryon-results'
 const R2_TRAINING_PREFIX = 'training-data'
 
@@ -88,10 +103,14 @@ async function callVTONOnce(
   garmentImageUrl: string,
   category: VtoneCategory,
 ): Promise<TryOnResult> {
+  const sharedSecret = await getVtoneSharedSecret()
   const res = await fetch(`${await getVtoneApiUrl()}/try-on`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(120_000),
+    headers: {
+      'Content-Type': 'application/json',
+      ...(sharedSecret ? { 'X-Vtone-Key': sharedSecret } : {}),
+    },
+    signal: AbortSignal.timeout(VTONE_CALL_TIMEOUT_MS),
     body: JSON.stringify({
       person_image_url: personImageUrl,
       garment_image_url: garmentImageUrl,

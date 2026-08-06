@@ -32,7 +32,7 @@ from contextlib import asynccontextmanager
 from typing import Literal, Optional
 
 import requests
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
@@ -46,6 +46,10 @@ logger = logging.getLogger(__name__)
 WEIGHTS_DIR = os.environ.get("VTONE_WEIGHTS_DIR", "./weights")
 DEVICE = os.environ.get("VTONE_DEVICE", "")  # empty = auto-detect (GPU if available)
 DOWNLOAD_TIMEOUT = int(os.environ.get("DOWNLOAD_TIMEOUT", "30"))
+# Unset = no auth (local dev). Set on a publicly-reachable host (Hetzner etc.)
+# since this service has no other access control and port 8000 has no
+# Railway-style static caller IP to firewall-allowlist against.
+SHARED_SECRET = os.environ.get("VTONE_SHARED_SECRET", "")
 
 # Model downloads to HF cache on first run (~2.3 GB total).
 # Optionally point VTONE_WEIGHTS_DIR at a pre-downloaded directory.
@@ -237,7 +241,7 @@ async def health():
     )
 
 @app.post("/try-on")
-async def try_on(request: TryOnRequest):
+async def try_on(request: TryOnRequest, x_vtone_key: Optional[str] = Header(default=None)):
     """
     Run virtual try-on via Fashion V-Tone v1.5.
 
@@ -245,6 +249,9 @@ async def try_on(request: TryOnRequest):
     The V-Tone model handles raw product photos
     without background removal preprocessing.
     """
+    if SHARED_SECRET and x_vtone_key != SHARED_SECRET:
+        raise HTTPException(status_code=401, detail="Missing or invalid X-Vtone-Key header")
+
     if pipeline is None:
         detail = "Pipeline still loading" if pipeline_loading else "Pipeline not initialized"
         raise HTTPException(status_code=503, detail=detail)
