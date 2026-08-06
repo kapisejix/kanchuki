@@ -675,6 +675,21 @@ Wires the standalone script above into an admin-panel test page so the user can 
 
 ---
 
+## Built: Quality-First Image Compressor (≤80KB) + R2 Storage Measurement & Batch Compression (2026-08-06)
+
+User ask: every stored image under 80KB with the highest possible quality, to cut R2 storage. Current bucket: **135.30 MB total, 95.03 MB of it images (334 objects)**. Dry-run of the batch script: **82.32 MB → 21.11 MB (−61.21 MB, −74.4%)** across 273 compressible images; 48 already ≤80KB; 22 skipped (non-image/excluded); 2 corrupt test artifacts under `tryon-test/` failed gracefully. After apply the bucket lands ≈74 MB.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Compressor** | `packages/ai/src/image-compress.ts` (+ `image-compress.test.ts`, 6 tests) | `compressImageToTarget(buf, {maxBytes=80KB, maxDimension=1600, startQuality=88, minQuality=48, minDimension=640})` — quality-first: untouched if already ≤budget; quality ladder 88→48 (mozjpeg); only if nothing fits, dimension ladder 1600→640 (−15%/step) re-runs the ladder; best-effort fallback (never throws). Lazy sharp import (same Windows+pnpm dlopen pattern as detector.ts). Output always JPEG, alpha flattened onto white. Exported from `@kanchuki/ai` |
+| **Storage measurement** | `scripts/measure-r2-storage.ts` | `npx tsx scripts/measure-r2-storage.ts` — ListObjectsV2 paginated, total/object count, per-prefix breakdown, image-vs-non-image split (loads root .env via `process.loadEnvFile`) |
+| **Batch compression** | `scripts/compress-r2-images.ts` | Dry-run by default (`--apply` overwrites IN PLACE — same keys, URLs unchanged). Skips by default: `measurements/` (AI measurement extraction accuracy), `/kyc/` (document legibility), `backups/`, `catalog-pdf`. Concurrency 4, per-object graceful failure. |
+| **Wired write paths** | `apps/api/src/routes/admin/admin-photo-cleanup.ts`, `packages/ai/src/detector.ts` | Photo-cleanup result + `cleanupProductPhoto` (the catalog-import server-side path — the biggest server-written image source) now compress to ≤80KB before landing in R2. Mobile-app direct-to-R2 PUTs aren't interceptable server-side — those are covered by the batch script / a future re-run. |
+
+**Quality trade-off (surfaced to user):** 80KB is aggressive for detailed fashion shots — spot checks landed at q60 @1600px (indistinguishable) or q53–60 @~800px (acceptable, only for high-detail originals). Measure-script + compressor + wiring verified: AI 55/55 tests, packages/ai + apps/api tsc clean, dev server healthy. Not yet applied to the live bucket — pending explicit user go-ahead (`npx tsx scripts/compress-r2-images.ts --apply`).
+
+---
+
 ## Planned — NOT started: Multi-Photo Ken Burns Effect (product photos → pseudo-video)
 
 **Requested 2026-08-05. DO NOT START until user says go ahead.**
