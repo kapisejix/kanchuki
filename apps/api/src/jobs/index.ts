@@ -1,6 +1,8 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
+import { handleAdminTryOn } from './admin-tryon.js';
+import type { AdminTryOnJobData } from './admin-tryon.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleCleanupTrainingData } from './cleanup-training-data.js';
@@ -199,6 +201,17 @@ export async function addMeasureR2StorageJob(): Promise<void> {
   );
 }
 
+// On-demand trigger for the maintenance worker's admin-tryon case — used by
+// the admin Photo Cleanup Test "Generate on model" button. The job runs the
+// self-hosted Fashion V-Tone pipeline (30-60s CPU) so the page enqueues +
+// polls instead of holding an HTTP request open across inference.
+export async function addAdminTryOnJob(data: AdminTryOnJobData): Promise<void> {
+  await getMaintenanceQueue().add('admin-tryon', data, {
+    removeOnComplete: { count: 20 },
+    removeOnFail: { count: 20 },
+  });
+}
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -300,6 +313,10 @@ export async function startWorkers(): Promise<void> {
         }
         case 'measure-r2-storage':
           return handleMeasureR2Storage();
+        case 'admin-tryon': {
+          const data = job.data as AdminTryOnJobData;
+          return handleAdminTryOn(data);
+        }
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }

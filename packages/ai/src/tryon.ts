@@ -21,6 +21,12 @@ export interface TryOnRequest {
   productPhotoUrl: string
   productCategory?: string | null
   pieceGarmentUrls?: { upper?: string; lower?: string }
+  /**
+   * Direct V-Tone category override (admin on-model tool). When set, it wins
+   * over the heuristic mapping in resolveVtoneCategory, so the admin page's
+   * tops/bottoms/one-pieces picker is honored exactly.
+   */
+  vtoneCategory?: VtoneCategory
 }
 
 export type VtoneCategory = 'tops' | 'bottoms' | 'one-pieces'
@@ -135,8 +141,9 @@ async function triggerVTON(request: TryOnRequest): Promise<TryOnResult> {
     return callVTONOnce(intermediateUrl, lowerPhotoUrl, 'bottoms')
   }
 
-  // Single photo path
-  const category = resolveVtoneCategory(request.productCategory)
+  // Single photo path — explicit vtoneCategory override (admin tool) or
+  // the heuristic mapping for customer try-ons.
+  const category = request.vtoneCategory ?? resolveVtoneCategory(request.productCategory)
   return callVTONOnce(request.customerPhotoUrl, request.productPhotoUrl, category)
 }
 
