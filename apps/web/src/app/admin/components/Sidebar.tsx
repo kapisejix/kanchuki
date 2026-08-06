@@ -38,6 +38,7 @@ import {
   Bot,
   LayoutGrid,
   Wand2,
+  DatabaseBackup,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -126,6 +127,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
       { label: 'Database Health', href: '/admin/database/status', icon: Activity },
       { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive },
+      { label: 'Storage Report', href: '/admin/storage-report', icon: DatabaseBackup },
     ],
   },
 ]

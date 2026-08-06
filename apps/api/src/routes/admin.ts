@@ -22,6 +22,7 @@ import {
   adminPhotoCleanupRoutes,
   adminPlansRoutes,
   adminRetailersRoutes,
+  adminStorageRoutes,
 } from './admin/index.js';
 
 export {
@@ -190,4 +191,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminAiRoutes);
   // admin-photo-cleanup — standalone bg-removal script test page
   await server.register(adminPhotoCleanupRoutes);
+  // admin-storage — R2 compression savings report (reads COMPRESS_R2_IMAGES audit entries)
+  await server.register(adminStorageRoutes);
 };
