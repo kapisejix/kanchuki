@@ -535,13 +535,13 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-102: AI Virtual Try-On (Self-Hosted)
-**Status:** 🟢 **Built** — Fashion V-Tone v1.5 engine (Apache 2.0, maskless, CPU-capable), multi-piece chaining, training consent collection. Replaced CatVTON 2026-07-16.
+**Status:** 🟢 **Built + LIVE on Railway (2026-08-06)** — Fashion V-Tone v1.5 engine (Apache 2.0, maskless, CPU-capable), multi-piece chaining, training consent collection. Replaced CatVTON 2026-07-16. Deployed as the `fashion-vtone` Railway service (autosleep, domain `fashion-vtone-production.up.railway.app`), wired into the admin "Generate on model" tool (commit `9a9e923`).
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
 **Tech:** Fashion V-Tone v1.5 (self-hosted Python microservice via `fashn-vton`)  
 **Cost:** ~₹0.025 per try-on on CPU (~$0.0003), ~₹0.25 on L4 GPU (~$0.003)  
-**GPU Requirement:** None — runs on CPU (~30-60s) or GPU for faster inference  
-**Latency:** ~30-60s on CPU, ~10-30s on GPU  
+**GPU Requirement:** None — runs on CPU or GPU for faster inference  
+**Latency (measured 2026-08-06, Railway CPU):** ~26 min per try-on (52s × 30 diffusion steps). Not interactive — suitable for async/batch jobs (admin tool polls the job feed), not for customer-facing synchronous VTO. A GPU service or fewer steps would be needed for interactive latency.  
 **Quality threshold:** 80% of try-ons rated "acceptable" by sample retailer panel
 
 **Maskless Architecture (Key Advantage):**

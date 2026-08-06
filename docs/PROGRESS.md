@@ -759,3 +759,34 @@ Two modes, pick one per run:
 Both take `--crop x1,y1,x2,y2` (pre-trim before segmentation — rembg segments by saliency not subject identity, so overlapping neighbor garments/mannequins in-frame get kept as foreground; crop only helps when clutter doesn't physically touch the subject, tested and confirmed it can't split two touching objects) and `--shine` (`ImageEnhance` contrast/saturation/brightness + a soft `ImageChops.screen` highlight on the subject only — first pass overshot to a white haze, tuned down to Color 1.12/Contrast 1.08/Brightness 1.03/ellipse fill 70).
 
 Tested end-to-end on 3 real retailer photos across all mode combos — outputs saved at `scripts/demo/2026-08-05/`. Discussed and explicitly skipped: pasting the garment onto a stock/AI human-model photo — that's virtual try-on (pose-aware garment transfer), not background compositing, and a flat paste looks obviously fake. Real version would reuse this project's existing RunPod CatVTON setup or the planned self-hosted Fashion V-Tone v1.5 engine — not built, revisit only if asked given real per-run RunPod cost.
+
+---
+
+## 2026-08-06 — Admin: Storage Report run-now button + Live R2 measurement + Fashion V-Tone "Generate on model" (all deployed)
+
+Three admin-panel features landed this session, each committed + deployed separately. Full spec of the storage-report pair is in the earlier CLAUDE.md entries; the V-Tone work is the newest.
+
+### 1. Storage Report "Run compression now" (`ce01a15`)
+
+`POST /v1/admin/storage-report/run` enqueues the same `compress-r2-images` maintenance job the 4:30 AM cron fires (`triggered_by: 'admin'` recorded in the audit metadata so the report badges manual runs). Page button polls up to 1 min for the new run row; manual runs get a blue "manual" badge. 503 `QUEUE_UNAVAILABLE` when Redis is down.
+
+### 2. Live R2 storage measurement (`3eda0fd`)
+
+`packages/ai` gains pure `summarizeR2Objects` + `measureR2Storage()` (lists the bucket, rolls up total/object count, image split, per-prefix breakdown — exactly `scripts/measure-r2-storage.ts`'s numbers). New `measure-r2-storage` maintenance job writes an `R2_STORAGE_MEASURE` audit entry; `POST /v1/admin/storage-report/measure` + `GET` returns `live_measurement`. Page shows a Live R2 storage panel (4 stat cards + top-10 prefixes) with a Re-measure button sharing the run-now button's poll machinery. Prisma gotcha: `by_prefix` is type aliases (not interfaces) so it's assignable to the `Json` field.
+
+### 3. Fashion V-Tone LIVE + admin "Generate on model" (`9a9e923`, infra + config + `2ff4d59` docs)
+
+**User approved self-hosted V-Tone (option #1)** after the $5 Hobby-plan cost check: the plan has ~$2/mo headroom, so V-Tone runs **serverless with autosleep** (10 min idle) + a **workspace hard limit** (soft $8 / hard $10) as a runaway guard. This is the first production deployment of the V-Tone service that has sat scaffolded since the project's early VTO planning.
+
+| Layer | Summary |
+|---|---|
+| **Railway service** | `fashion-vtone` (id `e6afdefd`) built from `services/fashion-vtone/Dockerfile`. Domain `fashion-vtone-production.up.railway.app:8000`. R2 creds copied from the API service (incl. `R2_ENDPOINT` built from `R2_ACCOUNT_ID`). `VTONE_API_URL` set on the API service |
+| **Deploy gotchas hit + fixed** | (1) Railway injects `PORT=8080` overriding the Dockerfile's `ENV PORT=8000` → Uvicorn bound 8080, domain targeted 8000 → 502. Fixed with explicit `PORT=8000` variable. (2) `railway environment config --json` shows template defaults (RAILPACK) even for Dockerfile services — dot-path `--service-config` edits silently no-op'd; the authoritative write is `railway environment edit --json '{"services":{"<id>":{...}}}'` |
+| **Engine override** | `packages/ai/src/tryon.ts` — `TryOnRequest.vtoneCategory` (tops/bottoms/one-pieces) wins over the heuristic mapping so the admin picker is honored exactly |
+| **Job** | `apps/api/src/jobs/admin-tryon.ts` — runs `triggerTryOn`, fetches result via SSRF-safe `ssrfSafeFetch`+`readCappedBuffer` (NOT `downloadBuffer` — that takes an R2 key, not a URL; reviewer caught this), re-encodes ≤80KB JPEG to `admin/photo-cleanup-tests/`, writes `ADMIN_TRYON` audit on success AND failure (attempts=1, one row per job) |
+| **API** | `POST /admin/photo-cleanup/tryon` (enqueue) + `GET /admin/photo-cleanup/tryon-results` (audit feed, `parseTryOnResult`) |
+| **Web UI** | Model-photo dropzone + garment-type select + per-result "On model" button → 3-min poll (double-click-safe, attempts counted only on successful fetches) → on-model results feed, lightbox-clickable |
+
+**⚠️ Live-test finding — CPU inference is ~26 min/try-on, not 30-60s.** A real POST `/try-on` ran 30 sampling timesteps at ~52s/timestep on the Railway CPU tier (9/30 steps took 8 min). The pipeline works end-to-end (downloads, inference, no errors) but the speed budget was wrong for CPU. Consequences: the admin page's 3-min poll times out on every real run (job completes in the background, result still lands in the feed), and `callVTONOnce`'s 120s `AbortSignal.timeout` kills real CPU runs mid-inference — so production API-job try-ons currently fail on the timeout, not the engine. **Fix not yet applied:** lower `TryOnPipeline` timesteps (30 → 8-10, quality tradeoff) and/or raise the timeout to ~30 min for CPU + extend the page poll; a GPU instance would restore ~10-30s but exceeds the Hobby headroom.
+
+**Verified:** api/web tsc 0, tests 8/8, biome clean on new code; API + web + vtone all SUCCESS on `9a9e923`; V-Tone `/health` returns `{"status":"ok","pipeline_loaded":true,"device":"cpu"}`. New admin routes 403 without a key (registered + auth-gated).
