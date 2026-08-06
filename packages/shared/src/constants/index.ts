@@ -248,6 +248,7 @@ export const R2_PATHS = {
     `retailers/${retailerId}/banner/${filename}`,
   ghostMannequin: (retailerId: string, productId: string) =>
     `retailers/${retailerId}/products/${productId}/ghost-mannequin.jpg`,
+  photoCleanupTest: (filename: string) => `admin/photo-cleanup-tests/${filename}`,
 } as const;
 
 // ─── Integration Settings (F-012) ──────────────────────────────────

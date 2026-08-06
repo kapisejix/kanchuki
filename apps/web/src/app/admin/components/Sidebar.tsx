@@ -36,6 +36,7 @@ import {
   Palette,
   Bot,
   LayoutGrid,
+  Wand2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -74,6 +75,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
       { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
+      { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
     ],
   },
   {

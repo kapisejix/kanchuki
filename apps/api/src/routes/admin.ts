@@ -19,6 +19,7 @@ import {
   adminMediaRoutes,
   adminMiscRoutes,
   adminModerationRoutes,
+  adminPhotoCleanupRoutes,
   adminPlansRoutes,
   adminRetailersRoutes,
 } from './admin/index.js';
@@ -171,4 +172,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminModerationRoutes);
   // admin-ai — auto-split module
   await server.register(adminAiRoutes);
+  // admin-photo-cleanup — standalone bg-removal script test page
+  await server.register(adminPhotoCleanupRoutes);
 };
