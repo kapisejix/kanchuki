@@ -5,6 +5,7 @@ import { File } from 'expo-file-system'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
 import { getItem, setItem, deleteItem } from '../storage'
 import { cachedJsonRequest, clearRequestCache } from '../request-cache'
+import { compressImageForUpload } from '../compress-image'
 
 export const API_URL = process.env['EXPO_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -160,13 +161,29 @@ export async function uploadImageToR2(
   contentType: string,
   timeoutMs = 30_000,
   onProgress?: (fraction: number) => void,
+  options?: { compress?: boolean },
 ): Promise<void> {
+  // Client-side ≤80KB compression (quality-first, see compress-image.ts).
+  // Runs for image/* uploads unless explicitly disabled — measurement photos
+  // and KYC documents opt out (AI measurement accuracy + document legibility
+  // first, same exclusion the server-side batch pass uses). Compression is
+  // best-effort: a failure uploads the original rather than failing the
+  // retailer's upload.
+  let uploadUri = localUri
+  if (contentType.startsWith('image/') && (options?.compress ?? true)) {
+    try {
+      uploadUri = await compressImageForUpload(localUri)
+    } catch (err) {
+      console.warn('Image compression failed — uploading original:', err)
+    }
+  }
+
   let result: LegacyFileSystem.FileSystemUploadResult | undefined | null
   try {
     const uploadPromise = onProgress
       ? LegacyFileSystem.createUploadTask(
           uploadUrl,
-          localUri,
+          uploadUri,
           {
             httpMethod: 'PUT',
             uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
@@ -178,7 +195,7 @@ export async function uploadImageToR2(
             }
           },
         ).uploadAsync()
-      : LegacyFileSystem.uploadAsync(uploadUrl, localUri, {
+      : LegacyFileSystem.uploadAsync(uploadUrl, uploadUri, {
           httpMethod: 'PUT',
           uploadType: LegacyFileSystem.FileSystemUploadType.BINARY_CONTENT,
           headers: { 'Content-Type': contentType },

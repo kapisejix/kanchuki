@@ -93,11 +93,13 @@ export default function MeasurementCaptureScreen() {
       const init = await customerApi.initPhotoMeasurement(id, heightNum, consentGiven)
       const { measurement_id, front_upload_url, back_upload_url } = init.data
 
-      // Upload front photo
-      await uploadImageToR2(photos.front, front_upload_url, 'image/jpeg')
+      // Upload front photo. compress:false — body photos feed AI measurement
+      // extraction; detail beats bytes (same exclusion as the server-side
+      // batch compressor, scripts/compress-r2-images.ts).
+      await uploadImageToR2(photos.front, front_upload_url, 'image/jpeg', undefined, undefined, { compress: false })
 
       // Upload back photo
-      await uploadImageToR2(photos.back, back_upload_url, 'image/jpeg')
+      await uploadImageToR2(photos.back, back_upload_url, 'image/jpeg', undefined, undefined, { compress: false })
 
       await customerApi.extractMeasurement(id, measurement_id)
       void queryClient.invalidateQueries({ queryKey: ['customers', id, 'measurements'] })

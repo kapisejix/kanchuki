@@ -373,7 +373,9 @@ function KycDocRow({
       const blob = await readLocalImage(uri)
       const uploadResult = await retailerApi.getKycUploadUrl(type, 'image/jpeg', blob.size)
       const info = uploadResult.data
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg')
+      // compress:false — KYC document legibility first (same exclusion as the
+      // server-side batch compressor, scripts/compress-r2-images.ts).
+      await uploadImageToR2(uri, info.upload_url, 'image/jpeg', undefined, undefined, { compress: false })
       await retailerApi.submitKycDoc(type, info.r2_key, info.public_url)
       onUploaded()
     } catch (err) {
