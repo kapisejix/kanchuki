@@ -58,6 +58,9 @@ Retailer sells an item in the physical shop; nothing updates the digital catalog
 ### F-026 BUG: Mobile "Recently Deleted" → permanent delete throws APIError — ✅ **Fixed 2026-08-04** (commit `ac50fe8`)
 `apps/api/src/routes/products.ts` purge route called `prisma.product.delete()` directly; F-017's DB guardrail trigger (`037_db_guardrails` migration, shipped 2026-07-26) blocks all hard deletes on `products` unless `SET app.allow_hard_delete = 'true'` is set first, which the route never did — the trigger's exception isn't the `P2003` code the route's catch block checks for, so it fell through as an unhandled 500 the mobile app showed as `APIError`. Fixed by porting the purge-cron bypass into the route: `getPurgePrisma()` (the `kanchuki_purge` scoped role) + `$transaction` with `SET app.allow_hard_delete = 'true'` before the `.delete()`. `P2003` catch kept. Full root-cause writeup: `docs/PRO-REQUIREMENTS.md` §16.
 
+### F-027: DB-Backed Category/Style/Occasion/Fabric Taxonomy — ✅ **Built + Deployed 2026-08-07**
+Category/Style/Occasion/Fabric moved off hardcoded lists onto the DB — admin-editable, seeded as defaults per new retailer, AI tagging auto-detects Style/Fabric (Occasion/Category already did). New `DefaultProductAttribute`/`ProductAttribute` model pair (migration 046) generalizes the F-024 template pattern across all three kinds instead of three near-duplicate tables; `Product.styles`/`fabrics` soft-matched, same convention as the pre-existing `occasions`. Ladies-only today, `segment` column ready for Men/Kids with zero migration. Deploying 046 surfaced the live DB was 4 migrations behind (042 was last applied, not 045) — 043/044 DDL existed but was unrecorded, 045/046 applied fresh via Supabase SQL Editor, all backfilled and browser-verified live. Full build/deploy detail: `docs/PRO-REQUIREMENTS.md` §18.
+
 ---
 
 ## Phase S: Security Infrastructure & Admin Control (NEW — Month 4–5)
