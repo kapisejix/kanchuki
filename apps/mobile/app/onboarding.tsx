@@ -499,7 +499,8 @@ export default function OnboardingScreen() {
                   <AnimatedPressable
                     key={cat}
                     onPress={() => toggleCategory(cat)}
-                    className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 ${
+                    style={{ maxWidth: '100%', flexShrink: 1 }}
+                    className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 shrink ${
                       selected
                         ? 'bg-ink-600 border-ink-600'
                         : 'bg-white border-sand-200 active:border-ink-300'
@@ -507,7 +508,8 @@ export default function OnboardingScreen() {
                   >
                     <Text className="text-base">{categoryEmoji[cat] ?? '📦'}</Text>
                     <Text
-                      className={`font-medium text-sm ${selected ? 'text-white' : 'text-sand-700'}`}
+                      className={`font-medium text-sm shrink ${selected ? 'text-white' : 'text-sand-700'}`}
+                      style={{ flexShrink: 1 }}
                     >
                       {cat}
                     </Text>
