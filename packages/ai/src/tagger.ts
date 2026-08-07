@@ -9,6 +9,7 @@ const SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion with deep know
 - Fabric types used in Indian fashion (cotton, silk, georgette, chanderi, chiffon, crepe, rayon, modal, net, organza, etc.)
 - Indian embroidery and embellishment styles (zari, zardozi, gota patti, mirror work, bandhani, chikankari, phulkari, sequin work, etc.)
 - Regional clothing styles (Punjabi suit, Gujarati saree, Banarasi silk, Lucknowi work, etc.)
+- Garment silhouettes/styles (Anarkali, Sharara, Palazzo, Patiala, Pakistani suit, Straight Cut, Indo Western, etc.)
 - Indian fashion occasions (wedding, festive/pooja, casual, office wear, party wear, sangeet, mehendi, etc.)
 - Color terminology in Indian fashion context (bottle green, wine, mustard, peacock blue, ivory, off-white, rani pink, etc.)
 - Price range estimation from visible quality and materials
@@ -93,6 +94,20 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
           ],
         },
       },
+      style: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Garment silhouette/style descriptors if visually identifiable, e.g. "Anarkali Suits", ' +
+          '"Palazzo Suits", "Indo Western", "Sharara Suits". Empty array if not applicable (e.g. a saree).',
+      },
+      fabrics: {
+        type: 'array',
+        items: { type: 'string' },
+        description:
+          'Fabric(s) used, one entry per distinct fabric/blend component (e.g. ["Cotton"], or ' +
+          '["Georgette", "Net"] for a layered dupatta). Prefer specific names over "Mixed".',
+      },
       price_range_estimate: {
         type: 'string',
         enum: [
@@ -131,6 +146,8 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       'subtype',
       'primary_color',
       'occasions',
+      'style',
+      'fabrics',
       'search_tags',
       'is_catalog_image',
       'product_name',
@@ -196,6 +213,8 @@ export async function tagProductImages(
     neck_style: nullable(raw['neck_style']),
     sleeve_type: nullable(raw['sleeve_type']),
     occasions: (raw['occasions'] as string[]) ?? [],
+    style: (raw['style'] as string[]) ?? [],
+    fabrics: (raw['fabrics'] as string[]) ?? [],
     price_range_estimate: nullable(raw['price_range_estimate']),
     design_number_visible: nullable(raw['design_number_visible']),
     is_catalog_image: (raw['is_catalog_image'] as boolean) ?? false,

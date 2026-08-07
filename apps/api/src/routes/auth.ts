@@ -3,6 +3,7 @@ import { normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
+import { seedDefaultAttributes } from '../lib/default-attributes.js';
 import { seedDefaultCategories } from '../lib/default-categories.js';
 import { AppError, validationError } from '../plugins/error-handler.js';
 import { signTeamToken } from '../plugins/team-auth.js';
@@ -215,6 +216,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     // it deleted once shop_name is set).
     if (retailer.shop_name === '') {
       await seedDefaultCategories(retailer.id);
+      await seedDefaultAttributes(retailer.id);
     }
 
     return reply.status(200).send({

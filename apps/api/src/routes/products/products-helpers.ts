@@ -69,6 +69,8 @@ export const CreateProductSchema = z.object({
   neck_style: z.string().max(100).optional(),
   sleeve_type: z.string().max(100).optional(),
   occasions: z.array(z.string().max(100)).max(10).optional(),
+  styles: z.array(z.string().max(100)).max(10).optional(),
+  fabrics: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),
   sizes: z.array(z.enum(SIZE_OPTIONS)).max(SIZE_OPTIONS.length).optional(),
   section_id: z.string().optional(),

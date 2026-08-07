@@ -72,6 +72,8 @@ export interface ProductSummary {
 export interface ProductDetail extends ProductSummary {
   product_type: string | null
   fabric_estimate: string | null
+  fabrics: string[]
+  styles: string[]
   pattern: string | null
   embellishments: string[]
   neck_style: string | null
@@ -112,6 +114,8 @@ export interface AiTagResult {
   neck_style: string | null
   sleeve_type: string | null
   occasions: string[]
+  style: string[]
+  fabrics: string[]
   price_range_estimate: string | null
   design_number_visible: string | null
   is_catalog_image: boolean

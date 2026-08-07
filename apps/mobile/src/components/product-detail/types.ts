@@ -19,6 +19,8 @@ export type Product = {
   product_type: string | null
   primary_color: string | null
   fabric_estimate: string | null
+  fabrics: string[]
+  styles: string[]
   pattern: string | null
   occasions: string[]
   sizes: string[]

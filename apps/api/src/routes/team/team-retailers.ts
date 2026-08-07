@@ -4,6 +4,7 @@ import { normalizeIndianPhone } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { seedDefaultAttributes } from '../../lib/default-attributes.js';
 import { seedDefaultCategories } from '../../lib/default-categories.js';
 import { forbidden, validationError } from '../../plugins/error-handler.js';
 import { deriveTerritoryFromPincode, requireRole, teamAuthPreHandler } from './team-helpers.js';
@@ -68,6 +69,7 @@ export const teamRetailersRoutes: FastifyPluginAsync = async (server) => {
     // F-024: agent-created retailers get the default Shop-By-Categories
     // template seeded too (idempotent, safe on the upsert's update path).
     await seedDefaultCategories(retailer.id);
+    await seedDefaultAttributes(retailer.id);
 
     let overCapacity = false;
     if (tm.id !== 'admin-key') {

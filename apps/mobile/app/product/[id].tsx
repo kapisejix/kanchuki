@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  OCCASION_TYPES,
   PRODUCT_CATEGORIES,
-  FABRIC_TYPES,
   PATTERN_TYPES,
   PIECE_TAGGABLE_CATEGORIES,
   SIZE_OPTIONS,
@@ -28,7 +26,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, Camera, X, Tag } from 'lucide-react-native'
-import { productApi, categoryApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
+import {
+  productApi,
+  categoryApi,
+  productAttributeApi,
+  uploadImageToR2,
+  readLocalImage,
+} from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -77,6 +81,8 @@ export default function ProductDetailScreen() {
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
   const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([])
+  const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [saving, setSaving] = useState(false)
   const [retagging, setRetagging] = useState(false)
@@ -96,7 +102,6 @@ export default function ProductDetailScreen() {
   const [editedSubtype, setEditedSubtype] = useState('')
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
   const [editedColor, setEditedColor] = useState('')
-  const [editedFabric, setEditedFabric] = useState<string | null>(null)
   const [editedPattern, setEditedPattern] = useState<string | null>(null)
   const [editedCategoryId, setEditedCategoryId] = useState<string | null>(null)
 
@@ -117,6 +122,24 @@ export default function ProductDetailScreen() {
     queryFn: () => categoryApi.list(),
   })
   const categories = categoriesData?.data ?? []
+
+  // Dynamic, retailer-editable Style/Occasion/Fabric taxonomy (DB-backed,
+  // seeded from the admin default template — no hardcoded option lists).
+  const { data: occasionsData } = useQuery({
+    queryKey: ['attributes', 'OCCASION'],
+    queryFn: () => productAttributeApi.list('OCCASION'),
+  })
+  const occasionOptions = occasionsData?.data ?? []
+  const { data: stylesData } = useQuery({
+    queryKey: ['attributes', 'STYLE'],
+    queryFn: () => productAttributeApi.list('STYLE'),
+  })
+  const styleOptions = stylesData?.data ?? []
+  const { data: fabricsData } = useQuery({
+    queryKey: ['attributes', 'FABRIC'],
+    queryFn: () => productAttributeApi.list('FABRIC'),
+  })
+  const fabricOptions = fabricsData?.data ?? []
 
   // Photo gallery state — tracks which photo is selected in the gallery
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
@@ -433,10 +456,11 @@ export default function ProductDetailScreen() {
     setLocation(product.location_notes ?? '')
     setNotes(product.notes ?? '')
     setSelectedOccasions(product.occasions ?? [])
+    setSelectedStyles(product.styles ?? [])
+    setSelectedFabrics(product.fabrics ?? [])
     setSelectedSizes(product.sizes ?? [])
     setEditedCategory(product.category)
     setEditedColor(product.primary_color ?? '')
-    setEditedFabric(product.fabric_estimate)
     setEditedPattern(product.pattern)
     setEditedCategoryId(product.category_id)
     setEditedName(product.name ?? '')
@@ -473,12 +497,13 @@ export default function ProductDetailScreen() {
         subtype: editedSubtype || undefined,
         category: editedCategory ?? undefined,
         primary_color: editedColor || undefined,
-        fabric_estimate: editedFabric ?? undefined,
         pattern: editedPattern ?? undefined,
         category_id: editedCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
         occasions: selectedOccasions,
+        styles: selectedStyles,
+        fabrics: selectedFabrics,
         sizes: selectedSizes,
       })
       invalidate()
@@ -1345,18 +1370,22 @@ export default function ProductDetailScreen() {
           />
         </View>
 
-        {/* Fabric (editable) */}
+        {/* Fabric (dynamic, DB-backed — multi-select) */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Fabric
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {FABRIC_TYPES.map((fab) => {
-              const selected = editedFabric === fab
+            {fabricOptions.map((fab) => {
+              const selected = selectedFabrics.includes(fab.name)
               return (
                 <AnimatedPressable
-                  key={fab}
-                  onPress={() => dirty(setEditedFabric)(selected ? null : fab)}
+                  key={fab.id}
+                  onPress={() =>
+                    dirty(setSelectedFabrics)((prev) =>
+                      selected ? prev.filter((v) => v !== fab.name) : [...prev, fab.name],
+                    )
+                  }
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -1365,7 +1394,39 @@ export default function ProductDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
-                    {fab}
+                    {fab.name}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
+          </View>
+        </View>
+
+        {/* Style (dynamic, DB-backed — multi-select) */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            Style
+          </Text>
+          <View className="flex-row flex-wrap gap-2">
+            {styleOptions.map((s) => {
+              const selected = selectedStyles.includes(s.name)
+              return (
+                <AnimatedPressable
+                  key={s.id}
+                  onPress={() =>
+                    dirty(setSelectedStyles)((prev) =>
+                      selected ? prev.filter((v) => v !== s.name) : [...prev, s.name],
+                    )
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                  }`}
+                >
+                  {selected && <Check size={12} color="white" />}
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                    {s.name}
                   </Text>
                 </AnimatedPressable>
               )
@@ -1510,20 +1571,20 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
-        {/* Occasion */}
+        {/* Occasion (dynamic, DB-backed — multi-select) */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Occasion
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {OCCASION_TYPES.map((occ) => {
-              const selected = selectedOccasions.includes(occ)
+            {occasionOptions.map((occ) => {
+              const selected = selectedOccasions.includes(occ.name)
               return (
                 <AnimatedPressable
-                  key={occ}
+                  key={occ.id}
                   onPress={() =>
                     dirty(setSelectedOccasions)((prev) =>
-                      selected ? prev.filter((o) => o !== occ) : [...prev, occ],
+                      selected ? prev.filter((o) => o !== occ.name) : [...prev, occ.name],
                     )
                   }
                   accessibilityRole="button"
@@ -1534,7 +1595,7 @@ export default function ProductDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
-                    {occ}
+                    {occ.name}
                   </Text>
                 </AnimatedPressable>
               )

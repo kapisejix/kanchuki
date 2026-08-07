@@ -123,6 +123,119 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
     return reply.status(204).send();
   });
 
+  // ─── GET /admin/default-attributes?kind=STYLE|OCCASION|FABRIC ───
+  // Admin-editable GLOBAL template for the Style/Occasion/Fabric taxonomy —
+  // same forward-only precedent as /admin/default-categories above, just
+  // generalized across the three kinds instead of three separate tables.
+  server.get('/default-attributes', async (request) => {
+    const query = z
+      .object({ kind: z.enum(['STYLE', 'OCCASION', 'FABRIC']).optional() })
+      .parse(request.query);
+
+    const attributes = await prisma.defaultProductAttribute.findMany({
+      where: query.kind ? { kind: query.kind } : undefined,
+      orderBy: [{ kind: 'asc' }, { sort_order: 'asc' }],
+    });
+    return { data: attributes };
+  });
+
+  // ─── POST /admin/default-attributes ──────────────────────────────
+  server.post('/default-attributes', async (request) => {
+    const body = z
+      .object({
+        kind: z.enum(['STYLE', 'OCCASION', 'FABRIC']),
+        name: z.string().min(1).max(100),
+        sort_order: z.number().int().min(0).optional(),
+        is_active: z.boolean().optional(),
+      })
+      .parse(request.body);
+
+    const attribute = await prisma.defaultProductAttribute
+      .create({
+        data: {
+          kind: body.kind,
+          name: body.name.trim(),
+          sort_order: body.sort_order ?? 0,
+          is_active: body.is_active ?? true,
+        },
+      })
+      .catch(() => null);
+    if (!attribute)
+      throw validationError('A default attribute with this name already exists for this kind', 'name');
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'CREATE',
+        resource_type: 'DefaultProductAttribute',
+        resource_id: attribute.id,
+        metadata: { kind: attribute.kind, name: attribute.name, sort_order: attribute.sort_order },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: attribute };
+  });
+
+  // ─── PATCH /admin/default-attributes/:id ─────────────────────────
+  server.patch<{ Params: { id: string } }>('/default-attributes/:id', async (request) => {
+    const body = z
+      .object({
+        name: z.string().min(1).max(100).optional(),
+        sort_order: z.number().int().min(0).optional(),
+        is_active: z.boolean().optional(),
+      })
+      .parse(request.body);
+
+    const attribute = await prisma.defaultProductAttribute
+      .update({
+        where: { id: request.params.id },
+        data: body.name !== undefined ? { ...body, name: body.name.trim() } : body,
+      })
+      .catch(() => null);
+    if (!attribute) throw notFound('Default attribute');
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UPDATE',
+        resource_type: 'DefaultProductAttribute',
+        resource_id: attribute.id,
+        metadata: {
+          kind: attribute.kind,
+          name: attribute.name,
+          sort_order: attribute.sort_order,
+          is_active: attribute.is_active,
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    return { data: attribute };
+  });
+
+  // ─── DELETE /admin/default-attributes/:id ────────────────────────
+  server.delete<{ Params: { id: string } }>('/default-attributes/:id', async (request, reply) => {
+    const attribute = await prisma.defaultProductAttribute
+      .delete({ where: { id: request.params.id } })
+      .catch(() => null);
+
+    if (attribute) {
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'admin',
+          action: 'DELETE',
+          resource_type: 'DefaultProductAttribute',
+          resource_id: attribute.id,
+          metadata: { kind: attribute.kind, name: attribute.name },
+          ip_address: request.ip,
+        },
+      });
+    }
+
+    return reply.status(204).send();
+  });
+
   // ─── AI Provider Registry (F-023) ───────────────────────────────
   // Admin-configurable list of tagging models the failover engine tries in
   // priority order. Each row = provider type + model + API key name + weighted

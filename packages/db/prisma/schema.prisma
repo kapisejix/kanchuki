@@ -73,6 +73,28 @@ enum SizeChartCategory {
   LOWER // Pants, Palazzos, Skirts — waist/hip/length
 }
 
+// Merchandising audience segment for Category/Style/Occasion/Fabric taxonomy
+// (default_product_categories, product_categories, default_product_attributes,
+// product_attributes). Only LADIES is seeded today — MEN/KIDS added later
+// need zero schema/code changes, just new rows.
+enum ProductSegment {
+  LADIES
+  MEN
+  KIDS
+}
+
+// Style/Occasion/Fabric share one generic taxonomy pair (DefaultProductAttribute
+// + ProductAttribute) instead of three near-identical copies of the
+// Category pattern (default_product_categories/product_categories). Category
+// itself stays on its own dedicated model — it drives category_id (a real FK
+// on Product), while Style/Occasion/Fabric are soft-matched name lists (see
+// Product.styles/occasions/fabrics below).
+enum ProductAttributeKind {
+  STYLE
+  OCCASION
+  FABRIC
+}
+
 // ─── INTERNAL TEAM (Kanchuki admin/marketing/support, not retailer-side) ──
 
 enum TeamRole {
@@ -246,6 +268,7 @@ model Retailer {
   staff                 Staff[]
   store_sections        StoreSection[]
   product_categories    ProductCategory[]
+  product_attributes    ProductAttribute[]
   subscriptions         Subscription[]
   try_on_usage          TryOnUsageLog[]
   size_charts           SizeChart[]
@@ -293,12 +316,13 @@ model StoreSection {
 // customer-facing "browse by category" screen after storefront signup.
 
 model ProductCategory {
-  id           String  @id @default(cuid())
+  id           String         @id @default(cuid())
   retailer_id  String
   name         String
+  segment      ProductSegment @default(LADIES)
   image_url    String?
   image_r2_key String?
-  sort_order   Int     @default(0)
+  sort_order   Int            @default(0)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -320,15 +344,57 @@ model ProductCategory {
 // picking categories by hand. Admin edits here are forward-only (new
 // signups only), same precedent as plan_limits/PlanFeature.
 model DefaultProductCategory {
-  id         String   @id @default(cuid())
-  name       String   @unique
-  sort_order Int      @default(0)
-  is_active  Boolean  @default(true)
+  id         String         @id @default(cuid())
+  name       String         @unique
+  segment    ProductSegment @default(LADIES)
+  sort_order Int            @default(0)
+  is_active  Boolean        @default(true)
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   @@map("default_product_categories")
+}
+
+// ─── STYLE / OCCASION / FABRIC — generic taxonomy (mirrors the Category
+// pattern above, generalized across the three kinds instead of three
+// near-duplicate model pairs). Product.styles/occasions/fabrics store the
+// plain attribute names (no FK) — same soft-match convention Product.occasions
+// already used pre-existing. AI tagging (tag-product.ts) writes its raw
+// per-photo guesses directly into these arrays; the retailer's own
+// ProductAttribute rows (defaults + custom) are what the product-add screen
+// offers as selectable options, matched case-insensitively.
+model DefaultProductAttribute {
+  id         String               @id @default(cuid())
+  kind       ProductAttributeKind
+  segment    ProductSegment       @default(LADIES)
+  name       String
+  sort_order Int                  @default(0)
+  is_active  Boolean              @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([kind, segment, name])
+  @@map("default_product_attributes")
+}
+
+model ProductAttribute {
+  id          String               @id @default(cuid())
+  retailer_id String
+  kind        ProductAttributeKind
+  segment     ProductSegment       @default(LADIES)
+  name        String
+  sort_order  Int                  @default(0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@unique([retailer_id, kind, name])
+  @@index([retailer_id, kind])
+  @@map("product_attributes")
 }
 
 // ─── PRODUCTS ────────────────────────────────────────────────────
@@ -356,6 +422,8 @@ model Product {
   neck_style       String?
   sleeve_type      String?
   occasions        String[]
+  styles           String[] // e.g. "Anarkali Suits", "Indo Western" — matched against retailer's ProductAttribute(kind: STYLE) list, no FK (same convention as occasions)
+  fabrics          String[] // e.g. "Cotton", "Georgette" — matched against ProductAttribute(kind: FABRIC); fabric_estimate above stays the free-text AI description
   search_tags      String[]
 
   // Retailer-selected sizes available for this item (S, M, L, XL, XXL, XXXL)

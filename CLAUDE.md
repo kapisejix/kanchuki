@@ -775,6 +775,16 @@ User wants: retailer clicks 3 photos of one product → auto-combine into short 
 
 ---
 
+## 🚧 IN PROGRESS (not deployed) — DB-backed Category/Style/Occasion/Fabric taxonomy (F-027)
+
+**Started 2026-08-07, interrupted mid-task — see `docs/PROGRESS.md` "2026-08-07 — IN PROGRESS" entry for the full resume checklist.** Do not mark this Built until that checklist's steps 1-6 are done and verified.
+
+User ask: move Category/Style/Occasion/Fabric off hardcoded lists onto the DB — admin-editable, seeded as defaults per new retailer, AI tagging auto-detects Style/Fabric (Occasion/Category already did), dynamic select/multi-select on product add. Ladies-only now, schema ready for Men/Kids later via a `segment` column (zero migration needed to add them, just new rows). Style/Fabric are multi-select (user-confirmed); Category stays single (`category_id`), Occasion stays multi (`occasions[]`) — both pre-existing.
+
+**Done:** Prisma schema (`ProductSegment`, `ProductAttributeKind` enums; `DefaultProductAttribute`/`ProductAttribute` models; `Product.styles`/`fabrics`), migration `046_product_attributes` written (not applied), backend seed helper + signup wiring, admin CRUD (`/admin/default-attributes`), retailer CRUD (`/v1/product-attributes`), AI tagger schema extended (style+fabrics), `tag-product.ts` writes them, products API accepts them, mobile `product/add.tsx` + `product/[id].tsx` wired to dynamic DB-backed chips (old hardcoded single-select Fabric UI on `[id].tsx` replaced by the new multi-select, not kept alongside).
+
+**Not done:** `apps/mobile/app/customer/[id].tsx` (Fashion DNA preference screen, still hardcoded) was mid-edit when interrupted; dead-constant removal (`OCCASION_TYPES`/`FABRIC_TYPES` in `packages/shared/src/constants`); admin web UI page; migration not applied (human/admin action per the Operational Control Policy below — never run by the agent); Prisma client not regenerated (blocked by a Windows `EPERM` file lock from a running dev server — stop dev servers first); nothing typechecked yet.
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

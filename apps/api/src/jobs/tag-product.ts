@@ -109,6 +109,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           primary_color: tags.primary_color,
           secondary_colors: tags.secondary_colors,
           fabric_estimate: tags.fabric_estimate,
+          fabrics: tags.fabrics,
+          styles: tags.style,
           pattern: tags.pattern,
           embellishments: tags.embellishments,
           neck_style: tags.neck_style,

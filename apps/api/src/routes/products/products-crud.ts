@@ -348,6 +348,8 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       'primary_color',
       'fabric_estimate',
       'occasions',
+      'styles',
+      'fabrics',
       'search_tags',
     ];
     const needsReembed = embeddingFields.some((f) => f in body.data);
