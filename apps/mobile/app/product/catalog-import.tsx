@@ -14,7 +14,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import { Image } from 'expo-image'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   X,
   Check,
@@ -30,6 +30,7 @@ import {
   catalogImportApi,
   uploadImageToR2,
   readLocalImage,
+  productAttributeApi,
   type CatalogDetectedItem,
 } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
@@ -54,6 +55,8 @@ type ReviewItem = {
     pattern: string
     occasions: string
     search_tags: string
+    styles: string[]
+    fabrics: string[]
     sizes: string[]
     price: string
   }
@@ -83,6 +86,20 @@ export default function CatalogImportScreen() {
     created: number
   } | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
+  // the admin default template) — same queries as the product add/edit
+  // screens (shared query cache), fetched once for the whole batch.
+  const { data: stylesData } = useQuery({
+    queryKey: ['attributes', 'STYLE'],
+    queryFn: () => productAttributeApi.list('STYLE'),
+  })
+  const styleOptions = stylesData?.data ?? []
+  const { data: fabricsData } = useQuery({
+    queryKey: ['attributes', 'FABRIC'],
+    queryFn: () => productAttributeApi.list('FABRIC'),
+  })
+  const fabricOptions = fabricsData?.data ?? []
 
   // ── Pick photo from gallery ───────────────────────────────────
 
@@ -174,6 +191,8 @@ export default function CatalogImportScreen() {
             pattern: item.tags.pattern ?? '',
             occasions: (item.tags.occasions ?? []).join(', '),
             search_tags: (item.tags.search_tags ?? []).join(', '),
+            styles: item.tags.style ?? [],
+            fabrics: item.tags.fabrics ?? [],
             sizes: [],
             price: '',
           },
@@ -241,6 +260,8 @@ export default function CatalogImportScreen() {
             pattern: item.tags.pattern ?? '',
             occasions: (item.tags.occasions ?? []).join(', '),
             search_tags: (item.tags.search_tags ?? []).join(', '),
+            styles: item.tags.style ?? [],
+            fabrics: item.tags.fabrics ?? [],
             sizes: [],
             price: '',
           },
@@ -308,6 +329,23 @@ export default function CatalogImportScreen() {
     )
   }, [])
 
+  // ── Toggle a Style/Fabric chip for one item (multi-select) ──────
+
+  const toggleItemAttribute = useCallback(
+    (index: number, field: 'styles' | 'fabrics', value: string) => {
+      setItems((prev) =>
+        prev.map((item, i) => {
+          if (i !== index) return item
+          const list = item.edits[field].includes(value)
+            ? item.edits[field].filter((v) => v !== value)
+            : [...item.edits[field], value]
+          return { ...item, edits: { ...item.edits, [field]: list } }
+        }),
+      )
+    },
+    [],
+  )
+
   // ── Save selected items ───────────────────────────────────────
 
   const handleSaveSelected = useCallback(async () => {
@@ -337,6 +375,8 @@ export default function CatalogImportScreen() {
                 .map((s) => s.trim())
                 .filter(Boolean)
             : undefined,
+          styles: item.edits.styles.length > 0 ? item.edits.styles : undefined,
+          fabrics: item.edits.fabrics.length > 0 ? item.edits.fabrics : undefined,
           search_tags: item.edits.search_tags
             ? item.edits.search_tags
                 .split(',')
@@ -560,6 +600,27 @@ export default function CatalogImportScreen() {
                     )}
                   </View>
                 )}
+                {(item.original.tags.style.length > 0 ||
+                  item.original.tags.fabrics.length > 0) && (
+                  <View className="flex-row flex-wrap gap-1 mt-1">
+                    {item.original.tags.style.map((s) => (
+                      <Text
+                        key={`style-${s}`}
+                        className="text-xs bg-turmeric-50 text-turmeric-700 px-2 py-0.5 rounded-full"
+                      >
+                        {s}
+                      </Text>
+                    ))}
+                    {item.original.tags.fabrics.map((f) => (
+                      <Text
+                        key={`fabric-${f}`}
+                        className="text-xs bg-ink-50 text-ink-700 px-2 py-0.5 rounded-full"
+                      >
+                        {f}
+                      </Text>
+                    ))}
+                  </View>
+                )}
                 {item.original.tags.fabric_estimate && (
                   <Text className="text-xs text-sand-400 mt-1">
                     {item.original.tags.fabric_estimate}
@@ -609,11 +670,58 @@ export default function CatalogImportScreen() {
                   value={item.edits.primary_color}
                   onChange={(v) => updateEdit(index, 'primary_color', v)}
                 />
-                <EditField
-                  label="Fabric"
-                  value={item.edits.fabric_estimate}
-                  onChange={(v) => updateEdit(index, 'fabric_estimate', v)}
-                />
+                <View>
+                  <Text className="text-xs font-medium text-sand-500 mb-1">Style</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {styleOptions.map((s) => {
+                      const selected = item.edits.styles.includes(s.name)
+                      return (
+                        <AnimatedPressable
+                          key={s.id}
+                          onPress={() => toggleItemAttribute(index, 'styles', s.name)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                          }`}
+                        >
+                          {selected && <Check size={12} color="white" />}
+                          <Text
+                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}
+                          >
+                            {s.name}
+                          </Text>
+                        </AnimatedPressable>
+                      )
+                    })}
+                  </View>
+                </View>
+                <View>
+                  <Text className="text-xs font-medium text-sand-500 mb-1">Fabric</Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {fabricOptions.map((f) => {
+                      const selected = item.edits.fabrics.includes(f.name)
+                      return (
+                        <AnimatedPressable
+                          key={f.id}
+                          onPress={() => toggleItemAttribute(index, 'fabrics', f.name)}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                            selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                          }`}
+                        >
+                          {selected && <Check size={12} color="white" />}
+                          <Text
+                            className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}
+                          >
+                            {f.name}
+                          </Text>
+                        </AnimatedPressable>
+                      )
+                    })}
+                  </View>
+                </View>
                 <EditField
                   label="Pattern"
                   value={item.edits.pattern}

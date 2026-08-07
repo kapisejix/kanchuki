@@ -65,6 +65,8 @@ const fakeTags = {
   neck_style: 'Round Neck',
   sleeve_type: 'Full Sleeve',
   occasions: ['Casual'],
+  style: ['Anarkali Suits'],
+  fabrics: ['Cotton'],
   price_range_estimate: null,
   design_number_visible: null,
   is_catalog_image: false,
@@ -159,6 +161,8 @@ describe('handleTagProduct', () => {
         description: 'A pink printed cotton kurti, great for casual wear.',
         subtype: 'Kurti',
         sku: 'KP0001',
+        styles: ['Anarkali Suits'],
+        fabrics: ['Cotton'],
       }),
     });
   });
@@ -181,6 +185,27 @@ describe('handleTagProduct', () => {
     expect(call.data).not.toHaveProperty('subtype');
     // count() shouldn't even be queried — sku was already set.
     expect(mockCountProduct).not.toHaveBeenCalled();
+  });
+
+  it('never overwrites retailer-picked styles/fabrics on re-tag', async () => {
+    mockFindUniqueProduct.mockResolvedValue({
+      name: null,
+      sku: null,
+      description: null,
+      subtype: null,
+      styles: ['Indo Western'],
+      fabrics: ['Silk'],
+    });
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+
+    await handleTagProduct(baseData);
+
+    const call = mockUpdateProduct.mock.calls[0]?.[0];
+    expect(call.data).not.toHaveProperty('styles');
+    expect(call.data).not.toHaveProperty('fabrics');
+    // name/sku/description/subtype are still filled (all null in the fixture)
+    expect(call.data).toHaveProperty('name');
+    expect(call.data).toHaveProperty('subtype');
   });
 
   it('marks product failed and rethrows when tagging fails', async () => {

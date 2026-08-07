@@ -73,8 +73,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       }
     }
 
-    // Only fill name/sku/description/subtype when still unset — never
-    // clobber a retailer's manual edit on a later re-tag/retry.
+    // Only fill name/sku/description/subtype/styles/fabrics when still
+    // unset — never clobber a retailer's manual edit on a later re-tag/retry.
     const current = await prisma.product.findUnique({
       where: { id: product_id },
       select: {
@@ -83,6 +83,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         description: true,
         subtype: true,
         category_id: true,
+        styles: true,
+        fabrics: true,
       },
     });
 
@@ -109,8 +111,15 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           primary_color: tags.primary_color,
           secondary_colors: tags.secondary_colors,
           fabric_estimate: tags.fabric_estimate,
-          fabrics: tags.fabrics,
-          styles: tags.style,
+          // Same never-clobber rule as the name fields — a retailer's manual
+          // Style/Fabric picks (single-product edit or bulk review screen)
+          // survive re-tags; AI fills them only when still empty.
+          ...(current?.styles == null || current.styles.length === 0
+            ? { styles: tags.style }
+            : {}),
+          ...(current?.fabrics == null || current.fabrics.length === 0
+            ? { fabrics: tags.fabrics }
+            : {}),
           pattern: tags.pattern,
           embellishments: tags.embellishments,
           neck_style: tags.neck_style,
