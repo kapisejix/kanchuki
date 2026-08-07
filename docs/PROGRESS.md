@@ -793,11 +793,11 @@ Three admin-panel features landed this session, each committed + deployed separa
 
 ---
 
-## 2026-08-07 — 🚧 IN PROGRESS: DB-backed Category/Style/Occasion/Fabric taxonomy (F-027)
+## 2026-08-07 — ✅ BUILT + DEPLOYED: DB-backed Category/Style/Occasion/Fabric taxonomy (F-027)
 
 **User ask:** move Category/Style/Occasion/Fabric out of hardcoded lists into the database — admin-editable, seeded as defaults per new retailer, AI tagging auto-detects Style/Fabric (Occasion/Category already did), product-add screen shows them as select/multi-select pulled from the DB. Ladies-only for now, schema must be ready for Men/Kids segments later with zero migration changes (just new rows). Style/Fabric confirmed multi-select by user (Category stays single via existing `category_id`, Occasion stays multi via existing `occasions[]`).
 
-**NOT YET DEPLOYED — migration not applied, Prisma client not regenerated, mobile customer-preference screen not finished, admin UI not built.** Resume here, in this order:
+**Fully deployed and browser-verified — see "Migration applied + live-verified" at the bottom of this entry.** Resume history below kept for context:
 
 ### Done this session
 - **Schema** (`packages/db/prisma/schema.prisma`): `ProductSegment` enum (LADIES/MEN/KIDS), `ProductAttributeKind` enum (STYLE/OCCASION/FABRIC), `segment` column added to `ProductCategory`/`DefaultProductCategory`, new `DefaultProductAttribute`/`ProductAttribute` models (one generic pair covering Style/Occasion/Fabric — not three separate tables), `Product.styles`/`Product.fabrics` (`String[]`, no FK — same soft-match convention `occasions` already used).
@@ -837,3 +837,15 @@ The EPERM lock was a red herring this time — the only `node.exe` running was t
 **Verified this session:** `packages/shared` (after rebuild), `packages/ai`, `packages/db`, `apps/api`, `apps/web`, `apps/mobile` — all `tsc --noEmit` clean. Tests: api 294/294, ai 58/58 (the earlier 1-fail was a flaky 8s image-compress timing, green on re-run), db 10/10. New test file biome-clean.
 
 **Still human-only (unchanged): apply migration 046** via the normal deploy process (`pnpm --filter @kanchuki/db migrate:deploy` with the migrator role, per Operational Control Policy — never run by the agent). Until it's applied, the F-027 routes will 500 on the missing `product_attributes`/`default_product_attributes` tables, and the new admin Default Attributes page + mobile Style/Occasion/Fabric pickers will come back empty.
+
+### Migration applied + live-verified (2026-08-07, human-run via Supabase SQL Editor)
+
+Applying 046 surfaced that the live DB was **four migrations behind**, not one — `_prisma_migrations` topped out at `042_seed_llama_vision_fallbacks`. Diagnosed by direct `information_schema`/`pg_indexes`/`to_regclass` checks (not trusted from `_prisma_migrations`, which turned out to be lying about 043/044):
+
+- **043** (`products.sku/description/subtype` + indexes) and **044** (`team_members.phone` + index) — DDL was **already present** in the live DB (applied by hand at some earlier point, never recorded). Resolved as applied via a manual `_prisma_migrations` INSERT keyed to each file's real sha256 checksum — no DDL re-run.
+- **045** (`default_product_categories` table + 13-item seed + retailer backfill) and **046** (taxonomy tables/enums/seed/backfill + `products.styles`/`fabrics`) — genuinely unapplied. Both run fresh via Supabase SQL Editor (human), each followed by its own `_prisma_migrations` INSERT.
+- **Post-apply verification (live DB query):** 10 `default_product_categories` rows (F-027's replacement list superseding F-024's 13), 33 `default_product_attributes` (9 style/11 occasion/13 fabric — exact match), 66 `product_attributes` rows = 2 existing retailers × 33 (backfill hit both).
+- **Local follow-through:** `pnpm --filter @kanchuki/db db:generate` clean (no EPERM this time), `@kanchuki/db` + `@kanchuki/api` `tsc --noEmit` both 0 errors.
+- **Browser-verified** (headless, real admin session via `sessionStorage.admin_key`) at `/admin/default-attributes`: Style/Occasion/Fabric tabs all render correct seeded names, 0 console errors, 0 failed requests tied to the page. Live CRUD confirmed by the user adding a test STYLE row ("Kurtis") through the actual admin UI — renders back correctly, confirming create+list both work end to end.
+
+**F-027 is now fully done — code, migration, and live UI all verified. Nothing left pending.**
