@@ -3,9 +3,18 @@ import * as SecureStore from 'expo-secure-store';
 // ponytail: in-memory cache over SecureStore — one disk read per key per launch
 const cache = new Map<string, string | null>();
 
+// ponytail: SecureStore.getItemAsync can hang indefinitely on some Android
+// Keystore states (no reject, just never settles) — same failure mode
+// app/_layout.tsx already works around for the theme-palette boot read.
+// getToken() (auth on every API request) routes through here too, so
+// without this race a hung read stalls every screen forever with no error.
+function withTimeout<T>(promise: Promise<T>, fallback: T, ms = 3000): Promise<T> {
+  return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);
+}
+
 export async function getItem(key: string): Promise<string | null> {
   if (!cache.has(key)) {
-    cache.set(key, await SecureStore.getItemAsync(key));
+    cache.set(key, await withTimeout(SecureStore.getItemAsync(key), null));
   }
   return cache.get(key) ?? null;
 }
