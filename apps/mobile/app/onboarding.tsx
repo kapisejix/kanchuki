@@ -273,29 +273,35 @@ export default function OnboardingScreen() {
   )
 
   const handleNext = async () => {
-    // Save step progress to server
-    const nextStep = (step + 1) as Step
-
-    if (step === 1) {
-      await retailerApi.update({
-        shop_name: shopName.trim(),
-        owner_name: ownerName.trim() || undefined,
-        referral_code: referralCode.trim() || undefined,
-      })
-      await retailerApi.updateOnboarding(1)
-      goToStep(nextStep)
-      return
-    }
-
-    if (step < TOTAL_STEPS) {
-      await retailerApi.updateOnboarding(nextStep)
-      goToStep(nextStep)
-      return
-    }
-
-    // Final step — save full profile and redirect
+    // ponytail: Continue wasn't disabled during steps 1-5's network calls —
+    // a slow/double tap could fire goToStep() twice concurrently, and two
+    // overlapping slide animations can leave the Animated.Value stuck
+    // off-zero, permanently shifting that step's content off-screen. Gating
+    // every step on `saving` (not just the final one) blocks the re-entry.
+    if (saving) return
     setSaving(true)
     try {
+      // Save step progress to server
+      const nextStep = (step + 1) as Step
+
+      if (step === 1) {
+        await retailerApi.update({
+          shop_name: shopName.trim(),
+          owner_name: ownerName.trim() || undefined,
+          referral_code: referralCode.trim() || undefined,
+        })
+        await retailerApi.updateOnboarding(1)
+        goToStep(nextStep)
+        return
+      }
+
+      if (step < TOTAL_STEPS) {
+        await retailerApi.updateOnboarding(nextStep)
+        goToStep(nextStep)
+        return
+      }
+
+      // Final step — save full profile and redirect
       await retailerApi.update({
         shop_name: shopName.trim(),
         owner_name: ownerName.trim() || undefined,
@@ -806,7 +812,7 @@ export default function OnboardingScreen() {
             <GradientButton
               label={showConfetti ? "🎉 You're in!" : step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'}
               onPress={() => void handleNext()}
-              disabled={!canProceed() || showConfetti}
+              disabled={!canProceed() || showConfetti || saving}
               loading={saving}
             />
           </View>
