@@ -175,6 +175,8 @@ export async function detectItems(
       neck_style: null,
       sleeve_type: null,
       occasions: g.occasions ?? [],
+      style: [],
+      fabrics: [],
       price_range_estimate: null,
       design_number_visible: nullable(g.design_number),
       is_catalog_image: garments.length > 1,

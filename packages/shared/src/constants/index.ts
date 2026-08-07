@@ -63,23 +63,6 @@ export const PIECE_TAGGABLE_CATEGORIES = [
 
 export const PRODUCT_TYPES = ['Unstitched', 'Semi-Stitched', 'Readymade'] as const;
 
-export const FABRIC_TYPES = [
-  'Cotton',
-  'Silk',
-  'Georgette',
-  'Chiffon',
-  'Chanderi',
-  'Crepe',
-  'Rayon',
-  'Modal',
-  'Net',
-  'Organza',
-  'Linen',
-  'Cotton-Silk Blend',
-  'Cotton-Poly Blend',
-  'Satin',
-] as const;
-
 export const PATTERN_TYPES = [
   'Plain',
   'Printed',
@@ -106,19 +89,6 @@ export const EMBELLISHMENT_TYPES = [
 ] as const;
 
 export const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
-
-export const OCCASION_TYPES = [
-  'Casual',
-  'Office Wear',
-  'Party Wear',
-  'Wedding',
-  'Festive',
-  'Sangeet',
-  'Mehendi',
-  'Pooja',
-  'Daily Wear',
-  'Special Occasion',
-] as const;
 
 // ─── Color Swatch Resolution ──────────────────────────────────────
 // Common Indian-fashion color names aren't valid CSS/RN color keywords

@@ -224,22 +224,6 @@ vi.mock('@kanchuki/shared', () => ({
     'Other',
   ],
   PRODUCT_TYPES: ['Unstitched', 'Semi-Stitched', 'Readymade'],
-  FABRIC_TYPES: [
-    'Cotton',
-    'Silk',
-    'Georgette',
-    'Chiffon',
-    'Chanderi',
-    'Crepe',
-    'Rayon',
-    'Modal',
-    'Net',
-    'Organza',
-    'Linen',
-    'Cotton-Silk Blend',
-    'Cotton-Poly Blend',
-    'Satin',
-  ],
   PATTERN_TYPES: [
     'Plain',
     'Printed',
@@ -263,19 +247,6 @@ vi.mock('@kanchuki/shared', () => ({
     'Thread Work',
     'None',
   ],
-  OCCASION_TYPES: [
-    'Casual',
-    'Office Wear',
-    'Party Wear',
-    'Wedding',
-    'Festive',
-    'Sangeet',
-    'Mehendi',
-    'Pooja',
-    'Daily Wear',
-    'Special Occasion',
-  ],
-
   // R2 paths
   R2_PATHS: {
     productPhoto: (r: string, p: string, f: string) =>

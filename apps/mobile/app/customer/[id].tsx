@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FABRIC_TYPES, OCCASION_TYPES, formatPrice, COLORS } from '@kanchuki/shared'
+import { formatPrice, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -15,13 +15,11 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
-import { customerApi, sizeChartApi, collectionApi } from '../../src/lib/api'
+import { customerApi, sizeChartApi, collectionApi, productAttributeApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-
-const STYLE_OPTIONS = ['Casual', 'Party', 'Office', 'Wedding', 'Festive']
 
 type Interaction = {
   id: string
@@ -118,6 +116,24 @@ export default function CustomerDetailScreen() {
   const matches = (matchesData as { data: { products: MatchedProduct[]; dna_used: boolean } } | undefined)?.data
   const matchedProducts = matches?.products ?? []
   const dnaUsed = matches?.dna_used ?? false
+
+  // Dynamic, retailer-editable Style/Occasion/Fabric taxonomy (DB-backed,
+  // same lists the product-add screen uses — no hardcoded option lists).
+  const { data: stylesData } = useQuery({
+    queryKey: ['attributes', 'STYLE'],
+    queryFn: () => productAttributeApi.list('STYLE'),
+  })
+  const styleOptions = stylesData?.data ?? []
+  const { data: fabricsData } = useQuery({
+    queryKey: ['attributes', 'FABRIC'],
+    queryFn: () => productAttributeApi.list('FABRIC'),
+  })
+  const fabricOptions = fabricsData?.data ?? []
+  const { data: occasionsData } = useQuery({
+    queryKey: ['attributes', 'OCCASION'],
+    queryFn: () => productAttributeApi.list('OCCASION'),
+  })
+  const occasionOptions = occasionsData?.data ?? []
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -499,12 +515,12 @@ export default function CustomerDetailScreen() {
             Preferred Style
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {STYLE_OPTIONS.map((s) => {
-              const selected = prefStyles.includes(s)
+            {styleOptions.map((s) => {
+              const selected = prefStyles.includes(s.name)
               return (
                 <AnimatedPressable
-                  key={s}
-                  onPress={() => toggle(prefStyles, setPrefStyles, s)}
+                  key={s.id}
+                  onPress={() => toggle(prefStyles, setPrefStyles, s.name)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -512,7 +528,7 @@ export default function CustomerDetailScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{s}</Text>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{s.name}</Text>
                 </AnimatedPressable>
               )
             })}
@@ -525,12 +541,12 @@ export default function CustomerDetailScreen() {
             Preferred Fabrics
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {FABRIC_TYPES.map((f) => {
-              const selected = prefFabrics.includes(f)
+            {fabricOptions.map((f) => {
+              const selected = prefFabrics.includes(f.name)
               return (
                 <AnimatedPressable
-                  key={f}
-                  onPress={() => toggle(prefFabrics, setPrefFabrics, f)}
+                  key={f.id}
+                  onPress={() => toggle(prefFabrics, setPrefFabrics, f.name)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -538,7 +554,7 @@ export default function CustomerDetailScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f}</Text>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f.name}</Text>
                 </AnimatedPressable>
               )
             })}
@@ -551,12 +567,12 @@ export default function CustomerDetailScreen() {
             Occasions
           </Text>
           <View className="flex-row flex-wrap gap-2">
-            {OCCASION_TYPES.map((o) => {
-              const selected = prefOccasions.includes(o)
+            {occasionOptions.map((o) => {
+              const selected = prefOccasions.includes(o.name)
               return (
                 <AnimatedPressable
-                  key={o}
-                  onPress={() => toggle(prefOccasions, setPrefOccasions, o)}
+                  key={o.id}
+                  onPress={() => toggle(prefOccasions, setPrefOccasions, o.name)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
@@ -564,7 +580,7 @@ export default function CustomerDetailScreen() {
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{o}</Text>
+                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{o.name}</Text>
                 </AnimatedPressable>
               )
             })}
