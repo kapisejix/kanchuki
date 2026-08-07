@@ -60,9 +60,7 @@ export async function verifyAdminSession(token: string): Promise<boolean> {
 // Decode the admin email from a session JWT, or null when the token is
 // absent/invalid. Used by GET /admin/session — a DB-free session check so
 // the admin panel's refresh gate never depends on database health.
-export async function adminSessionEmail(
-  token: string | undefined,
-): Promise<string | null> {
+export async function adminSessionEmail(token: string | undefined): Promise<string | null> {
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, sessionSecret());

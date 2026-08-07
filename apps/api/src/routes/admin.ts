@@ -148,9 +148,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // key/JWT auth (enforced by adminAuthPreHandler above) and never touches
   // the database.
   server.get('/session', async (request) => {
-    const email = await adminSessionEmail(
-      request.headers['x-admin-key'] as string | undefined,
-    );
+    const email = await adminSessionEmail(request.headers['x-admin-key'] as string | undefined);
     return { data: { authenticated: true, ...(email ? { email } : {}) } };
   });
 

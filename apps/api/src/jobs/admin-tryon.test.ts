@@ -55,9 +55,14 @@ describe('handleAdminTryOn', () => {
     });
     mockSsrfSafeFetch.mockResolvedValue({ ok: true, status: 200 });
     mockReadCappedBuffer.mockResolvedValue(Buffer.from('png-bytes'));
-    mockCompressImageToTarget.mockResolvedValue({ buffer: Buffer.from('jpg-bytes'), unchanged: false });
+    mockCompressImageToTarget.mockResolvedValue({
+      buffer: Buffer.from('jpg-bytes'),
+      unchanged: false,
+    });
     mockUploadBuffer.mockResolvedValue(undefined);
-    mockPublicUrl.mockReturnValue('https://r2.example/admin/photo-cleanup-tests/abc-123-onmodel.jpg');
+    mockPublicUrl.mockReturnValue(
+      'https://r2.example/admin/photo-cleanup-tests/abc-123-onmodel.jpg',
+    );
 
     await handleAdminTryOn(JOB);
 
@@ -77,7 +82,7 @@ describe('handleAdminTryOn', () => {
       'image/jpeg',
     );
 
-    const audit = mockAuditCreate.mock.calls[0]![0] as {
+    const audit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { action: string; metadata: Record<string, unknown> };
     };
     expect(audit.data.action).toBe('ADMIN_TRYON');
@@ -95,7 +100,7 @@ describe('handleAdminTryOn', () => {
 
     await expect(handleAdminTryOn(JOB)).rejects.toThrow('cold-starting');
 
-    const audit = mockAuditCreate.mock.calls[0]![0] as {
+    const audit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { metadata: Record<string, unknown> };
     };
     expect(audit.data.metadata.status).toBe('failed');
@@ -112,7 +117,7 @@ describe('handleAdminTryOn', () => {
     });
 
     await expect(handleAdminTryOn(JOB)).rejects.toThrow('no result');
-    const audit = mockAuditCreate.mock.calls[0]![0] as {
+    const audit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { metadata: Record<string, unknown> };
     };
     expect(audit.data.metadata.status).toBe('failed');
@@ -129,7 +134,7 @@ describe('handleAdminTryOn', () => {
     mockSsrfSafeFetch.mockResolvedValue({ ok: false, status: 500 });
 
     await expect(handleAdminTryOn(JOB)).rejects.toThrow('Failed to fetch try-on result');
-    const audit = mockAuditCreate.mock.calls[0]![0] as {
+    const audit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { metadata: Record<string, unknown> };
     };
     expect(audit.data.metadata.status).toBe('failed');

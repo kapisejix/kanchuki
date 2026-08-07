@@ -92,10 +92,17 @@ async function runPython(args: string[], timeoutMs = 180_000): Promise<void> {
       return;
     } catch (err: unknown) {
       if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue; // binary doesn't exist, try next
-      const e = err as NodeJS.ErrnoException & { stdout?: string; stderr?: string; killed?: boolean };
+      const e = err as NodeJS.ErrnoException & {
+        stdout?: string;
+        stderr?: string;
+        killed?: boolean;
+      };
       // The script's real per-photo failure reason ("FAILED: ...") is a
       // print() — it lands on stdout, not stderr. Surface both.
-      const detail = [e.stdout, e.stderr].map((s) => s?.trim()).filter(Boolean).join(' | ');
+      const detail = [e.stdout, e.stderr]
+        .map((s) => s?.trim())
+        .filter(Boolean)
+        .join(' | ');
       // A dev box can have multiple Python installs under different names
       // (e.g. a Windows Store `python3` alias vs a real `python` with deps
       // installed). "No module named ..." — whether it's an uncaught
@@ -168,7 +175,12 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           // fixes the documented rembg failure mode where a second
           // garment/prop in frame gets kept as "foreground" too.
           crop: z
-            .object({ x1: z.number().int(), y1: z.number().int(), x2: z.number().int(), y2: z.number().int() })
+            .object({
+              x1: z.number().int(),
+              y1: z.number().int(),
+              x2: z.number().int(),
+              y2: z.number().int(),
+            })
             .optional(),
         })
         .parse(request.body);

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 
 // The job's contract: re-queue tag jobs for ai_tagged products with any of
@@ -60,7 +60,7 @@ describe('handleBackfillMissingAiFields', () => {
 
     await handleBackfillMissingAiFields();
 
-    const call = mockFindMany.mock.calls[0]![0] as {
+    const call = mockFindMany.mock.calls[0]?.[0] as {
       where: { ai_tagged: boolean; deleted_at: null; OR: unknown[] };
     };
     expect(call.where.ai_tagged).toBe(true);

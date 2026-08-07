@@ -77,6 +77,16 @@ while IFS= read -r line; do
     continue
   fi
 
+  # Service-worker route matchers (apps/web/src/app/sw.ts) legitimately test
+  # URL pathnames to decide caching/routing strategy — a
+  # `url.pathname.startsWith('/v1/...')` expression is a request-routing RULE,
+  # not a fetch to the web origin, so it has none of the /v1/-404 failure mode
+  # this guard exists for. Only actual fetch()/XHR/axios call sites are the bug
+  # class (the 2026-08-01 checkout-status incident).
+  if echo "$line" | grep -qE "pathname\.startsWith\('/v1/"; then
+    continue
+  fi
+
   echo -e "${RED}  ✖ VIOLATION: ${line}${NC}"
   echo -e "${RED}    → Relative /v1/ fetch on the web origin will 404.${NC}"
   echo -e "${RED}    → Use an absolute URL (apiUrl/API_URL from @/lib/apiUrl)${NC}"

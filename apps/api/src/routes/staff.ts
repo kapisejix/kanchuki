@@ -55,7 +55,10 @@ export const staffRoutes: FastifyPluginAsync = async (server) => {
       select: { id: true },
     });
     if (retailerWithPhone)
-      throw validationError('This phone number is already registered as a retailer account', 'phone');
+      throw validationError(
+        'This phone number is already registered as a retailer account',
+        'phone',
+      );
 
     const staff = await prisma.staff.create({
       data: { retailer_id: retailerId, ...body.data, phone: normalizedPhone },

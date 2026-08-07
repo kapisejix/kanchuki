@@ -53,10 +53,7 @@ describe('withUniqueSku', () => {
 
   it('retries with an incremented sequence on a P2002 collision', async () => {
     mockCountProduct.mockResolvedValue(0);
-    const apply = vi
-      .fn()
-      .mockRejectedValueOnce({ code: 'P2002' })
-      .mockResolvedValueOnce('ok');
+    const apply = vi.fn().mockRejectedValueOnce({ code: 'P2002' }).mockResolvedValueOnce('ok');
 
     const result = await withUniqueSku('retailer_1', 'Kurta', apply);
 

@@ -35,6 +35,8 @@ const SMALL = Buffer.alloc(40 * 1024, 2);
 describe('handleCompressR2Images', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // NOTE: must be `delete`, not `= undefined` — Node coerces the latter to
+    // the truthy STRING 'undefined', which would defeat the skip guard.
     delete process.env.R2_ACCOUNT_ID;
   });
 
@@ -128,7 +130,7 @@ describe('handleCompressR2Images', () => {
     expect(result.bytes_after).toBe(30 * 1024);
     expect(result.bytes_saved).toBe(70 * 1024);
 
-    const audit = mockAuditCreate.mock.calls[0]![0] as {
+    const audit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { action: string; metadata: Record<string, unknown> };
     };
     expect(audit.data.action).toBe('COMPRESS_R2_IMAGES');
@@ -140,14 +142,14 @@ describe('handleCompressR2Images', () => {
     mockListObjects.mockResolvedValue([]);
 
     await handleCompressR2Images(); // cron-style call, no options
-    const cronAudit = mockAuditCreate.mock.calls[0]![0] as {
+    const cronAudit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { metadata: Record<string, unknown> };
     };
     expect(cronAudit.data.metadata.triggered_by).toBe('schedule');
 
     mockAuditCreate.mockClear();
     await handleCompressR2Images({ triggered_by: 'admin' }); // Storage Report button
-    const adminAudit = mockAuditCreate.mock.calls[0]![0] as {
+    const adminAudit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: { metadata: Record<string, unknown> };
     };
     expect(adminAudit.data.metadata.triggered_by).toBe('admin');

@@ -665,7 +665,7 @@ function CropPicker({
       <p className="text-sm font-medium text-gray-800">Crop before background removal (optional)</p>
       <p className="text-xs text-gray-400">
         Drag on the photo to isolate the subject — fixes a second garment/prop or busy backdrop getting
-        kept as "foreground" by mistake.
+        kept as “foreground” by mistake.
       </p>
       <div
         className="relative inline-block max-w-full cursor-crosshair select-none"

@@ -161,7 +161,10 @@ export const adminMiscRoutes: FastifyPluginAsync = async (server) => {
       })
       .catch(() => null);
     if (!attribute)
-      throw validationError('A default attribute with this name already exists for this kind', 'name');
+      throw validationError(
+        'A default attribute with this name already exists for this kind',
+        'name',
+      );
 
     await prisma.auditLog.create({
       data: {

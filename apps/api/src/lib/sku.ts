@@ -10,7 +10,7 @@ export function skuPrefix(subtypeOrCategory: string | null | undefined): string 
     .join('')
     .toUpperCase()
     .replace(/[^A-Z]/g, '');
-  return letters.length >= 2 ? letters : (letters + 'PR').slice(0, 2);
+  return letters.length >= 2 ? letters : `${letters}PR`.slice(0, 2);
 }
 
 // Retailer-scoped, monotonic per-prefix sequence, zero-padded to 4 digits

@@ -98,7 +98,7 @@ export default function ScanScreen() {
       <View className="absolute inset-0 items-center justify-center">
         <View className="w-64 h-40 border-2 border-white/60 rounded-3xl bg-white/5" />
         <Text className="text-white/80 text-sm mt-4">
-          Point at the product's SKU tag (QR or barcode)
+          Point at the product’s SKU tag (QR or barcode)
         </Text>
       </View>
 

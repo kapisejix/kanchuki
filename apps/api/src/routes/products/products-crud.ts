@@ -212,9 +212,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     // lib/photo-cleanup.ts) — null for photos that were never bg-cleaned.
     const photosWithUrls = await Promise.all(
       (product.photos ?? []).map(async (photo) => {
-        const originalR2Key = (photo.metadata as Record<string, unknown> | null)?.[
-          'original_r2_key'
-        ];
+        const originalR2Key = (photo.metadata as Record<string, unknown> | null)?.original_r2_key;
         return {
           ...photo,
           url: (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url,

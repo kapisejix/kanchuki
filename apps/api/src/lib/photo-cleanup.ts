@@ -22,7 +22,7 @@ export async function preserveOriginalPhoto(
   raw: Buffer,
 ): Promise<void> {
   const meta = (existingMetadata as Record<string, unknown> | null) ?? {};
-  if (meta['original_r2_key']) return;
+  if (meta.original_r2_key) return;
   const key = originalR2Key(r2Key);
   await uploadBuffer(key, raw, 'image/jpeg');
   await prisma.productPhoto.update({

@@ -43,7 +43,7 @@ describe('handleMeasureR2Storage', () => {
 
     await handleMeasureR2Storage();
 
-    const audit = mockAuditCreate.mock.calls[0]![0] as {
+    const audit = mockAuditCreate.mock.calls[0]?.[0] as {
       data: {
         actor_type: string;
         action: string;

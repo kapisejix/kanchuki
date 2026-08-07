@@ -69,7 +69,8 @@ export async function handleBackfillMissingAiFields(cap = DEFAULT_CAP): Promise<
     if (rows.length === 0) break;
 
     for (const row of rows) {
-      if (requeued >= cap) return { scanned, requeued, skipped_quota_or_error: skipped, done: false };
+      if (requeued >= cap)
+        return { scanned, requeued, skipped_quota_or_error: skipped, done: false };
       const photo = row.photos[0];
       if (!photo) {
         skipped += 1; // no primary photo — nothing to tag from
@@ -98,7 +99,7 @@ export async function handleBackfillMissingAiFields(cap = DEFAULT_CAP): Promise<
     }
 
     if (rows.length < BATCH_SIZE) break;
-    cursor = rows[rows.length - 1]!.id;
+    cursor = rows[rows.length - 1]!.id; // non-null: loop just checked rows.length > 0
   }
 
   return { scanned, requeued, skipped_quota_or_error: skipped, done: true };
