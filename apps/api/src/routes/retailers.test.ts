@@ -31,6 +31,15 @@ const {
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
   getSecret: mockGetSecret,
+  // Import-chain requirement only: retailers route graph pulls purge modules
+  // that call getPurgePrisma() at module top-level. Never exercised by this suite.
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
+    $transaction: (ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+    retailer: { findUnique: vi.fn() },
+  }),
   prisma: {
     retailer: { findUnique: mockRetailerFindUnique, update: mockRetailerUpdate },
     collection: { findFirst: mockCollectionFindFirst },

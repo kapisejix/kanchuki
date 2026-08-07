@@ -37,6 +37,10 @@ const {
   mockAiProviderUpdate,
   mockAiProviderDelete,
   mockAiUsageGroupBy,
+  mockDefaultAttributeFindMany,
+  mockDefaultAttributeCreate,
+  mockDefaultAttributeUpdate,
+  mockDefaultAttributeDelete,
   mockHardDeleteRetailer,
 } = vi.hoisted(() => ({
   mockRetailerFindUnique: vi.fn(),
@@ -70,6 +74,10 @@ const {
   mockAiProviderUpdate: vi.fn(),
   mockAiProviderDelete: vi.fn(),
   mockAiUsageGroupBy: vi.fn(),
+  mockDefaultAttributeFindMany: vi.fn(),
+  mockDefaultAttributeCreate: vi.fn(),
+  mockDefaultAttributeUpdate: vi.fn(),
+  mockDefaultAttributeDelete: vi.fn(),
   mockHardDeleteRetailer: vi.fn(),
 }));
 
@@ -82,6 +90,15 @@ vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
   getReplicaPrisma: () => ({ $queryRawUnsafe: vi.fn() }),
   getVaultPrisma: () => null,
+  // Import-chain requirement only: admin-storage/jobs graph pulls
+  // purge-soft-deleted, which calls getPurgePrisma() at module top-level.
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
+    $transaction: (ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+    retailer: { findUnique: vi.fn() },
+  }),
   encryptSecret: (plaintext: string) => `enc:${plaintext}`,
   maskSecret: (plaintext: string) => `masked:${plaintext.slice(-4)}`,
   invalidateSecret: vi.fn(),
@@ -103,6 +120,12 @@ vi.mock('@kanchuki/db', () => ({
       delete: mockAiProviderDelete,
     },
     aiUsageLog: { groupBy: mockAiUsageGroupBy },
+    defaultProductAttribute: {
+      findMany: mockDefaultAttributeFindMany,
+      create: mockDefaultAttributeCreate,
+      update: mockDefaultAttributeUpdate,
+      delete: mockDefaultAttributeDelete,
+    },
     retailer: {
       findUnique: mockRetailerFindUnique,
       findMany: mockRetailerFindMany,
@@ -1130,6 +1153,244 @@ describe('Admin AI providers', () => {
     expect(row.retailer_name).toBe('Test Shop');
     expect(row.calls).toBe(4);
     expect(row.credits_used).toBe(12);
+    await app.close();
+  });
+});
+
+// ─── Default Attributes (F-027) ───────────────────────────────────
+
+const fakeDefaultAttribute = {
+  id: 'attr_1',
+  kind: 'STYLE',
+  segment: 'LADIES',
+  name: 'Anarkali Suits',
+  sort_order: 2,
+  is_active: true,
+  created_at: new Date(),
+  updated_at: new Date(),
+};
+
+describe('Admin default attributes', () => {
+  it('rejects unauthenticated requests', async () => {
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/admin/default-attributes' });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('lists the full template without a kind filter', async () => {
+    mockDefaultAttributeFindMany.mockResolvedValue([fakeDefaultAttribute]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/default-attributes',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockDefaultAttributeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: undefined,
+        orderBy: [{ kind: 'asc' }, { sort_order: 'asc' }],
+      }),
+    );
+    expect(res.json().data).toHaveLength(1);
+    await app.close();
+  });
+
+  it('filters by kind', async () => {
+    mockDefaultAttributeFindMany.mockResolvedValue([fakeDefaultAttribute]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/default-attributes?kind=FABRIC',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockDefaultAttributeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { kind: 'FABRIC' } }),
+    );
+    await app.close();
+  });
+
+  it('rejects an invalid kind param with 422', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/default-attributes?kind=NOPE',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    expect(mockDefaultAttributeFindMany).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('creates a template value, storing the trimmed name and auditing it', async () => {
+    mockDefaultAttributeCreate.mockResolvedValue({
+      ...fakeDefaultAttribute,
+      name: 'Sharara Suits',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/default-attributes',
+      headers: csrfHeaders(),
+      payload: { kind: 'STYLE', name: '  Sharara Suits  ' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.name).toBe('Sharara Suits');
+    expect(mockDefaultAttributeCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kind: 'STYLE',
+          name: 'Sharara Suits', // trimmed
+          sort_order: 0,
+          is_active: true,
+        }),
+      }),
+    );
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'CREATE',
+          resource_type: 'DefaultProductAttribute',
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('rejects a duplicate name for the same kind with 422', async () => {
+    // create() rejecting (P2002) is caught → null → validationError
+    mockDefaultAttributeCreate.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/default-attributes',
+      headers: csrfHeaders(),
+      payload: { kind: 'STYLE', name: 'Anarkali Suits' },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    expect(res.json().error.field).toBe('name');
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an invalid kind with 422', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/default-attributes',
+      headers: csrfHeaders(),
+      payload: { kind: 'COLOR', name: 'Red' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockDefaultAttributeCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an empty name with 422', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/default-attributes',
+      headers: csrfHeaders(),
+      payload: { kind: 'FABRIC', name: '' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockDefaultAttributeCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('updates a template value, auditing the change', async () => {
+    mockDefaultAttributeUpdate.mockResolvedValue({
+      ...fakeDefaultAttribute,
+      sort_order: 5,
+      is_active: false,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/admin/default-attributes/attr_1',
+      headers: csrfHeaders(),
+      payload: { sort_order: 5, is_active: false },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.sort_order).toBe(5);
+    expect(res.json().data.is_active).toBe(false);
+    expect(mockDefaultAttributeUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'attr_1' },
+        data: expect.objectContaining({ sort_order: 5, is_active: false }),
+      }),
+    );
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'UPDATE',
+          resource_type: 'DefaultProductAttribute',
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('returns 404 when updating a missing attribute', async () => {
+    mockDefaultAttributeUpdate.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/admin/default-attributes/missing',
+      headers: csrfHeaders(),
+      payload: { sort_order: 1 },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('NOT_FOUND');
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('deletes a template value, returning 204 and auditing', async () => {
+    mockDefaultAttributeDelete.mockResolvedValue(fakeDefaultAttribute);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/default-attributes/attr_1',
+      headers: csrfHeaders(),
+      body: {},
+    });
+    expect(res.statusCode).toBe(204);
+    expect(mockDefaultAttributeDelete).toHaveBeenCalledWith({ where: { id: 'attr_1' } });
+    expect(mockAuditLogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          action: 'DELETE',
+          resource_type: 'DefaultProductAttribute',
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('still returns 204 for a missing attribute (silent, mirrors default-categories)', async () => {
+    mockDefaultAttributeDelete.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/default-attributes/missing',
+      headers: csrfHeaders(),
+      body: {},
+    });
+    expect(res.statusCode).toBe(204);
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
     await app.close();
   });
 });

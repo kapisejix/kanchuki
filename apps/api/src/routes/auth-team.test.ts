@@ -35,6 +35,11 @@ const mockSignTeamToken = vi.hoisted(() => vi.fn());
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
+    // F-024/F-027 seed helpers run on self-serve retailer signup and degrade
+    // best-effort when the template tables aren't mocked — stub them so the
+    // tests don't log a spurious "Failed to seed ..." error per run.
+    defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
+    defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
     staff: { findFirst: mockStaffFindFirst, update: mockStaffUpdate },
     teamMember: { findFirst: mockTeamMemberFindFirst },
     retailer: {

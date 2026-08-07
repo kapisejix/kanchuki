@@ -17,6 +17,15 @@ vi.mock('@kanchuki/db', () => ({
     product: { count: vi.fn() },
     collectionEnquiry: { count: vi.fn(), create: vi.fn() },
   },
+  // Import-chain requirement only: public route graph pulls purge modules that
+  // call getPurgePrisma() at module top-level. Never exercised by this suite.
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
+    $transaction: (ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+    retailer: { findUnique: vi.fn() },
+  }),
 }));
 
 async function buildApp() {

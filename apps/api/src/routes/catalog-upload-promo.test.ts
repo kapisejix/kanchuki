@@ -33,6 +33,15 @@ vi.mock('@kanchuki/db', () => ({
       create: mockAuditLogCreate,
     },
   },
+  // Import-chain requirement only: team route graph pulls purge modules that
+  // call getPurgePrisma() at module top-level. Never exercised by this suite.
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
+    $transaction: (ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+    retailer: { findUnique: vi.fn() },
+  }),
   Prisma: {},
 }));
 

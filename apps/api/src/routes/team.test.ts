@@ -45,7 +45,21 @@ const {
 }));
 
 vi.mock('@kanchuki/db', () => ({
+  // Import-chain requirement only: team route graph pulls purge modules that
+  // call getPurgePrisma() at module top-level. Never exercised by this suite.
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
+    $transaction: (ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+    retailer: { findUnique: vi.fn() },
+  }),
   prisma: {
+    // F-024/F-027 seed helpers run on agent-created retailer onboarding and
+    // degrade best-effort when the template tables aren't mocked — stub them
+    // so the tests don't log a spurious "Failed to seed ..." error per run.
+    defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
+    defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
     teamMember: {
       findUnique: mockTeamMemberFindUnique,
       findMany: mockTeamMemberFindMany,

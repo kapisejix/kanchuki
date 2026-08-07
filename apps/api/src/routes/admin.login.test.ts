@@ -12,6 +12,16 @@ vi.mock('@kanchuki/db', () => ({
   maskSecret: (plaintext: string) => `masked:${plaintext.slice(-4)}`,
   invalidateSecret: vi.fn(),
   getSecret: vi.fn(),
+  // Import-chain requirement only: admin-routes graph pulls purge-retailer-now /
+  // purge-soft-deleted, both calling getPurgePrisma() at module top-level.
+  // Never exercised by this suite (login-only).
+  getPurgePrisma: () => ({
+    $executeRawUnsafe: vi.fn(),
+    $queryRawUnsafe: vi.fn(),
+    $transaction: (ops: unknown) =>
+      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+    retailer: { findUnique: vi.fn() },
+  }),
   prisma: {},
   Prisma: {},
 }));
