@@ -18,7 +18,11 @@ const mockUpsertUsageCounter = vi.fn().mockResolvedValue({});
 vi.mock('@kanchuki/db', () => ({
   prisma: {
     productPhoto: { updateMany: mockUpdateManyPhoto },
-    product: { update: mockUpdateProduct, findUnique: mockFindUniqueProduct, count: mockCountProduct },
+    product: {
+      update: mockUpdateProduct,
+      findUnique: mockFindUniqueProduct,
+      count: mockCountProduct,
+    },
     retailer: { findUniqueOrThrow: mockFindUniqueOrThrowRetailer },
     retailerLimitOverride: { findUnique: mockFindUniqueOverride },
     planLimit: { findUnique: mockFindUniquePlanLimit },
@@ -163,6 +167,7 @@ describe('handleTagProduct', () => {
         sku: 'KP0001',
         styles: ['Anarkali Suits'],
         fabrics: ['Cotton'],
+        occasions: ['Casual'],
       }),
     });
   });
@@ -206,6 +211,25 @@ describe('handleTagProduct', () => {
     // name/sku/description/subtype are still filled (all null in the fixture)
     expect(call.data).toHaveProperty('name');
     expect(call.data).toHaveProperty('subtype');
+  });
+
+  it('never overwrites retailer-picked occasions on re-tag', async () => {
+    mockFindUniqueProduct.mockResolvedValue({
+      name: null,
+      sku: null,
+      description: null,
+      subtype: null,
+      occasions: ['Wedding'],
+    });
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+
+    await handleTagProduct(baseData);
+
+    const call = mockUpdateProduct.mock.calls[0]?.[0];
+    expect(call.data).not.toHaveProperty('occasions');
+    // styles/fabrics still fill (empty in the fixture)
+    expect(call.data).toHaveProperty('styles');
+    expect(call.data).toHaveProperty('fabrics');
   });
 
   it('marks product failed and rethrows when tagging fails', async () => {

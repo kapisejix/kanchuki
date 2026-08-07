@@ -73,8 +73,9 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       }
     }
 
-    // Only fill name/sku/description/subtype/styles/fabrics when still
-    // unset — never clobber a retailer's manual edit on a later re-tag/retry.
+    // Only fill name/sku/description/subtype/styles/fabrics/occasions when
+    // still unset — never clobber a retailer's manual edit on a later
+    // re-tag/retry.
     const current = await prisma.product.findUnique({
       where: { id: product_id },
       select: {
@@ -85,6 +86,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         category_id: true,
         styles: true,
         fabrics: true,
+        occasions: true,
       },
     });
 
@@ -112,19 +114,19 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           secondary_colors: tags.secondary_colors,
           fabric_estimate: tags.fabric_estimate,
           // Same never-clobber rule as the name fields — a retailer's manual
-          // Style/Fabric picks (single-product edit or bulk review screen)
-          // survive re-tags; AI fills them only when still empty.
-          ...(current?.styles == null || current.styles.length === 0
-            ? { styles: tags.style }
-            : {}),
+          // Style/Fabric/Occasion picks (single-product edit or bulk review
+          // screen) survive re-tags; AI fills them only when still empty.
+          ...(current?.styles == null || current.styles.length === 0 ? { styles: tags.style } : {}),
           ...(current?.fabrics == null || current.fabrics.length === 0
             ? { fabrics: tags.fabrics }
+            : {}),
+          ...(current?.occasions == null || current.occasions.length === 0
+            ? { occasions: tags.occasions }
             : {}),
           pattern: tags.pattern,
           embellishments: tags.embellishments,
           neck_style: tags.neck_style,
           sleeve_type: tags.sleeve_type,
-          occasions: tags.occasions,
           search_tags: tags.search_tags,
           ...(current?.subtype == null ? { subtype: tags.subtype } : {}),
           ...(current?.name == null ? { name: tags.product_name } : {}),
