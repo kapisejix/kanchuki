@@ -261,7 +261,9 @@ test('collection page renders and interactions are client-side (no full reload)'
 
   // Open the product detail sheet (lazy-loaded, client-side)
   await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Enquire on WhatsApp', exact: true })).toBeVisible()
+  // The 3-button CTA row labels the enquiry CTA just "Enquire" (since the
+  // 08-04 redesign that replaced the old stacked Add-to-Cart + Enquire buttons)
+  await expect(page.getByRole('button', { name: 'Enquire', exact: true })).toBeVisible()
   // Mocked detail data: sizes, fabric chip, color variant. The size chips are
   // scoped to the "Available Sizes" section (the <p>'s parent div) so strict
   // mode can't collide with any other single-letter text on the page.
@@ -274,7 +276,7 @@ test('collection page renders and interactions are client-side (no full reload)'
 
   // Close the sheet — back to the grid, still no reload
   await page.getByRole('button', { name: 'Close', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Enquire on WhatsApp', exact: true })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Enquire', exact: true })).toBeHidden()
   await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
   expect(loadCount).toBe(1)
   expect(await sentinelIsAlive(page)).toBe(true)
