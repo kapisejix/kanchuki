@@ -164,6 +164,12 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           // --ghost-mannequin flag, which forces composite mode (blur is
           // ignored when set).
           ghost_mannequin: z.boolean().default(false),
+          // Pixel rect (x1,y1,x2,y2) to isolate the subject before rembg —
+          // fixes the documented rembg failure mode where a second
+          // garment/prop in frame gets kept as "foreground" too.
+          crop: z
+            .object({ x1: z.number().int(), y1: z.number().int(), x2: z.number().int(), y2: z.number().int() })
+            .optional(),
         })
         .parse(request.body);
 
@@ -196,6 +202,10 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
         }
         if (body.shine) args.push('--shine');
         if (body.ghost_mannequin) args.push('--ghost-mannequin');
+        if (body.crop) {
+          const { x1, y1, x2, y2 } = body.crop;
+          args.push('--crop', `${x1},${y1},${x2},${y2}`);
+        }
 
         // Ghost mannequin's first-ever run also downloads + loads the LaMa
         // checkpoint on top of rembg's — same cold-start shape as the u2net

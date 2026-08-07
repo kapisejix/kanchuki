@@ -41,9 +41,16 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image, ImageChops, ImageDraw, ImageEnhance, ImageFilter
-from rembg import remove
+from rembg import new_session, remove
 
 EXTS = {".jpg", ".jpeg", ".png", ".webp"}
+
+# isnet-general-use segments cluttered scenes (second garment/prop in frame,
+# textured curtain backdrop) far more cleanly than u2net (the old default) —
+# verified against a real photo where u2net kept the entire backdrop +
+# neighboring garment as "foreground". Same rembg package, just a better
+# bundled model; first run downloads+caches it like u2net did.
+_rembg_session = new_session("isnet-general-use")
 
 _lama = None
 
@@ -193,7 +200,7 @@ def clean_one(
         src = src.crop(crop)
     buf = io.BytesIO()
     src.save(buf, format="PNG")
-    cutout = remove(buf.getvalue())
+    cutout = remove(buf.getvalue(), session=_rembg_session)
     fg = Image.open(io.BytesIO(cutout)).convert("RGBA")
 
     if ghost_mannequin:
@@ -229,7 +236,7 @@ def blur_one(
         src = src.crop(crop)
     buf = io.BytesIO()
     src.save(buf, format="PNG")
-    cutout = remove(buf.getvalue())
+    cutout = remove(buf.getvalue(), session=_rembg_session)
     fg = Image.open(io.BytesIO(cutout)).convert("RGBA")
     if shine:
         fg = apply_shine(fg)

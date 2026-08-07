@@ -70,6 +70,7 @@ export default function PhotoCleanupTestPage() {
   const [blurMode, setBlurMode] = useState(false);
   const [blurRadius, setBlurRadius] = useState(25);
   const [ghostMannequin, setGhostMannequin] = useState(false);
+  const [crop, setCrop] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState('');
   const [results, setResults] = useState<RunResult[]>([]);
@@ -214,6 +215,7 @@ export default function PhotoCleanupTestPage() {
           shine,
           blur: blurMode ? blurRadius : undefined,
           ghost_mannequin: ghostMannequin,
+          crop: crop ?? undefined,
         }),
       });
       const json = await res.json();
@@ -272,7 +274,10 @@ export default function PhotoCleanupTestPage() {
           hint="the raw shot to clean"
           file={productFile}
           inputRef={productRef}
-          onPick={setProductFile}
+          onPick={(f) => {
+            setProductFile(f);
+            setCrop(null); // new photo → old crop rect is stale pixel coords
+          }}
         />
         <Dropzone
           label="Sample image for output"
@@ -316,6 +321,12 @@ export default function PhotoCleanupTestPage() {
           )}
         </div>
       </div>
+
+      {productFile && (
+        <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4">
+          <CropPicker file={productFile} crop={crop} onChange={setCrop} />
+        </div>
+      )}
 
       {/* On-model generation — Fashion V-Tone (self-hosted, CPU, Apache 2.0) */}
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
@@ -579,6 +590,112 @@ export default function PhotoCleanupTestPage() {
         </div>
       )}
     </motion.div>
+  );
+}
+
+// Drag-to-select a pixel rect on the product photo, fed to the script's
+// --crop flag — isolates the subject before rembg runs, which is the fix
+// the script's own docstring names for a second garment/prop or busy
+// backdrop getting kept as "foreground" alongside the actual product.
+function CropPicker({
+  file,
+  crop,
+  onChange,
+}: {
+  file: File;
+  crop: { x1: number; y1: number; x2: number; y2: number } | null;
+  onChange: (c: { x1: number; y1: number; x2: number; y2: number } | null) => void;
+}) {
+  const imgRef = useRef<HTMLImageElement>(null);
+  const [previewUrl] = useState(() => URL.createObjectURL(file));
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
+  const [dragRect, setDragRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  const toNatural = (clientX: number, clientY: number) => {
+    const el = imgRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    const scaleX = el.naturalWidth / rect.width;
+    const scaleY = el.naturalHeight / rect.height;
+    return {
+      x: Math.round(Math.min(Math.max(clientX - rect.left, 0), rect.width) * scaleX),
+      y: Math.round(Math.min(Math.max(clientY - rect.top, 0), rect.height) * scaleY),
+    };
+  };
+
+  const onDown = (e: React.MouseEvent) => {
+    const p = toNatural(e.clientX, e.clientY);
+    if (!p) return;
+    setDragStart(p);
+    setDragRect(null);
+  };
+  const onMove = (e: React.MouseEvent) => {
+    if (!dragStart) return;
+    const p = toNatural(e.clientX, e.clientY);
+    if (!p) return;
+    setDragRect({
+      x: Math.min(dragStart.x, p.x),
+      y: Math.min(dragStart.y, p.y),
+      w: Math.abs(p.x - dragStart.x),
+      h: Math.abs(p.y - dragStart.y),
+    });
+  };
+  const onUp = () => {
+    if (dragRect && dragRect.w > 4 && dragRect.h > 4) {
+      onChange({ x1: dragRect.x, y1: dragRect.y, x2: dragRect.x + dragRect.w, y2: dragRect.y + dragRect.h });
+    }
+    setDragStart(null);
+    setDragRect(null);
+  };
+
+  const el = imgRef.current;
+  const overlayRect = dragRect ?? (crop ? { x: crop.x1, y: crop.y1, w: crop.x2 - crop.x1, h: crop.y2 - crop.y1 } : null);
+  const overlayStyle =
+    overlayRect && el && el.naturalWidth > 0
+      ? {
+          left: `${(overlayRect.x / el.naturalWidth) * 100}%`,
+          top: `${(overlayRect.y / el.naturalHeight) * 100}%`,
+          width: `${(overlayRect.w / el.naturalWidth) * 100}%`,
+          height: `${(overlayRect.h / el.naturalHeight) * 100}%`,
+        }
+      : undefined;
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-gray-800">Crop before background removal (optional)</p>
+      <p className="text-xs text-gray-400">
+        Drag on the photo to isolate the subject — fixes a second garment/prop or busy backdrop getting
+        kept as "foreground" by mistake.
+      </p>
+      <div
+        className="relative inline-block max-w-full cursor-crosshair select-none"
+        onMouseDown={onDown}
+        onMouseMove={onMove}
+        onMouseUp={onUp}
+        onMouseLeave={() => setDragStart(null)}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- natural pixel size drives crop math, next/image doesn't expose that directly */}
+        <img
+          ref={imgRef}
+          src={previewUrl}
+          alt="crop target"
+          draggable={false}
+          className="max-w-full max-h-64 block rounded-lg border border-gray-200"
+        />
+        {overlayStyle && (
+          <div className="absolute border-2 border-cyan-400 bg-cyan-400/20 pointer-events-none" style={overlayStyle} />
+        )}
+      </div>
+      {crop && (
+        <button
+          type="button"
+          onClick={() => onChange(null)}
+          className="text-xs text-cyan-600 hover:underline"
+        >
+          Clear crop ({crop.x1},{crop.y1} → {crop.x2},{crop.y2})
+        </button>
+      )}
+    </div>
   );
 }
 
