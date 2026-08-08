@@ -2,7 +2,7 @@ import { View, Text, ScrollView, RefreshControl } from 'react-native'
 import { COLORS } from '@kanchuki/shared'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban } from 'lucide-react-native'
+import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban, PackagePlus } from 'lucide-react-native'
 import { ordersApi, retailerApi, categoryApi } from '../../src/lib/api'
 import { HomeScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
@@ -176,6 +176,13 @@ export default function HomeScreen() {
             sublabel="Add Category"
             onPress={() => router.push('/category')}
             accent={colors.ink[50]}
+          />
+          <QuickAction
+            icon={<PackagePlus size={22} color={colors.rust[600]} />}
+            label="Bulk Onboard"
+            sublabel="Rack-by-rack batch upload"
+            onPress={() => router.push('/product/bulk-onboard')}
+            accent={colors.rust[50]}
           />
           <QuickAction
             icon={<Users size={22} color={colors.turmeric[500]} />}

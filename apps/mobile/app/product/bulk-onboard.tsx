@@ -396,7 +396,11 @@ export default function BulkOnboardScreen() {
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
+        <AnimatedPressable
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
           <X size={22} color={colors.sand[700]} />
         </AnimatedPressable>
         <Text className="text-base font-bold text-sand-900">{stepTitles[step]}</Text>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { PRODUCT_CATEGORIES, INDIAN_STATES, COLORS } from '@kanchuki/shared'
+import { INDIAN_STATES, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -10,10 +10,13 @@ import {
   Dimensions,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
 } from 'react-native'
 import { router } from 'expo-router'
+import * as Location from 'expo-location'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { retailerApi } from '../src/lib/api'
+import { useQuery } from '@tanstack/react-query'
+import { retailerApi, categoryApi } from '../src/lib/api'
 import { useReduceMotion } from '../src/hooks/useReduceMotion'
 import { useTheme } from '../src/lib/theme'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
@@ -21,8 +24,8 @@ import { GradientButton } from '../src/components/GradientButton'
 import { GradientBorderCard } from '../src/components/GradientBorderCard'
 import { LinearGradient } from 'expo-linear-gradient'
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6
-const TOTAL_STEPS = 6
+type Step = 1 | 2 | 3 | 4 | 5
+const TOTAL_STEPS = 5
 
 // ─── Step config ──────────────────────────────────────────────────
 const STEP_META: Record<Step, { icon: string; label: string }> = {
@@ -30,8 +33,7 @@ const STEP_META: Record<Step, { icon: string; label: string }> = {
   2: { icon: '📍', label: 'Location' },
   3: { icon: '👗', label: 'Category' },
   4: { icon: '🧾', label: 'GST' },
-  5: { icon: '📦', label: 'Racks' },
-  6: { icon: '🎉', label: 'Done' },
+  5: { icon: '🎉', label: 'Done' },
 }
 
 // ─── Confetti Particle ────────────────────────────────────────────
@@ -151,8 +153,12 @@ function StepIndicator({
   onPress: (step: Step) => void
 }) {
   return (
-    <View className="flex-row items-center justify-center gap-2 px-6 pt-2 pb-3">
-      {([1, 2, 3, 4, 5, 6] as Step[]).map((s) => {
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerClassName="flex-row items-center justify-center gap-2 px-6 pt-2 pb-3 grow"
+    >
+      {([1, 2, 3, 4, 5] as Step[]).map((s) => {
         const isActive = s === currentStep
         const isPast = s < currentStep
         return (
@@ -189,7 +195,7 @@ function StepIndicator({
           </AnimatedPressable>
         )
       })}
-    </View>
+    </ScrollView>
   )
 }
 
@@ -211,18 +217,53 @@ export default function OnboardingScreen() {
   const [ownerName, setOwnerName] = useState('')
   const [city, setCity] = useState('')
   const [state, setState] = useState('')
+  const [pincode, setPincode] = useState('')
+  const [locating, setLocating] = useState(false)
   const [gstin, setGstin] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [statePickerOpen, setStatePickerOpen] = useState(false)
   const [skuEstimate, setSkuEstimate] = useState('')
   const [referralCode, setReferralCode] = useState('')
 
+  // DB-backed shop-by categories (F-024/F-027) — already seeded per-retailer
+  // at signup, same list retailers manage later under the Category tab.
+  const { data: categoriesData } = useQuery({
+    queryKey: ['categories', 'list'],
+    queryFn: () => categoryApi.list(),
+  })
+  const dbCategories = categoriesData?.data ?? []
+
+  const handleUseCurrentLocation = async () => {
+    if (locating) return
+    setLocating(true)
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync()
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Location access is needed to auto-fill your address.')
+        return
+      }
+      const position = await Location.getCurrentPositionAsync({})
+      const [place] = await Location.reverseGeocodeAsync({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      })
+      if (place) {
+        if (place.city) setCity(place.city)
+        if (place.region) setState(place.region)
+        if (place.postalCode) setPincode(place.postalCode)
+      }
+    } catch {
+      Alert.alert('Error', 'Could not detect your location. Please enter it manually.')
+    } finally {
+      setLocating(false)
+    }
+  }
+
   const canProceed = useCallback((): boolean => {
     if (step === 1) return shopName.trim().length >= 2
     if (step === 2) return city.trim().length >= 2
     if (step === 3) return selectedCategories.length > 0
     if (step === 4) return true // optional
-    if (step === 5) return true // optional
     return true
   }, [step, shopName, city, selectedCategories])
 
@@ -307,10 +348,11 @@ export default function OnboardingScreen() {
         owner_name: ownerName.trim() || undefined,
         city: city.trim(),
         state: state || undefined,
+        pincode: pincode.trim() || undefined,
         gstin: gstin.trim() || undefined,
         categories: selectedCategories,
       })
-      await retailerApi.updateOnboarding(6, true)
+      await retailerApi.updateOnboarding(TOTAL_STEPS, true)
       setShowConfetti(true)
       setTimeout(() => {
         router.replace('/')
@@ -433,7 +475,19 @@ export default function OnboardingScreen() {
               Customers use this to find your store
             </Text>
 
-            <View className="mt-6">
+            <AnimatedPressable
+              onPress={() => void handleUseCurrentLocation()}
+              disabled={locating}
+              className="mt-4 flex-row items-center justify-center gap-2 border-2 border-ink-200 bg-ink-50 rounded-2xl px-4 py-3"
+            >
+              {locating ? (
+                <ActivityIndicator size="small" color={colors.ink[600]} />
+              ) : (
+                <Text className="text-ink-700 text-sm font-semibold">📍 Use current location</Text>
+              )}
+            </AnimatedPressable>
+
+            <View className="mt-4">
               <Text className="text-sm font-semibold text-sand-600 mb-2">City *</Text>
               <TextInput
                 value={city}
@@ -487,6 +541,21 @@ export default function OnboardingScreen() {
                 </View>
               )}
             </View>
+
+            <View className="mt-4">
+              <Text className="text-sm font-semibold text-sand-600 mb-2">
+                Pincode <Text className="text-sand-400 font-normal">(optional)</Text>
+              </Text>
+              <TextInput
+                value={pincode}
+                onChangeText={(t) => setPincode(t.replace(/[^0-9]/g, ''))}
+                placeholder="e.g. 395001"
+                keyboardType="number-pad"
+                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                placeholderTextColor={colors.sand[400]}
+                maxLength={6}
+              />
+            </View>
           </View>
         )
 
@@ -499,12 +568,12 @@ export default function OnboardingScreen() {
             </Text>
 
             <View className="flex-row flex-wrap gap-3 mt-6">
-              {PRODUCT_CATEGORIES.map((cat) => {
-                const selected = selectedCategories.includes(cat)
+              {dbCategories.map((cat) => {
+                const selected = selectedCategories.includes(cat.name)
                 return (
                   <AnimatedPressable
-                    key={cat}
-                    onPress={() => toggleCategory(cat)}
+                    key={cat.id}
+                    onPress={() => toggleCategory(cat.name)}
                     style={{ maxWidth: '100%', flexShrink: 1 }}
                     className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 shrink ${
                       selected
@@ -512,12 +581,12 @@ export default function OnboardingScreen() {
                         : 'bg-white border-sand-200 active:border-ink-300'
                     }`}
                   >
-                    <Text className="text-base">{categoryEmoji[cat] ?? '📦'}</Text>
+                    <Text className="text-base">{categoryEmoji[cat.name] ?? '📦'}</Text>
                     <Text
                       className={`font-medium text-sm shrink ${selected ? 'text-white' : 'text-sand-700'}`}
                       style={{ flexShrink: 1 }}
                     >
-                      {cat}
+                      {cat.name}
                     </Text>
                   </AnimatedPressable>
                 )
@@ -586,72 +655,10 @@ export default function OnboardingScreen() {
                 </Text>
               </View>
             </GradientBorderCard>
-
-            <AnimatedPressable
-              onPress={async () => {
-                // Persist step 5 progress before skipping
-                await retailerApi.updateOnboarding(5).catch(() => {})
-                goToStep(6 as Step)
-              }}
-              className="mt-4 py-3"
-            >
-              <Text className="text-ink-600 text-sm font-semibold text-center">
-                Skip for now →
-              </Text>
-            </AnimatedPressable>
           </View>
         )
 
       case 5:
-        return (
-          <View className="pt-6">
-            <Text className="text-2xl font-bold text-sand-900">Organize your racks</Text>
-            <Text className="text-sand-500 text-base mt-2">
-              Tell us how your shop is arranged — makes finding products fast
-            </Text>
-
-            <View className="mt-6 bg-ink-50 rounded-2xl p-4 border border-ink-100">
-              <Text className="text-ink-800 text-sm font-medium mb-2">📦 Example layouts:</Text>
-              <Text className="text-ink-700 text-sm leading-6">
-                • Floor → Section A → Rack 1 → Shelf 3{'\n'}
-                • Rack A, Rack B, Rack C...{'\n'}
-                • By category: Suit Rack, Saree Rack, Kurti Rack
-              </Text>
-            </View>
-
-            <View className="mt-4 gap-2">
-              {['By rack (A, B, C...)', 'By category', 'By price range', 'I will set up later'].map(
-                (preset) => (
-                  <AnimatedPressable
-                    key={preset}
-                    onPress={() => {
-                      if (preset === 'I will set up later') {
-                        goToStep(6 as Step)
-                      } else {
-                        goToStep(6 as Step) // For now all options proceed
-                      }
-                    }}
-                    className="flex-row items-center gap-3 p-4 border-2 border-sand-200 rounded-2xl"
-                  >
-                    <Text className="text-lg">
-                      {preset === 'By rack (A, B, C...)' && '🔤'}
-                      {preset === 'By category' && '📁'}
-                      {preset === 'By price range' && '💰'}
-                      {preset === 'I will set up later' && '⏭️'}
-                    </Text>
-                    <Text className="text-sand-700 text-sm font-medium">{preset}</Text>
-                  </AnimatedPressable>
-                ),
-              )}
-            </View>
-
-            <Text className="text-sand-400 text-xs mt-4 text-center">
-              You can also set up racks after adding products
-            </Text>
-          </View>
-        )
-
-      case 6:
         return (
           <View className="pt-2 items-center">
             {/* Big celebration emoji — signature gradient moment */}
