@@ -209,4 +209,22 @@ export const productApi = {
       // screen tells the retailer to keep it open.
       timeoutMs: 600_000,
     }),
+
+  /** Availability probe for the Pro capture flow — the Add Product screen
+   * shows the Pro chip disabled up-front when the cleanup environment
+   * (sidecar / local python) is down, instead of letting the retailer shoot
+   * 3-5 photos and only fail at Process. Short client-side cache; pass
+   * { refresh: true } to bypass (chip re-check after the sidecar comes up). */
+  getProCleanupStatus: (opts?: { refresh?: boolean }) =>
+    request<{
+      data: {
+        available: boolean;
+        mode: 'service' | 'local';
+        service_url_set: boolean;
+        service_healthy: boolean | null;
+        local_python_available: boolean;
+      };
+    }>('/v1/products/pro-cleanup/status', {
+      getCacheTtlMs: opts?.refresh ? 0 : 30_000,
+    }),
 };

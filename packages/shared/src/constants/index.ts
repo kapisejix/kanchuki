@@ -155,6 +155,40 @@ export function resolveFashionColor(name: string): string {
   return FASHION_COLOR_ALIASES[key] ?? '#d1d5db';
 }
 
+/** WCAG-style relative luminance of a hex color (0 = black, 1 = white) —
+ * linearized sRGB channels. Drives the auto-contrast background picker:
+ * a dark garment gets a light backdrop and vice versa. */
+export function hexRelativeLuminance(hex: string): number {
+  const match = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!match) return 0.5;
+  const n = Number.parseInt(match[1] ?? '000000', 16);
+  const channels = [(n >> 16) & 0xff, (n >> 8) & 0xff, n & 0xff].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * (channels[0] ?? 0) + 0.7152 * (channels[1] ?? 0) + 0.0722 * (channels[2] ?? 0);
+}
+
+/** Classify an AI-detected fashion color name into a tone for the
+ * auto-contrast background picker.
+ *   - 'dark'  (luminance < 0.35) → wants a LIGHT backdrop
+ *   - 'light' (luminance > 0.6)  → wants a DARK backdrop
+ *   - null    (unmapped name or a mid-tone) → keep the default background
+ *             instead of guessing, e.g. white.
+ * Unmapped names are detected via the alias table directly (NOT the grey
+ * fallback of resolveFashionColor) so an unknown color can't confidently
+ * pick a background. */
+export function classifyColorTone(name: string | null | undefined): 'dark' | 'light' | null {
+  if (!name) return null;
+  const key = name.trim().toLowerCase();
+  const hex = FASHION_COLOR_ALIASES[key];
+  if (!hex) return null;
+  const luminance = hexRelativeLuminance(hex);
+  if (luminance < 0.35) return 'dark';
+  if (luminance > 0.6) return 'light';
+  return null;
+}
+
 // ─── Hindi → English Search Mapping ──────────────────────────────
 
 export const HINDI_TO_ENGLISH: Record<string, string> = {

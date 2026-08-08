@@ -6,7 +6,9 @@ import {
   uploadBuffer,
 } from '@kanchuki/ai';
 import { type Prisma, prisma } from '@kanchuki/db';
+import { classifyColorTone } from '@kanchuki/shared';
 import { recordAiUsage } from '../lib/ai-usage.js';
+import { pickContrastBackground } from '../lib/backgrounds.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
 import { preserveOriginalPhoto } from '../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
@@ -49,14 +51,21 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     if (auto_cleanup) {
       try {
         await checkQuota(retailer_id, 'BG_REMOVAL');
-        // F-011: use the retailer's picked background instead of white, if set.
+        // F-011/F-028: use the retailer's picked background if set; otherwise
+        // auto-match a backdrop whose tone OPPOSES the AI-detected garment
+        // color (dark garment → light backdrop, light → dark). Unmapped or
+        // mid-tone colors keep the plain white default.
         const withBg = await prisma.product.findUnique({
           where: { id: product_id },
           include: { background_image: true },
         });
-        const bgUrl = withBg?.background_image?.is_active
+        let bgUrl = withBg?.background_image?.is_active
           ? withBg.background_image.image_url
           : undefined;
+        if (!bgUrl) {
+          const tone = classifyColorTone(tags.primary_color);
+          if (tone) bgUrl = (await pickContrastBackground(tone)) ?? undefined;
+        }
         const raw = await fetchImageBuffer(photo_url);
         const photoRow = await prisma.productPhoto.findFirst({
           where: { product_id, retailer_id, r2_key },

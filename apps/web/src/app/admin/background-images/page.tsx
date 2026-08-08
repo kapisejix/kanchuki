@@ -14,6 +14,7 @@ type BackgroundImage = {
   image_url: string
   thumbnail_url: string | null
   is_active: boolean
+  tone: 'LIGHT' | 'DARK' | null
   created_at: string
 }
 
@@ -84,6 +85,21 @@ export default function BackgroundImagesPage() {
     setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, is_active: !r.is_active } : r)))
   }
 
+  // F-028: admin can override the auto-computed tone (used by the
+  // dark-garment→light / light-garment→dark auto-contrast backdrop picker).
+  const setTone = async (row: BackgroundImage, tone: 'LIGHT' | 'DARK' | null) => {
+    setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tone } : r)))
+    try {
+      await fetch(`${API_URL}/v1/admin/background-images/${row.id}`, {
+        ...(await adminMutateOptions()),
+        method: 'PATCH',
+        body: JSON.stringify({ tone }),
+      })
+    } catch {
+      setRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, tone: row.tone } : r)))
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24">
@@ -101,7 +117,9 @@ export default function BackgroundImagesPage() {
         </div>
         <p className="text-sm text-gray-500">
           F-011: curated backdrops retailers can pick for their product photos and 360° spin.
-          Inactive backgrounds stay applied to products that already use them, but drop out of the picker.
+          F-028: each backdrop carries a tone (auto-computed, admin-overridable) so the AI pipeline
+          auto-picks a contrasting backdrop — dark garment → light, light garment → dark. Inactive
+          backgrounds stay applied to products that already use them, but drop out of the picker.
         </p>
       </div>
 
@@ -149,17 +167,47 @@ export default function BackgroundImagesPage() {
                 className={`object-cover ${row.is_active ? '' : 'opacity-40'}`}
               />
             </div>
-            <div className="p-3 flex items-center justify-between gap-2">
-              <span className="text-xs font-medium text-gray-700 truncate">{row.name}</span>
-              <button
-                onClick={() => toggleActive(row)}
-                className={`p-1.5 rounded-lg transition-colors ${
-                  row.is_active ? 'text-cyan-600 hover:bg-cyan-50' : 'text-gray-400 hover:bg-gray-50'
-                }`}
-                aria-label={row.is_active ? 'Deactivate' : 'Activate'}
-              >
-                {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
-              </button>
+            <div className="p-3 flex flex-col gap-2">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium text-gray-700 truncate">{row.name}</span>
+                <button
+                  onClick={() => toggleActive(row)}
+                  className={`p-1.5 rounded-lg transition-colors ${
+                    row.is_active ? 'text-cyan-600 hover:bg-cyan-50' : 'text-gray-400 hover:bg-gray-50'
+                  }`}
+                  aria-label={row.is_active ? 'Deactivate' : 'Activate'}
+                >
+                  {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span
+                  className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                    row.tone === 'LIGHT'
+                      ? 'bg-amber-100 text-amber-700'
+                      : row.tone === 'DARK'
+                        ? 'bg-gray-800 text-gray-100'
+                        : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {row.tone === 'LIGHT' ? 'Light' : row.tone === 'DARK' ? 'Dark' : 'Unclassified'}
+                </span>
+                <select
+                  value={row.tone ?? ''}
+                  onChange={(e) =>
+                    void setTone(
+                      row,
+                      (e.target.value || null) as 'LIGHT' | 'DARK' | null,
+                    )
+                  }
+                  className="text-[10px] border border-gray-200 rounded-lg px-1.5 py-1 bg-white text-gray-600"
+                  aria-label={`Tone for ${row.name}`}
+                >
+                  <option value="">Auto</option>
+                  <option value="LIGHT">Light</option>
+                  <option value="DARK">Dark</option>
+                </select>
+              </div>
             </div>
           </div>
         ))}

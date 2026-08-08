@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { PRODUCT_CATEGORIES, SIZE_OPTIONS, COLORS, resolveFashionColor } from '@kanchuki/shared'
+import { PRODUCT_CATEGORIES, SIZE_OPTIONS, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
-  Animated,
   StyleSheet,
   Switch,
 } from 'react-native'
@@ -40,18 +39,9 @@ type Step =
   | 'pro_options'
   | 'pro_processing'
   | 'preview'
-  | 'ai_tagging'
   | 'edit'
   | 'saving'
 type CaptureMode = 'photo' | 'scan' | 'pro'
-
-type AiTags = {
-  category: string | null
-  primary_color: string | null
-  fabric_estimate: string | null
-  occasions: string[]
-  search_tags: string[]
-}
 
 type UploadInfo = {
   upload_url: string
@@ -59,21 +49,6 @@ type UploadInfo = {
   public_url: string
   product_id: string
 }
-
-type UploadStage = 'preparing' | 'linking' | 'uploading' | 'finalizing'
-
-type UploadProgress = {
-  stage: UploadStage
-  percent: number
-  message: string
-}
-
-const UPLOAD_STEPS: { stage: UploadStage; label: string; icon: string }[] = [
-  { stage: 'preparing', label: 'Prepare', icon: '📷' },
-  { stage: 'linking', label: 'Link', icon: '🔗' },
-  { stage: 'uploading', label: 'Upload', icon: '☁️' },
-  { stage: 'finalizing', label: 'Done', icon: '✅' },
-]
 
 // Scan mode: burst a few stills while the retailer pans over the product,
 // keep the sharpest one client-side. No video is ever recorded or uploaded.
@@ -126,20 +101,15 @@ export default function AddProductScreen() {
   const [proTightCrop, setProTightCrop] = useState(true)
   const [proUploads, setProUploads] = useState<{ r2_key: string; url: string }[]>([])
   const [proStatus, setProStatus] = useState('')
+  // Pro availability probe (GET /products/pro-cleanup/status) — the Pro chip
+  // shows as unavailable UP-FRONT when the cleanup sidecar/python is down,
+  // instead of letting the retailer shoot 3-5 photos and fail at Process.
+  // Fail-open: a probe network error resolves to 'available' so a flaky
+  // check can never block a working feature.
+  const [proAvailability, setProAvailability] = useState<
+    'checking' | 'available' | 'unavailable'
+  >('checking')
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null)
-  const [aiTags, setAiTags] = useState<AiTags | null>(null)
-  const [aiError, setAiError] = useState<string | null>(null)
-  // Quick color-only detect on the just-uploaded photo — the edit form shows
-  // a color circle right away instead of waiting for the background AI
-  // tagging job (which only fills primary_color after the product is saved).
-  const [detectedColor, setDetectedColor] = useState<string | null>(null)
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress>({
-    stage: 'preparing',
-    percent: 0,
-    message: 'Getting ready...',
-  })
-  const progressAnim = useRef(new Animated.Value(0)).current
-  const spinnerRotate = useRef(new Animated.Value(0)).current
 
   // Editable fields
   const [price, setPrice] = useState('')
@@ -150,7 +120,7 @@ export default function AddProductScreen() {
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState<string | null>(null)
-  const [autoCleanup, setAutoCleanup] = useState(false)
+  const [autoCleanup, setAutoCleanup] = useState(true)
   const [backgroundImages, setBackgroundImages] = useState<
     { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
   >([])
@@ -162,6 +132,24 @@ export default function AddProductScreen() {
       .then((res) => setBackgroundImages(res.data))
       .catch(() => {}) // ponytail: best-effort — picker just stays empty (white-only)
   }, [])
+
+  const checkProAvailability = useCallback((refresh = false) => {
+    setProAvailability('checking')
+    productApi
+      .getProCleanupStatus({ refresh })
+      .then((res) => {
+        const available = res.data?.available === true
+        setProAvailability(available ? 'available' : 'unavailable')
+        // The probe resolved AFTER the retailer already picked Pro — don't
+        // leave them in a pro flow that's about to be declared unavailable.
+        if (!available) setCaptureMode((m) => (m === 'pro' ? 'photo' : m))
+      })
+      .catch(() => setProAvailability('available'))
+  }, [])
+
+  useEffect(() => {
+    checkProAvailability()
+  }, [checkProAvailability])
 
   const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories', 'list'],
@@ -371,45 +359,6 @@ export default function AddProductScreen() {
     await processPhoto(result.assets[0].uri)
   }
 
-  // ── Update progress with smooth animation ───────────────────────
-
-  const updateProgress = useCallback(
-    (pct: number, stage: UploadStage, message: string) => {
-      setUploadProgress({ stage, percent: pct, message })
-      Animated.timing(progressAnim, {
-        toValue: pct,
-        duration: 500,
-        useNativeDriver: false,
-      }).start()
-    },
-    [progressAnim],
-  )
-
-  // ── Animated spinner rotation ───────────────────────────────────
-
-  const spinnerStyle = {
-    transform: [
-      {
-        rotate: spinnerRotate.interpolate({
-          inputRange: [0, 1],
-          outputRange: ['0deg', '360deg'],
-        }),
-      },
-    ],
-  }
-
-  // Start spinner animation on mount
-  const startSpinner = useCallback(() => {
-    spinnerRotate.setValue(0)
-    Animated.loop(
-      Animated.timing(spinnerRotate, {
-        toValue: 1,
-        duration: 1200,
-        useNativeDriver: false,
-      }),
-    ).start()
-  }, [spinnerRotate])
-
   // ── Upload photo, return its UploadInfo ──────────────────────────
 
   const uploadPhoto = async (
@@ -426,68 +375,30 @@ export default function AddProductScreen() {
     return info
   }
 
-  // ── Upload photo + queue AI tagging ──────────────────────────────
-
-  const handleUploadAndTag = async () => {
-    if (!photo) return
-    setStep('ai_tagging')
-    setAiError(null)
-    startSpinner()
-
-    try {
-      updateProgress(5, 'preparing', 'Getting ready...')
-      updateProgress(10, 'linking', 'Starting upload...')
-
-      const info = await uploadPhoto(photo, (pct, msg) => {
-        updateProgress(pct, 'uploading', msg)
-      })
-      setUploadInfo(info)
-
-      updateProgress(90, 'finalizing', 'Almost done...')
-      await new Promise((r) => setTimeout(r, 400))
-
-      updateProgress(100, 'finalizing', 'Done!')
-      await new Promise((r) => setTimeout(r, 300))
-
-      // Stop spinner
-      spinnerRotate.stopAnimation()
-
-      // AI tagging happens server-side via BullMQ after product creation
-      setAiTags(null)
-      setStep('edit')
-
-      // Best-effort color detect on the photo we just uploaded. Detection
-      // needs a public URL (the backend fetches the image), which only exists
-      // now — the local capture URI can't be sent. Never blocks or fails the
-      // upload flow: a miss just means the color circle shows up after the
-      // background tagging job instead.
-      const publicUrl = info.public_url
-      void (async () => {
-        try {
-          const res = await productApi.detectColor(publicUrl)
-          if (res.data?.color) setDetectedColor(res.data.color)
-        } catch {
-          // Silent — background AI tagging fills primary_color later.
-        }
-      })()
-    } catch (err) {
-      spinnerRotate.stopAnimation()
-      logError(err)
-      setAiError('Upload failed')
-      setStep('preview')
-    }
-  }
-
   // ── Save product ────────────────────────────────────────────────
 
   const handleSave = async () => {
-    // Pro path: the cleaned primary (proUploads[0]) replaces the single-photo
-    // uploadInfo entirely — it is already on R2 and professionally cleaned.
-    const primary =
+    setStep('saving')
+
+    // Photo/scan path: the photo uploads at save time — no blocking upload
+    // screen mid-flow. The retailer just adds a price; AI tagging + cleanup
+    // (incl. the auto-contrast backdrop) run in the background after save.
+    // Pro path: proUploads[0] is already cleaned + on R2.
+    let primary =
       proUploads[0] ??
       (uploadInfo ? { r2_key: uploadInfo.r2_key, url: uploadInfo.public_url } : null)
+    if (!primary && photo) {
+      try {
+        const info = await uploadPhoto(photo)
+        setUploadInfo(info)
+        primary = { r2_key: info.r2_key, url: info.public_url }
+      } catch (err) {
+        setStep('edit')
+        showError(err, 'Failed to upload photo. Please try again.')
+        return
+      }
+    }
     if (!primary) return
-    setStep('saving')
 
     const priceInPaise = price ? Math.round(parseFloat(price) * 100) : undefined
 
@@ -497,13 +408,10 @@ export default function AddProductScreen() {
         photo_url: primary.url,
         price_min: priceInPaise,
         price_max: priceInPaise,
-        category: aiTags?.category ?? undefined,
-        primary_color: detectedColor ?? aiTags?.primary_color ?? undefined,
-        fabric_estimate: aiTags?.fabric_estimate ?? undefined,
-        occasions: selectedOccasions.length > 0 ? selectedOccasions : (aiTags?.occasions ?? []),
+        occasions: selectedOccasions,
         styles: selectedStyles,
         fabrics: selectedFabrics,
-        search_tags: aiTags?.search_tags ?? [],
+        search_tags: [],
         sizes: selectedSizes,
         category_id: categoryId ?? undefined,
         location_notes: location || undefined,
@@ -598,25 +506,54 @@ export default function AddProductScreen() {
         </AnimatedPressable>
 
         {/* Photo / Scan / Pro mode toggle */}
-        <View className="absolute left-0 right-0 flex-row items-center justify-center gap-2" style={{ top: insets.top + 8 }}>
-          <AnimatedPressable
-            onPress={() => setCaptureMode('photo')}
-            className={`px-4 py-1.5 rounded-full ${captureMode === 'photo' ? 'bg-ink-600' : 'bg-black/50'}`}
-          >
-            <Text className="text-white text-xs font-semibold">Photo</Text>
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => setCaptureMode('scan')}
-            className={`px-4 py-1.5 rounded-full ${captureMode === 'scan' ? 'bg-ink-600' : 'bg-black/50'}`}
-          >
-            <Text className="text-white text-xs font-semibold">Scan</Text>
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => setCaptureMode('pro')}
-            className={`px-4 py-1.5 rounded-full ${captureMode === 'pro' ? 'bg-ink-600' : 'bg-black/50'}`}
-          >
-            <Text className="text-white text-xs font-semibold">Pro</Text>
-          </AnimatedPressable>
+        <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
+          <View className="flex-row items-center justify-center gap-2">
+            <AnimatedPressable
+              onPress={() => setCaptureMode('photo')}
+              className={`px-4 py-1.5 rounded-full ${captureMode === 'photo' ? 'bg-ink-600' : 'bg-black/50'}`}
+            >
+              <Text className="text-white text-xs font-semibold">Photo</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={() => setCaptureMode('scan')}
+              className={`px-4 py-1.5 rounded-full ${captureMode === 'scan' ? 'bg-ink-600' : 'bg-black/50'}`}
+            >
+              <Text className="text-white text-xs font-semibold">Scan</Text>
+            </AnimatedPressable>
+            <AnimatedPressable
+              onPress={() => {
+                // Probe runs at screen open — while the cleanup sidecar is
+                // down the chip is disabled up-front (no wasted photo shoot).
+                // Tapping a disabled chip re-checks: the sidecar may have
+                // come back up since the screen opened.
+                if (proAvailability === 'unavailable') {
+                  checkProAvailability(true)
+                  return
+                }
+                setCaptureMode('pro')
+              }}
+              className={`px-4 py-1.5 rounded-full ${
+                captureMode === 'pro' && proAvailability !== 'unavailable'
+                  ? 'bg-ink-600'
+                  : proAvailability === 'unavailable'
+                    ? 'bg-black/30'
+                    : 'bg-black/50'
+              }`}
+            >
+              <Text
+                className={`text-white text-xs font-semibold ${
+                  proAvailability === 'unavailable' ? 'opacity-50' : ''
+                }`}
+              >
+                {proAvailability === 'checking' ? 'Pro…' : 'Pro'}
+              </Text>
+            </AnimatedPressable>
+          </View>
+          {proAvailability === 'unavailable' && (
+            <Text className="text-white/70 text-[11px] mt-2 px-8 text-center">
+              Pro photos are unavailable right now — tap Pro to re-check, or use Photo mode.
+            </Text>
+          )}
         </View>
 
         {/* Frame guide — pro mode nudges straight-on, garment-filled framing
@@ -935,7 +872,7 @@ export default function AddProductScreen() {
                     onPress={() => setBackgroundImageId(null)}
                     className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'}`}
                   >
-                    <Text className="text-[10px] text-sand-500">White</Text>
+                    <Text className="text-[10px] text-sand-500">Auto</Text>
                   </AnimatedPressable>
                   {backgroundImages.map((bg) => (
                     <AnimatedPressable
@@ -1035,16 +972,10 @@ export default function AddProductScreen() {
             contentFit="contain"
           />
         )}
-        {aiError && (
-          <View className="absolute top-0 left-0 right-0 bg-rust-500/90 px-4 py-3" style={{ paddingTop: insets.top + 12 }}>
-            <Text className="text-white text-sm text-center">{aiError}</Text>
-          </View>
-        )}
         <View className="absolute bottom-12 left-0 right-0 flex-row gap-4 px-6">
           <AnimatedPressable
             onPress={() => {
               setPhoto(null)
-              setAiError(null)
               setExtraFrames([])
               setProUploads([])
               setStep('camera')
@@ -1054,157 +985,9 @@ export default function AddProductScreen() {
             <Text className="text-white font-semibold">Retake</Text>
           </AnimatedPressable>
           <View className="flex-1">
-            <GradientButton label={aiError ? 'Try Again' : 'Use Photo →'} onPress={() => void handleUploadAndTag()} />
+            <GradientButton label='Use Photo →' onPress={() => setStep('edit')} />
           </View>
         </View>
-      </View>
-    )
-  }
-
-  // ── AI Tagging step ───────────────────────────────────────────────
-
-  if (step === 'ai_tagging') {
-    const currentStepIndex = UPLOAD_STEPS.findIndex((s) => s.stage === uploadProgress.stage)
-    const totalSteps = UPLOAD_STEPS.length
-    const isComplete = uploadProgress.percent === 100
-
-    const animWidth = progressAnim.interpolate({
-      inputRange: [0, 100],
-      outputRange: ['0%', '100%'],
-    })
-
-    // Step state helpers
-    const isCompletedStep = (idx: number) => idx < currentStepIndex
-    const isActiveStep = (idx: number) => idx === currentStepIndex && !isComplete
-
-    return (
-      <View className="flex-1 bg-sand-950 px-6" style={{ paddingTop: insets.top + 24 }}>
-        {/* Close button */}
-        <AnimatedPressable
-          onPress={() => {
-            setAiError('Upload cancelled')
-            setStep('preview')
-          }}
-          className="absolute left-4 w-10 h-10 bg-white/10 rounded-full items-center justify-center z-10"
-          style={{ top: insets.top + 8 }}
-          accessibilityLabel="Cancel upload"
-          accessibilityRole="button"
-        >
-          <X size={20} color="white" />
-        </AnimatedPressable>
-
-        {/* Header */}
-        <Text className="text-white text-xl font-bold text-center mb-1">
-          {isComplete ? 'Upload Complete!' : 'Uploading Product'}
-        </Text>
-        <Text className="text-sand-500 text-sm text-center mb-8">
-          {isComplete
-            ? 'AI will tag it automatically'
-            : 'Please wait while we process your photo'}
-        </Text>
-
-        {/* Photo preview */}
-        <View className="items-center mb-6">
-          <View className="relative">
-            {photo && (
-              <Image
-                source={{ uri: photo }}
-                contentFit="cover"
-                style={{ width: 224, height: 288, borderRadius: 24, opacity: isComplete ? 0.9 : 0.4 }}
-              />
-            )}
-
-            {/* Overlay badge */}
-            {isComplete && (
-              <View className="absolute top-3 right-3 bg-turmeric-500 px-3 py-1 rounded-full flex-row items-center gap-1">
-                <Text className="text-white text-xs font-bold">✓ Done</Text>
-              </View>
-            )}
-
-            {/* Scanning ring */}
-            {!isComplete && (
-              <View className="absolute -inset-1.5 rounded-[26px] border-2 border-ink-500/30">
-                <View className="absolute top-0 left-0 right-0 h-0.5 bg-ink-400 rounded-full" style={{ opacity: 0.6 }} />
-              </View>
-            )}
-          </View>
-        </View>
-
-        {/* Progress bar */}
-        <View className="mb-3">
-          <View className="h-2 bg-sand-800 rounded-full overflow-hidden">
-            <Animated.View
-              className={`h-full rounded-full ${isComplete ? 'bg-turmeric-500' : 'bg-ink-500'}`}
-              style={{ width: animWidth }}
-            />
-          </View>
-          <View className="flex-row justify-between mt-1.5">
-            <Text className="text-sand-500 text-xs">
-              Step {Math.min(currentStepIndex + 1, totalSteps)} of {totalSteps}
-            </Text>
-            <Text className="text-sand-400 text-xs font-mono">
-              {uploadProgress.percent}%
-            </Text>
-          </View>
-        </View>
-
-        {/* Status message with animated spinner */}
-        <View className="flex-row items-center justify-center gap-2.5 mt-1 mb-8">
-          {!isComplete && (
-            <Animated.View
-              className="w-4 h-4 rounded-full border-2 border-ink-400 border-t-transparent"
-              style={spinnerStyle}
-            />
-          )}
-          <Text className="text-white text-base font-semibold">
-            {uploadProgress.message}
-          </Text>
-        </View>
-
-        {/* Step indicator */}
-        <View className="flex-row items-start justify-center px-4">
-          {UPLOAD_STEPS.map((stepDef, idx) => {
-            const completed = isCompletedStep(idx)
-            const active = isActiveStep(idx)
-            const displayIcon = completed || isComplete ? '✅' : active ? stepDef.icon : '○'
-
-            return (
-              <View key={stepDef.stage} className="items-center flex-1">
-                {/* Step icon circle */}
-                <View
-                  className={`w-9 h-9 rounded-full items-center justify-center mb-1.5 ${
-                    active
-                      ? 'bg-ink-600'
-                      : completed || isComplete
-                        ? 'bg-turmeric-600'
-                        : 'bg-sand-800'
-                  }`}
-                >
-                  <Text className="text-sm">{displayIcon}</Text>
-                </View>
-                {/* Step label */}
-                <Text
-                  className={`text-[10px] font-medium ${
-                    active
-                      ? 'text-ink-400'
-                      : completed || isComplete
-                        ? 'text-turmeric-400'
-                        : 'text-sand-600'
-                  }`}
-                >
-                  {stepDef.label}
-                </Text>
-              </View>
-            )
-          })}
-        </View>
-
-        {/* Error badge if upload failed earlier */}
-        {aiError && (
-          <View className="mt-6 bg-rust-500/20 border border-rust-500/30 rounded-xl p-3">
-            <Text className="text-rust-400 text-sm text-center">{aiError}</Text>
-          </View>
-        )}
       </View>
     )
   }
@@ -1242,37 +1025,6 @@ export default function AddProductScreen() {
             {/* Pro-cleaned photos are already finished — no client-side
                 tagging is pending for them (server tags after save), so the
                 "AI tagging..." overlay would be a lying spinner here. */}
-            {proUploads.length === 0 && (
-              <View className="absolute top-3 right-3 bg-ink-600/90 px-2 py-1 rounded-full flex-row items-center gap-1">
-                <ActivityIndicator size="small" color="white" />
-                <Text className="text-white text-xs">AI tagging...</Text>
-              </View>
-            )}
-            {/* Detected-color circle — shows the dominant color of the photo
-                just captured, mirroring the tap-to-detect chip on the edit
-                screen. Dismissing it just skips pre-filling the color. */}
-            {detectedColor && (
-              <View
-                className="absolute bottom-3 left-3 bg-white/95 rounded-full pl-1.5 pr-2 py-1 flex-row items-center gap-1.5 shadow-sm"
-                style={{ elevation: 3 }}
-              >
-                <View
-                  className="w-5 h-5 rounded-full border-2 border-white"
-                  style={{ backgroundColor: resolveFashionColor(detectedColor) }}
-                />
-                <Text className="text-xs font-semibold text-sand-900 max-w-[140px]" numberOfLines={1}>
-                  {detectedColor}
-                </Text>
-                <AnimatedPressable
-                  onPress={() => setDetectedColor(null)}
-                  accessibilityLabel="Remove detected color"
-                  accessibilityRole="button"
-                  hitSlop={6}
-                >
-                  <X size={14} color={colors.sand[600]} />
-                </AnimatedPressable>
-              </View>
-            )}
           </View>
         )}
 
@@ -1283,7 +1035,7 @@ export default function AddProductScreen() {
             <View className="flex-1 pr-3">
               <Text className="text-sm font-semibold text-sand-900">Auto-clean photo</Text>
               <Text className="text-xs text-sand-500 mt-0.5">
-                Crop to the garment and remove the background. Turn off for a styled/mannequin shot you want to keep as-is.
+                Crop to the garment, remove the background, and match a contrasting backdrop (dark garment → light, light garment → dark). Turn off for a styled/mannequin shot you want as-is.
               </Text>
             </View>
             <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
@@ -1304,7 +1056,7 @@ export default function AddProductScreen() {
                     backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'
                   }`}
                 >
-                  <Text className="text-[10px] text-sand-500">White</Text>
+                  <Text className="text-[10px] text-sand-500">Auto</Text>
                 </AnimatedPressable>
                 {backgroundImages.map((bg) => (
                   <AnimatedPressable
@@ -1541,7 +1293,7 @@ export default function AddProductScreen() {
         </View>
 
         <Text className="text-xs text-center text-sand-400 px-4">
-          AI will auto-fill category, color, and fabric in the background
+          AI will auto-fill category, color, fabric and pick the best background after you save
         </Text>
       </View>
 

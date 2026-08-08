@@ -70,3 +70,55 @@ export function pickSharpest(photos: { score: number }[]): number {
   }
   return best;
 }
+
+/**
+ * Average WCAG-style relative luminance of an image buffer (0 = black,
+ * 1 = white). Downscales to a 32×32 grid first so classifying a large photo
+ * costs almost nothing (a few ms, no full decode). Used by the auto-contrast
+ * background picker (dark garment → light backdrop and vice versa).
+ * NOTE: measures the whole FRAME — most accurate on pro-mode shots where the
+ * garment fills the frame edge-to-edge (see the capture screen's framing
+ * guide); the camera flow instead classifies via the AI-detected color name
+ * (shared classifyColorTone), which knows the garment, not the backdrop.
+ */
+export async function imageLuminance(imageBuffer: Buffer): Promise<number> {
+  const s = await getSharp();
+  const { data, info } = await s(imageBuffer)
+    .resize({ width: 32, height: 32, fit: 'inside', withoutEnlargement: true })
+    .removeAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  const px = data as Uint8Array<ArrayBuffer>;
+  const { width, height } = info;
+  let r = 0;
+  let g = 0;
+  let b = 0;
+  let n = 0;
+  for (let i = 0; i + 2 < px.length; i += 3) {
+    r += px[i] as number;
+    g += px[i + 1] as number;
+    b += px[i + 2] as number;
+    n++;
+  }
+  if (n === 0 || width === 0 || height === 0) return 0.5;
+  const linear = (total: number): number => {
+    const s2 = total / n / 255;
+    return s2 <= 0.03928 ? s2 / 12.92 : Math.pow((s2 + 0.055) / 1.055, 2.4);
+  };
+  return 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b);
+}
+
+/**
+ * Frame-level dark/light classification for the auto-contrast background
+ * picker — same tone bands as the shared classifyColorTone helper:
+ *   - true  (luminance < 0.35) → dark frame → wants a LIGHT backdrop
+ *   - false (luminance > 0.6)  → light frame → wants a DARK backdrop
+ *   - null  (mid-tone) → keep the default background
+ */
+export async function isDarkImage(imageBuffer: Buffer): Promise<boolean | null> {
+  const luminance = await imageLuminance(imageBuffer);
+  if (luminance < 0.35) return true;
+  if (luminance > 0.6) return false;
+  return null;
+}

@@ -2,7 +2,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
+import { fetchImageBuffer, getUploadPresignedUrl, isDarkImage, publicUrl } from '@kanchuki/ai';
 import {
   encryptSecret,
   getReplicaPrisma,
@@ -56,16 +56,42 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── POST /admin/background-images ───────────────────────────────
   // Registers a background already uploaded via the presigned URL above.
+  // F-028: computes the image's tone (average luminance → LIGHT/DARK) so the
+  // auto-contrast pipeline can pick it — admin can override with an explicit
+  // tone instead. Best-effort: unclassifiable images just get tone null
+  // (never auto-picked, still selectable by hand).
   server.post('/background-images', async (request) => {
     const body = z
       .object({
         name: z.string().min(1).max(100),
         image_url: z.string().url(),
         thumbnail_url: z.string().url().optional(),
+        tone: z.enum(['LIGHT', 'DARK']).optional(),
       })
       .parse(request.body);
 
-    const row = await prisma.backgroundImage.create({ data: body });
+    let tone: 'LIGHT' | 'DARK' | null = body.tone ?? null;
+    if (!tone) {
+      try {
+        const buf = await fetchImageBuffer(body.image_url);
+        const isDark = await isDarkImage(buf);
+        tone = isDark === true ? 'DARK' : isDark === false ? 'LIGHT' : null;
+      } catch (err) {
+        request.log.warn(
+          { err, image_url: body.image_url },
+          'Tone classification failed for background image',
+        );
+      }
+    }
+
+    const row = await prisma.backgroundImage.create({
+      data: {
+        name: body.name,
+        image_url: body.image_url,
+        ...(body.thumbnail_url ? { thumbnail_url: body.thumbnail_url } : {}),
+        ...(tone ? { tone } : {}),
+      },
+    });
 
     await prisma.auditLog.create({
       data: {
@@ -92,13 +118,23 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
       .object({
         name: z.string().min(1).max(100).optional(),
         is_active: z.boolean().optional(),
+        // F-028 admin override: null clears back to unclassified.
+        tone: z.enum(['LIGHT', 'DARK']).nullable().optional(),
       })
       .parse(request.body);
 
     const existing = await prisma.backgroundImage.findUnique({ where: { id } });
     if (!existing) throw notFound('Background image');
 
-    const row = await prisma.backgroundImage.update({ where: { id }, data: body });
+    const row = await prisma.backgroundImage.update({
+      where: { id },
+      data: {
+        ...(body.name !== undefined ? { name: body.name } : {}),
+        ...(body.is_active !== undefined ? { is_active: body.is_active } : {}),
+        // Explicit undefined = untouched; null clears the tone.
+        ...(body.tone !== undefined ? { tone: body.tone } : {}),
+      },
+    });
 
     await prisma.auditLog.create({
       data: {
@@ -107,10 +143,11 @@ export const adminMediaRoutes: FastifyPluginAsync = async (server) => {
         resource_type: 'BackgroundImage',
         resource_id: id,
         metadata: {
-          before: { name: existing.name, is_active: existing.is_active },
+          before: { name: existing.name, is_active: existing.is_active, tone: existing.tone },
           after: {
-            ...(body.name ? { name: body.name } : {}),
+            ...(body.name !== undefined ? { name: body.name } : {}),
             ...(body.is_active !== undefined ? { is_active: body.is_active } : {}),
+            ...(body.tone !== undefined ? { tone: body.tone } : {}),
           },
         },
         ip_address: request.ip,

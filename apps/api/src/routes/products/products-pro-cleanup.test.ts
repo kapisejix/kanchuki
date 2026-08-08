@@ -1,5 +1,5 @@
 import Fastify from 'fastify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const {
   mockCompressImageToTarget,
@@ -12,6 +12,8 @@ const {
   mockRunCleanup,
   mockCheckQuota,
   mockIncrementUsage,
+  mockGetSecret,
+  mockSpawnSync,
 } = vi.hoisted(() => ({
   mockCompressImageToTarget: vi.fn(),
   mockUploadBuffer: vi.fn(),
@@ -23,6 +25,8 @@ const {
   mockRunCleanup: vi.fn(),
   mockCheckQuota: vi.fn(),
   mockIncrementUsage: vi.fn(),
+  mockGetSecret: vi.fn(),
+  mockSpawnSync: vi.fn(),
 }));
 
 vi.mock('@kanchuki/ai', () => ({
@@ -38,6 +42,15 @@ vi.mock('@kanchuki/db', () => ({
     backgroundImage: { findFirst: mockBackgroundFindFirst },
     auditLog: { create: mockAuditCreate },
   },
+  getSecret: mockGetSecret,
+}));
+
+// The status route checks for a local python binary via spawnSync; the real
+// runner module is fully mocked above, so this only affects the route under
+// test. execFile is stubbed too so any accidental real import stays inert.
+vi.mock('node:child_process', () => ({
+  spawnSync: mockSpawnSync,
+  execFile: vi.fn(),
 }));
 
 // The route delegates the whole pipeline (fetch + python/SAM2 + output) to
@@ -76,6 +89,7 @@ beforeEach(() => {
   mockUploadBuffer.mockResolvedValue(undefined);
   mockCheckQuota.mockResolvedValue(undefined);
   mockIncrementUsage.mockResolvedValue(undefined);
+  mockGetSecret.mockResolvedValue('');
   // Default: the runner "runs" the pipeline and returns a cleaned JPEG +
   // stdout. Per-test overrides can replace this.
   mockRunCleanup.mockResolvedValue({
@@ -321,6 +335,77 @@ describe('POST /products/pro-cleanup', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(mockRunCleanup).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('GET /products/pro-cleanup/status', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('service mode + healthy sidecar → available', async () => {
+    mockGetSecret.mockResolvedValue('http://cleanup.example');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/pro-cleanup/status' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toMatchObject({
+      available: true,
+      mode: 'service',
+      service_url_set: true,
+      service_healthy: true,
+      local_python_available: false,
+    });
+    await app.close();
+  });
+
+  it('service mode + sidecar connection refused → unavailable', async () => {
+    mockGetSecret.mockResolvedValue('http://cleanup.example');
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('ECONNREFUSED')));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/pro-cleanup/status' });
+    expect(res.json().data).toMatchObject({ available: false, service_healthy: false });
+    await app.close();
+  });
+
+  it('service mode + sidecar answers non-ok → unavailable', async () => {
+    mockGetSecret.mockResolvedValue('http://cleanup.example');
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/pro-cleanup/status' });
+    expect(res.json().data).toMatchObject({ available: false, service_healthy: false });
+    expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+      'http://cleanup.example/health',
+      expect.objectContaining({ signal: expect.anything() }),
+    );
+    await app.close();
+  });
+
+  it('local mode + python binary exists → available', async () => {
+    mockGetSecret.mockResolvedValue('');
+    mockSpawnSync.mockReturnValue({ error: null, status: 0 });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/pro-cleanup/status' });
+    expect(res.json().data).toMatchObject({
+      available: true,
+      mode: 'local',
+      service_url_set: false,
+      local_python_available: true,
+    });
+    await app.close();
+  });
+
+  it('local mode + no python binary → unavailable', async () => {
+    mockGetSecret.mockResolvedValue('');
+    mockSpawnSync.mockReturnValue({ error: new Error('ENOENT'), status: null });
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/pro-cleanup/status' });
+    expect(res.json().data).toMatchObject({
+      available: false,
+      mode: 'local',
+      local_python_available: false,
+    });
     await app.close();
   });
 });

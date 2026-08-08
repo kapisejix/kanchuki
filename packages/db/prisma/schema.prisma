@@ -1091,11 +1091,17 @@ model TryOnUsageLog {
 // product photo/spin; cleanupProductPhoto() composites the bg-stripped
 // cutout onto it instead of the default white flatten.
 model BackgroundImage {
-  id                  String   @id @default(cuid())
+  id                  String          @id @default(cuid())
   name                String
   image_url           String
   thumbnail_url       String?
-  is_active           Boolean  @default(true)
+  // Auto-contrast selection (F-028): average-luminance tone of this backdrop,
+  // computed at upload and admin-overridable. The tagging/cleanup pipeline
+  // picks a LIGHT backdrop for dark garments and a DARK one for light
+  // garments — null tones (unclassified) are never auto-picked, only the
+  // retailer's explicit choice (or white) uses them.
+  tone                BackgroundTone?
+  is_active           Boolean         @default(true)
   created_by_admin_id String?
 
   created_at DateTime @default(now())
@@ -1104,6 +1110,11 @@ model BackgroundImage {
   products Product[]
 
   @@map("background_images")
+}
+
+enum BackgroundTone {
+  LIGHT
+  DARK
 }
 
 model PlanLimit {

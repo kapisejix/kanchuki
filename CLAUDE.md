@@ -785,6 +785,45 @@ User ask: move Category/Style/Occasion/Fabric off hardcoded lists onto the DB �
 
 **Verified 2026-08-07 (this session):** `packages/shared` (after rebuild), `packages/ai`, `packages/db`, `apps/api`, `apps/web`, `apps/mobile` all `tsc --noEmit` clean. Tests: API 306/306 across 23 files (incl. a 12-test admin default-attributes CRUD suite), AI 58/58, DB 10/10. Also fixed alongside: 8 pre-existing API test files that were failing to LOAD (missing `getPurgePrisma` in their `@kanchuki/db` mocks — the purge-retailer-now/storage-report route graph calls it at module top-level; CLAUDE.md had flagged `admin.login.test.ts` for this, the storage-report job widened it to 8 files) + added the first test coverage for the new routes (`product-attributes.test.ts`, 9 tests incl. IDOR). **Migration status: fully applied and live.** `GET /v1/product-attributes?kind=STYLE` and the admin/mobile pickers work end to end — nothing left pending on this feature.
 
+## Built: Store QR Self-Service + Store-URL Rename Sync + Onboarding QR Nudge (2026-08-08, commit `3311fc7`, pushed to main)
+
+User asks this session: (a) recover the crashed session's last task — surfaced the Pro-mode camera error root cause; (b) store URL showing another store's name; (c) retailer QR generate/delete with verification before delete. All shipped + pushed to main 2026-08-08.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **QR generate/delete** | `apps/api/src/routes/retailers/retailers-settings.ts`, `apps/mobile/app/store-profile.tsx` | New `DELETE /v1/retailers/me/qr-slug` (idempotent 204, audit-logged). Store QR screen rewritten: no auto-create on open — "Generate QR Code" button in the empty state; existing QR → Share/Save + **Delete QR requiring typed shop-name verification** (never deletes directly). Close button falls back to dashboard via `router.canGoBack()` |
+| **URL rename sync** | `apps/api/src/routes/retailers/retailers-profile.ts` | `PUT /me` regenerates `public_slug` from the new shop name when the name changes **and** a QR slug exists (bounded collision retries + timestamp fallback) — the store URL always carries the shop's own name; never touches unchanged names / no-QR retailers |
+| **Rename notice** | `apps/mobile/app/settings/index.tsx` | One-shot "Your store link has changed" banner (new link + "View QR Code" → store-profile) fired only when the PUT response slug actually differs |
+| **Onboarding nudge** | `apps/mobile/app/onboarding.tsx` | Done step gains "Create your store QR code" — completes onboarding, lands on the Store QR screen |
+| **Pro-mode error** | `apps/api/src/plugins/error-handler.ts`, `apps/api/src/routes/products/products-pro-cleanup.ts`, `apps/mobile/app/product/add.tsx` | Environment failures (sidecar/python down, network, timeout) → 503 `SERVICE_UNAVAILABLE` "use Photo mode instead"; photo-quality failures stay 422. **Camera-error root cause:** `PHOTO_CLEANUP_SERVICE_URL` unset → local-python fallback, but the sidecar commit removed Python from the Railway container — Pro needs the sidecar deployed (ops action, not done) |
+| **Tests** | `apps/api/src/routes/retailers.test.ts`, `apps/api/src/routes/products/products-pro-cleanup.test.ts` | Rename regeneration, DELETE qr-slug idempotency, 503 env-down vs 422 photo-quality. API suite **332/332** |
+
+Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4-step onboarding redesign (Shop → Location → GST → Done), Terms/Privacy links + new `apps/web/src/app/terms/page.tsx` via the shared `apps/mobile/src/lib/web-url.ts` helper, DB category self-heal on `GET /categories` (gated on `onboarding_completed`), and the tabs onboarding-gate fix (`isFetching` guard). Full detail: `docs/PROGRESS.md` "2026-08-08 — Store QR Self-Service" entry.
+
+
+## Built: Add-Product Flow Rework — AI-in-Background + F-028 Auto-Contrast Background (2026-08-08, uncommitted)
+
+**User ask:** "cross check all process of adding new product. every step has errors, i want everything clean and processing AI in background. retailer or team member click photos and save them with adding price, rest everything detected by AI tagging, and set the background, admin will add photos of background and AI detect if product item is in dark color then auto use light background and if product item is light color, then auto switch with dark background image."
+
+**Flow change (`apps/mobile/app/product/add.tsx`):** the blocking "Uploading Product" progress screen (`ai_tagging` step + `handleUploadAndTag` + spinner/progress machinery) is **deleted** — flow is shoot → preview → Use Photo → edit (price) → Save, with the photo uploaded at Save time and **everything else done server-side after creation** (AI tagging + cleanup + background). Auto-clean is **ON by default**; the background-picker chip now reads **"Auto"** (null = auto-contrast, not white); pre-save color-detect chip + `aiTags` state dropped (AI fills after save).
+
+**F-028 auto-contrast background (full stack, all uncommitted):**
+
+| Layer | Files | Summary |
+|---|---|---|
+| Shared | `packages/shared/src/constants/index.ts` + `src/colors.test.ts` (5) | `classifyColorTone(name)` → hex via `FASHION_COLOR_ALIASES` → WCAG luminance bands (dark <0.35, light >0.6, mid/unknown null) |
+| AI | `packages/ai/src/image-quality.ts` + tests (4) | `imageLuminance()` (32×32 sharp avg) + `isDarkImage()` |
+| DB | `schema.prisma` + `migrations/047_background_tone` | `BackgroundTone` enum + `background_images.tone` nullable |
+| API lib | `apps/api/src/lib/backgrounds.ts` (+3 tests) | `pickContrastBackground(tone)` → newest ACTIVE opposite-tone backdrop |
+| Tag job | `apps/api/src/jobs/tag-product.ts` (+2 tests) | explicit pick wins; else `classifyColorTone(primary_color)` → auto-contrast; mid-tone → white default. Never-clobber intact |
+| Pro cleanup | `apps/api/src/routes/products/products-pro-cleanup.ts` | no explicit bg → `isDarkImage()` on raw frame → auto-contrast (proxy, see limitation) |
+| Admin API | `apps/api/src/routes/admin/admin-media.ts` | tone computed at upload; PATCH override (null clears); audit before/after |
+| Admin UI | `apps/web/src/app/admin/background-images/page.tsx` | tone badge + Auto/Light/Dark override select |
+
+**Verified:** api/mobile/web/shared/ai `tsc --noEmit` clean; API 342/342, AI 67/67, shared 15/15; biome clean on new files (baseline warnings only elsewhere). Needed `prisma generate` + shared/ai rebuild (Windows EPERM on the engine DLL while a dev server held it — `--no-engine` types first, plain generate later succeeded).
+
+**Limitation (by design):** pro-path auto-contrast uses raw-frame luminance as a garment proxy — a busy backdrop can skew it; tag-product's AI-color path is the accurate one. **Ops:** migration 047 must be applied (dev `pnpm db:push`, prod Supabase SQL Editor) before deploy; deploy order DB → API → web → mobile rebuild.
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs

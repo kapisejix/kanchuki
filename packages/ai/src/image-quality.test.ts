@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { pickSharpest, scoreSharpness } from './image-quality.js';
+import { imageLuminance, isDarkImage, pickSharpest, scoreSharpness } from './image-quality.js';
+
+async function solidPng(hex: string): Promise<Buffer> {
+  const mod = await import('sharp');
+  const sharp = mod.default ?? mod;
+  // 1x1 solid-color raw RGB buffer → png. Cheap and deterministic.
+  const r = Number.parseInt(hex.slice(1, 3), 16);
+  const g = Number.parseInt(hex.slice(3, 5), 16);
+  const b = Number.parseInt(hex.slice(5, 7), 16);
+  const px = Buffer.from([r, g, b]);
+  return sharp(px, { raw: { width: 1, height: 1, channels: 3 } })
+    .png()
+    .toBuffer();
+}
 
 async function syntheticPng(kind: 'sharp' | 'blurred', size = 256): Promise<Buffer> {
   const mod = await import('sharp');
@@ -27,6 +40,30 @@ describe('scoreSharpness', () => {
 
   it('handles an empty/garbage buffer without crashing', async () => {
     await expect(scoreSharpness(Buffer.from('not an image'))).rejects.toThrow();
+  });
+});
+
+describe('imageLuminance / isDarkImage', () => {
+  it('near-black image classifies as dark (true)', async () => {
+    const buf = await solidPng('#0a0a0a');
+    expect(await imageLuminance(buf)).toBeLessThan(0.35);
+    expect(await isDarkImage(buf)).toBe(true);
+  });
+
+  it('near-white image classifies as light (false)', async () => {
+    const buf = await solidPng('#fafafa');
+    expect(await imageLuminance(buf)).toBeGreaterThan(0.6);
+    expect(await isDarkImage(buf)).toBe(false);
+  });
+
+  it('mid-tone grey returns null (no confident pick)', async () => {
+    // #a9a9a9 → ~0.40 WCAG luminance — between the dark (<0.35) / light (>0.6) bands.
+    const buf = await solidPng('#a9a9a9');
+    expect(await isDarkImage(buf)).toBeNull();
+  });
+
+  it('garbage buffer resolves null rather than throwing', async () => {
+    await expect(imageLuminance(Buffer.from('not an image'))).rejects.toThrow();
   });
 });
 

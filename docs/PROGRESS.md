@@ -4,6 +4,72 @@ One file, update at end of each work session: what's done, what's next, what's b
 
 ---
 
+## 2026-08-08 — Store QR Self-Service + Store-URL Rename Sync + Onboarding QR Nudge + Pro-Mode Error (commit `3311fc7`, pushed to main)
+
+Session source: crashed-session recovery (#1 → Pro-mode camera error root-caused), stale store name in URL (#3), QR generate/delete with verification (#4), plus follow-up asks (onboarding QR nudge, actionable Pro-mode error, settings URL-change notice).
+
+### QR generate/delete with verification (#4)
+- `DELETE /v1/retailers/me/qr-slug` (new, `apps/api/src/routes/retailers/retailers-settings.ts`) — idempotent 204, audit-logged, clears `public_slug`. `POST /me/qr-slug` collision loop hardened (bounded retries + timestamp fallback).
+- `apps/mobile/app/store-profile.tsx` rewritten — Store QR screen no longer auto-creates a QR on open. No slug → **"Generate QR Code"** button (empty state); slug exists → Share/Save + **"Delete QR"** which requires **typing the shop name** before the delete enables — never deletes directly. Close button falls back to the dashboard via `router.canGoBack()` (onboarding routes here via `router.replace`, so there is no prior route in the stack).
+
+### Store URL follows the shop name (#3)
+- `PUT /v1/retailers/me` (`apps/api/src/routes/retailers/retailers-profile.ts`) regenerates `public_slug` from the new shop name whenever the name changes **and** a QR slug already exists — bounded collision retries then a timestamp suffix. Never regenerates for unchanged names or when no QR exists yet (a live retailer's intentional state is never clobbered).
+- `apps/mobile/app/settings/index.tsx` — one-shot **"Your store link has changed"** banner after such a save: new link (tappable, opens browser) + "View QR Code" → Store QR screen + Dismiss. Fires only when the PUT response's slug actually differs from the previous one — exactly matching the backend's regeneration condition.
+
+### Onboarding QR nudge
+- `apps/mobile/app/onboarding.tsx` — final "Done" step gains **"Create your store QR code"** (between "Go to Dashboard" and "Get help adding your catalog"): completes onboarding with the same final-save + confetti pattern, then lands on the Store QR screen.
+
+### Pro-mode cleanup error — actionable message (#1, root cause of the camera error)
+- Root cause: `POST /products/pro-cleanup` needs `PHOTO_CLEANUP_SERVICE_URL` (new env var, empty by default); unset → local-python fallback, but the 2026-08-08 sidecar commit removed Python from the Railway API container → every Pro-mode capture failed with a generic error.
+- `apps/api/src/plugins/error-handler.ts` — new `serviceUnavailable()` helper (503 `SERVICE_UNAVAILABLE`).
+- `apps/api/src/routes/products/products-pro-cleanup.ts` — all-photos-fail branch scans per-photo error strings for environment signals (python missing, `No module named`, cleanup-service errors, fetch/network failures, timeout caps) → **503 "Professional photo processing is temporarily unavailable… or use Photo mode instead"**; photo-quality failures (e.g. corrupt JPEG) keep the generic 422.
+- `apps/mobile/app/product/add.tsx` — Pro catch shows **"Pro photos are unavailable right now — try again later, or use Photo mode instead."** on 503/`SERVICE_UNAVAILABLE`.
+- **Remaining ops action (per policy, not done):** set `PHOTO_CLEANUP_SERVICE_URL` + `CLEANUP_SHARED_SECRET` on the API service and deploy the sidecar — until then the message guides retailers to Photo mode but Pro stays down.
+
+### Also in `3311fc7` (in-flight onboarding redesign from the crashed session)
+4-step flow (Shop → Location → GST → Done), Terms/Privacy links via the new shared `apps/mobile/src/lib/web-url.ts` helper + `apps/web/src/app/terms/page.tsx`, DB category self-heal on `GET /categories` (gated on `onboarding_completed` so intentional deletions are never re-added), tabs onboarding-gate fix (`isFetching` guard so a stale cached `false` can't bounce a finished signup back to step 1), scan-text-strings helper scripts.
+
+### Verified
+API suite **332/332** (5 new: rename regeneration, DELETE qr-slug idempotency, 503 env-down vs 422 photo-quality), api + mobile `tsc --noEmit` clean, biome clean. Committed `3311fc7` and pushed to origin/main. Behavior is live only after the API service is redeployed (slug regeneration + qr-slug delete + 503 classification).
+
+---
+
+
+## 2026-08-08 — Add-Product Flow Rework + F-028 Auto-Contrast Background (uncommitted working tree)
+
+User asked for a full cross-check of the add-product pipeline: "every step has errors, I want everything clean and processing AI in background — retailer/team member clicks photos and saves them with adding price, rest everything detected by AI tagging, and set the background" (admin uploads backgrounds, AI picks dark→light / light→dark automatically). Code-complete + fully validated this session; **not committed** (working tree only).
+
+### Flow change (mobile `apps/mobile/app/product/add.tsx`)
+- **Blocking upload step removed.** The old camera → preview → "Uploading Product" 4-step progress screen (`ai_tagging` step, `handleUploadAndTag`, progress/spinner machinery, `UPLOAD_STEPS`) is deleted. Flow is now: shoot → preview → Use Photo → **edit (add price)** → Save. Upload happens **at Save time** (single fast request); AI tagging + cleanup + background run server-side after creation.
+- **Auto-clean ON by default** (`autoCleanup` now `useState(true)`) per user decision; background picker chip relabeled **"White" → "Auto"** (null now means auto-contrast pick, not plain white) in both the edit screen and pro_options.
+- Dropped the now-dead pre-save color-detect chip + `aiTags` state — the background AI job fills category/color/fabric after save (`search_tags: []`, only retailer-entered fields in the create payload).
+- Copy updated: "AI will auto-fill category, color, fabric and pick the best background after you save."
+
+### F-028 — Auto-contrast background selection (whole stack)
+Admin uploads background images as today; each now carries a **tone** (LIGHT/DARK). The AI pipeline auto-picks a backdrop whose tone OPPOSES the garment — dark garment → light backdrop, light garment → dark backdrop; mid-tone/unclassified falls back to plain white exactly as before. Explicit retailer picks always win.
+
+| Layer | Files | Summary |
+|---|---|---|
+| Shared | `packages/shared/src/constants/index.ts` | `classifyColorTone(name)` — maps AI color name → hex via `FASHION_COLOR_ALIASES` (lowercase keys), WCAG relative-luminance bands: dark < 0.35, light > 0.6, else null (no guess). Tests `packages/shared/src/colors.test.ts` (5) |
+| AI | `packages/ai/src/image-quality.ts` | `imageLuminance()` (sharp 32×32 raw average, WCAG linear) + `isDarkImage()` (true <0.35 / false >0.6 / null). Tests extended (4 new) |
+| DB | `packages/db/prisma/schema.prisma` + `migrations/047_background_tone/migration.sql` | `BackgroundTone` enum + `background_images.tone` nullable (null = unclassified → never auto-picked) |
+| API lib | `apps/api/src/lib/backgrounds.ts` (+ test) | `pickContrastBackground(tone)` → newest ACTIVE backdrop of opposite tone; null when none |
+| Tag job | `apps/api/src/jobs/tag-product.ts` | Auto-clean path: reads product's explicit `background_image` (if active) → wins; else `classifyColorTone(ai primary_color)` → `pickContrastBackground`. Never clobbers, best-effort as before. +2 F-028 tests (dark→LIGHT pick, explicit-pick wins) |
+| Pro cleanup | `apps/api/src/routes/products/products-pro-cleanup.ts` | No explicit `background_image_id` → `isDarkImage()` on the raw kept frame (proxy: frame ≈ garment for straight-on pro shots) → `pickContrastBackground` |
+| Admin API | `apps/api/src/routes/admin/admin-media.ts` | Background CREATE computes tone from the uploaded image buffer (`isDarkImage`, best-effort); PATCH accepts explicit `tone` override (null clears), audit metadata before/after |
+| Admin UI | `apps/web/src/app/admin/background-images/page.tsx` | Per-backdrop tone badge (Light/Dark/Unclassified) + Auto/Light/Dark override `<select>`, F-028 blurb |
+
+### Verified
+- `tsc --noEmit` clean: api, mobile, web, shared, ai (needed `pnpm build` for shared/ai dist + `prisma generate` — hit a Windows EPERM on the engine DLL while a dev server held it; `--no-engine` generated types, then plain generate succeeded).
+- Tests: API **342/342** (26 files, +5 F-028: 2 tag-product, 3 backgrounds lib), AI 67/67 (+4 luminance), shared 15/15 (+5 colors). One transient API failure seen mid-session, passed on re-run (flake).
+- Biome: new files clean (auto-fixed `parseInt`→`Number.parseInt`); remaining add.tsx/page.tsx warnings are pre-existing baseline.
+
+### Known limitation (by design)
+- Pro-mode auto-contrast uses **raw-frame average luminance** as a garment-tone proxy — a busy backdrop can skew it. The tag-product path (AI color name) is the accurate one; pro path stays best-effort with white fallback. Revisit with a garment-mask-aware luminance pass if skewed picks show up in practice.
+
+### Ops note
+- Migration 047 needs applying (`pnpm db:push` in dev / Supabase SQL Editor in prod) before the tone column exists. Deploy order: DB migration → API → web → mobile rebuild. The early-disable Pro UX (previous session) already guards the mobile side until the cleanup sidecar is deployed.
+
 ## 2026-08-08 — Photo-Cleanup Sidecar (torch/SAM2 leaves Railway) — DECISION + BUILT
 
 **Decision (user confirmed whole-pipeline move, 2026-08-08):** the torch/SAM2 stack runs in a NEW sidecar on the Hetzner CX43 box, NOT the Railway API container. Evidence: `scripts/demo/2026-08-08-sam2/memtest.py` measured the full pipeline (rembg+SAM2+LaMa, real mannequin photo) at **2,058 MB peak (auto) / 2,198 MB (point-prompt)** vs **960 MB baseline** (rembg+LaMa) — the SAM2 child ALONE exceeds the Railway container's whole 2 GB cgroup (2026-08-05 OOM bump), before Node's RSS is even counted. Baking into the Dockerfile was a guaranteed OOM, not a risk. CPU time on this desktop is also 47–71s/photo → 5-photo batches blow the 600s mobile timeout on Railway's throttled shared CPU.

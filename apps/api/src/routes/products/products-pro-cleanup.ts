@@ -24,17 +24,22 @@
 // manual per-photo cleanup endpoint); per-photo crop rects also draw from
 // IMAGE_CROP. The ₹0 default path (rembg+SAM2+LaMa, self-hosted) never
 // touches AI credits.
+import { spawnSync } from 'node:child_process';
+
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 
 import {
   compressImageToTarget,
+  fetchImageBuffer,
+  isDarkImage,
   pickSharpest,
   publicUrl,
   scoreSharpness,
   uploadBuffer,
 } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { getSecret, prisma } from '@kanchuki/db';
+import { pickContrastBackground } from '../../lib/backgrounds.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import { serviceUnavailable, validationError } from '../../plugins/error-handler.js';
@@ -149,6 +154,18 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
         });
         if (!bg) throw validationError('Background image not found or inactive');
         bgUrl = bg.image_url;
+      } else {
+        // F-028 auto-contrast: no explicit pick → classify the FIRST raw shot
+        // by average frame luminance (pro mode frames the garment edge-to-edge,
+        // so frame tone ≈ garment tone) and match an opposing-tone backdrop.
+        // Best-effort: classification failure falls back to white.
+        try {
+          const firstRaw = await fetchImageBuffer(photos[0]?.url ?? '');
+          const isDark = await isDarkImage(firstRaw);
+          if (isDark !== null) bgUrl = await pickContrastBackground(isDark ? 'dark' : 'light');
+        } catch (err) {
+          request.log.warn({ err }, 'Auto-contrast background classification failed — using white');
+        }
       }
 
       const rows: ProCleanupPhotoRow[] = [];
@@ -256,4 +273,56 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
       });
     }),
   );
+
+  // ─── GET /products/pro-cleanup/status ─────────────────────────────
+  // Availability probe for the mobile capture screen: lets the Pro chip show
+  // as unavailable UP-FRONT (before the retailer shoots 3-5 photos and only
+  // then discovers a 503 at Process). Service mode → ping the sidecar /health
+  // with a short cap; local mode → check for a python binary (the runner's
+  // real dep check still happens at run time — production always uses service
+  // mode). The client fails open, so a flaky probe never blocks a working
+  // feature.
+  server.get('/pro-cleanup/status', async () => {
+    const serviceUrl = (await getSecret('PHOTO_CLEANUP_SERVICE_URL'))?.trim();
+    let serviceHealthy: boolean | null = null;
+    let localPythonAvailable = false;
+    if (serviceUrl) {
+      try {
+        const res = await fetch(`${serviceUrl.replace(/\/+$/, '')}/health`, {
+          signal: AbortSignal.timeout(3_000),
+        });
+        serviceHealthy = res.ok;
+      } catch {
+        serviceHealthy = false;
+      }
+    } else {
+      localPythonAvailable = hasPythonBinary();
+    }
+    const available = serviceUrl ? serviceHealthy === true : localPythonAvailable;
+    return {
+      data: {
+        available,
+        mode: serviceUrl ? 'service' : 'local',
+        service_url_set: Boolean(serviceUrl),
+        service_healthy: serviceHealthy,
+        local_python_available: localPythonAvailable,
+      },
+    };
+  });
 };
+
+/** Cheap local-mode availability probe — does this host expose a
+ * python3/python binary the runner could exec? (Only reached when
+ * PHOTO_CLEANUP_SERVICE_URL is unset, i.e. local dev; missing deps still get
+ * caught at run time with the clear "no working python3/python" error.) */
+function hasPythonBinary(): boolean {
+  for (const bin of ['python3', 'python']) {
+    try {
+      const res = spawnSync(bin, ['--version'], { timeout: 3_000 });
+      if (!res.error && res.status === 0) return true;
+    } catch {
+      // spawn failed — try the next binary name
+    }
+  }
+  return false;
+}
