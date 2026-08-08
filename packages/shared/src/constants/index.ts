@@ -392,15 +392,6 @@ export const QUEUES = {
   MAINTENANCE: 'kanchuki-maintenance',
 } as const;
 
-// ─── Cache TTLs (seconds) ─────────────────────────────────────────
-
-export const CACHE_TTL = {
-  AI_TAG_RESULT: 86400, // 24h — same image = same tags
-  SESSION: 900, // 15min
-  COLLECTION_VIEWS: 300, // 5min — flush to DB
-  RATE_LIMIT_WINDOW: 60, // 1min
-} as const;
-
 // ─── Collection Slug Config ───────────────────────────────────────
 
 export const COLLECTION_SLUG_LENGTH = 8;

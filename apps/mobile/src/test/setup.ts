@@ -269,14 +269,6 @@ vi.mock('@kanchuki/shared', () => ({
   // Hindi → English
   HINDI_TO_ENGLISH: { suit: 'ladies suit', kurta: 'kurta' },
 
-  // Cache TTL
-  CACHE_TTL: {
-    AI_TAG_RESULT: 86400,
-    SESSION: 900,
-    COLLECTION_VIEWS: 300,
-    RATE_LIMIT_WINDOW: 60,
-  },
-
   // Config
   COLLECTION_SLUG_LENGTH: 8,
   COLLECTION_DEFAULT_EXPIRY_DAYS: 30,
