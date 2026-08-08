@@ -48,8 +48,12 @@ export function maskSecret(plaintext: string): string {
 // call. Admin CRUD routes call invalidateSecret() so edits apply immediately
 // instead of waiting out the TTL. Per-process cache — fine for this app's
 // single-API-instance deploy; add pub/sub invalidation if that changes.
-const cache = new Map<string, { value: string | undefined; at: number }>()
+const cache = new Map<string, { value: string | undefined; expiresAt: number }>()
 const CACHE_MS = 30_000
+// TTL jitter (0–50% of CACHE_MS) — when several API replicas each cache the
+// same secret at boot, this spreads their refetches instead of all hitting
+// the DB at one shared expiry boundary.
+const CACHE_TTL_JITTER_FRACTION = 0.5
 
 export function invalidateSecret(keyName: string): void {
   cache.delete(keyName)
@@ -58,7 +62,7 @@ export function invalidateSecret(keyName: string): void {
 /** DB-stored, admin-managed value if active, else the .env var of the same name. */
 export async function getSecret(keyName: string): Promise<string | undefined> {
   const hit = cache.get(keyName)
-  if (hit && Date.now() - hit.at < CACHE_MS) return hit.value
+  if (hit && hit.expiresAt > Date.now()) return hit.value
 
   const row = await prisma.integrationSetting.findFirst({
     where: { key_name: keyName, is_active: true },
@@ -78,6 +82,10 @@ export async function getSecret(keyName: string): Promise<string | undefined> {
   } else {
     value = process.env[keyName]
   }
-  cache.set(keyName, { value, at: Date.now() })
+  cache.set(keyName, {
+    value,
+    expiresAt:
+      Date.now() + CACHE_MS + Math.floor(Math.random() * CACHE_MS * CACHE_TTL_JITTER_FRACTION),
+  })
   return value
 }

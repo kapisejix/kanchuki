@@ -13,10 +13,21 @@
  */
 
 const inflight = new Map<string, Promise<unknown>>()
-const cache = new Map<string, { data: unknown; ts: number }>()
+const cache = new Map<string, { data: unknown; expiresAt: number }>()
 
 /** Default TTL for cached GET responses (30s).  Set to 0 to disable. */
 const DEFAULT_GET_TTL_MS = 30_000
+
+/**
+ * TTL jitter (0–50% of the base TTL) applied per entry at write time.
+ * Entries cached at the same instant expire at slightly different times,
+ * spreading refetch load instead of thundering-herding the API at one shared
+ * expiry boundary. In-flight dedup already collapses concurrent same-key
+ * requests; jitter kills the herd across different keys that happen to be
+ * cached at the same moment (e.g. a screen batch-mounting many list queries
+ * right after a cold start or logout).
+ */
+const CACHE_TTL_JITTER_FRACTION = 0.5
 
 /** Default timeout per request (10s — fits 3G budget). */
 const DEFAULT_TIMEOUT_MS = 10_000
@@ -63,7 +74,7 @@ export async function cachedFetch(
   // ── GET cache hit ───────────────────────────────────────────────
   if (method === 'GET' && getTtl > 0) {
     const hit = cache.get(key)
-    if (hit && Date.now() - hit.ts < getTtl) {
+    if (hit && hit.expiresAt > Date.now()) {
       return new Response(JSON.stringify(hit.data), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -90,7 +101,12 @@ export async function cachedFetch(
         const cloned = response.clone()
         try {
           const data = await cloned.json()
-          cache.set(key, { data, ts: Date.now() })
+          // TTL jitter: each entry expires at base TTL + 0–50% random offset.
+          cache.set(key, {
+            data,
+            expiresAt:
+              Date.now() + getTtl + Math.floor(Math.random() * getTtl * CACHE_TTL_JITTER_FRACTION),
+          })
         } catch { /* non-JSON response — don't cache */ }
       }
 
