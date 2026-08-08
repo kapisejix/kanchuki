@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
-import { authApi, setToken } from '../../src/lib/api'
+import { authApi, setToken, ApiError } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -84,10 +84,28 @@ export default function OtpScreen() {
         router.replace(result.is_new ? '/onboarding' : '/')
       }
     } catch (err) {
-      showError(err, 'Invalid OTP', 'Incorrect OTP', () => {
-        setOtp('')
-        inputRef.current?.focus()
-      })
+      // Don't blanket-label every failure "Incorrect OTP" — a 500 (e.g. the
+      // phone number still being released after account deletion) or a 409
+      // is NOT a wrong code, and clearing the input to retype would mislead.
+      const apiErr = err instanceof ApiError ? err : null
+      if (apiErr?.status === 401) {
+        showError(err, 'Invalid or expired OTP. Try again.', 'Incorrect OTP', () => {
+          setOtp('')
+          inputRef.current?.focus()
+        })
+      } else if (apiErr?.status === 409 || apiErr?.status === 429) {
+        showError(err, apiErr.message, 'Unable to log in')
+      } else {
+        showError(
+          err,
+          'Something went wrong on our side. Please try again in a moment.',
+          'Unable to log in',
+          () => {
+            setOtp('')
+            inputRef.current?.focus()
+          },
+        )
+      }
     } finally {
       setLoading(false)
     }

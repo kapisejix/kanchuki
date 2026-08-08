@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../../src/components/GradientButton';
-import { authApi } from '../../src/lib/api';
+import { authApi, ApiError } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
 import { useTheme } from '../../src/lib/theme';
 import { WEB_URL } from '../../src/lib/web-url';
@@ -35,7 +35,14 @@ export default function PhoneScreen() {
       await authApi.sendOtp(phone);
       router.push({ pathname: '/auth/otp', params: { phone } });
     } catch (err) {
-      showError(err, 'Failed to send OTP');
+      // Surface the backend's actionable message (rate limit, send failure)
+      // instead of a generic fallback.
+      const apiErr = err instanceof ApiError ? err : null;
+      if (apiErr?.message && apiErr.status >= 400 && apiErr.status < 500) {
+        showError(err, apiErr.message, 'Could not send OTP');
+      } else {
+        showError(err, 'Failed to send OTP. Check your connection and try again.');
+      }
     } finally {
       setLoading(false);
     }

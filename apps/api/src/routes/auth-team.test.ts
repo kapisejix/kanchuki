@@ -216,3 +216,104 @@ describe('POST /auth/otp/verify — TeamMember (Kanchuki agent) login', () => {
     await app.close();
   });
 });
+
+describe('POST /auth/otp/verify — soft-deleted / recreated-auth-user retailer edge cases', () => {
+  const newRetailer = {
+    id: 'retailer_new',
+    phone: '9876543210',
+    shop_name: '',
+    city: '',
+    plan: 'STARTER',
+    plan_status: 'TRIAL',
+    onboarding_completed: false,
+    onboarding_step: 0,
+    is_suspended: false,
+  };
+
+  beforeEach(() => {
+    mockStaffFindFirst.mockResolvedValue(null);
+    mockTeamMemberFindFirst.mockResolvedValue(null);
+    mockRetailerUpsert.mockResolvedValue(newRetailer);
+  });
+
+  it('returns a clean 409 ACCOUNT_DELETED when the phone belongs to a soft-deleted account (no P2002 500)', async () => {
+    mockVerifyOtp.mockResolvedValue(validSession);
+    // The 5 test-account phones are still soft-deleted rows (delete-test-retailers
+    // SQL not yet run) — the unique phone constraint must NOT surface as a 500.
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_deleted',
+      auth_user_id: 'some-old-auth-user',
+      deleted_at: new Date('2026-08-05T07:46:57Z'),
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9999999999', otp: '123456' },
+    });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ACCOUNT_DELETED');
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    expect(mockRetailerUpsert).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('relinks the surviving row to the recreated Supabase auth user instead of colliding on unique phone', async () => {
+    mockVerifyOtp.mockResolvedValue(validSession);
+    // Supabase auth user was recreated after an auth.users cleanup — same
+    // phone, new user.id. Must relink, not attempt a duplicate upsert.
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_survived',
+      auth_user_id: 'old-auth-user',
+      deleted_at: null,
+    });
+    mockRetailerUpdate.mockResolvedValue({
+      id: 'retailer_survived',
+      auth_user_id: 'supabase-user-1',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9876543210', otp: '123456' },
+    });
+
+    expect(mockRetailerUpdate).toHaveBeenCalledWith({
+      where: { id: 'retailer_survived' },
+      data: { auth_user_id: 'supabase-user-1' },
+    });
+    expect(mockRetailerUpsert).toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it('keeps linking the pending: placeholder row on first real login', async () => {
+    mockVerifyOtp.mockResolvedValue(validSession);
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_pending',
+      auth_user_id: 'pending:team-created',
+      deleted_at: null,
+    });
+    mockRetailerUpdate.mockResolvedValue({
+      id: 'retailer_pending',
+      auth_user_id: 'supabase-user-1',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9876543210', otp: '123456' },
+    });
+
+    expect(mockRetailerUpdate).toHaveBeenCalledWith({
+      where: { id: 'retailer_pending' },
+      data: { auth_user_id: 'supabase-user-1' },
+    });
+    expect(res.statusCode).toBe(200);
+    await app.close();
+  });
+});

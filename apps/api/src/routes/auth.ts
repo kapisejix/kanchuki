@@ -171,8 +171,27 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     // Supabase user existed yet. Link it by phone instead of creating a
     // second, duplicate row keyed on the now-real auth_user_id.
     const pending = await prisma.retailer.findUnique({ where: { phone } });
-    if (pending?.auth_user_id.startsWith('pending:')) {
-      await prisma.retailer.update({ where: { id: pending.id }, data: { auth_user_id: user.id } });
+    if (pending) {
+      // Soft-deleted account still owns the unique phone. Until the row is
+      // purged (admin/SQL-editor path — role separation blocks the app role's
+      // DELETE), this number can't be re-registered. Fail with a clean 409
+      // instead of letting the upsert below throw an unhandled P2002 → 500
+      // (which the mobile app used to show as a misleading "Incorrect OTP").
+      if (pending.deleted_at) {
+        throw new AppError(
+          'ACCOUNT_DELETED',
+          'This mobile number is linked to a deleted account. It can be released once the account purge completes — try again later or use a different number.',
+          409,
+        );
+      }
+      // Supabase auth user may have been recreated since this retailer last
+      // logged in (e.g. auth.users cleanup, or the `pending:` placeholder
+      // above) — user.id differs from the row's stored auth_user_id. Relink
+      // by phone so the upsert below matches instead of colliding on the
+      // unique phone constraint.
+      if (pending.auth_user_id !== user.id) {
+        await prisma.retailer.update({ where: { id: pending.id }, data: { auth_user_id: user.id } });
+      }
     }
 
     // Upsert retailer (first login = registration, subsequent = login)
