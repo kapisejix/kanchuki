@@ -2,9 +2,27 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-08 — Redis Public-Response Cache: single-flight + TTL jitter (commit `56068e7`, pushed to main)
+
+**Why:** viral WhatsApp collection links fan out thousands of requests at `/api/c/*` — and the web `/api/c/*` routes are *proxies* to the public API, so with no server cache every request recomputed 3–4 Postgres queries. One cache at the API covers every surface (web proxy, browser, mobile).
+
+**What:** `apps/api/src/lib/public-cache.ts` — cache-aside read with single-flight stampede protection + TTL jitter, wired into **all 6 public GETs** (`/public/collections/:slug`, `/public/retailers/:slug` + `/categories` + `/categories/:categoryId`, `/public/products/:productId` + `/related`).
+
+- **Single-flight** — atomic `SET NX PX` lock per key: only the winner recomputes; everyone else polls for its result (bounded 2.5s, then computes as a bounded fallback). Double-check after acquiring; lock released in `finally`. Any Redis error at any step degrades to a direct DB read — a cache must never fail a request.
+- **Jitter** — each entry expires at 60s base + 0–50% random offset at write time, so same-instant writes never expire together.
+- **Own short-fail ioredis client** (`maxRetriesPerRequest: 1`, `enableOfflineQueue: false`, `lazyConnect`) — deliberately **NOT** `getRedis()`: BullMQ requires `maxRetriesPerRequest: null`, which retries forever on a down connection and would hang the public hot path.
+- **Keys** — `public:get:{path}?{sorted query params}` so equivalent URLs share one entry.
+- **Cache-Control headers moved outside the wrap** — cache hits still set them. 404s are never cached; suspended-retailer responses are (60s). POSTs (view/enquire/favorite/leads) untouched — their mutated counters aren't in the cached payload.
+- **60s TTL is the invalidation** — retailer product/collection/suspension edits appear on the storefront within a minute, no cross-service cache-busting.
+- `withPublicCache` bypasses Redis under `NODE_ENV=test` so existing route tests stay deterministic.
+
+**Tests:** `public-cache.test.ts` — 9 cases with a fake Redis (cache hit, miss + jittered EX + lock release, jitter bounds 60/89, single-flight one-compute-for-two-callers, stalled-winner bounded fallback, Redis-down fail-open, corrupt-value recompute, query-key normalization, env bypass). **Verified:** api tsc clean, full API suite 354/354, biome clean.
+
+**Ops note:** no env vars needed (`REDIS_URL` already configured). The cache is live on deploy; watch for reduced Postgres load on storefront endpoints. Not covered yet: product-detail presigned-URL freshness (fine — R2 presigns are 1h, cache is 60s) and a Redis-outage latency spike (each miss pays one fast connection-attempt reject).
+
 ---
 
-## 2026-08-08 — Store QR Self-Service + Store-URL Rename Sync + Onboarding QR Nudge + Pro-Mode Error (commit `3311fc7`, pushed to main)
+ + Store-URL Rename Sync + Onboarding QR Nudge + Pro-Mode Error (commit `3311fc7`, pushed to main)
 
 Session source: crashed-session recovery (#1 → Pro-mode camera error root-caused), stale store name in URL (#3), QR generate/delete with verification (#4), plus follow-up asks (onboarding QR nudge, actionable Pro-mode error, settings URL-change notice).
 

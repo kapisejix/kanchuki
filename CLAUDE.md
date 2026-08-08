@@ -824,6 +824,18 @@ Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4
 
 **Limitation (by design):** pro-path auto-contrast uses raw-frame luminance as a garment proxy — a busy backdrop can skew it; tag-product's AI-color path is the accurate one. **Ops:** migration 047 must be applied (dev `pnpm db:push`, prod Supabase SQL Editor) before deploy; deploy order DB → API → web → mobile rebuild.
 
+## Built: Redis Public-Response Cache for Customer Storefronts (2026-08-08, commit `56068e7`)
+
+**Why:** viral WhatsApp collection links hit `/api/c/*` (web proxies → `apps/api` public GETs) with thousands of concurrent requests, each recomputing 3–4 Postgres queries. **Fix:** single-flight + jittered Redis response cache at the API — `apps/api/src/lib/public-cache.ts`.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Cache helper** | `apps/api/src/lib/public-cache.ts` (+ `public-cache.test.ts`, 9 tests) | `publicCacheGetOrCompute()` — cache-aside read: atomic `SET NX PX` lock per key (only the winner recomputes; the rest poll, bounded 2.5s, then compute as a bounded fallback), double-check after acquiring, lock released in `finally`, TTL jitter (60s base + 0–50% at write time), **own short-fail ioredis client** (NOT `getRedis()` — BullMQ's `maxRetriesPerRequest: null` retries forever on a down connection), fail-open to direct DB on any Redis error at any step. Keys `public:get:{path}?{sorted params}`. `withPublicCache()` bypasses Redis under `NODE_ENV=test` for deterministic route tests |
+| **Wiring** | `apps/api/src/routes/public/{public-collections,public-retailers,public-products}.ts` | All 6 public GETs wrapped (collection, retailer profile/categories/category-products, product detail/related). Cache-Control headers moved outside the wrap so cache hits still set them. 404s never cached; suspended responses are (60s). POSTs untouched (their counters aren't in the payload) |
+| **Invalidation** | — (by design) | 60s TTL is the invalidation — retailer edits appear within a minute, no cross-service cache-busting |
+
+**Verified:** api tsc clean, API suite 354/354, biome clean. Deploy note: nothing to configure (`REDIS_URL` already set); live on next API deploy.
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs
