@@ -14,6 +14,8 @@ const {
   mockIncrementUsage,
   mockGetSecret,
   mockSpawnSync,
+  mockFetchImageBuffer,
+  mockIsDarkImage,
 } = vi.hoisted(() => ({
   mockCompressImageToTarget: vi.fn(),
   mockUploadBuffer: vi.fn(),
@@ -27,6 +29,8 @@ const {
   mockIncrementUsage: vi.fn(),
   mockGetSecret: vi.fn(),
   mockSpawnSync: vi.fn(),
+  mockFetchImageBuffer: vi.fn(),
+  mockIsDarkImage: vi.fn(),
 }));
 
 vi.mock('@kanchuki/ai', () => ({
@@ -35,6 +39,8 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: mockPublicUrl,
   scoreSharpness: mockScoreSharpness,
   pickSharpest: mockPickSharpest,
+  fetchImageBuffer: mockFetchImageBuffer,
+  isDarkImage: mockIsDarkImage,
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -90,6 +96,10 @@ beforeEach(() => {
   mockCheckQuota.mockResolvedValue(undefined);
   mockIncrementUsage.mockResolvedValue(undefined);
   mockGetSecret.mockResolvedValue('');
+  // F-028 auto-contrast path: default fetch rejects (no network in tests)
+  // so the fallback-to-white branch runs unless a test overrides it.
+  mockFetchImageBuffer.mockReset().mockRejectedValue(new Error('mock: no network'));
+  mockIsDarkImage.mockReset();
   // Default: the runner "runs" the pipeline and returns a cleaned JPEG +
   // stdout. Per-test overrides can replace this.
   mockRunCleanup.mockResolvedValue({
@@ -335,6 +345,101 @@ describe('POST /products/pro-cleanup', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(mockRunCleanup).not.toHaveBeenCalled();
+    await app.close();
+  });
+  it('F-028 auto-contrast: dark first shot → picks a LIGHT backdrop', async () => {
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('dark-raw'));
+    mockIsDarkImage.mockResolvedValue(true);
+    mockBackgroundFindFirst.mockResolvedValue({
+      id: 'bg1',
+      image_url: 'https://cdn.example/backdrops/light.jpg',
+      is_active: true,
+    });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: validBody,
+    });
+
+    expect(res.statusCode).toBe(200);
+    // Auto-contrast asked for the opposite tone (dark garment → LIGHT):
+    // isDarkImage(true) → pickContrastBackground('dark') → findFirst LIGHT.
+    expect(mockIsDarkImage).toHaveBeenCalledWith(Buffer.from('dark-raw'));
+    expect(mockBackgroundFindFirst).toHaveBeenCalledWith({
+      where: { is_active: true, tone: 'LIGHT' },
+      orderBy: { created_at: 'desc' },
+    });
+    // The picked backdrop flows into every cleaned photo.
+    expect(mockRunCleanup).toHaveBeenCalledWith(
+      expect.objectContaining({ bgImageUrl: 'https://cdn.example/backdrops/light.jpg' }),
+      expect.any(Number),
+    );
+    await app.close();
+  });
+
+  it('F-028 auto-contrast: light first shot → picks a DARK backdrop', async () => {
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('light-raw'));
+    mockIsDarkImage.mockResolvedValue(false);
+    mockBackgroundFindFirst.mockResolvedValue({
+      id: 'bg2',
+      image_url: 'https://cdn.example/backdrops/dark.jpg',
+      is_active: true,
+    });
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: validBody,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockRunCleanup).toHaveBeenCalledWith(
+      expect.objectContaining({ bgImageUrl: 'https://cdn.example/backdrops/dark.jpg' }),
+      expect.any(Number),
+    );
+    await app.close();
+  });
+
+  it('F-028 auto-contrast: unclassifiable mid-tone → falls back to white (no backdrop)', async () => {
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('mid-raw'));
+    mockIsDarkImage.mockResolvedValue(null);
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: validBody,
+    });
+
+    expect(res.statusCode).toBe(200);
+    // No pick, no background query — plain white composite as before F-028.
+    expect(mockBackgroundFindFirst).not.toHaveBeenCalled();
+    expect(mockRunCleanup).toHaveBeenCalledWith(
+      expect.objectContaining({ bgImageUrl: null }),
+      expect.any(Number),
+    );
+    await app.close();
+  });
+
+  it('F-028 auto-contrast: classification failure (fetch down) falls back to white', async () => {
+    mockFetchImageBuffer.mockRejectedValue(new Error('sidecar unreachable'));
+    const app = await buildApp();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: validBody,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockBackgroundFindFirst).not.toHaveBeenCalled();
+    expect(mockRunCleanup).toHaveBeenCalledWith(
+      expect.objectContaining({ bgImageUrl: null }),
+      expect.any(Number),
+    );
     await app.close();
   });
 });
