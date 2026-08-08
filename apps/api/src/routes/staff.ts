@@ -1,12 +1,16 @@
 import { prisma } from '@kanchuki/db';
-import { normalizeIndianPhone } from '@kanchuki/shared';
+import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, planLimitExceeded, validationError } from '../plugins/error-handler.js';
 
 const StaffSchema = z.object({
   name: z.string().min(1).max(200),
-  phone: z.string().min(10).max(15),
+  phone: z
+    .string()
+    .min(10)
+    .max(15)
+    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number'),
   role: z.enum(['owner', 'manager', 'salesperson']).default('salesperson'),
 });
 

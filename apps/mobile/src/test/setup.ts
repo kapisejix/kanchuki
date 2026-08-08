@@ -206,6 +206,7 @@ vi.mock('@kanchuki/shared', () => ({
   },
   normalizeIndianPhone: (v: string) =>
     v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, ''),
+  isValidIndianPhone: (v: string) => /^[6-9]\d{9}$/.test(v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, '')),
   normalizeSearchQuery: (q: string) => q.toLowerCase().trim(),
 
   // Constants

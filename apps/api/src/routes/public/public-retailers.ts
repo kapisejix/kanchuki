@@ -1,7 +1,7 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { createHash } from 'node:crypto';
 import { type Prisma, prisma } from '@kanchuki/db';
-import { normalizeIndianPhone } from '@kanchuki/shared';
+import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
@@ -245,7 +245,11 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         name: z.string().min(1).max(200),
-        phone: z.string().min(10).max(15),
+        phone: z
+          .string()
+          .min(10)
+          .max(15)
+          .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number'),
         gender: z.enum(['MALE', 'FEMALE']),
         consent: z.literal(true, { message: 'Consent is required' }),
       })

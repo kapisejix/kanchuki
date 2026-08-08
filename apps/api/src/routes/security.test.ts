@@ -69,6 +69,9 @@ vi.mock('@kanchuki/shared', () => ({
   INTEGRATION_KEYS: [],
   PLAN_PRICING: {},
   R2_PATHS: {},
+  isValidIndianPhone: (v: string) =>
+    /^[6-9]\d{9}$/.test(v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, '')),
+  normalizeIndianPhone: (v: string) => v.replace(/\D/g, '').replace(/^91/, '').replace(/^0/, ''),
 }));
 
 // ─── Test Helpers ────────────────────────────────────────────────
@@ -188,9 +191,11 @@ describe('§10 — IDOR: GET /public/orders/:id', () => {
   it('returns 404 when phone number does not match (timing-safe)', async () => {
     mockOrderFindUnique.mockResolvedValue(mockOrder);
     const app = await buildCheckoutApp();
+    // Valid Indian format (starts 6–9) but a DIFFERENT number than the order's
+    // 9876543210 — so validation passes and the timing-safe compare decides.
     const res = await app.inject({
       method: 'GET',
-      url: '/v1/public/orders/order_cuid_123?phone=1111111111',
+      url: '/v1/public/orders/order_cuid_123?phone=9876543211',
     });
     expect(res.statusCode).toBe(404);
     // Same error as "order not found" — no info leakage about WHY it failed

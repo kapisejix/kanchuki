@@ -68,8 +68,17 @@ for (const file of walk(ROOT, [])) {
       if (name && !TEXTISH.has(name) && name !== 'Text') {
         for (const child of node.children || []) {
           let bad = false;
-          if (child.type === 'JSXText' && child.value.trim()) {
-            bad = true;
+          if (child.type === 'JSXText') {
+            // Any non-whitespace text is a crash. Whitespace-only text is
+            // ALSO a crash when it survives the JSX transform — i.e. when it
+            // sits between two tags/expressions on the SAME line (the
+            // transform strips newline-adjacent whitespace but preserves
+            // mid-line spaces). That's how the add.tsx camera-step crash
+            // slipped past this scanner: `</View>          <Pressable` became
+            // a text node "          " child of a View.
+            if (child.value.trim() || (!/\n/.test(child.value) && child.value.length > 0)) {
+              bad = true;
+            }
           } else if (
             child.type === 'JSXExpressionContainer' &&
             isStringNode(child.expression)

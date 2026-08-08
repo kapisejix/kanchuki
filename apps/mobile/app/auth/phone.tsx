@@ -1,4 +1,4 @@
-import { COLORS } from '@kanchuki/shared';
+import { COLORS, isValidIndianPhone } from '@kanchuki/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -24,7 +24,9 @@ export default function PhoneScreen() {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const isValid = phone.replace(/\D/g, '').length === 10;
+  // Complete validation: exactly 10 digits starting 6–9 (+91/91/0 prefix ok).
+  const isValid = isValidIndianPhone(phone);
+  const showPhoneError = phone.replace(/\D/g, '').length > 0 && !isValid;
 
   const handleSend = async () => {
     if (!isValid) return;
@@ -81,14 +83,22 @@ export default function PhoneScreen() {
                 placeholder="10-digit mobile number"
                 placeholderTextColor={colors.sand[400]}
                 keyboardType="phone-pad"
-                maxLength={10}
+                maxLength={15}
                 className="flex-1 text-base text-sand-900 font-medium"
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={() => void handleSend()}
               />
             </View>
-            <Text className="text-xs text-sand-400 mt-2 pl-1">OTP will be sent to this number</Text>
+            {showPhoneError ? (
+              <Text className="text-xs font-medium text-danger mt-2 pl-1">
+                Enter a valid 10-digit mobile number (starts with 6–9)
+              </Text>
+            ) : (
+              <Text className="text-xs text-sand-400 mt-2 pl-1">
+                OTP will be sent to this number
+              </Text>
+            )}
           </View>
         </View>
 

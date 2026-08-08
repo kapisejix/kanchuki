@@ -1,6 +1,7 @@
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
 // Auto-split from checkout.ts (scripts/split-checkout-routes.mjs) — route bodies verbatim.
+import { isValidIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
@@ -326,7 +327,11 @@ export const checkoutFlowRoutes: FastifyPluginAsync = async (server) => {
       const { id } = request.params as { id: string };
       const query = z
         .object({
-          phone: z.string().min(10).max(15),
+          phone: z
+            .string()
+            .min(10)
+            .max(15)
+            .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number'),
         })
         .safeParse(request.query);
 

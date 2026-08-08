@@ -2,6 +2,7 @@
 // (see scripts/split-checkout-routes.mjs). Route modules import from here.
 import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
+import { isValidIndianPhone } from '@kanchuki/shared';
 import { z } from 'zod';
 export async function razorpayAsRetailer<T>(
   retailerPayment: { razorpay_key_id: string; razorpay_key_secret_encrypted: string },
@@ -81,7 +82,11 @@ export const CreateOrderSchema = z.object({
     .min(1)
     .max(50),
   customer_name: z.string().min(1).max(200),
-  customer_phone: z.string().min(10).max(15),
+  customer_phone: z
+    .string()
+    .min(10)
+    .max(15)
+    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number'),
   shipping_address: z.object({
     line1: z.string().min(1).max(500),
     line2: z.string().max(500).optional(),

@@ -1,5 +1,5 @@
 import { prisma } from '@kanchuki/db';
-import { normalizeIndianPhone } from '@kanchuki/shared';
+import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
@@ -13,6 +13,7 @@ const PhoneSchema = z.object({
     .string()
     .min(10)
     .max(15)
+    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
     .transform((v) => normalizeIndianPhone(v)),
 });
 
@@ -21,6 +22,7 @@ const OtpVerifySchema = z.object({
     .string()
     .min(10)
     .max(15)
+    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
     .transform((v) => normalizeIndianPhone(v)),
   otp: z
     .string()

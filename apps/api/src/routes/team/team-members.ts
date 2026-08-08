@@ -1,6 +1,6 @@
 // Auto-split from team.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
-import { normalizeIndianPhone } from '@kanchuki/shared';
+import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
@@ -23,6 +23,7 @@ const CreateMemberSchema = z.object({
     .min(10)
     .max(15)
     .optional()
+    .refine((v) => (v ? isValidIndianPhone(v) : true), 'Enter a valid 10-digit Indian mobile number')
     .transform((v) => (v ? normalizeIndianPhone(v) : undefined)),
   password: z.string().min(8).max(128),
   role: z.enum([
@@ -49,6 +50,7 @@ const UpdateMemberSchema = z.object({
     .max(15)
     .nullable()
     .optional()
+    .refine((v) => (v ? isValidIndianPhone(v) : true), 'Enter a valid 10-digit Indian mobile number')
     .transform((v) => (v ? normalizeIndianPhone(v) : null)),
 });
 

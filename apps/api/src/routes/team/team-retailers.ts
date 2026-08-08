@@ -1,6 +1,6 @@
 // Auto-split from team.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
-import { normalizeIndianPhone } from '@kanchuki/shared';
+import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -14,6 +14,7 @@ const OnboardRetailerSchema = z.object({
     .string()
     .min(10)
     .max(15)
+    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
     .transform((v) => normalizeIndianPhone(v)),
   shop_name: z.string().min(1).max(200),
   owner_name: z.string().max(200).optional(),

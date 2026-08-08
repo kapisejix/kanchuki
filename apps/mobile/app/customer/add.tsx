@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
+import { COLORS, isValidIndianPhone } from '@kanchuki/shared'
 import { View, Text, TextInput, ScrollView, Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useQueryClient } from '@tanstack/react-query'
@@ -23,9 +23,16 @@ export default function AddCustomerScreen() {
   const [state, setState] = useState('')
   const [saving, setSaving] = useState(false)
 
+  const phoneValid = isValidIndianPhone(phone)
+  const showPhoneError = phone.replace(/\D/g, '').length > 0 && !phoneValid
+
   const handleSave = async () => {
     if (!name.trim() || !phone.trim()) {
       Alert.alert('Missing info', 'Name and phone are required.')
+      return
+    }
+    if (!phoneValid) {
+      Alert.alert('Invalid phone', 'Enter a valid 10-digit mobile number (starts with 6–9).')
       return
     }
     setSaving(true)
@@ -82,8 +89,14 @@ export default function AddCustomerScreen() {
             placeholder="10-digit mobile number"
             placeholderTextColor={colors.sand[400]}
             keyboardType="phone-pad"
+            maxLength={15}
             className="text-base text-sand-900"
           />
+          {showPhoneError ? (
+            <Text className="text-xs font-medium text-danger mt-1.5">
+              Enter a valid 10-digit mobile number (starts with 6–9)
+            </Text>
+          ) : null}
         </View>
 
         <View className="bg-white rounded-2xl p-4 border border-sand-100">

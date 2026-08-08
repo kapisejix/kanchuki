@@ -6,7 +6,7 @@ import {
   formatPreferenceVector,
 } from '@kanchuki/ai';
 import { Prisma, prisma, vaultDelete } from '@kanchuki/db';
-import { R2_PATHS, normalizeIndianPhone } from '@kanchuki/shared';
+import { R2_PATHS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addFashionDNAJob, addMeasurementJob } from '../jobs/index.js';
@@ -31,7 +31,11 @@ const PhotoMeasurementInitSchema = z.object({
 
 const CustomerSchema = z.object({
   name: z.string().min(1).max(200),
-  phone: z.string().min(10).max(15),
+  phone: z
+    .string()
+    .min(10)
+    .max(15)
+    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number'),
   email: z.string().email().max(320).optional(),
   address_line1: z.string().max(200).optional(),
   address_line2: z.string().max(200).optional(),

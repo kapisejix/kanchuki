@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
+import { COLORS, isValidIndianPhone } from '@kanchuki/shared'
 import {
   View, Text, ScrollView, TextInput,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -28,7 +28,7 @@ export default function RetailerOnboardScreen() {
   const [success, setSuccess] = useState(false)
 
   const isFormValid =
-    phone.replace(/\D/g, '').length === 10 &&
+    isValidIndianPhone(phone) &&
     shopName.trim().length >= 1 &&
     city.trim().length >= 1
 
@@ -160,10 +160,15 @@ export default function RetailerOnboardScreen() {
                 placeholder="9876543210"
                 placeholderTextColor={colors.sand[400]}
                 keyboardType="phone-pad"
-                maxLength={10}
+                maxLength={15}
                 className="flex-1 py-3.5 text-sm text-sand-900"
               />
             </View>
+            {phone.replace(/\D/g, '').length > 0 && !isValidIndianPhone(phone) ? (
+              <Text className="text-xs font-medium text-danger mt-1.5">
+                Enter a valid 10-digit mobile number (starts with 6–9)
+              </Text>
+            ) : null}
           </View>
 
           {/* Owner name */}

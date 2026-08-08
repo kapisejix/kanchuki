@@ -118,11 +118,29 @@ Please share availability and details. 🙏`
 
 // ─── Phone Number Utils ───────────────────────────────────────────
 
+/**
+ * Valid Indian mobile numbers: exactly 10 digits, first digit 6–9.
+ * Accepts optional +91 / 91 / 0 prefixes (stripped before matching).
+ */
+export const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/
+
 export function normalizeIndianPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '')
   if (digits.startsWith('91') && digits.length === 12) return digits.slice(2)!
+  if (digits.startsWith('0') && digits.length === 11) return digits.slice(1)!
   if (digits.length === 10) return digits
   return digits
+}
+
+/**
+ * Strict validation for a complete Indian mobile number (10 digits starting
+ * 6–9). Optional +91 / 91 / leading-0 country prefixes are tolerated and
+ * stripped before matching — a bare 10-digit number or any prefixed form
+ * both validate to the same mobile. Rejects landlines, short/garbled input,
+ * and non-Indian numbers.
+ */
+export function isValidIndianPhone(phone: string): boolean {
+  return INDIAN_MOBILE_REGEX.test(normalizeIndianPhone(phone))
 }
 
 export function maskPhone(phone: string): string {

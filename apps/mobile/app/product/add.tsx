@@ -577,8 +577,9 @@ export default function AddProductScreen() {
 
         {/* Controls */}
         <View className="items-center gap-6" style={{ paddingBottom: 48 + insets.bottom }}>
-          <View className="flex-row items-center gap-10">          <AnimatedPressable
-            onPress={() => void handlePickFromGallery()}
+          <View className="flex-row items-center gap-10">
+            <AnimatedPressable
+              onPress={() => void handlePickFromGallery()}
             disabled={isScanning}
             className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
           >
