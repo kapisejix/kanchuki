@@ -4,7 +4,6 @@ import {
   PATTERN_TYPES,
   PIECE_TAGGABLE_CATEGORIES,
   SIZE_OPTIONS,
-  formatPriceRange,
   resolveFashionColor,
   COLORS,
 } from '@kanchuki/shared'
@@ -1110,6 +1109,25 @@ export default function ProductDetailScreen() {
       )}
 
       <View className="px-4 py-4 gap-4">
+        {/* Price — first, matching the add flow's price-first save; the AI
+            detects the tags in the background, so nothing else is required */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+            Price (₹)
+          </Text>
+          <TextInput
+            value={price}
+            onChangeText={dirty(setPrice)}
+            placeholder="e.g. 1500"
+            keyboardType="numeric"
+            className="text-lg font-bold text-sand-900"
+            placeholderTextColor={colors.sand[400]}
+          />
+          <Text className="text-xs text-sand-400 mt-1.5">
+            Selling price — AI handles the tags. Edit below only if needed.
+          </Text>
+        </View>
+
         {/* Try-On */}
         {TRY_ON_ENABLED && (
           <AnimatedPressable
@@ -1202,10 +1220,6 @@ export default function ProductDetailScreen() {
               AI failed — edit fields below manually
             </Text>
           )}
-          <Text className="text-lg font-bold text-ink-600 mt-2">
-            {formatPriceRange(product.price_min, product.price_max)}
-          </Text>
-
           {/* Re-run AI tagging — fills blank name/subtype/SKU/description
               (hidden while a tagging job is already running) */}
           {(product.ai_tagged || product.ai_tag_error) && (
@@ -1512,20 +1526,6 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
-        {/* Price */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-            Price (₹)
-          </Text>
-          <TextInput
-            value={price}
-            onChangeText={dirty(setPrice)}
-            placeholder="e.g. 1500"
-            keyboardType="numeric"
-            className="text-lg font-bold text-sand-900"
-            placeholderTextColor={colors.sand[400]}
-          />
-        </View>
 
         {/* Location */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
