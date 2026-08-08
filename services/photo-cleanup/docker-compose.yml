@@ -1,0 +1,44 @@
+# ──────────────────────────────────────────────────────────────
+# Kanchuki Photo-Cleanup sidecar — Hetzner CX43 host deployment
+# ──────────────────────────────────────────────────────────────
+# Build context must be the REPO ROOT (the Dockerfile COPYs
+# services/photo-cleanup/* + scripts/batch-clean-photos.py).
+#
+# Usage from repo root:
+#   docker compose -f services/photo-cleanup/docker-compose.yml up -d --build
+#
+# Required env (create services/photo-cleanup/.env, gitignored):
+#   CLEANUP_SHARED_SECRET=<long random string>
+#   (optional) CLEANUP_RUN_TIMEOUT=600
+#
+# Port 8001 must be reachable from the Railway API. No static Railway egress
+# IP to firewall-allowlist, so auth is the shared secret: the API sends the
+# same value as `X-Cleanup-Key` (Admin -> Integrations or env var
+# CLEANUP_SHARED_SECRET), set on the API service too. Still plain HTTP —
+# same posture as V-Tone; add Caddy/nginx for TLS if the box grows.
+services:
+  photo-cleanup:
+    build:
+      context: ../..
+      dockerfile: services/photo-cleanup/Dockerfile
+    image: kanchuki-photo-cleanup:latest
+    container_name: kanchuki-photo-cleanup
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      PORT: "8001"
+      CLEANUP_SHARED_SECRET: "${CLEANUP_SHARED_SECRET:?set CLEANUP_SHARED_SECRET}"
+      CLEANUP_RUN_TIMEOUT: "${CLEANUP_RUN_TIMEOUT:-600}"
+    # The Dockerfile has a HEALTHCHECK; compose runs it natively.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health').read()"]
+      interval: 30s
+      timeout: 30s
+      retries: 6
+      start_period: 120s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"

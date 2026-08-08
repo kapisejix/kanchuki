@@ -2,38 +2,20 @@
 // product-photo cleanup script, see CLAUDE.md 2026-08-05 entry). Shells out
 // to the existing, already-verified Python script instead of reimplementing
 // bg-removal/shadow/shine in TypeScript — one behavior, one place.
-//
-// Production wiring: python3 + pip + rembg + pillow and the pre-baked u2net
-// ONNX model are added in apps/api/Dockerfile. Memory guardrails: runs are
-// serialized (one Python/onnx process at a time) and the Node heap is capped
-// at 1536MB below the container's 2GB limit — see serializeCleanup below.
-// Without Python on the host (e.g. a bare dev machine), runPython throws a
-// clear "python3/python not found" error instead of failing silently.
-import { execFile } from 'node:child_process';
+// The Python discovery + run serialization live in lib/photo-cleanup-runner.ts,
+// shared with the retailer-facing pro-cleanup route (products-pro-cleanup.ts).
 import { randomUUID } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
 
 import type { FastifyPluginAsync } from 'fastify';
 
-import {
-  compressImageToTarget,
-  publicUrl,
-  readCappedBuffer,
-  ssrfSafeFetch,
-  uploadBuffer,
-} from '@kanchuki/ai';
+import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { addAdminTryOnJob } from '../../jobs/index.js';
+import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
-
-const execFileAsync = promisify(execFile);
 
 export interface TryOnFeedRow {
   id: string;
@@ -74,75 +56,6 @@ export function parseTryOnResult(id: string, createdAt: Date, metadata: unknown)
   };
 }
 
-const SCRIPT_PATH = fileURLToPath(
-  new URL('../../../../../scripts/batch-clean-photos.py', import.meta.url),
-);
-
-async function runPython(args: string[], timeoutMs = 180_000): Promise<void> {
-  let lastEnvError: string | undefined;
-  for (const bin of ['python3', 'python']) {
-    try {
-      // 180s, not 60s: the first-ever run on a dev machine is a cold start —
-      // `import rembg` + onnxruntime can take 30s+ alone, then the ~170MB
-      // u2net model loads, then CPU inference runs. A 60s execFile cap
-      // killed the whole run with a bare "Command failed" and no detail.
-      // --ghost-mannequin gets a longer cap (see caller) — its first-ever
-      // run also downloads + loads the LaMa checkpoint on top of rembg's.
-      await execFileAsync(bin, [SCRIPT_PATH, ...args], { timeout: timeoutMs });
-      return;
-    } catch (err: unknown) {
-      if ((err as NodeJS.ErrnoException)?.code === 'ENOENT') continue; // binary doesn't exist, try next
-      const e = err as NodeJS.ErrnoException & {
-        stdout?: string;
-        stderr?: string;
-        killed?: boolean;
-      };
-      // The script's real per-photo failure reason ("FAILED: ...") is a
-      // print() — it lands on stdout, not stderr. Surface both.
-      const detail = [e.stdout, e.stderr]
-        .map((s) => s?.trim())
-        .filter(Boolean)
-        .join(' | ');
-      // A dev box can have multiple Python installs under different names
-      // (e.g. a Windows Store `python3` alias vs a real `python` with deps
-      // installed). "No module named ..." — whether it's an uncaught
-      // top-level traceback OR caught by the script's own per-photo
-      // try/except and printed as "FAILED: ... No module named ..." (the
-      // real shape hit in practice: --ghost-mannequin's LaMa import is
-      // lazy, inside the try block) — means THIS BINARY's environment is
-      // missing a dependency, not a real per-photo image failure. Try the
-      // next binary instead of surfacing a misleading error.
-      if (!e.killed && detail.includes('No module named')) {
-        lastEnvError = detail;
-        continue;
-      }
-      throw new Error(
-        `photo-cleanup script failed${e.killed ? ` (killed — hit the ${timeoutMs / 1000}s cap)` : ''}${detail ? `: ${detail.slice(0, 800)}` : ''}`,
-      );
-    }
-  }
-  throw new Error(
-    lastEnvError
-      ? `no working python3/python found (all installs crashed): ${lastEnvError.slice(0, 800)}. Install Python + \`pip install rembg pillow simple-lama-inpainting\` to use this test tool.`
-      : 'python3/python not found on this host. Install Python + `pip install rembg pillow simple-lama-inpainting` to use this test tool.',
-  );
-}
-
-// ─── serialize cleanup runs (memory guardrail) ───────────────────────────
-// Each run spawns a Python process that loads the ~170MB u2net ONNX model
-// into memory (peak RSS ~1GB during inference). Two concurrent runs on the
-// 2GB Railway container would risk an OOM; serializing keeps the worst case
-// bounded to one model in memory at a time. The Node heap is capped at
-// 1536MB via --max-old-space-size (see Dockerfile) and the API's
-// steady-state RSS is far below that, so one transient cleanup fits.
-let cleanupRunChain: Promise<unknown> = Promise.resolve();
-
-function serializeCleanup<T>(fn: () => Promise<T>): Promise<T> {
-  const run = cleanupRunChain.then(fn, fn);
-  cleanupRunChain = run.catch(() => undefined);
-  return run;
-}
-
 export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
 
@@ -156,7 +69,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
   // The whole handler runs inside serializeCleanup(): only one Python
   // cleanup process (and thus one onnx model in memory) exists at a time.
   server.post('/photo-cleanup/run', async (request) =>
-    serializeCleanup(async () => {
+    serializePhotoCleanup(async () => {
       const body = z
         .object({
           product_url: z.string().url(),
@@ -185,58 +98,31 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
         })
         .parse(request.body);
 
-      const dir = await mkdtemp(join(tmpdir(), 'photo-cleanup-'));
-      const inputDir = join(dir, 'input');
-      const outputDir = join(dir, 'output');
-      try {
-        const [productRes, bgRes] = await Promise.all([
-          ssrfSafeFetch(body.product_url),
-          ssrfSafeFetch(body.background_url),
-        ]);
-        if (!productRes.ok) throw validationError('Could not fetch product_url');
-        if (!bgRes.ok) throw validationError('Could not fetch background_url');
-        const [productBuf, bgBuf] = await Promise.all([
-          readCappedBuffer(productRes),
-          readCappedBuffer(bgRes),
-        ]);
+      // Runs through the shared runner (services/photo-cleanup sidecar in
+      // production, local python in dev) — same path as the retailer
+      // pro-cleanup route, one behavior, one place. Ghost mannequin's
+      // first-ever run also loads the LaMa checkpoint on top of rembg's —
+      // give it more room than the default 240s cap.
+      const { jpeg } = await runPhotoCleanup(
+        {
+          photoUrl: body.product_url,
+          bgImageUrl: body.background_url,
+          blur: body.blur ?? null,
+          ghostMannequin: body.ghost_mannequin,
+          shine: body.shine,
+          crop: body.crop ?? null,
+        },
+        body.ghost_mannequin ? 600_000 : 240_000,
+      );
 
-        await mkdir(inputDir, { recursive: true });
-        const productPath = join(inputDir, 'product.jpg');
-        const bgPath = join(dir, 'background.jpg');
-        await writeFile(productPath, productBuf);
-        await writeFile(bgPath, bgBuf);
+      // Compress the cleaned output to ≤80KB (quality-first) before it
+      // lands in R2 — this is a test tool, the result is a preview, and
+      // every stored byte counts (see scripts/compress-r2-images.ts).
+      const { buffer: resultBuf } = await compressImageToTarget(jpeg);
+      const key = R2_PATHS.photoCleanupTest(`${randomUUID()}.jpg`);
+      await uploadBuffer(key, resultBuf, 'image/jpeg');
 
-        const args = [inputDir, outputDir];
-        if (!body.ghost_mannequin && body.blur !== undefined) {
-          args.push('--blur', String(body.blur));
-        } else {
-          args.push('--bg-image', bgPath);
-        }
-        if (body.shine) args.push('--shine');
-        if (body.ghost_mannequin) args.push('--ghost-mannequin');
-        if (body.crop) {
-          const { x1, y1, x2, y2 } = body.crop;
-          args.push('--crop', `${x1},${y1},${x2},${y2}`);
-        }
-
-        // Ghost mannequin's first-ever run also downloads + loads the LaMa
-        // checkpoint on top of rembg's — same cold-start shape as the u2net
-        // download, give it more room than the default 180s cap.
-        await runPython(args, body.ghost_mannequin ? 600_000 : 180_000);
-
-        // Compress the cleaned output to ≤80KB (quality-first) before it
-        // lands in R2 — this is a test tool, the result is a preview, and
-        // every stored byte counts (see scripts/compress-r2-images.ts).
-        const { buffer: resultBuf } = await compressImageToTarget(
-          await readFile(join(outputDir, 'product.jpg')),
-        );
-        const key = R2_PATHS.photoCleanupTest(`${randomUUID()}.jpg`);
-        await uploadBuffer(key, resultBuf, 'image/jpeg');
-
-        return { data: { result_url: publicUrl(key) } };
-      } finally {
-        await rm(dir, { recursive: true, force: true });
-      }
+      return { data: { result_url: publicUrl(key) } };
     }),
   );
 

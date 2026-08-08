@@ -4,6 +4,57 @@ One file, update at end of each work session: what's done, what's next, what's b
 
 ---
 
+## 2026-08-08 — Photo-Cleanup Sidecar (torch/SAM2 leaves Railway) — DECISION + BUILT
+
+**Decision (user confirmed whole-pipeline move, 2026-08-08):** the torch/SAM2 stack runs in a NEW sidecar on the Hetzner CX43 box, NOT the Railway API container. Evidence: `scripts/demo/2026-08-08-sam2/memtest.py` measured the full pipeline (rembg+SAM2+LaMa, real mannequin photo) at **2,058 MB peak (auto) / 2,198 MB (point-prompt)** vs **960 MB baseline** (rembg+LaMa) — the SAM2 child ALONE exceeds the Railway container's whole 2 GB cgroup (2026-08-05 OOM bump), before Node's RSS is even counted. Baking into the Dockerfile was a guaranteed OOM, not a risk. CPU time on this desktop is also 47–71s/photo → 5-photo batches blow the 600s mobile timeout on Railway's throttled shared CPU.
+
+### Shipped
+- `services/photo-cleanup/` (new): FastAPI sidecar wrapping `scripts/batch-clean-photos.py` — `POST /clean` (multipart: photo + optional background + form options incl. `prompt_points`/`prompt_excludes`) → `{ output, image_b64 }`, `GET /health`. Shared-secret auth (`X-Cleanup-Key` = `CLEANUP_SHARED_SECRET`, V-Tone pattern). **Zero outbound fetches** — the API SSRF-fetches and ships bytes, so no SSRF surface on the box. `threading.Lock` serializes runs (one ~2.2GB process at a time). Dockerfile bakes isnet-general-use (~170MB), big-lama (~196MB), sam2.1_hiera_tiny (~156MB) at build; compose on port 8001. `test_app.py`: 9/9 pure `build_args` mapping tests.
+- `apps/api/src/lib/photo-cleanup-runner.ts`: new `runPhotoCleanup()` — dispatches on `PHOTO_CLEANUP_SERVICE_URL`: set → service mode (fetch photo/bg SSRF-safe → multipart POST → base64-decode), unset → local exec fallback (dev). Pure `buildCleanupScriptArgs()` mirrors the sidecar's mapping (both unit-tested). 9/9 runner tests.
+- `apps/api/src/routes/products/products-pro-cleanup.ts` + `apps/api/src/routes/admin/admin-photo-cleanup.ts`: both collapsed onto `runPhotoCleanup()`. Pro route gains the **tap-to-fix API half**: per-photo `hardware_points`/`garment_points` (normalized 0..1, zod-clamped) → `promptPoints`/`promptExcludes`, response `tap_removed` flag, audit `tap_removed_count`.
+- `apps/api/Dockerfile`: python3/pip/rembg/simple-lama layers + u2net/LaMa pre-bake REMOVED (ffmpeg stays) — the whole 2GB budget returns to Node. Local dev keeps working via the runner's exec fallback (dev boxes install python by hand).
+- Integration keys: `PHOTO_CLEANUP_SERVICE_URL` + `CLEANUP_SHARED_SECRET` added to INTEGRATION_KEYS (Admin → Integrations, F-012), `.env.example` documented.
+
+**Verified:** api tsc clean, API suite **326/326** (25 files; runner 9 + pro-cleanup 8 incl. 2 tap-to-fix cases), mobile tsc clean, biome clean on new TS (constants file's CRLF formatting is pre-existing, HEAD fails identically), sidecar live-booted: `/health` ok + real `POST /clean` on the mannequin photo → **HTTP 200, 46.8s, 172KB JPEG** end-to-end.
+
+**Deploy (user runs — manual per policy):** (1) on the box: `docker compose -f services/photo-cleanup/docker-compose.yml up -d --build` with `.env` (`CLEANUP_SHARED_SECRET`), `ufw allow 8001`; (2) Railway API service: set `PHOTO_CLEANUP_SERVICE_URL=http://2.28.56.91:8001` + `CLEANUP_SHARED_SECRET` (or Admin → Integrations); (3) redeploy API (Dockerfile now ships no python). Before that deploy, the sidecar is the only place SAM2 runs; Railway cleanup degrades to the admin page's rembg-only path or `python not found` — the retailer pro-cleanup feature needs the sidecar up.
+
+---
+
+## 2026-08-08 — AI Professional Product-Photo Pipeline BUILT (docs/photo-feature 2026-08-07 review → dev)
+
+User approved full build of the reviewed feature (docs/photo-feature/ai-photo-requirements-analysis-and-thoughts-2026-08-07.md §6 items 1–3): SAM2 hardware removal + retailer capture flow + API wiring. Scope decisions: SAM2 + staff instruction (both), retailer-choosable backdrop, mood-board-only (no staged scenes).
+
+### Backend — SAM2 hanger/mannequin removal + pro-cleanup API
+- `scripts/batch-clean-photos.py`: new `--remove-hardware` (SAM2 automatic mask generation → `classify_hardware_masks()` heuristics → LaMa masked inpaint) and `--tight-crop` (garment bbox + margin framing). rembg session made lazy so the pure helpers import without loading the 170MB model. Best-effort by design: missing torch/sam2 prints `HARDWARE_SKIPPED` and proceeds — the ₹0 path never fails the photo.
+- `scripts/test_remove_hardware.py`: 7/7 pure numpy tests on the mask classification (border-touch/above-garment heuristics, garment-overlap exclusion, size floors).
+- `packages/ai/src/image-quality.ts`: `scoreSharpness()` (Laplacian variance via sharp, 512px downscale) + `pickSharpest()` — auto-flags the sharpest cleaned photo as primary, ₹0, no ML. 5/5 tests. Exported from `@kanchuki/ai`.
+- `apps/api/src/lib/photo-cleanup-runner.ts` (new): `runPhotoCleanupScript()` + `serializePhotoCleanup()` extracted from the admin route (python3/python discovery, "No module named" binary fallback, 2GB-container memory serialization). Admin route refactored to use it — one runner, one behavior.
+- `apps/api/src/routes/products/products-pro-cleanup.ts` (new, registered in products.ts): `POST /products/pro-cleanup` — fetches each raw (SSRF-safe), runs the pipeline per photo (backdrop via F-011 library / white, optional `--remove-hardware`, `--tight-crop`, optional per-photo crop rect), compresses ≤80KB, writes cleaned sibling keys (`-pro` suffix under the retailer's own prefix), scores sharpness, picks primary. Quota: `BG_REMOVAL` per photo + `IMAGE_CROP` when a crop rect is sent (F-010 rails, same counters as existing cleanup). Ownership guard on `r2_key` prefix. `PHOTO_CLEANUP` audit entry. Per-photo best-effort (one bad shot can't kill the batch). 7/7 route tests.
+- **Sync-route decision:** runs serialized with the admin page (one Python process at a time), NOT a BullMQ job — matches the existing admin pattern, no new queue surface. Mobile holds a 10-min timeout on the processing screen.
+
+### Mobile — Pro capture mode in product-add (`app/product/add.tsx`)
+- New **Pro** mode chip (Photo / Scan / Pro): shoot 1–5 shots with garment-frame guide copy, gallery multi-select, Continue at ≥3.
+- Review screen: keep ≥3 (Best = file-size heuristic, tap to remove), options screen: backdrop picker + "Remove hanger/mannequin" + "Crop to garment" switches, processing screen with status.
+- `productApi.proCleanup()` (10-min timeout). Pro raws upload with `compress: false` — the pipeline needs full-quality segmentation input; the server compresses output. Save uses the cleaned primary + cleaned extras directly (no re-upload, `auto_cleanup` off, auto-clean toggle hidden). Stale-state guard: proUploads cleared when leaving the pro flow.
+
+### Verified
+- `tsc --noEmit` clean: packages/ai (built), apps/api, apps/mobile. API suite 315/315 (24 files) incl. 7 new pro-cleanup tests + 4 admin-photo-cleanup (refactored) tests. AI suite: image-quality 5/5 (2 pre-existing flaky image-compress precision tests fail in isolation — untouched by this feature). Python: 7/7 hardware + 2/2 ghost-mannequin + py_compile. Route-size guard + biome clean on all changed files.
+
+### Not built (deliberate, per scope)
+- Photoroom/Claid A/B paid-fallback trial (optional item 4) — ₹0 path covers everything until then.
+- On-device blur/exposure reject-and-reprompt — sharpness scoring happens server-side instead; capture guide copy is the zero-cost nudge.
+- Interactive tap-to-fix SAM2 override UI — auto path only; known limitation (SAM2 may merge garment+mannequin into one mask) documented in the review docs.
+- Deployment: Railway rebuild needed for the Python/rembg/LaMa Dockerfile to be live; SAM2 additionally needs torch + sam2.1_hiera_tiny checkpoint in the container (or on the Hetzner CX43 box) — graceful `HARDWARE_SKIPPED` fallback until then.
+
+### 2026-08-08 follow-up — SAM2 live-validated on the dev box (torch 2.13 CPU + sam2.1_hiera_tiny)
+
+Installed torch CPU + `sam2.1_hiera_tiny` (156MB ckpt) at `tools/sam2/` and ran the full pro pipeline on the 3 real demo photos (`scripts/demo/2026-08-08-sam2/`, gallery: `gallery.html`). Two script bugs found + fixed during validation: (1) `build_sam2()` hardcodes `device="cuda"` — pass `device="cpu"` when `torch.cuda.is_available()` is false or CPU-only torch crashes with "Torch not compiled with CUDA enabled"; (2) SAM2 ships configs INSIDE the package (`sam2/configs/...`) — `_resolve_sam2_cfg()` now tries `pkg_dir/configs` before `pkg_dir.parent/configs`. Also fixed a real classifier bug: the full-frame *wall* mask (66.8%, touches all borders) was being picked as the garment — garment is now the largest **non-border-touching** mask (unit tests updated, still 7/7).
+
+**Measured results (honest):** CPU cost ≈ **3m46s / 3 photos (~1.2 min/photo)** — validates the 10-min mobile timeout. shot3 (folded on bedsheet): SAM2 detected + inpainted the bottom sheet strip (14,323 px), output differs from engine-only — but tight-crop already crops that strip, and sheet pixels physically touching the garment silhouette survive rembg. shot1 (mannequin) + shot2 (hanger): **byte-identical to engine-only** — SAM2 tiny auto-mask fuses the hardware into the garment mask (points_per_side 16→32 tested: identical masks). This is exactly the review docs' predicted merged-mask limitation: the interactive **tap-to-fix point-prompt override is now the required next build**, not more auto-mask tuning. Grey-plastic pixel metric unchanged on all three (sheet/hardware pixels touching the silhouette are kept by rembg as foreground).
+
+---
+
 ## 2026-07-16 — Bug Fixes & Feature Polishes
 
 Source: user's 8-item bug/feature list (product detail, collections, QR, etc).

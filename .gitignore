@@ -67,6 +67,9 @@ test_*.jpg
 __pycache__/
 *.pyc
 
+# Third-party tool clones (e.g. SAM2) — cloned locally, not vendored, has its own .git/checkpoints
+tools/
+
 # Windows junk
 nul
 NUL

@@ -1,15 +1,15 @@
-import { request } from './client'
+import { request } from './client';
 
 export const productApi = {
   getUploadUrl: (filename: string, contentType: string, sizeBytes: number) =>
     request<{
       data: {
-        upload_url: string
-        r2_key: string
-        public_url: string
-        product_id: string
-        expires_in: number
-      }
+        upload_url: string;
+        r2_key: string;
+        public_url: string;
+        product_id: string;
+        expires_in: number;
+      };
     }>('/v1/products/upload-url', {
       method: 'POST',
       body: JSON.stringify({ filename, content_type: contentType, size_bytes: sizeBytes }),
@@ -23,18 +23,26 @@ export const productApi = {
       timeoutMs: 30_000,
     }),
 
-  list: (params?: { status?: string; category?: string; category_id?: string; is_new_arrival?: boolean; sku?: string; cursor?: string; limit?: number }) => {
-    const qs = new URLSearchParams()
-    if (params?.status) qs.set('status', params.status)
-    if (params?.category) qs.set('category', params.category)
-    if (params?.category_id) qs.set('category_id', params.category_id)
-    if (params?.is_new_arrival) qs.set('is_new_arrival', 'true')
-    if (params?.sku) qs.set('sku', params.sku)
-    if (params?.cursor) qs.set('cursor', params.cursor)
-    if (params?.limit) qs.set('limit', String(params.limit))
+  list: (params?: {
+    status?: string;
+    category?: string;
+    category_id?: string;
+    is_new_arrival?: boolean;
+    sku?: string;
+    cursor?: string;
+    limit?: number;
+  }) => {
+    const qs = new URLSearchParams();
+    if (params?.status) qs.set('status', params.status);
+    if (params?.category) qs.set('category', params.category);
+    if (params?.category_id) qs.set('category_id', params.category_id);
+    if (params?.is_new_arrival) qs.set('is_new_arrival', 'true');
+    if (params?.sku) qs.set('sku', params.sku);
+    if (params?.cursor) qs.set('cursor', params.cursor);
+    if (params?.limit) qs.set('limit', String(params.limit));
     return request<{ data: unknown[]; pagination: unknown }>(`/v1/products?${qs}`, {
       getCacheTtlMs: 10_000,
-    })
+    });
   },
 
   get: (id: string) =>
@@ -103,10 +111,9 @@ export const productApi = {
 
   // F-011: admin-curated background library for the crop/cleanup picker.
   getBackgroundImages: () =>
-    request<{ data: { id: string; name: string; image_url: string; thumbnail_url: string | null }[] }>(
-      '/v1/products/background-images',
-      { getCacheTtlMs: 60_000 },
-    ),
+    request<{
+      data: { id: string; name: string; image_url: string; thumbnail_url: string | null }[];
+    }>('/v1/products/background-images', { getCacheTtlMs: 60_000 }),
 
   setBackground: (productId: string, backgroundImageId: string | null) =>
     request<{ data: { background_image_id: string | null; photo_url: string | null } }>(
@@ -157,4 +164,49 @@ export const productApi = {
       body: JSON.stringify({ image_url: imageUrl }),
       timeoutMs: 15_000,
     }),
-}
+
+  /**
+   * Professional photo pipeline (product-add multi-shot capture flow):
+   * cleans each raw kept shot server-side — background removal + backdrop
+   * composite, optional SAM2 hanger/mannequin removal (best-effort, ₹0),
+   * optional garment tight-crop — and returns the cleaned copies with the
+   * sharpest one flagged primary. Long timeout: SAM2 on CPU takes seconds-to-
+   * a-minute per photo.
+   */
+  proCleanup: (payload: {
+    photos: {
+      r2_key: string;
+      url: string;
+      // Tap-to-fix: normalized (0..1) points the retailer tapped on leftover
+      // hanger/mannequin hardware (SAM2 point prompts) + optional garment
+      // protect points. Omit for auto (remove_hardware) scanning.
+      hardware_points?: [number, number][];
+      garment_points?: [number, number][];
+    }[];
+    remove_hardware?: boolean;
+    tight_crop?: boolean;
+    background_image_id?: string | null;
+  }) =>
+    request<{
+      data: {
+        photos: {
+          r2_key: string;
+          url: string;
+          score: number;
+          is_primary: boolean;
+          hardware_removed: boolean;
+          hardware_skipped: boolean;
+          tap_removed: boolean;
+          error: string | null;
+        }[];
+        primary_url: string | null;
+      };
+    }>('/v1/products/pro-cleanup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      // 10 min: SAM2 hardware removal on CPU is seconds-to-a-minute per
+      // photo; the whole batch runs serially server-side. The processing
+      // screen tells the retailer to keep it open.
+      timeoutMs: 600_000,
+    }),
+};

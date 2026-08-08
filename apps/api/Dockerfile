@@ -18,38 +18,19 @@ FROM node:22-slim
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
 # ffmpeg/ffprobe for the spin-frame-extraction job
-# (apps/api/src/jobs/extract-spin-frames.ts) + python3/pip for the admin
-# photo-cleanup test tool (apps/api/src/routes/admin/admin-photo-cleanup.ts
-# shells out to scripts/batch-clean-photos.py).
+# (apps/api/src/jobs/extract-spin-frames.ts).
+#
+# NO python3 in this image since 2026-08-08: the photo-cleanup pipeline
+# (rembg + torch + SAM2 + LaMa, peak ~2.2GB RSS — see
+# scripts/demo/2026-08-08-sam2/memtest.py) now runs in the photo-cleanup
+# sidecar on the Hetzner CX43 box (services/photo-cleanup/), called via
+# PHOTO_CLEANUP_SERVICE_URL. Running it here would exceed the 2GB container
+# budget alongside Node (the 2026-08-05 OOM bump). The runner falls back to
+# a local python exec ONLY when PHOTO_CLEANUP_SERVICE_URL is unset — i.e.
+# local dev boxes, where python is installed by hand.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         ffmpeg \
-        python3 \
-        python3-pip \
     && rm -rf /var/lib/apt/lists/*
-
-# rembg (bg removal) + pillow (compositing) power the photo-cleanup route.
-# rembg[cpu] (not bare rembg) pulls the onnxruntime CPU backend — without it
-# rembg raises "No onnxruntime backend found". Bookworm's Python is PEP-668
-# externally-managed, so --break-system-packages is required for pip installs.
-#
-# simple-lama-inpainting powers --ghost-mannequin (local LaMa hollow-fill,
-# replaces the dead Snappyit integration — see
-# docs/photo-feature/ghost-mannequin-research.md). Heavier than it looks:
-# unlike rembg's onnxruntime-only setup, this pulls in full CPU PyTorch +
-# OpenCV as transitive deps, not just a small ONNX model — expect a
-# noticeably bigger image than rembg alone.
-RUN python3 -m pip install --no-cache-dir --break-system-packages "rembg[cpu]" pillow simple-lama-inpainting
-
-# Pre-bake the u2net ONNX model (~170MB) and the LaMa checkpoint (~196MB)
-# into the image at build time. Both libraries would otherwise download
-# their model on first use — at request time that would burn the route's
-# exec budget on a GitHub download (and fail on slow egress). Baked here,
-# both load straight from disk per run. HOME=/root in this image: rembg
-# looks under ~/.u2net, torch.hub (which simple-lama-inpainting uses) looks
-# under ~/.cache/torch/hub/checkpoints.
-RUN mkdir -p /root/.u2net /root/.cache/torch/hub/checkpoints \
-    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/danielgatis/rembg/releases/download/v0.0.0/u2net.onnx', '/root/.u2net/u2net.onnx')" \
-    && python3 -c "import urllib.request; urllib.request.urlretrieve('https://github.com/enesmsahin/simple-lama-inpainting/releases/download/v0.1.0/big-lama.pt', '/root/.cache/torch/hub/checkpoints/big-lama.pt')"
 
 WORKDIR /app
 
@@ -64,8 +45,6 @@ EXPOSE 3001
 # catchable "JS heap out of memory" crash with a heap summary in the logs,
 # instead of the cgroup silently SIGKILLing the process with no trace.
 #
-# The photo-cleanup Python child (u2net inference peaks ~1GB RSS) is
-# serialized by a mutex in the route so at most one cleanup process exists
-# at a time — the API's steady-state RSS is far below the heap cap, so one
-# transient cleanup fits alongside it in the 2GB container.
+# Since 2026-08-08 no Python cleanup child runs in this container (it moved
+# to the photo-cleanup sidecar) — the entire 2GB budget is Node's alone.
 CMD ["node", "--max-old-space-size=1536", "apps/api/dist/index.js"]

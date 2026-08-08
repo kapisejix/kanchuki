@@ -285,6 +285,16 @@ export const INTEGRATION_KEYS = [
   },
   { key_name: 'VTONE_API_URL', category: 'AI', label: 'Fashion V-Tone Endpoint URL' },
   { key_name: 'VTONE_SHARED_SECRET', category: 'AI', label: 'Fashion V-Tone Shared Secret' },
+  {
+    key_name: 'PHOTO_CLEANUP_SERVICE_URL',
+    category: 'AI',
+    label: 'Photo-Cleanup Sidecar Endpoint URL (torch/SAM2 service)',
+  },
+  {
+    key_name: 'CLEANUP_SHARED_SECRET',
+    category: 'AI',
+    label: 'Photo-Cleanup Sidecar Shared Secret',
+  },
   { key_name: 'RAZORPAY_KEY_ID', category: 'PAYMENT', label: 'Razorpay Key ID' },
   { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },
   { key_name: 'RAZORPAY_WEBHOOK_SECRET', category: 'PAYMENT', label: 'Razorpay Webhook Secret' },

@@ -1,0 +1,26 @@
+# Kanchuki Photo-Cleanup Service Dependencies
+# Install: pip install -r requirements.txt
+#
+# NOTE: torch/torchvision CPU wheels are installed BEFORE this file in the
+# Dockerfile (--index-url https://download.pytorch.org/whl/cpu) so pip sees
+# them satisfied and skips the GPU wheel + nvidia-* deps entirely — same
+# trick as services/fashion-vtone/Dockerfile.
+
+# FastAPI server
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.0.0
+python-multipart>=0.0.12
+
+# Image processing
+Pillow>=10.0.0
+numpy>=1.26.0
+
+# Cleanup pipeline (same stack as the Railway container used to run):
+# rembg (bg removal, onnxruntime CPU), simple-lama-inpainting (ghost
+# mannequin + hardware fill, pulls torch as a transitive dep).
+rembg[cpu]>=2.0.57
+simple-lama-inpainting>=1.0.0
+
+# SAM2 (hanger/mannequin removal + tap-to-fix point prompts) — installed
+# from git in the Dockerfile (no stable PyPI wheel). Requires torch.
