@@ -86,3 +86,4 @@ services/fashion-vtone/weights/
 
 # Downloaded third-party agent skills (keep out of the repo — they carry their own .git)
 VibeSec-Skill/
+.backups/

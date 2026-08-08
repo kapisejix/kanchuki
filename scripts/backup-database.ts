@@ -82,7 +82,11 @@ function parseConnectionUrl(url: string): DbConnectionInfo {
     password: decodeURIComponent(match[2]!),
     host: match[3]!,
     port: Number.parseInt(match[4]!, 10),
-    database: match[5]!,
+    // Strip any query string / fragment (e.g. Supabase pooler URLs end with
+    // "/dbname?pgbouncer=true") — the query params are NOT part of the
+    // database name, and leaving them in breaks both the pg_dump -d argument
+    // and the backup filename ('?' is illegal in Windows filenames).
+    database: match[5]!.split(/[?#]/)[0]!,
   };
 }
 
@@ -126,7 +130,7 @@ function formatBytes(bytes: number): string {
 
 // ─── Docker Helpers ────────────────────────────────────────────────
 
-const DOCKER_IMAGE = 'postgres:16-alpine';
+const DOCKER_IMAGE = 'postgres:17-alpine';
 
 /** Check Docker is running. */
 async function ensureDockerRunning(): Promise<void> {
@@ -201,6 +205,9 @@ async function runPgDump(
   }
 
   // pg_dump plain SQL format — compress with gzip for smaller storage
+  // --schema=public: Kanchuki data lives entirely in the public schema. The
+  // app role can't LOCK Supabase's auth/storage/realtime schemas, and dumping
+  // them would fail with permission denied (and they're Supabase-managed).
   const args = dockerRunArgs(db, 'pg_dump', [
     '--no-owner',
     '--no-acl',
@@ -208,6 +215,7 @@ async function runPgDump(
     '--no-publications',
     '--no-subscriptions',
     '--format=plain',
+    '--schema=public',
   ]);
 
   console.log(`  • Command: docker ${args.slice(0, 4).join(' ')} ... pg_dump --format=plain ...`);
@@ -219,6 +227,14 @@ async function runPgDump(
       timeout: 300_000, // 5 min
     });
 
+    // Collect stderr continuously — a one-shot .read() after exit misses
+    // chunks (it hid the pg_dump version-mismatch error behind an empty
+    // string and a bare exit 1).
+    let stderrBuf = '';
+    dockerProcess.stderr?.on('data', (d: Buffer) => {
+      stderrBuf += d.toString();
+    });
+
     const writeStream = createWriteStream(outputPath);
     const gzip = createGzip({ level: 9 });
 
@@ -226,8 +242,7 @@ async function runPgDump(
       .then(() => {
         const exitCode = dockerProcess.exitCode ?? 0;
         if (exitCode !== 0) {
-          const stderr = (dockerProcess.stderr?.read() as Buffer)?.toString() ?? '';
-          reject(new Error(`pg_dump exited with code ${exitCode}\nStderr: ${stderr.slice(0, 500)}`));
+          reject(new Error(`pg_dump exited with code ${exitCode}\nStderr: ${stderrBuf.slice(0, 800)}`));
           return;
         }
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
