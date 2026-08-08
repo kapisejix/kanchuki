@@ -1,67 +1,69 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { INDIAN_STATES, COLORS } from '@kanchuki/shared'
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import { router } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  ScrollView,
+  ActivityIndicator,
   Alert,
   Animated,
+  BackHandler,
   Dimensions,
   KeyboardAvoidingView,
+  Linking,
   Platform,
-  ActivityIndicator,
-} from 'react-native'
-import { router } from 'expo-router'
-import * as Location from 'expo-location'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useQuery } from '@tanstack/react-query'
-import { retailerApi, categoryApi } from '../src/lib/api'
-import { useReduceMotion } from '../src/hooks/useReduceMotion'
-import { useTheme } from '../src/lib/theme'
-import { AnimatedPressable } from '../src/components/AnimatedPressable'
-import { GradientButton } from '../src/components/GradientButton'
-import { GradientBorderCard } from '../src/components/GradientBorderCard'
-import { LinearGradient } from 'expo-linear-gradient'
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  type ViewStyle,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedPressable } from '../src/components/AnimatedPressable';
+import { GradientBorderCard } from '../src/components/GradientBorderCard';
+import { GradientButton } from '../src/components/GradientButton';
+import { useReduceMotion } from '../src/hooks/useReduceMotion';
+import { retailerApi } from '../src/lib/api';
+import { useTheme } from '../src/lib/theme';
+import { WEB_URL } from '../src/lib/web-url';
 
-type Step = 1 | 2 | 3 | 4 | 5
-const TOTAL_STEPS = 5
+type Step = 1 | 2 | 3 | 4;
+const TOTAL_STEPS = 4;
 
 // ─── Step config ──────────────────────────────────────────────────
-const STEP_META: Record<Step, { icon: string; label: string }> = {
-  1: { icon: '🏪', label: 'Shop' },
-  2: { icon: '📍', label: 'Location' },
-  3: { icon: '👗', label: 'Category' },
-  4: { icon: '🧾', label: 'GST' },
-  5: { icon: '🎉', label: 'Done' },
-}
+const STEP_META: Record<Step, { label: string; title: string }> = {
+  1: { label: 'Shop', title: "Let's set up your shop" },
+  2: { label: 'Location', title: "Where's your shop?" },
+  3: { label: 'GST', title: 'GST details' },
+  4: { label: 'Done', title: "You're all set!" },
+};
 
 // ─── Confetti Particle ────────────────────────────────────────────
 interface Particle {
-  x: Animated.Value
-  y: Animated.Value
-  rotate: Animated.Value
-  opacity: Animated.Value
-  emoji: string
-  xStart: number
+  x: Animated.Value;
+  y: Animated.Value;
+  rotate: Animated.Value;
+  opacity: Animated.Value;
+  emoji: string;
+  xStart: number;
 }
 
 function ConfettiOverlay({ visible }: { visible: boolean }) {
-  const reduceMotion = useReduceMotion()
-  const [particles, setParticles] = useState<Particle[]>([])
+  const reduceMotion = useReduceMotion();
+  const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
     // Reduce Motion: skip the decorative particle animation — the "Done" step's
     // own text already carries the completion state, confetti is decoration only
     if (!visible || reduceMotion) {
-      setParticles([])
-      return
+      setParticles([]);
+      return;
     }
-    const emojis = ['🎊', '✨', '🌟', '💫', '🎉', '⭐', '🔮', '👏']
-    const { width: w, height: h } = Dimensions.get('window')
+    const emojis = ['🎊', '✨', '🌟', '💫', '🎉', '⭐', '🔮', '👏'];
+    const { width: w, height: h } = Dimensions.get('window');
 
     const newParticles: Particle[] = Array.from({ length: 20 }, (_, i) => {
-      const xStart = Math.random() * w
+      const xStart = Math.random() * w;
       return {
         x: new Animated.Value(xStart),
         y: new Animated.Value(-60 - Math.random() * 200),
@@ -69,9 +71,9 @@ function ConfettiOverlay({ visible }: { visible: boolean }) {
         opacity: new Animated.Value(1),
         emoji: emojis[i % emojis.length],
         xStart,
-      }
-    })
-    setParticles(newParticles)
+      };
+    });
+    setParticles(newParticles);
 
     const anims = newParticles.map((p) =>
       Animated.parallel([
@@ -99,23 +101,23 @@ function ConfettiOverlay({ visible }: { visible: boolean }) {
           }),
         ]),
       ]),
-    )
+    );
 
-    const composite = Animated.stagger(80, anims)
-    composite.start()
+    const composite = Animated.stagger(80, anims);
+    composite.start();
 
     return () => {
-      composite.stop()
+      composite.stop();
       for (const p of newParticles) {
-        p.x.stopAnimation()
-        p.y.stopAnimation()
-        p.rotate.stopAnimation()
-        p.opacity.stopAnimation()
+        p.x.stopAnimation();
+        p.y.stopAnimation();
+        p.rotate.stopAnimation();
+        p.opacity.stopAnimation();
       }
-    }
-  }, [visible, reduceMotion])
+    };
+  }, [visible, reduceMotion]);
 
-  if (!visible || particles.length === 0) return null
+  if (!visible || particles.length === 0) return null;
 
   return (
     <View className="absolute inset-0" pointerEvents="none" style={{ zIndex: 100 }}>
@@ -141,138 +143,188 @@ function ConfettiOverlay({ visible }: { visible: boolean }) {
         </Animated.Text>
       ))}
     </View>
-  )
+  );
 }
 
-// ─── Step Indicator ───────────────────────────────────────────────
+// ─── Step Indicator (fixed row — never scrolls off-screen) ───────
 function StepIndicator({
   currentStep,
   onPress,
 }: {
-  currentStep: Step
-  onPress: (step: Step) => void
+  currentStep: Step;
+  onPress: (step: Step) => void;
 }) {
+  const { colors } = useTheme();
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerClassName="flex-row items-center justify-center gap-2 px-6 pt-2 pb-3 grow"
-    >
-      {([1, 2, 3, 4, 5] as Step[]).map((s) => {
-        const isActive = s === currentStep
-        const isPast = s < currentStep
+    <View className="flex-row items-start justify-center px-8 pt-3 pb-4">
+      {([1, 2, 3, 4] as Step[]).map((s, i) => {
+        const isActive = s === currentStep;
+        const isPast = s < currentStep;
         return (
-          <AnimatedPressable
-            key={s}
-            onPress={() => isPast && onPress(s)}
-            disabled={!isPast}
-            className="items-center gap-1"
-          >
-            <View
-              className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
-                isActive
-                  ? 'bg-ink-600 border-ink-600'
-                  : isPast
-                  ? 'bg-ink-100 border-ink-300'
-                  : 'bg-ink-50 border-sand-200'
-              } ${isPast ? '' : ''}`}
+          <View key={s} className="flex-row items-start">
+            {/* Connector line between circles */}
+            {i > 0 && (
+              <View
+                className="h-0.5 w-6 rounded-full mt-[17px]"
+                style={{
+                  backgroundColor: s <= currentStep ? colors.rust[400] : 'rgba(255,255,255,0.25)',
+                }}
+              />
+            )}
+            <AnimatedPressable
+              onPress={() => isPast && onPress(s)}
+              disabled={!isPast}
+              accessibilityLabel={STEP_META[s].label}
+              accessibilityRole="button"
+              className="items-center gap-1.5 px-0.5"
             >
-              <Text
-                className={`text-xs ${
-                  isActive ? 'text-white' : isPast ? 'text-ink-600' : 'text-sand-300'
+              <View
+                className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
+                  isActive
+                    ? 'bg-rust-500 border-rust-300'
+                    : isPast
+                      ? 'bg-white/15 border-rust-300/70'
+                      : 'bg-transparent border-white/40'
                 }`}
               >
-                {isPast ? '✓' : s}
+                <Text
+                  className={`text-sm font-bold ${
+                    isActive ? 'text-ink-900' : isPast ? 'text-white' : 'text-white/70'
+                  }`}
+                >
+                  {isPast ? '✓' : s}
+                </Text>
+              </View>
+              <Text
+                className={`text-[10px] font-medium ${
+                  isActive ? 'text-white' : isPast ? 'text-white/80' : 'text-white/50'
+                }`}
+              >
+                {STEP_META[s].label}
               </Text>
-            </View>
-            <Text
-              className={`text-[10px] ${
-                isActive ? 'text-ink-600 font-semibold' : 'text-sand-400'
-              }`}
-            >
-              {STEP_META[s].label}
-            </Text>
-          </AnimatedPressable>
-        )
+            </AnimatedPressable>
+          </View>
+        );
       })}
-    </ScrollView>
-  )
+    </View>
+  );
 }
+
+// ─── Form field wrapper ─────────────────────────────────────────────
+// Light label above a white input. The drop shadow lives on a wrapper View
+// (not the TextInput) so every field shares one definition — white field on
+// the dark body, soft shadow, light border line (the border itself stays on
+// the input via `inputClass` below). iOS rounds the shadow with the
+// wrapper's rounded-2xl; Android renders it square-ish — acceptable.
+const fieldShadow: ViewStyle = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.35,
+  shadowRadius: 10,
+  elevation: 5,
+};
+
+function Field({
+  label,
+  required,
+  optional,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  optional?: boolean;
+  children: ReactNode;
+}) {
+  const { colors } = useTheme();
+  return (
+    <View className="mt-4">
+      <Text className="text-sm font-semibold text-sand-100 mb-2">
+        {label}
+        {required && <Text style={{ color: colors.rust[500] }}> *</Text>}
+        {optional && <Text className="text-sand-300 font-normal"> (optional)</Text>}
+      </Text>
+      <View className="rounded-2xl" style={fieldShadow}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+// White field + light outer border line, over the dark body (shadow applied
+// by the Field wrapper).
+const inputClass =
+  'bg-white border border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900';
 
 // ─── Main Screen ──────────────────────────────────────────────────
 export default function OnboardingScreen() {
-  const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const reduceMotion = useReduceMotion()
-  const [step, setStep] = useState<Step>(1)
-  const [saving, setSaving] = useState(false)
-  const [showConfetti, setShowConfetti] = useState(false)
+  const { colors, primaryColor } = useTheme();
+  const queryClient = useQueryClient();
+  const insets = useSafeAreaInsets();
+  const reduceMotion = useReduceMotion();
+  const [step, setStep] = useState<Step>(1);
+  const [saving, setSaving] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // ── Animated values for transitions ──
-  const slideAnim = useRef(new Animated.Value(0)).current
-  const fadeAnim = useRef(new Animated.Value(1)).current
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  // single choke point for the "stuck off-screen" race (see goToStep below) —
+  // every step-change path (Continue, back arrow, step dots) routes through
+  // goToStep, so guarding there covers all of them.
+  const transitioningRef = useRef(false);
 
   // ── Form state ──
-  const [shopName, setShopName] = useState('')
-  const [ownerName, setOwnerName] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
-  const [pincode, setPincode] = useState('')
-  const [locating, setLocating] = useState(false)
-  const [gstin, setGstin] = useState('')
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [statePickerOpen, setStatePickerOpen] = useState(false)
-  const [skuEstimate, setSkuEstimate] = useState('')
-  const [referralCode, setReferralCode] = useState('')
-
-  // DB-backed shop-by categories (F-024/F-027) — already seeded per-retailer
-  // at signup, same list retailers manage later under the Category tab.
-  const { data: categoriesData } = useQuery({
-    queryKey: ['categories', 'list'],
-    queryFn: () => categoryApi.list(),
-  })
-  const dbCategories = categoriesData?.data ?? []
+  const [shopName, setShopName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [shopAddress, setShopAddress] = useState('');
+  const [city, setCity] = useState('');
+  const [district, setDistrict] = useState('');
+  const [state, setState] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [locating, setLocating] = useState(false);
+  const [gstin, setGstin] = useState('');
+  const [referralCode, setReferralCode] = useState('');
 
   const handleUseCurrentLocation = async () => {
-    if (locating) return
-    setLocating(true)
+    if (locating) return;
+    setLocating(true);
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync()
+      const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Location access is needed to auto-fill your address.')
-        return
+        Alert.alert('Permission needed', 'Location access is needed to auto-fill your address.');
+        return;
       }
-      const position = await Location.getCurrentPositionAsync({})
+      const position = await Location.getCurrentPositionAsync({});
       const [place] = await Location.reverseGeocodeAsync({
         latitude: position.coords.latitude,
         longitude: position.coords.longitude,
-      })
+      });
       if (place) {
-        if (place.city) setCity(place.city)
-        if (place.region) setState(place.region)
-        if (place.postalCode) setPincode(place.postalCode)
+        if (place.city) setCity(place.city);
+        if (place.district || place.subregion) setDistrict(place.district ?? place.subregion ?? '');
+        if (place.region) setState(place.region);
+        if (place.postalCode) setPincode(place.postalCode);
       }
     } catch {
-      Alert.alert('Error', 'Could not detect your location. Please enter it manually.')
+      Alert.alert('Error', 'Could not detect your location. Please enter it manually.');
     } finally {
-      setLocating(false)
+      setLocating(false);
     }
-  }
+  };
 
   const canProceed = useCallback((): boolean => {
-    if (step === 1) return shopName.trim().length >= 2
-    if (step === 2) return city.trim().length >= 2
-    if (step === 3) return selectedCategories.length > 0
-    if (step === 4) return true // optional
-    return true
-  }, [step, shopName, city, selectedCategories])
+    if (step === 1) return shopName.trim().length >= 2;
+    if (step === 2) return shopAddress.trim().length >= 5;
+    if (step === 3) return true; // GST optional
+    return true;
+  }, [step, shopName, shopAddress]);
 
   const animateTransition = useCallback(
     (direction: 'forward' | 'back', onComplete: () => void) => {
       // Reduce Motion: crossfade only, no horizontal slide (HIG/Material guidance)
-      const toValue = reduceMotion ? 0 : direction === 'forward' ? -1 : 1
-      slideAnim.setValue(0)
-      fadeAnim.setValue(1)
+      const toValue = reduceMotion ? 0 : direction === 'forward' ? -1 : 1;
+      slideAnim.setValue(0);
+      fadeAnim.setValue(1);
       Animated.parallel([
         Animated.timing(slideAnim, {
           toValue,
@@ -285,9 +337,9 @@ export default function OnboardingScreen() {
           useNativeDriver: true,
         }),
       ]).start(() => {
-        onComplete()
-        slideAnim.setValue(reduceMotion ? 0 : direction === 'forward' ? 1 : -1)
-        fadeAnim.setValue(0.5)
+        onComplete();
+        slideAnim.setValue(reduceMotion ? 0 : direction === 'forward' ? 1 : -1);
+        fadeAnim.setValue(0.5);
         Animated.parallel([
           Animated.timing(slideAnim, {
             toValue: 0,
@@ -299,157 +351,204 @@ export default function OnboardingScreen() {
             duration: 150,
             useNativeDriver: true,
           }),
-        ]).start()
-      })
+        ]).start(() => {
+          // force the rest state instead of trusting the animation finished
+          // cleanly — an interrupted/dropped return-phase (e.g. two transitions
+          // racing) otherwise leaves slideAnim stuck off-zero, permanently
+          // shifting that step's content off-screen.
+          slideAnim.setValue(0);
+          fadeAnim.setValue(1);
+          transitioningRef.current = false;
+        });
+      });
     },
     [slideAnim, fadeAnim, reduceMotion],
-  )
+  );
 
   const goToStep = useCallback(
     (s: Step) => {
-      const dir = s > step ? 'forward' : 'back'
-      animateTransition(dir, () => setStep(s))
+      if (transitioningRef.current) return;
+      transitioningRef.current = true;
+      const dir = s > step ? 'forward' : 'back';
+      animateTransition(dir, () => setStep(s));
     },
     [step, animateTransition],
-  )
+  );
+
+  // Android hardware back steps to the previous step instead of popping the
+  // whole onboarding screen (the header arrow is the only on-screen back).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (step > 1 && step < TOTAL_STEPS && !saving) {
+        goToStep((step - 1) as Step);
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [step, saving, goToStep]);
 
   const handleNext = async () => {
-    // ponytail: Continue wasn't disabled during steps 1-5's network calls —
-    // a slow/double tap could fire goToStep() twice concurrently, and two
-    // overlapping slide animations can leave the Animated.Value stuck
-    // off-zero, permanently shifting that step's content off-screen. Gating
-    // every step on `saving` (not just the final one) blocks the re-entry.
-    if (saving) return
-    setSaving(true)
+    // Continue wasn't disabled during steps' network calls — a slow/double tap
+    // could fire goToStep() twice concurrently, and two overlapping slide
+    // animations can leave the Animated.Value stuck off-zero, permanently
+    // shifting that step's content off-screen. Gating every step on `saving`
+    // (not just the final one) blocks the re-entry. `showConfetti` also guards
+    // the step-4 in-content buttons during the 2.5s confetti window (the
+    // bottom GradientButton is already disabled via props).
+    if (saving || showConfetti) return;
+    setSaving(true);
     try {
       // Save step progress to server
-      const nextStep = (step + 1) as Step
+      const nextStep = (step + 1) as Step;
 
       if (step === 1) {
         await retailerApi.update({
           shop_name: shopName.trim(),
           owner_name: ownerName.trim() || undefined,
           referral_code: referralCode.trim() || undefined,
-        })
-        await retailerApi.updateOnboarding(1)
-        goToStep(nextStep)
-        return
+        });
+        await retailerApi.updateOnboarding(1);
+        goToStep(nextStep);
+        return;
       }
 
       if (step < TOTAL_STEPS) {
-        await retailerApi.updateOnboarding(nextStep)
-        goToStep(nextStep)
-        return
+        await retailerApi.updateOnboarding(nextStep);
+        goToStep(nextStep);
+        return;
       }
 
       // Final step — save full profile and redirect
-      await retailerApi.update({
-        shop_name: shopName.trim(),
-        owner_name: ownerName.trim() || undefined,
-        city: city.trim(),
-        state: state || undefined,
-        pincode: pincode.trim() || undefined,
-        gstin: gstin.trim() || undefined,
-        categories: selectedCategories,
-      })
-      await retailerApi.updateOnboarding(TOTAL_STEPS, true)
-      setShowConfetti(true)
+      await saveFinalStep();
+      setShowConfetti(true);
       setTimeout(() => {
-        router.replace('/')
-      }, 2500)
+        router.replace('/');
+      }, 2500);
     } catch {
-      Alert.alert('Error', 'Could not save. Please try again.')
+      Alert.alert('Error', 'Could not save. Please try again.');
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
-  const toggleCategory = (cat: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat],
-    )
-  }
+  // Completes the profile + onboarding flags, and mirrors the fresh state
+  // into the ['retailer', 'me'] query cache. The (tabs) dashboard gate reads
+  // onboarding_completed from that cache — without this write, a stale
+  // cached `false` (an earlier gate fetch during a dropped-off signup, or the
+  // persisted offline cache from a previous session) is still within the 60s
+  // staleTime when router.replace('/') lands, so the gate never refetches and
+  // bounces the user straight back to onboarding step 1 — even though the DB
+  // has the correct values.
+  const saveFinalStep = async () => {
+    await retailerApi.update({
+      shop_name: shopName.trim(),
+      owner_name: ownerName.trim() || undefined,
+      address_line1: shopAddress.trim(),
+      city: city.trim() || undefined,
+      address_line2: district.trim() || undefined,
+      state: state || undefined,
+      pincode: pincode.trim() || undefined,
+      gstin: gstin.trim() || undefined,
+    });
+    const onboardingRes = await retailerApi.updateOnboarding(TOTAL_STEPS, true);
+    queryClient.setQueryData(['retailer', 'me'], (old) => {
+      const oldData = (old as { data?: Record<string, unknown> } | undefined)?.data;
+      return {
+        data: {
+          ...(oldData ?? {}),
+          onboarding_step: onboardingRes.data.onboarding_step,
+          onboarding_completed: onboardingRes.data.onboarding_completed,
+        },
+      };
+    });
+    // Background refetch so the dashboard also gets the fresh profile fields.
+    void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
+  };
 
-  // ── Emoji map for categories ──
-  const categoryEmoji: Record<string, string> = useMemo(
-    () => ({
-      'Ladies Suit': '🥻',
-      'Kurti': '👚',
-      'Saree': '🧣',
-      'Lehenga': '👗',
-      'Gown': '👸',
-      'Dupatta': '🪞',
-      'Blouse': '👔',
-      "Men's Kurta Pajama": '🧑‍💼',
-      'Sherwani': '🤵',
-      'Kids Ethnic Wear': '👧',
-      'Readymade Suit': '🛍️',
-      'Other': '📦',
-    }),
-    [],
-  )
+  // "Get help adding your catalog" — same final save (onboarding completes, so
+  // no gate bounce can follow), then the F-019 paid catalog-upload flow
+  // instead of a bare router.replace('/') that bounced back to step 1.
+  const handleGetCatalogHelp = async () => {
+    if (saving || showConfetti) return;
+    setSaving(true);
+    try {
+      await saveFinalStep();
+      setShowConfetti(true);
+      setTimeout(() => {
+        router.replace('/settings/catalog-upload');
+      }, 2500);
+    } catch {
+      Alert.alert('Error', 'Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // QR nudge on the final step — same final save (onboarding completes, so no
+  // gate bounce can follow), then the Store QR screen instead of the dashboard:
+  // the retailer generates their store QR code right after setup (public_slug
+  // is null there until they tap "Generate QR Code", so the button shows).
+  const handleCreateStoreQr = async () => {
+    if (saving || showConfetti) return;
+    setSaving(true);
+    try {
+      await saveFinalStep();
+      setShowConfetti(true);
+      setTimeout(() => {
+        router.replace('/store-profile');
+      }, 2500);
+    } catch {
+      Alert.alert('Error', 'Could not save. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const renderContent = () => {
     switch (step) {
       case 1:
         return (
-          <View className="pt-4">
-            {/* Brand header */}
-            <View className="flex-row items-center gap-3 mb-6">
-              <View className="w-12 h-12 bg-ink-600 rounded-2xl items-center justify-center">
-                <Text className="text-white text-xl font-bold">K</Text>
-              </View>
-              <View>
-                <Text className="text-lg font-bold text-sand-900">Kanchuki</Text>
-                <Text className="text-xs text-sand-500">Aapki dukan, AI ki taakat</Text>
-              </View>
-            </View>
-
-            <Text className="text-2xl font-bold text-sand-900">Welcome to Kanchuki!</Text>
-            <Text className="text-sand-500 text-base mt-2 leading-5">
-              Set up your digital store in minutes. AI will help you catalog products and
-              share them with customers on WhatsApp.
+          <View>
+            <Text className="text-sand-300 text-sm leading-5">
+              Create your digital store in minutes — AI catalogs your products and shares them with
+              customers on WhatsApp.
             </Text>
 
-            <View className="mt-6">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">Shop name *</Text>
+            <Field label="Shop name" required>
               <TextInput
                 value={shopName}
                 onChangeText={setShopName}
                 placeholder="e.g. Priya Fashion House"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                className={inputClass}
                 placeholderTextColor={colors.sand[400]}
                 autoFocus
                 maxLength={200}
               />
-            </View>
+            </Field>
 
-            <View className="mt-4">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">Your name</Text>
+            <Field label="Your name" optional>
               <TextInput
                 value={ownerName}
                 onChangeText={setOwnerName}
                 placeholder="e.g. Priya Sharma (optional)"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                className={inputClass}
                 placeholderTextColor={colors.sand[400]}
                 maxLength={200}
               />
-            </View>
+            </Field>
 
-            <View className="mt-4">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">
-                Referral code <Text className="text-sand-400 font-normal">(optional)</Text>
-              </Text>
+            <Field label="Referral code" optional>
               <TextInput
                 value={referralCode}
                 onChangeText={(t) => setReferralCode(t.toUpperCase())}
                 placeholder="Referred by a Kanchuki salesperson?"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 tracking-wide"
+                className={`${inputClass} tracking-wide`}
                 placeholderTextColor={colors.sand[400]}
                 autoCapitalize="characters"
                 maxLength={20}
               />
-            </View>
+            </Field>
 
             <GradientBorderCard
               fill={colors.sand[100]}
@@ -465,20 +564,20 @@ export default function OnboardingScreen() {
               </View>
             </GradientBorderCard>
           </View>
-        )
+        );
 
       case 2:
         return (
-          <View className="pt-6">
-            <Text className="text-2xl font-bold text-sand-900">{"Where's your shop?"}</Text>
-            <Text className="text-sand-500 text-base mt-2">
+          <View>
+            <Text className="text-sand-300 text-sm leading-5">
               Customers use this to find your store
             </Text>
 
             <AnimatedPressable
               onPress={() => void handleUseCurrentLocation()}
               disabled={locating}
-              className="mt-4 flex-row items-center justify-center gap-2 border-2 border-ink-200 bg-ink-50 rounded-2xl px-4 py-3"
+              className="mt-5 flex-row items-center justify-center gap-2 bg-white border border-sand-200 rounded-2xl px-4 py-3.5"
+              style={fieldShadow}
             >
               {locating ? (
                 <ActivityIndicator size="small" color={colors.ink[600]} />
@@ -486,165 +585,101 @@ export default function OnboardingScreen() {
                 <Text className="text-ink-700 text-sm font-semibold">📍 Use current location</Text>
               )}
             </AnimatedPressable>
+            <Text className="text-xs text-sand-300 mt-2 px-1">
+              Autofill isn't always precise — check and correct the fields below before continuing.
+            </Text>
 
-            <View className="mt-4">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">City *</Text>
+            <Field label="Shop address" required>
               <TextInput
-                value={city}
-                onChangeText={(t) => {
-                  setCity(t)
-                  setStatePickerOpen(false)
-                }}
-                placeholder="e.g. Surat, Jaipur, Ludhiana"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                value={shopAddress}
+                onChangeText={setShopAddress}
+                placeholder="Shop no., street, landmark — e.g. Shop 12, MG Road, near City Mall"
+                className={inputClass}
+                style={{ minHeight: 96, textAlignVertical: 'top' }}
                 placeholderTextColor={colors.sand[400]}
                 autoFocus
+                multiline
+                maxLength={300}
+              />
+            </Field>
+
+            <Field label="City">
+              <TextInput
+                value={city}
+                onChangeText={setCity}
+                placeholder="e.g. Jaipur"
+                className={inputClass}
+                placeholderTextColor={colors.sand[400]}
                 maxLength={100}
               />
-            </View>
+            </Field>
 
-            {/* State dropdown */}
-            <View className="mt-4">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">
-                State <Text className="text-sand-400 font-normal">(optional)</Text>
-              </Text>
-              <AnimatedPressable
-                onPress={() => setStatePickerOpen((p) => !p)}
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 flex-row items-center justify-between"
-              >
-                <Text className={`text-base ${state ? 'text-sand-900' : 'text-sand-400'}`}>
-                  {state || 'Select state'}
-                </Text>
-                <Text className="text-sand-400 text-lg">{statePickerOpen ? '▲' : '▼'}</Text>
-              </AnimatedPressable>
+            <Field label="District">
+              <TextInput
+                value={district}
+                onChangeText={setDistrict}
+                placeholder="e.g. Jaipur District"
+                className={inputClass}
+                placeholderTextColor={colors.sand[400]}
+                maxLength={100}
+              />
+            </Field>
 
-              {statePickerOpen && (
-                <View className="mt-2 border-2 border-sand-100 rounded-2xl max-h-48 overflow-hidden">
-                  <ScrollView className="divide-y divide-sand-50" nestedScrollEnabled>
-                    {INDIAN_STATES.map((s) => (
-                      <AnimatedPressable
-                        key={s}
-                        onPress={() => {
-                          setState(s)
-                          setStatePickerOpen(false)
-                        }}
-                        className={`px-4 py-3 ${state === s ? 'bg-ink-50' : ''}`}
-                      >
-                        <Text
-                          className={`text-sm ${state === s ? 'text-ink-700 font-semibold' : 'text-sand-700'}`}
-                        >
-                          {s}
-                        </Text>
-                      </AnimatedPressable>
-                    ))}
-                  </ScrollView>
-                </View>
-              )}
-            </View>
+            <Field label="State">
+              <TextInput
+                value={state}
+                onChangeText={setState}
+                placeholder="e.g. Rajasthan"
+                className={inputClass}
+                placeholderTextColor={colors.sand[400]}
+                maxLength={100}
+              />
+            </Field>
 
-            <View className="mt-4">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">
-                Pincode <Text className="text-sand-400 font-normal">(optional)</Text>
-              </Text>
+            <Field label="Zipcode">
               <TextInput
                 value={pincode}
                 onChangeText={(t) => setPincode(t.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 395001"
+                placeholder="e.g. 302001"
                 keyboardType="number-pad"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
+                className={inputClass}
                 placeholderTextColor={colors.sand[400]}
                 maxLength={6}
               />
-            </View>
+            </Field>
           </View>
-        )
+        );
 
       case 3:
         return (
-          <View className="pt-6">
-            <Text className="text-2xl font-bold text-sand-900">What do you sell?</Text>
-            <Text className="text-sand-500 text-base mt-2">
-              Select all that apply — helps AI tag products accurately
-            </Text>
-
-            <View className="flex-row flex-wrap gap-3 mt-6">
-              {dbCategories.map((cat) => {
-                const selected = selectedCategories.includes(cat.name)
-                return (
-                  <AnimatedPressable
-                    key={cat.id}
-                    onPress={() => toggleCategory(cat.name)}
-                    style={{ maxWidth: '100%', flexShrink: 1 }}
-                    className={`flex-row items-center gap-2 px-4 py-3 rounded-2xl border-2 shrink ${
-                      selected
-                        ? 'bg-ink-600 border-ink-600'
-                        : 'bg-white border-sand-200 active:border-ink-300'
-                    }`}
-                  >
-                    <Text className="text-base">{categoryEmoji[cat.name] ?? '📦'}</Text>
-                    <Text
-                      className={`font-medium text-sm shrink ${selected ? 'text-white' : 'text-sand-700'}`}
-                      style={{ flexShrink: 1 }}
-                    >
-                      {cat.name}
-                    </Text>
-                  </AnimatedPressable>
-                )
-              })}
-            </View>
-
-            <Text className="text-xs text-sand-400 mt-4 text-center">
-              {selectedCategories.length} selected
-            </Text>
-
-            <View className="mt-6">
-              <Text className="text-sm font-semibold text-sand-600 mb-2">
-                About how many items do you carry?{' '}
-                <Text className="text-sand-400 font-normal">(optional)</Text>
-              </Text>
-              <TextInput
-                value={skuEstimate}
-                onChangeText={(t) => setSkuEstimate(t.replace(/[^0-9]/g, ''))}
-                placeholder="e.g. 1500"
-                keyboardType="number-pad"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900"
-                placeholderTextColor={colors.sand[400]}
-                maxLength={6}
-              />
-              <Text className="text-xs text-sand-400 mt-2 px-1">
-                {"Over ~100 items? We'll offer a faster rack-by-rack bulk upload instead of one photo at a time."}
-              </Text>
-            </View>
-          </View>
-        )
-
-      case 4:
-        return (
-          <View className="pt-6">
-            <Text className="text-2xl font-bold text-sand-900">GST number</Text>
-            <Text className="text-sand-500 text-base mt-2">
+          <View>
+            <Text className="text-sand-300 text-sm leading-5">
               Required for generating GST invoices for your customers
             </Text>
 
-            <View className="mt-6">
+            <Field label="GSTIN">
               <TextInput
                 value={gstin}
                 onChangeText={(t) => setGstin(t.toUpperCase())}
                 placeholder="15-digit GSTIN"
-                className="border-2 border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900 font-mono tracking-widest"
+                className={`${inputClass} font-mono tracking-widest`}
                 placeholderTextColor={colors.sand[400]}
                 autoCapitalize="characters"
                 maxLength={15}
                 autoFocus
               />
-              <Text className="text-xs text-sand-400 mt-2 px-1">
-                Format: 22AAAAA0000A1Z5 · You can add this later
-              </Text>
-            </View>
+            </Field>
+            <Text className="text-xs text-sand-300 mt-2 px-1">
+              Format: 22AAAAA0000A1Z5 · You can add this later
+            </Text>
 
             <GradientBorderCard
               fill={colors.turmeric[50]}
-              colors={[`${colors.turmeric[100]}00`, `${colors.rust[600]}66`, `${colors.turmeric[100]}00`]}
+              colors={[
+                `${colors.turmeric[100]}00`,
+                `${colors.rust[600]}66`,
+                `${colors.turmeric[100]}00`,
+              ]}
               style={{ marginTop: 24 }}
             >
               <View className="p-4">
@@ -656,97 +691,68 @@ export default function OnboardingScreen() {
               </View>
             </GradientBorderCard>
           </View>
-        )
+        );
 
-      case 5:
+      case 4:
         return (
-          <View className="pt-2 items-center">
+          <View className="pt-4 items-center">
             {/* Big celebration emoji — signature gradient moment */}
             <LinearGradient
-              colors={[colors.ink[400], colors.ink[800]]}
+              colors={[colors.rust[400], colors.rust[700]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={{ width: 96, height: 96, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}
+              style={{
+                width: 128,
+                height: 128,
+                borderRadius: 32,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 24,
+              }}
             >
-              <Text className="text-5xl">🎉</Text>
+              <Text className="text-6xl">🎉</Text>
             </LinearGradient>
 
-            <Text className="text-2xl font-bold text-sand-900 text-center">
-              {"You're all set!"}
-            </Text>
-            <Text className="text-sand-500 text-base mt-2 text-center">
-              {"Your store is ready to go. Here's what to do next:"}
+            <Text className="text-2xl font-bold text-white text-center">Congratulations!</Text>
+            <Text className="text-sand-300 text-base mt-2 text-center">
+              Your store has been built.
             </Text>
 
-            <View className="mt-6 w-full gap-3">
+            <View className="mt-8 w-full gap-3">
               <AnimatedPressable
-                onPress={() => {
-                  const estimate = parseInt(skuEstimate, 10)
-                  if (estimate >= 100) {
-                    router.replace(`/product/bulk-onboard?target=${estimate}`)
-                  } else {
-                    router.replace('/')
-                  }
-                }}
-                className="flex-row items-center gap-3 bg-ink-600 rounded-2xl p-4"
+                onPress={() => void handleNext()}
+                className="bg-rust-500 rounded-2xl p-4 items-center"
               >
-                <View className="w-10 h-10 rounded-xl bg-ink-500 items-center justify-center">
-                  <Text className="text-xl">📷</Text>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-white text-sm font-bold">
-                    {parseInt(skuEstimate, 10) >= 100 ? 'Start bulk onboarding' : 'Add your first product'}
-                  </Text>
-                  <Text className="text-ink-200 text-xs mt-0.5">
-                    {parseInt(skuEstimate, 10) >= 100
-                      ? 'Photograph one rack at a time'
-                      : 'AI tags it automatically — takes 8 seconds'}
-                  </Text>
-                </View>
-                <Text className="text-white text-lg">→</Text>
+                <Text className="text-ink-900 text-sm font-bold">Go to Dashboard</Text>
               </AnimatedPressable>
 
               <AnimatedPressable
-                onPress={() => router.replace('/')}
+                onPress={() => void handleCreateStoreQr()}
                 className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
-                  <Text className="text-xl">👥</Text>
+                  <Text className="text-xl">🔳</Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sand-900 text-sm font-bold">Add customers</Text>
+                  <Text className="text-sand-900 text-sm font-bold">Create your store QR code</Text>
                   <Text className="text-sand-500 text-xs mt-0.5">
-                    Save preferences for faster selling
+                    Customers scan it to open your catalog — share it at the counter
                   </Text>
                 </View>
                 <Text className="text-sand-400 text-lg">→</Text>
               </AnimatedPressable>
 
               <AnimatedPressable
-                onPress={() => router.replace('/')}
-                className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
-              >
-                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
-                  <Text className="text-xl">🔗</Text>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-sand-900 text-sm font-bold">Create a collection</Text>
-                  <Text className="text-sand-500 text-xs mt-0.5">
-                    Share on WhatsApp with a single link
-                  </Text>
-                </View>
-                <Text className="text-sand-400 text-lg">→</Text>
-              </AnimatedPressable>
-
-              <AnimatedPressable
-                onPress={() => router.push('/settings/catalog-upload')}
+                onPress={() => void handleGetCatalogHelp()}
                 className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
               >
                 <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
                   <Text className="text-xl">🧑‍💼</Text>
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sand-900 text-sm font-bold">Get help adding your catalog</Text>
+                  <Text className="text-sand-900 text-sm font-bold">
+                    Get help adding your catalog
+                  </Text>
                   <Text className="text-sand-500 text-xs mt-0.5">
                     A paid Kanchuki team visit uploads it for you — skip anytime
                   </Text>
@@ -755,39 +761,86 @@ export default function OnboardingScreen() {
               </AnimatedPressable>
             </View>
           </View>
-        )
+        );
     }
-  }
+  };
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-white"
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      className="flex-1 bg-ink-900"
     >
       {/* Confetti overlay */}
       <ConfettiOverlay visible={showConfetti} />
 
-      <View className="flex-1 pt-14">
-        {/* Progress bar */}
-        <View className="h-1 bg-sand-100 mx-6 rounded-full overflow-hidden">
+      {/* ── Gradient header: back + title + progress + step circles ── */}
+      <LinearGradient
+        colors={[primaryColor, colors.ink[800]]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{ paddingTop: insets.top + 8 }}
+      >
+        {/* Top row */}
+        <View className="flex-row items-center px-4 pt-2 pb-1">
+          <View className="w-10 items-start">
+            {step > 1 && step < TOTAL_STEPS && (
+              <AnimatedPressable
+                onPress={() => goToStep((step - 1) as Step)}
+                accessibilityLabel="Back"
+                accessibilityRole="button"
+                className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+              >
+                <Text className="text-white text-xl font-medium">‹</Text>
+              </AnimatedPressable>
+            )}
+          </View>
+          <Text className="flex-1 text-center text-white text-lg font-bold">
+            {STEP_META[step].title}
+          </Text>
+          <View className="w-10" />
+        </View>
+
+        {/* Progress line */}
+        <View className="h-1 bg-white/20 mx-6 mt-1 rounded-full overflow-hidden">
           <View
-            className="h-full bg-ink-600 rounded-full"
+            className="h-full bg-rust-400 rounded-full"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </View>
 
-        {/* Step indicator dots */}
+        {/* Step circles */}
         <StepIndicator currentStep={step} onPress={goToStep} />
+      </LinearGradient>
 
+      {/* ── Dark card overlapping the header ──
+          Shadow lives on the outer wrapper; rounded-t + overflow-hidden on the
+          inner view. RN clips a View's own shadow when overflow: 'hidden' is on
+          the same node (iOS masksToBounds), so splitting the two layers is what
+          actually renders the drop shadow the design calls for. */}
+      <View
+        className="flex-1 -mt-4"
+        style={{
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.12,
+          shadowRadius: 16,
+          elevation: 8,
+        }}
+      >
+        <View className="flex-1 bg-ink-800 rounded-t-3xl overflow-hidden">
         {/* Content with animated transitions */}
         <Animated.View
-          className="flex-1 px-6"
+          className="flex-1 px-6 pt-6"
           style={{
             opacity: fadeAnim,
-            transform: [{ translateX: slideAnim.interpolate({
-              inputRange: [-1, 0, 1],
-              outputRange: [-60, 0, 60],
-            }) }],
+            transform: [
+              {
+                translateX: slideAnim.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: [-60, 0, 60],
+                }),
+              },
+            ],
           }}
         >
           <ScrollView
@@ -796,38 +849,64 @@ export default function OnboardingScreen() {
             showsVerticalScrollIndicator={false}
           >
             {renderContent()}
-            <View className="h-40" />
+            <View className="h-10" />
           </ScrollView>
         </Animated.View>
+        </View>
       </View>
 
-      {/* Bottom navigation */}
+      {/* ── Bottom action bar ── */}
       <View
-        className="bg-white border-t border-sand-100 px-6 pt-4"
-        style={{ paddingBottom: 16 + insets.bottom }}
+        className="bg-ink-900 border-t border-white/10 px-6 pt-4"
+        style={{ paddingBottom: 12 + insets.bottom }}
       >
-        <View className="flex-row items-center gap-3">
-          {step > 1 && (
-            <AnimatedPressable
-              onPress={() => goToStep((step - 1) as Step)}
-              className="w-12 h-12 rounded-2xl border-2 border-sand-200 items-center justify-center"
+        <GradientButton
+          label={
+            showConfetti ? "🎉 You're in!" : step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'
+          }
+          onPress={() => void handleNext()}
+          disabled={!canProceed() || showConfetti || saving}
+          loading={saving}
+        />
+
+        {/* GST step — explicit skip affordance. GSTIN is already optional
+            (Continue advances with an empty field); this makes it clear a
+            retailer without a GST number can move on and add it later from
+            Settings. Same handleNext path, so progress still saves. */}
+        {step === 3 && (
+          <AnimatedPressable
+            onPress={() => void handleNext()}
+            disabled={saving || showConfetti}
+            accessibilityLabel="Skip — continue without a GST number"
+            accessibilityRole="button"
+            className="items-center justify-center py-2.5 mt-1"
+          >
+            <Text className="text-sm font-semibold text-rust-400">
+              Skip — I don't have a GST number
+            </Text>
+          </AnimatedPressable>
+        )}
+
+        {/* Legal consent line */}
+        {step < TOTAL_STEPS && (
+          <Text className="text-center text-xs text-sand-300 mt-3 px-2 leading-4">
+            By continuing, you agree to our{' '}
+            <Text
+              className="font-semibold text-rust-400"
+              onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
             >
-              <Text className="text-sand-600 text-lg">←</Text>
-            </AnimatedPressable>
-          )}
-          <View className="flex-1">
-            <GradientButton
-              label={showConfetti ? "🎉 You're in!" : step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'}
-              onPress={() => void handleNext()}
-              disabled={!canProceed() || showConfetti || saving}
-              loading={saving}
-            />
-          </View>
-        </View>
-        <Text className="text-center text-xs text-sand-400 mt-2">
-          Step {step} of {TOTAL_STEPS}
-        </Text>
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text
+              className="font-semibold text-rust-400"
+              onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        )}
       </View>
     </KeyboardAvoidingView>
-  )
+  );
 }

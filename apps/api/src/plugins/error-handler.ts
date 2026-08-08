@@ -40,6 +40,10 @@ export function validationError(message: string, field?: string): AppError {
   return new AppError('VALIDATION_ERROR', message, 422, field);
 }
 
+export function serviceUnavailable(message: string): AppError {
+  return new AppError('SERVICE_UNAVAILABLE', message, 503);
+}
+
 export function errorHandler(
   error: FastifyError,
   _request: FastifyRequest,

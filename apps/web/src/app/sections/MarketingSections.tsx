@@ -483,8 +483,8 @@ function FooterSection() {
           </div>
           <p className="text-sand-500 text-sm text-center">© {new Date().getFullYear()} Kanchuki. Made in India <span className="inline-block">🇮🇳</span></p>
           <div className="flex gap-5 text-sm text-sand-500">
-            <a href="#" className="hover:text-sand-300 transition-colors">Privacy</a>
-            <a href="#" className="hover:text-sand-300 transition-colors">Terms</a>
+            <Link href="/privacy" className="hover:text-sand-300 transition-colors">Privacy</Link>
+            <Link href="/terms" className="hover:text-sand-300 transition-colors">Terms</Link>
             <a href="mailto:hello@kanchuki.app" className="hover:text-sand-300 transition-colors">Contact</a>
             <span className="text-sand-700">·</span>
             <a href="/admin" className="hover:text-sand-300 transition-colors text-sand-400">Admin</a>

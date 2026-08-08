@@ -28,6 +28,7 @@ import ProductCard from '../../src/components/ProductCard'
 import { productApi, tryOnApi, retailerApi, uploadImageToR2, readLocalImage } from '../../src/lib/api'
 import { showError, logError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
+import { WEB_URL } from '../../src/lib/web-url'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Step = 'select' | 'capture' | 'preview' | 'uploading' | 'processing' | 'result'
@@ -557,9 +558,8 @@ export default function InStoreTryOnScreen() {
                   <Text
                     className="text-ink-600 underline"
                     onPress={() => {
-                      const webUrl = process.env['EXPO_PUBLIC_WEB_URL'] ?? 'https://kanchuki.app'
                       Linking.openURL(
-                        `${webUrl}/consent/revoke?token=${encodeURIComponent(revocationToken)}`,
+                        `${WEB_URL}/consent/revoke?token=${encodeURIComponent(revocationToken)}`,
                       )
                     }}
                   >

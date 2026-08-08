@@ -82,6 +82,11 @@ beforeEach(() => {
 
 describe('PUT /retailers/me', () => {
   it('accepts null logo/banner fields (clearing an image)', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      onboarded_by_id: null,
+      shop_name: 'Test Shop',
+      public_slug: null,
+    });
     mockRetailerUpdate.mockResolvedValue({
       shop_name: 'Test Shop',
       logo_url: null,
@@ -103,6 +108,74 @@ describe('PUT /retailers/me', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockRetailerUpdate).toHaveBeenCalledOnce();
+    await app.close();
+  });
+
+  it('regenerates the QR slug when the shop name changes and a slug exists', async () => {
+    mockRetailerFindUnique
+      .mockResolvedValueOnce({
+        onboarded_by_id: null,
+        shop_name: 'Old Shop Name',
+        public_slug: 'old-shop-name-ab12',
+      }) // current-row fetch
+      .mockResolvedValueOnce(null); // uniqueness check — new slug is free
+    mockRetailerUpdate.mockResolvedValue({
+      shop_name: 'New Shop Name',
+      public_slug: 'new-shop-name-xy99',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: { shop_name: 'New Shop Name' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
+    expect(callArg.data.public_slug).toMatch(/^new-shop-name-/);
+    await app.close();
+  });
+
+  it('does not regenerate the slug when the shop name is unchanged', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      onboarded_by_id: null,
+      shop_name: 'Same Shop',
+      public_slug: 'same-shop-ab12',
+    });
+    mockRetailerUpdate.mockResolvedValue({ shop_name: 'Same Shop' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: { shop_name: 'Same Shop' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
+    expect(callArg.data).not.toHaveProperty('public_slug');
+    await app.close();
+  });
+
+  it('does not regenerate the slug on rename when no QR slug exists yet', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      onboarded_by_id: null,
+      shop_name: 'Old Shop',
+      public_slug: null,
+    });
+    mockRetailerUpdate.mockResolvedValue({ shop_name: 'New Shop' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: '/v1/retailers/me',
+      payload: { shop_name: 'New Shop' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const callArg = mockRetailerUpdate.mock.calls[0]?.[0];
+    expect(callArg.data).not.toHaveProperty('public_slug');
     await app.close();
   });
 
@@ -241,6 +314,33 @@ describe('F-019: POST /retailers/me/catalog-upload-request/:id/pay', () => {
     });
 
     expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+});
+
+describe('DELETE /retailers/me/qr-slug', () => {
+  it('clears the public_slug when one exists (204)', async () => {
+    mockRetailerFindUnique.mockResolvedValue({ public_slug: 'test-shop-ab12' });
+    mockRetailerUpdate.mockResolvedValue({ public_slug: null });
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'DELETE', url: '/v1/retailers/me/qr-slug' });
+
+    expect(res.statusCode).toBe(204);
+    expect(mockRetailerUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { public_slug: null } }),
+    );
+    await app.close();
+  });
+
+  it('is idempotent when no slug exists', async () => {
+    mockRetailerFindUnique.mockResolvedValue({ public_slug: null });
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'DELETE', url: '/v1/retailers/me/qr-slug' });
+
+    expect(res.statusCode).toBe(204);
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
     await app.close();
   });
 });

@@ -1,5 +1,6 @@
 // Auto-split from retailers.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
+import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../../plugins/error-handler.js';
@@ -69,27 +70,60 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
 
     const { referral_code, ...profileFields } = body.data;
 
+    // One current-row fetch serves both the F-018 referral resolution and the
+    // public_slug auto-regeneration below.
+    const current = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { onboarded_by_id: true, shop_name: true, public_slug: true },
+    });
+    if (!current) throw notFound('Retailer');
+
     // F-018: resolve a self-serve referral code to onboarded_by_id. Silently
     // ignored if invalid/blank, and never overwrites existing attribution
     // (e.g. a retailer an agent already onboarded in person).
     let onboardedById: string | undefined;
-    if (referral_code) {
-      const current = await prisma.retailer.findUnique({
-        where: { id: request.retailerId },
-        select: { onboarded_by_id: true },
+    if (referral_code && !current.onboarded_by_id) {
+      const agent = await prisma.teamMember.findUnique({
+        where: { referral_code },
+        select: { id: true, is_active: true },
       });
-      if (!current?.onboarded_by_id) {
-        const agent = await prisma.teamMember.findUnique({
-          where: { referral_code },
-          select: { id: true, is_active: true },
-        });
-        if (agent?.is_active) onboardedById = agent.id;
+      if (agent?.is_active) onboardedById = agent.id;
+    }
+
+    // Store URL follows the shop name (user decision 2026-08-08): when the
+    // retailer renames their shop, regenerate the QR slug from the NEW name
+    // so the store link always carries the store's own name. Only runs when
+    // a slug already exists (a QR was generated) AND the name actually
+    // changed — a rename with no QR yet creates nothing, and an unchanged
+    // name never churns the stable URL. Tradeoff accepted: old links/printed
+    // QRs stop resolving after a rename (the slug is derived from the name,
+    // not a hand-picked brand URL).
+    let regeneratedSlug: string | undefined;
+    if (body.data.shop_name && current.public_slug && body.data.shop_name !== current.shop_name) {
+      // Bounded collision retry — the 4-char random suffix makes real
+      // collisions rare, but soft-deleted retailers keep their slug, so a
+      // pathological name must never spin forever. Falls back to a
+      // timestamp suffix (outside the 4-char space) after 8 attempts.
+      const base = body.data.shop_name;
+      let slug: string;
+      for (let attempt = 0; ; attempt++) {
+        slug = generateCollectionSlug(base);
+        if (attempt >= 8) {
+          slug = `${slug}-${Date.now().toString(36)}`;
+          break;
+        }
+        if (!(await prisma.retailer.findUnique({ where: { public_slug: slug } }))) break;
       }
+      regeneratedSlug = slug;
     }
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
-      data: { ...profileFields, ...(onboardedById ? { onboarded_by_id: onboardedById } : {}) },
+      data: {
+        ...profileFields,
+        ...(onboardedById ? { onboarded_by_id: onboardedById } : {}),
+        ...(regeneratedSlug ? { public_slug: regeneratedSlug } : {}),
+      },
     });
 
     await prisma.auditLog.create({
@@ -99,7 +133,10 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
         action: 'update',
         resource_type: 'Retailer',
         resource_id: request.retailerId,
-        metadata: { updated_fields: Object.keys(body.data) },
+        metadata: {
+          updated_fields: Object.keys(body.data),
+          ...(regeneratedSlug ? { public_slug_regenerated: true, slug: regeneratedSlug } : {}),
+        },
         ip_address: request.ip,
       },
     });

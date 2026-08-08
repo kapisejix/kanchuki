@@ -296,7 +296,18 @@ export default function AddProductScreen() {
       logError(err)
       setProStatus('')
       setStep('pro_options')
-      showError(err, 'Photo processing failed — please try again.', 'Processing Error')
+      // 503 SERVICE_UNAVAILABLE from the pro-cleanup route = the cleanup
+      // environment (sidecar/python) is down, NOT the photos — guide the
+      // retailer to Photo mode instead of a generic failure.
+      const apiErr = err as { code?: string; status?: number }
+      const serviceDown = apiErr.code === 'SERVICE_UNAVAILABLE' || apiErr.status === 503
+      showError(
+        err,
+        serviceDown
+          ? 'Pro photos are unavailable right now — try again later, or use Photo mode instead.'
+          : 'Photo processing failed — please try again.',
+        serviceDown ? 'Pro Mode Unavailable' : 'Processing Error',
+      )
     } finally {
       proRunningRef.current = false
       if (runId === proRunRef.current) setProProcessing(false)

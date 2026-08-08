@@ -193,8 +193,10 @@ describe('POST /products/pro-cleanup', () => {
     await app.close();
   });
 
-  it('422s when every photo fails', async () => {
-    mockRunCleanup.mockRejectedValue(new Error('fetch failed (500)'));
+  it('422s when every photo fails on a photo-quality problem', async () => {
+    mockRunCleanup.mockRejectedValue(
+      new Error('cannot identify image file — unsupported or corrupt JPEG'),
+    );
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -203,6 +205,24 @@ describe('POST /products/pro-cleanup', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(res.json().error.message).toContain('failed to process');
+    await app.close();
+  });
+
+  it('503 SERVICE_UNAVAILABLE when every photo fails on an environment problem (cleanup service/python down)', async () => {
+    mockRunCleanup.mockRejectedValue(
+      new Error(
+        'python3/python not found on this host. Install Python + `pip install rembg pillow simple-lama-inpainting` to use photo cleanup.',
+      ),
+    );
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/pro-cleanup',
+      payload: validBody,
+    });
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('SERVICE_UNAVAILABLE');
+    expect(res.json().error.message).toContain('Photo mode');
     await app.close();
   });
 

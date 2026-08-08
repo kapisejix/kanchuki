@@ -17,18 +17,32 @@ export default function TabsLayout() {
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
   // lands straight on the tabs. Same query key as (tabs)/index.tsx's own
   // getMe() call, so this doesn't cost an extra network round trip.
-  const { data: meData, isLoading: meLoading } = useQuery({
+  const {
+    data: meData,
+    isLoading: meLoading,
+    isFetching: meFetching,
+  } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
+    // A cached `false` from the persisted offline cache must always be
+    // re-verified against the DB before the gate redirects — staleTime 0
+    // forces the mount refetch (cheap: getMe has a 60s request-cache TTL,
+    // and the onboarding PATCH just cleared that cache).
+    staleTime: 0,
   })
   const onboardingCompleted = (meData?.data as { onboarding_completed?: boolean } | undefined)
     ?.onboarding_completed
 
+  // Redirect only once the query has fully settled. Waiting for isFetching
+  // means a stale cached `false` (e.g. the persisted offline cache from a
+  // dropped-off signup) that triggers a background refetch can't bounce a
+  // user who just completed onboarding back to step 1 — the refetch lands
+  // first and renders the dashboard.
   useEffect(() => {
-    if (!meLoading && onboardingCompleted === false) {
+    if (!meLoading && !meFetching && onboardingCompleted === false) {
       router.replace('/onboarding')
     }
-  }, [meLoading, onboardingCompleted])
+  }, [meLoading, meFetching, onboardingCompleted])
 
   // Fetch pending order count for the badge on the Orders tab.
   // Refetches on app foreground so the badge stays current.
@@ -48,7 +62,7 @@ export default function TabsLayout() {
   useEffect(() => {
     // Skip while the onboarding gate is still deciding — no point badging a
     // dashboard that isn't about to render.
-    if (meLoading || onboardingCompleted === false) return
+    if (meLoading || meFetching || onboardingCompleted === false) return
     void fetchPendingCount()
     const interval = setInterval(() => void fetchPendingCount(), 30_000)
     const sub = AppState.addEventListener('change', (state) => {
@@ -58,7 +72,7 @@ export default function TabsLayout() {
       clearInterval(interval)
       sub.remove()
     }
-  }, [meLoading, onboardingCompleted])
+  }, [meLoading, meFetching, onboardingCompleted])
 
   if (meLoading || onboardingCompleted === false) {
     return (

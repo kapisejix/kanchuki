@@ -84,9 +84,19 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
       };
     }
 
-    let slug = generateCollectionSlug(existing.shop_name);
-    while (await prisma.retailer.findUnique({ where: { public_slug: slug } })) {
-      slug = generateCollectionSlug(existing.shop_name);
+    // Bounded collision retry — same guard as the rename path in
+    // retailers-profile.ts: soft-deleted retailers keep their slug, so a
+    // pathological name must never spin forever (timestamp fallback after
+    // 8 attempts, outside the 4-char random-suffix space).
+    const base = existing.shop_name;
+    let slug: string;
+    for (let attempt = 0; ; attempt++) {
+      slug = generateCollectionSlug(base);
+      if (attempt >= 8) {
+        slug = `${slug}-${Date.now().toString(36)}`;
+        break;
+      }
+      if (!(await prisma.retailer.findUnique({ where: { public_slug: slug } }))) break;
     }
 
     const updated = await prisma.retailer.update({
@@ -112,6 +122,44 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
         profile_url: `${webBase}/store/${updated.public_slug}`,
       },
     };
+  });
+
+  // ─── DELETE /retailers/me/qr-slug ───────────────────────────────
+  // Remove the store QR: clears public_slug so /store/{slug} (and any
+  // printed QR / shared link) stops resolving. The mobile QR screen does
+  // NOT call this directly — the retailer must type their shop name as
+  // verification first (see store-profile.tsx) per the user's "don't
+  // delete directly" requirement. Idempotent: no slug → still 204.
+  server.delete('/me/qr-slug', async (request, reply) => {
+    const existing = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { public_slug: true },
+    });
+    if (!existing) throw notFound('Retailer');
+
+    if (!existing.public_slug) {
+      return reply.status(204).send(); // nothing to delete
+    }
+
+    const deletedSlug = existing.public_slug;
+    await prisma.retailer.update({
+      where: { id: request.retailerId },
+      data: { public_slug: null },
+      select: { public_slug: true },
+    });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'delete',
+        resource_type: 'Retailer',
+        resource_id: request.retailerId,
+        metadata: { public_slug_deleted: true, slug: deletedSlug },
+        ip_address: request.ip,
+      },
+    });
+
+    return reply.status(204).send();
   });
 
   // ─── PATCH /retailers/me/storefront ─────────────────────────────

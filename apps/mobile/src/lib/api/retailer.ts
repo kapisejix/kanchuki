@@ -23,6 +23,7 @@ export const retailerApi = {
     request<{ data: { public_slug: string; profile_url: string } }>('/v1/retailers/me/qr-slug', {
       method: 'POST',
     }),
+  deleteQrSlug: () => request<void>('/v1/retailers/me/qr-slug', { method: 'DELETE' }),
   setStorefront: (collectionId: string | null) =>
     request<{ data: { storefront_collection_id: string | null } }>('/v1/retailers/me/storefront', {
       method: 'PATCH',

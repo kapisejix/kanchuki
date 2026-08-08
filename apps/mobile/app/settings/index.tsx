@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, TextInput,
-  ActivityIndicator, Alert, Modal, KeyboardAvoidingView, Platform, Image,
+  ActivityIndicator, Alert, Linking, Modal, KeyboardAvoidingView, Platform, Image,
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -19,6 +19,7 @@ import { SettingsSkeleton } from '../../src/components/Skeleton'
 import { getItem, deleteItem } from '../../src/lib/storage'
 import { clearPersistedCache } from '../../src/lib/offline-persister'
 import { useTheme } from '../../src/lib/theme'
+import { WEB_URL } from '../../src/lib/web-url'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -31,11 +32,13 @@ function ProfileEditModal({
   retailer,
   onClose,
   onSaved,
+  onStoreUrlChanged,
 }: {
   visible: boolean
   retailer: Record<string, any> | null
   onClose: () => void
   onSaved: () => void
+  onStoreUrlChanged: (newSlug: string) => void
 }) {
   const { primaryColor, colors } = useTheme()
   const [shopName, setShopName] = useState('')
@@ -123,7 +126,7 @@ function ProfileEditModal({
     if (!canSave) return
     setSaving(true)
     try {
-      await retailerApi.update({
+      const res = await retailerApi.update({
         shop_name: shopName.trim(),
         owner_name: ownerName.trim() || undefined,
         city: city.trim() || undefined,
@@ -134,6 +137,12 @@ function ProfileEditModal({
         banner_url: bannerUrl ?? null,
         banner_r2_key: bannerR2Key ?? null,
       })
+      // The backend regenerates the store URL (public_slug) whenever the shop
+      // name changes AND a QR slug already exists — surface that here so old
+      // links / printed QRs are never a surprise to the retailer.
+      const updatedSlug = (res as { data?: { public_slug?: string | null } }).data?.public_slug
+      const previousSlug = retailer?.public_slug as string | null | undefined
+      if (updatedSlug && updatedSlug !== previousSlug) onStoreUrlChanged(updatedSlug)
       onSaved()
       onClose()
     } catch (err) {
@@ -808,10 +817,16 @@ export default function SettingsScreen() {
   }, [])
 
   const [showProfileEdit, setShowProfileEdit] = useState(false)
+  // GSTIN reminder — shown when onboarding was completed without a GST number.
+  // Dismissed for the session via "Not now"; reappears next launch until added.
+  const [gstReminderDismissed, setGstReminderDismissed] = useState(false)
   const [showWhatsApp, setShowWhatsApp] = useState(false)
   const [showKyc, setShowKyc] = useState(false)
   const [showWhatsAppApi, setShowWhatsAppApi] = useState(false)
   const [showDelete, setShowDelete] = useState(false)
+  // Set after a profile save that renamed the shop (the backend regenerated
+  // the store URL) — shows a one-shot banner with the new link.
+  const [storeUrlNotice, setStoreUrlNotice] = useState<string | null>(null)
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
@@ -872,6 +887,108 @@ export default function SettingsScreen() {
           <Text className="text-base font-bold text-sand-900">{retailer?.shop_name ?? 'My Store'}</Text>
           <Text className="text-sm text-sand-500 mt-0.5">{retailer?.city ?? ''} · {retailer?.plan ?? 'STARTER'}</Text>
         </View>
+
+        {/* Store URL change notice — one-shot, shown right after a rename that
+            regenerated the QR slug (wired via onStoreUrlChanged below). */}
+        {storeUrlNotice && (
+          <View
+            className="rounded-2xl border border-turmeric-200 mb-4 overflow-hidden"
+            style={{ backgroundColor: colors.turmeric[50] }}
+          >
+            <View className="p-4">
+              <View className="flex-row items-center gap-3">
+                <View className="w-10 h-10 rounded-xl bg-white border border-turmeric-200 items-center justify-center">
+                  <QrCode size={18} color={colors.turmeric[600]} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-sand-900">Your store link has changed</Text>
+                  <Text className="text-xs text-sand-600 mt-0.5">
+                    Old links and printed QR codes no longer work
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-xs text-sand-600 leading-4 mt-3">
+                Renaming your shop updated your store URL. Your new link is:
+              </Text>
+              <AnimatedPressable
+                onPress={() => void Linking.openURL(`${WEB_URL}/store/${storeUrlNotice}`)}
+                hitSlop={6}
+              >
+                <Text className="text-xs text-ink-700 underline mt-1">
+                  {WEB_URL}/store/{storeUrlNotice}
+                </Text>
+              </AnimatedPressable>
+              <View className="flex-row items-center gap-4 mt-3.5">
+                <AnimatedPressable
+                  onPress={() => {
+                    setStoreUrlNotice(null)
+                    router.push('/store-profile')
+                  }}
+                  accessibilityRole="button"
+                  className="bg-ink-600 px-4 py-2.5 rounded-xl items-center"
+                >
+                  <Text className="text-white text-xs font-semibold">View QR Code</Text>
+                </AnimatedPressable>
+                <AnimatedPressable
+                  onPress={() => setStoreUrlNotice(null)}
+                  hitSlop={8}
+                  accessibilityLabel="Dismiss link notice"
+                  accessibilityRole="button"
+                  className="py-1.5"
+                >
+                  <Text className="text-sand-500 text-xs font-semibold">Dismiss</Text>
+                </AnimatedPressable>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* GSTIN reminder — completed onboarding without a GST number.
+            Owner-only (staff can't edit the profile). "Add GSTIN" opens the
+            Edit Profile modal; the card auto-disappears once a GSTIN is saved
+            (handleProfileSaved refetches ['retailer', 'me']). */}
+        {!isStaff && retailer?.onboarding_completed === true && !retailer?.gstin?.trim() && !gstReminderDismissed && (
+          <View
+            className="rounded-2xl border border-turmeric-200 mb-4 overflow-hidden"
+            style={{ backgroundColor: colors.turmeric[50] }}
+          >
+            <View className="p-4">
+              <View className="flex-row items-center gap-3">
+                <View className="w-10 h-10 rounded-xl bg-white border border-turmeric-200 items-center justify-center">
+                  <FileText size={18} color={colors.turmeric[600]} />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-sm font-bold text-sand-900">Add your GST number</Text>
+                  <Text className="text-xs text-sand-600 mt-0.5">
+                    Needed for GST invoices on customer orders
+                  </Text>
+                </View>
+              </View>
+              <Text className="text-xs text-sand-600 leading-4 mt-3">
+                You skipped this during onboarding. Add your GSTIN now so every sale can be billed
+                correctly — it takes a minute.
+              </Text>
+              <View className="flex-row items-center gap-4 mt-3.5">
+                <AnimatedPressable
+                  onPress={() => setShowProfileEdit(true)}
+                  accessibilityRole="button"
+                  className="bg-ink-600 px-4 py-2.5 rounded-xl items-center"
+                >
+                  <Text className="text-white text-xs font-semibold">Add GSTIN</Text>
+                </AnimatedPressable>
+                <AnimatedPressable
+                  onPress={() => setGstReminderDismissed(true)}
+                  hitSlop={8}
+                  accessibilityLabel="Dismiss GST reminder"
+                  accessibilityRole="button"
+                  className="py-1.5"
+                >
+                  <Text className="text-sand-500 text-xs font-semibold">Not now</Text>
+                </AnimatedPressable>
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* F-010: Usage section — owner-only endpoint */}
         {!isStaff && <UsageSection />}
@@ -990,6 +1107,7 @@ export default function SettingsScreen() {
         retailer={retailer ?? null}
         onClose={() => setShowProfileEdit(false)}
         onSaved={handleProfileSaved}
+        onStoreUrlChanged={(slug) => setStoreUrlNotice(slug)}
       />
 
       <WhatsAppModal

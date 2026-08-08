@@ -37,7 +37,7 @@ import {
 import { prisma } from '@kanchuki/db';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
-import { validationError } from '../../plugins/error-handler.js';
+import { serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const CropRectSchema = z.object({
   x1: z.number().int(),
@@ -81,6 +81,25 @@ const ProCleanupSchema = z.object({
   // Retailer's chosen backdrop from the F-011 library; null = white.
   background_image_id: z.string().nullable().optional().default(null),
 });
+
+// Runner error-message signals that mean the cleanup ENVIRONMENT is down
+// (sidecar unreachable, python/deps missing, network/timeout) rather than the
+// photos themselves being unprocessable — see lib/photo-cleanup-runner.ts for
+// where these strings originate. Used only to pick the all-fail response so
+// the mobile capture screen can show a targeted "use Photo mode instead"
+// message instead of a generic failure.
+const CLEANUP_UNAVAILABLE_SIGNALS = [
+  'no module named',
+  'python3/python not found',
+  'no working python3/python',
+  'cleanup service',
+  'killed — hit the',
+  'fetch failed',
+  'aborted',
+  'econnrefused',
+  'eai_again',
+  'enotfound',
+];
 
 interface ProCleanupPhotoRow {
   r2_key: string;
@@ -186,6 +205,19 @@ export const productsProCleanupRoutes: FastifyPluginAsync = async (server) => {
 
       const okRows = rows.filter((r) => !r.error);
       if (okRows.length === 0) {
+        // Cleanup-environment failure (sidecar/python down, network) vs.
+        // unprocessable photos — 503 SERVICE_UNAVAILABLE tells the mobile
+        // capture screen to suggest Photo mode instead of a generic error.
+        const environmentDown = rows.some((r) =>
+          CLEANUP_UNAVAILABLE_SIGNALS.some((signal) =>
+            (r.error ?? '').toLowerCase().includes(signal),
+          ),
+        );
+        if (environmentDown) {
+          throw serviceUnavailable(
+            'Professional photo processing is temporarily unavailable. Please try again later or use Photo mode instead.',
+          );
+        }
         throw validationError(
           `All ${rows.length} photo(s) failed to process — please retry or pick different shots.`,
         );

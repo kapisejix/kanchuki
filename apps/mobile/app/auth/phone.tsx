@@ -1,41 +1,43 @@
-import { useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
+import { COLORS } from '@kanchuki/shared';
+import { router } from 'expo-router';
+import { useState } from 'react';
 import {
-  View,
+  Alert,
+  KeyboardAvoidingView,
+  Linking,
+  Platform,
+  ScrollView,
   Text,
   TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
-import { authApi } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { GradientButton } from '../../src/components/GradientButton'
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GradientButton } from '../../src/components/GradientButton';
+import { authApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useTheme } from '../../src/lib/theme';
+import { WEB_URL } from '../../src/lib/web-url';
 
 export default function PhoneScreen() {
-  const { colors } = useTheme()
-  const insets = useSafeAreaInsets()
-  const [phone, setPhone] = useState('')
-  const [loading, setLoading] = useState(false)
+  const { colors } = useTheme();
+  const insets = useSafeAreaInsets();
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const isValid = phone.replace(/\D/g, '').length === 10
+  const isValid = phone.replace(/\D/g, '').length === 10;
 
   const handleSend = async () => {
-    if (!isValid) return
-    setLoading(true)
+    if (!isValid) return;
+    setLoading(true);
     try {
-      await authApi.sendOtp(phone)
-      router.push({ pathname: '/auth/otp', params: { phone } })
+      await authApi.sendOtp(phone);
+      router.push({ pathname: '/auth/otp', params: { phone } });
     } catch (err) {
-      showError(err, 'Failed to send OTP')
+      showError(err, 'Failed to send OTP');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <KeyboardAvoidingView
@@ -86,9 +88,7 @@ export default function PhoneScreen() {
                 onSubmitEditing={() => void handleSend()}
               />
             </View>
-            <Text className="text-xs text-sand-400 mt-2 pl-1">
-              OTP will be sent to this number
-            </Text>
+            <Text className="text-xs text-sand-400 mt-2 pl-1">OTP will be sent to this number</Text>
           </View>
         </View>
 
@@ -101,11 +101,24 @@ export default function PhoneScreen() {
             loading={loading}
           />
 
-          <Text className="text-center text-xs text-sand-400 mt-4 px-4">
-            By continuing, you agree to our Terms of Service and Privacy Policy
+          <Text className="text-center text-xs text-sand-400 mt-4 px-4 leading-4">
+            By continuing, you agree to our{' '}
+            <Text
+              className="font-semibold text-ink-600"
+              onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
+            >
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text
+              className="font-semibold text-ink-600"
+              onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
+            >
+              Privacy Policy
+            </Text>
           </Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
-  )
+  );
 }

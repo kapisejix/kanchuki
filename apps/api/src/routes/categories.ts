@@ -4,6 +4,7 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { seedDefaultCategories } from '../lib/default-categories.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
@@ -75,6 +76,19 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── GET /categories ───────────────────────────────────────────────
   server.get('/', async (request) => {
+    // Self-heal accounts still mid-onboarding (e.g. pre-F-024 retailers that
+    // never got the default seed) — seedDefaultCategories only adds names not
+    // already present, so a retailer's own picks/deletions are never touched.
+    // Gated on onboarding_completed so a live retailer's intentional deletion
+    // of a default category is never silently re-added.
+    const retailer = await prisma.retailer.findUnique({
+      where: { id: request.retailerId },
+      select: { onboarding_completed: true },
+    });
+    if (retailer && !retailer.onboarding_completed) {
+      await seedDefaultCategories(request.retailerId);
+    }
+
     const categories = await prisma.productCategory.findMany({
       where: { retailer_id: request.retailerId },
       include: { _count: { select: { products: true } } },
