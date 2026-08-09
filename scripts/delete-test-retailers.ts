@@ -65,25 +65,96 @@ async function countRows<T extends Record<string, unknown>>(
 async function auditRetailer(retailerId: string): Promise<void> {
   const counts: Record<string, number> = {};
   const childrenByRetailer: Array<[string, () => Promise<unknown[]>]> = [
-    ['products', () => db.product.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['customers', () => db.customer.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['collections', () => db.collection.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['staff', () => db.staff.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['store_sections', () => db.storeSection.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['product_categories', () => db.productCategory.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['product_attributes', () => db.productAttribute.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['subscriptions', () => db.subscription.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['try_on_jobs', () => db.tryOnJob.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['try_on_usage_logs', () => db.tryOnUsageLog.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['size_charts', () => db.sizeChart.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['limit_overrides', () => db.retailerLimitOverride.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['usage_counters', () => db.usageCounter.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['quota_addon_purchases', () => db.quotaAddonPurchase.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['ai_usage_logs', () => db.aiUsageLog.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['support_tickets', () => db.supportTicket.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['payment_account', () => db.retailerPaymentAccount.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['orders', () => db.order.findMany({ where: { retailer_id: retailerId }, select: { id: true } })],
-    ['audit_logs', () => db.auditLog.findMany({ where: { actor_id: retailerId }, select: { id: true } })],
+    [
+      'products',
+      () => db.product.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'customers',
+      () => db.customer.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'collections',
+      () => db.collection.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'staff',
+      () => db.staff.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'store_sections',
+      () => db.storeSection.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'product_categories',
+      () =>
+        db.productCategory.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'product_attributes',
+      () =>
+        db.productAttribute.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'subscriptions',
+      () => db.subscription.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'try_on_jobs',
+      () => db.tryOnJob.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'try_on_usage_logs',
+      () => db.tryOnUsageLog.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'size_charts',
+      () => db.sizeChart.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'limit_overrides',
+      () =>
+        db.retailerLimitOverride.findMany({
+          where: { retailer_id: retailerId },
+          select: { id: true },
+        }),
+    ],
+    [
+      'usage_counters',
+      () => db.usageCounter.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'quota_addon_purchases',
+      () =>
+        db.quotaAddonPurchase.findMany({
+          where: { retailer_id: retailerId },
+          select: { id: true },
+        }),
+    ],
+    [
+      'ai_usage_logs',
+      () => db.aiUsageLog.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'support_tickets',
+      () => db.supportTicket.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'payment_account',
+      () =>
+        db.retailerPaymentAccount.findMany({
+          where: { retailer_id: retailerId },
+          select: { id: true },
+        }),
+    ],
+    [
+      'orders',
+      () => db.order.findMany({ where: { retailer_id: retailerId }, select: { id: true } }),
+    ],
+    [
+      'audit_logs',
+      () => db.auditLog.findMany({ where: { actor_id: retailerId }, select: { id: true } }),
+    ],
   ];
 
   for (const [name, q] of childrenByRetailer) {
@@ -102,35 +173,82 @@ async function collectR2KeysForRetailer(retailerId: string): Promise<string[]> {
   const keys: string[] = [];
 
   // Product photos / spin frames / variants (children of products)
-  const productIds = (await db.product.findMany({ where: { retailer_id: retailerId }, select: { id: true } })).map((p) => p.id);
+  const productIds = (
+    await db.product.findMany({ where: { retailer_id: retailerId }, select: { id: true } })
+  ).map((p) => p.id);
   if (productIds.length > 0) {
-    const photos = await db.productPhoto.findMany({ where: { product_id: { in: productIds } }, select: { r2_key: true } });
+    const photos = await db.productPhoto.findMany({
+      where: { product_id: { in: productIds } },
+      select: { r2_key: true },
+    });
     keys.push(...photos.map((p) => p.r2_key));
-    const spins = await db.productSpinFrame.findMany({ where: { product_id: { in: productIds } }, select: { r2_key: true } });
+    const spins = await db.productSpinFrame.findMany({
+      where: { product_id: { in: productIds } },
+      select: { r2_key: true },
+    });
     keys.push(...spins.map((s) => s.r2_key));
-    const variants = await db.productVariant.findMany({ where: { product_id: { in: productIds } }, select: { r2_key: true } });
+    const variants = await db.productVariant.findMany({
+      where: { product_id: { in: productIds } },
+      select: { r2_key: true },
+    });
     keys.push(...variants.map((v) => v.r2_key).filter((k): k is string => !!k));
   }
 
   // Customer measurements (front/back photos)
-  const customerIds = (await db.customer.findMany({ where: { retailer_id: retailerId }, select: { id: true } })).map((c) => c.id);
+  const customerIds = (
+    await db.customer.findMany({ where: { retailer_id: retailerId }, select: { id: true } })
+  ).map((c) => c.id);
   if (customerIds.length > 0) {
-    const ms = await db.customerMeasurement.findMany({ where: { customer_id: { in: customerIds } }, select: { front_photo_r2_key: true, back_photo_r2_key: true } });
-    keys.push(...ms.flatMap((m) => [m.front_photo_r2_key, m.back_photo_r2_key]).filter((k): k is string => !!k));
+    const ms = await db.customerMeasurement.findMany({
+      where: { customer_id: { in: customerIds } },
+      select: { front_photo_r2_key: true, back_photo_r2_key: true },
+    });
+    keys.push(
+      ...ms
+        .flatMap((m) => [m.front_photo_r2_key, m.back_photo_r2_key])
+        .filter((k): k is string => !!k),
+    );
   }
 
   // Try-on jobs (input + result)
-  const tryOns = await db.tryOnJob.findMany({ where: { retailer_id: retailerId }, select: { customer_photo_r2_key: true, result_r2_key: true } });
-  keys.push(...tryOns.flatMap((t) => [t.customer_photo_r2_key, t.result_r2_key]).filter((k): k is string => !!k));
+  const tryOns = await db.tryOnJob.findMany({
+    where: { retailer_id: retailerId },
+    select: { customer_photo_r2_key: true, result_r2_key: true },
+  });
+  keys.push(
+    ...tryOns
+      .flatMap((t) => [t.customer_photo_r2_key, t.result_r2_key])
+      .filter((k): k is string => !!k),
+  );
 
   // Retailer brand + KYC
-  const retailer = await db.retailer.findUnique({ where: { id: retailerId }, select: { logo_r2_key: true, banner_r2_key: true, kyc_gst_r2_key: true, kyc_aadhar_front_r2_key: true, kyc_aadhar_back_r2_key: true } });
+  const retailer = await db.retailer.findUnique({
+    where: { id: retailerId },
+    select: {
+      logo_r2_key: true,
+      banner_r2_key: true,
+      kyc_gst_r2_key: true,
+      kyc_aadhar_front_r2_key: true,
+      kyc_aadhar_back_r2_key: true,
+    },
+  });
   if (retailer) {
-    keys.push(...[retailer.logo_r2_key, retailer.banner_r2_key, retailer.kyc_gst_r2_key, retailer.kyc_aadhar_front_r2_key, retailer.kyc_aadhar_back_r2_key].filter((k): k is string => !!k));
+    keys.push(
+      ...[
+        retailer.logo_r2_key,
+        retailer.banner_r2_key,
+        retailer.kyc_gst_r2_key,
+        retailer.kyc_aadhar_front_r2_key,
+        retailer.kyc_aadhar_back_r2_key,
+      ].filter((k): k is string => !!k),
+    );
   }
 
   // Category cover images
-  const cats = await db.productCategory.findMany({ where: { retailer_id: retailerId }, select: { image_r2_key: true } });
+  const cats = await db.productCategory.findMany({
+    where: { retailer_id: retailerId },
+    select: { image_r2_key: true },
+  });
   keys.push(...cats.map((c) => c.image_r2_key).filter((k): k is string => !!k));
 
   return [...new Set(keys.filter((k) => k.length > 0))];
@@ -167,7 +285,10 @@ async function deleteSupabaseUsers(authUserIds: string[]): Promise<number> {
         deleted++;
       }
     } catch (err) {
-      console.warn(`   ⚠️ Supabase auth delete failed for ${uid}:`, err instanceof Error ? err.message : err);
+      console.warn(
+        `   ⚠️ Supabase auth delete failed for ${uid}:`,
+        err instanceof Error ? err.message : err,
+      );
     }
   }
   return deleted;
@@ -247,7 +368,11 @@ GROUP BY phone;
 
 async function main(): Promise<void> {
   const apply = process.argv.includes('--apply');
-  console.log(apply ? '🗑️  DELETE TEST RETAILERS — APPLY mode (destructive)' : '👀 DELETE TEST RETAILERS — dry run (audit only)');
+  console.log(
+    apply
+      ? '🗑️  DELETE TEST RETAILERS — APPLY mode (destructive)'
+      : '👀 DELETE TEST RETAILERS — dry run (audit only)',
+  );
   console.log('   Target phones:', TEST_PHONES_RAW.join(', '));
   console.log('   Normalized:  ', TEST_PHONES.join(', '));
   console.log();
@@ -258,12 +383,21 @@ async function main(): Promise<void> {
   // script hard-deletes soft-deleted + active rows alike (children too).
   const retailers = await db.retailer.findMany({
     where: { phone: { in: TEST_PHONES } },
-    select: { id: true, phone: true, shop_name: true, auth_user_id: true, created_at: true, deleted_at: true },
+    select: {
+      id: true,
+      phone: true,
+      shop_name: true,
+      auth_user_id: true,
+      created_at: true,
+      deleted_at: true,
+    },
   });
 
   if (retailers.length === 0) {
     console.log('❌ No retailers found for these phones — nothing to delete.');
-    console.log('   (If they were already soft-deleted, purge them via the cron or check deleted_at.)');
+    console.log(
+      '   (If they were already soft-deleted, purge them via the cron or check deleted_at.)',
+    );
     return;
   }
 
@@ -286,7 +420,8 @@ async function main(): Promise<void> {
     const keys = await collectR2KeysForRetailer(r.id);
     allR2Keys.push(...keys);
     totalR2Keys += keys.length;
-    if (r.auth_user_id && !r.auth_user_id.startsWith('pending:')) allAuthUserIds.push(r.auth_user_id);
+    if (r.auth_user_id && !r.auth_user_id.startsWith('pending:'))
+      allAuthUserIds.push(r.auth_user_id);
   }
   console.log();
   console.log(`   R2 keys referenced by DB rows: ${totalR2Keys}`);
@@ -304,9 +439,13 @@ async function main(): Promise<void> {
     const unreferenced = prefixObjects.filter((o) => !allR2Keys.includes(o.key));
     sweepCount += unreferenced.length;
     sweepBytes += unreferenced.reduce((s, o) => s + o.size, 0);
-    console.log(`   retailers/${r.id}/ → ${prefixObjects.length} object(s), ${unreferenced.length} not referenced by any DB row`);
+    console.log(
+      `   retailers/${r.id}/ → ${prefixObjects.length} object(s), ${unreferenced.length} not referenced by any DB row`,
+    );
   }
-  console.log(`   Unreferenced-by-row objects to delete: ${sweepCount} (${(sweepBytes / 1024 / 1024).toFixed(2)} MB)`);
+  console.log(
+    `   Unreferenced-by-row objects to delete: ${sweepCount} (${(sweepBytes / 1024 / 1024).toFixed(2)} MB)`,
+  );
 
   if (!apply) {
     console.log();
@@ -322,51 +461,217 @@ async function main(): Promise<void> {
   console.log('══ APPLYING ══');
   const retailerIds = retailers.map((r) => r.id);
 
-  const deleteChildrenByRetailer: Array<[string, (tx: typeof db, ids: string[]) => Promise<number>]> = [
+  const deleteChildrenByRetailer: Array<
+    [string, (tx: typeof db, ids: string[]) => Promise<number>]
+  > = [
     // Children of products (FK parent = products)
-    ['product_photos', (tx, ids) => tx.productPhoto.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['product_spin_frames', (tx, ids) => tx.productSpinFrame.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['product_variants', (tx, ids) => tx.productVariant.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['product_embeddings', (tx, ids) => tx.productEmbedding.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
+    [
+      'product_photos',
+      (tx, ids) =>
+        tx.productPhoto.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'product_spin_frames',
+      (tx, ids) =>
+        tx.productSpinFrame
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'product_variants',
+      (tx, ids) =>
+        tx.productVariant.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'product_embeddings',
+      (tx, ids) =>
+        tx.productEmbedding
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
     // Children of collections
-    ['collection_products', (tx, ids) => tx.collectionProduct.deleteMany({ where: { collection: { retailer_id: { in: ids } } } }).then((r) => r.count)],
-    ['collection_views', (tx, ids) => tx.collectionView.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['collection_enquiries', (tx, ids) => tx.collectionEnquiry.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
+    [
+      'collection_products',
+      (tx, ids) =>
+        tx.collectionProduct
+          .deleteMany({ where: { collection: { retailer_id: { in: ids } } } })
+          .then((r) => r.count),
+    ],
+    [
+      'collection_views',
+      (tx, ids) =>
+        tx.collectionView.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'collection_enquiries',
+      (tx, ids) =>
+        tx.collectionEnquiry
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
     // Children of customers
-    ['customer_interactions', (tx, ids) => tx.customerInteraction.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['customer_measurements', (tx, ids) => tx.customerMeasurement.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['customer_fashion_dna', (tx, ids) => tx.customerFashionDNA.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
+    [
+      'customer_interactions',
+      (tx, ids) =>
+        tx.customerInteraction
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'customer_measurements',
+      (tx, ids) =>
+        tx.customerMeasurement
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'customer_fashion_dna',
+      (tx, ids) =>
+        tx.customerFashionDNA
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
     // Children of orders
-    ['order_items', (tx, ids) => tx.orderItem.deleteMany({ where: { order: { retailer_id: { in: ids } } } }).then((r) => r.count)],
+    [
+      'order_items',
+      (tx, ids) =>
+        tx.orderItem
+          .deleteMany({ where: { order: { retailer_id: { in: ids } } } })
+          .then((r) => r.count),
+    ],
     // Children of subscriptions
-    ['subscription_payments', (tx, ids) => tx.subscriptionPayment.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
+    [
+      'subscription_payments',
+      (tx, ids) =>
+        tx.subscriptionPayment
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
     // Children of size charts
-    ['size_chart_rows', (tx, ids) => tx.sizeChartRow.deleteMany({ where: { size_chart: { retailer_id: { in: ids } } } }).then((r) => r.count)],
+    [
+      'size_chart_rows',
+      (tx, ids) =>
+        tx.sizeChartRow
+          .deleteMany({ where: { size_chart: { retailer_id: { in: ids } } } })
+          .then((r) => r.count),
+    ],
     // Children of try-on jobs
-    ['training_photo_consents', (tx, ids) => tx.trainingPhotoConsent.deleteMany({ where: { try_on_job: { retailer_id: { in: ids } } } }).then((r) => r.count)],
-    ['try_on_usage_logs', (tx, ids) => tx.tryOnUsageLog.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
+    [
+      'training_photo_consents',
+      (tx, ids) =>
+        tx.trainingPhotoConsent
+          .deleteMany({ where: { try_on_job: { retailer_id: { in: ids } } } })
+          .then((r) => r.count),
+    ],
+    [
+      'try_on_usage_logs',
+      (tx, ids) =>
+        tx.tryOnUsageLog.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
   ];
 
   // Parent rows (FK targets)
-  const deleteParentsByRetailer: Array<[string, (tx: typeof db, ids: string[]) => Promise<number>]> = [
-    ['products', (tx, ids) => tx.product.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['collections', (tx, ids) => tx.collection.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['customers', (tx, ids) => tx.customer.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['orders', (tx, ids) => tx.order.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['subscriptions', (tx, ids) => tx.subscription.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['try_on_jobs', (tx, ids) => tx.tryOnJob.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['size_charts', (tx, ids) => tx.sizeChart.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['staff', (tx, ids) => tx.staff.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['store_sections', (tx, ids) => tx.storeSection.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['product_categories', (tx, ids) => tx.productCategory.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['product_attributes', (tx, ids) => tx.productAttribute.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['support_tickets', (tx, ids) => tx.supportTicket.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['retailer_payment_accounts', (tx, ids) => tx.retailerPaymentAccount.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['retailer_limit_overrides', (tx, ids) => tx.retailerLimitOverride.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['usage_counters', (tx, ids) => tx.usageCounter.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['quota_addon_purchases', (tx, ids) => tx.quotaAddonPurchase.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['ai_usage_logs', (tx, ids) => tx.aiUsageLog.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count)],
-    ['audit_logs', (tx, ids) => tx.auditLog.deleteMany({ where: { actor_id: { in: ids } } }).then((r) => r.count)],
+  const deleteParentsByRetailer: Array<
+    [string, (tx: typeof db, ids: string[]) => Promise<number>]
+  > = [
+    [
+      'products',
+      (tx, ids) =>
+        tx.product.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'collections',
+      (tx, ids) =>
+        tx.collection.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'customers',
+      (tx, ids) =>
+        tx.customer.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'orders',
+      (tx, ids) =>
+        tx.order.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'subscriptions',
+      (tx, ids) =>
+        tx.subscription.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'try_on_jobs',
+      (tx, ids) =>
+        tx.tryOnJob.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'size_charts',
+      (tx, ids) =>
+        tx.sizeChart.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'staff',
+      (tx, ids) =>
+        tx.staff.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'store_sections',
+      (tx, ids) =>
+        tx.storeSection.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'product_categories',
+      (tx, ids) =>
+        tx.productCategory.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'product_attributes',
+      (tx, ids) =>
+        tx.productAttribute
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'support_tickets',
+      (tx, ids) =>
+        tx.supportTicket.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'retailer_payment_accounts',
+      (tx, ids) =>
+        tx.retailerPaymentAccount
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'retailer_limit_overrides',
+      (tx, ids) =>
+        tx.retailerLimitOverride
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'usage_counters',
+      (tx, ids) =>
+        tx.usageCounter.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'quota_addon_purchases',
+      (tx, ids) =>
+        tx.quotaAddonPurchase
+          .deleteMany({ where: { retailer_id: { in: ids } } })
+          .then((r) => r.count),
+    ],
+    [
+      'ai_usage_logs',
+      (tx, ids) =>
+        tx.aiUsageLog.deleteMany({ where: { retailer_id: { in: ids } } }).then((r) => r.count),
+    ],
+    [
+      'audit_logs',
+      (tx, ids) =>
+        tx.auditLog.deleteMany({ where: { actor_id: { in: ids } } }).then((r) => r.count),
+    ],
   ];
 
   try {
@@ -374,7 +679,10 @@ async function main(): Promise<void> {
       await tx.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`);
 
       // Null loose storefront pointers (retailers.storefront_collection_id has no FK)
-      await tx.retailer.updateMany({ where: { id: { in: retailerIds } }, data: { storefront_collection_id: null } });
+      await tx.retailer.updateMany({
+        where: { id: { in: retailerIds } },
+        data: { storefront_collection_id: null },
+      });
 
       console.log('── Deleting children (FK-safe order) ──');
       for (const [name, del] of deleteChildrenByRetailer) {
@@ -402,7 +710,9 @@ async function main(): Promise<void> {
       // scoped SQL for the Supabase SQL Editor (superuser) instead — same
       // children-before-parents + guardrail-flag pattern.
       const sqlPath = writeScopedDeleteSql(retailerIds);
-      console.error('\n   ⚠️  DB DELETE blocked: production role separation (SECURITY §19) revokes DELETE');
+      console.error(
+        '\n   ⚠️  DB DELETE blocked: production role separation (SECURITY §19) revokes DELETE',
+      );
       console.error('   from the primary role. This machine has no kanchuki_purge credentials.');
       console.error(`   ▶️  Run the generated SQL in the Supabase SQL Editor:  ${sqlPath}`);
       console.error('   (Everything below — R2 objects + Supabase auth users — still runs now.)');
