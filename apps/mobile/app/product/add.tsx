@@ -83,6 +83,12 @@ export default function AddProductScreen() {
   const capturingRef = useRef(false)
   const [permission, requestPermission] = useCameraPermissions()
   const [photo, setPhoto] = useState<string | null>(null)
+  // The pristine, never-rotated capture — rotate always recomputes from this,
+  // not from the currently-displayed `photo`, so 4 taps back to "360°" isn't
+  // a 4x lossy re-encode (see design spec §1a for why this differs from the
+  // post-save server-side rotate, which does accept that tradeoff).
+  const rawPhotoUriRef = useRef<string | null>(null)
+  const [previewRotation, setPreviewRotation] = useState<90 | 180 | 270 | 360 | null>(null)
   // Scan mode: retailer picks which burst frame to keep instead of the app
   // silently auto-picking one. scanBestUri marks the file-size-sharpest
   // frame as the pre-highlighted recommendation.
@@ -190,10 +196,41 @@ export default function AddProductScreen() {
       // This is the single-photo flow — a stale pro-path result must not
       // leak into the save (handleSave prefers proUploads[0] when set).
       setProUploads([])
+      rawPhotoUriRef.current = compressed.uri
+      setPreviewRotation(null)
       setPhoto(compressed.uri)
       setStep('preview')
     } catch (err) {
       showError(err, 'Could not process that photo. Try again.', 'Photo Error')
+    }
+  }
+
+  // Pre-save rotate (preview step): each tap recomputes fresh from the
+  // untouched capture, never compounds lossy re-encodes on top of each other.
+  // The fourth tap (360°) restores the original pixels with no re-encode.
+  const handleRotatePreviewPhoto = async () => {
+    if (!rawPhotoUriRef.current) return
+    const next =
+      previewRotation === null
+        ? 90
+        : previewRotation === 360
+          ? 90
+          : ((previewRotation + 90) as 90 | 180 | 270 | 360)
+    try {
+      if (next === 360) {
+        // Full circle — same pixels as the untouched capture, no re-encode needed.
+        setPhoto(rawPhotoUriRef.current)
+      } else {
+        const rotated = await ImageManipulator.manipulateAsync(
+          rawPhotoUriRef.current,
+          [{ rotate: next }],
+          { format: ImageManipulator.SaveFormat.JPEG },
+        )
+        setPhoto(rotated.uri)
+      }
+      setPreviewRotation(next)
+    } catch (err) {
+      showError(err, 'Could not rotate photo', 'Photo Error')
     }
   }
 
@@ -973,7 +1010,7 @@ export default function AddProductScreen() {
             contentFit="contain"
           />
         )}
-        <View className="absolute bottom-12 left-0 right-0 flex-row gap-4 px-6">
+        <View className="absolute bottom-12 left-0 right-0 flex-row gap-3 px-6">
           <AnimatedPressable
             onPress={() => {
               setPhoto(null)
@@ -984,6 +1021,16 @@ export default function AddProductScreen() {
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">Retake</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => void handleRotatePreviewPhoto()}
+            className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
+            accessibilityLabel="Rotate photo 90 degrees"
+            accessibilityRole="button"
+          >
+            <Text className="text-white font-semibold">
+              {previewRotation ? `Rotate (${previewRotation}°)` : 'Rotate'}
+            </Text>
           </AnimatedPressable>
           <View className="flex-1">
             <GradientButton label='Use Photo →' onPress={() => setStep('edit')} />
