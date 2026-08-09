@@ -25,47 +25,104 @@ Rotate does not exist anywhere in the codebase (the `RotateCw` icon present
 in `[id].tsx` is used for the unrelated "View 360°" spin viewer and the
 color-detect button).
 
-## #1 — Rotate photo
+## #1 — Rotate photo (revised per user follow-up)
 
-Rotation must persist server-side — photos are served from R2 and read by
-the customer PWA/catalog too, not just this screen, so an on-device-only
-transform would silently diverge from what's stored.
+User clarified: rotate must work on the **original uploaded photo**
+specifically (not just the cleaned/composited primary), offer 4 degree
+stops (90/180/270/360), and ideally be available **before** the photo is
+even saved — i.e. in the add-product preview step, not only after the
+product exists. This splits into two genuinely different mechanisms
+because the photo lives in two different places at those two points in
+time.
 
-- **API** — new route `POST /v1/products/:id/photos/:photoId/rotate` in
-  `apps/api/src/routes/products/products-media.ts`. No request body — each
-  call rotates 90° clockwise (standard single-button mobile rotate UX, no
-  direction picker). Ownership-scoped lookup identical to the existing
-  `/cleanup` route (`prisma.productPhoto.findFirst({ id: photoId,
-  product_id: id, retailer_id: request.retailerId })` → `notFound` if
-  missing). Downloads via the existing `fetchImageBuffer(photo.url)`,
-  rotates with `sharp(buf).rotate(90).jpeg().toBuffer()` (sharp is already a
-  dependency, used the same way in `image-compress.ts`/`detector.ts` — no
-  new package), re-uploads to the **same** `r2_key` via the existing
-  `uploadBuffer()`. If `photo.width`/`photo.height` are both set, swap them
-  in the DB update (90°/270° rotation swaps aspect). Returns
-  `{ data: { id, url, width, height } }`. No quota charge — this isn't an
-  AI or background-removal call, doesn't fit any existing
-  `QuotaResourceType`, and adding one would be scope creep for a cheap CPU
-  op.
-- **Client** — `rotatePhoto(productId, photoId)` in
-  `apps/mobile/src/lib/api/products.ts`, mirrors `cleanupPhoto()` exactly
-  (`POST`, `timeoutMs: 30_000`).
+### 1a. Pre-save rotate (add-product preview step, `apps/mobile/app/product/add.tsx`)
+
+At this point the photo is a local device URI — `photo` state, set after
+`takePictureAsync()`, shown full-screen in the existing `step === 'preview'`
+block (`add.tsx:966-994`) alongside "Retake" / "Use Photo →". It hasn't
+been uploaded yet, so this is pure client-side work — no server involved,
+no new dependency: `expo-image-manipulator` is already used for the exact
+same rotate primitive in `apps/mobile/src/lib/compress-image.ts`.
+
+- Keep the freshly-captured URI untouched in a ref (`rawPhotoUriRef`).
+  Track `previewRotation` state, one of `0/90/180/270`, cycling forward on
+  each tap of a new "Rotate" button and wrapping `270 → 0` (the user's
+  "360" is the same pixels as "0" — the fourth tap visually completes the
+  circle back to the original orientation, called out to the user as such
+  rather than silently treated as a no-op label).
+- Each tap recomputes from `rawPhotoUriRef.current` fresh — i.e.
+  `ImageManipulator.manipulateAsync(rawPhotoUriRef.current, [{ rotate:
+  nextDegrees }], { format: JPEG })` — rather than compounding rotations on
+  top of an already-rotated file. This is free to do correctly on-device
+  (single extra arg), so there's no reason to accept the accumulated JPEG
+  re-encode loss that repeated relative rotation would cause.
+- Result replaces the `photo` state shown in the preview and is what flows
+  into "Use Photo →" → the edit step → upload, unchanged from today's
+  pipeline (compression, upload-url, POST photo all operate on whatever
+  `photo` currently is).
+- Scope: only the single main preview photo (`step === 'preview'`). The
+  Pro-mode multi-shot flow (`extraFrames`, `proUploads`) is a different
+  screen with different state shape — out of scope for this pass, flagged
+  as a follow-up if wanted.
+
+### 1b. Post-save rotate — primary AND original (`apps/mobile/app/product/[id].tsx`)
+
+Once a product exists, both the current primary photo (`photo.r2_key`) and
+the preserved pre-cleanup original (`metadata.original_r2_key`, exposed to
+the client as `photo.original_url` — see `products-crud.ts:210-224`) live
+in R2, so rotating either requires a server round trip.
+
+- **API** — `POST /v1/products/:id/photos/:photoId/rotate` in
+  `apps/api/src/routes/products/products-media.ts`, body
+  `{ target?: 'primary' | 'original' }` (default `'primary'`). Each call
+  rotates 90° clockwise **relative to whatever is currently stored** at the
+  target key — a single relative-rotate action, same as 1a's fourth tap
+  conceptually, just invoked once per tap instead of recomputed from a
+  pristine reference. (Deliberate asymmetry with 1a, called out explicitly
+  rather than left implicit: server-side, snapshotting a rotation-free
+  "pristine" copy purely to make repeated rotates lossless would need a new
+  sibling-key-preservation mechanism — the same shape as
+  `preserveOriginalPhoto()` but for a second, unrelated purpose. Four
+  lossy JPEG re-encodes to complete a full circle on a garment photo is not
+  a real quality problem worth that mechanism; ship the simple version,
+  revisit only if a retailer actually complains about visible degradation.)
+  - Ownership-scoped lookup identical to `/cleanup`
+    (`prisma.productPhoto.findFirst({ id: photoId, product_id: id,
+    retailer_id: request.retailerId })` → `notFound` if missing).
+  - `target: 'original'` — requires `metadata.original_r2_key` to be set;
+    `validationError` ("no original photo to rotate — this photo was never
+    background-cleaned") if not. Downloads those bytes
+    (`fetchImageBuffer`), rotates with `sharp(buf).rotate(90).jpeg()`,
+    re-uploads to that same sibling key via `uploadBuffer()`. No DB
+    column change (the original isn't tracked by width/height — only its
+    r2_key, inside `metadata`). Response resolves the display URL the same
+    way `GET /:id` does, via `photoUrlToDisplay()`
+    (`products-helpers.ts`) — reused, not reimplemented.
+  - `target: 'primary'` (default) — as originally designed: downloads
+    `photo.url`, rotates the same way, re-uploads to `photo.r2_key`. If
+    `photo.width`/`photo.height` are both set, swaps them in the DB update
+    (90°/270° rotation swaps aspect).
+  - Returns `{ data: { id, target, url, width?, height? } }`. No quota
+    charge — not an AI or background-removal call, doesn't fit any
+    existing `QuotaResourceType`, and adding one would be scope creep for
+    a cheap CPU op.
+- **Client** — `rotatePhoto(productId, photoId, target?: 'primary' |
+  'original')` in `apps/mobile/src/lib/api/products.ts`, mirrors
+  `cleanupPhoto()` (`POST`, `timeoutMs: 30_000`).
 - **UI** — in `[id].tsx`, a rotate icon button next to the existing "Crop &
-  remove background" pill (same row, same dashed-border pill style), acting
-  on `displayPhotos[selectedPhotoIndex]`. New `rotatingPhotoId` state
-  mirrors the existing `cleaningPhotoId` busy-state pattern (spinner
-  in-button, disabled while in flight). On success, refetch the product the
-  same way the existing cleanup handler does, so the carousel picks up the
-  new bytes. The rotate button is hidden for variant photos and the
-  original/pre-cleanup photo, same guard as the existing cleanup button
-  (`!currentPhotoIsVariant && !currentPhotoIsOriginal`) — rotating a raw
-  original before cleanup is out of scope for this pass, matches the
-  existing cleanup button's own scoping.
-
-**Cache note:** the URL doesn't change (same `r2_key`), which is the exact
-same non-problem the existing `/cleanup` route already has and already
-ships with — no new cache-busting mechanism needed, consistent with
-existing behavior.
+  remove background" pill, now shown for **both** the primary and the
+  original carousel slides (the previous draft of this spec excluded the
+  original slide — superseded by this revision). Target is derived from
+  `currentPhotoIsOriginal`. New `rotatingPhotoId` state mirrors the
+  existing `cleaningPhotoId` busy-state pattern. A small client-only label
+  next to the button cycles 90°/180°/270°/0° per tap (reset each time the
+  viewed photo changes) purely for user feedback — not persisted, since the
+  server has no absolute-rotation column to read it back from.
+  On success, reuse the existing `photoCacheBust` map (`[id].tsx:268`,
+  already built for exactly this "same URL, new bytes" situation) keyed by
+  `currentPhoto.id` — no new cache-busting mechanism needed for either
+  slide, since the original slide's synthetic id (`${p.id}-original`) is
+  already a valid `photoCacheBust` key today.
 
 ## #2 — Background picker on the edit screen
 
@@ -93,26 +150,31 @@ No backend or API-client changes — `PATCH /:id/background` and
 
 ## Testing
 
-- One new API test in `apps/api/src/routes/products/products-media.test.ts`
-  (or the existing products test file covering this route) for the rotate
-  endpoint: happy path (mocks `fetchImageBuffer`/`uploadBuffer`, asserts
-  `sharp.rotate` called, width/height swapped when present) + 404 for a
-  photo not owned by the requesting retailer. Mirrors the existing
+- API tests for the rotate route (new or extended
+  `products-media.test.ts`): `target: 'primary'` happy path (mocks
+  `fetchImageBuffer`/`uploadBuffer`, asserts `sharp().rotate(90)` called,
+  width/height swapped when present), `target: 'original'` happy path
+  (rotates the sibling key, no width/height touched),
+  `target: 'original'` with no `metadata.original_r2_key` → 422, and 404
+  for a photo not owned by the requesting retailer. Mirrors the existing
   `/cleanup` route's test shape.
 - No new test for the background picker — it's wiring an already-tested
   endpoint into a new UI location; `add.tsx`'s existing coverage already
   proves the endpoint contract.
-- Mobile UI changes are unverifiable in this environment (no RN
-  simulator — same standing limitation noted throughout this project's
-  CLAUDE.md). Bar for "done": `tsc --noEmit` clean on `apps/mobile` and
-  `apps/api`.
+- Mobile UI (both the pre-save preview rotate and the post-save
+  primary/original rotate + background picker) is unverifiable in this
+  environment (no RN simulator — same standing limitation noted throughout
+  this project's CLAUDE.md). Bar for "done": `tsc --noEmit` clean on
+  `apps/mobile` and `apps/api`.
 
 ## Out of scope
 
-- Rotating the raw/original (pre-cleanup) photo — matches the existing
-  cleanup button's own scope boundary, not a new restriction invented for
-  this feature.
-- A direction/angle picker for rotate — single 90°-clockwise-per-tap only.
+- Rotating Pro-mode multi-shot preview frames (`extraFrames`/`proUploads`
+  in `add.tsx`) before save — only the single main preview photo gets the
+  pre-save rotate control this pass.
+- A server-side pristine/lossless rotation mechanism — explicitly
+  considered and rejected for this pass (see 1b rationale above); the
+  simple relative-rotate is the shipped version.
 - Any change to the auto-contrast (F-028) logic itself — it already works
   as the user described; nothing here touches `tag-product.ts` or
   `classifyColorTone`.
