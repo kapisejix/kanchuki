@@ -28,7 +28,7 @@
 **Interfaces:**
 - Produces: `rotateImage(input: Buffer, degrees: number): Promise<{ buffer: Buffer; width: number; height: number }>` — exported from `@kanchuki/ai` (via the barrel), consumed by Task 2's API route.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `packages/ai/src/image-rotate.test.ts`:
 
@@ -81,12 +81,12 @@ describe('rotateImage', () => {
 })
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @kanchuki/ai exec vitest run src/image-rotate.test.ts`
 Expected: FAIL — `Cannot find module './image-rotate.js'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Create `packages/ai/src/image-rotate.ts`:
 
@@ -122,7 +122,7 @@ export async function rotateImage(
 }
 ```
 
-- [ ] **Step 4: Export from the package barrel**
+- [x] **Step 4: Export from the package barrel**
 
 Modify `packages/ai/src/index.ts` — add one line to the existing list of `export *` statements:
 
@@ -130,12 +130,12 @@ Modify `packages/ai/src/index.ts` — add one line to the existing list of `expo
 export * from './image-rotate.js';
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @kanchuki/ai exec vitest run src/image-rotate.test.ts`
 Expected: PASS (4 tests)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/ai/src/image-rotate.ts packages/ai/src/image-rotate.test.ts packages/ai/src/index.ts
@@ -154,7 +154,7 @@ git commit -m "feat(ai): add rotateImage() sharp utility"
 - Consumes: `rotateImage(buffer, degrees)` from Task 1; `photoUrlToDisplay(photo)` (already exported from `./products-helpers.js`); `fetchImageBuffer`/`uploadBuffer` (already imported in this file from `@kanchuki/ai`).
 - Produces: `POST /v1/products/:id/photos/:photoId/rotate` — body `{ target?: 'primary' | 'original' }` (default `'primary'`), response `{ data: { id: string; target: 'primary' | 'original'; url: string; width?: number; height?: number } }`. Consumed by Task 3's mobile client.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Modify `apps/api/src/routes/products.test.ts`. First extend the existing hoisted-mocks block (around line 6-27) to add photo-level mocks and a presigned-URL mock:
 
@@ -350,12 +350,12 @@ describe('POST /products/:id/photos/:photoId/rotate', () => {
 });
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm --filter @kanchuki/api exec vitest run src/routes/products.test.ts -t "rotate"`
 Expected: FAIL — all 4 new tests get 404 (route doesn't exist yet)
 
-- [ ] **Step 3: Implement the route**
+- [x] **Step 3: Implement the route**
 
 Modify `apps/api/src/routes/products/products-media.ts`. First, update the two import blocks at the top of the file:
 
@@ -450,12 +450,12 @@ Then add the new route, right after the existing `/:id/photos/:photoId/cleanup` 
 
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `pnpm --filter @kanchuki/api exec vitest run src/routes/products.test.ts`
 Expected: PASS — all tests in the file, including the 4 new ones (the full file run, not just `-t rotate`, confirms the mock changes didn't break the pre-existing describe blocks)
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api/src/routes/products/products-media.ts apps/api/src/routes/products.test.ts
