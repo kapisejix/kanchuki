@@ -24,7 +24,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, Camera, X, Tag } from 'lucide-react-native'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, Camera, X, Tag, Star } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -104,8 +104,14 @@ export default function ProductDetailScreen() {
   const [backgroundImages, setBackgroundImages] = useState<
     { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
   >([])
-  const [editedBackgroundId, setEditedBackgroundId] = useState<string | null>(null)
+  // Per-photo applied backdrop (client-only highlight — the composite is baked
+  // into the photo bytes, there is no per-photo bg column). Keyed by photo id;
+  // "Auto" (null) is the default until the retailer picks one this session.
+  const [photoBackgrounds, setPhotoBackgrounds] = useState<Record<string, string | null>>({})
   const [backgroundSaving, setBackgroundSaving] = useState(false)
+  // F-029: "Set as main" — busy state for promoting the viewed photo to the
+  // product's primary (the image the catalog + storefront show first).
+  const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null)
 
   useEffect(() => {
     productApi
@@ -482,7 +488,19 @@ export default function ProductDetailScreen() {
     setEditedColor(product.primary_color ?? '')
     setEditedPattern(product.pattern)
     setEditedCategoryId(product.category_id)
-    setEditedBackgroundId(product.background_image_id)
+    // Seed the primary photo's backdrop highlight from the product-level
+    // background (the one the DB records); other photos default to Auto.
+    // Merge, never replace: the 3s AI-tagging poll refetches a fresh product
+    // on every tick, and a replace would wipe per-photo picks the retailer
+    // made this session (photoBackgrounds) even though the composites were
+    // already baked into the bytes. Existing entries keep their pick.
+    const primaryPhoto = product.photos.find((p) => p.is_primary)
+    if (primaryPhoto) {
+      setPhotoBackgrounds((prev) => ({
+        ...prev,
+        [primaryPhoto.id]: prev[primaryPhoto.id] ?? product.background_image_id,
+      }))
+    }
     setEditedName(product.name ?? '')
     setEditedSku(product.sku ?? '')
     setEditedDescription(product.description ?? '')
@@ -648,25 +666,42 @@ export default function ProductDetailScreen() {
     }
   }
 
-  // Change the composited backdrop for the primary photo (null = white /
-  // auto-contrast). Same endpoint the add flow uses; the response carries the
-  // new background_image_id, and we cache-bust the primary's displayed uri
-  // since setBackground recomposites the same photo URL in place.
+  // Apply the chosen backdrop to the currently-viewed photo (per-photo, not
+  // the product primary): recomposites THAT photo onto the backdrop via the
+  // cleanup pipeline, so "remove background → pick background" is one flow on
+  // the image being edited. Auto (null) → white / product-level backdrop.
   const handleSetBackground = async (backgroundId: string | null) => {
-    if (!product || backgroundSaving) return
+    const photo = currentPhoto
+    if (!product || !photo || backgroundSaving) return
+    if (photo.is_variant_preview || photo.is_original_preview) return
     setBackgroundSaving(true)
     try {
-      const res = await productApi.setBackground(product.id, backgroundId)
-      setEditedBackgroundId(res.data.background_image_id)
-      setPhotoCacheBust((prev) => {
-        const primary = product.photos.find((p) => p.is_primary)
-        return primary ? { ...prev, [primary.id]: Date.now() } : prev
-      })
+      await productApi.cleanupPhoto(product.id, photo.id, backgroundId)
+      setPhotoBackgrounds((prev) => ({ ...prev, [photo.id]: backgroundId }))
+      setPhotoCacheBust((prev) => ({ ...prev, [photo.id]: Date.now() }))
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
     } catch (err) {
       showError(err, 'Failed to change background')
     } finally {
       setBackgroundSaving(false)
+    }
+  }
+
+  // F-029: promote the currently-viewed photo to the product's main image.
+  // The catalog/customer surfaces all order by is_primary desc, so this is
+  // what makes the edited photo the image shown on catalog and display —
+  // the rest stay as additional photos.
+  const handleSetPrimary = async (photoId: string) => {
+    if (!product || settingPrimaryId) return
+    setSettingPrimaryId(photoId)
+    try {
+      await productApi.setPhotoPrimary(product.id, photoId)
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+      invalidate()
+    } catch (err) {
+      showError(err, 'Failed to set main photo')
+    } finally {
+      setSettingPrimaryId(null)
     }
   }
 
@@ -908,6 +943,15 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
+          {/* Main-image badge — this photo is what the catalog/storefront
+              show first (is_primary desc ordering) */}
+          {currentPhoto?.is_primary && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+            <View className="absolute top-3 left-3 bg-turmeric-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
+              <Star size={11} color="white" fill="white" />
+              <Text className="text-white text-xs font-semibold">Main</Text>
+            </View>
+          )}
+
           {/* Detect color from the current photo */}
           {!isZoomed && (
             <AnimatedPressable
@@ -1034,6 +1078,11 @@ export default function ProductDetailScreen() {
                     {isOriginal && (
                       <View className="absolute bottom-0 left-0 right-0 bg-sand-700/80 py-0.5">
                         <Text className="text-white text-[8px] text-center font-medium">Original</Text>
+                      </View>
+                    )}
+                    {photo.is_primary && !isVariant && !isOriginal && (
+                      <View className="absolute bottom-0 left-0 right-0 bg-turmeric-600/80 py-0.5">
+                        <Text className="text-white text-[8px] text-center font-medium">Main</Text>
                       </View>
                     )}
                   </AnimatedPressable>
@@ -1187,8 +1236,52 @@ export default function ProductDetailScreen() {
         </View>
       )}
 
-      {/* Post-save background picker — admin-curated backdrop library */}
-      {backgroundImages.length > 0 && (
+      {/* F-029: Set as main — promotes the currently-viewed photo to the
+          product's primary image (the one the catalog + customer storefront
+          show first). Shown as filled/checked when it's already the main. */}
+      {displayPhotos[selectedPhotoIndex] && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+        <AnimatedPressable
+          onPress={() => void handleSetPrimary(displayPhotos[selectedPhotoIndex]!.id)}
+          disabled={settingPrimaryId !== null || !!currentPhoto?.is_primary}
+          accessibilityLabel={
+            currentPhoto?.is_primary ? 'This is the main photo' : 'Set as main photo'
+          }
+          accessibilityRole="button"
+          accessibilityState={{ selected: !!currentPhoto?.is_primary }}
+          className={`mx-4 mt-2 flex-row items-center justify-center gap-1.5 rounded-xl py-2 border ${
+            currentPhoto?.is_primary
+              ? 'border-turmeric-300 bg-turmeric-50'
+              : 'border-dashed border-ink-300'
+          }`}
+        >
+          {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id ? (
+            <ActivityIndicator size="small" color={primaryColor} />
+          ) : (
+            <Star
+              size={14}
+              color={currentPhoto?.is_primary ? colors.turmeric[600] : primaryColor}
+              fill={currentPhoto?.is_primary ? colors.turmeric[600] : 'none'}
+            />
+          )}
+          <Text
+            className={`text-xs font-medium ${
+              currentPhoto?.is_primary ? 'text-turmeric-700' : 'text-ink-700'
+            }`}
+          >
+            {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id
+              ? 'Setting as main...'
+              : currentPhoto?.is_primary
+                ? 'Main photo ✓'
+                : 'Set as main photo'}
+          </Text>
+        </AnimatedPressable>
+      )}
+
+      {/* Post-save background picker — admin-curated backdrop library. Applies
+          to the currently-viewed photo (not the product primary): each chip
+          recomposites that photo onto the chosen backdrop. Hidden on variant /
+          original slides — those aren't real ProductPhoto rows to recomposite. */}
+      {backgroundImages.length > 0 && currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
         <View className="mx-4 mt-3 bg-white rounded-2xl p-4 border border-sand-100">
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Background
@@ -1199,7 +1292,9 @@ export default function ProductDetailScreen() {
                 onPress={() => void handleSetBackground(null)}
                 disabled={backgroundSaving}
                 className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${
-                  editedBackgroundId === null ? 'border-ink-600' : 'border-sand-200'
+                  (photoBackgrounds[currentPhoto.id] ?? null) === null
+                    ? 'border-ink-600'
+                    : 'border-sand-200'
                 }`}
               >
                 <Text className="text-[10px] text-sand-500">Auto</Text>
@@ -1210,7 +1305,9 @@ export default function ProductDetailScreen() {
                   onPress={() => void handleSetBackground(bg.id)}
                   disabled={backgroundSaving}
                   className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
-                    editedBackgroundId === bg.id ? 'border-ink-600' : 'border-sand-200'
+                    photoBackgrounds[currentPhoto.id] === bg.id
+                      ? 'border-ink-600'
+                      : 'border-sand-200'
                   }`}
                 >
                   <Image

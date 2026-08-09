@@ -10,6 +10,11 @@ const {
   mockProductDelete,
   mockPhotoFindFirst,
   mockPhotoUpdate,
+  mockPhotoUpdateMany,
+  mockPhotoFindUnique,
+  mockBackgroundImageFindFirst,
+  mockTransaction,
+  mockHasFeature,
   mockFetchImageBuffer,
   mockUploadBuffer,
   mockRotateImage,
@@ -30,6 +35,11 @@ const {
     mockProductDelete: vi.fn(),
     mockPhotoFindFirst: vi.fn(),
     mockPhotoUpdate: vi.fn(),
+    mockPhotoUpdateMany: vi.fn(),
+    mockPhotoFindUnique: vi.fn(),
+    mockBackgroundImageFindFirst: vi.fn(),
+    mockTransaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
+    mockHasFeature: vi.fn(),
     mockFetchImageBuffer: vi.fn(),
     mockUploadBuffer: vi.fn(),
     mockRotateImage: vi.fn(),
@@ -51,7 +61,11 @@ vi.mock('@kanchuki/db', () => ({
     productPhoto: {
       findFirst: mockPhotoFindFirst,
       update: mockPhotoUpdate,
+      updateMany: mockPhotoUpdateMany,
+      findUnique: mockPhotoFindUnique,
     },
+    backgroundImage: { findFirst: mockBackgroundImageFindFirst },
+    $transaction: mockTransaction,
     retailer: { findUniqueOrThrow: vi.fn() },
     auditLog: { create: vi.fn() },
   },
@@ -94,6 +108,10 @@ import { addTaggingJob } from '../jobs/index.js';
 vi.mock('../lib/quota.js', () => ({
   checkQuota: vi.fn(),
   incrementUsage: vi.fn(),
+}));
+
+vi.mock('../lib/features.js', () => ({
+  hasFeature: mockHasFeature,
 }));
 
 const RETAILER_ID = 'retailer_1';
@@ -400,6 +418,199 @@ describe('POST /products/:id/photos/:photoId/rotate', () => {
       method: 'POST',
       url: '/v1/products/prod_1/photos/photo_1/rotate',
       payload: {},
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('PATCH /products/:id/photos/:photoId — is_primary promotion (F-029)', () => {
+  const photo = {
+    id: 'photo_1',
+    product_id: 'prod_1',
+    retailer_id: RETAILER_ID,
+    url: 'https://cdn.example.com/p.jpg',
+    r2_key: 'products/prod_1/p.jpg',
+    width: 800,
+    height: 600,
+    is_primary: false,
+    metadata: null,
+  };
+
+  it('promotes the viewed photo to main — demotes every other photo atomically', async () => {
+    mockPhotoFindFirst.mockResolvedValue(photo);
+    mockPhotoUpdateMany.mockResolvedValue({ count: 2 });
+    mockPhotoUpdate.mockResolvedValue({ ...photo, is_primary: true });
+    mockPhotoFindUnique.mockResolvedValue({ ...photo, is_primary: true });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/products/prod_1/photos/photo_1',
+      payload: { is_primary: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toMatchObject({ id: 'photo_1', is_primary: true });
+    // Demote-all first, then promote this one — inside one transaction so
+    // exactly one primary is guaranteed even on a concurrent edit.
+    expect(mockPhotoUpdateMany).toHaveBeenCalledWith({
+      where: { product_id: 'prod_1', retailer_id: RETAILER_ID },
+      data: { is_primary: false },
+    });
+    expect(mockPhotoUpdate).toHaveBeenCalledWith({
+      where: { id: 'photo_1' },
+      data: { is_primary: true },
+    });
+    expect(mockPhotoFindUnique).toHaveBeenCalledWith({ where: { id: 'photo_1' } });
+    // Both ops must run inside one $transaction — a partial failure would
+    // otherwise leave zero or two primaries.
+    expect(mockTransaction).toHaveBeenCalledWith([
+      expect.anything(),
+      expect.anything(),
+    ]);
+  });
+
+  it('still allows piece_type-only PATCH (no promotion, no demotion)', async () => {
+    mockPhotoFindFirst.mockResolvedValue(photo);
+    mockPhotoUpdate.mockResolvedValue({ ...photo, piece_type: 'upper' });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/products/prod_1/photos/photo_1',
+      payload: { piece_type: 'upper' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockPhotoUpdateMany).not.toHaveBeenCalled();
+    expect(mockPhotoUpdate).toHaveBeenCalledWith({
+      where: { id: 'photo_1' },
+      data: { piece_type: 'upper' },
+    });
+  });
+
+  it('404s for a photo not owned by the requesting retailer', async () => {
+    mockPhotoFindFirst.mockResolvedValue(null);
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/products/prod_1/photos/photo_1',
+      payload: { is_primary: true },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(mockPhotoUpdateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F-029)', () => {
+  const photoWithProduct = {
+    id: 'photo_1',
+    product_id: 'prod_1',
+    retailer_id: RETAILER_ID,
+    url: 'https://cdn.example.com/p.jpg',
+    r2_key: 'products/prod_1/p.jpg',
+    width: 800,
+    height: 600,
+    is_primary: true,
+    metadata: null,
+    product: { background_image: null },
+  };
+
+  beforeEach(() => {
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
+    mockUploadBuffer.mockResolvedValue(undefined);
+    mockHasFeature.mockResolvedValue(true);
+  });
+
+  it('composites the viewed photo onto the requested active backdrop', async () => {
+    mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
+    mockBackgroundImageFindFirst.mockResolvedValue({
+      id: 'bg_1',
+      image_url: 'https://cdn.example.com/bg.jpg',
+      is_active: true,
+    });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { background_image_id: 'bg_1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toMatchObject({ id: 'photo_1', url: 'https://cdn.example.com/p.jpg' });
+    // Explicit per-photo backdrop wins over the product-level background.
+    expect(mockBackgroundImageFindFirst).toHaveBeenCalledWith({
+      where: { id: 'bg_1', is_active: true },
+    });
+  });
+
+  it('fails closed with 402 when the plan lacks CUSTOM_BACKGROUND_LIBRARY', async () => {
+    mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
+    mockHasFeature.mockResolvedValue(false);
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { background_image_id: 'bg_1' },
+    });
+
+    expect(res.statusCode).toBe(402);
+    expect(mockBackgroundImageFindFirst).not.toHaveBeenCalled();
+    expect(mockUploadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('422s when the requested backdrop is inactive or missing', async () => {
+    mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
+    mockBackgroundImageFindFirst.mockResolvedValue(null);
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { background_image_id: 'bg_gone' },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(mockUploadBuffer).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the product-level background when no per-photo backdrop given', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      ...photoWithProduct,
+      product: {
+        background_image: {
+          id: 'bg_prod',
+          image_url: 'https://cdn.example.com/prod-bg.jpg',
+          is_active: true,
+        },
+      },
+    });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { background_image_id: null },
+    });
+
+    expect(res.statusCode).toBe(200);
+    // No per-photo lookup — the product-level backdrop is used as-is.
+    expect(mockBackgroundImageFindFirst).not.toHaveBeenCalled();
+  });
+
+  it('404s for a photo not owned by the requesting retailer', async () => {
+    mockPhotoFindFirst.mockResolvedValue(null);
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { background_image_id: 'bg_1' },
     });
 
     expect(res.statusCode).toBe(404);

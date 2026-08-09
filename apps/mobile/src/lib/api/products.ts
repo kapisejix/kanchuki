@@ -94,6 +94,18 @@ export const productApi = {
       body: JSON.stringify({ piece_type: pieceType }),
     }),
 
+  /** F-029: promote this photo to the product's main image — the catalog and
+   * customer surfaces all order by is_primary desc, so this is what makes the
+   * edited photo the image shown on the catalog and storefront. */
+  setPhotoPrimary: (productId: string, photoId: string) =>
+    request<{ data: { id: string; is_primary: boolean } }>(
+      `/v1/products/${productId}/photos/${photoId}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ is_primary: true }),
+      },
+    ),
+
   addPhoto: (
     productId: string,
     data: { r2_key: string; url: string; content_type: string; piece_type?: 'upper' | 'lower' },
@@ -103,10 +115,17 @@ export const productApi = {
       body: JSON.stringify(data),
     }),
 
-  cleanupPhoto: (productId: string, photoId: string) =>
+  /** Remove background on a specific photo (optionally compositing it onto an
+   * admin-curated backdrop — the edit screen's background picker targets the
+   * currently-viewed photo, not just the product's primary). */
+  cleanupPhoto: (productId: string, photoId: string, backgroundImageId?: string | null) =>
     request<{ data: { id: string; url: string } }>(
       `/v1/products/${productId}/photos/${photoId}/cleanup`,
-      { method: 'POST', timeoutMs: 30_000 },
+      {
+        method: 'POST',
+        body: JSON.stringify({ background_image_id: backgroundImageId ?? null }),
+        timeoutMs: 30_000,
+      },
     ),
 
   // F-011: admin-curated background library for the crop/cleanup picker.

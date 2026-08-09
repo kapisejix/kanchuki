@@ -132,9 +132,35 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
 
     await checkQuota(request.retailerId, 'BG_REMOVAL');
 
-    const bgUrl = photo.product.background_image?.is_active
-      ? photo.product.background_image.image_url
-      : undefined;
+    // F-029 per-photo backdrop: an explicit background_image_id in the body
+    // wins over the product-level background — the mobile edit screen's
+    // background picker targets the photo the retailer is currently viewing,
+    // not just the product's primary photo. null → white, like the product
+    // picker's "Auto" chip.
+    const body = z
+      .object({ background_image_id: z.string().nullable().optional() })
+      .safeParse(request.body ?? {});
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    let bgUrl: string | undefined;
+    if (body.data.background_image_id) {
+      // F-013: compositing onto an admin-curated backdrop is the
+      // CUSTOM_BACKGROUND_LIBRARY feature surface — fail closed for plans
+      // without it (the white/product-level bg path below stays ungated,
+      // same as before this param existed).
+      if (!(await hasFeature(request.retailerId, 'CUSTOM_BACKGROUND_LIBRARY'))) {
+        throw featureUnavailable('Custom Background Library');
+      }
+      const bg = await prisma.backgroundImage.findFirst({
+        where: { id: body.data.background_image_id, is_active: true },
+      });
+      if (!bg) throw validationError('Background image not found or inactive');
+      bgUrl = bg.image_url;
+    } else {
+      bgUrl = photo.product.background_image?.is_active
+        ? photo.product.background_image.image_url
+        : undefined;
+    }
     try {
       const raw = await fetchImageBuffer(photo.url);
       await preserveOriginalPhoto(photo.id, photo.r2_key, photo.metadata, raw);
@@ -341,13 +367,38 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     if (!photo) throw notFound('Product photo');
 
     const body = z
-      .object({ piece_type: z.enum(['upper', 'lower']).nullable() })
+      .object({
+        piece_type: z.enum(['upper', 'lower']).nullable().optional(),
+        // F-029: only `true` is meaningful — a false payload would otherwise
+        // silently fall into the piece_type branch and be ignored. literal
+        // makes the contract match the behavior (a false sends 422).
+        is_primary: z.literal(true).optional(),
+      })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
+    // F-029 extension: "Set as main" — exactly one primary photo per product.
+    // Demote every other photo first, then promote this one, atomically. The
+    // catalog/customer surfaces all order by is_primary desc, so this single
+    // flag flip is what makes the photo the main image everywhere.
+    if (body.data.is_primary === true) {
+      await prisma.$transaction([
+        prisma.productPhoto.updateMany({
+          where: { product_id: id, retailer_id: request.retailerId },
+          data: { is_primary: false },
+        }),
+        prisma.productPhoto.update({
+          where: { id: photoId },
+          data: { is_primary: true },
+        }),
+      ]);
+      const updated = await prisma.productPhoto.findUnique({ where: { id: photoId } });
+      return { data: updated };
+    }
+
     const updated = await prisma.productPhoto.update({
       where: { id: photoId },
-      data: { piece_type: body.data.piece_type },
+      data: { piece_type: body.data.piece_type ?? null },
     });
     return { data: updated };
   });
