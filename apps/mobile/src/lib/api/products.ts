@@ -125,6 +125,18 @@ export const productApi = {
       },
     ),
 
+  /** Rotate a saved photo 90° clockwise server-side — either the current
+   * primary (target 'primary', default) or the preserved pre-cleanup
+   * original (target 'original'). Mirrors cleanupPhoto's POST+timeout shape. */
+  rotatePhoto: (productId: string, photoId: string, target: 'primary' | 'original' = 'primary') =>
+    request<{
+      data: { id: string; target: 'primary' | 'original'; url: string; width?: number; height?: number };
+    }>(`/v1/products/${productId}/photos/${photoId}/rotate`, {
+      method: 'POST',
+      body: JSON.stringify({ target }),
+      timeoutMs: 30_000,
+    }),
+
   addVariant: (productId: string, data: { color: string; r2_key: string; url: string }) =>
     request<{ data: unknown }>(`/v1/products/${productId}/variants`, {
       method: 'POST',
