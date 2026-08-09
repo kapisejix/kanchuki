@@ -1394,7 +1394,34 @@ Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tes
 
 ---
 
-## 19. F-029 Photo Rotate (Pre-Save + Post-Save) + Post-Save Background Picker — ✅ BUILT 2026-08-09
+## 19. F-028 Auto-Contrast Background + AI-in-Background Add-Product Flow — ✅ BUILT 2026-08-08 (commits `ec525bd`, `ed6496b`, `d63ebc2`, `b5897ec`)
+
+**User ask:** "cross check all process of adding new product. every step has errors, i want everything clean and processing AI in background. retailer or team member click photos and save them with adding price, rest everything detected by AI tagging, and set the background, admin will add photos of background and AI detect if product item is in dark color then auto use light background and if product item is light color, then auto switch with dark background image."
+
+**Part 1 — Add-product flow rework (AI runs in the background, `apps/mobile/app/product/add.tsx`):** the blocking "Uploading Product" progress screen (AI-tagging step + spinner machinery) is gone. The flow is now shoot → preview → Use Photo → edit (price) → Save, with the photo uploaded at Save time and everything else (AI tagging + cleanup + background) done server-side after creation. Auto-clean is ON by default; the background-picker chip now reads "Auto" (null = auto-contrast, not plain white); the pre-save color-detect chip was dropped (AI fills color after save).
+
+**Part 2 — F-028 auto-contrast background (full stack):**
+
+| Layer | Files | Summary |
+|---|---|---|
+| Shared | `packages/shared/src/constants/index.ts` + `src/colors.test.ts` (5) | `classifyColorTone(name)` — resolves the color name to hex via `FASHION_COLOR_ALIASES`, maps to WCAG luminance bands (dark < 0.35, light > 0.6, mid/unknown → null) |
+| AI | `packages/ai/src/image-quality.ts` (+ 4 tests) | `imageLuminance()` (32×32 sharp average) + `isDarkImage()` |
+| DB | `schema.prisma` + `migrations/047_background_tone` | `BackgroundTone` enum + nullable `background_images.tone` (auto-computed at upload, admin-overridable) |
+| API lib | `apps/api/src/lib/backgrounds.ts` (+ 3 tests) | `pickContrastBackground(tone)` — newest ACTIVE backdrop of the opposite tone |
+| Tag job | `apps/api/src/jobs/tag-product.ts` (+ 2 tests) | explicit retailer background pick wins; else `classifyColorTone(primary_color)` drives auto-contrast; mid-tone → white default. Never-clobber intact |
+| Pro cleanup | `apps/api/src/routes/products/products-pro-cleanup.ts` | no explicit bg → `isDarkImage()` on the raw frame → auto-contrast |
+| Admin API | `apps/api/src/routes/admin/admin-media.ts` | tone computed at upload; PATCH override (null clears); audit before/after |
+| Admin UI | `apps/web/src/app/admin/background-images/page.tsx` | tone badge + Auto/Light/Dark override select |
+
+**Ops:** migration 047 must be applied (dev `pnpm db:push`, prod Supabase SQL Editor) — `scripts/apply-047-background-tone.sql` (made idempotent in `b5897ec`) is the deploy handoff.
+
+**Known limitation (by design):** the pro-path auto-contrast uses raw-frame luminance as a garment proxy — a busy backdrop can skew it; `tag-product`'s AI-color path is the accurate one.
+
+**Verified:** api/mobile/web/shared/ai `tsc --noEmit` clean; API 342/342, AI 67/67, shared 15/15.
+
+---
+
+## 20. F-029 Photo Rotate (Pre-Save + Post-Save) + Post-Save Background Picker — ✅ BUILT 2026-08-09
 
 **User ask:** let a retailer rotate a product photo in fixed 90° steps — both the pre-cleanup original and the current primary — from the pre-save add-product preview and the post-save product-detail screen, and pick a background from the admin library on the post-save screen (the endpoint already existed; this wires an already-working API into a UI location that never called it).
 
