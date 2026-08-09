@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react'
 import { AppState, View, ActivityIndicator } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Home, Grid3X3, Users, Link2, ShoppingBag, BarChart3 } from 'lucide-react-native'
+import { Home, Grid3X3, Users, Link2, ShoppingBag } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { ordersApi, retailerApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
@@ -106,15 +105,6 @@ export default function TabsLayout() {
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
           headerTitle: 'Kanchuki',
-          headerRight: () => (
-            <AnimatedPressable
-              onPress={() => router.push('/analytics')}
-              accessibilityLabel="Analytics"
-              style={{ marginRight: 16 }}
-            >
-              <BarChart3 color={primaryColor} size={22} />
-            </AnimatedPressable>
-          ),
         }}
       />
       <Tabs.Screen

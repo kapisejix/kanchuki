@@ -2,7 +2,7 @@ import { View, Text, ScrollView, RefreshControl } from 'react-native'
 import { COLORS } from '@kanchuki/shared'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban, PackagePlus } from 'lucide-react-native'
+import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban, PackagePlus, BarChart3 } from 'lucide-react-native'
 import { ordersApi, retailerApi, categoryApi } from '../../src/lib/api'
 import { HomeScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
@@ -218,6 +218,13 @@ export default function HomeScreen() {
             sublabel="Scan to view your catalog"
             onPress={() => router.push('/store-profile')}
             accent={colors.rust[50]}
+          />
+          <QuickAction
+            icon={<BarChart3 size={22} color={primaryColor} />}
+            label="Analytics"
+            sublabel="Views, enquiries & trends"
+            onPress={() => router.push('/analytics')}
+            accent={colors.ink[50]}
           />
           <QuickAction
             icon={<Settings size={22} color={colors.sand[600]} />}
