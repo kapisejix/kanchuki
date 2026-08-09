@@ -16,6 +16,7 @@ export type Product = {
   subtype: string | null
   category: string | null
   category_id: string | null
+  background_image_id: string | null
   product_type: string | null
   primary_color: string | null
   fabric_estimate: string | null

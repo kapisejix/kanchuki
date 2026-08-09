@@ -8,6 +8,12 @@ const {
   mockProductFindMany,
   mockProductUpdate,
   mockProductDelete,
+  mockPhotoFindFirst,
+  mockPhotoUpdate,
+  mockFetchImageBuffer,
+  mockUploadBuffer,
+  mockRotateImage,
+  mockGetDownloadPresignedUrl,
   MockPrismaClientKnownRequestError,
 } = vi.hoisted(() => {
   class MockPrismaClientKnownRequestError extends Error {
@@ -22,6 +28,12 @@ const {
     mockProductFindMany: vi.fn(),
     mockProductUpdate: vi.fn(),
     mockProductDelete: vi.fn(),
+    mockPhotoFindFirst: vi.fn(),
+    mockPhotoUpdate: vi.fn(),
+    mockFetchImageBuffer: vi.fn(),
+    mockUploadBuffer: vi.fn(),
+    mockRotateImage: vi.fn(),
+    mockGetDownloadPresignedUrl: vi.fn(),
     MockPrismaClientKnownRequestError,
   };
 });
@@ -35,6 +47,10 @@ vi.mock('@kanchuki/db', () => ({
       update: mockProductUpdate,
       delete: mockProductDelete,
       count: vi.fn(),
+    },
+    productPhoto: {
+      findFirst: mockPhotoFindFirst,
+      update: mockPhotoUpdate,
     },
     retailer: { findUniqueOrThrow: vi.fn() },
     auditLog: { create: vi.fn() },
@@ -51,11 +67,12 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('@kanchuki/ai', () => ({
   cleanupProductPhoto: vi.fn(),
-  fetchImageBuffer: vi.fn(),
-  getDownloadPresignedUrl: vi.fn(),
+  fetchImageBuffer: mockFetchImageBuffer,
+  getDownloadPresignedUrl: mockGetDownloadPresignedUrl,
   getUploadPresignedUrl: vi.fn(),
   publicUrl: vi.fn(),
-  uploadBuffer: vi.fn(),
+  uploadBuffer: mockUploadBuffer,
+  rotateImage: mockRotateImage,
   MATCH_SIMILARITY_THRESHOLD: 0.9,
   MIN_CONFIDENCE_FOR_MATCHING: 0.5,
   detectColor: vi.fn(),
@@ -281,5 +298,110 @@ describe('GET /products — F-025 SKU lookup', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toHaveLength(0);
     await app.close();
+  });
+});
+
+describe('POST /products/:id/photos/:photoId/rotate', () => {
+  it('rotates the primary photo 90°, swaps stored width/height', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      id: 'photo_1',
+      product_id: 'prod_1',
+      retailer_id: RETAILER_ID,
+      url: 'https://cdn.example.com/p.jpg',
+      r2_key: 'products/prod_1/p.jpg',
+      width: 800,
+      height: 600,
+      metadata: null,
+    });
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
+    mockRotateImage.mockResolvedValue({ buffer: Buffer.from('rotated'), width: 600, height: 800 });
+    mockUploadBuffer.mockResolvedValue(undefined);
+    mockPhotoUpdate.mockResolvedValue({});
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/rotate',
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data).toMatchObject({ id: 'photo_1', target: 'primary', width: 600, height: 800 });
+    expect(mockRotateImage).toHaveBeenCalledWith(Buffer.from('raw'), 90);
+    expect(mockUploadBuffer).toHaveBeenCalledWith('products/prod_1/p.jpg', Buffer.from('rotated'), 'image/jpeg');
+    expect(mockPhotoUpdate).toHaveBeenCalledWith({
+      where: { id: 'photo_1' },
+      data: { width: 600, height: 800 },
+    });
+  });
+
+  it('rotates the preserved original, leaving primary width/height untouched', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      id: 'photo_1',
+      product_id: 'prod_1',
+      retailer_id: RETAILER_ID,
+      url: 'https://cdn.example.com/p.jpg',
+      r2_key: 'products/prod_1/p.jpg',
+      width: 800,
+      height: 600,
+      metadata: { original_r2_key: 'products/prod_1/p-original.jpg' },
+    });
+    mockGetDownloadPresignedUrl.mockResolvedValue('https://signed.example.com/original.jpg');
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw-original'));
+    mockRotateImage.mockResolvedValue({ buffer: Buffer.from('rotated-original'), width: 600, height: 800 });
+    mockUploadBuffer.mockResolvedValue(undefined);
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/rotate',
+      payload: { target: 'original' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data).toMatchObject({ id: 'photo_1', target: 'original', url: 'https://signed.example.com/original.jpg' });
+    expect(mockUploadBuffer).toHaveBeenCalledWith(
+      'products/prod_1/p-original.jpg',
+      Buffer.from('rotated-original'),
+      'image/jpeg',
+    );
+    expect(mockPhotoUpdate).not.toHaveBeenCalled();
+  });
+
+  it('422s when target=original has no preserved original', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      id: 'photo_1',
+      product_id: 'prod_1',
+      retailer_id: RETAILER_ID,
+      url: 'https://cdn.example.com/p.jpg',
+      r2_key: 'products/prod_1/p.jpg',
+      width: 800,
+      height: 600,
+      metadata: null,
+    });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/rotate',
+      payload: { target: 'original' },
+    });
+
+    expect(res.statusCode).toBe(422);
+  });
+
+  it('404s for a photo not owned by the requesting retailer', async () => {
+    mockPhotoFindFirst.mockResolvedValue(null);
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/rotate',
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(404);
   });
 });

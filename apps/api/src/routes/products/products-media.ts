@@ -4,6 +4,7 @@ import {
   fetchImageBuffer,
   getUploadPresignedUrl,
   publicUrl,
+  rotateImage,
   uploadBuffer,
 } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
@@ -21,6 +22,7 @@ import {
   ALLOWED_SPIN_VIDEO_MIME_TYPES,
   type AllowedMime,
   MAX_SPIN_VIDEO_BYTES,
+  photoUrlToDisplay,
 } from './products-helpers.js';
 
 export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
@@ -145,6 +147,71 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     await incrementUsage(request.retailerId, 'BG_REMOVAL');
 
     return reply.status(200).send({ data: { id: photo.id, url: photo.url } });
+  });
+
+  // ─── POST /products/:id/photos/:photoId/rotate ─────────────────────
+  // Rotates 90° clockwise, relative to whatever is currently stored at the
+  // target key — not a lossless/pristine-tracked rotation (see design spec
+  // docs/superpowers/specs/2026-08-09-photo-rotate-and-background-picker-design.md
+  // for why that tradeoff was deliberate). target='original' rotates the
+  // preserved pre-cleanup upload (metadata.original_r2_key, written by
+  // preserveOriginalPhoto() in lib/photo-cleanup.ts); target='primary'
+  // (default) rotates the current photo.r2_key. No quota charge — cheap CPU
+  // op, not an AI/BG_REMOVAL call.
+  server.post('/:id/photos/:photoId/rotate', async (request, reply) => {
+    const { id, photoId } = request.params as { id: string; photoId: string };
+
+    const photo = await prisma.productPhoto.findFirst({
+      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+    });
+    if (!photo) throw notFound('Product photo');
+
+    const body = z
+      .object({ target: z.enum(['primary', 'original']).optional() })
+      .safeParse(request.body ?? {});
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+    const target = body.data.target ?? 'primary';
+
+    if (target === 'original') {
+      const meta = (photo.metadata as Record<string, unknown> | null) ?? {};
+      const originalR2Key = meta.original_r2_key;
+      if (typeof originalR2Key !== 'string') {
+        throw validationError(
+          'No original photo to rotate — this photo was never background-cleaned',
+        );
+      }
+      try {
+        const sourceUrl = await photoUrlToDisplay({ url: '', r2_key: originalR2Key });
+        const raw = await fetchImageBuffer(sourceUrl ?? '');
+        const rotated = await rotateImage(raw, 90);
+        await uploadBuffer(originalR2Key, rotated.buffer, 'image/jpeg');
+        const url = await photoUrlToDisplay({ url: '', r2_key: originalR2Key });
+        return reply.status(200).send({ data: { id: photo.id, target, url: url ?? '' } });
+      } catch (err) {
+        console.error('Photo rotate failed:', err);
+        throw validationError('Photo storage is not configured. Please contact support.');
+      }
+    }
+
+    try {
+      const raw = await fetchImageBuffer(photo.url);
+      const rotated = await rotateImage(raw, 90);
+      await uploadBuffer(photo.r2_key, rotated.buffer, 'image/jpeg');
+      const url = (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url;
+
+      let width: number | undefined;
+      let height: number | undefined;
+      if (photo.width != null && photo.height != null) {
+        width = rotated.width;
+        height = rotated.height;
+        await prisma.productPhoto.update({ where: { id: photoId }, data: { width, height } });
+      }
+
+      return reply.status(200).send({ data: { id: photo.id, target, url, width, height } });
+    } catch (err) {
+      console.error('Photo rotate failed:', err);
+      throw validationError('Photo storage is not configured. Please contact support.');
+    }
   });
 
   // ─── PATCH /products/:id/background ────────────────────────────────

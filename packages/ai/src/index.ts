@@ -10,3 +10,4 @@ export * from './snappyit.js';
 export * from './safe-fetch.js';
 export * from './image-compress.js';
 export * from './image-quality.js';
+export * from './image-rotate.js';
