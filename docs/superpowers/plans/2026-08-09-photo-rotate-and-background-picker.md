@@ -473,7 +473,7 @@ git commit -m "feat(api): add POST /products/:id/photos/:photoId/rotate"
 - Consumes: `POST /v1/products/:id/photos/:photoId/rotate` from Task 2.
 - Produces: `productApi.rotatePhoto(productId: string, photoId: string, target?: 'primary' | 'original'): Promise<{ data: { id: string; target: 'primary' | 'original'; url: string; width?: number; height?: number } }>`. Consumed by Task 4.
 
-- [ ] **Step 1: Add the client method**
+- [x] **Step 1: Add the client method**
 
 Modify `apps/mobile/src/lib/api/products.ts` — add right after the existing `setBackground` method (around line 126):
 
@@ -488,12 +488,12 @@ Modify `apps/mobile/src/lib/api/products.ts` — add right after the existing `s
     }),
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 Run: `pnpm --filter mobile exec tsc --noEmit`
 Expected: 0 errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/mobile/src/lib/api/products.ts
@@ -511,7 +511,7 @@ git commit -m "feat(mobile): add productApi.rotatePhoto client"
 - Consumes: `productApi.rotatePhoto()` from Task 3; existing `currentPhoto`, `currentPhotoIsOriginal`, `displayPhotos`, `selectedPhotoIndex`, `photoCacheBust`/`setPhotoCacheBust`, `showError`, `queryClient` (all already defined in this file).
 - Produces: nothing consumed elsewhere — leaf UI change.
 
-- [ ] **Step 1: Add busy-state and rotation-label state**
+- [x] **Step 1: Add busy-state and rotation-label state**
 
 Modify `apps/mobile/app/product/[id].tsx` — add next to the existing `cleaningPhotoId` state (around line 94-95):
 
@@ -522,7 +522,7 @@ Modify `apps/mobile/app/product/[id].tsx` — add next to the existing `cleaning
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
 ```
 
-- [ ] **Step 2: Add the rotate handler**
+- [x] **Step 2: Add the rotate handler**
 
 Modify `apps/mobile/app/product/[id].tsx` — add right after the existing `handleCleanupPhoto` function (around line 602):
 
@@ -551,7 +551,7 @@ Modify `apps/mobile/app/product/[id].tsx` — add right after the existing `hand
   }
 ```
 
-- [ ] **Step 3: Add the rotate button to the UI**
+- [x] **Step 3: Add the rotate button to the UI**
 
 Modify `apps/mobile/app/product/[id].tsx` — replace the existing "Manual crop + white-background cleanup" block (lines 1073-1091) with a two-button row that keeps the cleanup button (still hidden for the original slide, unchanged) and adds a rotate button shown for both the primary and original slides:
 
@@ -605,12 +605,12 @@ Modify `apps/mobile/app/product/[id].tsx` — replace the existing "Manual crop 
       )}
 ```
 
-- [ ] **Step 4: Typecheck**
+- [x] **Step 4: Typecheck**
 
 Run: `pnpm --filter mobile exec tsc --noEmit`
 Expected: 0 errors
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/mobile/app/product/\[id\].tsx
@@ -629,7 +629,7 @@ git commit -m "feat(mobile): rotate button on product detail — primary + origi
 - Consumes: `productApi.getBackgroundImages()` and `productApi.setBackground()` (both already exist in `apps/mobile/src/lib/api/products.ts:112-126`, no changes needed).
 - Produces: nothing consumed elsewhere — leaf UI change.
 
-- [ ] **Step 1: Add `background_image_id` to the Product type**
+- [x] **Step 1: Add `background_image_id` to the Product type**
 
 Modify `apps/mobile/src/components/product-detail/types.ts` — add one field to `Product` (it's already returned by `GET /products/:id`, a plain scalar column on the model, just never typed on the client):
 
@@ -646,7 +646,7 @@ export type Product = {
   product_type: string | null
 ```
 
-- [ ] **Step 2: Fetch the background library + track selection state**
+- [x] **Step 2: Fetch the background library + track selection state**
 
 Modify `apps/mobile/app/product/[id].tsx` — add state next to `rotationLabels` from Task 4:
 
@@ -673,7 +673,7 @@ Then, in the existing field-hydration `useEffect` (the one that sets `price`/`lo
     setEditedName(product.name ?? '')
 ```
 
-- [ ] **Step 3: Add the change-background handler**
+- [x] **Step 3: Add the change-background handler**
 
 Modify `apps/mobile/app/product/[id].tsx` — add right after `handleRotatePhoto` from Task 4:
 
@@ -697,7 +697,7 @@ Modify `apps/mobile/app/product/[id].tsx` — add right after `handleRotatePhoto
   }
 ```
 
-- [ ] **Step 4: Add the picker UI**
+- [x] **Step 4: Add the picker UI**
 
 Modify `apps/mobile/app/product/[id].tsx` — add right after the two-button rotate/cleanup row built in Task 4 Step 3:
 
@@ -740,12 +740,12 @@ Modify `apps/mobile/app/product/[id].tsx` — add right after the two-button rot
       )}
 ```
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `pnpm --filter mobile exec tsc --noEmit`
 Expected: 0 errors
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/mobile/app/product/\[id\].tsx apps/mobile/src/components/product-detail/types.ts
@@ -763,7 +763,7 @@ git commit -m "feat(mobile): background picker on product detail screen"
 - Consumes: `ImageManipulator` (already imported in this file, line 17).
 - Produces: nothing consumed elsewhere — leaf UI change, purely local state feeding the existing `photo` state that the rest of the add-product pipeline already reads.
 
-- [ ] **Step 1: Track the untouched captured URI and rotation step**
+- [x] **Step 1: Track the untouched captured URI and rotation step**
 
 Modify `apps/mobile/app/product/add.tsx` — add next to the existing `photo` state (around line 85):
 
@@ -777,7 +777,7 @@ Modify `apps/mobile/app/product/add.tsx` — add next to the existing `photo` st
   const [previewRotation, setPreviewRotation] = useState<90 | 180 | 270 | 360 | null>(null)
 ```
 
-- [ ] **Step 2: Seed the ref whenever a fresh photo is captured**
+- [x] **Step 2: Seed the ref whenever a fresh photo is captured**
 
 Modify `apps/mobile/app/product/add.tsx` — in `processPhoto` (around line 182-198), reset the ref and rotation on every fresh capture:
 
@@ -803,7 +803,7 @@ Modify `apps/mobile/app/product/add.tsx` — in `processPhoto` (around line 182-
   }
 ```
 
-- [ ] **Step 3: Add the rotate handler**
+- [x] **Step 3: Add the rotate handler**
 
 Modify `apps/mobile/app/product/add.tsx` — add right after `processPhoto`:
 
@@ -830,7 +830,7 @@ Modify `apps/mobile/app/product/add.tsx` — add right after `processPhoto`:
   }
 ```
 
-- [ ] **Step 4: Add the rotate button to the preview step**
+- [x] **Step 4: Add the rotate button to the preview step**
 
 Modify `apps/mobile/app/product/add.tsx` — the preview step block (around line 966-994). Replace the two-button `Retake`/`Use Photo →` row with a three-button row:
 
@@ -876,12 +876,12 @@ Modify `apps/mobile/app/product/add.tsx` — the preview step block (around line
   }
 ```
 
-- [ ] **Step 5: Typecheck**
+- [x] **Step 5: Typecheck**
 
 Run: `pnpm --filter mobile exec tsc --noEmit`
 Expected: 0 errors
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/mobile/app/product/add.tsx
