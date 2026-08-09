@@ -316,4 +316,47 @@ describe('POST /auth/otp/verify — soft-deleted / recreated-auth-user retailer 
     expect(res.statusCode).toBe(200);
     await app.close();
   });
+
+  it('recovers from a concurrent double-submit P2002 on phone instead of 500ing', async () => {
+    // Live-observed: auto-verify-on-6th-digit races the still-tappable
+    // Verify button, firing two POST /otp/verify for the same brand-new
+    // phone. No `pending` row exists yet (first findUnique call, the
+    // pre-upsert lookup), so both requests reach the upsert; the loser's
+    // insert violates the separate unique `phone` constraint (Prisma's
+    // upsert only guards the auth_user_id conflict target) and throws raw
+    // P2002 instead of upserting.
+    mockVerifyOtp.mockResolvedValue(validSession);
+    mockRetailerFindUnique
+      .mockResolvedValueOnce(null) // pre-upsert `pending` lookup — no row yet
+      .mockResolvedValueOnce(newRetailer); // post-P2002 refetch — winner's row
+    mockRetailerUpsert.mockRejectedValue({ code: 'P2002' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9876543210', otp: '123456' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.retailer).toMatchObject({ id: 'retailer_new' });
+    expect(mockRetailerFindUnique).toHaveBeenCalledTimes(2);
+    await app.close();
+  });
+
+  it('rethrows a non-P2002 upsert failure as a 500 (not silently swallowed)', async () => {
+    mockVerifyOtp.mockResolvedValue(validSession);
+    mockRetailerFindUnique.mockResolvedValueOnce(null);
+    mockRetailerUpsert.mockRejectedValue(new Error('connection reset'));
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9876543210', otp: '123456' },
+    });
+
+    expect(res.statusCode).toBe(500);
+    await app.close();
+  });
 });

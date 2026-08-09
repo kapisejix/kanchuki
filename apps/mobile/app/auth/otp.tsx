@@ -35,7 +35,7 @@ export default function OtpScreen() {
   }, [resendTimer])
 
   const handleVerify = async (code: string) => {
-    if (code.length !== 6 || !phone) return
+    if (code.length !== 6 || !phone || loading) return
     setLoading(true)
     try {
       const { data: result } = await authApi.verifyOtp(phone, code)
@@ -215,7 +215,7 @@ export default function OtpScreen() {
         <GradientButton
           label="Verify & Continue →"
           onPress={() => void handleVerify(otp)}
-          disabled={otp.length !== 6}
+          disabled={otp.length !== 6 || loading}
           loading={loading}
         />
       </ScrollView>

@@ -194,33 +194,56 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
+    const retailerSelect = {
+      id: true,
+      phone: true,
+      shop_name: true,
+      city: true,
+      plan: true,
+      plan_status: true,
+      onboarding_completed: true,
+      onboarding_step: true,
+      is_suspended: true,
+    } as const;
+
     // Upsert retailer (first login = registration, subsequent = login)
-    const retailer = await prisma.retailer.upsert({
-      where: { auth_user_id: user.id },
-      create: {
-        auth_user_id: user.id,
-        phone,
-        shop_name: '', // filled during onboarding
-        city: '',
-        plan: 'STARTER',
-        plan_status: 'TRIAL',
-        trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
-        onboarding_completed: false,
-        onboarding_step: 0,
-      },
-      update: {}, // existing retailer — no updates on login
-      select: {
-        id: true,
-        phone: true,
-        shop_name: true,
-        city: true,
-        plan: true,
-        plan_status: true,
-        onboarding_completed: true,
-        onboarding_step: true,
-        is_suspended: true,
-      },
-    });
+    let retailer;
+    try {
+      retailer = await prisma.retailer.upsert({
+        where: { auth_user_id: user.id },
+        create: {
+          auth_user_id: user.id,
+          phone,
+          shop_name: '', // filled during onboarding
+          city: '',
+          plan: 'STARTER',
+          plan_status: 'TRIAL',
+          trial_ends_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days
+          onboarding_completed: false,
+          onboarding_step: 0,
+        },
+        update: {}, // existing retailer — no updates on login
+        select: retailerSelect,
+      });
+    } catch (err) {
+      // A double-submitted OTP verify (auto-verify-on-6th-digit racing the
+      // still-tappable Verify button — see otp.tsx loading guard) can send
+      // two concurrent requests for the same brand-new phone. Prisma's
+      // upsert only guards the conflict target named in `where`
+      // (auth_user_id) — the separate unique `phone` constraint still
+      // throws a raw P2002 for the losing request. The winner's row already
+      // exists under this same auth_user_id — fetch it instead of 500ing.
+      if ((err as { code?: string } | null)?.code === 'P2002') {
+        const existing = await prisma.retailer.findUnique({
+          where: { auth_user_id: user.id },
+          select: retailerSelect,
+        });
+        if (!existing) throw err;
+        retailer = existing;
+      } else {
+        throw err;
+      }
+    }
 
     // F-015: Block suspended retailers from logging in
     if (retailer.is_suspended) {
