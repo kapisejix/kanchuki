@@ -17,6 +17,47 @@
 
 ---
 
+## Session — 2026-08-08 (continuation 2): OTP "Incorrect OTP" — LIVE-PROVEN root cause + fixed
+
+### What the user reported
+"Phone and OTP still have error — incorrect otp apiError. I am using Supabase phone no and OTP." Also asked: when should I test your final development on my mobile? App still loading.
+
+### Root cause (proven by live curl against prod API — NOT guessed)
+`POST /v1/auth/otp/send` on `https://api.kanchuki.app` → **200 "OTP sent"**.
+`POST /v1/auth/otp/verify` with the repo's fixed test OTP `123456` → **500 INTERNAL_ERROR, NOT 401**. The chain:
+1. Supabase **accepts** the OTP (repo test numbers use the fixed test OTP `123456` — see `scripts/*.ts`, `verify-retag-live.ts` `REPRO_OTP ?? '123456'`).
+2. The API then does `prisma.retailer.upsert({ where: { auth_user_id: user.id }, create: { phone } })` — but `Retailer.phone` is `@unique` and the **5 test-account rows still exist** (soft-deleted, purge SQL not run yet) → **P2002 unique violation → unhandled 500**.
+3. **Mobile masked it:** `otp.tsx` catch did `showError(err, 'Invalid OTP', 'Incorrect OTP', …)` — the **title is 'Incorrect OTP' for EVERY error**, so a server-side 500 read as "wrong code". The user retyped the OTP forever — the OTP was never wrong.
+
+Also in `plugins/auth.ts` the OTP flow falls through to `staff` check → 403 "Account not found. Please complete registration." for deleted-auth-user sessions (explains the earlier error too).
+
+### Fixes shipped (commit `aad6ef5`)
+- **`apps/api/src/routes/auth.ts`** — before the upsert, the existing `pending` (findUnique by phone) row is now handled:
+  - `deleted_at` set → clean **409 `ACCOUNT_DELETED`** ("linked to a deleted account… released once the purge completes") instead of P2002 500.
+  - `auth_user_id !== user.id` (auth user recreated via OTP, or `pending:` placeholder) → **relink the row by phone** so the upsert matches instead of colliding on unique phone.
+- **`apps/mobile/app/auth/otp.tsx`** — truthful errors: 401 → "Incorrect OTP" + clear input; 409/429 → backend's real message; other → "Something went wrong on our side". No more blanket "Incorrect OTP".
+- **`apps/mobile/app/auth/phone.tsx`** — surfaces backend's actionable 4xx message on send failure (e.g. rate limit).
+- **Tests:** `auth-team.test.ts` +3 (soft-deleted → 409, no upsert; recreated auth user → relink + 200; pending: placeholder linked).
+
+### Verification
+- `apps/api` tsc 0 errors; `apps/mobile` tsc 0 errors.
+- API vitest: auth-team 7/7, security 24/24, retailers 25/25 (56 tests).
+
+### ⚠️ CRITICAL — why the user STILL sees the error: code is committed but NOT DEPLOYED
+Railway deploys are manual-only (per CLAUDE.md policy). The phone app points at `https://api.kanchuki.app` (prod, `.env.local`) — **the prod API still runs the pre-fix build**. The user must deploy the API (and web) to Railway for any fix to reach the phone. ALSO: even post-fix, the 5 test phones will 409 until the purge SQL is run — **the SQL Editor step is still pending and is the actual blocker for re-registering those numbers**.
+
+### Where the user should start (in order)
+1. **Run `scripts/delete-test-retailers.generated.sql` in Supabase SQL Editor** (frees the 5 test phones; expect 0 rows in the verify SELECT).
+2. **Deploy the API to Railway** (manual: `railway up` or dashboard redeploy — carries commit `aad6ef5` + the earlier phone-validation commit).
+3. **Log out / clear app data** on the phone (stale test-account token is dead).
+4. Sign up fresh with the **live retailer number** → OTP → onboarding → add-product flow. If a *new* (never-used) number still fails, the fix path is the API URL the phone bundle uses (check `apps/mobile/.env.local`, restart Metro with `--clear`).
+
+### Open items / notes
+- After purge + deploy, re-run the same curl to confirm 409 for the old test numbers and 200 for a fresh number.
+- The repo's fixed test OTP `123456` only works for the Supabase test-phone config; a real retailer number gets a real SMS OTP.
+
+---
+
 ## Session — 2026-08-08 (continuation): "Account not found" error explained + delete scope re-confirmed + SQL verified current
 
 ### What the user reported
