@@ -836,6 +836,22 @@ Also in `3311fc7` (the crashed session's in-flight work, landed together): the 4
 
 **Verified:** api tsc clean, API suite 354/354, biome clean. Deploy note: nothing to configure (`REDIS_URL` already set); live on next API deploy.
 
+---
+
+## Built: F-029 Photo Rotate (Pre-Save + Post-Save) + Post-Save Background Picker (2026-08-09)
+
+**Built 2026-08-09** — 6-task plan `docs/superpowers/plans/2026-08-09-photo-rotate-and-background-picker.md` (design spec `docs/superpowers/specs/2026-08-09-photo-rotate-and-background-picker-design.md`), merged to main `6ee8ede` + pushed. Spec: `docs/PRO-REQUIREMENTS.md` §19. User ask: rotate a product photo in 90° fixed steps (both the pre-cleanup original and the current primary), from the pre-save add-product preview AND the post-save product-detail screen, plus a post-save background picker (the `PATCH /:id/background` endpoint already existed — this wired it into the edit screen that never called it).
+
+| Layer | Files | Summary |
+|---|---|---|
+| **AI utility** | `packages/ai/src/image-rotate.ts` (+ `image-rotate.test.ts`, barrel export) | `rotateImage(input, degrees)` — lazy-imported sharp (same Windows+pnpm dlopen pattern as image-compress), re-encodes JPEG q90 mozjpeg |
+| **API route** | `apps/api/src/routes/products/products-media.ts` (+ 4 tests in `products.test.ts`) | `POST /v1/products/:id/photos/:photoId/rotate`, body `{ target?: 'primary' \| 'original' }` (default `'primary'`). Ownership-scoped lookup (404); `target: 'original'` requires `metadata.original_r2_key` (422 if the photo was never background-cleaned), rotates the sibling key and never touches `productPhoto.width/height`; primary branch swaps stored width/height. No quota charge — cheap CPU op, not an AI/BG_REMOVAL call. Error mapping mirrors `/cleanup` |
+| **Mobile client** | `apps/mobile/src/lib/api/products.ts` | `productApi.rotatePhoto(productId, photoId, target)` — POST + 30s timeout, mirrors `cleanupPhoto` |
+| **Post-save UI** | `apps/mobile/app/product/[id].tsx` | Rotate button (RotateCw) in a two-button row beside the existing Crop & remove background — rotate works on BOTH the primary and the preserved-original slide (synthetic `${id}-original` id stripped for the API call), cleanup stays primary-only. Per-photo client-only rotation label cycles 90/180/270/360 (not persisted — server has no absolute-rotation column). Reuses the existing `photoCacheBust` map (same URL, new bytes). **Background picker** row (Auto chip + admin-library thumbnails) added too, calling the existing `productApi.setBackground()` — auto-gated by `getBackgroundImages()` returning `[]` without `CUSTOM_BACKGROUND_LIBRARY`; `background_image_id` added to the client `Product` type (`components/product-detail/types.ts`, already returned by `GET /products/:id`) |
+| **Pre-save UI** | `apps/mobile/app/product/add.tsx` | Rotate button in the preview step (three-button row: Retake / Rotate / Use Photo →). `rawPhotoUriRef` keeps the untouched capture; every tap recomputes from it (never compounds lossy re-encodes), 4th tap (360°) restores the original pixels with no re-encode. Busy-state guard `rotatingPreview` (follow-up `25cc192`, local-only until pushed) |
+
+**Verified:** AI 4/4 (image-rotate), API full suite 364/364, api + mobile `tsc --noEmit` clean. Mobile UI unverified on device (no RN simulator — standing limitation). Note: F-028 (auto-contrast background, 2026-08-08) still lacks PLAN.md/PRD entries — only this feature's tracking was added here.
+
 ## Key Risks
 
 1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs
