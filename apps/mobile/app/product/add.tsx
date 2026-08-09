@@ -89,6 +89,11 @@ export default function AddProductScreen() {
   // post-save server-side rotate, which does accept that tradeoff).
   const rawPhotoUriRef = useRef<string | null>(null)
   const [previewRotation, setPreviewRotation] = useState<90 | 180 | 270 | 360 | null>(null)
+  // Busy-state guard — mirrors rotatingPhotoId on the product-detail screen
+  // and the shutter-guard pattern in this file. Concurrent taps would both
+  // recompute from the raw ref and converge, but dropping the second tap is
+  // cleaner and keeps Retake from racing an in-flight rotate.
+  const [rotatingPreview, setRotatingPreview] = useState(false)
   // Scan mode: retailer picks which burst frame to keep instead of the app
   // silently auto-picking one. scanBestUri marks the file-size-sharpest
   // frame as the pre-highlighted recommendation.
@@ -209,7 +214,8 @@ export default function AddProductScreen() {
   // untouched capture, never compounds lossy re-encodes on top of each other.
   // The fourth tap (360°) restores the original pixels with no re-encode.
   const handleRotatePreviewPhoto = async () => {
-    if (!rawPhotoUriRef.current) return
+    if (!rawPhotoUriRef.current || rotatingPreview) return
+    setRotatingPreview(true)
     const next =
       previewRotation === null
         ? 90
@@ -231,6 +237,8 @@ export default function AddProductScreen() {
       setPreviewRotation(next)
     } catch (err) {
       showError(err, 'Could not rotate photo', 'Photo Error')
+    } finally {
+      setRotatingPreview(false)
     }
   }
 
@@ -1018,19 +1026,25 @@ export default function AddProductScreen() {
               setProUploads([])
               setStep('camera')
             }}
+            disabled={rotatingPreview}
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
           >
             <Text className="text-white font-semibold">Retake</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => void handleRotatePreviewPhoto()}
+            disabled={rotatingPreview}
             className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
             accessibilityLabel="Rotate photo 90 degrees"
             accessibilityRole="button"
           >
-            <Text className="text-white font-semibold">
-              {previewRotation ? `Rotate (${previewRotation}°)` : 'Rotate'}
-            </Text>
+            {rotatingPreview ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <Text className="text-white font-semibold">
+                {previewRotation ? `Rotate (${previewRotation}°)` : 'Rotate'}
+              </Text>
+            )}
           </AnimatedPressable>
           <View className="flex-1">
             <GradientButton label='Use Photo →' onPress={() => setStep('edit')} />
