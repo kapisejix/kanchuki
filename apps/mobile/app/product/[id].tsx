@@ -93,6 +93,26 @@ export default function ProductDetailScreen() {
   // old cached bytes at an unchanged URL.
   const [cleaningPhotoId, setCleaningPhotoId] = useState<string | null>(null)
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
+  // Rotate busy-state + per-photo label (client-only feedback — the server
+  // has no absolute-rotation column, so the label just cycles 90/180/270/360
+  // per tap and is never persisted).
+  const [rotatingPhotoId, setRotatingPhotoId] = useState<string | null>(null)
+  const [rotationLabels, setRotationLabels] = useState<Record<string, 90 | 180 | 270 | 360>>({})
+  // Post-save background picker — admin-curated backdrop library, same
+  // endpoint add.tsx uses. getBackgroundImages() returns [] when the plan
+  // lacks CUSTOM_BACKGROUND_LIBRARY, so the row simply stays hidden.
+  const [backgroundImages, setBackgroundImages] = useState<
+    { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
+  >([])
+  const [editedBackgroundId, setEditedBackgroundId] = useState<string | null>(null)
+  const [backgroundSaving, setBackgroundSaving] = useState(false)
+
+  useEffect(() => {
+    productApi
+      .getBackgroundImages()
+      .then((res) => setBackgroundImages(res.data))
+      .catch(() => {}) // best-effort — picker just stays empty (white-only)
+  }, [])
 
   // Editable AI fields
   const [editedName, setEditedName] = useState('')
@@ -462,6 +482,7 @@ export default function ProductDetailScreen() {
     setEditedColor(product.primary_color ?? '')
     setEditedPattern(product.pattern)
     setEditedCategoryId(product.category_id)
+    setEditedBackgroundId(product.background_image_id)
     setEditedName(product.name ?? '')
     setEditedSku(product.sku ?? '')
     setEditedDescription(product.description ?? '')
@@ -598,6 +619,54 @@ export default function ProductDetailScreen() {
       showError(err, 'Failed to clean up photo')
     } finally {
       setCleaningPhotoId(null)
+    }
+  }
+
+  // Rotate the currently viewed photo 90° clockwise server-side (primary or
+  // preserved pre-cleanup original). Cache-bust the displayed uri since
+  // rotate overwrites the same r2_key/url — same mechanism cleanup uses.
+  const handleRotatePhoto = async (photo: { id: string }, isOriginal: boolean) => {
+    if (!product) return
+    setRotatingPhotoId(photo.id)
+    try {
+      // photo.id for the original slide is the synthetic `${realId}-original`
+      // (see displayPhotos above) — strip the suffix for the API call, which
+      // takes the real ProductPhoto id plus a target selector.
+      const realId = isOriginal ? photo.id.replace(/-original$/, '') : photo.id
+      await productApi.rotatePhoto(product.id, realId, isOriginal ? 'original' : 'primary')
+      setPhotoCacheBust((prev) => ({ ...prev, [photo.id]: Date.now() }))
+      setRotationLabels((prev) => {
+        const current = prev[photo.id] ?? 360
+        const next = current === 360 ? 90 : ((current + 90) as 90 | 180 | 270 | 360)
+        return { ...prev, [photo.id]: next }
+      })
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      showError(err, 'Failed to rotate photo')
+    } finally {
+      setRotatingPhotoId(null)
+    }
+  }
+
+  // Change the composited backdrop for the primary photo (null = white /
+  // auto-contrast). Same endpoint the add flow uses; the response carries the
+  // new background_image_id, and we cache-bust the primary's displayed uri
+  // since setBackground recomposites the same photo URL in place.
+  const handleSetBackground = async (backgroundId: string | null) => {
+    if (!product || backgroundSaving) return
+    setBackgroundSaving(true)
+    try {
+      const res = await productApi.setBackground(product.id, backgroundId)
+      setEditedBackgroundId(res.data.background_image_id)
+      setPhotoCacheBust((prev) => {
+        const primary = product.photos.find((p) => p.is_primary)
+        return primary ? { ...prev, [primary.id]: Date.now() } : prev
+      })
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      showError(err, 'Failed to change background')
+    } finally {
+      setBackgroundSaving(false)
     }
   }
 
@@ -1070,24 +1139,90 @@ export default function ProductDetailScreen() {
         </View>
       )}
 
-      {/* Manual crop + white-background cleanup for the currently viewed photo */}
-      {!currentPhotoIsVariant && !currentPhotoIsOriginal && displayPhotos[selectedPhotoIndex] && (
-        <AnimatedPressable
-          onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
-          disabled={cleaningPhotoId !== null}
-          className="mx-4 mt-2 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
-        >
-          {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
-            <ActivityIndicator size="small" color={primaryColor} />
-          ) : (
-            <Wand2 size={14} color={primaryColor} />
+      {/* Manual crop + white-background cleanup for the currently viewed photo,
+          plus rotate — rotate works on both the primary and the original slide,
+          cleanup only makes sense on the primary. */}
+      {displayPhotos[selectedPhotoIndex] && !currentPhotoIsVariant && (
+        <View className="mx-4 mt-2 flex-row gap-2">
+          {!currentPhotoIsOriginal && (
+            <AnimatedPressable
+              onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
+              disabled={cleaningPhotoId !== null}
+              className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
+            >
+              {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
+                <ActivityIndicator size="small" color={primaryColor} />
+              ) : (
+                <Wand2 size={14} color={primaryColor} />
+              )}
+              <Text className="text-ink-700 text-xs font-medium">
+                {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id
+                  ? 'Cleaning up...'
+                  : 'Crop & remove background'}
+              </Text>
+            </AnimatedPressable>
           )}
-          <Text className="text-ink-700 text-xs font-medium">
-            {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id
-              ? 'Cleaning up...'
-              : 'Crop & remove background'}
+          <AnimatedPressable
+            onPress={() =>
+              void handleRotatePhoto(displayPhotos[selectedPhotoIndex]!, currentPhotoIsOriginal)
+            }
+            disabled={rotatingPhotoId !== null}
+            className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
+            accessibilityLabel="Rotate photo 90 degrees"
+            accessibilityRole="button"
+          >
+            {rotatingPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <RotateCw size={14} color={primaryColor} />
+            )}
+            <Text className="text-ink-700 text-xs font-medium">
+              {rotatingPhotoId === displayPhotos[selectedPhotoIndex]?.id
+                ? 'Rotating...'
+                : rotationLabels[displayPhotos[selectedPhotoIndex]!.id]
+                  ? `Rotate (${rotationLabels[displayPhotos[selectedPhotoIndex]!.id]}°)`
+                  : 'Rotate'}
+            </Text>
+          </AnimatedPressable>
+        </View>
+      )}
+
+      {/* Post-save background picker — admin-curated backdrop library */}
+      {backgroundImages.length > 0 && (
+        <View className="mx-4 mt-3 bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            Background
           </Text>
-        </AnimatedPressable>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View className="flex-row gap-2">
+              <AnimatedPressable
+                onPress={() => void handleSetBackground(null)}
+                disabled={backgroundSaving}
+                className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${
+                  editedBackgroundId === null ? 'border-ink-600' : 'border-sand-200'
+                }`}
+              >
+                <Text className="text-[10px] text-sand-500">Auto</Text>
+              </AnimatedPressable>
+              {backgroundImages.map((bg) => (
+                <AnimatedPressable
+                  key={bg.id}
+                  onPress={() => void handleSetBackground(bg.id)}
+                  disabled={backgroundSaving}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${
+                    editedBackgroundId === bg.id ? 'border-ink-600' : 'border-sand-200'
+                  }`}
+                >
+                  <Image
+                    source={{ uri: bg.thumbnail_url ?? bg.image_url }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                </AnimatedPressable>
+              ))}
+            </View>
+          </ScrollView>
+        </View>
       )}
 
       {!product.ai_tagged && !product.ai_tag_error && (
