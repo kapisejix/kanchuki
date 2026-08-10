@@ -439,7 +439,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 
 **Sections (all built):**
 1. **Profile** — edit shop name, owner name, city, state, address line 1, GSTIN, pincode. Store logo upload with square crop + presigned URL to R2. Account delete/deactivate with "type DELETE" confirmation modal (soft-delete via `Retailer.deleted_at`).
-2. **Subscription** — view current plan, usage vs limits per resource from F-010 ("Usage" section with progress bars, color-coded at 80%/100%). Upgrade/downgrade/cancel via billing screen (`/billing`).
+2. **Subscription** — view current plan, usage vs limits per resource from F-010 ("Usage" section with progress bars, color-coded at 80%/100%). **Since 2026-08-10 (Play Billing compliance) the mobile screen is read-only**: upgrade/downgrade/cancel/add-ons moved to the web billing page `kanchuki.app/billing` (phone-OTP login). See `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`.
 3. **Team** (`apps/mobile/app/settings/staff.tsx`) — invite shop staff via phone number, list staff with role badges (owner/manager/salesperson), remove with confirmation. Reuses the existing `Staff` table.
 4. **WhatsApp** — configure separate WhatsApp business number (10-digit validation, falls back to `phone` if empty). `Retailer.whatsapp_number` stored independently.
 5. **WhatsApp Business API** — bring-your-own Meta credentials: phone number ID, permanent access token, template name/language. When configured, collection bulk-send uses it instead of one-by-one `wa.me` links. Disconnect option.
@@ -809,7 +809,7 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 - Generalized to any metered resource (uploads, AI tagging, crop, bg-removal, API calls) via F-010's `quota_addon_purchases` — planned, see Section 3 F-010
 
 ### Billing Rules
-- Payment via Razorpay (UPI, cards, netbanking) — **code complete, deferred. Launch with free trial only**
+- Payment via Razorpay (UPI, cards, netbanking) — **live on web billing `kanchuki.app/billing` since 2026-08-10**; the Android app has no in-app purchases (Play Billing compliance — subscriptions/add-ons are sold on the website, see `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`). Launch remains free-trial-first
 - Annual plans: 20% discount built in
 - 14-day free trial (Growth features), no credit card
 - Auto-renewal with advance notice

@@ -78,13 +78,15 @@ React Native/Expo apps aren't hosted on a server the way a website is. Two separ
 | 1. Google Play Console account | Register as developer (individual or org) | $25 one-time fee |
 | 2. App listing | Title, description, screenshots (min 2, phone + optional tablet), feature graphic, privacy policy URL (required — host a simple page) | Free |
 | 3. Content rating questionnaire | Fill in Play Console — determines age rating | Free |
-| 4. Data safety form | Declare what data the app collects (photos, phone number for OTP, location if used) — required, Google checks this against actual app behavior | Free |
+| 4. Data safety form | Declare what data the app collects (photos, phone number for OTP, KYC docs — **no location since 2026-08-10**). Required — Google checks this against actual app behavior | Free |
 | 5. Build production binary | EAS Build produces a signed `.aab` (Android App Bundle) | Included in EAS |
 | 6. Upload + internal testing track | Upload the `.aab`, test with a small internal group first | Free |
 | 7. Submit for review | Move to production track, submit | Free |
 | 8. Review time | Typically 1–3 days for new apps (can be longer for first submission) | — |
 
 Total hard cost: **$25 one-time**. Everything else is free/time.
+
+> **Consolidated launch checklist with exact Data Safety + content-rating answers, permissions, closed-testing steps, and the target-API deadline:** `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`
 
 ---
 

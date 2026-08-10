@@ -1099,3 +1099,13 @@ Design mirrors `background_image_id`: product-level `Product.add_shadow` boolean
 **Verified:** `db:generate` clean; `tsc --noEmit` clean across db/ai/api/mobile; API 358/358, AI 74/74 (image-compress needs >5s on this box — pre-existing), biome clean on new code. **Pushed to main, Railway auto-deploy triggered.** **Migration 048 applied 2026-08-10** (Supabase SQL Editor) — column live, deployed API verified healthy. Remaining: app-side toggle re-verify (retailer taps SHADOW in the app).
 
 **F-027 is now fully done — code, migration, and live UI all verified. Nothing left pending.**
+
+## 2026-08-10 — Play Store launch batch: web billing, privacy disclosures, location removal (commits `56357f6`, `b29b316`)
+
+Launch-readiness session. Play paperwork answers (Data Safety + content rating + closed testing + target API) consolidated in the new `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`.
+
+- **In-app billing removed (Play Billing compliance)** — `apps/mobile/app/billing.tsx` → read-only info screen (plan + "Manage my plan" → website); `billingApi` + server rails retained (commented); dead `BillingSkeleton` removed; `RECORD_AUDIO` trimmed. F-019 catalog-upload payment kept — physical on-site service, Play-exempt. Commit `56357f6`.
+- **Web billing built (Option A)** — `kanchuki.app/billing`: phone-OTP login (staff numbers rejected), current-plan card, Starter/Growth/Pro monthly/annual picker (annual savings computed live, ~17% — the hardcoded 20% label was wrong), top-up add-ons, cancel. Tokens in sessionStorage with auto-refresh on 401; same-tab checkout navigation (popup-blocker safe); `lib.ts` helpers with 5 tests. `addon-success` page repainted to current palette, stale `support@kanchuki.com` fixed. Mobile billing screen links to `${WEB_URL}/billing`. Commit `b29b316`.
+- **Privacy policy** — added KYC/Aadhaar photos, body-measurement photos, AI-provider processing, and GST-retention disclosures so it matches the Data Safety form exactly.
+- **Location removed entirely** — `ACCESS_COARSE/FINE_LOCATION`, iOS `NSLocationWhenInUseUsageDescription`, `expo-location` plugin + dependency, and the onboarding "Use current location" autofill all removed; city/state/pincode typed manually. Zero location collection → Data Safety declares no Location rows.
+- **Launch checklist doc** — `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`: exact Data Safety table (7 declared types), IARC content-rating answers (expected **12+** — unfiltered UGC; do not claim fully moderated), closed-testing steps (20 testers × 14 days), permission list (3 remaining), and the **Aug 31, 2026 target-API deadline** (API 35 OK via SDK 54; after that API 36 needs SDK 55).
