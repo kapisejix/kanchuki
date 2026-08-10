@@ -1,3 +1,4 @@
+import { fetchCheckoutEnabled } from '@/lib/checkout';
 import { notFound } from 'next/navigation';
 import { CheckoutForm } from '../../../c/[slug]/checkout/CheckoutForm';
 import { resolveStorefront } from '../../lib/resolveStorefront';
@@ -18,6 +19,7 @@ export default async function CheckoutPageRoute({ params }: Props) {
       shopName={resolved.collection.retailer.shop_name}
       retailerPhone={resolved.collection.retailer.phone}
       backHref={resolved.backHref}
+      checkoutEnabled={await fetchCheckoutEnabled(store)}
     />
   );
 }

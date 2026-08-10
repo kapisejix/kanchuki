@@ -2,13 +2,18 @@ import { HINDI_TO_ENGLISH } from '../constants/index.js'
 
 // ─── Price Formatting ─────────────────────────────────────────────
 
-/** paise → ₹ display string */
+/** paise → ₹ display string, always the full amount — never abbreviated
+ *  (₹2,100/- not ₹2.1K). Indian grouping with the trailing /- marker used
+ *  across Indian retail billing. */
 export function formatPrice(paise: number | null | undefined): string {
   if (paise == null) return '—'
   const rupees = paise / 100
-  if (rupees >= 100000) return `₹${(rupees / 100000).toFixed(1)}L`
-  if (rupees >= 1000) return `₹${(rupees / 1000).toFixed(1)}K`
-  return `₹${rupees.toLocaleString('en-IN')}`
+  const isWhole = Number.isInteger(rupees)
+  const formatted = rupees.toLocaleString('en-IN', {
+    minimumFractionDigits: isWhole ? 0 : 2,
+    maximumFractionDigits: isWhole ? 0 : 2,
+  })
+  return `₹${formatted}/-`
 }
 
 export function formatPriceRange(
@@ -17,7 +22,8 @@ export function formatPriceRange(
 ): string {
   if (!min && !max) return 'Price on request'
   if (!max || min === max) return formatPrice(min)
-  return `${formatPrice(min)} – ${formatPrice(max)}`
+  // Range: one trailing /- on the final amount reads best (₹499 – ₹699/-).
+  return `${formatPrice(min).replace(/\/-$/, '')} – ${formatPrice(max)}`
 }
 
 /** ₹ rupees → paise integer */

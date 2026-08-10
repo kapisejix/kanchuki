@@ -29,11 +29,23 @@ interface DiscoveryPhoto {
   name: string | null;
 }
 
+export interface DiscoveryCollectionProduct extends DiscoveryPhoto {
+  id: string;
+}
+
+export interface DiscoveryCollection {
+  slug: string;
+  products: DiscoveryCollectionProduct[];
+}
+
 export interface DiscoveryRetailer {
   public_slug: string | null;
   updated_at: string;
   categories: Array<{ id: string; name: string; photos?: DiscoveryPhoto[] }>;
-  collections: string[];
+  // Discovery collections are objects once the API ships per-collection
+  // products; the legacy pre-product payload returned plain slugs. The union
+  // keeps the runtime guard honest during a rolling deploy.
+  collections: Array<DiscoveryCollection | string>;
   product_photos?: DiscoveryPhoto[];
 }
 
@@ -126,15 +138,46 @@ export async function buildAllEntries(): Promise<SitemapEntry[]> {
           images: c.photos?.length ? c.photos : undefined,
         }),
       ),
-      // Collections — the links retailers share on WhatsApp.
-      ...r.collections.map(
-        (collectionSlug): SitemapEntry => ({
-          url: `${SITE_URL}/${slug}/${collectionSlug}`,
-          lastModified,
-          changeFrequency: 'daily',
-          priority: 0.6,
-        }),
-      ),
+      // Collections — the links retailers share on WhatsApp — and each
+      // collection's shared-product pages. Product entries carry the product
+      // photo as a Google image extension (those pages lead with it), so the
+      // product images on shared links get indexed by Google Images too.
+      ...r.collections.flatMap((collection): SitemapEntry[] => {
+        // Rolling-deploy tolerance: before the discovery API carried
+        // per-collection products, `collections` was an array of plain slugs.
+        // Keep emitting the collection page URL for those (product URLs
+        // appear once the API catches up) — never emit malformed /undefined
+        // URLs; a stale-but-valid sitemap beats a broken one.
+        if (typeof collection === 'string') {
+          if (collection.length === 0) return [];
+          return [
+            {
+              url: `${SITE_URL}/${slug}/${collection}`,
+              lastModified,
+              changeFrequency: 'daily',
+              priority: 0.6,
+            },
+          ];
+        }
+        if (!collection.slug) return [];
+        return [
+          {
+            url: `${SITE_URL}/${slug}/${collection.slug}`,
+            lastModified,
+            changeFrequency: 'daily',
+            priority: 0.6,
+          },
+          ...collection.products.map(
+            (p): SitemapEntry => ({
+              url: `${SITE_URL}/${slug}/${collection.slug}/product/${p.id}`,
+              lastModified,
+              changeFrequency: 'daily',
+              priority: 0.5,
+              images: [{ url: p.url, name: p.name }],
+            }),
+          ),
+        ];
+      }),
     ];
     return hub;
   });

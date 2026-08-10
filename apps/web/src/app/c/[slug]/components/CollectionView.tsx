@@ -392,7 +392,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       {/* ── Sticky Bottom Bar — 3 buttons in one row: Buy Now / Selected / Enquire ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 safe-area-inset-bottom shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
         <div className="max-w-md mx-auto px-3 py-3 flex items-center gap-2">
-          {checkoutEnabled ? (
+          {/* Buy Now only exists once the retailer connects a payment gateway
+              — no disabled placeholder for stores without checkout. */}
+          {checkoutEnabled && (
             <Link
               href={`${basePath}/cart`}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-cyan-600 hover:bg-cyan-700 text-white
@@ -402,15 +404,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               <ShoppingBag size={17} />
               <span className="text-[11px] leading-tight">Buy Now</span>
             </Link>
-          ) : (
-            <div
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-gray-100 text-gray-400
-                         font-semibold py-2.5 rounded-2xl cursor-not-allowed"
-              title="Online checkout isn't set up for this store yet — use Enquire instead"
-            >
-              <ShoppingBag size={17} />
-              <span className="text-[11px] leading-tight">Buy Now</span>
-            </div>
           )}
           <Link
             href={`${basePath}/wishlist`}

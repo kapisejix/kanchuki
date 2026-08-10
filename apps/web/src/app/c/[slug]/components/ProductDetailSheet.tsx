@@ -317,15 +317,22 @@ export function ProductDetailSheet({
     }
   }, [basePhotos.length, goTo])
 
+  // Share THIS product, not the whole collection — the link lands on the
+  // dedicated shared-product page (/{store}/{collection}/product/{id}) whose
+  // OG image is the product's own photo, so WhatsApp link previews show the
+  // product instead of a bare URL. Recipients get a "View Full Catalog" CTA
+  // from that page back into the collection.
   const handleShare = useCallback(async () => {
-    const url = window.location.href
+    const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
+    const url = `${window.location.origin}${basePath}/product/${product.id}`
     const title = product.name ?? product.category ?? 'Product'
+    const text = `Check out ${title} — ${formatPriceRange(product.price_min, product.price_max)} from ${retailer.shop_name}`
     if (navigator.share) {
-      await navigator.share({ title, url })
+      await navigator.share({ title, text, url })
     } else {
       await navigator.clipboard.writeText(url)
     }
-  }, [product.name, product.category])
+  }, [product.id, product.name, product.category, product.price_min, product.price_max, slug, store, retailer.shop_name])
 
   const handleEnquire = () => {
     if (isSold) return
@@ -719,11 +726,12 @@ export function ProductDetailSheet({
           </div>
         )}
 
-        {/* 3-button CTA row — Buy Now / Select / Enquire, replaces the old
-            stacked Add-to-Cart + Enquire full-width buttons. Always rendered
-            (matches the previous Enquire-always-visible-but-disabled pattern)
-            so the row layout stays consistent for sold-out products too. */}
+        {/* CTA row — Buy Now / Select / Enquire. Buy Now is hidden entirely
+            while the store has no connected payment gateway (checkoutEnabled
+            false); sold/reserved items still show their status label as
+            informational. Select + Enquire stretch to fill the row. */}
         <div className="px-4 pt-2 flex items-stretch gap-2">
+          {(isSold || isReserved || checkoutEnabled) && (
           <button
             onClick={() => {
               if (isSold || isReserved || !checkoutEnabled) return
@@ -742,7 +750,6 @@ export function ProductDetailSheet({
               router.push(`${store ? `/${store}/${slug}` : `/c/${slug}`}/cart`)
             }}
             disabled={isSold || isReserved || !checkoutEnabled}
-            title={!checkoutEnabled ? "Online checkout isn't set up for this store yet" : undefined}
             className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               isSold || isReserved || !checkoutEnabled
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -752,6 +759,7 @@ export function ProductDetailSheet({
             <ShoppingCart size={18} />
             {isSold ? 'Sold Out' : isReserved ? 'Reserved' : 'Buy Now'}
           </button>
+          )}
           <button
             onClick={() => !isSold && onFavorite(product.id)}
             disabled={isSold}

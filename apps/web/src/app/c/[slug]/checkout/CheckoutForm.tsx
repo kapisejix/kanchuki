@@ -1,92 +1,119 @@
-'use client'
+'use client';
 
-import { useState, useEffect, useCallback } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
-import { ArrowLeft, ShoppingBag, CreditCard, Loader2, MapPin, Phone, User } from 'lucide-react'
-import { formatPriceRange } from '@kanchuki/shared'
-import { type CartMap, loadCart, cartTotal, saveCart } from '../lib/cart'
-import { saveOrderPhone } from '../lib/order'
+import { buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
+import {
+  ArrowLeft,
+  CreditCard,
+  Loader2,
+  MapPin,
+  MessageCircle,
+  Phone,
+  ShoppingBag,
+  User,
+} from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
+import { type CartMap, cartTotal, loadCart, saveCart } from '../lib/cart';
+import { saveOrderPhone } from '../lib/order';
 
 declare global {
   interface Window {
-    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance
+    Razorpay?: new (options: RazorpayOptions) => RazorpayInstance;
   }
 }
 
 interface RazorpayOptions {
-  key: string
-  amount: number
-  currency: string
-  name: string
-  description: string
-  order_id: string
-  prefill: { name: string; contact: string }
-  theme: { color: string }
-  handler: (response: { razorpay_payment_id: string; razorpay_order_id: string; razorpay_signature: string }) => void
-  modal: { ondismiss: () => void }
+  key: string;
+  amount: number;
+  currency: string;
+  name: string;
+  description: string;
+  order_id: string;
+  prefill: { name: string; contact: string };
+  theme: { color: string };
+  handler: (response: {
+    razorpay_payment_id: string;
+    razorpay_order_id: string;
+    razorpay_signature: string;
+  }) => void;
+  modal: { ondismiss: () => void };
 }
 
 interface RazorpayInstance {
-  open: () => void
+  open: () => void;
 }
 
 interface Props {
-  slug: string
+  slug: string;
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
-  store?: string | null
-  shopName: string
-  retailerPhone: string
+  store?: string | null;
+  shopName: string;
+  retailerPhone: string;
   // Correct "back to catalog" target for this listing (category / All
   // Products browse pages pass their real page URL — the pseudo-slug has no
   // page behind it). Defaults to the standard collection basePath.
-  backHref?: string
+  backHref?: string;
+  // Whether the store's payment gateway is currently active. When false the
+  // payment form is replaced by a "checkout paused" card with a WhatsApp
+  // fallback — a store can disable its gateway after items are already in a
+  // customer's cart.
+  checkoutEnabled: boolean;
 }
 
-export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPhone, backHref }: Props) {
-  const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
-  const browseHref = backHref ?? basePath
-  const router = useRouter()
-  const [cart, setCart] = useState<CartMap | null>(null)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [addressLine1, setAddressLine1] = useState('')
-  const [addressLine2, setAddressLine2] = useState('')
-  const [city, setCity] = useState('')
-  const [state, setState] = useState('')
-  const [pincode, setPincode] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [scriptLoaded, setScriptLoaded] = useState(false)
+export function CheckoutForm({
+  slug,
+  store,
+  shopName,
+  retailerPhone,
+  backHref,
+  checkoutEnabled,
+}: Props) {
+  const basePath = store ? `/${store}/${slug}` : `/c/${slug}`;
+  const browseHref = backHref ?? basePath;
+  const router = useRouter();
+  const [cart, setCart] = useState<CartMap | null>(null);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [addressLine1, setAddressLine1] = useState('');
+  const [addressLine2, setAddressLine2] = useState('');
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [pincode, setPincode] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [scriptLoaded, setScriptLoaded] = useState(false);
 
   useEffect(() => {
-    setCart(loadCart(slug))
+    setCart(loadCart(slug));
+    // Don't load the Razorpay SDK at all for a store that can't check out.
+    if (!checkoutEnabled) return;
     if (!document.getElementById('razorpay-script')) {
-      const script = document.createElement('script')
-      script.id = 'razorpay-script'
-      script.src = 'https://checkout.razorpay.com/v1/checkout.js'
-      script.async = true
-      script.onload = () => setScriptLoaded(true)
-      document.body.appendChild(script)
+      const script = document.createElement('script');
+      script.id = 'razorpay-script';
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => setScriptLoaded(true);
+      document.body.appendChild(script);
     } else {
-      setScriptLoaded(true)
+      setScriptLoaded(true);
     }
-  }, [slug])
+  }, [slug, checkoutEnabled]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
-      e.preventDefault()
-      if (!cart || cart.size === 0) return
+      e.preventDefault();
+      if (!cart || cart.size === 0 || !checkoutEnabled) return;
 
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       try {
         const items = Array.from(cart.values()).map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
-        }))
+        }));
 
         // Goes through the web proxy — a relative /v1/... fetch would 404 on
         // the web origin (no /v1 routes/rewrites) and break order creation.
@@ -105,17 +132,17 @@ export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPh
               pincode,
             },
           }),
-        })
+        });
 
-        const orderJson = await orderRes.json()
+        const orderJson = await orderRes.json();
         if (!orderRes.ok) {
-          throw new Error(orderJson.error?.message ?? 'Failed to create order')
+          throw new Error(orderJson.error?.message ?? 'Failed to create order');
         }
 
-        const { data: orderData } = orderJson
+        const { data: orderData } = orderJson;
 
         if (!window.Razorpay) {
-          throw new Error('Razorpay SDK not loaded')
+          throw new Error('Razorpay SDK not loaded');
         }
 
         const razorpay = new window.Razorpay({
@@ -137,39 +164,57 @@ export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPh
                   razorpay_payment_id: response.razorpay_payment_id,
                   razorpay_signature: response.razorpay_signature,
                 }),
-              })
+              });
             } catch {
               // webhook is source of truth
             }
             // SECURITY §11.10: the order page needs the phone as second factor
             // to look the order up — stash in sessionStorage (never in the URL).
-            saveOrderPhone(slug, phone)
-            saveCart(slug, new Map())
-            router.push(`${basePath}/order/${orderData.order_id}`)
+            saveOrderPhone(slug, phone);
+            saveCart(slug, new Map());
+            router.push(`${basePath}/order/${orderData.order_id}`);
           },
           modal: { ondismiss: () => setLoading(false) },
-        })
+        });
 
-        razorpay.open()
+        razorpay.open();
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Something went wrong')
-        setLoading(false)
+        setError(err instanceof Error ? err.message : 'Something went wrong');
+        setLoading(false);
       }
     },
-    [cart, name, phone, addressLine1, addressLine2, city, state, pincode, shopName, slug, basePath, router],
-  )
+    [
+      cart,
+      name,
+      phone,
+      addressLine1,
+      addressLine2,
+      city,
+      state,
+      pincode,
+      shopName,
+      slug,
+      basePath,
+      router,
+      checkoutEnabled,
+    ],
+  );
 
-  if (cart === null) return null
+  if (cart === null) return null;
 
-  const items = Array.from(cart.values())
-  const total = cartTotal(cart)
+  const items = Array.from(cart.values());
+  const total = cartTotal(cart);
 
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 font-sans">
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-            <Link href={browseHref} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back">
+            <Link
+              href={browseHref}
+              className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
+              aria-label="Back"
+            >
               <ArrowLeft size={20} />
             </Link>
             <h1 className="font-display text-lg font-bold text-gray-900">Checkout</h1>
@@ -180,19 +225,35 @@ export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPh
             <ShoppingBag size={26} className="text-cyan-400" />
           </div>
           <p className="text-sm font-medium text-gray-700">Your cart is empty</p>
-          <Link href={browseHref} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">
+          <Link
+            href={browseHref}
+            className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors"
+          >
             Browse catalog
           </Link>
         </main>
       </div>
-    )
+    );
   }
+
+  // WhatsApp fallback for the unavailable-checkout state — lets the customer
+  // enquire about exactly what's in their cart.
+  const waLink = buildWhatsAppEnquiryLink(
+    retailerPhone,
+    `Namaste ${shopName}! I'm interested in: ${items
+      .map((i) => i.name ?? i.category ?? 'an item')
+      .join(', ')}. Please let me know if these are available.`,
+  );
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link href={`${basePath}/cart`} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back to cart">
+          <Link
+            href={`${basePath}/cart`}
+            className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
+            aria-label="Back to cart"
+          >
             <ArrowLeft size={20} />
           </Link>
           <h1 className="font-display text-lg font-bold text-gray-900">Checkout</h1>
@@ -210,78 +271,217 @@ export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPh
               <div key={item.id} className="flex items-center gap-3">
                 <div className="relative w-12 h-14 rounded-lg overflow-hidden bg-gray-50 flex-shrink-0">
                   {item.primary_photo_url && (
-                    <Image src={item.primary_photo_url} alt={item.name ?? ''} fill sizes="48px" className="object-cover" />
+                    <Image
+                      src={item.primary_photo_url}
+                      alt={item.name ?? ''}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 truncate">{item.name ?? item.category}</p>
-                  <p className="text-xs font-bold tabular-nums text-gray-900 mt-0.5">{formatPriceRange(item.price_min, null)}</p>
+                  <p className="text-xs font-medium text-gray-900 truncate">
+                    {item.name ?? item.category}
+                  </p>
+                  <p className="text-xs font-bold tabular-nums text-gray-900 mt-0.5">
+                    {formatPriceRange(item.price_min, null)}
+                  </p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-4 border border-gray-100">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <MapPin size={16} className="text-cyan-600" />
-            Delivery Address
-          </h2>
+        {checkoutEnabled ? (
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <MapPin size={16} className="text-cyan-600" />
+              Delivery Address
+            </h2>
 
-          {error && (
-            <div className="mb-3 bg-red-50 border border-red-100 rounded-xl p-3">
-              <p className="text-xs font-medium text-red-700">{error}</p>
-            </div>
-          )}
+            {error && (
+              <div className="mb-3 bg-red-50 border border-red-100 rounded-xl p-3">
+                <p className="text-xs font-medium text-red-700">{error}</p>
+              </div>
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1"><User size={12} /> Full Name</label>
-              <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={200} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1"><Phone size={12} /> Phone Number</label>
-              <input type="tel" required value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={15} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Address Line 1</label>
-              <input type="text" required value={addressLine1} onChange={(e) => setAddressLine1(e.target.value)} placeholder="House number, street, area" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={500} />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Address Line 2 (optional)</label>
-              <input type="text" value={addressLine2} onChange={(e) => setAddressLine2(e.target.value)} placeholder="Landmark, building name" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={500} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
+            <form onSubmit={handleSubmit} className="space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">City</label>
-                <input type="text" required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={100} />
+                <label
+                  htmlFor="co-name"
+                  className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1"
+                >
+                  <User size={12} /> Full Name
+                </label>
+                <input
+                  id="co-name"
+                  type="text"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                  maxLength={200}
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">State</label>
-                <input type="text" required value={state} onChange={(e) => setState(e.target.value)} placeholder="State" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={100} />
+                <label
+                  htmlFor="co-phone"
+                  className="block text-xs font-medium text-gray-500 mb-1 flex items-center gap-1"
+                >
+                  <Phone size={12} /> Phone Number
+                </label>
+                <input
+                  id="co-phone"
+                  type="tel"
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+91 98765 43210"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                  maxLength={15}
+                />
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Pincode</label>
-              <input type="text" required value={pincode} onChange={(e) => setPincode(e.target.value)} placeholder="6-digit pincode" className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50" maxLength={10} />
-            </div>
+              <div>
+                <label
+                  htmlFor="co-address1"
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Address Line 1
+                </label>
+                <input
+                  id="co-address1"
+                  type="text"
+                  required
+                  value={addressLine1}
+                  onChange={(e) => setAddressLine1(e.target.value)}
+                  placeholder="House number, street, area"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                  maxLength={500}
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="co-address2"
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Address Line 2 (optional)
+                </label>
+                <input
+                  id="co-address2"
+                  type="text"
+                  value={addressLine2}
+                  onChange={(e) => setAddressLine2(e.target.value)}
+                  placeholder="Landmark, building name"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                  maxLength={500}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="co-city" className="block text-xs font-medium text-gray-500 mb-1">
+                    City
+                  </label>
+                  <input
+                    id="co-city"
+                    type="text"
+                    required
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="City"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                    maxLength={100}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="co-state"
+                    className="block text-xs font-medium text-gray-500 mb-1"
+                  >
+                    State
+                  </label>
+                  <input
+                    id="co-state"
+                    type="text"
+                    required
+                    value={state}
+                    onChange={(e) => setState(e.target.value)}
+                    placeholder="State"
+                    className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                    maxLength={100}
+                  />
+                </div>
+              </div>
+              <div>
+                <label
+                  htmlFor="co-pincode"
+                  className="block text-xs font-medium text-gray-500 mb-1"
+                >
+                  Pincode
+                </label>
+                <input
+                  id="co-pincode"
+                  type="text"
+                  required
+                  value={pincode}
+                  onChange={(e) => setPincode(e.target.value)}
+                  placeholder="6-digit pincode"
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-gray-50"
+                  maxLength={10}
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading || !scriptLoaded || items.length === 0}
-              className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-soft-lg transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+              <button
+                type="submit"
+                disabled={loading || !scriptLoaded || items.length === 0}
+                className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-soft-lg transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 size={20} className="animate-spin" /> Processing...
+                  </>
+                ) : (
+                  <>
+                    <CreditCard size={20} /> Pay {formatPriceRange(total, null)}
+                  </>
+                )}
+              </button>
+              <p className="text-center text-xs text-gray-400">
+                Your payment is processed securely through Razorpay. {shopName} receives the funds
+                directly.
+              </p>
+            </form>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-4 border border-gray-100">
+            <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center mb-3">
+              <CreditCard size={22} className="text-amber-500" />
+            </div>
+            <h2 className="text-sm font-semibold text-gray-900">Online checkout is unavailable</h2>
+            <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
+              {shopName} isn't taking online payments right now. You can still enquire about the
+              items in your cart on WhatsApp.
+            </p>
+            <a
+              href={waLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-4 w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3.5 rounded-2xl flex items-center justify-center gap-2 shadow-soft transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
             >
-              {loading ? (
-                <><Loader2 size={20} className="animate-spin" /> Processing...</>
-              ) : (
-                <><CreditCard size={20} /> Pay {formatPriceRange(total, null)}</>
-              )}
-            </button>
-            <p className="text-center text-xs text-gray-400">Your payment is processed securely through Razorpay. {shopName} receives the funds directly.</p>
-          </form>
-        </div>
+              <MessageCircle size={18} />
+              Enquire on WhatsApp
+            </a>
+            <Link
+              href={browseHref}
+              className="mt-3 w-full inline-block text-center text-sm font-semibold text-cyan-700 bg-cyan-50 hover:bg-cyan-100 py-3 rounded-2xl transition-colors"
+            >
+              Browse catalog
+            </Link>
+          </div>
+        )}
       </main>
       <div className="h-8" />
     </div>
-  )
+  );
 }

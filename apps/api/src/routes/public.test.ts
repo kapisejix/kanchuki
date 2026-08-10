@@ -91,7 +91,20 @@ describe('GET /public/retailers (sitemap discovery)', () => {
           },
         ],
         products: [{ name: 'Kurti', photos: [{ url: 'https://img.test/kurti-1.jpg' }] }],
-        collections: [{ slug: 'summer-collection' }],
+        collections: [
+          {
+            slug: 'summer-collection',
+            products: [
+              {
+                product: {
+                  id: 'prod_1',
+                  name: 'Kurti',
+                  photos: [{ url: 'https://img.test/kurti-1.jpg' }],
+                },
+              },
+            ],
+          },
+        ],
       },
     ]);
 
@@ -112,7 +125,12 @@ describe('GET /public/retailers (sitemap discovery)', () => {
           photos: [{ url: 'https://img.test/kurti-1.jpg', name: 'Kurti' }],
         },
       ],
-      collections: ['summer-collection'],
+      collections: [
+        {
+          slug: 'summer-collection',
+          products: [{ id: 'prod_1', name: 'Kurti', url: 'https://img.test/kurti-1.jpg' }],
+        },
+      ],
       product_photos: [{ url: 'https://img.test/kurti-1.jpg', name: 'Kurti' }],
     });
     expect(body.data[0].updated_at).toBe('2026-08-10T10:00:00.000Z');
@@ -126,6 +144,14 @@ describe('GET /public/retailers (sitemap discovery)', () => {
       { is_primary: 'desc' },
       { sort_order: 'asc' },
     ]);
+
+    // Collection sub-query carries product IDs + primary photos for the
+    // shared-product sitemap URLs (/{store}/{collection}/product/{id}).
+    const collectionProducts =
+      mockRetailerFindMany.mock.calls[0]?.[0]?.select?.collections?.select?.products;
+    expect(collectionProducts.where).toEqual({ product: { deleted_at: null } });
+    expect(collectionProducts.take).toBeLessThanOrEqual(200);
+    expect(collectionProducts.select.product.select.photos.take).toBe(1);
 
     // Discovery query filters to indexable stores: has a public_slug, not
     // suspended/deleted, has live products. Deliberately NO onboarding gate —

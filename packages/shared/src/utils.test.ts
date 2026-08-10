@@ -1,5 +1,45 @@
 import { describe, expect, it } from 'vitest';
-import { INDIAN_MOBILE_REGEX, isValidIndianPhone, normalizeIndianPhone } from './utils/index.js';
+import { formatPrice, formatPriceRange, INDIAN_MOBILE_REGEX, isValidIndianPhone, normalizeIndianPhone } from './utils/index.js';
+
+describe('formatPrice', () => {
+  it('formats whole rupees with Indian grouping and the /- marker', () => {
+    expect(formatPrice(210000)).toBe('₹2,100/-');
+    expect(formatPrice(49900)).toBe('₹499/-');
+    expect(formatPrice(129900)).toBe('₹1,299/-');
+  });
+
+  it('never abbreviates large amounts (full lakh/crore figure)', () => {
+    expect(formatPrice(15000000)).toBe('₹1,50,000/-');
+    expect(formatPrice(210000000)).toBe('₹21,00,000/-');
+  });
+
+  it('shows paise when the amount is not a whole rupee', () => {
+    expect(formatPrice(123450)).toBe('₹1,234.50/-');
+    expect(formatPrice(5)).toBe('₹0.05/-');
+  });
+
+  it('returns an em dash for null/undefined', () => {
+    expect(formatPrice(null)).toBe('—');
+    expect(formatPrice(undefined)).toBe('—');
+  });
+});
+
+describe('formatPriceRange', () => {
+  it('renders a single price when min and max are equal or max is absent', () => {
+    expect(formatPriceRange(210000, 210000)).toBe('₹2,100/-');
+    expect(formatPriceRange(210000, null)).toBe('₹2,100/-');
+  });
+
+  it('renders a range with one trailing /- on the final amount', () => {
+    expect(formatPriceRange(49900, 69900)).toBe('₹499 – ₹699/-');
+    expect(formatPriceRange(129900, 159900)).toBe('₹1,299 – ₹1,599/-');
+  });
+
+  it('returns "Price on request" when no price is set', () => {
+    expect(formatPriceRange(null, null)).toBe('Price on request');
+    expect(formatPriceRange(undefined, undefined)).toBe('Price on request');
+  });
+});
 
 describe('isValidIndianPhone', () => {
   it('accepts valid 10-digit Indian mobile numbers starting 6–9', () => {
