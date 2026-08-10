@@ -83,7 +83,14 @@ describe('GET /public/retailers (sitemap discovery)', () => {
         shop_name: 'Test Shop',
         city: 'Test City',
         updated_at: new Date('2026-08-10T10:00:00Z'),
-        product_categories: [{ id: 'cat_1', name: 'Kurtis' }],
+        product_categories: [
+          {
+            id: 'cat_1',
+            name: 'Kurtis',
+            products: [{ name: 'Kurti', photos: [{ url: 'https://img.test/kurti-1.jpg' }] }],
+          },
+        ],
+        products: [{ name: 'Kurti', photos: [{ url: 'https://img.test/kurti-1.jpg' }] }],
         collections: [{ slug: 'summer-collection' }],
       },
     ]);
@@ -98,10 +105,27 @@ describe('GET /public/retailers (sitemap discovery)', () => {
       public_slug: 'test-shop-ab12',
       shop_name: 'Test Shop',
       city: 'Test City',
-      categories: [{ id: 'cat_1', name: 'Kurtis' }],
+      categories: [
+        {
+          id: 'cat_1',
+          name: 'Kurtis',
+          photos: [{ url: 'https://img.test/kurti-1.jpg', name: 'Kurti' }],
+        },
+      ],
       collections: ['summer-collection'],
+      product_photos: [{ url: 'https://img.test/kurti-1.jpg', name: 'Kurti' }],
     });
     expect(body.data[0].updated_at).toBe('2026-08-10T10:00:00.000Z');
+
+    // Photo sub-queries take only the primary photo per product (capped).
+    const categoryProducts =
+      mockRetailerFindMany.mock.calls[0]?.[0]?.select?.product_categories?.select?.products;
+    expect(categoryProducts.where).toEqual({ deleted_at: null });
+    expect(categoryProducts.take).toBeLessThanOrEqual(200);
+    expect(categoryProducts.select.photos.orderBy).toEqual([
+      { is_primary: 'desc' },
+      { sort_order: 'asc' },
+    ]);
 
     // Discovery query filters to indexable stores: has a public_slug, not
     // suspended/deleted, has live products. Deliberately NO onboarding gate —

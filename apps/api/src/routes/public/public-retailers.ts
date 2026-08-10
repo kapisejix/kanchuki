@@ -20,10 +20,18 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
   // indexable storefront URLs — categories and active collections — so the
   // web sitemap can enumerate every store with one request. Categories mirror
   // the storefront categories page (only those with live products);
-  // collections mirror the storefront (ACTIVE, not deleted). No
+  // collections mirror the storefront (ACTIVE, not deleted). Each category
+  // also carries its product photos and the store carries a store-wide photo
+  // list — Google image-sitemap extensions so the product images on category
+  // and All Products pages get indexed (see app/sitemap.ts). No
   // onboarding_completed gate: the QR slug can exist before onboarding wraps
   // (POST /me/qr-slug is independent of the onboarding patch), and the
   // storefront itself never gates on it — a live store must not be excluded.
+  //
+  // Photo caps: Google allows up to 1,000 images per URL block, but capping
+  // well below that keeps the payload small and the sitemap XML well under
+  // the 50MB-per-file limit even at the 10,000-URL chunk size.
+  const MAX_PHOTOS_PER_PAGE = 200;
   server.get('/retailers', async (request) => {
     return withPublicCache(request.url, async () => {
       const retailers = await prisma.retailer.findMany({
@@ -41,8 +49,41 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
           updated_at: true,
           product_categories: {
             where: { products: { some: { deleted_at: null, status: 'AVAILABLE' } } },
-            select: { id: true, name: true },
+            select: {
+              id: true,
+              name: true,
+              // Primary photo of each live product in the category — the
+              // images that actually render on the category page. Product name
+              // becomes the Google image <image:title>.
+              products: {
+                where: { deleted_at: null },
+                select: {
+                  name: true,
+                  photos: {
+                    orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }],
+                    take: 1,
+                    select: { url: true },
+                  },
+                },
+                orderBy: { created_at: 'desc' },
+                take: MAX_PHOTOS_PER_PAGE,
+              },
+            },
             orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+          },
+          // Store-wide product photos — the images on the All Products page.
+          products: {
+            where: { deleted_at: null },
+            select: {
+              name: true,
+              photos: {
+                orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }],
+                take: 1,
+                select: { url: true },
+              },
+            },
+            orderBy: { created_at: 'desc' },
+            take: MAX_PHOTOS_PER_PAGE,
           },
           collections: {
             where: { status: 'ACTIVE', deleted_at: null },
@@ -62,8 +103,17 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
             shop_name: r.shop_name,
             city: r.city,
             updated_at: r.updated_at.toISOString(),
-            categories: r.product_categories,
+            categories: r.product_categories.map((c) => ({
+              id: c.id,
+              name: c.name,
+              photos: c.products.flatMap((p) =>
+                p.photos[0] ? [{ url: p.photos[0].url, name: p.name }] : [],
+              ),
+            })),
             collections: r.collections.map((c) => c.slug),
+            product_photos: r.products.flatMap((p) =>
+              p.photos[0] ? [{ url: p.photos[0].url, name: p.name }] : [],
+            ),
           })),
       };
     });
