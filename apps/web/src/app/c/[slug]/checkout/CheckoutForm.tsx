@@ -38,10 +38,15 @@ interface Props {
   store?: string | null
   shopName: string
   retailerPhone: string
+  // Correct "back to catalog" target for this listing (category / All
+  // Products browse pages pass their real page URL — the pseudo-slug has no
+  // page behind it). Defaults to the standard collection basePath.
+  backHref?: string
 }
 
-export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPhone }: Props) {
+export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPhone, backHref }: Props) {
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
+  const browseHref = backHref ?? basePath
   const router = useRouter()
   const [cart, setCart] = useState<CartMap | null>(null)
   const [name, setName] = useState('')
@@ -164,7 +169,7 @@ export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPh
       <div className="min-h-screen bg-gray-50 font-sans">
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-            <Link href={basePath} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back">
+            <Link href={browseHref} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back">
               <ArrowLeft size={20} />
             </Link>
             <h1 className="font-display text-lg font-bold text-gray-900">Checkout</h1>
@@ -175,7 +180,7 @@ export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPh
             <ShoppingBag size={26} className="text-cyan-400" />
           </div>
           <p className="text-sm font-medium text-gray-700">Your cart is empty</p>
-          <Link href={basePath} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">
+          <Link href={browseHref} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">
             Browse catalog
           </Link>
         </main>

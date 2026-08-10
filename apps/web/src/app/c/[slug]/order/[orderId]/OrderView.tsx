@@ -11,6 +11,10 @@ interface Props {
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
   store?: string | null
   orderId: string
+  // Correct "back to catalog" target for this listing (category / All
+  // Products browse pages pass their real page URL — the pseudo-slug has no
+  // page behind it). Defaults to the standard collection basePath.
+  backHref?: string
 }
 
 interface OrderData {
@@ -30,8 +34,9 @@ interface OrderData {
   }>
 }
 
-export function OrderView({ slug, store, orderId }: Props) {
+export function OrderView({ slug, store, orderId, backHref }: Props) {
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
+  const browseHref = backHref ?? basePath
   const [order, setOrder] = useState<OrderData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -93,13 +98,13 @@ export function OrderView({ slug, store, orderId }: Props) {
       <div className="min-h-screen bg-gray-50 font-sans">
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-            <Link href={basePath} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back"><ArrowLeft size={20} /></Link>
+            <Link href={browseHref} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back"><ArrowLeft size={20} /></Link>
             <h1 className="font-display text-lg font-bold text-gray-900">Order Status</h1>
           </div>
         </header>
         <main className="max-w-md mx-auto px-3 py-20 text-center">
           <p className="text-sm font-medium text-gray-700">{error ?? 'Order not found'}</p>
-          <Link href={basePath} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">Back to catalog</Link>
+          <Link href={browseHref} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">Back to catalog</Link>
         </main>
       </div>
     )
@@ -112,7 +117,7 @@ export function OrderView({ slug, store, orderId }: Props) {
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link href={basePath} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back to catalog"><ArrowLeft size={20} /></Link>
+          <Link href={browseHref} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back to catalog"><ArrowLeft size={20} /></Link>
           <h1 className="font-display text-lg font-bold text-gray-900">Order Confirmed</h1>
         </div>
       </header>
@@ -173,7 +178,7 @@ export function OrderView({ slug, store, orderId }: Props) {
           </ul>
         </div>
 
-        <Link href={basePath} className="block w-full text-center bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-4 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2">
+        <Link href={browseHref} className="block w-full text-center bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-4 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2">
           Continue Shopping
         </Link>
       </main>

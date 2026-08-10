@@ -13,10 +13,15 @@ interface Props {
   slug: string
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
   store?: string | null
+  // Correct "back to catalog" target for this listing (category / All
+  // Products browse pages pass their real page URL — the pseudo-slug has no
+  // page behind it). Defaults to the standard collection basePath.
+  backHref?: string
 }
 
-export function WishlistView({ collection, slug, store }: Props) {
+export function WishlistView({ collection, slug, store, backHref }: Props) {
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
+  const browseHref = backHref ?? basePath
   const [savedMap, setSavedMap] = useState<Map<string, WishlistItem> | null>(null)
 
   useEffect(() => {
@@ -32,7 +37,7 @@ export function WishlistView({ collection, slug, store }: Props) {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link
-            href={basePath}
+            href={browseHref}
             className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
             aria-label="Back to catalog"
           >
@@ -55,7 +60,7 @@ export function WishlistView({ collection, slug, store }: Props) {
               Tap the heart on any product to add it here.
             </p>
             <Link
-              href={basePath}
+              href={browseHref}
               className="inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors"
             >
               Browse catalog

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import { CheckoutForm } from '../../../c/[slug]/checkout/CheckoutForm';
-import { fetchCollection } from '../../../c/[slug]/lib/fetchCollection';
+import { resolveStorefront } from '../../lib/resolveStorefront';
 
 interface Props {
   params: Promise<{ store: string; collection: string }>;
@@ -8,15 +8,16 @@ interface Props {
 
 export default async function CheckoutPageRoute({ params }: Props) {
   const { store, collection } = await params;
-  const data = await fetchCollection(collection);
-  if (!data) notFound();
+  const resolved = await resolveStorefront(store, collection);
+  if (!resolved) notFound();
 
   return (
     <CheckoutForm
-      slug={collection}
+      slug={resolved.key}
       store={store}
-      shopName={data.retailer.shop_name}
-      retailerPhone={data.retailer.phone}
+      shopName={resolved.collection.retailer.shop_name}
+      retailerPhone={resolved.collection.retailer.phone}
+      backHref={resolved.backHref}
     />
   );
 }

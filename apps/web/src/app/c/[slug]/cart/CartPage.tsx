@@ -13,10 +13,15 @@ interface Props {
   store?: string | null
   shopName: string
   checkoutEnabled: boolean
+  // Correct "back to catalog" target for this listing (category / All
+  // Products browse pages pass their real page URL — the pseudo-slug has no
+  // page behind it). Defaults to the standard collection basePath.
+  backHref?: string
 }
 
-export function CartPage({ slug, store, shopName, checkoutEnabled }: Props) {
+export function CartPage({ slug, store, shopName, checkoutEnabled, backHref }: Props) {
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
+  const browseHref = backHref ?? basePath
   const [cart, setCart] = useState<CartMap | null>(null)
 
   useEffect(() => {
@@ -56,7 +61,7 @@ export function CartPage({ slug, store, shopName, checkoutEnabled }: Props) {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link
-            href={basePath}
+            href={browseHref}
             className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
             aria-label="Back to catalog"
           >
@@ -85,7 +90,7 @@ export function CartPage({ slug, store, shopName, checkoutEnabled }: Props) {
             <p className="text-sm font-medium text-gray-700 mb-1">Your cart is empty</p>
             <p className="text-xs text-gray-400 mb-4">Add products from the collection to start checkout.</p>
             <Link
-              href={basePath}
+              href={browseHref}
               className="inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors"
             >
               Browse catalog
@@ -155,7 +160,7 @@ export function CartPage({ slug, store, shopName, checkoutEnabled }: Props) {
               <div className="mt-4 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
                 <p className="text-sm text-amber-700 font-medium">{shopName} does not accept online payments yet.</p>
                 <p className="text-xs text-amber-600 mt-1">Enquire via WhatsApp to place an order.</p>
-                <Link href={basePath} className="mt-3 inline-block text-sm font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-4 py-2 rounded-full transition-colors">
+                <Link href={browseHref} className="mt-3 inline-block text-sm font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-4 py-2 rounded-full transition-colors">
                   Back to catalog
                 </Link>
               </div>
