@@ -62,7 +62,7 @@ export default function BillingScreen() {
           </Text>
         </View>
 
-        {/* Coming soon — billing moves to the website */}
+        {/* Plans are managed on the website (Play Store compliance) */}
         <View className="bg-white rounded-2xl p-5 border border-sand-100">
           <View
             className="w-12 h-12 rounded-2xl items-center justify-center mb-3"
@@ -70,17 +70,18 @@ export default function BillingScreen() {
           >
             <Globe size={22} color={primaryColor} />
           </View>
-          <Text className="text-base font-bold text-sand-900">Manage plans on the website</Text>
+          <Text className="text-base font-bold text-sand-900">Manage plans on kanchuki.app</Text>
           <Text className="text-xs text-sand-500 leading-relaxed mt-1.5">
-            Plan upgrades, add-ons and billing will soon be available on the Kanchuki website. Until
-            then, your free trial continues and nothing changes about how you use the app.
+            Plans, add-ons and billing are managed on the Kanchuki website. Sign in with your
+            store&apos;s phone number to upgrade your plan, switch billing period, or buy extra
+            units.
           </Text>
 
           <AnimatedPressable
-            onPress={() => void Linking.openURL(WEB_URL)}
+            onPress={() => void Linking.openURL(`${WEB_URL}/billing`)}
             className="mt-4 bg-ink-600 py-3.5 rounded-2xl items-center"
           >
-            <Text className="text-white font-semibold text-sm">Visit kanchuki.app</Text>
+            <Text className="text-white font-semibold text-sm">Manage my plan</Text>
           </AnimatedPressable>
 
           <AnimatedPressable

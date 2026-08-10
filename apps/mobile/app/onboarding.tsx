@@ -1,10 +1,8 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
-import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   BackHandler,
@@ -252,8 +250,7 @@ function Field({
 
 // White field + light outer border line, over the dark body (shadow applied
 // by the Field wrapper).
-const inputClass =
-  'bg-white border border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900';
+const inputClass = 'bg-white border border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900';
 
 // ─── Main Screen ──────────────────────────────────────────────────
 export default function OnboardingScreen() {
@@ -281,36 +278,8 @@ export default function OnboardingScreen() {
   const [district, setDistrict] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
-  const [locating, setLocating] = useState(false);
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
-
-  const handleUseCurrentLocation = async () => {
-    if (locating) return;
-    setLocating(true);
-    try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Location access is needed to auto-fill your address.');
-        return;
-      }
-      const position = await Location.getCurrentPositionAsync({});
-      const [place] = await Location.reverseGeocodeAsync({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-      if (place) {
-        if (place.city) setCity(place.city);
-        if (place.district || place.subregion) setDistrict(place.district ?? place.subregion ?? '');
-        if (place.region) setState(place.region);
-        if (place.postalCode) setPincode(place.postalCode);
-      }
-    } catch {
-      Alert.alert('Error', 'Could not detect your location. Please enter it manually.');
-    } finally {
-      setLocating(false);
-    }
-  };
 
   const canProceed = useCallback((): boolean => {
     if (step === 1) return shopName.trim().length >= 2;
@@ -573,22 +542,6 @@ export default function OnboardingScreen() {
               Customers use this to find your store
             </Text>
 
-            <AnimatedPressable
-              onPress={() => void handleUseCurrentLocation()}
-              disabled={locating}
-              className="mt-5 flex-row items-center justify-center gap-2 bg-white border border-sand-200 rounded-2xl px-4 py-3.5"
-              style={fieldShadow}
-            >
-              {locating ? (
-                <ActivityIndicator size="small" color={colors.ink[600]} />
-              ) : (
-                <Text className="text-ink-700 text-sm font-semibold">📍 Use current location</Text>
-              )}
-            </AnimatedPressable>
-            <Text className="text-xs text-sand-300 mt-2 px-1">
-              Autofill isn't always precise — check and correct the fields below before continuing.
-            </Text>
-
             <Field label="Shop address" required>
               <TextInput
                 value={shopAddress}
@@ -828,30 +781,30 @@ export default function OnboardingScreen() {
         }}
       >
         <View className="flex-1 bg-ink-800 rounded-t-3xl overflow-hidden">
-        {/* Content with animated transitions */}
-        <Animated.View
-          className="flex-1 px-6 pt-6"
-          style={{
-            opacity: fadeAnim,
-            transform: [
-              {
-                translateX: slideAnim.interpolate({
-                  inputRange: [-1, 0, 1],
-                  outputRange: [-60, 0, 60],
-                }),
-              },
-            ],
-          }}
-        >
-          <ScrollView
-            className="flex-1"
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+          {/* Content with animated transitions */}
+          <Animated.View
+            className="flex-1 px-6 pt-6"
+            style={{
+              opacity: fadeAnim,
+              transform: [
+                {
+                  translateX: slideAnim.interpolate({
+                    inputRange: [-1, 0, 1],
+                    outputRange: [-60, 0, 60],
+                  }),
+                },
+              ],
+            }}
           >
-            {renderContent()}
-            <View className="h-10" />
-          </ScrollView>
-        </Animated.View>
+            <ScrollView
+              className="flex-1"
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {renderContent()}
+              <View className="h-10" />
+            </ScrollView>
+          </Animated.View>
         </View>
       </View>
 
