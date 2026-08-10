@@ -14,6 +14,61 @@ import {
 } from './public-helpers.js';
 
 export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /public/retailers ─────────────────────────────────────
+  // Sitemap / storefront discovery: every live retailer (has a public
+  // storefront slug, not suspended/deleted, has ≥1 live product) with their
+  // indexable storefront URLs — categories and active collections — so the
+  // web sitemap can enumerate every store with one request. Categories mirror
+  // the storefront categories page (only those with live products);
+  // collections mirror the storefront (ACTIVE, not deleted). No
+  // onboarding_completed gate: the QR slug can exist before onboarding wraps
+  // (POST /me/qr-slug is independent of the onboarding patch), and the
+  // storefront itself never gates on it — a live store must not be excluded.
+  server.get('/retailers', async (request) => {
+    return withPublicCache(request.url, async () => {
+      const retailers = await prisma.retailer.findMany({
+        where: {
+          public_slug: { not: null },
+          is_suspended: false,
+          deleted_at: null,
+          // A storefront with nothing to show isn't worth indexing.
+          products: { some: { deleted_at: null } },
+        },
+        select: {
+          public_slug: true,
+          shop_name: true,
+          city: true,
+          updated_at: true,
+          product_categories: {
+            where: { products: { some: { deleted_at: null, status: 'AVAILABLE' } } },
+            select: { id: true, name: true },
+            orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+          },
+          collections: {
+            where: { status: 'ACTIVE', deleted_at: null },
+            select: { slug: true },
+            orderBy: { updated_at: 'desc' },
+          },
+        },
+        orderBy: { updated_at: 'desc' },
+        take: 5000,
+      });
+
+      return {
+        data: retailers
+          .filter((r) => r.public_slug !== null)
+          .map((r) => ({
+            public_slug: r.public_slug,
+            shop_name: r.shop_name,
+            city: r.city,
+            updated_at: r.updated_at.toISOString(),
+            categories: r.product_categories,
+            collections: r.collections.map((c) => c.slug),
+          })),
+      };
+    });
+  });
+
   // ─── GET /public/retailers/:slug/categories ──────────────────────
   // Customer-facing category picker — shown after the QR contact gate.
   server.get('/retailers/:slug/categories', async (request) => {

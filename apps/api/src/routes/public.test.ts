@@ -3,15 +3,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
 import { publicRoutes } from './public.js';
 
-const { mockRetailerFindFirst, mockCustomerUpsert, mockCollectionFindFirst } = vi.hoisted(() => ({
-  mockRetailerFindFirst: vi.fn(),
-  mockCustomerUpsert: vi.fn(),
-  mockCollectionFindFirst: vi.fn(),
-}));
+const { mockRetailerFindFirst, mockRetailerFindMany, mockCustomerUpsert, mockCollectionFindFirst } =
+  vi.hoisted(() => ({
+    mockRetailerFindFirst: vi.fn(),
+    mockRetailerFindMany: vi.fn(),
+    mockCustomerUpsert: vi.fn(),
+    mockCollectionFindFirst: vi.fn(),
+  }));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
-    retailer: { findFirst: mockRetailerFindFirst },
+    retailer: { findFirst: mockRetailerFindFirst, findMany: mockRetailerFindMany },
     customer: { upsert: mockCustomerUpsert },
     collection: { findFirst: mockCollectionFindFirst, count: vi.fn(), update: vi.fn() },
     product: { count: vi.fn() },
@@ -69,6 +71,67 @@ describe('GET /public/retailers/:slug', () => {
     expect(res.json().data.shop_name).toBe('Test Shop');
     expect(res.json().data.storefront_slug).toBeNull();
     expect(mockCollectionFindFirst).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('GET /public/retailers (sitemap discovery)', () => {
+  it('returns live retailers with categories and collections', async () => {
+    mockRetailerFindMany.mockResolvedValue([
+      {
+        public_slug: 'test-shop-ab12',
+        shop_name: 'Test Shop',
+        city: 'Test City',
+        updated_at: new Date('2026-08-10T10:00:00Z'),
+        product_categories: [{ id: 'cat_1', name: 'Kurtis' }],
+        collections: [{ slug: 'summer-collection' }],
+      },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/public/retailers' });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0]).toMatchObject({
+      public_slug: 'test-shop-ab12',
+      shop_name: 'Test Shop',
+      city: 'Test City',
+      categories: [{ id: 'cat_1', name: 'Kurtis' }],
+      collections: ['summer-collection'],
+    });
+    expect(body.data[0].updated_at).toBe('2026-08-10T10:00:00.000Z');
+
+    // Discovery query filters to indexable stores: has a public_slug, not
+    // suspended/deleted, has live products. Deliberately NO onboarding gate —
+    // the QR slug (POST /me/qr-slug) can exist before onboarding completes.
+    const where = mockRetailerFindMany.mock.calls[0]?.[0]?.where;
+    expect(where.public_slug).toEqual({ not: null });
+    expect(where.onboarding_completed).toBeUndefined();
+    expect(where.is_suspended).toBe(false);
+    expect(where.deleted_at).toBeNull();
+    expect(where.products).toEqual({ some: { deleted_at: null } });
+    await app.close();
+  });
+
+  it('skips retailers without a public slug and returns an empty list', async () => {
+    mockRetailerFindMany.mockResolvedValue([
+      {
+        public_slug: null,
+        shop_name: 'No Storefront',
+        city: 'X',
+        updated_at: new Date(),
+        product_categories: [],
+        collections: [],
+      },
+    ]);
+
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/public/retailers' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual([]);
     await app.close();
   });
 });
