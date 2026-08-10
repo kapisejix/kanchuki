@@ -1,66 +1,89 @@
-import { View, Text, ScrollView, RefreshControl } from 'react-native'
-import { COLORS } from '@kanchuki/shared'
-import { router } from 'expo-router'
-import { useQuery } from '@tanstack/react-query'
-import { Camera, Users, Link2, Eye, MessageCircle, Package, ShoppingBag, Ruler, QrCode, Settings, FolderKanban, PackagePlus, BarChart3 } from 'lucide-react-native'
-import { ordersApi, retailerApi, categoryApi } from '../../src/lib/api'
-import { HomeScreenSkeleton } from '../../src/components/Skeleton'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { COLORS } from '@kanchuki/shared';
+import { useQuery } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import {
+  BarChart3,
+  Camera,
+  Eye,
+  FolderKanban,
+  Link2,
+  MessageCircle,
+  Package,
+  PackagePlus,
+  QrCode,
+  Ruler,
+  Settings,
+  ShoppingBag,
+  Users,
+} from 'lucide-react-native';
+import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { HomeScreenSkeleton } from '../../src/components/Skeleton';
+import { categoryApi, ordersApi, retailerApi } from '../../src/lib/api';
+import { useTheme } from '../../src/lib/theme';
 
 type RankedProduct = {
-  product: { id: string; category: string | null; primary_color: string | null; photo_url: string | null }
-  count: number
-}
+  product: {
+    id: string;
+    category: string | null;
+    primary_color: string | null;
+    photo_url: string | null;
+  };
+  count: number;
+};
 type Stats = {
-  total_products_available: number
-  total_customers: number
-  active_collections: number
-  views_this_month: number
-  enquiries_this_month: number
-  top_viewed_products: RankedProduct[]
-  top_enquired_products: RankedProduct[]
-}
+  total_products_available: number;
+  total_customers: number;
+  active_collections: number;
+  views_this_month: number;
+  enquiries_this_month: number;
+  top_viewed_products: RankedProduct[];
+  top_enquired_products: RankedProduct[];
+};
 
 type RetailerMe = {
-  shop_name: string
-  plan: string
-  plan_status: string
-}
+  shop_name: string;
+  plan: string;
+  plan_status: string;
+};
 
 export default function HomeScreen() {
-  const { primaryColor, colors } = useTheme()
+  const { primaryColor, colors } = useTheme();
   const { data: meData, isLoading: meLoading } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
-  })
+  });
 
-  const { data: statsData, isLoading: statsLoading, refetch } = useQuery({
+  const {
+    data: statsData,
+    isLoading: statsLoading,
+    refetch,
+  } = useQuery({
     queryKey: ['retailer', 'stats'],
     queryFn: () => retailerApi.getStats(),
-  })
+  });
 
   const { data: ordersData } = useQuery({
     queryKey: ['orders'],
     queryFn: () => ordersApi.list(),
-  })
+  });
 
   const { data: categoriesData } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
-  })
+  });
 
-  const me = (meData as { data: RetailerMe } | undefined)?.data
-  const stats = (statsData as { data: Stats } | undefined)?.data
-  const allOrders = ordersData?.data ?? []
+  const me = (meData as { data: RetailerMe } | undefined)?.data;
+  const stats = (statsData as { data: Stats } | undefined)?.data;
+  const allOrders = ordersData?.data ?? [];
   const pendingOrders = allOrders.filter(
     (o) => o.status === 'PENDING_PAYMENT' || o.status === 'PAID',
-  ).length
-  const categories = categoriesData?.data ?? []
-  const isLoading = meLoading || statsLoading
+  ).length;
+  const categories = categoriesData?.data ?? [];
+  const isLoading = meLoading || statsLoading;
 
   if (isLoading) {
-    return <HomeScreenSkeleton />
+    return <HomeScreenSkeleton />;
   }
 
   return (
@@ -89,7 +112,7 @@ export default function HomeScreen() {
             className="mt-4 bg-white/15 px-3 py-1.5 rounded-lg self-start"
           >
             <Text className="text-white text-xs font-medium">
-              14-day free trial active · Tap to subscribe
+              14-day free trial active · View plans
             </Text>
           </AnimatedPressable>
         )}
@@ -239,7 +262,7 @@ export default function HomeScreen() {
       {/* Bottom padding */}
       <View className="h-8" />
     </ScrollView>
-  )
+  );
 }
 
 function StatCard({
@@ -249,11 +272,11 @@ function StatCard({
   color,
   onPress,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: number
-  color: string
-  onPress: () => void
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  color: string;
+  onPress: () => void;
 }) {
   return (
     <AnimatedPressable
@@ -271,7 +294,7 @@ function StatCard({
       </Text>
       <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
     </AnimatedPressable>
-  )
+  );
 }
 
 function QuickAction({
@@ -281,11 +304,11 @@ function QuickAction({
   onPress,
   accent,
 }: {
-  icon: React.ReactNode
-  label: string
-  sublabel: string
-  onPress: () => void
-  accent: string
+  icon: React.ReactNode;
+  label: string;
+  sublabel: string;
+  onPress: () => void;
+  accent: string;
 }) {
   return (
     <AnimatedPressable
@@ -301,5 +324,5 @@ function QuickAction({
       <Text className="text-sm font-semibold text-sand-900">{label}</Text>
       <Text className="text-xs text-sand-400 mt-0.5">{sublabel}</Text>
     </AnimatedPressable>
-  )
+  );
 }

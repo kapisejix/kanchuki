@@ -1,40 +1,45 @@
-import { useState } from 'react'
-import { COLORS } from '@kanchuki/shared'
+import { COLORS } from '@kanchuki/shared';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { Check, ChevronLeft, Clock, IndianRupee, Package } from 'lucide-react-native';
+import { useState } from 'react';
 import {
-  View, Text, TextInput, ScrollView,
-  ActivityIndicator, Linking, RefreshControl,
-} from 'react-native'
-import { router } from 'expo-router'
-import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, Package, Check, Clock, IndianRupee } from 'lucide-react-native'
-import { catalogUploadApi, type CatalogUploadTicket } from '../../src/lib/api'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { GradientButton } from '../../src/components/GradientButton'
+  ActivityIndicator,
+  Linking,
+  RefreshControl,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
+import { type CatalogUploadTicket, catalogUploadApi } from '../../src/lib/api';
+import { showError } from '../../src/lib/errors';
+import { useTheme } from '../../src/lib/theme';
 
 // ─── Request Form (no ticket yet) ───────────────────────────────────
 
 function RequestForm() {
-  const { primaryColor, colors } = useTheme()
-  const [itemCount, setItemCount] = useState('')
-  const [note, setNote] = useState('')
-  const queryClient = useQueryClient()
+  const { primaryColor, colors } = useTheme();
+  const [itemCount, setItemCount] = useState('');
+  const [note, setNote] = useState('');
+  const queryClient = useQueryClient();
 
   const create = useMutation({
     mutationFn: () =>
       catalogUploadApi.create({
-        item_count_estimate: parseInt(itemCount, 10),
+        item_count_estimate: Number.parseInt(itemCount, 10),
         note: note.trim() || undefined,
       }),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['catalog-upload-request'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog-upload-request'] });
     },
     onError: (err: Error) => showError(err, 'Failed to submit request'),
-  })
+  });
 
-  const canSubmit = parseInt(itemCount, 10) > 0
+  const canSubmit = Number.parseInt(itemCount, 10) > 0;
 
   return (
     <View className="pt-2">
@@ -85,30 +90,35 @@ function RequestForm() {
         />
       </View>
     </View>
-  )
+  );
 }
 
 // ─── Ticket Status View ─────────────────────────────────────────────
 
 function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
-  const { primaryColor, colors } = useTheme()
-  const queryClient = useQueryClient()
+  const { primaryColor, colors } = useTheme();
+  const queryClient = useQueryClient();
 
+  // F-019 paid catalog-upload service. This in-app payment is intentionally
+  // kept while the digital subscription billing was removed (2026-08-10): it's
+  // a physical on-site service (a Kanchuki team member visits the shop), which
+  // Google Play's policy exempts from Play Billing — unlike the digital
+  // plans/add-ons that moved to the website.
   const pay = useMutation({
     mutationFn: () => catalogUploadApi.pay(ticket.id),
     onSuccess: async (res) => {
-      await Linking.openURL(res.data.checkout_url)
+      await Linking.openURL(res.data.checkout_url);
     },
     onError: (err: Error) => showError(err, 'Could not start payment'),
-  })
+  });
 
   const confirmSlot = useMutation({
     mutationFn: (slot: string) => catalogUploadApi.confirmSlot(ticket.id, slot),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['catalog-upload-request'] })
+      void queryClient.invalidateQueries({ queryKey: ['catalog-upload-request'] });
     },
     onError: (err: Error) => showError(err, 'Could not confirm that slot'),
-  })
+  });
 
   // Waiting for admin to quote a price
   if (ticket.quoted_price_inr == null) {
@@ -119,11 +129,11 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
         </View>
         <Text className="text-xl font-bold text-sand-900 text-center">Request received</Text>
         <Text className="text-sand-500 text-base mt-2 text-center leading-5">
-          Our team is reviewing your request for {ticket.item_count_requested ?? 'your'} items. We&apos;ll
-          notify you with a price and visit time soon. Pull down to refresh.
+          Our team is reviewing your request for {ticket.item_count_requested ?? 'your'} items.
+          We&apos;ll notify you with a price and visit time soon. Pull down to refresh.
         </Text>
       </View>
-    )
+    );
   }
 
   // Quoted, not yet paid
@@ -153,12 +163,12 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           Opens Razorpay checkout in your browser — return here after paying.
         </Text>
       </View>
-    )
+    );
   }
 
   // Paid, slot not yet confirmed
   if (!ticket.confirmed_slot) {
-    const slots = ticket.proposed_slots ?? []
+    const slots = ticket.proposed_slots ?? [];
     return (
       <View className="pt-4">
         <View className="items-center mb-4">
@@ -186,8 +196,11 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
               >
                 <Text className="text-sand-900 font-semibold">
                   {new Date(slot).toLocaleString('en-IN', {
-                    weekday: 'short', day: 'numeric', month: 'short',
-                    hour: 'numeric', minute: '2-digit',
+                    weekday: 'short',
+                    day: 'numeric',
+                    month: 'short',
+                    hour: 'numeric',
+                    minute: '2-digit',
                   })}
                 </Text>
                 {confirmSlot.isPending && <ActivityIndicator size="small" color={primaryColor} />}
@@ -196,7 +209,7 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
           </>
         )}
       </View>
-    )
+    );
   }
 
   // Fully confirmed
@@ -208,31 +221,35 @@ function TicketStatus({ ticket }: { ticket: CatalogUploadTicket }) {
       <Text className="text-xl font-bold text-sand-900 text-center">Visit confirmed</Text>
       <Text className="text-sand-500 text-base mt-2 text-center leading-5">
         {new Date(ticket.confirmed_slot).toLocaleString('en-IN', {
-          weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit',
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          hour: 'numeric',
+          minute: '2-digit',
         })}
       </Text>
       <Text className="text-sand-400 text-xs mt-3 text-center">
         A Kanchuki team member will visit your shop at this time to upload your catalog.
       </Text>
     </View>
-  )
+  );
 }
 
 // ─── Main Screen ────────────────────────────────────────────────────
 
 export default function CatalogUploadScreen() {
-  const { primaryColor, colors } = useTheme()
-  const insets = useSafeAreaInsets()
+  const { primaryColor, colors } = useTheme();
+  const insets = useSafeAreaInsets();
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['catalog-upload-request'],
     queryFn: () => catalogUploadApi.list(),
-  })
+  });
 
-  const tickets = data?.data ?? []
+  const tickets = data?.data ?? [];
   // Most recent non-closed request, or just the most recent overall
   const activeTicket =
-    tickets.find((t) => t.status !== 'CLOSED' && t.status !== 'RESOLVED') ?? tickets[0]
+    tickets.find((t) => t.status !== 'CLOSED' && t.status !== 'RESOLVED') ?? tickets[0];
 
   return (
     <View className="flex-1 bg-white">
@@ -241,7 +258,12 @@ export default function CatalogUploadScreen() {
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
-          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
+          <AnimatedPressable
+            onPress={() => router.back()}
+            hitSlop={8}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
+          >
             <ChevronLeft size={24} color={colors.sand[700]} />
           </AnimatedPressable>
           <Text className="text-base font-bold text-sand-900">Catalog Upload Help</Text>
@@ -254,11 +276,13 @@ export default function CatalogUploadScreen() {
         <ScrollView
           className="flex-1 px-6"
           contentContainerStyle={{ paddingBottom: 40 }}
-          refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
+          }
         >
           {activeTicket ? <TicketStatus ticket={activeTicket} /> : <RequestForm />}
         </ScrollView>
       )}
     </View>
-  )
+  );
 }

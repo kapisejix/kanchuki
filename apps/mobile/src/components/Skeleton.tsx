@@ -1,22 +1,29 @@
-import { useEffect } from 'react'
-import { COLORS } from '@kanchuki/shared'
-import { RefreshControl, ScrollView, View } from 'react-native'
-import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming } from 'react-native-reanimated'
-import { useReduceMotion } from '../hooks/useReduceMotion'
+import { COLORS } from '@kanchuki/shared';
+import { useEffect } from 'react';
+import { RefreshControl, ScrollView, View } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+} from 'react-native-reanimated';
+import { useReduceMotion } from '../hooks/useReduceMotion';
 
 export function Skeleton({ className = '', style }: { className?: string; style?: object }) {
-  const reduceMotion = useReduceMotion()
-  const opacity = useSharedValue(0.3)
+  const reduceMotion = useReduceMotion();
+  const opacity = useSharedValue(0.3);
   useEffect(() => {
     if (reduceMotion) {
       // Reduce Motion: keep the loading cue (dimmed block) without the pulse
-      opacity.value = 0.6
-      return
+      opacity.value = 0.6;
+      return;
     }
-    opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true)
-  }, [opacity, reduceMotion])
-  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }))
-  return <Animated.View className={`rounded-md bg-sand-200 ${className}`} style={[animStyle, style]} />
+    opacity.value = withRepeat(withTiming(1, { duration: 700 }), -1, true);
+  }, [opacity, reduceMotion]);
+  const animStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+  return (
+    <Animated.View className={`rounded-md bg-sand-200 ${className}`} style={[animStyle, style]} />
+  );
 }
 
 // ── Shape-matched skeletons, one per list/card layout in the app ──────────
@@ -30,11 +37,11 @@ export function ProductCardSkeleton() {
         <Skeleton className="h-4 w-1/2" />
       </View>
     </View>
-  )
+  );
 }
 
 export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
-  const rows = Array.from({ length: Math.ceil(count / 2) })
+  const rows = Array.from({ length: Math.ceil(count / 2) });
   return (
     <View style={{ padding: 12, gap: 12 }}>
       {rows.map((_, r) => (
@@ -44,7 +51,7 @@ export function ProductGridSkeleton({ count = 6 }: { count?: number }) {
         </View>
       ))}
     </View>
-  )
+  );
 }
 
 export function CustomerRowSkeleton() {
@@ -57,7 +64,7 @@ export function CustomerRowSkeleton() {
         <Skeleton className="h-3 w-2/3" />
       </View>
     </View>
-  )
+  );
 }
 
 export function CustomerListSkeleton({ count = 6 }: { count?: number }) {
@@ -67,7 +74,7 @@ export function CustomerListSkeleton({ count = 6 }: { count?: number }) {
         <CustomerRowSkeleton key={i} />
       ))}
     </View>
-  )
+  );
 }
 
 export function CollectionCardSkeleton() {
@@ -88,7 +95,7 @@ export function CollectionCardSkeleton() {
         <Skeleton className="h-9 w-12 rounded-xl" />
       </View>
     </View>
-  )
+  );
 }
 
 export function CollectionListSkeleton({ count = 5 }: { count?: number }) {
@@ -98,7 +105,7 @@ export function CollectionListSkeleton({ count = 5 }: { count?: number }) {
         <CollectionCardSkeleton key={i} />
       ))}
     </View>
-  )
+  );
 }
 
 // ── Full-screen detail skeletons (photo/header + a few field blocks) ──────
@@ -111,13 +118,25 @@ export function HomeScreenSkeleton() {
       {/* Hero banner */}
       <View className="bg-ink-600 px-4 pt-4 pb-8 rounded-b-3xl">
         <View className="flex-row items-center gap-3">
-          <Skeleton className="w-12 h-12 rounded-2xl" style={{ backgroundColor: `${COLORS.cotton}30` }} />
+          <Skeleton
+            className="w-12 h-12 rounded-2xl"
+            style={{ backgroundColor: `${COLORS.cotton}30` }}
+          />
           <View className="gap-1.5">
-            <Skeleton className="h-3 w-24 rounded-md" style={{ backgroundColor: `${COLORS.cotton}30` }} />
-            <Skeleton className="h-5 w-40 rounded-md" style={{ backgroundColor: `${COLORS.cotton}30` }} />
+            <Skeleton
+              className="h-3 w-24 rounded-md"
+              style={{ backgroundColor: `${COLORS.cotton}30` }}
+            />
+            <Skeleton
+              className="h-5 w-40 rounded-md"
+              style={{ backgroundColor: `${COLORS.cotton}30` }}
+            />
           </View>
         </View>
-        <Skeleton className="h-6 w-52 rounded-lg mt-4" style={{ backgroundColor: `${COLORS.cotton}30` }} />
+        <Skeleton
+          className="h-6 w-52 rounded-lg mt-4"
+          style={{ backgroundColor: `${COLORS.cotton}30` }}
+        />
       </View>
 
       {/* Stats row */}
@@ -138,7 +157,10 @@ export function HomeScreenSkeleton() {
         <Skeleton className="h-3 w-32 mb-3" />
         <View className="gap-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <View key={i} className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center justify-between">
+            <View
+              key={i}
+              className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center justify-between"
+            >
               <Skeleton className="h-4 w-40" />
               <Skeleton className="h-3 w-12" />
             </View>
@@ -160,7 +182,7 @@ export function HomeScreenSkeleton() {
         </View>
       </View>
     </ScrollView>
-  )
+  );
 }
 
 function StatCardSkeleton() {
@@ -170,7 +192,7 @@ function StatCardSkeleton() {
       <Skeleton className="h-7 w-16" />
       <Skeleton className="h-3 w-12" />
     </View>
-  )
+  );
 }
 
 // ── Analytics Screen Skeleton ─────────────────────────────────────
@@ -238,7 +260,7 @@ export function AnalyticsSkeleton() {
         </View>
       </View>
     </ScrollView>
-  )
+  );
 }
 
 function MiniStatCardSkeleton() {
@@ -248,7 +270,7 @@ function MiniStatCardSkeleton() {
       <Skeleton className="h-7 w-20" />
       <Skeleton className="h-3 w-16" />
     </View>
-  )
+  );
 }
 
 // ── Settings Screen Skeleton ──────────────────────────────────────
@@ -264,7 +286,10 @@ export function SettingsSkeleton() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ gap: 12, paddingBottom: 40 }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ gap: 12, paddingBottom: 40 }}
+      >
         {/* Profile */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-2">
           <Skeleton className="h-4 w-32" />
@@ -287,7 +312,10 @@ export function SettingsSkeleton() {
 
         {/* Settings rows */}
         {Array.from({ length: 4 }).map((_, i) => (
-          <View key={i} className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100">
+          <View
+            key={i}
+            className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
+          >
             <Skeleton className="w-9 h-9 rounded-xl mr-3" />
             <View className="flex-1 gap-1">
               <Skeleton className="h-4 w-28" />
@@ -298,7 +326,7 @@ export function SettingsSkeleton() {
         ))}
       </ScrollView>
     </View>
-  )
+  );
 }
 
 // ── Orders Screen Skeleton ────────────────────────────────────────
@@ -353,7 +381,7 @@ export function OrdersCardSkeleton() {
         <Skeleton className="flex-1 h-10 rounded-xl" />
       </View>
     </View>
-  )
+  );
 }
 
 export function OrdersListSkeleton({
@@ -361,9 +389,9 @@ export function OrdersListSkeleton({
   refreshing,
   onRefresh,
 }: {
-  count?: number
-  refreshing?: boolean
-  onRefresh?: () => void
+  count?: number;
+  refreshing?: boolean;
+  onRefresh?: () => void;
 }) {
   return (
     <ScrollView
@@ -388,7 +416,7 @@ export function OrdersListSkeleton({
         ))}
       </View>
     </ScrollView>
-  )
+  );
 }
 
 // ── Collection Detail Screen Skeleton ─────────────────────────────
@@ -399,7 +427,10 @@ export function CollectionDetailSkeleton() {
       {/* Stats grid */}
       <View className="flex-row flex-wrap px-4 pt-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <View key={i} className="bg-white rounded-xl p-3 border border-sand-100 flex-1 min-w-[45%] gap-1">
+          <View
+            key={i}
+            className="bg-white rounded-xl p-3 border border-sand-100 flex-1 min-w-[45%] gap-1"
+          >
             <Skeleton className="h-4 w-4" />
             <Skeleton className="h-5 w-16" />
             <Skeleton className="h-3 w-12" />
@@ -424,7 +455,10 @@ export function CollectionDetailSkeleton() {
         {/* Product grid — 3 items per row */}
         <View className="flex-row flex-wrap gap-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} className="w-[31%] bg-white rounded-xl overflow-hidden border border-sand-100">
+            <View
+              key={i}
+              className="w-[31%] bg-white rounded-xl overflow-hidden border border-sand-100"
+            >
               <Skeleton className="w-full" style={{ height: 96 }} />
               <View className="p-1.5">
                 <Skeleton className="h-3 w-full" />
@@ -434,88 +468,7 @@ export function CollectionDetailSkeleton() {
         </View>
       </View>
     </ScrollView>
-  )
-}
-
-// ── Billing Screen Skeleton ───────────────────────────────────────
-
-export function BillingSkeleton() {
-  return (
-    <ScrollView className="flex-1 bg-sand-50 px-4 pt-4">
-      {/* Current plan banner */}
-      <View className="bg-turmeric-50 border border-turmeric-200 rounded-2xl p-4 mb-5 gap-1">
-        <Skeleton className="h-4 w-48" />
-        <Skeleton className="h-3 w-64" />
-      </View>
-
-      {/* Period toggle */}
-      <View className="flex-row bg-sand-200 rounded-xl p-1 mb-4 gap-1">
-        <Skeleton className="flex-1 h-10 rounded-lg" />
-        <Skeleton className="flex-1 h-10 rounded-lg" />
-      </View>
-
-      {/* Plan cards */}
-      {Array.from({ length: 3 }).map((_, i) => (
-        <View key={i} className="bg-white rounded-2xl p-5 mb-3 border border-sand-100">
-          {/* Name + price */}
-          <View className="flex-row items-baseline justify-between mb-3">
-            <Skeleton className="h-6 w-20" />
-            <View className="items-end gap-1">
-              <Skeleton className="h-6 w-28" />
-              <Skeleton className="h-3 w-24" />
-            </View>
-          </View>
-
-          {/* Features */}
-          <View className="gap-2 mb-4">
-            {Array.from({ length: i === 2 ? 5 : 4 }).map((_, j) => (
-              <View key={j} className="flex-row items-center gap-2">
-                <Skeleton className="w-3.5 h-3.5 rounded-full" />
-                <Skeleton className="h-4 w-32" />
-              </View>
-            ))}
-          </View>
-
-          {/* Subscribe button */}
-          <Skeleton className="h-12 rounded-xl w-full" />
-        </View>
-      ))}
-
-      {/* Cancel link */}
-      <View className="items-center py-3 mt-2 gap-1">
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="h-3 w-48" />
-      </View>
-
-      {/* Need More addons */}
-      <View className="mt-6 mb-4">
-        <View className="flex-row items-center gap-2 mb-3">
-          <Skeleton className="w-4 h-4" />
-          <Skeleton className="h-5 w-24" />
-        </View>
-        <Skeleton className="h-3 w-56 mb-3" />
-
-        {Array.from({ length: 3 }).map((_, i) => (
-          <View key={i} className="bg-white rounded-xl p-4 mb-2 border border-sand-100 gap-2">
-            <View className="flex-row justify-between items-center">
-              <Skeleton className="h-4 w-28" />
-              <Skeleton className="h-3 w-16" />
-            </View>
-            <Skeleton className="h-1.5 rounded-full w-full" />
-            <View className="flex-row gap-2">
-              <Skeleton className="flex-1 h-12 rounded-lg" />
-              <Skeleton className="flex-1 h-12 rounded-lg" />
-            </View>
-          </View>
-        ))}
-      </View>
-
-      {/* Footer */}
-      <View className="items-center mb-10">
-        <Skeleton className="h-3 w-64" />
-      </View>
-    </ScrollView>
-  )
+  );
 }
 
 // ── Product Add Screen Skeleton (edit form step) ──────────────────
@@ -579,7 +532,6 @@ export function ProductAddSkeleton() {
             </View>
           </View>
 
-
           {/* Notes */}
           <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-2">
             <Skeleton className="h-3 w-12" />
@@ -593,7 +545,7 @@ export function ProductAddSkeleton() {
         </View>
       </ScrollView>
     </View>
-  )
+  );
 }
 
 // ── Full-screen detail skeletons (photo/header + a few field blocks) ──────
@@ -623,5 +575,5 @@ export function DetailScreenSkeleton({ withPhoto = true }: { withPhoto?: boolean
         ))}
       </View>
     </View>
-  )
+  );
 }
