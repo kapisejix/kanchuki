@@ -190,6 +190,9 @@ export interface PublicCollection {
     phone: string  // for WhatsApp enquiry
     logo_url: string | null
     banner_url: string | null
+    // Store URL segment (public_slug). Null when the retailer has no store
+    // QR — the collection then lives at the legacy /c/{slug} URL.
+    public_slug: string | null
   }
   title: string
   description: string | null

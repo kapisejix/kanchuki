@@ -548,9 +548,18 @@ describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F
     });
   });
 
-  it('fails closed with 402 when the plan lacks CUSTOM_BACKGROUND_LIBRARY', async () => {
+  it('applies an admin backdrop even when the plan lacks CUSTOM_BACKGROUND_LIBRARY (gate removed 2026-08-09)', async () => {
+    // The CUSTOM_BACKGROUND_LIBRARY plan gate was removed per user decision —
+    // every retailer can composite onto an admin-curated backdrop now. The
+    // feature flag is explicitly OFF here to lock in that the lookup +
+    // composite path runs regardless of the plan feature.
     mockPhotoFindFirst.mockResolvedValue(photoWithProduct);
     mockHasFeature.mockResolvedValue(false);
+    mockBackgroundImageFindFirst.mockResolvedValue({
+      id: 'bg_1',
+      image_url: 'https://cdn.example.com/bg.jpg',
+      is_active: true,
+    });
 
     const app = await buildApp(null);
     const res = await app.inject({
@@ -559,9 +568,11 @@ describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F
       payload: { background_image_id: 'bg_1' },
     });
 
-    expect(res.statusCode).toBe(402);
-    expect(mockBackgroundImageFindFirst).not.toHaveBeenCalled();
-    expect(mockUploadBuffer).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(200);
+    expect(mockBackgroundImageFindFirst).toHaveBeenCalledWith({
+      where: { id: 'bg_1', is_active: true },
+    });
+    expect(mockUploadBuffer).toHaveBeenCalled();
   });
 
   it('422s when the requested backdrop is inactive or missing', async () => {

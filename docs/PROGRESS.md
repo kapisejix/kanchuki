@@ -2,6 +2,72 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-09 — Backend pro-cleanup route + tests REMOVED (mobile Pro mode fully gone end-to-end)
+
+**User ask:** now that the mobile Pro capture mode is removed (earlier entry below), also remove the orphaned backend for it — `POST /v1/products/pro-cleanup` + `GET /v1/products/pro-cleanup/status` + their tests — nothing calls them anymore.
+
+**Removed:** `apps/api/src/routes/products/products-pro-cleanup.ts` + `products-pro-cleanup.test.ts` (19 tests) deleted; barrel export dropped from `routes/products/index.ts`; registration + comment dropped from `routes/products.ts`. The route was the only consumer of the `scoreSharpness`/`pickSharpest` sharpness selection — those stay exported from `@kanchuki/ai` (own tests, harmless).
+
+**Kept (shared, still live):** `lib/photo-cleanup-runner.ts` (`runPhotoCleanup`/`serializePhotoCleanup`) — sole remaining caller is the **admin Photo Cleanup Test page** (`routes/admin/admin-photo-cleanup.ts`, separately registered under `/admin`, untouched); the photo-cleanup sidecar service + admin tool + F-028 auto-contrast background pipeline all still work. Stale comments in the runner + admin route referencing the deleted pro-cleanup route updated.
+
+**Verified:** API tsc clean, full API suite **353/353** (26 files — was 372/372 with the pro-cleanup tests), biome clean on the edited files, route-size guard passes.
+
+---
+
+## 2026-08-09 — Canonical customer URLs: `kanchuki.app/{store}` + `kanchuki.app/{store}/{collection}` (no more `/c/`, `/store/`)
+
+**User ask:** collection links must be based on the retailer URL + collection name — `kanchuki.app/{store-name-id}` for the store and `kanchuki.app/{store-name-id}/{collection-name}` for collections. "Hide shop from the main url" = drop the `/store/` segment entirely.
+
+**New canonical scheme:** store `https://kanchuki.app/{public_slug}` (the QR slug, regenerated from the shop name on rename), collection `https://kanchuki.app/{public_slug}/{collection-slug}`. Retailers with **no** `public_slug` (never generated a store QR, or deleted it) keep the legacy `/c/{slug}` form — the API only generates that when there's nothing to put in the first segment. All old links keep working via 302s.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **API URL builders** | `apps/api/src/lib/store-urls.ts` (new) | `buildStoreUrl(publicSlug)` → `{WEB_URL}/{slug}`; `buildCollectionUrl(publicSlug, slug)` → `{WEB_URL}/{slug}/{slug}` or `/c/{slug}` fallback |
+| **API link generation** | `collections.ts` (6 sites: create/list/update/share-URLs), `retailers/retailers-settings.ts` (qr-slug `profile_url` now `{WEB_URL}/{slug}`), `public/public-collections.ts` + `public/public-retailers.ts` (expose `retailer.public_slug` so the web app can build canonical links + enforce canonical URLs) |
+| **Shared type** | `packages/shared/src/types/index.ts` | `PublicCollection.retailer.public_slug: string \| null` added |
+| **Web canonical routes** | `apps/web/src/app/[store]/` (new tree) | `[store]/page.tsx` store profile (contact gate), `[store]/categories/...`, `[store]/[collection]/` page + cart/checkout/wishlist/order sub-flows. `CollectionView`/`ProductDetailSheet`/`CartPage`/`CheckoutForm`/`WishlistView`/`OrderView` gained a `store` prop (null ⇒ legacy `/c/` URLs) |
+| **Web canonical-URL enforcement** | `[store]/[collection]/page.tsx` | 302s to `/{canonicalStore}/{collection}` when the store segment mismatches, or to `/c/{collection}` when the retailer has no store slug (prevents duplicate indexable URLs) |
+| **Web legacy redirects** | `store/[slug]/*` + `c/[slug]/page.tsx` | `/store/{slug}` → `/{slug}`, `/store/{slug}/categories/...` → `/{slug}/categories/...`; `/c/{slug}` → `/{public_slug}/{slug}` when the retailer has a store slug (old WhatsApp/QR links keep working) |
+| **Web API proxies** | `apps/web/src/app/api/[store]/...` (new) | products/favorite/checkout-status + categories products + leads — same patterns as the legacy `/api/c` `/api/store` proxies (kept for old clients) |
+| **Revalidation** | `products-helpers.ts` + `api/revalidate/route.ts` | ISR purge now posts `{ path }` per affected page (canonical or legacy as applicable); route accepts legacy `collection_slug` for backward compat |
+| **Service worker** | `apps/web/src/app/sw.ts` | Canonical `/{store}` and `/{store}/{collection}` documents added to the NetworkFirst `store-pages` cache (regex matcher for the new `/api/{store}/{collection}/...` proxies); legacy `/c/` `/store/` rules kept |
+| **Mobile** | `apps/mobile/app/settings/index.tsx` | Store-URL rename notice links now use `{WEB_URL}/{slug}` (was `/store/{slug}`) |
+| **Tests** | `CollectionView.test.tsx` (fixture gains `public_slug`), `customer-collection.spec.ts` (canonical paths + new legacy-redirect test + store-profile stub) | e2e now asserts `/{store}/festive-edit` renders, `/c/festive-edit` → 302 → canonical, `/store/{slug}` → 302 → contact gate |
+
+**Verified:** `packages/shared` rebuilt; api/web/mobile `tsc --noEmit` all clean; API suite **372/372**; web CollectionView unit test green; biome clean on the new `[store]` tree (18 files, incl. a3 a11y label-association fixes inherited from the moved ContactGate) — every other flagged file's findings are identical at HEAD (pre-existing CRLF/import baseline). `next build` compiles + 0 prerender errors + 0 hook-dependency warnings in changed files (the local build's `0xC0000142` worker crash at "Collecting page data" is a pre-existing Windows flake — all three local builds crashed identically regardless of my changes; it doesn't affect Railway CI which builds fresh). Live dev-server curl check: all five new `/api/{store}/...` proxies registered and proxying (404 JSON from the API for unknown slugs, 204/404 with a body — identical to legacy routes).
+
+**Ops notes:** (1) the local web dev server must be restarted after running `next build` — the builds share `.next` and the worker crash leaves stale chunks (`Cannot find module './2800.js'`) until restart; Railway deploys are unaffected. (2) Deploy order: API first (link generation + `public_slug` on collection payloads), then web (new routes + redirects). No DB migration, no mobile rebuild needed for links (mobile displays API-provided URLs).
+
+---
+
+## 2026-08-09 — Background picker fixed for ALL plans (CUSTOM_BACKGROUND_LIBRARY gate removed) + truthful cleanup errors
+
+**User report:** "remove background and add background still not working, there is no button or option to add background when i edit product details... i have uploaded background photos in admin panel, so there will an option to select which background photo needs to be applied for which product and save final into database/R2."
+
+**Root cause (confirmed by reading the gate chain, not guessed):** the background picker in BOTH the add-product and product-detail screens only renders when `GET /v1/products/background-images` returns rows — and that endpoint (plus the per-photo cleanup `background_image_id` param and `PATCH /:id/background`) was gated behind the `CUSTOM_BACKGROUND_LIBRARY` plan feature, seeded ON only for GROWTH/PRO. Every retailer defaults to `plan: 'STARTER'` (auth.ts / team-retailers.ts), so STARTER accounts got `data: []` → both pickers silently hidden. Admin uploads were fine (`is_active` defaults `true`); the picker was simply never allowed to see them.
+
+**Fix (user decision — remove the gate, all retailers):** `apps/api/src/routes/products/products-media.ts` — removed the `hasFeature(CUSTOM_BACKGROUND_LIBRARY)` check from all three retailer-facing background surfaces: `GET /background-images` (now always returns active rows), `POST /:id/photos/:photoId/cleanup` per-photo backdrop param, and `PATCH /:id/background`. Rationale recorded in-code: the F-028 auto-contrast pipeline already applies admin backdrops to EVERY plan ungated, so the manual picker is now consistent with it. SPIN_360 gates + `hasFeature`/`featureUnavailable` imports untouched (still used by spin routes). Active-only background lookup stays — an inactive backdrop still 422s.
+
+**Also fixed — misleading cleanup error:** the per-photo cleanup route's catch re-threw every failure (fetch / @imgly model / R2 write / anything) as the blanket *"Photo storage is not configured. Please contact support."* — indistinguishable from a real config outage, and the mobile screen showed it as "Failed to clean up photo". Now surfaces the actual reason (`Photo cleanup failed — <err.message>`, capped 300 chars) so a quota/model/R2 failure is diagnosable. (The cleanup flow itself was verified correct: fetch → preserve original at `-original` sibling key → rembg strip → **overwrite the same R2 key** — the save is in-place by design; the URL/DB row intentionally don't change.)
+
+**Verified:** API tsc clean, full API suite **372/372** (27 files; products.test.ts 26/26 — the old "fails closed with 402" test replaced with a gate-removed test asserting the composite runs regardless of plan), biome clean on `products-media.ts` (was a clean LF file; line endings restored after the edit tool wrote CRLF), `products.test.ts` CRLF formatting is pre-existing baseline (HEAD fails identically).
+
+**Note on "Mark Main Photo button not working":** `PATCH /:id/photos/:photoId {is_primary:true}` is correct and API-tested (atomic demote-all + promote). The mobile button is disabled when the currently-viewed photo is already the main one (shows "Main photo ✓") — with a single-photo product it's always disabled, which can look broken. F-029 UI is new (2026-08-09, commit `714a564`); a stale app build shows old behavior — rebuild via EAS and retest.
+
+---
+
+## 2026-08-09 — Pro (professional photo) capture mode REMOVED from the mobile add-product flow
+
+**User decision** after the full explanation: the Pro chip was showing "unavailable" because the photo-cleanup sidecar (`PHOTO_CLEANUP_SERVICE_URL`) was never deployed — rather than deploy it, remove the feature from the app. **Photo and Scan modes are untouched and fully working** (Photo mode's server-side auto-clean runs through the sharp-based `cleanupProductPhoto()` path, no Python needed).
+
+**Mobile-only removal** (backend `/products/pro-cleanup` route + sidecar + admin photo-cleanup test tool all stay — the admin tool shares `runPhotoCleanup` and is a separate route):
+- `apps/mobile/app/product/add.tsx` — deleted: the Pro chip from the Photo/Scan/Pro toggle + its availability probe (`getProCleanupStatus`) + unavailable-notice text, the three step screens (`pro_review` / `pro_options` / `pro_processing`), all pro state (`proShots`, `proSelected`, `proUploads`, `proAvailability`, `proProcessing`, `proRunningRef`/`proRunRef`, `proRemoveHardware`, `proTightCrop`, `proStatus`, `proBestUri`), `handleProProcess`, `addProShot`, the pro branches in `handleCapture`/`handlePickFromGallery`/`handleSave`, the pro shots strip + Continue button, and the pro-gating on the auto-clean toggle + background picker (both now always shown; `autoCleanup` defaults on). Unused `logError` + `useCallback` imports removed. Camera step is now a two-chip toggle (Photo / Scan) and the shutter routes `captureMode === 'scan' ? handleScanCapture() : handleCapture()`.
+- `apps/mobile/src/lib/api/products.ts` — deleted `proCleanup` + `getProCleanupStatus` client methods (no other callers existed).
+
+**Verified:** mobile `tsc --noEmit` clean, vitest 35/35 (the one failing file remains the pre-existing, unrelated `expo-linear-gradient` Rolldown JSX-parse error in `__tests__/staff/retailer-onboard.test.tsx`), biome findings on the changed files identical to the HEAD baseline (5 pre-existing: CRLF formatting, import sorting, `noArrayIndexKey`, `useNumberNamespace`). Repo-wide grep confirms zero remaining pro identifiers in `apps/mobile`. Ships with the next mobile EAS build; no API redeploy or env changes needed.
+
+---
+
 ## 2026-08-08 — Redis Public-Response Cache: single-flight + TTL jitter (commit `56068e7`, pushed to main)
 
 **Why:** viral WhatsApp collection links fan out thousands of requests at `/api/c/*` — and the web `/api/c/*` routes are *proxies* to the public API, so with no server cache every request recomputed 3–4 Postgres queries. One cache at the API covers every surface (web proxy, browser, mobile).

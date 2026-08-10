@@ -28,11 +28,10 @@ import {
 export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /products/background-images ─────────────────────────────
   // F-011: retailer-facing picker — active, admin-curated backgrounds only.
-  // F-013: gated behind CUSTOM_BACKGROUND_LIBRARY feature.
-  server.get('/background-images', async (request) => {
-    if (!(await hasFeature(request.retailerId, 'CUSTOM_BACKGROUND_LIBRARY'))) {
-      return { data: [] }; // return empty — feature is not on this plan
-    }
+  // 2026-08-09 (user decision): the CUSTOM_BACKGROUND_LIBRARY plan gate was
+  // removed — the F-028 auto-contrast pipeline already applies backdrops to
+  // every plan ungated, so the manual picker is now consistent with it.
+  server.get('/background-images', async () => {
     const rows = await prisma.backgroundImage.findMany({
       where: { is_active: true },
       orderBy: { created_at: 'desc' },
@@ -144,13 +143,9 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
 
     let bgUrl: string | undefined;
     if (body.data.background_image_id) {
-      // F-013: compositing onto an admin-curated backdrop is the
-      // CUSTOM_BACKGROUND_LIBRARY feature surface — fail closed for plans
-      // without it (the white/product-level bg path below stays ungated,
-      // same as before this param existed).
-      if (!(await hasFeature(request.retailerId, 'CUSTOM_BACKGROUND_LIBRARY'))) {
-        throw featureUnavailable('Custom Background Library');
-      }
+      // 2026-08-09 (user decision): no plan gate — same as GET
+      // /background-images, every retailer can composite onto an
+      // admin-curated backdrop. Active-only lookup stays.
       const bg = await prisma.backgroundImage.findFirst({
         where: { id: body.data.background_image_id, is_active: true },
       });
@@ -167,8 +162,13 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       const cleaned = await cleanupProductPhoto(raw, bgUrl);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
     } catch (err) {
+      // Surface the REAL reason (fetch / bg-removal model / R2 write) instead
+      // of the old blanket "storage not configured" — the mobile edit screen
+      // shows this text, so a retailer can tell a quota/model failure from
+      // an R2 outage instead of assuming the save silently didn't happen.
       console.error('Photo cleanup/upload failed:', err);
-      throw validationError('Photo storage is not configured. Please contact support.');
+      const reason = err instanceof Error ? err.message.slice(0, 300) : 'unknown error';
+      throw validationError(`Photo cleanup failed — ${reason}`);
     }
     await incrementUsage(request.retailerId, 'BG_REMOVAL');
 
@@ -246,12 +246,9 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   // backdrop. Spin frames pick up the selection on their next
   // extraction (extract-spin-frames.ts reads background_image_id at
   // generation time) — not retroactively reprocessed here.
-  // F-013: gated behind CUSTOM_BACKGROUND_LIBRARY feature.
+  // 2026-08-09 (user decision): plan gate removed — see GET /background-images.
   server.patch('/:id/background', async (request, reply) => {
     const { id } = request.params as { id: string };
-    if (!(await hasFeature(request.retailerId, 'CUSTOM_BACKGROUND_LIBRARY'))) {
-      throw featureUnavailable('Custom Background Library');
-    }
     const body = z.object({ background_image_id: z.string().nullable() }).parse(request.body);
 
     const product = await prisma.product.findFirst({

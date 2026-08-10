@@ -75,6 +75,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
           logo_url: true,
           banner_url: true,
           is_suspended: true,
+          public_slug: true,
         },
       });
       if (!retailer) throw notFound('Retailer');
@@ -89,6 +90,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
               phone: retailer.phone,
               logo_url: null,
               banner_url: null,
+              public_slug: retailer.public_slug,
             },
             title: null,
             description: 'This store is temporarily unavailable.',
@@ -145,6 +147,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
             phone: retailer.phone,
             logo_url: retailer.logo_url ?? null,
             banner_url: retailer.banner_url ?? null,
+            public_slug: retailer.public_slug,
           },
           title: category.name,
           description: null,

@@ -34,11 +34,14 @@ interface RazorpayInstance {
 
 interface Props {
   slug: string
+  // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
+  store?: string | null
   shopName: string
   retailerPhone: string
 }
 
-export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: Props) {
+export function CheckoutForm({ slug, store, shopName, retailerPhone: _retailerPhone }: Props) {
+  const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
   const router = useRouter()
   const [cart, setCart] = useState<CartMap | null>(null)
   const [name, setName] = useState('')
@@ -137,7 +140,7 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
             // to look the order up — stash in sessionStorage (never in the URL).
             saveOrderPhone(slug, phone)
             saveCart(slug, new Map())
-            router.push(`/c/${slug}/order/${orderData.order_id}`)
+            router.push(`${basePath}/order/${orderData.order_id}`)
           },
           modal: { ondismiss: () => setLoading(false) },
         })
@@ -148,7 +151,7 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
         setLoading(false)
       }
     },
-    [cart, name, phone, addressLine1, addressLine2, city, state, pincode, shopName, slug, router],
+    [cart, name, phone, addressLine1, addressLine2, city, state, pincode, shopName, slug, basePath, router],
   )
 
   if (cart === null) return null
@@ -161,7 +164,7 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
       <div className="min-h-screen bg-gray-50 font-sans">
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
           <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-            <Link href={`/c/${slug}`} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back">
+            <Link href={basePath} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back">
               <ArrowLeft size={20} />
             </Link>
             <h1 className="font-display text-lg font-bold text-gray-900">Checkout</h1>
@@ -172,7 +175,7 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
             <ShoppingBag size={26} className="text-cyan-400" />
           </div>
           <p className="text-sm font-medium text-gray-700">Your cart is empty</p>
-          <Link href={`/c/${slug}`} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">
+          <Link href={basePath} className="mt-4 inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors">
             Browse catalog
           </Link>
         </main>
@@ -184,7 +187,7 @@ export function CheckoutForm({ slug, shopName, retailerPhone: _retailerPhone }: 
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
-          <Link href={`/c/${slug}/cart`} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back to cart">
+          <Link href={`${basePath}/cart`} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back to cart">
             <ArrowLeft size={20} />
           </Link>
           <h1 className="font-display text-lg font-bold text-gray-900">Checkout</h1>

@@ -1,76 +1,77 @@
-'use client'
+'use client';
 
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import Link from 'next/link'
-import { Loader2 } from 'lucide-react'
-import { motion } from 'framer-motion'
-import type { RetailerProfile } from '../page'
+import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import type { RetailerProfile } from '../page';
 
 interface Props {
-  slug: string
-  profile: RetailerProfile
+  slug: string;
+  profile: RetailerProfile;
 }
 
-type Gender = 'MALE' | 'FEMALE'
+type Gender = 'MALE' | 'FEMALE';
 
-const leadKey = (slug: string) => `kanchuki_lead_${slug}`
+const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
 
 export function ContactGate({ slug, profile }: Props) {
-  const router = useRouter()
-  const [checkingReturningVisitor, setCheckingReturningVisitor] = useState(true)
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
-  const [gender, setGender] = useState<Gender | null>(null)
-  const [consent, setConsent] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter();
+  const [checkingReturningVisitor, setCheckingReturningVisitor] = useState(true);
+  const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [gender, setGender] = useState<Gender | null>(null);
+  const [consent, setConsent] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Already submitted details for this store before — skip the form and
   // go straight to the catalog instead of asking again.
   useEffect(() => {
-    const alreadySubmitted = localStorage.getItem(leadKey(slug))
+    const alreadySubmitted = localStorage.getItem(leadKey(slug));
     if (alreadySubmitted) {
-      router.replace(`/store/${slug}/categories`)
-      return
+      router.replace(`/${slug}/categories`);
+      return;
     }
-    setCheckingReturningVisitor(false)
-  }, [slug, router])
+    setCheckingReturningVisitor(false);
+  }, [slug, router]);
 
-  const canSubmit = name.trim().length > 0 && phone.trim().length >= 10 && gender !== null && consent
+  const canSubmit =
+    name.trim().length > 0 && phone.trim().length >= 10 && gender !== null && consent;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!canSubmit) return
-    setSubmitting(true)
-    setError(null)
+    e.preventDefault();
+    if (!canSubmit) return;
+    setSubmitting(true);
+    setError(null);
     try {
-      const res = await fetch(`/api/store/${slug}/leads`, {
+      const res = await fetch(`/api/${slug}/leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: name.trim(), phone: phone.trim(), gender, consent }),
-      })
+      });
       if (!res.ok) {
-        const json = (await res.json()) as { error?: { message?: string } }
-        throw new Error(json.error?.message ?? 'Could not submit your details')
+        const json = (await res.json()) as { error?: { message?: string } };
+        throw new Error(json.error?.message ?? 'Could not submit your details');
       }
-      localStorage.setItem(leadKey(slug), '1')
+      localStorage.setItem(leadKey(slug), '1');
       // Replace (not push) so the back button never lands back on this form —
       // it skips straight past this history entry to the catalog.
-      router.replace(`/store/${slug}/categories`)
+      router.replace(`/${slug}/categories`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
-      setSubmitting(false)
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+      setSubmitting(false);
     }
-  }
+  };
 
   if (checkingReturningVisitor) {
     return (
       <div className="min-h-screen bg-cyan-50 flex items-center justify-center">
         <Loader2 size={24} className="animate-spin text-cyan-600" />
       </div>
-    )
+    );
   }
 
   return (
@@ -109,9 +110,7 @@ export function ContactGate({ slug, profile }: Props) {
           )}
           <div>
             <h1 className="text-lg font-bold text-gray-900">{profile.shop_name}</h1>
-            {profile.city && (
-              <p className="text-xs text-gray-500">{profile.city}</p>
-            )}
+            {profile.city && <p className="text-xs text-gray-500">{profile.city}</p>}
           </div>
         </div>
         <p className="text-xs text-gray-500 mb-5">
@@ -124,10 +123,14 @@ export function ContactGate({ slug, profile }: Props) {
           </div>
         )}
 
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+        <label
+          htmlFor="contact-name"
+          className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+        >
           Name
         </label>
         <input
+          id="contact-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -135,10 +138,14 @@ export function ContactGate({ slug, profile }: Props) {
           placeholder="Your name"
         />
 
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">
+        <label
+          htmlFor="contact-phone"
+          className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+        >
           Phone
         </label>
         <input
+          id="contact-phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           required
@@ -148,9 +155,9 @@ export function ContactGate({ slug, profile }: Props) {
           placeholder="10-digit mobile number"
         />
 
-        <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <p className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
           Gender
-        </label>
+        </p>
         <div className="flex gap-3 mb-4">
           {(['MALE', 'FEMALE'] as const).map((g) => (
             <button
@@ -158,7 +165,9 @@ export function ContactGate({ slug, profile }: Props) {
               type="button"
               onClick={() => setGender(g)}
               className={`flex-1 rounded-xl py-2.5 text-sm font-medium border ${
-                gender === g ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-600 border-gray-200'
+                gender === g
+                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  : 'bg-white text-gray-600 border-gray-200'
               }`}
             >
               {g === 'MALE' ? 'Male' : 'Female'}
@@ -188,5 +197,5 @@ export function ContactGate({ slug, profile }: Props) {
         </button>
       </form>
     </motion.div>
-  )
+  );
 }

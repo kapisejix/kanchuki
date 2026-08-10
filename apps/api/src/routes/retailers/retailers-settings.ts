@@ -4,6 +4,7 @@ import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { buildStoreUrl } from '../../lib/store-urls.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
 function periodStart(period: QuotaPeriod, now = new Date()): Date {
@@ -66,20 +67,19 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── POST /retailers/me/qr-slug ─────────────────────────────────
-  // Get-or-create the stable slug the QR code encodes (/store/{slug}).
+  // Get-or-create the stable slug the QR code encodes ({WEB_URL}/{slug}).
   server.post('/me/qr-slug', async (request) => {
     const existing = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
       select: { public_slug: true, shop_name: true },
     });
     if (!existing) throw notFound('Retailer');
-    const webBase = process.env.WEB_URL ?? '';
 
     if (existing.public_slug) {
       return {
         data: {
           public_slug: existing.public_slug,
-          profile_url: `${webBase}/store/${existing.public_slug}`,
+          profile_url: buildStoreUrl(existing.public_slug),
         },
       };
     }
@@ -119,13 +119,15 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         public_slug: updated.public_slug,
-        profile_url: `${webBase}/store/${updated.public_slug}`,
+        // slug was just assigned to public_slug (schema type is nullable, so
+        // the select return is string | null — use the local to avoid the cast).
+        profile_url: buildStoreUrl(slug),
       },
     };
   });
 
   // ─── DELETE /retailers/me/qr-slug ───────────────────────────────
-  // Remove the store QR: clears public_slug so /store/{slug} (and any
+  // Remove the store QR: clears public_slug so {WEB_URL}/{slug} (and any
   // printed QR / shared link) stops resolving. The mobile QR screen does
   // NOT call this directly — the retailer must type their shop name as
   // verification first (see store-profile.tsx) per the user's "don't

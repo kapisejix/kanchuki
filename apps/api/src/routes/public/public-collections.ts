@@ -52,6 +52,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
                 logo_url: true,
                 banner_url: true,
                 is_suspended: true,
+                public_slug: true,
               },
             },
           },
@@ -65,7 +66,10 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
           return {
             data: {
               suspended: true,
-              retailer: { shop_name: collection.retailer.shop_name },
+              retailer: {
+                shop_name: collection.retailer.shop_name,
+                public_slug: collection.retailer.public_slug,
+              },
               title: collection.title,
               description:
                 'This store is temporarily unavailable via this link. Please contact the store directly for assistance.',

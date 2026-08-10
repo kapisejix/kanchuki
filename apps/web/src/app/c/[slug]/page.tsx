@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { CollectionView } from './components/CollectionView'
 import { fetchCollection } from './lib/fetchCollection'
 
@@ -25,10 +25,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-export default async function CollectionPage({ params }: Props) {
+export default async function LegacyCollectionPage({ params }: Props) {
   const { slug } = await params
   const collection = await fetchCollection(slug, { page: 1, pageSize: 12 })
   if (!collection) notFound()
+
+  // Legacy /c/{slug} link: redirect to the canonical /{public_slug}/{slug}
+  // when the retailer has a store slug (shared links sent before the 2026-08-09
+  // URL change keep working). Retailers without a public_slug get /c/{slug}
+  // links from the API — render the legacy page for those.
+  const store = collection.retailer.public_slug
+  if (store) redirect(`/${store}/${slug}`)
 
   return <CollectionView collection={collection} slug={slug} productsApiPath={`/api/c/${slug}/products`} />
 }

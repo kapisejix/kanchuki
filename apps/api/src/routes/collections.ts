@@ -5,7 +5,18 @@ import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../lib/features.js';
+import { buildCollectionUrl } from '../lib/store-urls.js';
 import { featureUnavailable, notFound, validationError } from '../plugins/error-handler.js';
+
+// The retailer's public_slug (store URL segment). Null when the retailer has
+// never generated a store QR — buildCollectionUrl falls back to /c/{slug}.
+async function retailerPublicSlug(retailerId: string): Promise<string | null> {
+  const retailer = await prisma.retailer.findUnique({
+    where: { id: retailerId },
+    select: { public_slug: true },
+  });
+  return retailer?.public_slug ?? null;
+}
 
 const CreateCollectionSchema = z.object({
   title: z.string().min(1).max(200),
@@ -86,7 +97,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    const webUrl = `${process.env.WEB_URL ?? ''}/c/${slug}`;
+    const webUrl = buildCollectionUrl(await retailerPublicSlug(retailerId), slug);
     return reply.status(201).send({ data: { ...collection, url: webUrl } });
   });
 
@@ -117,15 +128,16 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       take: limit + 1,
     });
 
-    const webBase = process.env.WEB_URL ?? '';
     const hasMore = collections.length > limit;
     const page = hasMore ? collections.slice(0, limit) : collections;
+    // One lookup for the whole page — the store segment is per-retailer, not per-collection.
+    const publicSlug = await retailerPublicSlug(request.retailerId);
 
     return {
       data: page.map((c) => ({
         ...c,
         product_count: c._count.products,
-        url: `${webBase}/c/${c.slug}`,
+        url: buildCollectionUrl(publicSlug, c.slug),
       })),
       pagination: {
         cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
@@ -161,7 +173,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         ...collection,
-        url: `${process.env.WEB_URL ?? ''}/c/${collection.slug}`,
+        url: buildCollectionUrl(await retailerPublicSlug(request.retailerId), collection.slug),
       },
     };
   });
@@ -382,7 +394,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    const webUrl = `${process.env.WEB_URL ?? ''}/c/${slug}`;
+    const webUrl = buildCollectionUrl(await retailerPublicSlug(retailerId), slug);
     return reply.status(201).send({
       data: {
         ...collection,
@@ -439,12 +451,11 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    const webBase = process.env.WEB_URL ?? '';
     return {
       data: {
         ...updated,
         product_count: updated._count.products,
-        url: `${webBase}/c/${updated.slug}`,
+        url: buildCollectionUrl(await retailerPublicSlug(request.retailerId), updated.slug),
       },
     };
   });
@@ -518,6 +529,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
           whatsapp_api_access_token: true,
           whatsapp_api_template_name: true,
           whatsapp_api_template_lang: true,
+          public_slug: true,
         },
       }),
       prisma.customer.findMany({
@@ -536,7 +548,7 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
       );
     }
 
-    const webUrl = `${process.env.WEB_URL ?? ''}/c/${collection.slug}`;
+    const webUrl = buildCollectionUrl(retailer.public_slug, collection.slug);
     const { whatsapp_api_phone_number_id, whatsapp_api_access_token } = retailer;
     const templateName = retailer.whatsapp_api_template_name;
     const templateLang = retailer.whatsapp_api_template_lang ?? 'en_US';

@@ -9,11 +9,14 @@ import { type CartItem, type CartMap, loadCart, saveCart, cartTotal, cartCount }
 
 interface Props {
   slug: string
+  // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
+  store?: string | null
   shopName: string
   checkoutEnabled: boolean
 }
 
-export function CartPage({ slug, shopName, checkoutEnabled }: Props) {
+export function CartPage({ slug, store, shopName, checkoutEnabled }: Props) {
+  const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
   const [cart, setCart] = useState<CartMap | null>(null)
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export function CartPage({ slug, shopName, checkoutEnabled }: Props) {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link
-            href={`/c/${slug}`}
+            href={basePath}
             className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
             aria-label="Back to catalog"
           >
@@ -82,7 +85,7 @@ export function CartPage({ slug, shopName, checkoutEnabled }: Props) {
             <p className="text-sm font-medium text-gray-700 mb-1">Your cart is empty</p>
             <p className="text-xs text-gray-400 mb-4">Add products from the collection to start checkout.</p>
             <Link
-              href={`/c/${slug}`}
+              href={basePath}
               className="inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors"
             >
               Browse catalog
@@ -142,7 +145,7 @@ export function CartPage({ slug, shopName, checkoutEnabled }: Props) {
 
             {checkoutEnabled ? (
               <Link
-                href={`/c/${slug}/checkout`}
+                href={`${basePath}/checkout`}
                 className="mt-4 w-full bg-cyan-600 hover:bg-cyan-700 text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-soft-lg transition-all active:scale-[0.98] hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
               >
                 <CreditCard size={20} />
@@ -152,7 +155,7 @@ export function CartPage({ slug, shopName, checkoutEnabled }: Props) {
               <div className="mt-4 bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
                 <p className="text-sm text-amber-700 font-medium">{shopName} does not accept online payments yet.</p>
                 <p className="text-xs text-amber-600 mt-1">Enquire via WhatsApp to place an order.</p>
-                <Link href={`/c/${slug}`} className="mt-3 inline-block text-sm font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-4 py-2 rounded-full transition-colors">
+                <Link href={basePath} className="mt-3 inline-block text-sm font-semibold text-amber-700 bg-amber-100 hover:bg-amber-200 px-4 py-2 rounded-full transition-colors">
                   Back to catalog
                 </Link>
               </div>

@@ -66,6 +66,7 @@ const COLLECTION: PublicCollection = {
     phone: '919999999999',
     logo_url: null,
     banner_url: null,
+    public_slug: 'meera-sarees',
   },
   title: 'Festive Edit',
   description: 'A handpicked edit from the store.',

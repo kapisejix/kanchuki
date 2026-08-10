@@ -33,6 +33,8 @@ interface Props {
   isFavorited: boolean
   checkoutEnabled: boolean
   slug: string
+  // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
+  store?: string | null
   onFavorite: (id: string) => void
   onTryOn: () => void
   onClose: () => void
@@ -45,6 +47,7 @@ export function ProductDetailSheet({
   isFavorited,
   checkoutEnabled,
   slug,
+  store,
   onFavorite,
   onTryOn,
   onClose,
@@ -740,7 +743,7 @@ export function ProductDetailSheet({
                 }),
               )
               saveCart(slug, cart)
-              router.push(`/c/${slug}/cart`)
+              router.push(`${store ? `/${store}/${slug}` : `/c/${slug}`}/cart`)
             }}
             disabled={isSold || isReserved || !checkoutEnabled}
             title={!checkoutEnabled ? "Online checkout isn't set up for this store yet" : undefined}

@@ -1,7 +1,8 @@
 // Shared runner for scripts/batch-clean-photos.py — one behavior, one
-// place: both the admin Photo Cleanup Test page and the retailer-facing
-// pro-cleanup route (products-pro-cleanup.ts) go through runPhotoCleanup()
-// below.
+// place. Sole remaining caller is the admin Photo Cleanup Test page
+// (routes/admin/admin-photo-cleanup.ts) — the retailer-facing pro-cleanup
+// route was removed 2026-08-09 along with the mobile Pro capture mode.
+// Both callers go through runPhotoCleanup() below.
 //
 // Two execution modes, chosen by env:
 //   * PHOTO_CLEANUP_SERVICE_URL set (PRODUCTION) — the heavy Python stack

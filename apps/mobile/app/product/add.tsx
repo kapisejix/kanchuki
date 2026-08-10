@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback, useEffect } from 'react'
-import { PRODUCT_CATEGORIES, SIZE_OPTIONS, COLORS } from '@kanchuki/shared'
+import { useState, useRef, useEffect } from 'react'
+import { SIZE_OPTIONS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
+import { X, ImagePlus, ChevronLeft, Check } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -26,7 +26,7 @@ import {
   uploadImageToR2,
   readLocalImage,
 } from '../../src/lib/api'
-import { showError, logError } from '../../src/lib/errors'
+import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { ProductAddSkeleton } from '../../src/components/Skeleton'
 import { GradientButton } from '../../src/components/GradientButton'
@@ -35,13 +35,10 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 type Step =
   | 'camera'
   | 'scan_review'
-  | 'pro_review'
-  | 'pro_options'
-  | 'pro_processing'
   | 'preview'
   | 'edit'
   | 'saving'
-type CaptureMode = 'photo' | 'scan' | 'pro'
+type CaptureMode = 'photo' | 'scan'
 
 type UploadInfo = {
   upload_url: string
@@ -55,12 +52,6 @@ type UploadInfo = {
 const SCAN_BURST_COUNT = 5
 const SCAN_BURST_INTERVAL_MS = 200
 
-// Pro mode (professional catalog photos): shoot 1-5 shots, keep ≥3, then the
-// server cleans each kept shot (background removal + backdrop, optional SAM2
-// hanger/mannequin removal, garment tight-crop) via POST /products/pro-cleanup.
-const PRO_SHOT_LIMIT = 5
-const PRO_MIN_KEEP = 3
-
 export default function AddProductScreen() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
@@ -68,16 +59,6 @@ export default function AddProductScreen() {
   const [step, setStep] = useState<Step>('camera')
   const [captureMode, setCaptureMode] = useState<CaptureMode>('photo')
   const [isScanning, setIsScanning] = useState(false)
-  // Pro path: guards the Process button (double-tap would run two cleanup
-  // batches = double quota + double R2 uploads) and the processing screen
-  // (a back-navigation must NOT let the still-in-flight promise yank the
-  // user to edit when it resolves). proRunningRef is the SYNCHRONOUS guard
-  // (state updates are async — two taps in the same frame both see
-  // proProcessing=false, so state alone can't stop a double batch);
-  // proRunRef invalidates stale in-flight runs on cancel.
-  const [proProcessing, setProProcessing] = useState(false)
-  const proRunningRef = useRef(false)
-  const proRunRef = useRef(0)
   // Shutter guard: takePictureAsync while the previous capture is still
   // being processed throws a camera-busy error on device — dedupe taps.
   const capturingRef = useRef(false)
@@ -103,23 +84,6 @@ export default function AddProductScreen() {
   // Extra frames the retailer multi-selected on the scan review screen —
   // uploaded as additional product photos after the primary photo saves.
   const [extraFrames, setExtraFrames] = useState<string[]>([])
-  // Pro mode: raw shots taken (local URIs), the keepers chosen on review,
-  // per-photo options, and the server-cleaned results (primary first).
-  const [proShots, setProShots] = useState<string[]>([])
-  const [proSelected, setProSelected] = useState<string[]>([])
-  const [proBestUri, setProBestUri] = useState<string | null>(null)
-  const [proRemoveHardware, setProRemoveHardware] = useState(false)
-  const [proTightCrop, setProTightCrop] = useState(true)
-  const [proUploads, setProUploads] = useState<{ r2_key: string; url: string }[]>([])
-  const [proStatus, setProStatus] = useState('')
-  // Pro availability probe (GET /products/pro-cleanup/status) — the Pro chip
-  // shows as unavailable UP-FRONT when the cleanup sidecar/python is down,
-  // instead of letting the retailer shoot 3-5 photos and fail at Process.
-  // Fail-open: a probe network error resolves to 'available' so a flaky
-  // check can never block a working feature.
-  const [proAvailability, setProAvailability] = useState<
-    'checking' | 'available' | 'unavailable'
-  >('checking')
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null)
 
   // Editable fields
@@ -143,24 +107,6 @@ export default function AddProductScreen() {
       .then((res) => setBackgroundImages(res.data))
       .catch(() => {}) // ponytail: best-effort — picker just stays empty (white-only)
   }, [])
-
-  const checkProAvailability = useCallback((refresh = false) => {
-    setProAvailability('checking')
-    productApi
-      .getProCleanupStatus({ refresh })
-      .then((res) => {
-        const available = res.data?.available === true
-        setProAvailability(available ? 'available' : 'unavailable')
-        // The probe resolved AFTER the retailer already picked Pro — don't
-        // leave them in a pro flow that's about to be declared unavailable.
-        if (!available) setCaptureMode((m) => (m === 'pro' ? 'photo' : m))
-      })
-      .catch(() => setProAvailability('available'))
-  }, [])
-
-  useEffect(() => {
-    checkProAvailability()
-  }, [checkProAvailability])
 
   const { data: categoriesData, isLoading: categoriesLoading } = useQuery({
     queryKey: ['categories', 'list'],
@@ -198,9 +144,6 @@ export default function AddProductScreen() {
         [{ resize: { width: 1200 } }],
         { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
       )
-      // This is the single-photo flow — a stale pro-path result must not
-      // leak into the save (handleSave prefers proUploads[0] when set).
-      setProUploads([])
       rawPhotoUriRef.current = compressed.uri
       setPreviewRotation(null)
       setPhoto(compressed.uri)
@@ -242,108 +185,15 @@ export default function AddProductScreen() {
     }
   }
 
-  const addProShot = async (uri: string) => {
-    try {
-      const compressed = await ImageManipulator.manipulateAsync(
-        uri,
-        [{ resize: { width: 1600 } }],
-        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
-      )
-      setProShots((prev) => (prev.length >= PRO_SHOT_LIMIT ? prev : [...prev, compressed.uri]))
-    } catch (err) {
-      showError(err, 'Could not process that photo. Try again.', 'Photo Error')
-    }
-  }
-
   const handleCapture = async () => {
     if (!cameraRef.current || capturingRef.current || isScanning) return
     capturingRef.current = true
     try {
       const shot = await cameraRef.current.takePictureAsync({ quality: 0.85 })
       if (!shot?.uri) return
-      if (captureMode === 'pro') {
-        await addProShot(shot.uri)
-      } else {
-        await processPhoto(shot.uri)
-      }
+      await processPhoto(shot.uri)
     } finally {
       capturingRef.current = false
-    }
-  }
-
-  // Pro mode: upload each kept raw shot to R2, then run the server-side
-  // professional pipeline (remove BG + backdrop, optional SAM2 hardware
-  // removal + tight-crop). The sharpest cleaned photo is auto-flagged primary
-  // by the server (Laplacian variance) — no extra AI cost.
-  const handleProProcess = async () => {
-    if (proRunningRef.current || proProcessing || proSelected.length < PRO_MIN_KEEP) return
-    proRunningRef.current = true
-    const runId = ++proRunRef.current
-    setProProcessing(true)
-    setStep('pro_processing')
-    setProStatus('Uploading photos…')
-    try {
-      const uploads: { r2_key: string; url: string }[] = []
-      for (const [i, uri] of proSelected.entries()) {
-        setProStatus(`Uploading photo ${i + 1}/${proSelected.length}…`)
-        const blob = await readLocalImage(uri)
-        const up = await productApi.getUploadUrl('product.jpg', 'image/jpeg', blob.size)
-        // compress: false — the pro pipeline (SAM2/rembg segmentation) needs
-        // the raw at full quality; the server compresses the OUTPUT to ≤80KB.
-        // Client-side ≤80KB here would degrade segmentation of the raw.
-        await uploadImageToR2(uri, up.data.upload_url, 'image/jpeg', 30_000, undefined, {
-          compress: false,
-        })
-        uploads.push({ r2_key: up.data.r2_key, url: up.data.public_url })
-      }
-
-      setProStatus('Creating professional photos… (about a minute per photo)')
-      const res = await productApi.proCleanup({
-        photos: uploads,
-        remove_hardware: proRemoveHardware,
-        tight_crop: proTightCrop,
-        background_image_id: backgroundImageId,
-      })
-      // User navigated back while this was in flight — the run is cancelled,
-      // drop the result instead of yanking them to the edit screen.
-      if (runId !== proRunRef.current) return
-      const cleaned = res.data.photos.filter((p) => !p.error)
-      if (cleaned.length === 0) throw new Error('No photos could be processed')
-      // Primary first (server already flagged it) — edit form + save use this
-      // order: index 0 = primary, the rest = extra catalog photos.
-      const ordered = [
-        ...cleaned.filter((p) => p.is_primary),
-        ...cleaned.filter((p) => !p.is_primary),
-      ]
-      const primaryClean = ordered[0]
-      if (!primaryClean) throw new Error('No photos could be processed')
-      setProUploads(ordered.map((p) => ({ r2_key: p.r2_key, url: p.url })))
-      setPhoto(primaryClean.url)
-      setAutoCleanup(false) // photos are already professionally cleaned
-      setExtraFrames([])
-      setStep('edit')
-    } catch (err) {
-      // A cancelled run surfaces its own navigation in cancelPro — don't
-      // double-show the error dialog over the options screen.
-      if (runId !== proRunRef.current) return
-      logError(err)
-      setProStatus('')
-      setStep('pro_options')
-      // 503 SERVICE_UNAVAILABLE from the pro-cleanup route = the cleanup
-      // environment (sidecar/python) is down, NOT the photos — guide the
-      // retailer to Photo mode instead of a generic failure.
-      const apiErr = err as { code?: string; status?: number }
-      const serviceDown = apiErr.code === 'SERVICE_UNAVAILABLE' || apiErr.status === 503
-      showError(
-        err,
-        serviceDown
-          ? 'Pro photos are unavailable right now — try again later, or use Photo mode instead.'
-          : 'Photo processing failed — please try again.',
-        serviceDown ? 'Pro Mode Unavailable' : 'Processing Error',
-      )
-    } finally {
-      proRunningRef.current = false
-      if (runId === proRunRef.current) setProProcessing(false)
     }
   }
 
@@ -381,21 +231,6 @@ export default function AddProductScreen() {
   }
 
   const handlePickFromGallery = async () => {
-    if (captureMode === 'pro') {
-      const remaining = PRO_SHOT_LIMIT - proShots.length
-      if (remaining <= 0) return
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.85,
-        allowsMultipleSelection: true,
-        selectionLimit: remaining,
-      })
-      if (result.canceled) return
-      for (const asset of result.assets.slice(0, remaining)) {
-        await addProShot(asset.uri)
-      }
-      return
-    }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       quality: 0.85,
@@ -425,13 +260,12 @@ export default function AddProductScreen() {
   const handleSave = async () => {
     setStep('saving')
 
-    // Photo/scan path: the photo uploads at save time — no blocking upload
-    // screen mid-flow. The retailer just adds a price; AI tagging + cleanup
-    // (incl. the auto-contrast backdrop) run in the background after save.
-    // Pro path: proUploads[0] is already cleaned + on R2.
-    let primary =
-      proUploads[0] ??
-      (uploadInfo ? { r2_key: uploadInfo.r2_key, url: uploadInfo.public_url } : null)
+    // The photo uploads at save time — no blocking upload screen mid-flow.
+    // The retailer just adds a price; AI tagging + cleanup (incl. the
+    // auto-contrast backdrop) run in the background after save.
+    let primary = uploadInfo
+      ? { r2_key: uploadInfo.r2_key, url: uploadInfo.public_url }
+      : null
     if (!primary && photo) {
       try {
         const info = await uploadPhoto(photo)
@@ -465,21 +299,9 @@ export default function AddProductScreen() {
         background_image_id: backgroundImageId,
       })
 
-      // Pro-path extras are already cleaned + on R2 — attach directly.
       // Scan-mode extras (local URIs) are uploaded after save below.
-      // Both best-effort: one failing shouldn't undo a product that saved.
+      // Best-effort: one failing shouldn't undo a product that saved.
       const productId = (created.data as { id: string }).id
-      for (const extra of proUploads.slice(1)) {
-        try {
-          await productApi.addPhoto(productId, {
-            r2_key: extra.r2_key,
-            url: extra.url,
-            content_type: 'image/jpeg',
-          })
-        } catch (err) {
-          console.warn('Pro photo attach failed', err)
-        }
-      }
       for (const uri of extraFrames) {
         try {
           const info = await uploadPhoto(uri)
@@ -550,7 +372,7 @@ export default function AddProductScreen() {
           <X size={20} color="white" />
         </AnimatedPressable>
 
-        {/* Photo / Scan / Pro mode toggle */}
+        {/* Photo / Scan mode toggle */}
         <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
           <View className="flex-row items-center justify-center gap-2">
             <AnimatedPressable
@@ -565,59 +387,17 @@ export default function AddProductScreen() {
             >
               <Text className="text-white text-xs font-semibold">Scan</Text>
             </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => {
-                // Probe runs at screen open — while the cleanup sidecar is
-                // down the chip is disabled up-front (no wasted photo shoot).
-                // Tapping a disabled chip re-checks: the sidecar may have
-                // come back up since the screen opened.
-                if (proAvailability === 'unavailable') {
-                  checkProAvailability(true)
-                  return
-                }
-                setCaptureMode('pro')
-              }}
-              className={`px-4 py-1.5 rounded-full ${
-                captureMode === 'pro' && proAvailability !== 'unavailable'
-                  ? 'bg-ink-600'
-                  : proAvailability === 'unavailable'
-                    ? 'bg-black/30'
-                    : 'bg-black/50'
-              }`}
-            >
-              <Text
-                className={`text-white text-xs font-semibold ${
-                  proAvailability === 'unavailable' ? 'opacity-50' : ''
-                }`}
-              >
-                {proAvailability === 'checking' ? 'Pro…' : 'Pro'}
-              </Text>
-            </AnimatedPressable>
           </View>
-          {proAvailability === 'unavailable' && (
-            <Text className="text-white/70 text-[11px] mt-2 px-8 text-center">
-              Pro photos are unavailable right now — tap Pro to re-check, or use Photo mode.
-            </Text>
-          )}
         </View>
 
-        {/* Frame guide — pro mode nudges straight-on, garment-filled framing
-            (the cheapest lever in the whole pipeline: a better raw photo needs
-            less AI cleanup). */}
+        {/* Frame guide — scan mode pans, photo mode frames the garment. */}
         <View className="flex-1 items-center justify-center">
           <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
           <Text className="text-white/60 text-sm mt-4 px-8 text-center">
             {captureMode === 'scan'
               ? 'Pan slowly over the product'
-              : captureMode === 'pro'
-                ? 'Shoot straight-on · garment fills the frame · hook slightly out of silhouette'
-                : 'Fit product top to bottom in frame'}
+              : 'Fit product top to bottom in frame'}
           </Text>
-          {captureMode === 'pro' && (
-            <Text className="text-white/40 text-xs mt-2 px-8 text-center">
-              Take at least {PRO_MIN_KEEP} shots — front, back, detail ({proShots.length}/{PRO_SHOT_LIMIT})
-            </Text>
-          )}
         </View>
 
         {/* Controls */}
@@ -649,56 +429,12 @@ export default function AddProductScreen() {
           <Text className="text-white/50 text-xs">
             {isScanning
               ? 'Scanning...'
-              : captureMode === 'pro'
-                ? 'Tap shutter for each angle · Gallery to import'
-                : captureMode === 'scan'
-                  ? 'Tap to scan · Gallery to import'
-                  : 'Tap to capture · Gallery to import'}
+              : captureMode === 'scan'
+                ? 'Tap to scan · Gallery to import'
+                : 'Tap to capture · Gallery to import'}
           </Text>
         </View>
 
-        {/* Pro mode: captured shots strip + Continue (enabled at ≥3) */}
-        {captureMode === 'pro' && proShots.length > 0 && (
-          <>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              className="absolute left-0 right-0"
-              style={{ bottom: 190 + insets.bottom }}
-              contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}
-            >
-              {proShots.map((uri, idx) => (
-                <View key={uri} className="w-14 h-14 rounded-lg overflow-hidden border-2 border-white/70">
-                  <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-                  <Text className="absolute bottom-0 right-0 bg-black/70 text-white text-[9px] px-1 rounded-tl">
-                    {idx + 1}
-                  </Text>
-                </View>
-              ))}
-            </ScrollView>
-            <View className="absolute left-4 right-4" style={{ bottom: 120 + insets.bottom }}>
-              <AnimatedPressable
-                onPress={() => {
-                  if (proShots.length < PRO_MIN_KEEP) return
-                  // Pre-select all shots; the review screen lets the retailer
-                  // drop any to reach the 3 minimum.
-                  setProSelected(proShots)
-                  const best = proShots.reduce((a, b) => (new File(b).size > new File(a).size ? b : a))
-                  setProBestUri(best)
-                  setStep('pro_review')
-                }}
-                disabled={proShots.length < PRO_MIN_KEEP}
-                className={`py-3.5 rounded-2xl items-center ${proShots.length >= PRO_MIN_KEEP ? 'bg-ink-600' : 'bg-white/10'}`}
-              >
-                <Text className="text-white font-semibold">
-                  {proShots.length < PRO_MIN_KEEP
-                    ? `Take ${PRO_MIN_KEEP - proShots.length} more to continue`
-                    : `Continue with ${proShots.length} shots →`}
-                </Text>
-              </AnimatedPressable>
-            </View>
-          </>
-        )}
       </View>
     )
   }
@@ -794,218 +530,6 @@ export default function AddProductScreen() {
     )
   }
 
-  // ── Pro review step — keep ≥3 of the captured shots ────────────
-
-  if (step === 'pro_review') {
-    const togglePro = (uri: string) => {
-      setProSelected((prev) =>
-        prev.includes(uri) ? prev.filter((u) => u !== uri) : [...prev, uri],
-      )
-    }
-    const confirmPro = () => {
-      if (proSelected.length < PRO_MIN_KEEP) return
-      setStep('pro_options')
-    }
-
-    return (
-      <View className="flex-1 bg-black" style={{ paddingTop: insets.top + 16 }}>
-        <AnimatedPressable
-          onPress={() => {
-            setProSelected([])
-            setProBestUri(null)
-            setStep('camera')
-          }}
-          className="absolute left-4 w-10 h-10 bg-black/50 rounded-full items-center justify-center z-10"
-          style={{ top: insets.top + 8 }}
-          accessibilityLabel="Discard and retake"
-          accessibilityRole="button"
-        >
-          <X size={20} color="white" />
-        </AnimatedPressable>
-
-        <Text className="text-white text-center font-semibold mt-2">Keep at least {PRO_MIN_KEEP} shots</Text>
-        <Text className="text-white/50 text-xs text-center mt-1 mb-4 px-8">
-          Front, back and a detail close-up make the best catalog — tap to remove, keep {Math.max(0, PRO_MIN_KEEP - proSelected.length) === 0 ? 'all good' : `${PRO_MIN_KEEP - proSelected.length} more`}
-        </Text>
-
-        <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-          <View className="flex-row flex-wrap justify-center gap-3 px-4">
-            {proShots.map((uri, idx) => {
-              const isBest = uri === proBestUri
-              const isSelected = proSelected.includes(uri)
-              return (
-                <AnimatedPressable
-                  key={uri}
-                  onPress={() => togglePro(uri)}
-                  className={`w-28 h-40 rounded-xl overflow-hidden border-2 ${isSelected ? 'border-ink-400' : 'border-white/20'}`}
-                >
-                  <Image
-                    source={{ uri }}
-                    style={{ width: '100%', height: '100%', opacity: isSelected ? 1 : 0.5 }}
-                    contentFit="cover"
-                  />
-                  {isBest && (
-                    <View className="absolute top-1.5 left-1.5 bg-ink-500 px-2 py-0.5 rounded-full">
-                      <Text className="text-white text-[9px] font-bold">Best</Text>
-                    </View>
-                  )}
-                  <View
-                    className={`absolute top-1.5 right-1.5 w-6 h-6 rounded-full items-center justify-center border-2 ${isSelected ? 'bg-ink-500 border-ink-500' : 'bg-black/40 border-white/60'}`}
-                  >
-                    {isSelected && <Check size={14} color="white" />}
-                  </View>
-                  <Text className="absolute bottom-1 left-1 bg-black/60 text-white text-[9px] px-1 rounded">
-                    {idx + 1}
-                  </Text>
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        </ScrollView>
-
-        <View className="px-6" style={{ paddingBottom: 24 + insets.bottom }}>
-          <AnimatedPressable
-            onPress={confirmPro}
-            disabled={proSelected.length < PRO_MIN_KEEP}
-            className={`py-4 rounded-2xl items-center ${proSelected.length >= PRO_MIN_KEEP ? 'bg-ink-600' : 'bg-white/10'}`}
-          >
-            <Text className="text-white font-semibold">
-              {proSelected.length < PRO_MIN_KEEP
-                ? `Keep ${PRO_MIN_KEEP} photos to continue (${proSelected.length} selected)`
-                : `Clean ${proSelected.length} photos →`}
-            </Text>
-          </AnimatedPressable>
-        </View>
-      </View>
-    )
-  }
-
-  // ── Pro options step — backdrop + AI cleanup toggles ────────────
-
-  if (step === 'pro_options') {
-    return (
-      <View className="flex-1 bg-ink-50">
-        <View
-          className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-          style={{ paddingTop: insets.top + 12 }}
-        >
-          <AnimatedPressable
-            onPress={() => setStep('pro_review')}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Photo Settings</Text>
-          <GradientButton
-            label={proProcessing ? 'Processing…' : 'Process'}
-            onPress={() => void handleProProcess()}
-            loading={proProcessing}
-          />
-        </View>
-
-        <ScrollView className="flex-1">
-          <View className="px-4 py-4 gap-4">
-            {/* Backdrop picker (F-011 library, White default) */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-                Background
-              </Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                <View className="flex-row gap-2">
-                  <AnimatedPressable
-                    onPress={() => setBackgroundImageId(null)}
-                    className={`w-16 h-16 rounded-xl items-center justify-center border-2 bg-white ${backgroundImageId === null ? 'border-ink-600' : 'border-sand-200'}`}
-                  >
-                    <Text className="text-[10px] text-sand-500">Auto</Text>
-                  </AnimatedPressable>
-                  {backgroundImages.map((bg) => (
-                    <AnimatedPressable
-                      key={bg.id}
-                      onPress={() => setBackgroundImageId(bg.id)}
-                      className={`w-16 h-16 rounded-xl overflow-hidden border-2 ${backgroundImageId === bg.id ? 'border-ink-600' : 'border-sand-200'}`}
-                    >
-                      <Image
-                        source={{ uri: bg.thumbnail_url ?? bg.image_url }}
-                        style={{ width: '100%', height: '100%' }}
-                        contentFit="cover"
-                      />
-                    </AnimatedPressable>
-                  ))}
-                </View>
-              </ScrollView>
-            </View>
-
-            {/* AI hanger/mannequin removal */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
-              <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-sand-900">Remove hanger / mannequin</Text>
-                <Text className="text-xs text-sand-500 mt-0.5">
-                  AI removes the stand, hook or hanger where it touches the garment — best for shots taken on a hanger or mannequin bust.
-                </Text>
-              </View>
-              <Switch value={proRemoveHardware} onValueChange={setProRemoveHardware} />
-            </View>
-
-            {/* Tight-crop to garment */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
-              <View className="flex-1 pr-3">
-                <Text className="text-sm font-semibold text-sand-900">Crop to garment</Text>
-                <Text className="text-xs text-sand-500 mt-0.5">
-                  Frames the garment edge-to-edge and drops dead space / watermarks from the final catalog shot.
-                </Text>
-              </View>
-              <Switch value={proTightCrop} onValueChange={setProTightCrop} />
-            </View>
-
-            <Text className="text-xs text-center text-sand-400 px-4">
-              {proSelected.length} photo{proSelected.length === 1 ? '' : 's'} will be cleaned — the sharpest becomes the main photo.
-            </Text>
-          </View>
-        </ScrollView>
-      </View>
-    )
-  }
-
-  // ── Pro processing step ─────────────────────────────────────────
-
-  if (step === 'pro_processing') {
-    const cancelPro = () => {
-      // Invalidate the in-flight run (its result will be dropped) and return
-      // to options. Raw photos already uploaded are harmless orphans — the
-      // cleaned copies are never written, so no quota is burned server-side
-      // beyond what already ran.
-      proRunRef.current += 1
-      setProProcessing(false)
-      setProStatus('')
-      setStep('pro_options')
-    }
-
-    return (
-      <View className="flex-1 bg-ink-50 items-center justify-center px-8" style={{ paddingTop: insets.top + 24 }}>
-        <AnimatedPressable
-          onPress={cancelPro}
-          className="absolute left-4 w-10 h-10 bg-white rounded-full border border-sand-200 items-center justify-center"
-          style={{ top: insets.top + 8 }}
-          accessibilityLabel="Cancel photo processing"
-          accessibilityRole="button"
-          hitSlop={8}
-        >
-          <X size={20} color={colors.sand[700]} />
-        </AnimatedPressable>
-        <ActivityIndicator size="large" color={colors.ink[600]} />
-        <Text className="text-sand-900 text-base font-semibold mt-6 text-center">
-          Creating professional photos
-        </Text>
-        <Text className="text-sand-500 text-sm mt-2 text-center">{proStatus}</Text>
-        <Text className="text-sand-400 text-xs mt-4 text-center px-6">
-          Keep this screen open — AI background removal{proRemoveHardware ? ', hanger removal' : ''} takes about a minute per photo.
-        </Text>
-      </View>
-    )
-  }
-
   // ── Preview step ───────────────────────────────────────────────
 
   if (step === 'preview') {
@@ -1023,7 +547,6 @@ export default function AddProductScreen() {
             onPress={() => {
               setPhoto(null)
               setExtraFrames([])
-              setProUploads([])
               setStep('camera')
             }}
             disabled={rotatingPreview}
@@ -1084,28 +607,22 @@ export default function AddProductScreen() {
         {photo && (
           <View className="h-56 rounded-2xl overflow-hidden bg-sand-100">
             <Image source={{ uri: photo }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
-            {/* Pro-cleaned photos are already finished — no client-side
-                tagging is pending for them (server tags after save), so the
-                "AI tagging..." overlay would be a lying spinner here. */}
           </View>
         )}
 
-        {/* Auto-clean toggle: crop + white-background removal (runs server-side after Save).
-            Hidden on the pro path — photos were already professionally cleaned. */}
-        {proUploads.length === 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
-            <View className="flex-1 pr-3">
-              <Text className="text-sm font-semibold text-sand-900">Auto-clean photo</Text>
-              <Text className="text-xs text-sand-500 mt-0.5">
-                Crop to the garment, remove the background, and match a contrasting backdrop (dark garment → light, light garment → dark). Turn off for a styled/mannequin shot you want as-is.
-              </Text>
-            </View>
-            <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
+        {/* Auto-clean toggle: crop + white-background removal (runs server-side after Save). */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
+          <View className="flex-1 pr-3">
+            <Text className="text-sm font-semibold text-sand-900">Auto-clean photo</Text>
+            <Text className="text-xs text-sand-500 mt-0.5">
+              Crop to the garment, remove the background, and match a contrasting backdrop (dark garment → light, light garment → dark). Turn off for a styled/mannequin shot you want as-is.
+            </Text>
           </View>
-        )}
+          <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
+        </View>
 
         {/* Background picker — F-011, only meaningful once auto-clean is on */}
-        {proUploads.length === 0 && autoCleanup && backgroundImages.length > 0 && (
+        {autoCleanup && backgroundImages.length > 0 && (
           <View className="bg-white rounded-2xl p-4 border border-sand-100">
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
               Background

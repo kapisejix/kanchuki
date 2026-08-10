@@ -4,12 +4,14 @@ import type { PublicCollection, PublicProduct, PublicProductDetail } from '@kanc
 
 // Regression suite for the customer-facing PWA:
 //
-//  1. /c/[slug] collection pages render and all interactions (product detail
-//     sheet, favorites, pagination) happen client-side — no full reload.
+//  1. /{public_slug}/{collection-slug} collection pages render and all
+//     interactions (product detail sheet, favorites, pagination) happen
+//     client-side — no full reload. Legacy /c/{slug} and /store/{slug} links
+//     redirect to these canonical URLs.
 //  2. The Serwist service worker (apps/web/src/app/sw.ts) makes the pages
-//     work offline: /c/* documents NetworkFirst, /api/c/* StaleWhileRevalidate,
-//     R2 product images CacheFirst, and uncached navigations fall back to the
-//     precached /offline page.
+//     work offline: collection documents NetworkFirst, /api/* collection
+//     proxies StaleWhileRevalidate, R2 product images CacheFirst, and
+//     uncached navigations fall back to the precached /offline page.
 //
 // Run via playwright.customer.config.ts — it boots a dedicated `next build`
 // + `next start` server on :3100 (the SW is always enabled in prod builds;
@@ -59,6 +61,8 @@ function makeProduct(i: number): PublicProduct {
 
 const ALL_PRODUCTS = Array.from({ length: PRODUCT_COUNT }, (_, i) => makeProduct(i))
 
+const STORE_SLUG = 'meera-sarees'
+
 function collectionFor(slug: string, page: number): PublicCollection {
   const start = (page - 1) * PAGE_SIZE
   return {
@@ -68,6 +72,9 @@ function collectionFor(slug: string, page: number): PublicCollection {
       phone: '919999999999',
       logo_url: null,
       banner_url: null,
+      // Canonical URL scheme: /{public_slug}/{collection-slug}. The legacy
+      // /c/{slug} and /store/{slug} pages 302 to these canonical paths.
+      public_slug: STORE_SLUG,
     },
     title: slug === 'office-edit' ? 'Office Edit' : 'Festive Edit',
     description: 'A handpicked edit from the store.',
@@ -94,7 +101,30 @@ test.beforeAll(async () => {
     const url = new URL(req.url ?? '/', API_STUB_ORIGIN)
     const collectionMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)$/)
     const favoriteMatch = url.pathname.match(/^\/v1\/public\/collections\/([^/]+)\/favorite$/)
+    const retailerMatch = url.pathname.match(/^\/v1\/public\/retailers\/([^/]+)$/)
     res.setHeader('Content-Type', 'application/json')
+
+    // Store profile — /{public_slug} contact gate (canonical form of the
+    // legacy /store/{public_slug} QR links).
+    if (req.method === 'GET' && retailerMatch && retailerMatch[1] === STORE_SLUG) {
+      res.statusCode = 200
+      res.end(
+        JSON.stringify({
+          data: {
+            shop_name: 'Meera Sarees',
+            city: 'Jaipur',
+            state: null,
+            address_line1: null,
+            address_line2: null,
+            categories: [],
+            logo_url: null,
+            banner_url: null,
+            storefront_slug: 'festive-edit',
+          },
+        }),
+      )
+      return
+    }
 
     if (req.method === 'POST' && favoriteMatch) {
       res.statusCode = 200
@@ -231,7 +261,7 @@ test('collection page renders and interactions are client-side (no full reload)'
     loadCount += 1
   })
 
-  await page.goto('/c/festive-edit')
+  await page.goto(`/${STORE_SLUG}/festive-edit`)
   await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
   await expect(page.getByText('Meera Sarees · Jaipur')).toBeVisible()
   await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
@@ -286,7 +316,7 @@ test('collection pages work offline via the service worker', async ({ context, p
   await mockBrowserNetwork(context)
 
   // 1. Online visit — SW installs and claims the page
-  await page.goto('/c/festive-edit')
+  await page.goto(`/${STORE_SLUG}/festive-edit`)
   await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
   await waitForServiceWorkerControl(page)
 
@@ -326,5 +356,22 @@ test('collection pages work offline via the service worker', async ({ context, p
   // 7. Uncached navigation offline — precached /offline fallback page
   await page.goto('/c/never-visited')
   await expect(page.getByRole('heading', { name: "You're offline", exact: true })).toBeVisible()
+})
+
+test('legacy /c/{slug} and /store/{slug} links redirect to canonical URLs', async ({
+  context,
+  page,
+}) => {
+  await mockBrowserNetwork(context)
+
+  // Collection link shared before the canonical scheme: /c/{slug} → /{store}/{slug}.
+  await page.goto('/c/festive-edit')
+  await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`)
+  await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
+
+  // Store QR link shared before the canonical scheme: /store/{slug} → /{slug}.
+  await page.goto(`/store/${STORE_SLUG}`)
+  await expect(page).toHaveURL(`/${STORE_SLUG}`)
+  await expect(page.getByRole('heading', { name: 'Meera Sarees', exact: true })).toBeVisible()
 })
 

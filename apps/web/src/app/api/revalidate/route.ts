@@ -14,7 +14,7 @@ import { NextResponse } from 'next/server'
  *     headers: { 'Content-Type': 'application/json' },
  *     body: JSON.stringify({
  *       secret: process.env.REVALIDATION_SECRET,
- *       collection_slug: "abc123",
+ *       path: "/priya-cloth-house-x1a2b3/festive-edit",
  *     }),
  *   })
  */
@@ -22,7 +22,8 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
       secret?: string
-      collection_slug?: string
+      path?: string
+      collection_slug?: string // legacy field — accepted for backward compat
     }
 
     // Verify secret
@@ -34,18 +35,20 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!body.collection_slug) {
+    // Legacy callers send collection_slug; canonical callers send a full path
+    const path = body.path ?? (body.collection_slug ? `/c/${body.collection_slug}` : null)
+    if (!path) {
       return NextResponse.json(
-        { error: { code: 'VALIDATION_ERROR', message: 'collection_slug is required', status: 400 } },
+        { error: { code: 'VALIDATION_ERROR', message: 'path is required', status: 400 } },
         { status: 400 },
       )
     }
 
     // Revalidate the specific collection page
-    revalidatePath(`/c/${body.collection_slug}`)
+    revalidatePath(path)
 
     return NextResponse.json({
-      data: { revalidated: true, slug: body.collection_slug },
+      data: { revalidated: true, path },
     })
   } catch (err) {
     return NextResponse.json(

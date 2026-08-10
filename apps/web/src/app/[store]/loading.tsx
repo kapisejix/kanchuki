@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import { motion } from 'framer-motion'
-import { PageLoader } from '@/components/PageLoader'
+import { PageLoader } from '@/components/PageLoader';
+import { motion } from 'framer-motion';
 
 export default function StoreLoading() {
   return (
@@ -13,5 +13,5 @@ export default function StoreLoading() {
     >
       <PageLoader variant="card" text="Loading store profile..." />
     </motion.div>
-  )
+  );
 }

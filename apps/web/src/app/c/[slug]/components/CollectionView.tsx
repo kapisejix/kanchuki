@@ -34,6 +34,10 @@ const PAGE_SIZE = 12;
 interface Props {
   collection: PublicCollection;
   slug: string;
+  // Store URL segment (public_slug) — canonical collection URLs are
+  // /{store}/{slug}. Null/undefined keeps legacy /c/{slug} URLs (used by the
+  // legacy /c/[slug] fallback for retailers without a store slug).
+  store?: string | null;
   // Web proxy path this flow's paginated/filtered product fetches go through
   // — differs for a plain collection vs. a category listing (both render
   // this same component). See apps/web/src/app/api/c/[slug]/products and
@@ -41,7 +45,11 @@ interface Props {
   productsApiPath: string;
 }
 
-export function CollectionView({ collection, slug, productsApiPath }: Props) {
+export function CollectionView({ collection, slug, store, productsApiPath }: Props) {
+  // Canonical base path for this collection's sub-flows (cart/wishlist) and
+  // their API proxies. store=null ⇒ legacy /c/{slug} form.
+  const basePath = store ? `/${store}/${slug}` : `/c/${slug}`;
+  const apiBasePath = store ? `/api/${store}/${slug}` : `/api/c/${slug}`;
   // Start EMPTY and hydrate from localStorage in an effect — reading
   // localStorage during render (useState initializer) makes the client's
   // first render differ from SSR HTML (server always renders an empty Map),
@@ -65,13 +73,13 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
   // silently leave checkout disabled for every retailer.
   const [checkoutEnabled, setCheckoutEnabled] = useState(false);
   useEffect(() => {
-    fetch(`/api/c/${slug}/checkout-status`)
+    fetch(`${apiBasePath}/checkout-status`)
       .then((res) => (res.ok ? res.json() : null))
       .then((json) => {
         if (json?.data?.checkout_enabled) setCheckoutEnabled(true);
       })
       .catch(() => undefined);
-  }, [slug]);
+  }, [apiBasePath]);
 
   // Product list, pagination, and loading are now server-driven — the initial
   // page comes from SSR (`collection`), further pages/filter changes refetch
@@ -180,7 +188,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
             }),
           );
           // Fire-and-forget analytics ping
-          void fetch(`/api/c/${slug}/favorite`, {
+          void fetch(`${apiBasePath}/favorite`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ product_id: productId }),
@@ -190,7 +198,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
         return next;
       });
     },
-    [slug],
+    [apiBasePath, slug],
   );
 
   // Resolve favorite items: try stored summaries first, fall back to session cache
@@ -395,7 +403,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
         <div className="max-w-md mx-auto px-3 py-3 flex items-center gap-2">
           {checkoutEnabled ? (
             <Link
-              href={`/c/${slug}/cart`}
+              href={`${basePath}/cart`}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-cyan-600 hover:bg-cyan-700 text-white
                          font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
@@ -414,7 +422,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
             </div>
           )}
           <Link
-            href={`/c/${slug}/wishlist`}
+            href={`${basePath}/wishlist`}
             className="flex-1 flex flex-col items-center justify-center gap-0.5 text-gray-700 font-semibold
                        bg-gray-50 border border-gray-100 rounded-2xl py-2.5 hover:bg-rose-50 hover:border-rose-200
                        transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
@@ -446,6 +454,7 @@ export function CollectionView({ collection, slug, productsApiPath }: Props) {
               isFavorited={favorites.has(selectedProduct.id)}
               checkoutEnabled={checkoutEnabled}
               slug={slug}
+              store={store ?? null}
               onFavorite={toggleFavorite}
               onTryOn={() => setTryOnProduct(selectedProduct)}
               onClose={() => setSelectedProduct(null)}

@@ -911,11 +911,11 @@ export default function SettingsScreen() {
                 Renaming your shop updated your store URL. Your new link is:
               </Text>
               <AnimatedPressable
-                onPress={() => void Linking.openURL(`${WEB_URL}/store/${storeUrlNotice}`)}
+                onPress={() => void Linking.openURL(`${WEB_URL}/${storeUrlNotice}`)}
                 hitSlop={6}
               >
                 <Text className="text-xs text-ink-700 underline mt-1">
-                  {WEB_URL}/store/{storeUrlNotice}
+                  {WEB_URL}/{storeUrlNotice}
                 </Text>
               </AnimatedPressable>
               <View className="flex-row items-center gap-4 mt-3.5">

@@ -20,20 +20,33 @@ export async function revalidateCollectionsForProduct(productId: string): Promis
       where: { product_id: productId },
       include: {
         collection: {
-          select: { slug: true },
+          select: {
+            slug: true,
+            retailer: { select: { public_slug: true } },
+          },
         },
       },
     });
 
-    const slugs = [...new Set(collectionProducts.map((cp) => cp.collection.slug))];
-    if (slugs.length === 0) return;
+    // Canonical collection pages live at /{public_slug}/{slug}; retailers
+    // without a store slug fall back to the legacy /c/{slug} path. Revalidate
+    // whichever paths apply.
+    const pages = [
+      ...new Set(
+        collectionProducts.map((cp) => {
+          const { slug, retailer } = cp.collection;
+          return retailer.public_slug ? `/${retailer.public_slug}/${slug}` : `/c/${slug}`;
+        }),
+      ),
+    ];
+    if (pages.length === 0) return;
 
     await Promise.allSettled(
-      slugs.map((slug) =>
+      pages.map((path) =>
         fetch(`${WEB_URL}/api/revalidate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ secret: REVALIDATION_SECRET, collection_slug: slug }),
+          body: JSON.stringify({ secret: REVALIDATION_SECRET, path }),
           signal: AbortSignal.timeout(5000),
         }),
       ),

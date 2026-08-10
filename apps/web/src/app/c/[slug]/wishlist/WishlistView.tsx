@@ -11,9 +11,12 @@ import { loadWishlist, type WishlistItem } from '../lib/wishlist'
 interface Props {
   collection: PublicCollection
   slug: string
+  // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
+  store?: string | null
 }
 
-export function WishlistView({ collection, slug }: Props) {
+export function WishlistView({ collection, slug, store }: Props) {
+  const basePath = store ? `/${store}/${slug}` : `/c/${slug}`
   const [savedMap, setSavedMap] = useState<Map<string, WishlistItem> | null>(null)
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function WishlistView({ collection, slug }: Props) {
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link
-            href={`/c/${slug}`}
+            href={basePath}
             className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"
             aria-label="Back to catalog"
           >
@@ -52,7 +55,7 @@ export function WishlistView({ collection, slug }: Props) {
               Tap the heart on any product to add it here.
             </p>
             <Link
-              href={`/c/${slug}`}
+              href={basePath}
               className="inline-block text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors"
             >
               Browse catalog

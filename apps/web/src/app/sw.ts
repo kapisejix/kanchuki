@@ -35,22 +35,41 @@ const serwist = new Serwist({
     },
     // Collection product-list API (same-origin, paginated client-side fetch)
     // — show the last-known list instantly, refresh in the background.
+    // Covers the legacy /api/c/{slug}/... proxies and the canonical
+    // /api/{store}/{collection}/... + /api/{store}/categories/{categoryId}/...
+    // proxies (dynamic first segment — regex, not startsWith).
     {
-      matcher: ({ url }) => url.pathname.startsWith('/api/c/'),
+      matcher: ({ url }) =>
+        url.pathname.startsWith('/api/c/') ||
+        /^\/api\/[^/]+\/[^/]+\/(products|favorite|checkout-status)$/.test(url.pathname) ||
+        /^\/api\/[^/]+\/categories\/[^/]+\/products$/.test(url.pathname),
       handler: new StaleWhileRevalidate({ cacheName: 'collection-api' }),
     },
-    // Collection pages — try the network first (fresh data), fall back to
-    // cache after 3s so a slow 2G connection doesn't hang the page.
+    // Legacy collection pages (/c/[slug]) — redirect pages now, kept for
+    // links shared before the canonical /{store}/{collection} scheme.
     {
       matcher: ({ url }) => url.pathname.startsWith('/c/'),
       handler: new NetworkFirst({ cacheName: 'collection-pages', networkTimeoutSeconds: 3 }),
     },
-    // Full-page category browse (/store/[slug]/categories/...) — same bug
-    // class as the /admin fix below: defaultCache caches RSC prefetch/nav
-    // payloads by URL only, so a stale payload got served on click and the
-    // page hung until a hard reload bypassed the SW cache.
+    // Legacy store pages (/store/[slug]...) — redirect pages now (QR codes
+    // printed before the canonical /{store} scheme).
     {
       matcher: ({ url }) => url.pathname.startsWith('/store/'),
+      handler: new NetworkFirst({ cacheName: 'store-pages', networkTimeoutSeconds: 3 }),
+    },
+    // Canonical store profile (/{public_slug}) and collection
+    // (/{public_slug}/{collection}) pages — same bug class as the legacy
+    // /store/ rule: defaultCache caches RSC prefetch/nav payloads by URL
+    // only, so a stale payload got served on click and the page hung until a
+    // hard reload bypassed the SW cache. Placed after the /admin rules so the
+    // static admin/offline/terms paths are never caught (single-segment
+    // matcher would otherwise claim /admin and /offline).
+    {
+      matcher: ({ url }) => {
+        if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return false
+        const segments = url.pathname.split('/').filter(Boolean)
+        return segments.length === 1 || segments.length === 2
+      },
       handler: new NetworkFirst({ cacheName: 'store-pages', networkTimeoutSeconds: 3 }),
     },
     // Admin panel isn't part of the offline-capable customer PWA — defaultCache
