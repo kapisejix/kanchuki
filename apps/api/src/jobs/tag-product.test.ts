@@ -9,6 +9,7 @@ const mockAddEmbeddingJob = vi.fn();
 const mockFetchImageBuffer = vi.fn();
 const mockFindFirstBg = vi.fn();
 const mockFindFirstPhoto = vi.fn();
+const mockCleanupProductPhoto = vi.fn().mockResolvedValue(Buffer.from(''));
 
 // F-010 quota gate (checkQuota/incrementUsage) — no plan_limits/override row
 // in these fixtures, so effectiveLimit() resolves null and every call is a
@@ -45,7 +46,7 @@ vi.mock('@kanchuki/ai', () => ({
   // are what we're actually testing.
   fetchImageBuffer: mockFetchImageBuffer,
   uploadBuffer: vi.fn().mockResolvedValue(undefined),
-  cleanupProductPhoto: vi.fn().mockResolvedValue(Buffer.from('')),
+  cleanupProductPhoto: mockCleanupProductPhoto,
 }));
 
 vi.mock('./index.js', () => ({
@@ -288,5 +289,33 @@ describe('handleTagProduct', () => {
 
     // Auto-contrast never consulted — explicit pick wins.
     expect(mockFindFirstBg).not.toHaveBeenCalled();
+  });
+
+  it('F-030: passes the product-level add_shadow through to the auto-cleanup compositor', async () => {
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+    // First findUnique is the cleanup's withBg lookup (add_shadow=true),
+    // second is the name/sku read after tagging.
+    mockFindUniqueProduct
+      .mockResolvedValueOnce({ background_image: null, add_shadow: true })
+      .mockResolvedValue({ name: null, sku: null, description: null, subtype: null });
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
+    mockFindFirstPhoto.mockResolvedValue(null);
+
+    await handleTagProduct(baseData);
+
+    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, true);
+  });
+
+  it('F-030: no shadow when add_shadow is unset', async () => {
+    mockTagProductImageUrls.mockResolvedValue(fakeTags);
+    mockFindUniqueProduct
+      .mockResolvedValueOnce({ background_image: null })
+      .mockResolvedValue({ name: null, sku: null, description: null, subtype: null });
+    mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
+    mockFindFirstPhoto.mockResolvedValue(null);
+
+    await handleTagProduct(baseData);
+
+    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, undefined);
   });
 });

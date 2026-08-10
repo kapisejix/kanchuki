@@ -1076,4 +1076,26 @@ Applying 046 surfaced that the live DB was **four migrations behind**, not one �
 - **Local follow-through:** `pnpm --filter @kanchuki/db db:generate` clean (no EPERM this time), `@kanchuki/db` + `@kanchuki/api` `tsc --noEmit` both 0 errors.
 - **Browser-verified** (headless, real admin session via `sessionStorage.admin_key`) at `/admin/default-attributes`: Style/Occasion/Fabric tabs all render correct seeded names, 0 console errors, 0 failed requests tied to the page. Live CRUD confirmed by the user adding a test STYLE row ("Kurtis") through the actual admin UI — renders back correctly, confirming create+list both work end to end.
 
+---
+
+## 2026-08-10 — Photo-cache bugfix DEPLOYED (`4067306`) + F-030 shadow toggle IN PROGRESS
+
+User reported (with catalog + product-detail screenshots) that crop/remove-background/background-swap "works well, but still not saved" — both the catalog grid and product detail kept showing the raw pre-edit photo after saving. Full spec + root cause: `docs/PRO-REQUIREMENTS.md` §21 (bugfix) and §22 (F-030, in progress).
+
+### §21 — root cause + fix, deployed
+
+`/cleanup`, `/rotate`, `/background`, and the automatic post-upload cleanup job all overwrite a photo's R2 bytes **in place at the same key** — the stored URL never changes, so CDN/client image caches kept serving pre-edit bytes forever (`tag-product.ts` had a comment saying this was intentional: "Same r2_key/photo_url, so no DB write needed" — that assumption was wrong once caching is considered). Fix: `bumpPhotoUrlVersion()` (`apps/api/src/lib/photo-cleanup.ts`) stamps `?v=<timestamp>` on `ProductPhoto.url` after every in-place overwrite. Also removed the dead Upper/Lower piece-tag UI and added a (later-clarified-as-wrong-interpretation) card shadow to the mobile product-detail photo carousel.
+
+**Deploy gotcha:** this fix was written and tested in the prior session but left **uncommitted** — the user's mobile app points at production (`EXPO_PUBLIC_API_URL=https://api.kanchuki.app` via `.env.local`), so testing against it showed zero change until this session actually committed + pushed it. Confirmed with the user before pushing (production-affecting action). Commit `4067306` pushed to `main`, Railway auto-deploy triggered. **Not yet re-tested live post-deploy.**
+
+### §22 — F-030 shadow toggle, ✅ BUILT + DEPLOYED
+
+User's actual "shadow" ask (clarified — the earlier card-shadow edit was a misread): a shadow **picker** next to the existing BACKGROUND swatch row, same pattern. Asked user single-toggle vs. multi-preset via AskUserQuestion — **user picked single on/off toggle**.
+
+Design mirrors `background_image_id`: product-level `Product.add_shadow` boolean, read by the auto-cleanup job, per-call override in `/cleanup`.
+
+**Code complete 2026-08-10:** schema field + migration `048_product_shadow`, `detector.ts` `cleanupProductPhoto(raw, bgUrl, addShadow)` compositing (`buildShadowLayer()`), `Create/UpdateProductSchema.add_shadow`, `/cleanup` per-call override + `PATCH /:id/background` honoring the product default, `tag-product.ts` auto-cleanup pass-through, mobile `add.tsx` upload-time Shadow toggle, mobile `[id].tsx` SHADOW toggle chip next to the BACKGROUND row (session per-photo preference, merge-safe against the 3s poll, immediate re-clean on flip), `Product.add_shadow` type + `cleanupPhoto(..., addShadow)` client param. Tests: `detector.test.ts` 3 (real sharp, mocked @imgly), `products.test.ts` 3 new override/fallback cases, `tag-product.test.ts` 2 pass-through cases.
+
+**Verified:** `db:generate` clean; `tsc --noEmit` clean across db/ai/api/mobile; API 358/358, AI 74/74 (image-compress needs >5s on this box — pre-existing), biome clean on new code. **Pushed to main, Railway auto-deploy triggered.** **Still human-only:** migration 048 apply (Supabase SQL Editor) — code ships before the column exists, so apply it before exercising the toggle; live re-verify after deploy completes.
+
 **F-027 is now fully done — code, migration, and live UI all verified. Nothing left pending.**

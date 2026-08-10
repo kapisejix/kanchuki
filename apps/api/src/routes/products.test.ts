@@ -19,6 +19,7 @@ const {
   mockUploadBuffer,
   mockRotateImage,
   mockGetDownloadPresignedUrl,
+  mockCleanupProductPhoto,
   MockPrismaClientKnownRequestError,
 } = vi.hoisted(() => {
   class MockPrismaClientKnownRequestError extends Error {
@@ -44,6 +45,7 @@ const {
     mockUploadBuffer: vi.fn(),
     mockRotateImage: vi.fn(),
     mockGetDownloadPresignedUrl: vi.fn(),
+    mockCleanupProductPhoto: vi.fn(),
     MockPrismaClientKnownRequestError,
   };
 });
@@ -80,7 +82,7 @@ vi.mock('@kanchuki/db', () => ({
 }));
 
 vi.mock('@kanchuki/ai', () => ({
-  cleanupProductPhoto: vi.fn(),
+  cleanupProductPhoto: mockCleanupProductPhoto,
   fetchImageBuffer: mockFetchImageBuffer,
   getDownloadPresignedUrl: mockGetDownloadPresignedUrl,
   getUploadPresignedUrl: vi.fn(),
@@ -637,5 +639,60 @@ describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F
     });
 
     expect(res.statusCode).toBe(404);
+  });
+
+  // ── F-030: per-call shadow override ──────────────────────────────
+  it('passes an explicit add_shadow override through to the compositor', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      ...photoWithProduct,
+      product: { background_image: null, add_shadow: false },
+    });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { add_shadow: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, true);
+    await app.close();
+  });
+
+  it('falls back to the product-level add_shadow when the body omits the override', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      ...photoWithProduct,
+      product: { background_image: null, add_shadow: true },
+    });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: { background_image_id: null },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, true);
+    await app.close();
+  });
+
+  it('defaults to no shadow when neither body nor product sets it', async () => {
+    mockPhotoFindFirst.mockResolvedValue({
+      ...photoWithProduct,
+      product: { background_image: null, add_shadow: false },
+    });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/prod_1/photos/photo_1/cleanup',
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, false);
+    await app.close();
   });
 });

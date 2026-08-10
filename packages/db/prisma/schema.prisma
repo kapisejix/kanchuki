@@ -451,6 +451,12 @@ model Product {
   // white (unchanged default behavior).
   background_image_id String?
 
+  // Retailer toggle: composite a soft drop shadow under the cutout garment
+  // during background removal (cleanupProductPhoto). Read by the auto-clean
+  // job at upload time; per-photo /cleanup calls can override it ad hoc
+  // without persisting, same pattern as background_image_id.
+  add_shadow Boolean @default(false)
+
   // Retailer-curated merchandising group (see ProductCategory) — distinct
   // from the free-text `category` AI tag above.
   category_id String?

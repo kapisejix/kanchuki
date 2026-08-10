@@ -136,8 +136,14 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     // background picker targets the photo the retailer is currently viewing,
     // not just the product's primary photo. null → white, like the product
     // picker's "Auto" chip.
+    // F-030: add_shadow is a per-call override — wins over the product-level
+    // add_shadow default for THIS cleanup only (never persisted), same
+    // override pattern background_image_id already uses here.
     const body = z
-      .object({ background_image_id: z.string().nullable().optional() })
+      .object({
+        background_image_id: z.string().nullable().optional(),
+        add_shadow: z.boolean().optional(),
+      })
       .safeParse(request.body ?? {});
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
@@ -159,7 +165,8 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     try {
       const raw = await fetchImageBuffer(photo.url);
       await preserveOriginalPhoto(photo.id, photo.r2_key, photo.metadata, raw);
-      const cleaned = await cleanupProductPhoto(raw, bgUrl);
+      const addShadow = body.data.add_shadow ?? photo.product.add_shadow;
+      const cleaned = await cleanupProductPhoto(raw, bgUrl, addShadow);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
     } catch (err) {
       // Surface a REAL category (fetch / bg-removal model / R2 write) instead
@@ -290,7 +297,9 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       await checkQuota(request.retailerId, 'BG_REMOVAL');
       const raw = await fetchImageBuffer(photo.url);
       await preserveOriginalPhoto(photo.id, photo.r2_key, photo.metadata, raw);
-      const cleaned = await cleanupProductPhoto(raw, bgUrl);
+      // F-030: honor the product-level shadow setting when re-cleaning after
+      // a background change (per-call override not accepted on this route).
+      const cleaned = await cleanupProductPhoto(raw, bgUrl, product.add_shadow);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
       await incrementUsage(request.retailerId, 'BG_REMOVAL');
       photoUrl = bumpPhotoUrlVersion(photo.url);

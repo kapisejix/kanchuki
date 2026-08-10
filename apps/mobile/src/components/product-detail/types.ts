@@ -17,6 +17,9 @@ export type Product = {
   category: string | null
   category_id: string | null
   background_image_id: string | null
+  // F-030: soft shadow under the garment cutout during background removal —
+  // product-level default, applied by the auto-clean job at upload time.
+  add_shadow?: boolean
   product_type: string | null
   primary_color: string | null
   fabric_estimate: string | null

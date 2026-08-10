@@ -94,6 +94,10 @@ export const CreateProductSchema = z.object({
   status: z.enum(['AVAILABLE', 'SOLD', 'RESERVED', 'NOT_SURE']).optional(),
   auto_cleanup: z.boolean().optional().default(true),
   background_image_id: z.string().nullable().optional(),
+  // F-030: composite a soft drop shadow under the garment cutout during
+  // background removal. Product-level default read by the auto-cleanup job;
+  // per-photo /cleanup calls can override it ad hoc without persisting.
+  add_shadow: z.boolean().optional(),
 });
 
 export const UpdateProductSchema = CreateProductSchema.partial().omit({

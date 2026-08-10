@@ -31,10 +31,17 @@ async function getSharp() {
 // ENOENTs. Resolve the package's real install location instead.
 let _bgRemovalPublicPath: string | null = null
 export function bgRemovalPublicPath(): string {
-  _bgRemovalPublicPath ??= new URL(
-    '.',
-    import.meta.resolve('@imgly/background-removal-node'),
-  ).toString()
+  if (_bgRemovalPublicPath !== null) return _bgRemovalPublicPath
+  // import.meta.resolve is a Node 20.6+ native API — present in production
+  // but unavailable under vitest's SSR transform (the shim only carries url
+  // + env). Fall back to '' there: the @imgly module is mocked in those
+  // tests, so the publicPath argument is never consumed.
+  const resolveFn = (import.meta as ImportMeta & {
+    resolve?: (specifier: string) => string
+  }).resolve
+  _bgRemovalPublicPath = resolveFn
+    ? new URL('.', resolveFn('@imgly/background-removal-node')).toString()
+    : ''
   return _bgRemovalPublicPath
 }
 
@@ -234,13 +241,48 @@ export async function fetchImageBuffer(imageUrl: string): Promise<Buffer> {
   return readCappedBuffer(res)
 }
 
+// Builds a soft "grounding" drop shadow layer for sharp's composite(): a
+// blurred, faded, black silhouette of the cutout's own alpha shape, offset
+// down slightly so it reads as a shadow rather than a halo. Manual pixel
+// fade (not sharp's .linear() on the alpha band) because that API's
+// per-band behavior on alpha isn't reliably documented across sharp
+// versions — a raw buffer loop is slower but unambiguous.
+async function buildShadowLayer(
+  s: Awaited<ReturnType<typeof getSharp>>,
+  cutout: Buffer,
+  width: number,
+  height: number,
+): Promise<{ input: Buffer; top: number; left: number }> {
+  const { data, info } = await s(cutout).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const shadowOpacity = 0.35
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = 0
+    data[i + 1] = 0
+    data[i + 2] = 0
+    data[i + 3] = Math.round(data[i + 3] * shadowOpacity)
+  }
+  const blurSigma = Math.max(6, Math.round(Math.min(width, height) * 0.02))
+  const offsetY = Math.max(4, Math.round(height * 0.015))
+  const silhouette = await s(data, { raw: { width: info.width, height: info.height, channels: 4 } })
+    .blur(blurSigma)
+    .png()
+    .toBuffer()
+  return { input: silhouette, top: offsetY, left: 0 }
+}
+
 /**
  * Strip background and composite onto a backdrop — plain white by default,
  * or a retailer-selected background image (PRO-REQUIREMENTS.md F-011) when
- * `backgroundImageUrl` is given. Callers should fall back to the original
- * buffer on failure — a raw-but-tagged photo beats a failed upload.
+ * `backgroundImageUrl` is given. `addShadow` composites a soft drop shadow
+ * under the cutout first (retailer toggle, PRO-REQUIREMENTS.md F-030).
+ * Callers should fall back to the original buffer on failure — a
+ * raw-but-tagged photo beats a failed upload.
  */
-export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: string): Promise<Buffer> {
+export async function cleanupProductPhoto(
+  buffer: Buffer,
+  backgroundImageUrl?: string,
+  addShadow?: boolean,
+): Promise<Buffer> {
   const s = await getSharp()
   // node's Blob defaults .type to '' when constructed from a plain Buffer,
   // and @imgly's decoder switches on blob.type (not the actual bytes) — an
@@ -249,13 +291,16 @@ export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: s
   const inputBlob = new Blob([buffer], { type: `image/${format ?? 'jpeg'}` })
   const blob = await removeBackground(inputBlob, { publicPath: bgRemovalPublicPath() })
   const cutout = Buffer.from(await blob.arrayBuffer())
+  const { width = 0, height = 0 } = await s(cutout).metadata()
+
+  const shadow = addShadow ? await buildShadowLayer(s, cutout, width, height).catch(() => null) : null
+  const layers = shadow ? [shadow, { input: cutout }] : [{ input: cutout }]
 
   if (backgroundImageUrl) {
     try {
       const bg = await fetchImageBuffer(backgroundImageUrl)
-      const { width, height } = await s(cutout).metadata()
       const bgResized = await s(bg).resize(width, height, { fit: 'cover' }).toBuffer()
-      const composite = await s(bgResized).composite([{ input: cutout }]).jpeg({ quality: 88 }).toBuffer()
+      const composite = await s(bgResized).composite(layers).jpeg({ quality: 88 }).toBuffer()
       return (await compressImageToTarget(composite)).buffer
     } catch (err) {
       // ponytail: best-effort — bad/unreachable background image falls back
@@ -264,7 +309,12 @@ export async function cleanupProductPhoto(buffer: Buffer, backgroundImageUrl?: s
     }
   }
 
-  const flattened = await s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
+  const flattened = shadow
+    ? await s({ create: { width, height, channels: 3, background: '#ffffff' } })
+        .composite(layers)
+        .jpeg({ quality: 88 })
+        .toBuffer()
+    : await s(cutout).flatten({ background: '#ffffff' }).jpeg({ quality: 88 }).toBuffer()
   // Quality-first compression to ≤80KB (packages/ai/src/image-compress.ts)
   // keeps the product photo small in storage; catalog images never need the
   // full original detail for web/mobile display.

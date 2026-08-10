@@ -117,13 +117,24 @@ export const productApi = {
 
   /** Remove background on a specific photo (optionally compositing it onto an
    * admin-curated backdrop — the edit screen's background picker targets the
-   * currently-viewed photo, not just the product's primary). */
-  cleanupPhoto: (productId: string, photoId: string, backgroundImageId?: string | null) =>
+   * currently-viewed photo, not just the product's primary).
+   * F-030: addShadow is a per-call override of the product-level shadow
+   * setting — wins for THIS cleanup only, never persisted (the toggle chip
+   * on the edit screen behaves like the background swatches: bake-and-forget). */
+  cleanupPhoto: (
+    productId: string,
+    photoId: string,
+    backgroundImageId?: string | null,
+    addShadow?: boolean,
+  ) =>
     request<{ data: { id: string; url: string } }>(
       `/v1/products/${productId}/photos/${photoId}/cleanup`,
       {
         method: 'POST',
-        body: JSON.stringify({ background_image_id: backgroundImageId ?? null }),
+        body: JSON.stringify({
+          background_image_id: backgroundImageId ?? null,
+          ...(addShadow !== undefined ? { add_shadow: addShadow } : {}),
+        }),
         timeoutMs: 30_000,
       },
     ),

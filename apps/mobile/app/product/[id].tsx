@@ -17,6 +17,7 @@ import {
   Dimensions,
   Animated,
   Modal,
+  Switch,
 } from 'react-native'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -113,6 +114,12 @@ export default function ProductDetailScreen() {
   // "Auto" (null) is the default until the retailer picks one this session.
   const [photoBackgrounds, setPhotoBackgrounds] = useState<Record<string, string | null>>({})
   const [backgroundSaving, setBackgroundSaving] = useState(false)
+  // F-030: per-photo shadow preference (client-only — the shadow is baked into
+  // the composite bytes like the background, there is no per-photo shadow
+  // column). Seeded from the product-level add_shadow default for the primary
+  // photo; the toggle chip re-runs cleanup with the new setting immediately.
+  const [photoShadows, setPhotoShadows] = useState<Record<string, boolean>>({})
+  const [shadowSaving, setShadowSaving] = useState(false)
   // F-029: "Set as main" — busy state for promoting the viewed photo to the
   // product's primary (the image the catalog + storefront show first).
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null)
@@ -497,6 +504,12 @@ export default function ProductDetailScreen() {
         ...prev,
         [primaryPhoto.id]: prev[primaryPhoto.id] ?? product.background_image_id,
       }))
+      // F-030: seed the shadow preference the same way — merge, never replace,
+      // so the 3s poll refetch can't wipe a toggle the retailer just flipped.
+      setPhotoShadows((prev) => ({
+        ...prev,
+        [primaryPhoto.id]: prev[primaryPhoto.id] ?? product.add_shadow ?? false,
+      }))
     }
     setEditedName(product.name ?? '')
     setEditedSku(product.sku ?? '')
@@ -610,11 +623,18 @@ export default function ProductDetailScreen() {
     }
   }
 
+  // F-030: the shadow preference currently in effect for a given photo — the
+  // session toggle if one was flipped, else the product-level default.
+  const shadowFor = (photoId: string): boolean =>
+    photoShadows[photoId] ?? product?.add_shadow ?? false
+
   const handleCleanupPhoto = async (photoId: string) => {
     if (!product) return
     setCleaningPhotoId(photoId)
     try {
-      await productApi.cleanupPhoto(product.id, photoId)
+      // Respect the current shadow preference for this photo — a fresh
+      // cleanup after the toggle was flipped keeps the setting.
+      await productApi.cleanupPhoto(product.id, photoId, undefined, shadowFor(photoId))
       setPhotoCacheBust((prev) => ({ ...prev, [photoId]: Date.now() }))
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
     } catch (err) {
@@ -660,7 +680,9 @@ export default function ProductDetailScreen() {
     if (photo.is_variant_preview || photo.is_original_preview) return
     setBackgroundSaving(true)
     try {
-      await productApi.cleanupPhoto(product.id, photo.id, backgroundId)
+      // F-030: a background change re-runs cleanup — carry the current shadow
+      // preference so a flipped toggle isn't silently dropped by the recomposite.
+      await productApi.cleanupPhoto(product.id, photo.id, backgroundId, shadowFor(photo.id))
       setPhotoBackgrounds((prev) => ({ ...prev, [photo.id]: backgroundId }))
       setPhotoCacheBust((prev) => ({ ...prev, [photo.id]: Date.now() }))
       void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
@@ -668,6 +690,32 @@ export default function ProductDetailScreen() {
       showError(err, 'Failed to change background')
     } finally {
       setBackgroundSaving(false)
+    }
+  }
+
+  // F-030: toggle the shadow on the currently-viewed photo — re-runs cleanup
+  // with the new setting baked in immediately, same pattern as the background
+  // swatches (no separate Save needed). The preference is client-only for this
+  // photo; the product-level default stays untouched.
+  const handleSetShadow = async (value: boolean) => {
+    const photo = currentPhoto
+    if (!product || !photo || shadowSaving) return
+    if (photo.is_variant_preview || photo.is_original_preview) return
+    setShadowSaving(true)
+    try {
+      await productApi.cleanupPhoto(
+        product.id,
+        photo.id,
+        photoBackgrounds[photo.id] ?? null,
+        value,
+      )
+      setPhotoShadows((prev) => ({ ...prev, [photo.id]: value }))
+      setPhotoCacheBust((prev) => ({ ...prev, [photo.id]: Date.now() }))
+      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+    } catch (err) {
+      showError(err, 'Failed to update shadow')
+    } finally {
+      setShadowSaving(false)
     }
   }
 
@@ -1182,6 +1230,35 @@ export default function ProductDetailScreen() {
                   : 'Rotate'}
             </Text>
           </AnimatedPressable>
+        </View>
+      )}
+
+      {/* F-030: Shadow toggle — single on/off, next to the background row
+          (same pattern: tap → re-runs cleanup on the currently-viewed photo
+          with the new setting baked in). Hidden on variant / original
+          slides — those aren't real ProductPhoto rows to recomposite. */}
+      {currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+        <View className="mx-4 mt-3 bg-white rounded-2xl p-4 border border-sand-100">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+                Shadow
+              </Text>
+              <Text className="text-xs text-sand-400 mt-0.5">
+                Soft shadow under the product for a grounded, studio-like look
+              </Text>
+            </View>
+            {shadowSaving ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Switch
+                value={shadowFor(currentPhoto.id)}
+                onValueChange={(v) => void handleSetShadow(v)}
+                disabled={backgroundSaving}
+                accessibilityLabel="Toggle photo shadow"
+              />
+            )}
+          </View>
         </View>
       )}
 

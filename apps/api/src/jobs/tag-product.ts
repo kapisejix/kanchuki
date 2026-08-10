@@ -77,7 +77,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         if (photoRow) {
           await preserveOriginalPhoto(photoRow.id, r2_key, photoRow.metadata, raw);
         }
-        const cleaned = await cleanupProductPhoto(raw, bgUrl);
+        // F-030: honor the retailer's upload-time shadow toggle (product.add_shadow).
+        const cleaned = await cleanupProductPhoto(raw, bgUrl, withBg?.add_shadow);
         await uploadBuffer(r2_key, cleaned, 'image/jpeg');
         if (photoRow) {
           await prisma.productPhoto.update({

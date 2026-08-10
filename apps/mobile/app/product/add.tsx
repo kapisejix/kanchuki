@@ -96,6 +96,9 @@ export default function AddProductScreen() {
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [categoryId, setCategoryId] = useState<string | null>(null)
   const [autoCleanup, setAutoCleanup] = useState(true)
+  // F-030: composite a soft drop shadow under the garment during cleanup —
+  // product-level default, applied by the background tag job after save.
+  const [addShadow, setAddShadow] = useState(false)
   const [backgroundImages, setBackgroundImages] = useState<
     { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
   >([])
@@ -297,6 +300,7 @@ export default function AddProductScreen() {
         notes: notes || undefined,
         auto_cleanup: autoCleanup,
         background_image_id: backgroundImageId,
+        add_shadow: addShadow,
       })
 
       // Scan-mode extras (local URIs) are uploaded after save below.
@@ -620,6 +624,19 @@ export default function AddProductScreen() {
           </View>
           <Switch value={autoCleanup} onValueChange={setAutoCleanup} />
         </View>
+
+        {/* Shadow toggle — F-030, only meaningful once auto-clean is on */}
+        {autoCleanup && (
+          <View className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center justify-between">
+            <View className="flex-1 pr-3">
+              <Text className="text-sm font-semibold text-sand-900">Shadow</Text>
+              <Text className="text-xs text-sand-500 mt-0.5">
+                Add a soft shadow under the product for a grounded, studio-like look.
+              </Text>
+            </View>
+            <Switch value={addShadow} onValueChange={setAddShadow} />
+          </View>
+        )}
 
         {/* Background picker — F-011, only meaningful once auto-clean is on */}
         {autoCleanup && backgroundImages.length > 0 && (
