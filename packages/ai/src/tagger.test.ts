@@ -147,7 +147,8 @@ describe('tagProductImages', () => {
 
     const result = await tagProductImages([{ buffer: Buffer.from('x'), mediaType: 'image/jpeg' }])
     expect(result.product_name).toBe('Pink Kurti')
-    expect(result.short_description).toBe('Pink. Ideal for casual.')
+    // Occasion no longer drives the description fallback (removed feature).
+    expect(result.short_description).toBe('Pink.')
     expect(result.subtype).toBeNull() // no forced fallback — UI uses category
   })
 

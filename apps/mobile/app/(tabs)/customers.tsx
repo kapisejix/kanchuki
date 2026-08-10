@@ -20,7 +20,6 @@ type Customer = {
   pref_colors: string[]
   pref_styles: string[]
   pref_fabrics: string[]
-  pref_occasions: string[]
   budget_min: number | null
   budget_max: number | null
   last_visit_at: string | null
@@ -42,11 +41,8 @@ const CustomerCard = memo(function CustomerCard({
   const locationParts = [item.city, item.state].filter(Boolean)
   const locationStr = locationParts.length > 0 ? locationParts.join(', ') : null
 
-  // Build a preference summary line (style + occasion)
-  const prefSummary = [
-    ...item.pref_styles.slice(0, 2),
-    ...item.pref_occasions.slice(0, 2),
-  ].filter(Boolean)
+  // Build a preference summary line (style + fabric)
+  const prefSummary = [...item.pref_styles.slice(0, 2)].filter(Boolean)
 
   return (
     <AnimatedPressable

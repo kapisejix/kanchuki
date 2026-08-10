@@ -7,10 +7,9 @@ import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
-type Kind = 'STYLE' | 'OCCASION' | 'FABRIC'
+type Kind = 'STYLE' | 'FABRIC'
 const KINDS: { value: Kind; label: string }[] = [
   { value: 'STYLE', label: 'Style' },
-  { value: 'OCCASION', label: 'Occasion' },
   { value: 'FABRIC', label: 'Fabric' },
 ]
 
@@ -114,12 +113,12 @@ export default function DefaultAttributesPage() {
           <Tags size={20} className="text-cyan-500" />
         </div>
         <p className="text-sm text-gray-500">
-          Global template for the Style/Occasion/Fabric taxonomy, copied into every new retailer&apos;s own
-          list at signup (mirrors Default Categories). AI tagging writes its raw per-photo guesses directly
-          into a product&apos;s Style/Occasion/Fabric fields — the product-add screen offers the retailer&apos;s own
-          list (seeded defaults + custom) as select/multi-select options. Template edits are forward-only:
-          existing retailers keep their current copies. Ladies-only today — a `segment` column on this table
-          is ready for Men/Kids later with no schema change.
+          Global template for the Style/Fabric taxonomy, copied into every new retailer&apos;s own list at
+          signup (mirrors Default Categories). AI tagging soft-matches its per-photo guesses against the
+          retailer&apos;s own list (seeded defaults + custom) so the product-add/edit screens offer those as
+          select/multi-select options. Template edits are forward-only: existing retailers keep their
+          current copies. Ladies-only today — a `segment` column on this table is ready for Men/Kids later
+          with no schema change.
         </p>
       </div>
 
@@ -128,8 +127,7 @@ export default function DefaultAttributesPage() {
         <span>
           Category has its own dedicated template (Default Categories) since it drives a real
           <code className="mx-1 px-1 bg-cyan-100 rounded">category_id</code>
-          foreign key. Style/Occasion/Fabric are soft-matched name lists instead — no FK, same
-          convention Occasion already used before this taxonomy existed.
+          foreign key. Style/Fabric are soft-matched name lists instead — no FK.
         </span>
       </div>
 

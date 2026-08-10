@@ -90,7 +90,6 @@ export default function AddProductScreen() {
   const [price, setPrice] = useState('')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
-  const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
@@ -117,13 +116,8 @@ export default function AddProductScreen() {
   })
   const categories = categoriesData?.data ?? []
 
-  // Dynamic, retailer-editable Style/Occasion/Fabric taxonomy (DB-backed,
-  // seeded from the admin default template — no hardcoded option lists).
-  const { data: occasionsData } = useQuery({
-    queryKey: ['attributes', 'OCCASION'],
-    queryFn: () => productAttributeApi.list('OCCASION'),
-  })
-  const occasionOptions = occasionsData?.data ?? []
+  // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
+  // the admin default template — no hardcoded option lists).
   const { data: stylesData } = useQuery({
     queryKey: ['attributes', 'STYLE'],
     queryFn: () => productAttributeApi.list('STYLE'),
@@ -290,7 +284,6 @@ export default function AddProductScreen() {
         photo_url: primary.url,
         price_min: priceInPaise,
         price_max: priceInPaise,
-        occasions: selectedOccasions,
         styles: selectedStyles,
         fabrics: selectedFabrics,
         search_tags: [],
@@ -767,40 +760,6 @@ export default function AddProductScreen() {
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {size}
-                  </Text>
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* Occasion tags (dynamic, DB-backed — multi-select) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-            Occasion
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {occasionOptions.map((occ) => {
-              const selected = selectedOccasions.includes(occ.name)
-              return (
-                <AnimatedPressable
-                  key={occ.id}
-                  onPress={() =>
-                    setSelectedOccasions((prev) =>
-                      selected ? prev.filter((o) => o !== occ.name) : [...prev, occ.name],
-                    )
-                  }
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected
-                      ? 'bg-ink-600 border-ink-600'
-                      : 'bg-white border-sand-200'
-                  }`}
-                >
-                  {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
-                    {occ.name}
                   </Text>
                 </AnimatedPressable>
               )

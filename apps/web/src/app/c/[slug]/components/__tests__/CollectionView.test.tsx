@@ -50,7 +50,6 @@ function makeProduct(i: number): PublicCollection['products'][number] {
     category: 'Anarkali Suit',
     subtype: 'Festive Kurti',
     primary_color: 'Maroon',
-    occasions: ['Festive'],
     is_new_arrival: i < 3,
     on_sale: i % 2 === 0,
     location: null,
@@ -77,7 +76,6 @@ const COLLECTION: PublicCollection = {
   page_size: 12,
   filters: {
     categories: [{ value: 'Anarkali Suit', count: 3 }],
-    occasions: [{ value: 'Festive', count: 3 }],
     colors: [{ value: 'Maroon', count: 3 }],
   },
 }

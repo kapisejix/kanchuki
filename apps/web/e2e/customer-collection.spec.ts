@@ -48,7 +48,6 @@ function makeProduct(i: number): PublicProduct {
     category: 'Anarkali Suit',
     subtype: 'Festive Kurti',
     primary_color: 'Maroon',
-    occasions: ['Festive'],
     is_new_arrival: n <= 3,
     on_sale: n % 2 === 0,
     location: null,
@@ -85,7 +84,6 @@ function collectionFor(slug: string, page: number): PublicCollection {
     page_size: PAGE_SIZE,
     filters: {
       categories: [{ value: 'Anarkali Suit', count: PRODUCT_COUNT }],
-      occasions: [{ value: 'Festive', count: PRODUCT_COUNT }],
       colors: [{ value: 'Maroon', count: PRODUCT_COUNT }],
     },
   }

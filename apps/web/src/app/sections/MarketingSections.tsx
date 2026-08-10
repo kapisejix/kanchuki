@@ -55,7 +55,7 @@ const PLANS: {
 
 const FAQS: FaqItem[] = [
   { q: 'Do I need a website to use Kanchuki?', a: 'No. Kanchuki works entirely through WhatsApp links. Your customers browse collections on a mobile web page — no app, no website, no tech setup needed.' },
-  { q: 'How does the AI auto-tagging work?', a: 'Take one photo of any product. Our AI reads category, color, fabric, pattern, neck style, sleeve type, and occasion — all in about 8 seconds. You review and save. Built for Indian ethnic wear vocabulary.' },
+  { q: 'How does the AI auto-tagging work?', a: 'Take one photo of any product. Our AI reads category, color, fabric, pattern, neck style, and sleeve type — all in about 8 seconds. You review and save. Built for Indian ethnic wear vocabulary.' },
   { q: 'Can I try it free?', a: 'Yes. 14-day free trial on any plan. No credit card required. You only pay after the trial ends.' },
   { q: 'What payment methods do you accept?', a: 'All major UPI apps (Google Pay, PhonePe, PayTM), credit/debit cards, and netbanking. Everything in INR — no hidden forex charges.' },
   { q: 'Is my data safe?', a: 'Yes. Customer photos and data are encrypted at rest and in transit. We never share or sell customer data. You can delete any product or customer photo at any time.' },
@@ -63,9 +63,9 @@ const FAQS: FaqItem[] = [
 ]
 
 const FEATURES: { icon: LucideIcon; title: string; desc: string; accent: 'ink' | 'rust' | 'turmeric'; span: string; comingSoon?: boolean }[] = [
-  { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI tags category, color, fabric, and occasion automatically. Your entire shop digitized in hours, not weeks.', accent: 'ink', span: 'sm:col-span-4 lg:col-span-7' },
+  { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI tags category, color, and fabric automatically. Your entire shop digitized in hours, not weeks.', accent: 'ink', span: 'sm:col-span-4 lg:col-span-7' },
   { icon: Share2, title: 'WhatsApp Collections', desc: 'Select products, generate a link, share on WhatsApp. Customers browse, heart favorites, and enquire — no app download needed.', accent: 'rust', span: 'sm:col-span-2 lg:col-span-5' },
-  { icon: Heart, title: 'Fashion DNA CRM', desc: 'Know what each customer loves. Capture color, style, budget, and occasion preferences. AI suggests the perfect products for every customer.', accent: 'turmeric', span: 'sm:col-span-2 lg:col-span-4' },
+  { icon: Heart, title: 'Fashion DNA CRM', desc: 'Know what each customer loves. Capture color, style, and budget preferences. AI suggests the perfect products for every customer.', accent: 'turmeric', span: 'sm:col-span-2 lg:col-span-4' },
   { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds. Natural language search understands Hindi-transliterated terms too.', accent: 'ink', span: 'sm:col-span-2 lg:col-span-4' },
   { icon: Shirt, title: 'Virtual Try-On', desc: 'Customers upload a photo and see how outfits look on them. No mirror needed. Coming soon to all plans.', accent: 'rust', comingSoon: true, span: 'sm:col-span-2 lg:col-span-4' },
 ]
@@ -82,7 +82,7 @@ const ACCENT_ICON: Record<string, string> = {
 }
 
 const HOW_IT_WORKS = [
-  { step: '01', title: 'Snap & Tag', desc: 'Take a photo of any product in your store. AI extracts category, color, fabric, and occasion in seconds. No manual data entry.', icon: Camera },
+  { step: '01', title: 'Snap & Tag', desc: 'Take a photo of any product in your store. AI extracts category, color, and fabric in seconds. No manual data entry.', icon: Camera },
   { step: '02', title: 'Select & Share', desc: 'Pick 10–20 products, add a title, and generate a WhatsApp link. Send it to customers in one tap or broadcast to everyone at once.', icon: Share2 },
   { step: '03', title: 'Sell More', desc: 'Customers browse your collection, save favorites, and enquire via WhatsApp. Track views, enquiries, and conversion — all in your dashboard.', icon: BarChart3 },
 ]

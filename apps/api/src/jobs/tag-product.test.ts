@@ -73,7 +73,6 @@ const fakeTags = {
   embellishments: [],
   neck_style: 'Round Neck',
   sleeve_type: 'Full Sleeve',
-  occasions: ['Casual'],
   style: ['Anarkali Suits'],
   fabrics: ['Cotton'],
   price_range_estimate: null,
@@ -175,7 +174,6 @@ describe('handleTagProduct', () => {
         sku: 'KP0001',
         styles: ['Anarkali Suits'],
         fabrics: ['Cotton'],
-        occasions: ['Casual'],
       }),
     });
   });
@@ -221,22 +219,21 @@ describe('handleTagProduct', () => {
     expect(call.data).toHaveProperty('subtype');
   });
 
-  it('never overwrites retailer-picked occasions on re-tag', async () => {
+  it('never overwrites retailer-picked styles on re-tag even when AI returns more', async () => {
     mockFindUniqueProduct.mockResolvedValue({
       name: null,
       sku: null,
       description: null,
       subtype: null,
-      occasions: ['Wedding'],
+      styles: ['Indo Western'],
     });
     mockTagProductImageUrls.mockResolvedValue(fakeTags);
 
     await handleTagProduct(baseData);
 
     const call = mockUpdateProduct.mock.calls[0]?.[0];
-    expect(call.data).not.toHaveProperty('occasions');
-    // styles/fabrics still fill (empty in the fixture)
-    expect(call.data).toHaveProperty('styles');
+    // styles were retailer-picked → untouched; fabrics still fill (empty)
+    expect(call.data).not.toHaveProperty('styles');
     expect(call.data).toHaveProperty('fabrics');
   });
 

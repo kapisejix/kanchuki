@@ -22,7 +22,6 @@ export type CatalogDetectedItem = {
     embellishments: string[]
     neck_style: string | null
     sleeve_type: string | null
-    occasions: string[]
     style: string[]
     fabrics: string[]
     price_range_estimate: string | null
@@ -105,7 +104,6 @@ export const catalogImportApi = {
       subtype?: string | null
       product_name?: string | null
       short_description?: string | null
-      occasions?: string[]
       styles?: string[]
       fabrics?: string[]
       search_tags?: string[]

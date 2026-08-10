@@ -1,4 +1,37 @@
 import { prisma } from '@kanchuki/db';
+import { findBestMatch } from './name-match.js';
+
+/**
+ * Soft-match a list of AI-detected names (styles, fabrics) against THIS
+ * retailer's own ProductAttribute rows of the given kind, returning the
+ * canonical DB names. Mirrors resolveCategoryId (default-categories.ts):
+ * the AI returns singular/loose forms ("Anarkali Suit") while the seeded
+ * attribute rows are the merchandising vocabulary ("Anarkali Suits"), so
+ * a strict === never lights up the chips — case/plural/token-tolerant
+ * matching makes AI-detected Style/Fabric actually land on the retailer's
+ * pickable options. Names with no match are kept as-is (a custom value the
+ * retailer may or may not have, still useful free-text). Best-effort: any
+ * lookup failure returns the input unchanged.
+ */
+export async function resolveAttributeNames(
+  retailerId: string,
+  kind: 'STYLE' | 'FABRIC',
+  names: string[],
+): Promise<string[]> {
+  if (names.length === 0) return names;
+  try {
+    const rows = await prisma.productAttribute.findMany({
+      where: { retailer_id: retailerId, kind },
+      select: { name: true },
+    });
+    if (rows.length === 0) return names;
+    const candidates = rows.map((r) => r.name);
+    return names.map((n) => findBestMatch(n, candidates) ?? n);
+  } catch (err) {
+    console.error(`Failed to resolve ${kind} names for retailer ${retailerId}:`, err);
+    return names;
+  }
+}
 
 /**
  * Style/Occasion/Fabric taxonomy — same seed-once-at-signup pattern as

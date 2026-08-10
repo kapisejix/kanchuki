@@ -38,7 +38,6 @@ type Customer = {
   pref_colors: string[]
   pref_styles: string[]
   pref_fabrics: string[]
-  pref_occasions: string[]
   budget_min: number | null
   budget_max: number | null
   notes: string | null
@@ -117,8 +116,8 @@ export default function CustomerDetailScreen() {
   const matchedProducts = matches?.products ?? []
   const dnaUsed = matches?.dna_used ?? false
 
-  // Dynamic, retailer-editable Style/Occasion/Fabric taxonomy (DB-backed,
-  // same lists the product-add screen uses — no hardcoded option lists).
+  // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, same lists
+  // the product-add screen uses — no hardcoded option lists).
   const { data: stylesData } = useQuery({
     queryKey: ['attributes', 'STYLE'],
     queryFn: () => productAttributeApi.list('STYLE'),
@@ -129,11 +128,6 @@ export default function CustomerDetailScreen() {
     queryFn: () => productAttributeApi.list('FABRIC'),
   })
   const fabricOptions = fabricsData?.data ?? []
-  const { data: occasionsData } = useQuery({
-    queryKey: ['attributes', 'OCCASION'],
-    queryFn: () => productAttributeApi.list('OCCASION'),
-  })
-  const occasionOptions = occasionsData?.data ?? []
 
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -145,7 +139,6 @@ export default function CustomerDetailScreen() {
   const [prefColors, setPrefColors] = useState<string[]>([])
   const [prefStyles, setPrefStyles] = useState<string[]>([])
   const [prefFabrics, setPrefFabrics] = useState<string[]>([])
-  const [prefOccasions, setPrefOccasions] = useState<string[]>([])
   const [budgetMin, setBudgetMin] = useState('')
   const [budgetMax, setBudgetMax] = useState('')
   const [saving, setSaving] = useState(false)
@@ -207,7 +200,6 @@ export default function CustomerDetailScreen() {
     setPrefColors(customer.pref_colors ?? [])
     setPrefStyles(customer.pref_styles ?? [])
     setPrefFabrics(customer.pref_fabrics ?? [])
-    setPrefOccasions(customer.pref_occasions ?? [])
     setBudgetMin(customer.budget_min ? String(customer.budget_min / 100) : '')
     setBudgetMax(customer.budget_max ? String(customer.budget_max / 100) : '')
   }, [customer])
@@ -237,7 +229,6 @@ export default function CustomerDetailScreen() {
         pref_colors: prefColors,
         pref_styles: prefStyles,
         pref_fabrics: prefFabrics,
-        pref_occasions: prefOccasions,
         budget_min: budgetMin ? Math.round(parseFloat(budgetMin) * 100) : undefined,
         budget_max: budgetMax ? Math.round(parseFloat(budgetMax) * 100) : undefined,
       })
@@ -555,32 +546,6 @@ export default function CustomerDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f.name}</Text>
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* Preferred occasions */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-            Occasions
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {occasionOptions.map((o) => {
-              const selected = prefOccasions.includes(o.name)
-              return (
-                <AnimatedPressable
-                  key={o.id}
-                  onPress={() => toggle(prefOccasions, setPrefOccasions, o.name)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
-                  }`}
-                >
-                  {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{o.name}</Text>
                 </AnimatedPressable>
               )
             })}

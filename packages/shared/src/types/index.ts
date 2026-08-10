@@ -60,7 +60,6 @@ export interface ProductSummary {
   category: string | null
   primary_color: string | null
   secondary_colors: string[]
-  occasions: string[]
   search_tags: string[]
   ai_tagged: boolean
   primary_photo_url: string | null
@@ -113,7 +112,6 @@ export interface AiTagResult {
   embellishments: string[]
   neck_style: string | null
   sleeve_type: string | null
-  occasions: string[]
   style: string[]
   fabrics: string[]
   price_range_estimate: string | null
@@ -135,7 +133,6 @@ export interface CustomerSummary {
   pref_colors: string[]
   pref_styles: string[]
   pref_fabrics: string[]
-  pref_occasions: string[]
   budget_min: number | null  // paise
   budget_max: number | null  // paise
   notes: string | null
@@ -203,7 +200,6 @@ export interface PublicCollection {
   page_size: number
   filters: {
     categories: { value: string; count: number }[]
-    occasions: { value: string; count: number }[]
     colors: { value: string; count: number }[]
   }
 }
@@ -223,7 +219,6 @@ export interface PublicProduct {
   category: string | null
   subtype: string | null
   primary_color: string | null
-  occasions: string[]
   location: string | null
   primary_photo_url: string
   has_360: boolean
@@ -247,7 +242,6 @@ export interface SearchFilters {
   category?: string
   price_max?: number  // paise
   price_min?: number  // paise
-  occasions?: string[]
   colors?: string[]
   limit?: number
 }
@@ -257,7 +251,6 @@ export interface SearchResult {
   query_interpretation: {
     detected_colors: string[]
     detected_fabrics: string[]
-    detected_occasions: string[]
     detected_budget_max: number | null
   }
   total_found: number

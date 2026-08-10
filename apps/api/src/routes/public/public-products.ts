@@ -63,7 +63,6 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             secondary_colors: p.secondary_colors,
             fabric_estimate: p.fabric_estimate,
             description: p.description,
-            occasions: p.occasions,
             search_tags: p.search_tags,
             sizes: p.sizes,
             location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,

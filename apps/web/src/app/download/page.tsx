@@ -79,7 +79,7 @@ export default function DownloadPage() {
             {
               icon: Camera,
               title: 'AI Photo Catalog',
-              desc: 'Snap product photos and get auto-tagged catalog entries with category, color, fabric, and occasion.',
+              desc: 'Snap product photos and get auto-tagged catalog entries with category, color, and fabric.',
             },
             {
               icon: Share2,

@@ -10,6 +10,7 @@ import { classifyColorTone } from '@kanchuki/shared';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { pickContrastBackground } from '../lib/backgrounds.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
+import { resolveAttributeNames } from '../lib/default-attributes.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { withUniqueSku } from '../lib/sku.js';
@@ -36,7 +37,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // overwrites this same r2_key/photo_url with a bg-stripped version, and
     // general-purpose bg removal can over-strip a busy/patterned garment shot
     // down to a near-blank cutout — feeding that into Claude Vision produced
-    // null category/color/occasions instead of a bad-but-present garment photo.
+    // null category/color instead of a bad-but-present garment photo.
     // onProviderUsed: weighted quota increment + per-call attribution log.
     const tags = await tagProductImageUrls([photo_url], {
       onProviderUsed: recordAiUsage(retailer_id),
@@ -92,9 +93,8 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
       }
     }
 
-    // Only fill name/sku/description/subtype/styles/fabrics/occasions when
-    // still unset — never clobber a retailer's manual edit on a later
-    // re-tag/retry.
+    // Only fill name/sku/description/subtype/styles/fabrics when still unset
+    // — never clobber a retailer's manual edit on a later re-tag/retry.
     const current = await prisma.product.findUnique({
       where: { id: product_id },
       select: {
@@ -105,20 +105,34 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         category_id: true,
         styles: true,
         fabrics: true,
-        occasions: true,
       },
     });
 
     // F-024: auto-assign the merchandising category. Same never-clobber rule
     // as the name fields — only set category_id when the retailer hasn't
     // already picked one. resolveCategoryId matches the AI's free-text
-    // category against the retailer's own ProductCategory list (seeded
-    // defaults + custom rows), so the storefront "Shop By Categories" grid
-    // fills itself. No match → null, manual assignment as today.
+    // category (+ subtype as a secondary needle) against the retailer's own
+    // ProductCategory list (seeded defaults + custom rows) with
+    // singular/plural-tolerant matching, so "Kurti" lands on the retailer's
+    // "Kurtis" group and the storefront "Shop By Categories" grid fills
+    // itself. No match → null, manual assignment as today.
     const matchedCategoryId =
       current?.category_id == null
-        ? await resolveCategoryId(retailer_id, tags.category)
+        ? await resolveCategoryId(retailer_id, tags.category, tags.subtype)
         : current.category_id;
+
+    // F-027: soft-match AI-detected Style/Fabric names against the
+    // retailer's own ProductAttribute rows so the stored values are the
+    // pickable canonical names (the mobile chips + storefront facets light
+    // up). Same never-clobber rule as the name fields.
+    const matchedStyles =
+      current?.styles == null || current.styles.length === 0
+        ? await resolveAttributeNames(retailer_id, 'STYLE', tags.style)
+        : current.styles;
+    const matchedFabrics =
+      current?.fabrics == null || current.fabrics.length === 0
+        ? await resolveAttributeNames(retailer_id, 'FABRIC', tags.fabrics)
+        : current.fabrics;
 
     const writeProductTags = (sku?: string) =>
       prisma.product.update({
@@ -133,15 +147,11 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           secondary_colors: tags.secondary_colors,
           fabric_estimate: tags.fabric_estimate,
           // Same never-clobber rule as the name fields — a retailer's manual
-          // Style/Fabric/Occasion picks (single-product edit or bulk review
-          // screen) survive re-tags; AI fills them only when still empty.
-          ...(current?.styles == null || current.styles.length === 0 ? { styles: tags.style } : {}),
-          ...(current?.fabrics == null || current.fabrics.length === 0
-            ? { fabrics: tags.fabrics }
-            : {}),
-          ...(current?.occasions == null || current.occasions.length === 0
-            ? { occasions: tags.occasions }
-            : {}),
+          // Style/Fabric picks (single-product edit or bulk review screen)
+          // survive re-tags; AI fills them only when still empty, matched to
+          // the retailer's own attribute list.
+          ...(matchedStyles === current?.styles ? {} : { styles: matchedStyles }),
+          ...(matchedFabrics === current?.fabrics ? {} : { fabrics: matchedFabrics }),
           pattern: tags.pattern,
           embellishments: tags.embellishments,
           neck_style: tags.neck_style,

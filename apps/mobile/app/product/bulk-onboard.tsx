@@ -168,7 +168,6 @@ export default function BulkOnboardScreen() {
           primary_color: item.original.tags.primary_color,
           fabric_estimate: item.original.tags.fabric_estimate,
           pattern: item.original.tags.pattern,
-          occasions: item.original.tags.occasions,
           search_tags: item.original.tags.search_tags,
           section_id: item.sectionId,
           phash: item.original.phash,

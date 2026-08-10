@@ -45,7 +45,6 @@ const CustomerSchema = z.object({
   pref_colors: z.array(z.string().max(50)).max(20).optional().default([]),
   pref_styles: z.array(z.string().max(100)).max(10).optional().default([]),
   pref_fabrics: z.array(z.string().max(100)).max(10).optional().default([]),
-  pref_occasions: z.array(z.string().max(100)).max(10).optional().default([]),
   budget_min: z.number().int().min(0).max(100_000_000).optional(),
   budget_max: z.number().int().min(0).max(100_000_000).optional(),
   notes: z.string().max(2000).optional(),
@@ -498,7 +497,6 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
     if (matchedProductIds.length === 0) {
       // ── Path B (fallback): find products matching explicit preferences ──
       const prefColors = customer.pref_colors ?? [];
-      const prefOccasions = customer.pref_occasions ?? [];
       const prefFabrics = customer.pref_fabrics ?? [];
 
       const orConditions: Prisma.ProductWhereInput[] = [];
@@ -506,9 +504,6 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       if (prefColors.length > 0) {
         orConditions.push({ primary_color: { in: prefColors } });
         orConditions.push({ secondary_colors: { hasSome: prefColors } });
-      }
-      if (prefOccasions.length > 0) {
-        orConditions.push({ occasions: { hasSome: prefOccasions } });
       }
       if (prefFabrics.length > 0) {
         orConditions.push({ fabric_estimate: { in: prefFabrics } });

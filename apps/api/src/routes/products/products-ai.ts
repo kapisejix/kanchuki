@@ -10,7 +10,7 @@ import { notFound, validationError } from '../../plugins/error-handler.js';
 export const productsAiRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /products/:id/retag ───────────────────────────────────
   // Retailer-triggered re-run of AI tagging. Re-queues the same background
-  // tag-product job: it refreshes category/color/fabric/pattern/occasions and
+  // tag-product job: it refreshes category/color/fabric/pattern and
   // fills any blank name/subtype/SKU/description (the job only writes those
   // when null, so a retailer edit is never clobbered). auto_cleanup: false —
   // the photo was already cropped/bg-stripped at first upload; re-running

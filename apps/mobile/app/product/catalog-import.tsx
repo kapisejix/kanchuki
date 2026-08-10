@@ -53,7 +53,6 @@ type ReviewItem = {
     primary_color: string
     fabric_estimate: string
     pattern: string
-    occasions: string
     search_tags: string
     styles: string[]
     fabrics: string[]
@@ -187,9 +186,7 @@ export default function CatalogImportScreen() {
             short_description: item.tags.short_description ?? '',
             category: item.tags.category ?? '',
             primary_color: item.tags.primary_color ?? '',
-            fabric_estimate: item.tags.fabric_estimate ?? '',
-            pattern: item.tags.pattern ?? '',
-            occasions: (item.tags.occasions ?? []).join(', '),
+            fabric_estimate: item.tags.fabric_estimate ?? '',            pattern: item.tags.pattern ?? '',
             search_tags: (item.tags.search_tags ?? []).join(', '),
             styles: item.tags.style ?? [],
             fabrics: item.tags.fabrics ?? [],
@@ -198,6 +195,7 @@ export default function CatalogImportScreen() {
           },
         })),
       )
+
       setStep('reviewing')
     } catch (err) {
       logError(err)
@@ -258,7 +256,6 @@ export default function CatalogImportScreen() {
             primary_color: item.tags.primary_color ?? '',
             fabric_estimate: item.tags.fabric_estimate ?? '',
             pattern: item.tags.pattern ?? '',
-            occasions: (item.tags.occasions ?? []).join(', '),
             search_tags: (item.tags.search_tags ?? []).join(', '),
             styles: item.tags.style ?? [],
             fabrics: item.tags.fabrics ?? [],
@@ -369,12 +366,6 @@ export default function CatalogImportScreen() {
           primary_color: item.edits.primary_color || null,
           fabric_estimate: item.edits.fabric_estimate || null,
           pattern: item.edits.pattern || null,
-          occasions: item.edits.occasions
-            ? item.edits.occasions
-                .split(',')
-                .map((s) => s.trim())
-                .filter(Boolean)
-            : undefined,
           styles: item.edits.styles.length > 0 ? item.edits.styles : undefined,
           fabrics: item.edits.fabrics.length > 0 ? item.edits.fabrics : undefined,
           search_tags: item.edits.search_tags
@@ -726,11 +717,6 @@ export default function CatalogImportScreen() {
                   label="Pattern"
                   value={item.edits.pattern}
                   onChange={(v) => updateEdit(index, 'pattern', v)}
-                />
-                <EditField
-                  label="Occasions (comma-sep)"
-                  value={item.edits.occasions}
-                  onChange={(v) => updateEdit(index, 'occasions', v)}
                 />
                 <EditField
                   label="Search tags (comma-sep)"

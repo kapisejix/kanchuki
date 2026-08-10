@@ -78,7 +78,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
               total: 0,
               page: 1,
               page_size: 0,
-              filters: { categories: [], occasions: [], colors: [] },
+              filters: { categories: [], colors: [] },
             },
           };
         }
@@ -127,7 +127,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
               deleted_at: null,
               collection_items: { some: { collection_id: collection.id } },
             },
-            select: { category: true, occasions: true, primary_color: true },
+            select: { category: true, primary_color: true },
           }),
         ]);
 

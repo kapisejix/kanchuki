@@ -193,7 +193,7 @@ export const productApi = {
     }),
 
   /** Retailer-triggered re-run of AI tagging — fills blank name/subtype/
-   * SKU/description and refreshes category/color/fabric/pattern/occasions. */
+   * SKU/description and refreshes category/color/fabric/pattern. */
   retag: (id: string) =>
     request<{ data: { retag_queued: boolean } }>(`/v1/products/${id}/retag`, {
       method: 'POST',

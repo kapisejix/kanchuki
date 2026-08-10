@@ -312,7 +312,6 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     // Fall back to explicit preferences
     if (productIds.length === 0) {
       const prefColors = customer.pref_colors ?? [];
-      const prefOccasions = customer.pref_occasions ?? [];
       const prefFabrics = customer.pref_fabrics ?? [];
 
       const orConditions: Prisma.ProductWhereInput[] = [];
@@ -320,7 +319,6 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
         orConditions.push({ primary_color: { in: prefColors } });
         orConditions.push({ secondary_colors: { hasSome: prefColors } });
       }
-      if (prefOccasions.length > 0) orConditions.push({ occasions: { hasSome: prefOccasions } });
       if (prefFabrics.length > 0) orConditions.push({ fabric_estimate: { in: prefFabrics } });
 
       const fallbackProducts = await prisma.product.findMany({

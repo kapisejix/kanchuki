@@ -1,4 +1,5 @@
 import { prisma } from '@kanchuki/db';
+import { findBestMatch } from './name-match.js';
 
 /**
  * F-024: copy the admin-editable DefaultProductCategory template into one
@@ -43,26 +44,36 @@ export async function seedDefaultCategories(retailerId: string): Promise<void> {
  * F-024: match the AI's free-text category result against THIS retailer's
  * own current ProductCategory list (seeded defaults + any custom rows — one
  * mechanism, no default-vs-custom special-casing) and return the matched
- * category_id. Case-insensitive exact match. No match → null, which leaves
- * the product uncategorized for manual assignment exactly like today. A
- * retailer's custom category ("Bridal Wear") becomes an AI target for free
- * the moment it exists. Best-effort: any lookup failure returns null so a
- * DB hiccup never fails the whole tagging job.
+ * category_id. The AI returns singular/loose names ("Kurti", "Saree") while
+ * the seeded catalog groups are plural/merchandising names ("Kurtis",
+ * "Sarees") — matching is case-insensitive, singular/plural-tolerant, and
+ * containment/token-based (see lib/name-match.ts), so the two vocabularies
+ * actually connect. `subtype` is tried as a secondary needle when the AI's
+ * coarse category enum doesn't resolve (e.g. subtype "Kurta Set" lands on the
+ * retailer's "Kurtis" group). No match → null, which leaves the product
+ * uncategorized for manual assignment exactly like today. A retailer's custom
+ * category ("Bridal Wear") becomes an AI target for free the moment it
+ * exists. Best-effort: any lookup failure returns null so a DB hiccup never
+ * fails the whole tagging job.
  */
 export async function resolveCategoryId(
   retailerId: string,
   category: string | null,
+  subtype?: string | null,
 ): Promise<string | null> {
-  if (!category) return null;
-  const needle = category.trim().toLowerCase();
-  if (!needle) return null;
+  const needles = [category, subtype].filter((n): n is string => !!n && !!n.trim());
+  if (needles.length === 0) return null;
   try {
     const rows = await prisma.productCategory.findMany({
       where: { retailer_id: retailerId },
       select: { id: true, name: true },
     });
-    const found = rows.find((r) => r.name.trim().toLowerCase() === needle);
-    return found?.id ?? null;
+    if (rows.length === 0) return null;
+    for (const needle of needles) {
+      const match = findBestMatch(needle, rows.map((r) => r.name));
+      if (match) return rows.find((r) => r.name === match)?.id ?? null;
+    }
+    return null;
   } catch (err) {
     console.error(`Failed to resolve category for retailer ${retailerId}:`, err);
     return null;

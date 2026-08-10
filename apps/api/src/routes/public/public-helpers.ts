@@ -22,7 +22,6 @@ export const publicProductQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(50).optional(),
   category: z.string().optional(),
-  occasion: z.string().optional(),
   price: z.string().optional(),
   color: z.string().optional(),
 });
@@ -30,12 +29,11 @@ export const publicProductQuerySchema = z.object({
 export type PublicProductQuery = z.infer<typeof publicProductQuerySchema>;
 
 // Builds the Prisma filter for the Product side of a CollectionProduct/category
-// query from the same category/occasion/price/color params the web FilterBar
-// exposes — kept here so list, count, and facet queries agree on one shape.
+// query from the same category/price/color params the web FilterBar exposes —
+// kept here so list, count, and facet queries agree on one shape.
 export function buildProductFilterWhere(query: PublicProductQuery): Prisma.ProductWhereInput {
   const where: Prisma.ProductWhereInput = { deleted_at: null };
   if (query.category) where.category = query.category;
-  if (query.occasion) where.occasions = { has: query.occasion };
   if (query.color) where.primary_color = { equals: query.color, mode: 'insensitive' };
 
   const bucket = PUBLIC_PRICE_BUCKETS.find((b) => b.label === query.price);
@@ -62,7 +60,6 @@ export async function toPublicProductSummary(p: {
   category: string | null;
   subtype: string | null;
   primary_color: string | null;
-  occasions: string[];
   location_notes: string | null;
   section: { name: string | null } | null;
   photos: { url: string; r2_key: string }[];
@@ -82,7 +79,6 @@ export async function toPublicProductSummary(p: {
     category: p.category,
     subtype: p.subtype,
     primary_color: p.primary_color,
-    occasions: p.occasions,
     location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
     primary_photo_url: photo ? await displayUrl(photo.url, photo.r2_key) : '',
     has_360: p._count.spin_frames > 0,
@@ -102,11 +98,10 @@ function countBy<T>(values: T[]): { value: T; count: number }[] {
 }
 
 export function buildFacets(
-  products: { category: string | null; occasions: string[]; primary_color: string | null }[],
+  products: { category: string | null; primary_color: string | null }[],
 ) {
   return {
     categories: countBy(products.map((p) => p.category).filter((c): c is string => c !== null)),
-    occasions: countBy(products.flatMap((p) => p.occasions)),
     colors: countBy(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),
   };
 }

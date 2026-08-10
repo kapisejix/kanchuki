@@ -581,7 +581,6 @@ export function ProductDetailSheet({
               </p>
               <p className="text-sm text-gray-500 mt-0.5">
                 {product.category}
-                {product.occasions[0] ? ` · ${product.occasions[0]}` : ''}
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
@@ -632,9 +631,6 @@ export function ProductDetailSheet({
               {product.name && <InfoRow label="Name" value={product.name} />}
               {product.subtype && <InfoRow label="Type" value={product.subtype} />}
               {fabricEstimate && <InfoRow label="Fabric" value={fabricEstimate} />}
-              {product.occasions.length > 0 && (
-                <InfoRow label="Occasion" value={product.occasions.join(', ')} />
-              )}
             </div>
           </div>
 

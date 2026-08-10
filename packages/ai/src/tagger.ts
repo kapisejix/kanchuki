@@ -10,7 +10,6 @@ const SYSTEM_PROMPT = `You are an expert in Indian ethnic fashion with deep know
 - Indian embroidery and embellishment styles (zari, zardozi, gota patti, mirror work, bandhani, chikankari, phulkari, sequin work, etc.)
 - Regional clothing styles (Punjabi suit, Gujarati saree, Banarasi silk, Lucknowi work, etc.)
 - Garment silhouettes/styles (Anarkali, Sharara, Palazzo, Patiala, Pakistani suit, Straight Cut, Indo Western, etc.)
-- Indian fashion occasions (wedding, festive/pooja, casual, office wear, party wear, sangeet, mehendi, etc.)
 - Color terminology in Indian fashion context (bottle green, wine, mustard, peacock blue, ivory, off-white, rani pink, etc.)
 - Price range estimation from visible quality and materials
 
@@ -84,16 +83,6 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
         type: 'string',
         description: 'Sleeve style if visible (e.g., "Full Sleeve", "3/4 Sleeve", "Sleeveless")',
       },
-      occasions: {
-        type: 'array',
-        items: {
-          type: 'string',
-          enum: [
-            'Casual', 'Office Wear', 'Party Wear', 'Wedding', 'Festive',
-            'Sangeet', 'Mehendi', 'Pooja', 'Daily Wear', 'Special Occasion',
-          ],
-        },
-      },
       style: {
         type: 'array',
         items: { type: 'string' },
@@ -126,7 +115,7 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       search_tags: {
         type: 'array',
         items: { type: 'string' },
-        description: '6-8 searchable keywords: colors, fabrics, occasions, style in English + Hindi transliterations',
+        description: '6-8 searchable keywords: colors, fabrics, style in English + Hindi transliterations',
       },
       product_name: {
         type: 'string',
@@ -137,15 +126,14 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
       short_description: {
         type: 'string',
         description:
-          '1-2 sentence product listing description covering fabric, design/pattern, color, and ' +
-          'a suggested occasion or styling note. Factual, no marketing fluff.',
+          '1-2 sentence product listing description covering fabric, design/pattern, and color. ' +
+          'Factual, no marketing fluff.',
       },
     },
     required: [
       'category',
       'subtype',
       'primary_color',
-      'occasions',
       'style',
       'fabrics',
       'search_tags',
@@ -212,7 +200,6 @@ export async function tagProductImages(
     embellishments: (raw['embellishments'] as string[]) ?? [],
     neck_style: nullable(raw['neck_style']),
     sleeve_type: nullable(raw['sleeve_type']),
-    occasions: (raw['occasions'] as string[]) ?? [],
     style: (raw['style'] as string[]) ?? [],
     fabrics: (raw['fabrics'] as string[]) ?? [],
     price_range_estimate: nullable(raw['price_range_estimate']),
@@ -227,9 +214,9 @@ export async function tagProductImages(
   // product_name/short_description are required in the schema above, but some
   // providers still skip string fields with null/empty. Deterministic fallbacks
   // keep the catalog listing never-blank: name falls back to "{color} {subtype
-  // | category}" and description to a factual "fabric · pattern · color (+ a
-  // suggested occasion)" line. Subtype stays null when genuinely unknown — the
-  // UI already falls back to category for display.
+  // | category}" and description to a factual "fabric · pattern · color" line.
+  // Subtype stays null when genuinely unknown — the UI already falls back to
+  // category for display.
   if (!result.product_name) {
     const fallback = [result.primary_color, result.subtype ?? result.category]
       .filter(Boolean)
@@ -240,12 +227,7 @@ export async function tagProductImages(
     const detail = [result.fabric_estimate, result.pattern, result.primary_color]
       .filter(Boolean)
       .join(' · ')
-    const occasion = result.occasions[0]
-    result.short_description = detail
-      ? `${detail}.${occasion ? ` Ideal for ${occasion.toLowerCase()}.` : ''}`
-      : occasion
-        ? `Ideal for ${occasion.toLowerCase()}.`
-        : null
+    result.short_description = detail ? `${detail}.` : null
   }
 
   return result

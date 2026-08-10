@@ -61,7 +61,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   }, [slug]);
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
-  const [filterOccasion, setFilterOccasion] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -105,7 +104,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       nextPage: number,
       filters: {
         category: string | null;
-        occasion: string | null;
         price: string | null;
         color: string | null;
       },
@@ -113,7 +111,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       setLoading(true);
       const qs = new URLSearchParams({ page: String(nextPage), pageSize: String(PAGE_SIZE) });
       if (filters.category) qs.set('category', filters.category);
-      if (filters.occasion) qs.set('occasion', filters.occasion);
       if (filters.price) qs.set('price', filters.price);
       if (filters.color) qs.set('color', filters.color);
       try {
@@ -142,22 +139,20 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     }
     void fetchProducts(1, {
       category: filterCategory,
-      occasion: filterOccasion,
       price: filterPrice,
       color: filterColor,
     });
-  }, [filterCategory, filterOccasion, filterPrice, filterColor, fetchProducts]);
+  }, [filterCategory, filterPrice, filterColor, fetchProducts]);
 
   const goToPage = useCallback(
     (nextPage: number) => {
       void fetchProducts(nextPage, {
         category: filterCategory,
-        occasion: filterOccasion,
         price: filterPrice,
         color: filterColor,
       });
     },
-    [fetchProducts, filterCategory, filterOccasion, filterPrice, filterColor],
+    [fetchProducts, filterCategory, filterPrice, filterColor],
   );
 
   const toggleFavorite = useCallback(
@@ -295,16 +290,13 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             </div>
           </div>
 
-          {/* Secondary filters (occasion / price / color) — category chips
-              render unconditionally above the grid in CategoryChips. */}
+          {/* Secondary filters (price / color) — category chips render
+              unconditionally above the grid in CategoryChips. */}
           {showFilters && (
             <FilterBar
-              occasions={collection.filters.occasions}
               colors={collection.filters.colors}
-              filterOccasion={filterOccasion}
               filterPrice={filterPrice}
               filterColor={filterColor}
-              onOccasionChange={setFilterOccasion}
               onPriceChange={setFilterPrice}
               onColorChange={setFilterColor}
             />
@@ -345,7 +337,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             <button
               onClick={() => {
                 setFilterCategory(null);
-                setFilterOccasion(null);
                 setFilterPrice(null);
                 setFilterColor(null);
               }}

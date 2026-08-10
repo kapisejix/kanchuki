@@ -81,7 +81,6 @@ export const CreateProductSchema = z.object({
   embellishments: z.array(z.string().max(100)).max(10).optional(),
   neck_style: z.string().max(100).optional(),
   sleeve_type: z.string().max(100).optional(),
-  occasions: z.array(z.string().max(100)).max(10).optional(),
   styles: z.array(z.string().max(100)).max(10).optional(),
   fabrics: z.array(z.string().max(100)).max(10).optional(),
   search_tags: z.array(z.string().max(100)).max(20).optional(),

@@ -81,7 +81,6 @@ interface DetectedGarment {
   secondary_colors: string[]
   fabric_estimate: string | null
   pattern: string | null
-  occasions: string[]
   search_tags: string[]
   design_number?: string | null
 }
@@ -110,11 +109,10 @@ const DETECT_SCHEMA: AiJsonSchema = {
             secondary_colors: { type: 'array', items: { type: 'string' } },
             fabric_estimate: { type: 'string', description: 'Estimated fabric type' },
             pattern: { type: 'string', enum: ['Plain', 'Printed', 'Embroidered', 'Block Print', 'Bandhani', 'Chikankari', 'Phulkari', 'Woven', 'Checked', 'Striped', null] },
-            occasions: { type: 'array', items: { type: 'string' } },
             search_tags: { type: 'array', items: { type: 'string' } },
             design_number: { type: 'string', description: 'Design/catalog number if printed/visible' },
           },
-          required: ['description', 'position_x_pct', 'position_y_pct', 'width_pct', 'height_pct', 'category', 'primary_color', 'occasions', 'search_tags'],
+          required: ['description', 'position_x_pct', 'position_y_pct', 'width_pct', 'height_pct', 'category', 'primary_color', 'search_tags'],
         },
       },
     },
@@ -181,7 +179,6 @@ export async function detectItems(
       embellishments: [],
       neck_style: null,
       sleeve_type: null,
-      occasions: g.occasions ?? [],
       style: [],
       fabrics: [],
       price_range_estimate: null,

@@ -57,53 +57,25 @@ export function CategoryChips({
   )
 }
 
-// Secondary filters (occasion / price / color) — revealed behind the filter
-// toggle. The category row lives in CategoryChips above the grid instead.
+// Secondary filters (price / color) — revealed behind the filter toggle. The
+// category row lives in CategoryChips above the grid instead.
 interface FilterBarProps {
-  occasions: FilterOption[]
   colors: FilterOption[]
-  filterOccasion: string | null
   filterPrice: string | null
   filterColor: string | null
-  onOccasionChange: (occasion: string | null) => void
   onPriceChange: (price: string | null) => void
   onColorChange: (color: string | null) => void
 }
 
 export function FilterBar({
-  occasions,
   colors,
-  filterOccasion,
   filterPrice,
   filterColor,
-  onOccasionChange,
   onPriceChange,
   onColorChange,
 }: FilterBarProps) {
   return (
     <div className="mt-2 space-y-2">
-      {/* Occasion filter */}
-      {occasions.length > 1 && (
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          <span className="text-xs text-gray-500 flex-shrink-0">For:</span>
-          <button
-            onClick={() => onOccasionChange(null)}
-            className={chipClass(filterOccasion === null)}
-          >
-            All
-          </button>
-          {occasions.map((occasion) => (
-            <button
-              key={occasion.value}
-              onClick={() => onOccasionChange(filterOccasion === occasion.value ? null : occasion.value)}
-              className={chipClass(filterOccasion === occasion.value)}
-            >
-              {occasion.value} ({occasion.count})
-            </button>
-          ))}
-        </div>
-      )}
-
       {/* Price filter */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
         <span className="text-xs text-gray-500 flex-shrink-0">Price:</span>

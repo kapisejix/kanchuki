@@ -26,7 +26,6 @@ export type Product = {
   fabrics: string[]
   styles: string[]
   pattern: string | null
-  occasions: string[]
   sizes: string[]
   price_min: number | null
   price_max: number | null

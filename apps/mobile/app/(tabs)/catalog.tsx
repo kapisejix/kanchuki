@@ -32,7 +32,6 @@ type Product = {
   primary_color: string | null
   price_min: number | null
   price_max: number | null
-  occasions: string[]
   status: string
   primary_photo_url: string | null
   section: { name: string } | null
@@ -169,7 +168,6 @@ export default function CatalogScreen() {
 
   const [showFilters, setShowFilters] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
-  const [filterOccasion, setFilterOccasion] = useState<string | null>(null)
   const [filterPrice, setFilterPrice] = useState<string | null>(null)
   const [filterColor, setFilterColor] = useState<string | null>(null)
   const [filterNewArrival, setFilterNewArrival] = useState(false)
@@ -194,11 +192,10 @@ export default function CatalogScreen() {
   const categoryOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.category).filter((c): c is string => !!c)),
   )
-  const occasionOptions = Array.from(new Set(unfilteredProducts.flatMap((p) => p.occasions)))
   const colorOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.primary_color).filter((c): c is string => !!c)),
   )
-  const activeFilterCount = [filterCategory, filterOccasion, filterPrice, filterColor, filterNewArrival ? 'New Arrivals' : null].filter(Boolean).length
+  const activeFilterCount = [filterCategory, filterPrice, filterColor, filterNewArrival ? 'New Arrivals' : null].filter(Boolean).length
 
   // Category shortcut row — one circle per category, thumbnail borrowed from
   // that category's first photographed product (no separate icon asset needed).
@@ -209,7 +206,6 @@ export default function CatalogScreen() {
 
   const products = unfilteredProducts.filter((p) => {
     if (filterCategory && p.category !== filterCategory) return false
-    if (filterOccasion && !p.occasions.includes(filterOccasion)) return false
     if (filterColor && p.primary_color !== filterColor) return false
     if (filterPrice) {
       const bucket = PRICE_BUCKETS.find((b) => b.label === filterPrice)
@@ -224,7 +220,6 @@ export default function CatalogScreen() {
 
   const clearFilters = useCallback(() => {
     setFilterCategory(null)
-    setFilterOccasion(null)
     setFilterPrice(null)
     setFilterColor(null)
   }, [])
@@ -441,7 +436,7 @@ export default function CatalogScreen() {
                   </ScrollView>
                 )}
 
-                {/* Filter panel — Category, Occasion, Price, Color */}
+                {/* Filter panel — Category, Price, Color */}
                 {showFilters && (
                   <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-sand-100' : ''}>
                     <View className="flex-row items-center justify-between mb-2">
@@ -458,7 +453,6 @@ export default function CatalogScreen() {
                       </View>
                     </View>
                     <ChipRow label="Category" options={categoryOptions} selected={filterCategory} onSelect={setFilterCategory} />
-                    <ChipRow label="Occasion" options={occasionOptions} selected={filterOccasion} onSelect={setFilterOccasion} />
                     <ChipRow label="Price"
                       options={PRICE_BUCKETS.map((b) => b.label)}
                       selected={filterPrice}

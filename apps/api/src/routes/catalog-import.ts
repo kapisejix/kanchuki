@@ -40,7 +40,6 @@ interface DetectedItemResponse {
     embellishments: string[];
     neck_style: string | null;
     sleeve_type: string | null;
-    occasions: string[];
     style: string[];
     fabrics: string[];
     price_range_estimate: string | null;
@@ -78,7 +77,6 @@ const BulkCreateProductsSchema = z.object({
         primary_color: z.string().nullable().optional(),
         fabric_estimate: z.string().nullable().optional(),
         pattern: z.string().nullable().optional(),
-        occasions: z.array(z.string()).optional(),
         styles: z.array(z.string().max(100)).max(10).optional(),
         fabrics: z.array(z.string().max(100)).max(10).optional(),
         search_tags: z.array(z.string()).optional(),
@@ -444,7 +442,6 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
         primary_color: item.primary_color ?? undefined,
         fabric_estimate: item.fabric_estimate ?? undefined,
         pattern: item.pattern ?? undefined,
-        occasions: item.occasions ?? undefined,
         styles: item.styles ?? undefined,
         fabrics: item.fabrics ?? undefined,
         search_tags: item.search_tags ?? undefined,

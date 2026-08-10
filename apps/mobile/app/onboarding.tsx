@@ -559,7 +559,7 @@ export default function OnboardingScreen() {
                 <Text className="text-ink-700 text-sm font-medium">✨ What happens next?</Text>
                 <Text className="text-ink-600 text-sm mt-1 leading-5">
                   Add your shop details, then take a photo of any product — AI will automatically
-                  tag it with category, color, fabric & occasion.
+                  tag it with category, color & fabric.
                 </Text>
               </View>
             </GradientBorderCard>

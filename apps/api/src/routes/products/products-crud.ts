@@ -345,7 +345,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       'category',
       'primary_color',
       'fabric_estimate',
-      'occasions',
       'styles',
       'fabrics',
       'search_tags',

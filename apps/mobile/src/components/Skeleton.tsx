@@ -579,15 +579,6 @@ export function ProductAddSkeleton() {
             </View>
           </View>
 
-          {/* Occasion chips */}
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-3">
-            <Skeleton className="h-3 w-16" />
-            <View className="flex-row flex-wrap gap-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-7 w-24 rounded-full" />
-              ))}
-            </View>
-          </View>
 
           {/* Notes */}
           <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-2">

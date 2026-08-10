@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  PRODUCT_CATEGORIES,
   PATTERN_TYPES,
   PIECE_TAGGABLE_CATEGORIES,
   SIZE_OPTIONS,
@@ -80,7 +79,6 @@ export default function ProductDetailScreen() {
   const [price, setPrice] = useState('')
   const [location, setLocation] = useState('')
   const [notes, setNotes] = useState('')
-  const [selectedOccasions, setSelectedOccasions] = useState<string[]>([])
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
@@ -152,13 +150,8 @@ export default function ProductDetailScreen() {
   })
   const categories = categoriesData?.data ?? []
 
-  // Dynamic, retailer-editable Style/Occasion/Fabric taxonomy (DB-backed,
-  // seeded from the admin default template — no hardcoded option lists).
-  const { data: occasionsData } = useQuery({
-    queryKey: ['attributes', 'OCCASION'],
-    queryFn: () => productAttributeApi.list('OCCASION'),
-  })
-  const occasionOptions = occasionsData?.data ?? []
+  // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
+  // the admin default template — no hardcoded option lists).
   const { data: stylesData } = useQuery({
     queryKey: ['attributes', 'STYLE'],
     queryFn: () => productAttributeApi.list('STYLE'),
@@ -484,7 +477,6 @@ export default function ProductDetailScreen() {
     setPrice(product.price_min ? String(product.price_min / 100) : '')
     setLocation(product.location_notes ?? '')
     setNotes(product.notes ?? '')
-    setSelectedOccasions(product.occasions ?? [])
     setSelectedStyles(product.styles ?? [])
     setSelectedFabrics(product.fabrics ?? [])
     setSelectedSizes(product.sizes ?? [])
@@ -549,7 +541,6 @@ export default function ProductDetailScreen() {
         category_id: editedCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
-        occasions: selectedOccasions,
         styles: selectedStyles,
         fabrics: selectedFabrics,
         sizes: selectedSizes,
@@ -565,7 +556,7 @@ export default function ProductDetailScreen() {
   }
 
   // Re-runs AI tagging for this product (retag endpoint → same background
-  // tag-product job). Refreshes category/color/fabric/pattern/occasions and
+  // tag-product job). Refreshes category/color/fabric/pattern and
   // fills any blank name/subtype/SKU/description — the job only writes those
   // when null, so a retailer edit is never clobbered. The 3s poll picks up
   // ai_tagged:false → "AI tagging in progress..." → completed tags re-hydrate
@@ -1566,35 +1557,8 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
-        {/* Category (editable) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-            Category *
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {PRODUCT_CATEGORIES.map((cat) => {
-              const selected = editedCategory === cat
-              return (
-                <AnimatedPressable
-                  key={cat}
-                  onPress={() => dirty(setEditedCategory)(selected ? null : cat)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
-                  }`}
-                >
-                  {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
-                    {cat}
-                  </Text>
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* Merchandising category (retailer-curated, optional) */}
+        {/* Merchandising category (retailer-curated catalog group — the AI
+            auto-assigns it via the tag job; single category selector. */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-3">
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
@@ -1827,38 +1791,6 @@ export default function ProductDetailScreen() {
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
                     {size}
-                  </Text>
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        </View>
-
-        {/* Occasion (dynamic, DB-backed — multi-select) */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-            Occasion
-          </Text>
-          <View className="flex-row flex-wrap gap-2">
-            {occasionOptions.map((occ) => {
-              const selected = selectedOccasions.includes(occ.name)
-              return (
-                <AnimatedPressable
-                  key={occ.id}
-                  onPress={() =>
-                    dirty(setSelectedOccasions)((prev) =>
-                      selected ? prev.filter((o) => o !== occ.name) : [...prev, occ.name],
-                    )
-                  }
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
-                  }`}
-                >
-                  {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
-                    {occ.name}
                   </Text>
                 </AnimatedPressable>
               )

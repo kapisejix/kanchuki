@@ -15,7 +15,6 @@ const SearchSchema = z.object({
       category: z.string().optional(),
       price_max: z.number().int().min(0).optional(),
       price_min: z.number().int().min(0).optional(),
-      occasions: z.array(z.string()).optional(),
     })
     .optional(),
   limit: z.number().int().min(1).max(30).default(12),
@@ -50,7 +49,6 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
       status: string;
       section: { name: string } | null;
       search_tags: string[];
-      occasions: string[];
       primary_photo_url: string | null;
       similarity?: number;
     }>;
@@ -70,7 +68,6 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
         status: string;
         section_id: string | null;
         search_tags: string[];
-        occasions: string[];
         similarity: number;
       };
 
@@ -84,7 +81,6 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
           p.status,
           p.section_id,
           p.search_tags,
-          p.occasions,
           (1 - (pe.embedding <=> ${Prisma.raw(`'${vectorLiteral}'::vector`)})) AS similarity
         FROM products p
         JOIN product_embeddings pe ON p.id = pe.product_id
@@ -184,16 +180,6 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
       'teal',
     ];
     const fabricKeywords = ['cotton', 'silk', 'georgette', 'chiffon', 'chanderi', 'rayon', 'net'];
-    const occasionKeywords = [
-      'wedding',
-      'party',
-      'casual',
-      'office',
-      'festive',
-      'sangeet',
-      'mehendi',
-      'pooja',
-    ];
 
     const lower = query.toLowerCase();
     return {
@@ -201,7 +187,6 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
       query_interpretation: {
         detected_colors: colorKeywords.filter((c) => lower.includes(c)),
         detected_fabrics: fabricKeywords.filter((f) => lower.includes(f)),
-        detected_occasions: occasionKeywords.filter((o) => lower.includes(o)),
         detected_budget_max: priceMax,
       },
     };
