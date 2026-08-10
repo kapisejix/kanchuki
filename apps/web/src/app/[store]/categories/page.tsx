@@ -1,9 +1,10 @@
 import { API_URL as apiUrl } from '@/lib/apiUrl';
-import { Store } from 'lucide-react';
+import { LayoutGrid, Store } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
+import { buildStoreDescription, localBusinessLd, storeOgImage } from '../lib/store-seo';
 
 interface PublicCategory {
   id: string;
@@ -15,8 +16,15 @@ interface PublicCategory {
 interface StoreCategoriesData {
   shop_name: string;
   city: string | null;
+  state: string | null;
+  address_line1: string | null;
+  address_line2: string | null;
+  categories: string[];
+  logo_url: string | null;
+  banner_url: string | null;
   storefront_slug: string | null;
-  categories: PublicCategory[];
+  categoryList: PublicCategory[];
+  total_products: number;
 }
 
 interface Props {
@@ -31,12 +39,27 @@ async function fetchData(store: string): Promise<StoreCategoriesData | null> {
     ]);
     if (!profileRes.ok) return null;
     const profile = (await profileRes.json()) as {
-      data: { shop_name: string; city: string | null; storefront_slug: string | null };
+      data: {
+        shop_name: string;
+        city: string | null;
+        state: string | null;
+        address_line1: string | null;
+        address_line2: string | null;
+        categories: string[];
+        logo_url: string | null;
+        banner_url: string | null;
+        storefront_slug: string | null;
+      };
     };
-    const categories = categoriesRes.ok
-      ? ((await categoriesRes.json()) as { data: PublicCategory[] }).data
-      : [];
-    return { ...profile.data, categories };
+    const categoriesJson = (await categoriesRes.json()) as {
+      data: PublicCategory[];
+      total_products?: number;
+    };
+    return {
+      ...profile.data,
+      categoryList: categoriesJson.data ?? [],
+      total_products: categoriesJson.total_products ?? 0,
+    };
   } catch {
     return null;
   }
@@ -46,7 +69,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { store } = await params;
   const data = await fetchData(store);
   if (!data) return { title: 'Store Not Found | Kanchuki' };
-  return { title: `${data.shop_name} — Categories | Kanchuki` };
+
+  const description = buildStoreDescription(data);
+  const ogImage = storeOgImage(data);
+
+  return {
+    title: `${data.shop_name} — Categories${data.city ? `, ${data.city}` : ''} | Kanchuki`,
+    description,
+    alternates: { canonical: `/${store}/categories` },
+    openGraph: {
+      title: `${data.shop_name} — Categories`,
+      description,
+      type: 'website',
+      url: `/${store}/categories`,
+      images: ogImage ? [{ url: ogImage, alt: data.shop_name }] : [],
+    },
+    twitter: {
+      card: 'summary',
+      title: `${data.shop_name} — Categories`,
+      description,
+      images: ogImage ? [ogImage] : [],
+    },
+  };
 }
 
 export default async function StoreCategoriesPage({ params }: Props) {
@@ -54,9 +98,9 @@ export default async function StoreCategoriesPage({ params }: Props) {
   const data = await fetchData(store);
   if (!data) notFound();
 
-  // No categories set up yet — fall back to the retailer's single storefront
-  // collection (pre-category behavior), or a friendly "coming soon" state.
-  if (data.categories.length === 0) {
+  // No categories AND no products at all — fall back to the retailer's single
+  // storefront collection (pre-category behavior), or a friendly empty state.
+  if (data.categoryList.length === 0 && data.total_products === 0) {
     if (data.storefront_slug) redirect(`/${store}/${data.storefront_slug}`);
     return (
       <div className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 gap-4">
@@ -84,7 +128,24 @@ export default async function StoreCategoriesPage({ params }: Props) {
       </header>
 
       <main className="max-w-md mx-auto px-4 py-5 grid grid-cols-2 gap-3">
-        {data.categories.map((cat) => (
+        {/* All Products tile — always first so the full catalog (including
+            products with no category) is one tap away and never hidden. */}
+        <Link
+          href={`/${store}/all`}
+          className="bg-white rounded-2xl border border-cyan-200 overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
+        >
+          <div className="w-full aspect-square bg-gradient-to-br from-cyan-600 to-cyan-800 relative flex items-center justify-center">
+            <LayoutGrid size={44} className="text-white" />
+          </div>
+          <div className="p-3">
+            <p className="text-sm font-semibold text-gray-900 truncate">All Products</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {data.total_products} product{data.total_products === 1 ? '' : 's'}
+            </p>
+          </div>
+        </Link>
+
+        {data.categoryList.map((cat) => (
           <Link
             key={cat.id}
             href={`/${store}/categories/${cat.id}`}
@@ -112,6 +173,13 @@ export default async function StoreCategoriesPage({ params }: Props) {
           </Link>
         ))}
       </main>
+
+      {/* LocalBusiness structured data (F-031) — same block as the store home. */}
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own retailer data, no user input
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd(data, store)) }}
+      />
     </div>
   );
 }

@@ -39,9 +39,37 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { store, categoryId } = await params;
   const category = await fetchCategory(store, categoryId, { page: 1, pageSize: 1 });
   if (!category) return { title: 'Category Not Found | Kanchuki' };
+
+  const shop = category.retailer.shop_name;
+  const city = category.retailer.city;
+  const description = `Browse ${category.total} ${category.title} from ${shop}${city ? `, ${city}` : ''}`;
+  const ogImage = category.retailer.logo_url ?? category.retailer.banner_url;
+
   return {
-    title: `${category.title} — ${category.retailer.shop_name} | Kanchuki`,
-    description: `Browse ${category.total} products from ${category.retailer.shop_name}`,
+    title: `${category.title} — ${shop}${city ? `, ${city}` : ''} | Kanchuki`,
+    description,
+    alternates: { canonical: `/${store}/categories/${categoryId}` },
+    openGraph: {
+      title: `${category.title} — ${shop}`,
+      description,
+      type: 'website',
+      url: `/${store}/categories/${categoryId}`,
+      images: ogImage
+        ? [{ url: ogImage, alt: shop }]
+        : category.products[0]?.primary_photo_url
+          ? [{ url: category.products[0].primary_photo_url }]
+          : [],
+    },
+    twitter: {
+      card: 'summary',
+      title: `${category.title} — ${shop}`,
+      description,
+      images: ogImage
+        ? [ogImage]
+        : category.products[0]?.primary_photo_url
+          ? [category.products[0].primary_photo_url]
+          : [],
+    },
   };
 }
 

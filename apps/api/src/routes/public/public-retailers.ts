@@ -41,6 +41,12 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
       });
 
+      // Total live catalog size — drives the "All Products" tile count on the
+      // storefront categories page (includes products with no category).
+      const totalProducts = await prisma.product.count({
+        where: { retailer_id: retailer.id, deleted_at: null },
+      });
+
       return {
         data: categories
           .filter((c) => c._count.products > 0)
@@ -50,6 +56,111 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
             image_url: c.image_url,
             product_count: c._count.products,
           })),
+        total_products: totalProducts,
+      };
+    });
+  });
+
+  // ─── GET /public/retailers/:slug/products ──────────────────────
+  // Full-catalog listing: every non-deleted product for the store, regardless
+  // of category assignment — powers the "All Products" tile on the storefront
+  // categories page so products with no category are never hidden. Shaped
+  // exactly like the category/collection listings (PublicCollection) so the
+  // web app reuses the same CollectionView component.
+  server.get('/retailers/:slug/products', async (request) => {
+    const { slug } = request.params as { slug: string };
+    const parsedQuery = publicProductQuerySchema.safeParse(request.query);
+    if (!parsedQuery.success) throw validationError('Invalid query params');
+    const query = parsedQuery.data;
+
+    // Redis-cached with single-flight stampede protection (lib/public-cache.ts).
+    return withPublicCache(request.url, async () => {
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: slug, deleted_at: null },
+        select: {
+          id: true,
+          shop_name: true,
+          city: true,
+          phone: true,
+          logo_url: true,
+          banner_url: true,
+          is_suspended: true,
+          public_slug: true,
+        },
+      });
+      if (!retailer) throw notFound('Retailer');
+
+      // F-015: Hide products for suspended retailers
+      if (retailer.is_suspended) {
+        return {
+          data: {
+            retailer: {
+              shop_name: retailer.shop_name,
+              city: retailer.city,
+              phone: retailer.phone,
+              logo_url: null,
+              banner_url: null,
+              public_slug: retailer.public_slug,
+            },
+            title: 'All Products',
+            description: 'This store is temporarily unavailable.',
+            expires_at: null,
+            products: [],
+            total: 0,
+            page: 1,
+            page_size: 0,
+            filters: { categories: [], colors: [] },
+          },
+        };
+      }
+
+      const productWhere: Prisma.ProductWhereInput = {
+        ...buildProductFilterWhere(query),
+        retailer_id: retailer.id,
+      };
+      const take = query.pageSize ?? (query.page ? 12 : undefined);
+      const skip = query.page && take ? (query.page - 1) * take : undefined;
+
+      const [rows, total, facetRows] = await Promise.all([
+        prisma.product.findMany({
+          where: productWhere,
+          orderBy: { created_at: 'desc' },
+          skip,
+          take,
+          include: {
+            photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
+            section: { select: { name: true } },
+            _count: { select: { spin_frames: true } },
+          },
+        }),
+        prisma.product.count({ where: productWhere }),
+        prisma.product.findMany({
+          where: { deleted_at: null, retailer_id: retailer.id },
+          select: { category: true, primary_color: true },
+        }),
+      ]);
+
+      const publicProducts = await Promise.all(rows.map((p) => toPublicProductSummary(p)));
+
+      return {
+        data: {
+          retailer: {
+            shop_name: retailer.shop_name,
+            city: retailer.city,
+            phone: retailer.phone,
+            logo_url: retailer.logo_url ?? null,
+            banner_url: retailer.banner_url ?? null,
+            public_slug: retailer.public_slug,
+          },
+          title: 'All Products',
+          description: null,
+          expires_at: null,
+          products: publicProducts,
+          total,
+          page: query.page ?? 1,
+          page_size: take ?? total,
+          filters: buildFacets(facetRows),
+        },
       };
     });
   });

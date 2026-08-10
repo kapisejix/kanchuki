@@ -1,17 +1,24 @@
-import { defaultCache } from '@serwist/next/worker'
-import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist'
-import { CacheFirst, ExpirationPlugin, Serwist, StaleWhileRevalidate, NetworkFirst, NetworkOnly } from 'serwist'
+import { defaultCache } from '@serwist/next/worker';
+import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
+import {
+  CacheFirst,
+  ExpirationPlugin,
+  NetworkFirst,
+  NetworkOnly,
+  Serwist,
+  StaleWhileRevalidate,
+} from 'serwist';
 
 // This declares the global `self.__SW_MANIFEST` variable (Serwist injects the
 // precache manifest at build time, not at runtime). Without this declaration,
 // TypeScript errors on self.__SW_MANIFEST.
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
-    __SW_MANIFEST: (PrecacheEntry | string)[]
+    __SW_MANIFEST: (PrecacheEntry | string)[];
   }
 }
 
-declare const self: WorkerGlobalScope
+declare const self: WorkerGlobalScope;
 
 const serwist = new Serwist({
   // '/offline' is precached at install time so it's available as a fallback
@@ -37,12 +44,14 @@ const serwist = new Serwist({
     // — show the last-known list instantly, refresh in the background.
     // Covers the legacy /api/c/{slug}/... proxies and the canonical
     // /api/{store}/{collection}/... + /api/{store}/categories/{categoryId}/...
-    // proxies (dynamic first segment — regex, not startsWith).
+    // + /api/{store}/products (All Products tile) proxies (dynamic first
+    // segment — regex, not startsWith).
     {
       matcher: ({ url }) =>
         url.pathname.startsWith('/api/c/') ||
         /^\/api\/[^/]+\/[^/]+\/(products|favorite|checkout-status)$/.test(url.pathname) ||
-        /^\/api\/[^/]+\/categories\/[^/]+\/products$/.test(url.pathname),
+        /^\/api\/[^/]+\/categories\/[^/]+\/products$/.test(url.pathname) ||
+        /^\/api\/[^/]+\/products$/.test(url.pathname),
       handler: new StaleWhileRevalidate({ cacheName: 'collection-api' }),
     },
     // Legacy collection pages (/c/[slug]) — redirect pages now, kept for
@@ -57,18 +66,26 @@ const serwist = new Serwist({
       matcher: ({ url }) => url.pathname.startsWith('/store/'),
       handler: new NetworkFirst({ cacheName: 'store-pages', networkTimeoutSeconds: 3 }),
     },
-    // Canonical store profile (/{public_slug}) and collection
-    // (/{public_slug}/{collection}) pages — same bug class as the legacy
-    // /store/ rule: defaultCache caches RSC prefetch/nav payloads by URL
-    // only, so a stale payload got served on click and the page hung until a
-    // hard reload bypassed the SW cache. Placed after the /admin rules so the
-    // static admin/offline/terms paths are never caught (single-segment
-    // matcher would otherwise claim /admin and /offline).
+    // Canonical storefront pages — same bug class as the legacy /store/
+    // rule: defaultCache caches RSC prefetch/nav payloads by URL only, so a
+    // stale payload got served on click and the page hung until a hard
+    // reload bypassed the SW cache. Covers the store profile
+    // (/{public_slug}), collections (/{public_slug}/{slug}), the categories
+    // browse + product pages (/{public_slug}/categories[/{categoryId}]) and
+    // the cart/wishlist/checkout/order sub-flows
+    // (/{public_slug}/{slug}/{cart|wishlist|checkout|order/{id}}) — 1 to 4
+    // segments. Static assets (/admin, /api, /_next) are excluded below so
+    // immutable chunks keep their CacheFirst treatment from defaultCache.
     {
       matcher: ({ url }) => {
-        if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return false
-        const segments = url.pathname.split('/').filter(Boolean)
-        return segments.length === 1 || segments.length === 2
+        if (
+          url.pathname.startsWith('/api/') ||
+          url.pathname.startsWith('/admin') ||
+          url.pathname.startsWith('/_next/')
+        )
+          return false;
+        const segments = url.pathname.split('/').filter(Boolean);
+        return segments.length >= 1 && segments.length <= 4;
       },
       handler: new NetworkFirst({ cacheName: 'store-pages', networkTimeoutSeconds: 3 }),
     },
@@ -100,6 +117,6 @@ const serwist = new Serwist({
       },
     ],
   },
-})
+});
 
-serwist.addEventListeners()
+serwist.addEventListeners();

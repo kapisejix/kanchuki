@@ -12,15 +12,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const data = await fetchCollection(collection, { page: 1, pageSize: 1 });
   if (!data) return { title: 'Collection Not Found | Kanchuki' };
 
+  const shop = data.retailer.shop_name;
+  const city = data.retailer.city;
+  const description = `Browse ${data.total} handpicked outfits from ${shop}${city ? `, ${city}` : ''}`;
+  // Store branding first (F-031), product shot as fallback — shared links
+  // should show the store, not the platform logo.
+  const ogImage = data.retailer.logo_url ?? data.retailer.banner_url;
+
   return {
-    title: `${data.title} — ${data.retailer.shop_name} | Kanchuki`,
-    description: `Browse ${data.total} handpicked outfits from ${data.retailer.shop_name}, ${data.retailer.city}`,
+    title: `${data.title} — ${shop}${city ? `, ${city}` : ''} | Kanchuki`,
+    description,
     openGraph: {
       title: data.title,
-      description: `${data.total} products from ${data.retailer.shop_name}`,
-      images: data.products[0]?.primary_photo_url
-        ? [{ url: data.products[0].primary_photo_url }]
-        : [],
+      description,
+      type: 'website',
+      images: ogImage
+        ? [{ url: ogImage, alt: shop }]
+        : data.products[0]?.primary_photo_url
+          ? [{ url: data.products[0].primary_photo_url }]
+          : [],
+    },
+    twitter: {
+      card: 'summary',
+      title: data.title,
+      description,
+      images: ogImage ? [ogImage] : data.products[0]?.primary_photo_url ? [data.products[0].primary_photo_url] : [],
     },
   };
 }

@@ -2,6 +2,7 @@ import { API_URL as apiUrl } from '@/lib/apiUrl';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ContactGate } from './components/ContactGate';
+import { buildStoreDescription, localBusinessLd, storeOgImage } from './lib/store-seo';
 
 export interface RetailerProfile {
   shop_name: string;
@@ -37,9 +38,29 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const profile = await fetchProfile(store);
   if (!profile) return { title: 'Store Not Found | Kanchuki' };
 
+  // Store-specific meta (F-031): the store's own name, logo/banner og:image,
+  // and a description built from its real details (city/state/categories) —
+  // not the platform's default Kanchuki branding.
+  const description = buildStoreDescription(profile);
+  const ogImage = storeOgImage(profile);
+
   return {
-    title: `${profile.shop_name} | Kanchuki`,
-    description: `Visit ${profile.shop_name}${profile.city ? `, ${profile.city}` : ''} on Kanchuki`,
+    title: `${profile.shop_name}${profile.city ? ` — ${profile.city}` : ''} | Kanchuki`,
+    description,
+    alternates: { canonical: `/${store}` },
+    openGraph: {
+      title: profile.shop_name,
+      description,
+      type: 'website',
+      url: `/${store}`,
+      images: ogImage ? [{ url: ogImage, alt: profile.shop_name }] : [],
+    },
+    twitter: {
+      card: 'summary',
+      title: profile.shop_name,
+      description,
+      images: ogImage ? [ogImage] : [],
+    },
   };
 }
 
@@ -48,5 +69,16 @@ export default async function StoreProfilePage({ params }: Props) {
   const profile = await fetchProfile(store);
   if (!profile) notFound();
 
-  return <ContactGate slug={store} profile={profile} />;
+  return (
+    <>
+      {/* LocalBusiness structured data — city/state/address feed Google's local
+          ranking without needing the city in the URL (F-031). */}
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own retailer data, no user input
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd(profile, store)) }}
+      />
+      <ContactGate slug={store} profile={profile} />
+    </>
+  );
 }
