@@ -148,11 +148,20 @@ export const FASHION_COLOR_ALIASES: Record<string, string> = {
   lilac: '#c8a2c8',
 };
 
-/** Resolve a retailer-entered color name to a hex swatch, falling back to
- * neutral grey for anything unmapped rather than rendering invisible/black. */
+/** Resolve a retailer-entered or AI-detected color name to a hex swatch,
+ * falling back to neutral grey for anything unmapped rather than rendering
+ * invisible/black. AI color detection returns free text ("Dark Navy Blue",
+ * "Dusty Rose Pink") that rarely exact-matches an alias key — so after an
+ * exact match, fall back to the longest alias key contained in the name. */
 export function resolveFashionColor(name: string): string {
   const key = name.trim().toLowerCase();
-  return FASHION_COLOR_ALIASES[key] ?? '#d1d5db';
+  const exact = FASHION_COLOR_ALIASES[key];
+  if (exact) return exact;
+  let best: { alias: string; hex: string } | null = null;
+  for (const [alias, hex] of Object.entries(FASHION_COLOR_ALIASES)) {
+    if (key.includes(alias) && (!best || alias.length > best.alias.length)) best = { alias, hex };
+  }
+  return best?.hex ?? '#d1d5db';
 }
 
 /** WCAG-style relative luminance of a hex color (0 = black, 1 = white) —

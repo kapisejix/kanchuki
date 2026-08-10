@@ -99,11 +99,15 @@ export default function ProductDetailScreen() {
   const [rotatingPhotoId, setRotatingPhotoId] = useState<string | null>(null)
   const [rotationLabels, setRotationLabels] = useState<Record<string, 90 | 180 | 270 | 360>>({})
   // Post-save background picker — admin-curated backdrop library, same
-  // endpoint add.tsx uses. getBackgroundImages() returns [] when the plan
-  // lacks CUSTOM_BACKGROUND_LIBRARY, so the row simply stays hidden.
-  const [backgroundImages, setBackgroundImages] = useState<
-    { id: string; name: string; image_url: string; thumbnail_url: string | null }[]
-  >([])
+  // endpoint add.tsx uses. Empty when the admin library has zero active
+  // backdrops. useQuery (not a bare effect+catch) so a transient fetch
+  // failure auto-retries instead of permanently hiding the section for the
+  // rest of this screen visit.
+  const { data: backgroundImagesData } = useQuery({
+    queryKey: ['products', 'background-images'],
+    queryFn: () => productApi.getBackgroundImages(),
+  })
+  const backgroundImages = backgroundImagesData?.data ?? []
   // Per-photo applied backdrop (client-only highlight — the composite is baked
   // into the photo bytes, there is no per-photo bg column). Keyed by photo id;
   // "Auto" (null) is the default until the retailer picks one this session.
@@ -112,13 +116,6 @@ export default function ProductDetailScreen() {
   // F-029: "Set as main" — busy state for promoting the viewed photo to the
   // product's primary (the image the catalog + storefront show first).
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null)
-
-  useEffect(() => {
-    productApi
-      .getBackgroundImages()
-      .then((res) => setBackgroundImages(res.data))
-      .catch(() => {}) // best-effort — picker just stays empty (white-only)
-  }, [])
 
   // Editable AI fields
   const [editedName, setEditedName] = useState('')

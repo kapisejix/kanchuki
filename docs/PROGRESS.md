@@ -2,6 +2,33 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-10 — Color swatch fallback + resilient background-picker fetch on product detail
+
+**User report (3 items):** (1) no background-image option after cropping a product photo, (2) picking a
+new background + "save" doesn't persist, (3) the color detected correctly but the colors-section circle
+shows the wrong swatch.
+
+**#3 fixed — real bug:** `resolveFashionColor()` (`packages/shared/src/constants/index.ts`) only
+exact-matched its ~44-entry alias table. The AI color detector returns free text ("Dark Navy Blue", "Royal
+Blue") that rarely exact-matches, so it fell through to the grey default. Now falls back to the longest
+alias substring contained in the name after the exact-match check. Test:
+`packages/shared/src/constants/resolve-fashion-color.test.ts` (3 cases).
+
+**#1/#2 — one root cause, not two bugs:** traced end to end — backend persistence was already correct
+(the crop/background-pick flow is instant-apply, overwrites the R2 key in place, no separate Save step
+exists in the current code), and prod has 5 active admin-uploaded backgrounds. Real bug:
+`apps/mobile/app/product/[id].tsx` fetched `/v1/products/background-images` via a bare `useEffect` +
+`.catch(() => {})` — one failed fetch permanently hid the entire Background section for that screen visit
+with zero error shown, which reads as both "no option" and "save doesn't work" (nothing to pick).
+Swapped to `useQuery` (matches the pattern already used 4x elsewhere in this file) so a transient failure
+auto-retries instead of dying silently.
+
+**Verified:** `packages/shared` + `apps/mobile` `tsc --noEmit` clean, shared tests 26/26, mobile tests
+35/35 (1 pre-existing unrelated `expo-linear-gradient` vendor failure, documented below). Not verified:
+no live device/simulator check in this environment — reload the app to pick up the change.
+
+---
+
 ## 2026-08-09 — Backend pro-cleanup route + tests REMOVED (mobile Pro mode fully gone end-to-end)
 
 **User ask:** now that the mobile Pro capture mode is removed (earlier entry below), also remove the orphaned backend for it — `POST /v1/products/pro-cleanup` + `GET /v1/products/pro-cleanup/status` + their tests — nothing calls them anymore.
