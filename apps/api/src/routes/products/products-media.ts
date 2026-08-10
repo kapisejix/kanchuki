@@ -14,7 +14,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addSpinFrameJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
-import { preserveOriginalPhoto } from '../../lib/photo-cleanup.js';
+import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import {
@@ -162,17 +162,27 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       const cleaned = await cleanupProductPhoto(raw, bgUrl);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
     } catch (err) {
-      // Surface the REAL reason (fetch / bg-removal model / R2 write) instead
+      // Surface a REAL category (fetch / bg-removal model / R2 write) instead
       // of the old blanket "storage not configured" — the mobile edit screen
       // shows this text, so a retailer can tell a quota/model failure from
       // an R2 outage instead of assuming the save silently didn't happen.
+      // The raw err.message is logged server-side only — it can come from
+      // the AWS SDK or fetch internals and isn't safe to echo to the client.
       console.error('Photo cleanup/upload failed:', err);
-      const reason = err instanceof Error ? err.message.slice(0, 300) : 'unknown error';
+      const msg = err instanceof Error ? err.message : '';
+      const reason = /fetch|download|ssrf/i.test(msg)
+        ? 'could not fetch the source photo'
+        : /r2|s3|bucket|upload/i.test(msg)
+          ? 'storage write failed'
+          : 'processing failed';
       throw validationError(`Photo cleanup failed — ${reason}`);
     }
     await incrementUsage(request.retailerId, 'BG_REMOVAL');
 
-    return reply.status(200).send({ data: { id: photo.id, url: photo.url } });
+    const bumpedUrl = bumpPhotoUrlVersion(photo.url);
+    await prisma.productPhoto.update({ where: { id: photo.id }, data: { url: bumpedUrl } });
+
+    return reply.status(200).send({ data: { id: photo.id, url: bumpedUrl } });
   });
 
   // ─── POST /products/:id/photos/:photoId/rotate ─────────────────────
@@ -223,15 +233,18 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       const raw = await fetchImageBuffer(photo.url);
       const rotated = await rotateImage(raw, 90);
       await uploadBuffer(photo.r2_key, rotated.buffer, 'image/jpeg');
-      const url = (await photoUrlToDisplay({ url: photo.url, r2_key: photo.r2_key })) ?? photo.url;
+      const url = bumpPhotoUrlVersion(photo.url);
 
       let width: number | undefined;
       let height: number | undefined;
       if (photo.width != null && photo.height != null) {
         width = rotated.width;
         height = rotated.height;
-        await prisma.productPhoto.update({ where: { id: photoId }, data: { width, height } });
       }
+      await prisma.productPhoto.update({
+        where: { id: photoId },
+        data: { url, ...(width != null ? { width, height } : {}) },
+      });
 
       return reply.status(200).send({ data: { id: photo.id, target, url, width, height } });
     } catch (err) {
@@ -272,6 +285,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     });
 
     const photo = product.photos[0];
+    let photoUrl = photo?.url ?? null;
     if (photo) {
       await checkQuota(request.retailerId, 'BG_REMOVAL');
       const raw = await fetchImageBuffer(photo.url);
@@ -279,10 +293,12 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       const cleaned = await cleanupProductPhoto(raw, bgUrl);
       await uploadBuffer(photo.r2_key, cleaned, 'image/jpeg');
       await incrementUsage(request.retailerId, 'BG_REMOVAL');
+      photoUrl = bumpPhotoUrlVersion(photo.url);
+      await prisma.productPhoto.update({ where: { id: photo.id }, data: { url: photoUrl } });
     }
 
     return reply.status(200).send({
-      data: { background_image_id: body.background_image_id, photo_url: photo?.url ?? null },
+      data: { background_image_id: body.background_image_id, photo_url: photoUrl },
     });
   });
 

@@ -10,7 +10,7 @@ import { classifyColorTone } from '@kanchuki/shared';
 import { recordAiUsage } from '../lib/ai-usage.js';
 import { pickContrastBackground } from '../lib/backgrounds.js';
 import { resolveCategoryId } from '../lib/default-categories.js';
-import { preserveOriginalPhoto } from '../lib/photo-cleanup.js';
+import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { withUniqueSku } from '../lib/sku.js';
 import { addEmbeddingJob } from './index.js';
@@ -44,8 +44,11 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
 
     // Auto catalog photo cleanup (PRO-REQUIREMENTS.md): overwrite the raw
     // retailer upload in place with a background-stripped, white-backdrop
-    // version. Same r2_key/photo_url, so no DB write needed. Best-effort —
-    // ponytail: swallow failures, a raw-but-tagged photo beats a failed job.
+    // version. Same r2_key, but the stored url IS re-versioned below —
+    // without it, every client that already fetched the raw photo (the
+    // retailer's own preview, storefront, CDN edge) keeps showing the
+    // pre-cleanup bytes forever since the URL never changes.
+    // Best-effort — ponytail: swallow failures, a raw-but-tagged photo beats a failed job.
     // Retailer-toggleable via auto_cleanup (product/add.tsx) for shots that
     // shouldn't be cropped/bg-stripped (e.g. styled mannequin display).
     if (auto_cleanup) {
@@ -69,13 +72,19 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         const raw = await fetchImageBuffer(photo_url);
         const photoRow = await prisma.productPhoto.findFirst({
           where: { product_id, retailer_id, r2_key },
-          select: { id: true, metadata: true },
+          select: { id: true, metadata: true, url: true },
         });
         if (photoRow) {
           await preserveOriginalPhoto(photoRow.id, r2_key, photoRow.metadata, raw);
         }
         const cleaned = await cleanupProductPhoto(raw, bgUrl);
         await uploadBuffer(r2_key, cleaned, 'image/jpeg');
+        if (photoRow) {
+          await prisma.productPhoto.update({
+            where: { id: photoRow.id },
+            data: { url: bumpPhotoUrlVersion(photoRow.url) },
+          });
+        }
         await incrementUsage(retailer_id, 'BG_REMOVAL');
       } catch (err) {
         console.error(`Photo cleanup failed for product ${product_id}, keeping raw photo:`, err);

@@ -587,19 +587,6 @@ export default function ProductDetailScreen() {
   const isPieceTaggable = (category: string | null): boolean =>
     !!category && (PIECE_TAGGABLE_CATEGORIES as readonly string[]).includes(category)
 
-  const handleSetPieceType = async (photoId: string, pieceType: 'upper' | 'lower') => {
-    if (!product) return
-    // Tapping the already-active piece clears it; only one photo per piece per product.
-    const current = product.photos.find((p) => p.id === photoId)?.piece_type
-    const next = current === pieceType ? null : pieceType
-    try {
-      await productApi.setPhotoPieceType(product.id, photoId, next)
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-    } catch (err) {
-      showError(err, 'Failed to tag photo')
-    }
-  }
-
   // Tap-the-photo color detection: runs the quick AI color-only detect on the
   // currently shown photo, then lets the retailer confirm it into the Color
   // field (editedColor) rather than saving automatically.
@@ -834,7 +821,7 @@ export default function ProductDetailScreen() {
 
       <ScrollView className="flex-1">
       {/* Photo Gallery — swipeable carousel */}
-      <View className="bg-white">
+      <View className="bg-white shadow-md" style={{ elevation: 4 }}>
         {/* Swipeable photo carousel */}
         <View
           className="relative"
@@ -1120,42 +1107,7 @@ export default function ProductDetailScreen() {
           </AnimatedPressable>
         </View>
 
-        {/* Piece tagging for each photo */}
-              {displayPhotos.map((photo, displayIdx) => {
-          if (selectedPhotoIndex !== displayIdx) return null
-          if (photo.is_variant_preview || photo.is_original_preview || !isPieceTaggable(product.category)) return null
-          return (
-            <View key={`piece-tag-${photo.id}`} className="px-3 py-2 bg-white flex-row gap-2">
-              {(['upper', 'lower'] as const).map((piece) => {
-                const selected = photo.piece_type === piece
-                return (
-                  <AnimatedPressable
-                    key={piece}
-                    onPress={() => void handleSetPieceType(photo.id, piece)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    className={`px-3 py-1 rounded-full border flex-row items-center gap-1 ${
-                      selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
-                    }`}
-                  >
-                    {selected && <Check size={12} color="white" />}
-                    <Text className={`text-xs font-medium capitalize ${selected ? 'text-white' : 'text-sand-600'}`}>
-                      {piece} piece
-                    </Text>
-                  </AnimatedPressable>
-                )
-              })}
-            </View>
-          )
-        })}
       </View>
-      {isPieceTaggable(product.category) && (
-        <View className="mx-4 mt-3 bg-ink-50 border border-ink-100 rounded-xl px-3 py-2">
-          <Text className="text-ink-700 text-xs">
-            Tag one photo {'"'}Upper piece{'"'} and one {'"'}Lower piece{'"'} for a better try-on match on this 2-piece outfit.
-          </Text>
-        </View>
-      )}
 
       {/* Crop-tagging: for the common case where both pieces are shot in ONE
           photo (e.g. draped kameez+dupatta with the folded bottom piece on a

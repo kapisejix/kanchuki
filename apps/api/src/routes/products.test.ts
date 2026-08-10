@@ -346,11 +346,15 @@ describe('POST /products/:id/photos/:photoId/rotate', () => {
     expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.data).toMatchObject({ id: 'photo_1', target: 'primary', width: 600, height: 800 });
+    // The stored URL must change (a version query param) even though the
+    // r2_key doesn't — otherwise CDN/client image caches keep showing the
+    // pre-rotate bytes at the unchanged URL forever.
+    expect(body.data.url).toMatch(/^https:\/\/cdn\.example\.com\/p\.jpg\?v=\d+$/);
     expect(mockRotateImage).toHaveBeenCalledWith(Buffer.from('raw'), 90);
     expect(mockUploadBuffer).toHaveBeenCalledWith('products/prod_1/p.jpg', Buffer.from('rotated'), 'image/jpeg');
     expect(mockPhotoUpdate).toHaveBeenCalledWith({
       where: { id: 'photo_1' },
-      data: { width: 600, height: 800 },
+      data: { url: body.data.url, width: 600, height: 800 },
     });
   });
 
@@ -541,7 +545,15 @@ describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().data).toMatchObject({ id: 'photo_1', url: 'https://cdn.example.com/p.jpg' });
+    const body = res.json();
+    expect(body.data.id).toBe('photo_1');
+    // The stored URL must be re-versioned after the in-place overwrite —
+    // same reasoning as the rotate route above.
+    expect(body.data.url).toMatch(/^https:\/\/cdn\.example\.com\/p\.jpg\?v=\d+$/);
+    expect(mockPhotoUpdate).toHaveBeenCalledWith({
+      where: { id: 'photo_1' },
+      data: { url: body.data.url },
+    });
     // Explicit per-photo backdrop wins over the product-level background.
     expect(mockBackgroundImageFindFirst).toHaveBeenCalledWith({
       where: { id: 'bg_1', is_active: true },
