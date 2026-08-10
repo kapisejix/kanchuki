@@ -860,7 +860,7 @@ User reported (screenshots) that crop/remove-background/background-swap "works w
 
 ## ✅ BUILT + DEPLOYED 2026-08-10: F-030 shadow toggle for cropped photos
 
-User wants a shadow **selector** next to the existing BACKGROUND swatch row on the product-detail screen (same pattern) — confirmed via question as a single on/off toggle, not multiple presets. Mirrors `background_image_id`: product-level `Product.add_shadow` boolean read by the auto-cleanup job, overridable per-call on `/cleanup`. Full build table + verified counts: `docs/PRO-REQUIREMENTS.md` §22. **Remaining (human-only):** migration `048_product_shadow` apply (Supabase SQL Editor — code ships before the column exists) + live re-verify of the toggle against production after the deploy completes.
+User wants a shadow **selector** next to the existing BACKGROUND swatch row on the product-detail screen (same pattern) — confirmed via question as a single on/off toggle, not multiple presets. Mirrors `background_image_id`: product-level `Product.add_shadow` boolean read by the auto-cleanup job, overridable per-call on `/cleanup`. Full build table + verified counts: `docs/PRO-REQUIREMENTS.md` §22. **Migration `048_product_shadow` APPLIED live 2026-08-10** (user, Supabase SQL Editor) — `add_shadow` column confirmed present, deployed API verified healthy (product/collection queries 200). Remaining: the app-side toggle re-verify (retailer taps SHADOW on a product in the app).
 
 ## Built 2026-08-10: Occasion removed everywhere + AI auto-selects Category Group & Style
 
