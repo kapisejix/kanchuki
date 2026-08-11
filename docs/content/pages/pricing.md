@@ -27,7 +27,7 @@
 | **Offline mode** | ✅ | ✅ | ✅ |
 | **AI search ("pink suit under ₹2000")** | ✅ | ✅ | ✅ |
 | **Fashion DNA (customer preferences)** | ✅ | ✅ | ✅ |
-| **AI matching & recommendations** | — | ✅ | ✅ |
+| **AI matching & recommendations** | — | 🔶 Coming soon | 🔶 Coming soon |
 | **Try-ons** | — | 100 / month | 500 / month |
 | **WhatsApp automation** | — | — | ✅ |
 | **Multi-staff logins** | — | — | ✅ |

@@ -96,8 +96,8 @@
 
 ## H2: Pricing that fits a small shop
 
-- **Starter ₹999/mo** — one shop, 500 products, 200 customers, AI tagging included.
-- **Growth ₹2,499/mo** — 2,000 products, 1,000 customers, unlimited links, AI matching.
+- **Starter ₹999/mo** — one shop, 500 products, unlimited customers, AI tagging included.
+- **Growth ₹2,499/mo** — 2,000 products, unlimited customers, unlimited links, try-ons.
 - **Pro ₹4,999/mo** — unlimited, WhatsApp automation, multi-staff, more try-ons.
 - **14-day free trial, no credit card.** UPI, cards, netbanking. GST invoices. Annual plans save 20%.
 - *(Full details: `/pricing`.)*

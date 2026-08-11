@@ -1,12 +1,39 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, ArrowRight, ChevronRight, Shield, Zap, Smartphone } from 'lucide-react'
-import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { ArrowRight, ChevronRight, Shield, Zap, Smartphone } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { PageLoader } from '@/components/PageLoader'
-import { KanchukiMark } from '@/components/KanchukiMark'
+import { Navbar, drape } from '@/components/site/Chrome'
+
+// ── JSON-LD structured data (docs/content/pages/homepage.md "Page metadata") ─
+// Organization + WebSite, authored statically (no user/DB input). `<` is
+// escaped so the payload can never prematurely close the script tag.
+// Same SITE_URL fallback convention as layout.tsx / lib/sitemap.ts.
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://kanchuki.app'
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${SITE_URL}/#organization`,
+      name: 'Kanchuki',
+      url: `${SITE_URL}/`,
+      logo: `${SITE_URL}/og-image.png`,
+      description:
+        'AI-powered fashion collections for Indian clothing stores. Catalog products in seconds with AI auto-tagging, share via WhatsApp, no website needed.',
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${SITE_URL}/#website`,
+      url: `${SITE_URL}/`,
+      name: 'Kanchuki',
+      inLanguage: 'en-IN',
+      publisher: { '@id': `${SITE_URL}/#organization` },
+    },
+  ],
+}
 
 // ── Lazy-load below-fold sections ─────────────────────────────────
 
@@ -18,93 +45,6 @@ const MarketingSections = dynamic(() => import('@/app/sections/MarketingSections
     </div>
   ),
 })
-
-// ── Motion — the "drape" entrance (docs/design/emil-design.md §3.6):
-// content settles into place like cloth unfurling, instead of a plain
-// fade/slide. Reserved for the low-frequency, high-impact marketing
-// surface only — never used on the retailer app or admin.
-
-const drape = {
-  hidden: { opacity: 0, scaleY: 0.96, skewX: -1 },
-  visible: {
-    opacity: 1,
-    scaleY: 1,
-    skewX: 0,
-    transition: { duration: 0.25, ease: [0.23, 1, 0.32, 1] as const },
-  },
-}
-
-// ── Nav Items ─────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  { label: 'Features', href: '#features' },
-  { label: 'How It Works', href: '#how-it-works' },
-  { label: 'Pricing', href: '#pricing' },
-  { label: 'FAQ', href: '#faq' },
-]
-
-// ── Navbar ─────────────────────────────────────────────────────────
-
-function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
-  const [mobileOpen, setMobileOpen] = useState(false)
-
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20)
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
-  return (
-    <header
-      className={`fixed top-0 left-0 right-0 z-50 transition duration-300 ${
-        scrolled
-          ? 'bg-cotton/90 backdrop-blur-xl border-b border-sand-200 shadow-sm'
-          : 'bg-transparent'
-      }`}
-    >
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-2.5 group">
-          <KanchukiMark size={36} className="group-hover:bg-ink-700 transition-colors" />
-          <span className="font-display font-semibold text-charcoal text-lg">Kanchuki</span>
-        </Link>
-
-        <div className="hidden md:flex items-center gap-8">
-          {NAV_ITEMS.map((item) => (
-            <Link key={item.href} href={item.href} className="text-sm text-sand-600 hover:text-charcoal transition-colors font-medium">
-              {item.label}
-            </Link>
-          ))}
-        </div>
-
-        <div className="hidden md:flex items-center gap-4">
-          <a href="#pricing" className="text-sm font-semibold text-sand-700 hover:text-charcoal transition-colors">Sign In</a>
-          <a href="#cta" className="bg-ink-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-ink-700 transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500 focus-visible:ring-offset-2">Get Started Free</a>
-        </div>
-
-        <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-2 text-sand-700 hover:text-charcoal" aria-label="Toggle menu">
-          {mobileOpen ? <X size={22} strokeWidth={1.5} /> : <Menu size={22} strokeWidth={1.5} />}
-        </button>
-      </nav>
-
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="md:hidden bg-cotton border-t border-sand-200 overflow-hidden">
-            <div className="px-4 py-4 space-y-3">
-              {NAV_ITEMS.map((item) => (
-                <Link key={item.href} href={item.href} onClick={() => setMobileOpen(false)} className="block text-sm text-sand-700 hover:text-ink-600 font-medium py-2 transition-colors">
-                  {item.label}
-                </Link>
-              ))}
-              <hr className="border-sand-200" />
-              <a href="#cta" onClick={() => setMobileOpen(false)} className="block text-center bg-ink-600 text-white font-semibold px-5 py-3 rounded-full hover:bg-ink-700 transition">Get Started Free</a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </header>
-  )
-}
 
 // ── Hero ───────────────────────────────────────────────────────────
 
@@ -170,6 +110,11 @@ function Hero() {
 export default function LandingPage() {
   return (
     <>
+      {/* JSON-LD from a static, locally-authored schema object — `<` escaped so
+          the payload can never prematurely close the script tag. Renders in the
+          SSR HTML (this component tree is server-rendered), so crawlers that
+          don't execute JS still see it. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} />
       <Navbar />
       <Hero />
       <MarketingSections />

@@ -102,14 +102,16 @@ describe('sitemap route handlers', () => {
 
     const first = await chunkBody('0');
     const second = await chunkBody('1');
-    // Chunk 0 starts with the static entries (home page first, then /terms).
+    // Chunk 0 starts with the static entries (home page first, then the
+    // marketing pages, then /terms and /privacy).
     expect(first).toContain('<loc>https://kanchuki.app</loc>');
     expect(first).toContain('<loc>https://kanchuki.app/terms</loc>');
     // Each chunk is a well-formed urlset; combined they cover every URL.
     const urlsFirst = (first.match(/<loc>/g) ?? []).length;
     const urlsSecond = (second.match(/<loc>/g) ?? []).length;
     expect(urlsFirst).toBe(10_000);
-    expect(urlsFirst + urlsSecond).toBe(18_002);
+    // 12 static entries (home + 9 marketing pages + terms + privacy) + 18,000 store URLs from this test's fixture.
+    expect(urlsFirst + urlsSecond).toBe(18_012);
   });
 
   it('attaches Google image extensions to category, All Products, and product entries', async () => {

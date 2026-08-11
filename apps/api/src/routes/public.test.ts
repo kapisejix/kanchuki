@@ -3,13 +3,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../plugins/error-handler.js';
 import { publicRoutes } from './public.js';
 
-const { mockRetailerFindFirst, mockRetailerFindMany, mockCustomerUpsert, mockCollectionFindFirst } =
-  vi.hoisted(() => ({
-    mockRetailerFindFirst: vi.fn(),
-    mockRetailerFindMany: vi.fn(),
-    mockCustomerUpsert: vi.fn(),
-    mockCollectionFindFirst: vi.fn(),
-  }));
+const {
+  mockRetailerFindFirst,
+  mockRetailerFindMany,
+  mockCustomerUpsert,
+  mockCollectionFindFirst,
+  mockAuditLogCreate,
+} = vi.hoisted(() => ({
+  mockRetailerFindFirst: vi.fn(),
+  mockRetailerFindMany: vi.fn(),
+  mockCustomerUpsert: vi.fn(),
+  mockCollectionFindFirst: vi.fn(),
+  mockAuditLogCreate: vi.fn(),
+}));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -18,6 +24,7 @@ vi.mock('@kanchuki/db', () => ({
     collection: { findFirst: mockCollectionFindFirst, count: vi.fn(), update: vi.fn() },
     product: { count: vi.fn() },
     collectionEnquiry: { count: vi.fn(), create: vi.fn() },
+    auditLog: { create: mockAuditLogCreate },
   },
   // Import-chain requirement only: public route graph pulls purge modules that
   // call getPurgePrisma() at module top-level. Never exercised by this suite.
@@ -232,6 +239,57 @@ describe('POST /public/retailers/:slug/leads', () => {
     const call = mockCustomerUpsert.mock.calls[0]?.[0];
     expect(call.create.consent_given).toBe(true);
     expect(call.create.gender).toBe('FEMALE');
+    await app.close();
+  });
+});
+
+describe('POST /public/contact', () => {
+  it('writes an AuditLog entry and returns 201', async () => {
+    mockAuditLogCreate.mockResolvedValue({ id: 'log_1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/contact',
+      payload: {
+        name: 'Test Retailer',
+        shop_city: 'Jaipur',
+        topic: 'Getting started',
+        message: 'How do I add my first product?',
+      },
+    });
+
+    expect(res.statusCode).toBe(201);
+    expect(mockAuditLogCreate).toHaveBeenCalledOnce();
+    const call = mockAuditLogCreate.mock.calls[0]?.[0];
+    expect(call.data.resource_type).toBe('ContactSubmission');
+    expect(call.data.action).toBe('CONTACT_FORM_SUBMIT');
+    expect(call.data.metadata.name).toBe('Test Retailer');
+    await app.close();
+  });
+
+  it('rejects an unknown topic with 422', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/contact',
+      payload: { name: 'Test', topic: 'Not a real topic', message: 'hi' },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects an empty message with 422', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/contact',
+      payload: { name: 'Test', topic: 'Billing', message: '' },
+    });
+
+    expect(res.statusCode).toBe(422);
     await app.close();
   });
 });

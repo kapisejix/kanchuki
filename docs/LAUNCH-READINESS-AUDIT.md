@@ -1,8 +1,91 @@
 # Kanchuki — Launch Readiness Audit
 
-**Generated:** 2026-08-01. **Source:** full read of every `.md` doc in the repo + live cross-check against `apps/`, `packages/`, `.github/workflows/ci.yml`, git log. This file is the single source of truth for "what stage are we at" — it supersedes scattered status lines in other docs where they conflict (conflicts are called out explicitly in §0).
+**Generated:** 2026-08-01, refreshed 2026-08-11. **Source:** full read of every `.md` doc in the repo + live cross-check against `apps/`, `packages/`, `.github/workflows/ci.yml`, git log, and (2026-08-11) actual `gh run` CI logs + a direct read of the DB schema/index list, the Redis cache implementation, and the rate-limit config. This file is the single source of truth for "what stage are we at" — it supersedes scattered status lines in other docs where they conflict (conflicts are called out explicitly in §0).
 
 **How to use this doc:** each checklist item is tagged `P0` (blocks a safe launch), `P1` (should do before/soon after launch), or `P2` (post-launch, not blocking). Go through §5–§9, mark what you want vs. don't want at this stage, and that becomes the launch scope.
+
+---
+
+## 0a. 2026-08-11 follow-up audit — what changed since Aug 1
+
+A lot shipped between the Aug 1 and Aug 11 sessions (see `CLAUDE.md` — F-027 taxonomy, Store QR, add-product rework, F-028/029/030, occasion removal, Play Store compliance batch, web billing). This pass re-checked the three things asked about — DB indexes, cache, security — against the **current** code and **live CI**, not the Aug 1 snapshot. Two new findings outrank everything already in this doc.
+
+### 🔴 NEW P0 — rate limiter is bypassable on admin login + retailer OTP (confirmed by reading the code)
+
+`apps/api/src/index.ts:121`, the global `@fastify/rate-limit` registration:
+
+```ts
+keyGenerator: (request) => (request.headers['x-retailer-id'] as string | undefined) ?? request.ip,
+```
+
+`x-retailer-id` is a **raw, client-supplied header** — nothing verifies it (verified `request.retailerId` only exists after JWT auth runs, which happens *after* the rate-limit hook). Grepped the whole repo: nothing legitimate ever sends this header — it's dead weight that happens to also be a bypass.
+
+Any route that doesn't override `keyGenerator` per-route inherits this. Confirmed two that don't:
+- **`POST /admin/login`** (`apps/api/src/routes/admin.ts:45-47`) — has a `max: 5 / 15min` override, intended as brute-force protection, but does **not** override `keyGenerator`. Send a different `X-Retailer-Id` value on every request → unlimited password guesses against the admin panel.
+- **`POST /v1/auth/otp/send` and `/otp/verify`** (`apps/api/src/routes/auth.ts:39,70`) — no per-route rate limit at all, so they inherit the same bypassable global one. Enables OTP brute-force and SMS-bomb amplification against any phone number.
+
+Compare with the routes that got this right: `checkout-flow.ts:37` and `checkout-flow.ts:322` (`public/checkout/create-order`, `public/orders/:id`) both explicitly set `keyGenerator: (req) => req.ip` — so checkout is **not** exposed. The pattern exists in the codebase, it just wasn't applied to admin login or OTP.
+
+**Fix (root-cause, one line, not three):** since nothing legitimately relies on `x-retailer-id`, drop it — change the global `keyGenerator` to always use `request.ip`. That fixes every current and future route in one place instead of chasing per-route overrides. I have not applied this — it's a security-sensitive route change, say the word and I'll make the one-line edit + rerun `security.test.ts`.
+
+### 🔴 NEW P0 — CI has been red on `main` for the last 3 pushes; the F-017 DB-guardrail check would fail too
+
+Checked via `gh run list` / `gh run view`, not assumed:
+
+- `quality` job has failed on the last 3 pushes to main (`1e813fd`, `b29b316`, `56357f6` — the Play Store launch batch), on the **`pnpm lint`** step (8 real Biome errors in `apps/api`: non-null-assertion/formatting/import-order issues in `backfill-missing-ai-fields.ts`, `compress-r2-images.ts`/`.test.ts`, `sku.ts`, `tag-product.ts`, `default-categories.ts`, `team-members.ts`, `auth.ts`, `public-helpers.ts`, `products.test.ts`).
+- Because lint runs before it in the same job, **every step after it never ran on those 3 pushes**: `check-delete-guard.sh`, `check-secrets-guard.sh`, `check-route-size.sh`, `check-v1-fetch-guard.sh`, and the whole `pnpm test` suite. `build` and `e2e-web` didn't run either (they depend on `quality`).
+- "Deploy to Railway" is a **separate, ungated workflow** — it succeeded on top of the failing CI. Production has been running code for 3 commits that never passed its own quality gate.
+- Bonus: even with lint fixed, `check-delete-guard.sh` would **still fail** — `scripts/reset-demo-data.sql` (committed `ff8c643`, correctly DB-trigger-safe via `SET app.allow_hard_delete`) was never added to the script's own `SQL_ALLOWLIST` (`scripts/check-delete-guard.sh:143-146`, which only lists 2 of what should be 3 files). One-line fix.
+
+**Net effect:** the guardrail/secrets CI gates this repo relies on for its own security posture haven't actually run in 3 releases. Not a data-loss risk (the DB triggers from F-017 are enforced independently at the Postgres level, not just in CI) but it means nothing has been checking for new raw `.delete()` calls or leaked secrets since Aug 10.
+
+### DB indexes — reviewed the full schema, mostly solid, one real gap
+
+45 models, 62 `@@index`, plus a hand-written raw-SQL migration (`001_pgvector_indexes`) with GIN indexes on `search_tags`/`occasions`/`secondary_colors`, an `ivfflat` cosine index on `product_embeddings.embedding` (semantic search) and `customer_fashion_dna.preference_vector`, and a partial composite `(retailer_id, status, category) WHERE deleted_at IS NULL`. This is genuinely well-designed — someone thought about query shape, not just slapped `@@index` on every FK.
+
+- ✅ Every hot retailer-scoped table (`Product`, `Customer`, `Collection`, `Order`, `SupportTicket`, `TryOnJob`, `AiUsageLog`) has `retailer_id` covered, several with the right composite (`retailer_id, status`, `retailer_id, category_id`, etc.).
+- ✅ `Product` SKU scan-to-sell lookup (`GET /products?sku=`) hits the `@@unique([retailer_id, sku])` index directly — confirmed retailer-scoped in `products-crud.ts`, no full-table scan risk.
+- ✅ Vector search (`search.ts`) has its `ivfflat` index — not missing, as I first assumed before checking the raw migration.
+- ✅ Public storefront filters (category, color) only ever hit scalar-indexed fields, not the `styles`/`fabrics` array columns — those two arrays (added in F-027) aren't used as customer-facing filters, so the lack of a GIN index on them isn't a live gap.
+- 🟡 **Gap, low severity:** `apps/api/src/routes/admin/admin-retailers/admin-retailers-detail.ts:241` — the per-retailer admin activity timeline queries `AuditLog` with `OR: [{ resource_type: 'Retailer', resource_id: id }, { resource_id: id }]`. The second branch filters on `resource_id` alone, but the only index covering that column is the composite `@@index([resource_type, resource_id])` — Postgres can't use a composite index efficiently when the leading column isn't constrained. `AuditLog` is a write-on-every-mutation, never-pruned table, so this will get slower as it grows. Admin-only, paginated, not customer/retailer-facing — P2, not a launch blocker. Fix is a 1-line `@@index([resource_id])` + migration whenever it's convenient.
+- 🟢 `occasions` GIN index is now dead weight (occasion filtering was removed 2026-08-10 per this file's own history) — harmless, just unused disk. Not worth a migration on its own.
+
+### Cache — real, well-built, correctly wired
+
+`apps/api/src/lib/public-cache.ts` (built 2026-08-08) is a genuine single-flight + jittered-TTL Redis cache-aside layer, not a stub:
+- Its own short-fail ioredis client (`maxRetriesPerRequest: 1`, no offline queue) — deliberately **not** `getRedis()`, because BullMQ's connection retries forever and would turn a Redis blip into a hung public request. Good call, and documented as such in the file's own header.
+- NX lock for single-flight recompute, bounded wait for the rest of the herd, TTL jitter (60s base + 0-50%) so co-expiring keys don't all miss at once.
+- Every failure path (`get`, lock, `set`) degrades to a direct DB compute — confirmed by reading every `catch` block, not just the comments claiming it.
+- **Wired**: grepped all 6 public GET handlers (`public-collections.ts`, `public-products.ts` ×2, `public-retailers.ts` ×4) — all import and call `withPublicCache`. Nothing is silently uncached.
+- 60s TTL is the invalidation strategy (no cross-service busting) — fine for a catalog app, means a retailer's edit can take up to ~90s (base + jitter) to show on the storefront. Worth knowing, not worth fixing pre-launch.
+
+No action needed here — this is one of the better-built pieces of the stack.
+
+### Security — spot-checked beyond the rate-limit bug above
+
+- ✅ Redis-backed rate limiting confirmed live (`getRedis()` passed to `@fastify/rate-limit` at `index.ts:116`) — the Aug 1 audit's "in-memory, breaks multi-instance" concern was already stale then and still is.
+- ✅ `COOKIE_SECRET` production guard confirmed still in place (`index.ts:102-105`) — throws at boot if unset in prod.
+- ✅ Anonymous order-lookup IDOR protection confirmed real: `GET /public/orders/:id` requires order ID **and** phone number as a second factor, IP-keyed rate limit correctly overridden (`checkout-flow.ts:315-324`).
+- ✅ `@fastify/helmet` with CSP registered (`index.ts:75`).
+- ✅ `scripts/check-secrets-guard.sh --all` run fresh — clean, no committed credentials.
+- ✅ `security.test.ts` (24 tests) + `admin.login.test.ts` (14 tests) both green when run directly (`npx vitest run`) — the CI breakage above means this hasn't been confirmed by CI itself in 3 pushes, but the code is fine.
+- ⚠️ Could not verify live Railway env vars this session (MCP Railway token expired — `railway login` needed, and this repo's own operational policy is "no direct production access" regardless). The Aug 1 P0 checklist below (§5) — rotate leaked dev secrets, set `TEAM_JWT_SECRET`/`VAULT_DATABASE_URL`/`REVALIDATION_SECRET`, real Razorpay webhook secret, `kanchuki_app` role — was marked "values generated, ready to paste" on 2026-08-01 (§9b). **Unverified whether that was actually done** — confirm directly in Railway, I can't check for you this session.
+
+### SEO — §8 below is stale, most of it already got built
+
+The Aug 1 audit said "current state: zero SEO." That's no longer true — confirmed by reading the actual files, not trusting a doc claim:
+- ✅ `apps/web/src/app/sitemap.xml/route.ts` + `apps/web/src/app/sitemap/[id]/route.ts` exist, with a test (`__tests__/sitemap.test.ts`).
+- ✅ `apps/web/src/app/robots.ts` exists (also referenced in this file's own Aug 2 entry — the Aug 1 SEO section just never got updated to match).
+- ✅ JSON-LD structured data exists: `apps/web/src/app/[store]/lib/store-seo.ts`, used on both `[store]/page.tsx` and `[store]/categories/page.tsx`.
+- ❌ Still not built: the admin-managed marketing-content page (headline/meta/OG editable from Admin) — this part of §8 is still accurate.
+
+Treat §8 below as historical (what the gap looked like on Aug 1) — the sitemap/robots/JSON-LD action items in it are done.
+
+### Still open, unchanged since Aug 1
+
+- No load test has ever been run (`k6`/Artillery) — confirmed again, still nothing in the repo.
+- Admin-managed marketing content page — not built (see above).
+- Everything in §5's P0 secrets list — status unverifiable this session, needs a direct Railway check.
 
 ---
 
@@ -231,3 +314,7 @@ Tell me which of these you want done now vs. deferred:
 3. Security P0 checklist (§5) — not optional, do this regardless of what else you skip.
 4. Load test — recommended once, before launch traffic, not recurring.
 5. App-store submission prep — only if launching via app stores this round; skip if retailer app ships as a web/Expo-Go link first.
+6. **(Added 2026-08-11) Rate-limit bypass fix** — one-line, drop `x-retailer-id` header trust from the global rate limiter. Not optional, do this regardless of what else you skip — it currently defeats admin-login brute-force protection.
+7. **(Added 2026-08-11) Fix CI** — `apps/api` has 8 real lint errors blocking `main`'s `quality` job, which also means the DB-guardrail/secrets CI checks haven't run in 3 pushes. Small, mechanical fix (`biome check --fix` handles most of it) + one allowlist line in `check-delete-guard.sh` for `reset-demo-data.sql`.
+
+For the Google Play Store question specifically: `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` (updated Aug 10) is the actionable doc — store listing, Data Safety form, content rating, and the closed-testing path are all filled in and current. The only genuinely time-sensitive item is the **Aug 31, 2026 target-API-level deadline** (§5 of that doc) — 20 days out as of this audit. Submit before then to stay on Expo SDK 54/API 35; miss it and the SDK 55 bump becomes the critical path. Nothing else in that doc changed this session.

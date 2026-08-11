@@ -59,16 +59,41 @@ export interface SitemapEntry {
 
 // Static pages that don't depend on store data.
 export function staticEntries(): SitemapEntry[] {
+  const now = new Date();
+  const marketingPages = [
+    ['/for-retailers', 0.8],
+    ['/for-customers', 0.8],
+    ['/how-it-works', 0.7],
+    ['/pricing', 0.8],
+    ['/faq', 0.6],
+    ['/about', 0.5],
+    ['/testimonials', 0.5],
+    ['/contact', 0.4],
+    ['/download', 0.5],
+  ] as const;
+
   return [
     {
       url: SITE_URL,
-      lastModified: new Date(),
+      lastModified: now,
       changeFrequency: 'weekly',
       priority: 1,
     },
+    ...marketingPages.map(([path, priority]) => ({
+      url: `${SITE_URL}${path}`,
+      lastModified: now,
+      changeFrequency: 'monthly' as const,
+      priority,
+    })),
     {
       url: `${SITE_URL}/terms`,
-      lastModified: new Date(),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.2,
+    },
+    {
+      url: `${SITE_URL}/privacy`,
+      lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.2,
     },

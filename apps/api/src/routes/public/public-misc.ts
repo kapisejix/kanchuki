@@ -1,7 +1,17 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { validationError } from '../../plugins/error-handler.js';
 import { getTheme } from '../admin-settings.js';
+
+const CONTACT_TOPICS = [
+  'Getting started',
+  'Catalog help',
+  'Billing',
+  'Partnership',
+  'Something else',
+] as const;
 
 export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/theme ─────────────────────────────────────────
@@ -54,4 +64,37 @@ export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
       };
     },
   );
+
+  // ─── POST /public/contact ────────────────────────────────────────
+  // Real "how to reach us" form submission (docs/content/pages/contact.md
+  // — explicitly "no fake submit"). No new table/migration: reuses AuditLog
+  // (already readable by admins at GET /admin/activity?resource_type=
+  // ContactSubmission, F-014's platform activity feed). Global rate limiter
+  // (200/min/IP, apps/api/src/index.ts) is the abuse guard — no per-route
+  // limiter added, this is a low-traffic marketing-site form.
+  server.post('/contact', async (request, reply) => {
+    const body = z
+      .object({
+        name: z.string().trim().min(1).max(100),
+        shop_city: z.string().trim().max(200).optional(),
+        topic: z.enum(CONTACT_TOPICS),
+        message: z.string().trim().min(1).max(2000),
+      })
+      .safeParse(request.body);
+    if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    const { name, shop_city, topic, message } = body.data;
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'anonymous',
+        action: 'CONTACT_FORM_SUBMIT',
+        resource_type: 'ContactSubmission',
+        metadata: { name, shop_city: shop_city ?? null, topic, message },
+        ip_address: request.ip,
+      },
+    });
+
+    return reply.status(201).send({ data: { received: true } });
+  });
 };

@@ -7,11 +7,6 @@
     "scheme": "kanchuki",
     "userInterfaceStyle": "light",
     "icon": "./assets/icon.png",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#d2e2ec"
-    },
     "android": {
       "package": "app.kanchuki.retailer",
       "adaptiveIcon": {
@@ -34,6 +29,14 @@
     },
     "plugins": [
       "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#d2e2ec"
+        }
+      ],
       [
         "expo-camera",
         {

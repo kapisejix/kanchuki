@@ -159,10 +159,10 @@ Close: AI isn't replacing the shopkeeper's judgement. It's taking away the typin
 | Monthly | **₹999** | **₹2,499** | **₹4,999** |
 | Annual (save 20%) | ₹9,999 | ₹24,999 | ₹49,999 |
 | Products | 500 | 2,000 | Unlimited |
-| Customers | 200 | 1,000 | Unlimited |
+| Customers | Unlimited | Unlimited | Unlimited |
 | Collection links | 50/mo | Unlimited | Unlimited |
 | AI auto-tagging | ✅ | ✅ | ✅ |
-| AI matching (Fashion DNA) | — | ✅ | ✅ |
+| AI matching (Fashion DNA) | — | 🔶 Coming soon | 🔶 Coming soon |
 | Try-ons | — | 100/mo | 500/mo |
 | WhatsApp automation / multi-staff | — | — | ✅ |
 

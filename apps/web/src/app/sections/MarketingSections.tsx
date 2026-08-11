@@ -10,7 +10,6 @@ import {
   Store,
   ChevronDown,
   Check,
-  Star,
   IndianRupee,
   Smartphone,
   MessageCircle,
@@ -20,7 +19,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { PLAN_PRICING } from '@kanchuki/shared'
-import { KanchukiMark } from '@/components/KanchukiMark'
+import { Section, SectionHeader, SelvedgeCard, AnimatedSection, Footer, fadeUp, stagger } from '@/components/site/Chrome'
 
 // ── Types ─────────────────────────────────────────────────────────
 
@@ -38,12 +37,12 @@ const PLANS: {
 }[] = [
   {
     name: 'Starter', planKey: 'STARTER',
-    features: ['500 products', '200 customers', '50 collection links/month', 'AI auto-tagging', 'Manual WhatsApp share'],
+    features: ['500 products', 'Unlimited customers', '50 collection links/month', 'AI auto-tagging', 'Manual WhatsApp share'],
     highlight: false, cta: 'Start Free Trial',
   },
   {
     name: 'Growth', planKey: 'GROWTH',
-    features: ['2,000 products', '1,000 customers', 'Unlimited collection links', 'AI fashion matching', '100 try-on credits/month', 'Priority support'],
+    features: ['2,000 products', 'Unlimited customers', 'Unlimited collection links', '100 try-on credits/month', 'Fashion DNA preferences', 'Priority support'],
     highlight: true, cta: 'Start Free Trial',
   },
   {
@@ -70,11 +69,6 @@ const FEATURES: { icon: LucideIcon; title: string; desc: string; accent: 'ink' |
   { icon: Shirt, title: 'Virtual Try-On', desc: 'Customers upload a photo and see how outfits look on them. No mirror needed. Coming soon to all plans.', accent: 'rust', comingSoon: true, span: 'sm:col-span-2 lg:col-span-4' },
 ]
 
-const ACCENT_STRIP: Record<string, string> = {
-  ink: 'bg-ink-600',
-  rust: 'bg-rust-600',
-  turmeric: 'bg-turmeric-600',
-}
 const ACCENT_ICON: Record<string, string> = {
   ink: 'text-ink-600',
   rust: 'text-rust-600',
@@ -86,62 +80,6 @@ const HOW_IT_WORKS = [
   { step: '02', title: 'Select & Share', desc: 'Pick 10–20 products, add a title, and generate a WhatsApp link. Send it to customers in one tap or broadcast to everyone at once.', icon: Share2 },
   { step: '03', title: 'Sell More', desc: 'Customers browse your collection, save favorites, and enquire via WhatsApp. Track views, enquiries, and conversion — all in your dashboard.', icon: BarChart3 },
 ]
-
-// ── Motion variants ────────────────────────────────────────────────
-
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.5 } },
-}
-
-const stagger = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
-}
-
-// ── Shared helpers ─────────────────────────────────────────────────
-
-// "Selvedge-edge" card (docs/design/emil-design.md §3.6) — a flat card
-// with a self-finished-edge detail on one side instead of a glass/shadow
-// treatment. No blur, no drop shadow in normal document flow.
-function SelvedgeCard({ children, accent = 'ink', className = '' }: { children: React.ReactNode; accent?: 'ink' | 'rust' | 'turmeric'; className?: string }) {
-  return (
-    <div className={`relative overflow-hidden bg-white rounded-xl border border-sand-200 transition-colors duration-300 hover:border-sand-300 ${className}`}>
-      {/* Selvedge strip — a clipped inset bar, not a mismatched border-width,
-          so it respects the rounded corner instead of pinching it. */}
-      <div className={`absolute inset-x-0 top-0 h-[3px] ${ACCENT_STRIP[accent]}`} />
-      {children}
-    </div>
-  )
-}
-
-function Section({ children, id, className = '', dark = false }: { children: React.ReactNode; id?: string; className?: string; dark?: boolean }) {
-  return (
-    <section id={id} className={`py-16 sm:py-20 lg:py-28 ${dark ? 'bg-charcoal text-white' : 'bg-cotton'} ${className}`}>
-      {children}
-    </section>
-  )
-}
-
-function SectionHeader({ tag, title, subtitle, dark = false, align = 'center' }: { tag?: string; title: string; subtitle?: string; dark?: boolean; align?: 'center' | 'left' }) {
-  return (
-    <div className={`max-w-2xl ${align === 'center' ? 'mx-auto text-center' : ''} mb-12 sm:mb-16`}>
-      {tag && <span className="inline-block text-xs font-semibold tracking-widest uppercase text-rust-600 mb-3">{tag}</span>}
-      <h2 className={`font-display text-3xl sm:text-4xl font-semibold tracking-tight text-balance ${dark ? 'text-white' : 'text-charcoal'}`}>{title}</h2>
-      {subtitle && <p className={`mt-4 text-lg ${dark ? 'text-sand-300' : 'text-sand-500'}`}>{subtitle}</p>}
-    </div>
-  )
-}
-
-function AnimatedSection({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-80px' })
-  return (
-    <motion.div ref={ref} initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={fadeUp} className={className}>
-      {children}
-    </motion.div>
-  )
-}
 
 // ── Stats Bar ──────────────────────────────────────────────────────
 
@@ -159,19 +97,16 @@ function StatsBar() {
   }, [])
 
   const hasData = liveStats && liveStats.total_retailers > 0
-  const stats = hasData
-    ? [
-        { label: 'Products digitized', value: liveStats!.total_products.toLocaleString('en-IN'), icon: Shirt },
-        { label: 'Collection links shared', value: liveStats!.total_collections.toLocaleString('en-IN'), icon: Share2 },
-        { label: 'Retailers onboarded', value: liveStats!.total_retailers.toLocaleString('en-IN'), icon: Store },
-        { label: 'Customer enquiries this month', value: liveStats!.enquiries_this_month.toLocaleString('en-IN'), icon: MessageCircle },
-      ]
-    : [
-        { label: 'Products digitized', value: '2,500+', icon: Shirt },
-        { label: 'Collection links shared', value: '500+', icon: Share2 },
-        { label: 'Retailers onboarded', value: '50+', icon: Store },
-        { label: 'Customer enquiries', value: '1,000+', icon: MessageCircle },
-      ]
+  // Honesty gate (docs/content/pages/content-style-guide.md): live numbers
+  // only. If the stats API is unreachable or empty, show the label with a
+  // dash — never a fabricated count ("2,500+" with zero real retailers is a
+  // false claim, and this page is the company's front door).
+  const stats = [
+    { label: 'Products digitized', value: hasData ? liveStats!.total_products.toLocaleString('en-IN') : '—', icon: Shirt },
+    { label: 'Collection links shared', value: hasData ? liveStats!.total_collections.toLocaleString('en-IN') : '—', icon: Share2 },
+    { label: 'Retailers onboarded', value: hasData ? liveStats!.total_retailers.toLocaleString('en-IN') : '—', icon: Store },
+    { label: 'Customer enquiries this month', value: hasData ? liveStats!.enquiries_this_month.toLocaleString('en-IN') : '—', icon: MessageCircle },
+  ]
 
   return (
     <div className="bg-sand-50 border-y border-sand-200" ref={ref}>
@@ -307,7 +242,7 @@ function TestimonialsSection() {
   const isInView = useInView(ref, { once: true })
   const testimonials = [
     { quote: "Waiting for pilot retailers to share their experience. This space will feature real stories from Indian clothing stores using Kanchuki.", name: '— Coming soon', role: '' },
-    { quote: "Our pilot program is running. If you're a retailer interested in early access and willing to share feedback, reach out to us.", name: '— Join the pilot', role: 'hello@kanchuki.app' },
+    { quote: "Our pilot program is running. If you're a retailer interested in early access and willing to share feedback, reach out to us.", name: '— Join the pilot', role: 'support@kanchuki.app' },
     { quote: 'Real retailers. Real results. Real stories — coming after our first 10 pilot participants complete onboarding.', name: '— Pilot in progress', role: '' },
   ]
 
@@ -320,8 +255,10 @@ function TestimonialsSection() {
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6">
           {testimonials.map((t, i) => (
             <motion.div key={i} variants={fadeUp}>
+              {/* No star rating here — these are honest "coming soon"
+                  placeholders, not real reviews. A 5-star row would imply a
+                  rating that doesn't exist yet (docs/content honesty gate). */}
               <SelvedgeCard accent="turmeric" className="p-6 sm:p-8">
-                <div className="flex gap-1 mb-4">{[...Array(5)].map((_, s) => <Star key={s} size={14} strokeWidth={1.5} className="fill-turmeric-400 text-turmeric-400" />)}</div>
                 <p className="text-sm text-sand-600 leading-relaxed mb-6">&ldquo;{t.quote}&rdquo;</p>
                 <div className="border-t border-sand-100 pt-4">
                   <div className="text-sm font-semibold text-charcoal">{t.name}</div>
@@ -331,6 +268,9 @@ function TestimonialsSection() {
             </motion.div>
           ))}
         </motion.div>
+        <div className="text-center mt-8">
+          <Link href="/testimonials" className="text-sm font-semibold text-ink-600 hover:text-ink-700 transition-colors">See how retailer stories get verified &rarr;</Link>
+        </div>
       </div>
     </Section>
   )
@@ -439,59 +379,28 @@ function CtaSection() {
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger}>
           <motion.h2 variants={fadeUp} className="font-display text-3xl sm:text-4xl lg:text-5xl font-semibold tracking-tight text-balance">Ready to digitize your store?</motion.h2>
           <motion.p variants={fadeUp} className="mt-5 text-lg sm:text-xl text-sand-300 max-w-2xl mx-auto">Join Indian clothing retailers already using Kanchuki. 14-day free trial. No credit card needed.</motion.p>
-          <motion.div variants={fadeUp} className="mt-8 sm:mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+          <motion.div variants={fadeUp} className="mt-8 sm:mt-10 flex flex-col items-center gap-3 justify-center">
+            {/* Only Android exists today (EAS-distributed APK) — Play Store
+                and App Store are not live, so we don't claim they are
+                (docs/content honesty gate). */}
             <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-white text-charcoal px-6 sm:px-8 py-4 rounded-full hover:bg-sand-100 transition font-semibold active:scale-[0.97]">
               <Smartphone size={22} strokeWidth={1.5} />
               <div className="text-left">
-                <div className="text-xs text-sand-500 font-normal">Download on</div>
-                <div className="font-semibold">Google Play</div>
+                <div className="text-xs text-sand-500 font-normal">Download for</div>
+                <div className="font-semibold">Android</div>
               </div>
             </Link>
-            <Link href="/download" className="inline-flex items-center justify-center gap-3 bg-white text-charcoal px-6 sm:px-8 py-4 rounded-full hover:bg-sand-100 transition font-semibold active:scale-[0.97]">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z" />
-                <path d="M10 2c1 .5 2 2 2 5" />
-              </svg>
-              <div className="text-left">
-                <div className="text-xs text-sand-500 font-normal">Download on</div>
-                <div className="font-semibold">App Store</div>
-              </div>
-            </Link>
+            <p className="text-xs text-sand-400">Play Store &amp; iOS — coming soon</p>
           </motion.div>
           <motion.div variants={fadeUp} className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 text-sm text-sand-400">
             <Link href="#features" className="hover:text-white transition-colors">Features</Link>
             <Link href="#pricing" className="hover:text-white transition-colors">Pricing</Link>
             <Link href="#faq" className="hover:text-white transition-colors">FAQ</Link>
-            <a href="mailto:hello@kanchuki.app" className="hover:text-white transition-colors">Contact</a>
+            <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
           </motion.div>
         </motion.div>
       </div>
     </Section>
-  )
-}
-
-// ── Footer ─────────────────────────────────────────────────────────
-
-function FooterSection() {
-  return (
-    <footer className="bg-charcoal border-t border-sand-800 py-10 sm:py-14">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2.5">
-            <KanchukiMark size={28} />
-            <span className="font-display text-sand-200 font-semibold">Kanchuki</span>
-          </div>
-          <p className="text-sand-500 text-sm text-center">© {new Date().getFullYear()} Kanchuki. Made in India <span className="inline-block">🇮🇳</span></p>
-          <div className="flex gap-5 text-sm text-sand-500">
-            <Link href="/privacy" className="hover:text-sand-300 transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-sand-300 transition-colors">Terms</Link>
-            <a href="mailto:hello@kanchuki.app" className="hover:text-sand-300 transition-colors">Contact</a>
-            <span className="text-sand-700">·</span>
-            <a href="/admin" className="hover:text-sand-300 transition-colors text-sand-400">Admin</a>
-          </div>
-        </div>
-      </div>
-    </footer>
   )
 }
 
@@ -508,7 +417,7 @@ export default function MarketingSections() {
       <PricingSection />
       <FaqSection />
       <CtaSection />
-      <FooterSection />
+      <Footer />
     </>
   )
 }
