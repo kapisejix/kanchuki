@@ -14,6 +14,7 @@ import {
   adminActivityRoutes,
   adminAiRoutes,
   adminBackupsRoutes,
+  adminContactRoutes,
   adminDataRoutes,
   adminIntegrationsRoutes,
   adminMediaRoutes,
@@ -175,6 +176,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminMiscRoutes);
   // admin-activity — auto-split module
   await server.register(adminActivityRoutes);
+  // admin-contact — public /contact form messages (ContactSubmission audit entries)
+  await server.register(adminContactRoutes);
   // admin-media — auto-split module
   await server.register(adminMediaRoutes);
   // admin-data — auto-split module

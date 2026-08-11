@@ -40,6 +40,7 @@ import {
   Tags,
   Wand2,
   DatabaseBackup,
+  Mail,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -88,6 +89,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
       { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
+      { label: 'Contact Submissions', href: '/admin/contact-submissions', icon: Mail },
     ],
   },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },

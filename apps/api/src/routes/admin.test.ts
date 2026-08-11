@@ -31,6 +31,8 @@ const {
   mockIntegrationUpdate,
   mockIntegrationDelete,
   mockAuditLogCreate,
+  mockAuditLogFindMany,
+  mockAuditLogCount,
   mockAiProviderFindMany,
   mockAiProviderFindUnique,
   mockAiProviderCreate,
@@ -68,6 +70,8 @@ const {
   mockIntegrationUpdate: vi.fn(),
   mockIntegrationDelete: vi.fn(),
   mockAuditLogCreate: vi.fn(),
+  mockAuditLogFindMany: vi.fn(),
+  mockAuditLogCount: vi.fn(),
   mockAiProviderFindMany: vi.fn(),
   mockAiProviderFindUnique: vi.fn(),
   mockAiProviderCreate: vi.fn(),
@@ -111,7 +115,11 @@ vi.mock('@kanchuki/db', () => ({
       update: mockIntegrationUpdate,
       delete: mockIntegrationDelete,
     },
-    auditLog: { create: mockAuditLogCreate },
+    auditLog: {
+      create: mockAuditLogCreate,
+      findMany: mockAuditLogFindMany,
+      count: mockAuditLogCount,
+    },
     aiProviderConfig: {
       findMany: mockAiProviderFindMany,
       findUnique: mockAiProviderFindUnique,
@@ -1391,6 +1399,147 @@ describe('Admin default attributes', () => {
     });
     expect(res.statusCode).toBe(204);
     expect(mockAuditLogCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+// ─── GET /admin/contact-submissions ───────────────────────────────
+
+describe('GET /admin/contact-submissions', () => {
+  const submission = (id: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    metadata: {
+      name: 'Test Retailer',
+      shop_city: 'Jaipur',
+      topic: 'Getting started',
+      message: 'How do I add products?',
+    },
+    ip_address: '1.2.3.4',
+    created_at: new Date('2026-08-11T10:00:00.000Z'),
+    ...overrides,
+  });
+
+  it('requires admin auth', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/contact-submissions',
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it('returns parsed contact submissions, newest first', async () => {
+    mockAuditLogFindMany.mockResolvedValue([submission('log_1'), submission('log_2')]);
+    mockAuditLogCount.mockResolvedValue(2);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/contact-submissions',
+      headers: authedHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual([
+      {
+        id: 'log_1',
+        name: 'Test Retailer',
+        shop_city: 'Jaipur',
+        topic: 'Getting started',
+        message: 'How do I add products?',
+        ip_address: '1.2.3.4',
+        created_at: '2026-08-11T10:00:00.000Z',
+      },
+      {
+        id: 'log_2',
+        name: 'Test Retailer',
+        shop_city: 'Jaipur',
+        topic: 'Getting started',
+        message: 'How do I add products?',
+        ip_address: '1.2.3.4',
+        created_at: '2026-08-11T10:00:00.000Z',
+      },
+    ]);
+    expect(res.json().pagination).toEqual({ cursor: null, has_more: false, total: 2 });
+    // Always scoped to ContactSubmission rows, never the whole audit trail.
+    expect(mockAuditLogFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ resource_type: 'ContactSubmission' }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('filters by topic through the metadata jsonb path', async () => {
+    mockAuditLogFindMany.mockResolvedValue([submission('log_1')]);
+    mockAuditLogCount.mockResolvedValue(1);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/contact-submissions?topic=Billing',
+      headers: authedHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toHaveLength(1);
+    expect(mockAuditLogFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ metadata: { path: ['topic'], equals: 'Billing' } }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('paginates with a cursor when more results exist', async () => {
+    const many = Array.from({ length: 51 }, (_, i) => submission(`log_${i}`));
+    mockAuditLogFindMany.mockResolvedValue(many);
+    mockAuditLogCount.mockResolvedValue(60);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/contact-submissions?limit=50',
+      headers: authedHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toHaveLength(50);
+    expect(res.json().pagination.has_more).toBe(true);
+    expect(res.json().pagination.cursor).toBe('log_49');
+    expect(res.json().pagination.total).toBe(60);
+    await app.close();
+  });
+
+  it('degrades malformed metadata instead of crashing', async () => {
+    mockAuditLogFindMany.mockResolvedValue([
+      {
+        id: 'log_bad',
+        metadata: { name: 42, message: null },
+        ip_address: null,
+        created_at: new Date('2026-08-11T10:00:00.000Z'),
+      },
+    ]);
+    mockAuditLogCount.mockResolvedValue(1);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/contact-submissions',
+      headers: authedHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data[0]).toEqual({
+      id: 'log_bad',
+      name: '',
+      shop_city: null,
+      topic: '',
+      message: '',
+      ip_address: null,
+      created_at: '2026-08-11T10:00:00.000Z',
+    });
     await app.close();
   });
 });
