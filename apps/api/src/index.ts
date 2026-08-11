@@ -118,7 +118,11 @@ await server.register(rateLimit, {
   max: 200,
   timeWindow: '1 minute',
   redis: getRedis(),
-  keyGenerator: (request) => (request.headers['x-retailer-id'] as string | undefined) ?? request.ip,
+  // Key by IP only — never trust a client-supplied header here. Rate
+  // limiting runs before auth, so there's no verified retailer identity to
+  // key on yet; a client-supplied x-retailer-id would let anyone bypass
+  // every limiter (including admin login's) by rotating it per request.
+  keyGenerator: (request) => request.ip,
 });
 
 // ─── Auth Plugin ──────────────────────────────────────────────────
