@@ -264,7 +264,7 @@ Kanchuki's design was ad hoc — `docs/DESIGN.md` documented a violet/amber pale
 |---|---|---|
 | Tokens | `apps/web/tailwind.config.ts`, `apps/web/src/app/globals.css` | `ink`/`rust`/`turmeric`/`stone` oklch scales + `cotton`/`charcoal`, replacing the old cyan/amber mismatch |
 | Fonts | `apps/web/src/app/layout.tsx` | Fraunces (display serif) added alongside Inter |
-| Logomark | `apps/web/src/components/KanchukiMark.tsx` (new) | Interlaced-thread device, shared by Navbar + Footer |
+| Logomark | `apps/web/src/components/KanchukiMark.tsx` (new) | Interlaced-thread device, shared by Navbar + Footer. **Replaced 2026-08-11** by the `kanchuki-logo.png` wordmark (component deleted — see the "Colabs-inspired marketing redesign" entry below) |
 | Marketing page | `apps/web/src/app/page.tsx`, `apps/web/src/app/sections/MarketingSections.tsx` | Full redesign: selvedge-edge cards (implemented as a clipped inset strip, not a mismatched border — a border-width/radius rendering issue the impeccable design-lint hook caught), bolt-and-swatch feature grid, drape-transition hero, solid accent colors (gradient text removed — also hook-caught) |
 | Manifest | `apps/web/public/manifest.json` | Theme/background colors matched to the new palette |
 
@@ -755,6 +755,33 @@ User ask: every stored image under 80KB with the highest possible quality, to cu
 | **Tests** | `apps/api/src/routes/public.test.ts`, `admin.test.ts` | 1 public orderBy test + 6 admin feature/unfeature tests (200/422/404). **Also fixed the `withPublicCache` test bypass:** vitest doesn't override an inherited `NODE_ENV=development` (repo `.env`), so route tests hit real Redis and served stale cached payloads across runs within the 60–90s TTL — now `process.env.VITEST === 'true'` bypasses (the canonical flag; the `NODE_ENV==='test'` check never fired) |
 
 **Verified:** db/api/web tsc clean; API **389/389** (was 382), web 93/93, lint clean, delete/secrets guards pass. **Deploy note:** migration 049 must be applied to prod (Supabase SQL Editor) before the pin endpoints are used; the endpoint 404s naturally (column missing → Prisma error) until then — apply DB first, then API/web deploy (Railway auto-deploys on push).
+
+## ✅ BUILT 2026-08-11: Colabs-inspired marketing redesign — new palette, marquee, logo, MatterSemiMono headings
+
+User asked for the marketing/content pages (only) to look and animate like **colabs.com.au** (Awwwards 2023): warm off-white canvas, near-black ink, yellow-lime accent, modular solid-color service cards, infinite marquee, lenis smooth scroll. Full palette adopted; navy/gold stays on storefronts + admin (they declare their own scoped display font and keep the legacy `ink`/`rust` tokens untouched).
+
+| Layer | Files | Summary |
+|---|---|---|
+| **CoLab tokens** | `apps/web/tailwind.config.ts` | Added `cream` (#F9F8F6 canvas), `carbon` (#060606 ink), `volt` (#D9DB4D lime, DEFAULT so bare `bg-volt` works), `cobalt` (#0046C7), `terracotta`/`iris`/`moss`/`fern`/`lilac`/`mint`/`sandal`/`mist` card chips + `marquee` keyframes. Legacy tokens untouched (storefront/admin isolation) |
+| **Font** | `apps/web/src/app/layout.tsx`, `apps/web/tailwind.config.ts` | Display font = **MatterSemiMono** via `next/font/local` from `apps/web/src/fonts/` (uploaded OTF files; weights 400/500/600/700 registered) — replaced the Space Grotesk stand-in. Served self-hosted, no Google Fonts request. Fallback stack switched serif→mono to match. Storefronts keep their scoped Bricolage `--font-display` |
+| **Lenis** | `apps/web/src/app/globals.css` (+CSS), `apps/web/package.json`, `Navbar` in Chrome.tsx | Lenis smooth scrolling init in the marketing Navbar (matchMedia-gated for reduced motion, destroyed on unmount) |
+| **Chrome** | `apps/web/src/components/site/Chrome.tsx` + new `accents.ts` | Navbar (volt CTA), Footer (carbon bg + big wordmark), Section/SectionHeader (cobalt tags), `ColorCard` (renamed from `SelvedgeCard`), PageHero, FinalCta, new `Marquee` (CSS translateX -50% seamless loop). Accent maps shared via `accents.ts` (pure data — server components import it directly, not through the `'use client'` Chrome) |
+| **Homepage** | `apps/web/src/app/page.tsx`, `sections/MarketingSections.tsx` | Editorial hero (Space-Grotesk-era headline kept), services marquee of solid color cards, restyled stats/how-it-works/moat/stores/testimonials/pricing/faq/CTA |
+| **Content pages** | for-retailers, for-customers, how-it-works, faq(+FaqAccordion), about, testimonials(+LiveStats), contact(+ContactForm), download, stores(+StoresDirectory+StoreLogo), pricing(+PricingTable), terms, privacy, account-deletion | All repainted to the CoLab palette; color-block feature grids, near-black final CTAs |
+| **Logo** | `apps/web/public/kanchuki-logo.png` (new), Chrome.tsx navbar+footer, `KanchukiMark.tsx` deleted | User-supplied 884×176 dark-navy "Kanchuki" wordmark PNG (red i-dot) replaced the interlaced-thread mark + text in navbar and footer |
+
+**Verified:** web tsc clean, 93/93 tests, prod build passes (font files emitted into `.next/static/media/`), live browser check on homepage + for-retailers (hero, marquee, color cards, volt buttons all render; 0 console errors). MatterSemiMono confirmed live via `document.fonts.check`. **Note:** the uploaded files are `-TRIAL-` variants — confirm the MatterSemiMono license covers web embedding before shipping. **Deploy:** push → Railway auto-deploys web.
+
+## ⚠️ INCIDENT + FIX 2026-08-11: Test-retailer cleanup deleted a live retailer's R2 photos (Priya Cloth House)
+
+**User report:** all product images broken on the live storefront `https://kanchuki.app/priya-cloth-house-ah0e/all`. Root-caused via full forensic chain (DB audit log + R2 bucket listing + prod DB queries), not guessed:
+
+- **Timeline:** `scripts/delete-test-retailers.ts` ran `--apply` **2026-08-08 11:43** with 5 test phones including `913131313131` — which `normalizeIndianPhone()` reduces to `3131313131` = **Priya Cloth House's real phone**. It deleted **236 R2 objects** (all of Priya's product photos) + **5 Supabase auth users** (Priya's included). A second run at 22:17 had removed the number from the list — too late. Bucket audit confirms the drop: 382 objects (Aug 7) → 153 (Aug 8).
+- **Why DB survived but images didn't:** the script's DB delete is blocked by production role separation (writes scoped SQL instead), but its R2 cleanup + Supabase auth deletion run regardless ("Everything below still runs now").
+- **Not recoverable:** R2 bucket versioning is **disabled** (`ListObjectVersions not implemented`) — the image bytes are permanently gone. DB rows intact (20 products, valid r2_keys), auth user deleted.
+- **Restore path (user chose):** re-upload photos from the retailer's phone — products/names/prices all still in DB; the auth flow re-links by phone on next OTP login (verified in `apps/api/src/routes/auth.ts` — `auth_user_id !== user.id` → relink-by-phone path).
+- **Prevention shipped:** `scripts/delete-test-retailers.ts` hardened — `--apply` now **fails closed** unless (1) `--shops "Name1,Name2"` explicitly lists every matched shop name (case/whitespace-insensitive match, anything unmatched aborts) and (2) no matched retailer has live (non-soft-deleted) products unless `--force-live` is passed. Guards run before any destructive action; dry-run flow unchanged. Reviewer-reviewed (dead code removed, comparison normalized).
+- **Recommended (not done):** enable R2 bucket versioning in Cloudflare so future accidental deletes are recoverable.
 
 ## ✅ MIGRATED 2026-08-06: Fashion V-Tone moved off Railway → self-hosted on Hetzner CX43
 

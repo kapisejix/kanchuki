@@ -8,7 +8,7 @@
 
 ## 1. Navbar (static)
 
-- Left: KanchukiMark + wordmark.
+- Left: kanchuki-logo.png wordmark (replaced KanchukiMark 2026-08-11).
 - Links: For Retailers · For Customers · How It Works · Pricing · Stores · FAQ.
 - Right: **Sign In** (retailer login) + **Start Free Trial** (primary CTA → `/pricing#signup`).
 
@@ -198,7 +198,7 @@ CTA per plan: **Start 14-day free trial →**
 
 ## 14. Footer
 
-- **Brand:** KanchukiMark · "Your store on WhatsApp, powered by AI." · आपकी दुकान, AI की ताकत · Instagram / YouTube (to create).
+- **Brand:** kanchuki-logo.png wordmark · "Your store on WhatsApp, powered by AI." · आपकी दुकान, AI की ताकत · Instagram / YouTube (to create).
 - **Product:** For Retailers · For Customers · How It Works · Pricing · App Download · Store Directory.
 - **Company:** About · Testimonials · Contact.
 - **Support/Legal:** FAQ · WhatsApp Support · Terms · Privacy · GST note.

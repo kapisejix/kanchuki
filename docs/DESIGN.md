@@ -42,12 +42,13 @@ No separate green/red "Success"/"Error" tokens — Turmeric and Rust cover those
 
 **Status:** live in `apps/web` (marketing page + tokens) as of 2026-07-28. **Also live in `apps/mobile`** (`apps/mobile/tailwind.config.js` has a full `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` scale, verified 2026-07-31 during an `/impeccable audit` pass) — this doc previously claimed mobile had no tokens; that was stale. What mobile does NOT share with web: the `rust`/`turmeric`/`sand` hue values drifted from web's current palette (only `ink`/navy is pixel-matched via the shared `--color-ink-600` CSS var), and mobile has no dark-mode variant at all. Both are open gaps, not "no tokens."
 
-**Typography:**
-- Web display/marketing headlines: `Fraunces` (warm variable serif) — added 2026-07-28, see `apps/web/src/app/layout.tsx`
+**Typography (updated 2026-08-11):**
+- Web marketing/content display headings: **MatterSemiMono** — brand font served via `next/font/local` from `apps/web/src/fonts/` (user-uploaded OTF files, weights 400/500/600/700), see `apps/web/src/app/layout.tsx`. Replaced the Space Grotesk stand-in (added 2026-08-11 Colabs redesign). Fallback stack is monospace to match the semi-mono character.
 - Web UI/body + mobile: `Inter` (clean, professional)
+- Customer storefronts (`/c/*`, `/store/*`) declare their own scoped `--font-display` (Bricolage) in their layouts — NOT affected by the marketing font change.
 - Mobile display face: `Nunito` was the v1.0 plan; unverified whether it's actually wired anywhere in `apps/mobile` — treat as unconfirmed until checked, not as fact
 - Fallback: System UI
-- **Hindi/Devanagari coverage not yet verified for any of the above** — required before Year-1 Hindi localization ships (CLAUDE.md constraint); check before committing further to Fraunces specifically
+- **Hindi/Devanagari coverage not yet verified for any of the above** — required before Year-1 Hindi localization ships (CLAUDE.md constraint); check before committing further to MatterSemiMono specifically
 
 **Icon Style:** Lucide icons, thin-line weight (`strokeWidth: 1.5`, not Lucide's bold default) — matches the Loom "stitched line" direction, no new icon library added
 
@@ -440,6 +441,10 @@ borderRadius: {
 ```
 
 Every ramp is plain hex now (oklch dropped this pass) — removes the hand-conversion step between web and mobile that the previous two repaints each had to redo.
+
+**Marketing/content pages (updated 2026-08-11):** the marketing + content pages (`apps/web/src/components/site/**`, the marketing page trees, legal pages) were repainted to a **Colabs-inspired palette** — additive, on top of the Black & Gold tokens below, NOT a replacement. New tokens in `apps/web/tailwind.config.ts`: `cream` (#F9F8F6 warm off-white canvas), `carbon` (#060606 near-black), `volt` (#D9DB4D yellow-lime accent), `cobalt` (#0046C7 link blue), plus modular card chips `terracotta` (#B1653B), `iris` (#5757A5), `moss` (#66662A), `fern` (#59C28A), `lilac` (#BFB9E3), `mint` (#32C58B), `sandal` (#DCB688), `mist` (#BED2F5). Structure per colabs.com.au: bold hero → infinite auto-scrolling `Marquee` of solid color service cards → editorial sections → big CTA. Lenis smooth scrolling on the marketing Navbar. The legacy `ink`/`rust`/`turmeric`/`sand` tokens stay untouched so the customer storefront and admin panel keep their Black & Gold identity. Reference: `docs/design/emil-design.md` §3.1 (which still documents the pre-Colabs values — the marketing repaint is tracked in CLAUDE.md's 2026-08-11 entry).
+
+**Logo (updated 2026-08-11):** `apps/web/public/kanchuki-logo.png` — a user-supplied 884×176 dark-navy "Kanchuki" wordmark (red i-dot) used in the marketing Navbar + Footer. Replaced the interlaced-thread `KanchukiMark` SVG logomark (component deleted; favicon/OG images still use the old brand mark).
 
 **Mobile (`apps/mobile/tailwind.config.js`) — pixel-identical to web as of this pass.** Same `ink`/`rust`/`turmeric`/`sand`/`cotton`/`charcoal` hex values, copied literally (no oklch→hex conversion needed anymore, since web dropped oklch too). `ink` stays wired to the same admin-configurable `--color-ink-600` CSS var via NativeWind's `vars()`. Shared-token package (`packages/shared`) still not built (`docs/design/emil-design.md` §3.4) — these two files are still kept in sync by hand, just a lower-risk hand-sync than before.
 

@@ -204,7 +204,7 @@ Standard thick-stroke icon sets (Lucide's default weight, Font Awesome, Material
 
 ### 3.8 Logo / wordmark direction
 
-No logo file exists today (Part 1.3) — only PWA icons. Concept direction, not a finished mark:
+No logo file existed when this was written (Part 1.3) — only PWA icons. **Resolved 2026-08-11:** the user supplied `apps/web/public/kanchuki-logo.png` (884×176 dark-navy "Kanchuki" wordmark, red i-dot), now used in the marketing Navbar + Footer. It supersedes the interlaced-thread concept below (a `KanchukiMark` SVG implementing it was built and later deleted; favicon/OG images still use the old mark). Keep for reference / future brand work:
 
 - **Wordmark-led, not symbol-led.** "Kanchuki" set in the chosen display serif (3.2) is likely stronger alone than inventing an abstract icon — the name itself is the asset (Part 2.5). Test the wordmark alone before assuming you need a mark.
 - **If a mark is wanted alongside the wordmark:** the most defensible option is a small device built from **two crossed/interlaced thread lines** — literally warp-and-weft, matching the selvedge-edge motif already used in cards (3.6). Avoid literal garment silhouettes (a blouse/bodice icon) — too illustrative, ages badly, and reads closer to a clothing-brand logo than a software product's mark.

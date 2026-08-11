@@ -50,7 +50,9 @@ The **Black & Gold Elegance** system is live and user-approved (2026-08-03 repai
 | `charcoal` | `#000000` | body text / dark sections |
 | `glow` / `veil` | `#FFC94D` / `#0B1322` | decorative hero wash only |
 
-Reusable components already in code: **KanchukiMark** (interlaced-thread logomark), **SelvedgeCard** (accent-bar card), **Section/SectionHeader**, **AnimatedSection** (framer-motion `useInView`), **drape transition** (hero), **StatsBar** (live stats), **PageLoader**. New pages should compose from these — new components only where the roadmap says so.
+Reusable components already in code: **kanchuki-logo.png** wordmark (replaced the interlaced-thread `KanchukiMark` logomark 2026-08-11 — `KanchukiMark.tsx` deleted), **ColorCard** (solid color-block card, renamed from `SelvedgeCard`), **Section/SectionHeader**, **AnimatedSection** (framer-motion `useInView`), **Marquee** (infinite auto-scrolling card strip), **PageHero**, **FinalCta**, **PageLoader**. New pages should compose from these — new components only where the roadmap says so.
+
+> **Design note (updated 2026-08-11):** the marketing/content pages were repainted to the **Colabs-inspired palette** (`cream`/`carbon`/`volt`/`cobalt` + modular card chips) — see CLAUDE.md's 2026-08-11 entry. The Black & Gold tokens below remain live for the customer storefront + admin panel. If you are updating marketing pages, use the CoLab tokens in `apps/web/tailwind.config.ts`; storefront/admin work still uses `ink`/`rust`/`turmeric`/`sand`.
 
 Motion rule (from emil-design.md §3.3 — **restraint by surface**): marketing site gets standard entrance animations (fade-up, stagger, nothing > ~400ms per element); the customer storefront keeps the highest motion budget (drape + staggered cards); admin stays near-zero. No animation on `top/left/width/height` — transform/opacity only. `backdrop-blur` only on fixed/sticky elements.
 
@@ -156,7 +158,7 @@ Anchor-compat rule: existing inbound links (`#features`, `#how-it-works`, `#pric
 
 4 columns + bottom bar:
 
-- **Brand:** KanchukiMark + one-line mission + Hindi tagline ("आपकी दुकान, AI की ताकत") + social icons (Instagram/YouTube — to create).
+- **Brand:** kanchuki-logo.png wordmark + one-line mission + Hindi tagline ("आपकी दुकान, AI की ताकत") + social icons (Instagram/YouTube — to create).
 - **Product:** For Retailers, For Customers, How It Works, Pricing, App Download, Store Directory.
 - **Company:** About (founder story), Testimonials, Blog (when live), Contact, Careers (later).
 - **Support/Legal:** FAQ, Help/Support (WhatsApp link), Terms, Privacy, GST note.
@@ -205,7 +207,7 @@ One page, hero → CTA, all sections animated with the existing `fadeUp`/`stagge
    - **No new DB schema needed** — all fields exist.
 2. **New page** `apps/web/src/app/stores/page.tsx`:
    - Search box (by shop name/city), city filter chips, category filter chips.
-   - Grid of store cards (SelvedgeCard): logo, shop name, city, product count, "Visit store →".
+   - Grid of store cards (ColorCard): logo, shop name, city, product count, "Visit store →".
    - Empty state ("Be the first store on Kanchuki") + CTA for retailers.
    - **SEO**: server-rendered; each store card links to `/store/[slug]`; static metadata; `generateStaticParams`-style caching where possible.
 3. **Homepage teaser** (§4 #8) — top 6 stores via the same endpoint.

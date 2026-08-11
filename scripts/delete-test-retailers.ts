@@ -366,8 +366,34 @@ GROUP BY phone;
 
 // ─── Main ────────────────────────────────────────────────────────
 
+// ─── Guardrails (added 2026-08-11 after the Priya Cloth House incident) ──
+// The Aug 8 run deleted 236 R2 objects from a live retailer because its phone
+// (3131313131) accidentally sat in the test list as 913131313131. To make a
+// repeat structurally impossible, --apply now requires:
+//   1. The EXACT shop names to delete, passed explicitly (--shops "A,B") —
+//      any matched retailer whose shop_name isn't listed aborts everything.
+//   2. A live-retailer guard: any matched retailer with non-deleted products
+//      aborts unless --force-live is also passed.
+function parseShopsArg(): string[] | null {
+  const idx = process.argv.indexOf('--shops');
+  if (idx === -1 || !process.argv[idx + 1]) return null;
+  return process.argv[idx + 1]!
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+/** Case/whitespace-insensitive comparison so a trivial "priya cloth house" vs
+ *  "Priya Cloth House" typing difference fails closed but doesn't block a
+ *  legitimate delete. */
+function normalized(s: string): string {
+  return s.trim().toLowerCase();
+}
+
 async function main(): Promise<void> {
   const apply = process.argv.includes('--apply');
+  const forceLive = process.argv.includes('--force-live');
+  const shopsArg = parseShopsArg();
   console.log(
     apply
       ? '🗑️  DELETE TEST RETAILERS — APPLY mode (destructive)'
@@ -409,6 +435,56 @@ async function main(): Promise<void> {
     );
   }
   console.log();
+
+  // ── APPLY guard: live-retailer protection (incident-hardening 2026-08-11) ──
+  const retailerIds = retailers.map((r) => r.id);
+  if (apply) {
+    // Guard 1: explicit shop-name allowlist is mandatory.
+    if (!shopsArg || shopsArg.length === 0) {
+      console.error('❌ REFUSING TO DELETE: --apply now requires --shops "Name1,Name2" with the');
+      console.error('   exact shop names to delete (comma-separated). Every matched retailer');
+      console.error('   must appear in the list or nothing is deleted.');
+      console.error('   (Added after the 2026-08-11 live-retailer data-loss incident.)');
+      process.exit(1);
+    }
+
+    const normShops = shopsArg.map(normalized);
+    const matchedShops = retailers.map((r) => r.shop_name ?? '').filter(Boolean);
+    const unmatched = matchedShops.filter((s) => !normShops.includes(normalized(s)));
+    if (unmatched.length > 0) {
+      console.error(`❌ REFUSING TO DELETE: matched retailers not in --shops list: ${unmatched.join(', ')}`);
+      console.error('   Re-run with the EXACT shop names. Nothing was deleted.');
+      process.exit(1);
+    }
+    const listedButNotMatched = normShops.filter((s) => !matchedShops.some((m) => normalized(m) === s));
+    if (listedButNotMatched.length > 0) {
+      console.warn(`   ⚠️ --shops lists names not matched by the phones (harmless): ${listedButNotMatched.join(', ')}`);
+    }
+
+    // Guard 2: never delete a retailer with live (non-soft-deleted) products
+    // unless --force-live is explicitly passed.
+    const liveRetailerIds = (
+      await db.product.findMany({
+        where: { retailer_id: { in: retailerIds }, deleted_at: null },
+        select: { retailer_id: true },
+      })
+    ).map((p) => p.retailer_id);
+    const liveSet = new Set(liveRetailerIds);
+    const liveTargets = retailers.filter((r) => liveSet.has(r.id));
+    if (liveTargets.length > 0 && !forceLive) {
+      console.error(`❌ REFUSING TO DELETE: ${liveTargets.length} matched retailer(s) have LIVE products:`);
+      for (const r of liveTargets) {
+        console.error(`   • ${r.phone} — "${r.shop_name || '(no shop name)'}"`);
+      }
+      console.error('   These look like real stores. If you are SURE, re-run with --force-live.');
+      console.error('   Nothing was deleted.');
+      process.exit(1);
+    }
+    if (liveTargets.length > 0) {
+      console.warn(`   ⚠️ --force-live set: proceeding with ${liveTargets.length} live retailer(s):`);
+      for (const r of liveTargets) console.warn(`      • ${r.phone} — "${r.shop_name}"`);
+    }
+  }
 
   // ── Audit phase ───────────────────────────────────────────────
   console.log('── Data scope (what would be deleted) ──');
@@ -459,7 +535,6 @@ async function main(): Promise<void> {
   // ── Apply phase ───────────────────────────────────────────────
   console.log();
   console.log('══ APPLYING ══');
-  const retailerIds = retailers.map((r) => r.id);
 
   const deleteChildrenByRetailer: Array<
     [string, (tx: typeof db, ids: string[]) => Promise<number>]

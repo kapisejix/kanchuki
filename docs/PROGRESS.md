@@ -2,6 +2,32 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-11 — Colabs-inspired marketing redesign + brand wordmark logo + MatterSemiMono headings
+
+**User ask:** make the frontend web content pages look and animate like https://colabs.com.au — same structure, same animation. Confirmed scoping: full Colabs palette adopted, marketing/content pages only (storefront + admin keep Black & Gold), add lenis smooth scroll.
+
+- **CoLab tokens** (`apps/web/tailwind.config.ts`): `cream` #F9F8F6 canvas, `carbon` #060606, `volt` #D9DB4D (DEFAULT added so bare `bg-volt` compiles), `cobalt` #0046C7, card chips `terracotta`/`iris`/`moss`/`fern`/`lilac`/`mint`/`sandal`/`mist`, `marquee` keyframes. Legacy tokens untouched.
+- **Fonts** (`layout.tsx` + `src/fonts/`): marketing display = **MatterSemiMono** via `next/font/local` (user-uploaded OTF; 400/500/600/700), replacing Space Grotesk. Tailwind display fallback switched serif→mono. Storefront `/c` `/store` layouts keep their own scoped Bricolage `--font-display`.
+- **Lenis** smooth scroll (marketing Navbar init, reduced-motion gated, destroyed on unmount).
+- **Chrome.tsx** rebuilt: volt CTA navbar, carbon footer, SectionHeader cobalt tags, `ColorCard` (renamed from `SelvedgeCard`), PageHero, FinalCta, new infinite `Marquee`. Accent maps moved to `accents.ts` (pure-data module — server components can't index into a `'use client'` module, a build failure we hit and fixed).
+- **Homepage** (page.tsx + MarketingSections.tsx): editorial hero + services marquee + restyled stats/how-it-works/moat/stores/testimonials/pricing/faq/CTA.
+- **All content pages** repainted (for-retailers, for-customers, how-it-works, faq, about, testimonials, contact, download, stores, pricing, terms, privacy, account-deletion).
+- **Logo:** user-supplied `apps/web/public/kanchuki-logo.png` (884×176 navy wordmark, red i-dot) in navbar + footer; `KanchukiMark.tsx` deleted (unused).
+- **Blank-screen incident mid-session:** stale `next build`s were run into `.next` while `next dev` was live → dev cache corrupted → blank pages. Fixed: kill dev → wipe `.next` → one clean build → restart dev. All pages verified 200 + browser-rendered.
+
+**Verified:** web tsc clean, 93/93 tests, prod build passes, MatterSemiMono live in browser (`document.fonts.check` true), logo renders in navbar+footer. **Open:** font files are `-TRIAL-` — confirm web-embedding license before production.
+
+## 2026-08-11 — ⚠️ INCIDENT: live retailer's product photos deleted from R2 by test-retailer cleanup (root-caused, hardened)
+
+**User report:** all product images broken on `https://kanchuki.app/priya-cloth-house-ah0e/all`. Full forensic root cause (DB audit + R2 listing + prod queries):
+
+- `scripts/delete-test-retailers.ts --apply` ran **2026-08-08 11:43** with phone `913131313131` in its test list → `normalizeIndianPhone()` → `3131313131` = **Priya Cloth House's real phone**. Deleted **236 R2 objects** (all Priya product photos) + 5 Supabase auth users. Second run (22:17) removed the number — too late. Bucket count: 382 (Aug 7) → 153 (Aug 8).
+- Script's DB delete is blocked by prod role separation (writes scoped SQL), but R2 + auth deletion runs regardless.
+- **R2 bucket versioning is disabled** — bytes unrecoverable. DB intact (20 products), auth user deleted.
+- **User chose restore-by-reupload** (photos on the phone; products exist in DB; auth re-links by phone on OTP login — verified `auth.ts`).
+- **Hardened `scripts/delete-test-retailers.ts`:** `--apply` fails closed unless `--shops "Name1,Name2"` lists every matched shop name AND no live-product retailer is targeted without `--force-live`. Guards run pre-destruction; dry-run unchanged.
+- **Recommended follow-up:** enable R2 bucket versioning in Cloudflare (not yet done — user decision).
+
 ## 2026-08-10 — Color swatch fallback + resilient background-picker fetch on product detail
 
 **User report (3 items):** (1) no background-image option after cropping a product photo, (2) picking a
