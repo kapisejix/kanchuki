@@ -55,11 +55,12 @@ export default defineConfig({
     // last card's <img> on top of the pagination Next button). That dead
     // page is not what the offline behavior is meant to test.
     //
-    // The build goes through turbo (the CI/Railway entry point) rather than
-    // a bare `pnpm exec next build`: the direct invocation hits the known
-    // Next 14.2.x + pnpm monorepo "Cannot read properties of null (reading
-    // 'useContext')" prerender bug on this machine, while turbo builds
-    // @kanchuki/shared first in dependency order and succeeds.
+    // Build goes through turbo (the CI/Railway entry point). The web app's
+    // own `build` script now wraps `next build` in scripts/build.mjs to force
+    // NODE_ENV=production (an inherited NODE_ENV=development from a sourced
+    // .env made the dev React renderer crash prerendering /404 /500
+    // /_not-found with "<Html> should not be imported outside of
+    // pages/_document"); turbo sets the same production env for build tasks.
     command:
       'pnpm exec turbo build --filter=@kanchuki/web --force && pnpm --filter @kanchuki/web exec next start -p 3100',
     url: 'http://localhost:3100',
