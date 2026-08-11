@@ -292,4 +292,22 @@ describe('POST /public/contact', () => {
     expect(res.statusCode).toBe(422);
     await app.close();
   });
+
+  it('returns 400 (not 500) for a malformed request body', async () => {
+    // Truncated JSON — Fastify's body parser fails before the handler runs.
+    // The error handler must respect the parser's 4xx status (a broken client
+    // request is not a server fault; 500 here made the form look broken on
+    // flaky networks).
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/contact',
+      headers: { 'content-type': 'application/json' },
+      payload: '{"name":"x"',
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.status).toBe(400);
+    await app.close();
+  });
 });

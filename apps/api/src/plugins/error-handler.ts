@@ -99,6 +99,22 @@ export function errorHandler(
     return;
   }
 
+  // Fastify protocol errors (malformed JSON body, content-length mismatch,
+  // body-too-large, ...) carry their own client-error statusCode — respect it
+  // instead of collapsing everything to a 500. A truncated request body is the
+  // client's fault (400), not a server error — surfacing 500 here made the
+  // contact form look broken on flaky networks.
+  if (typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
+    void reply.status(error.statusCode).send({
+      error: {
+        code: error.code ?? 'BAD_REQUEST',
+        message: error.message,
+        status: error.statusCode,
+      },
+    });
+    return;
+  }
+
   // Generic server error — don't leak internals in production
   reply.log.error(error);
   const isDev = process.env.NODE_ENV === 'development';
