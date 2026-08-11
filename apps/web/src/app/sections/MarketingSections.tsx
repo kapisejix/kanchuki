@@ -8,6 +8,8 @@ import {
   Search,
   Heart,
   Store,
+  MapPin,
+  ArrowRight,
   ChevronDown,
   Check,
   IndianRupee,
@@ -19,6 +21,7 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import Link from 'next/link'
 import { PLAN_PRICING } from '@kanchuki/shared'
+import StoreLogo from '@/components/site/StoreLogo'
 import { Section, SectionHeader, SelvedgeCard, AnimatedSection, Footer, fadeUp, stagger } from '@/components/site/Chrome'
 
 // ── Types ─────────────────────────────────────────────────────────
@@ -235,6 +238,104 @@ function ComparisonMatrix() {
   )
 }
 
+// ── Store Directory Teaser (docs/content/pages/homepage.md §8) ────
+// Live store cards from GET /v1/public/stores — 3–6 featured stores with
+// logo, shop name, city, product count, linking to each storefront. Honesty
+// rule (binding): only visible, non-suspended stores appear (the endpoint
+// enforces that); if fewer than 3 exist, show the ones that do with a "be the
+// first store" CTA instead of inventing any.
+
+interface TeaserStore {
+  public_slug: string
+  shop_name: string
+  city: string | null
+  logo_url: string | null
+  product_count: number
+}
+
+function StoreTeaser() {
+  const [stores, setStores] = useState<TeaserStore[] | null>(null)
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-60px' })
+
+  useEffect(() => {
+    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+    fetch(`${apiUrl}/v1/public/stores?pageSize=6`)
+      .then((r) => r.json())
+      .then((res) => {
+        if (Array.isArray(res?.data?.stores)) setStores(res.data.stores)
+      })
+      .catch(() => {})
+  }, [])
+
+  const count = stores?.length ?? 0
+  // Fewer than 3 real stores → show the ones that exist plus a "be the first"
+  // CTA. Never invent stores, and never claim the directory is empty while
+  // the API is unreachable (null stays null → no CTA, just the links).
+  const showBeFirst = stores !== null && count < 3
+
+  return (
+    <Section id="store-directory">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
+        <AnimatedSection>
+          <SectionHeader
+            tag="Real Stores"
+            title="Shop real stores on Kanchuki."
+            subtitle="Every store here is a real shop with a real owner you can message. Browse by city, or search for a specific store."
+          />
+        </AnimatedSection>
+
+        <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
+          {(stores ?? []).slice(0, 6).map((s) => (
+            <motion.div key={s.public_slug} variants={fadeUp}>
+              <SelvedgeCard accent="rust" className="group h-full">
+                <Link href={`/${s.public_slug}`} className="block p-5 sm:p-6">
+                  <div className="w-14 h-14 rounded-xl overflow-hidden border border-sand-100 mb-4">
+                    <StoreLogo shopName={s.shop_name} logoUrl={s.logo_url} />
+                  </div>
+                  <h3 className="font-semibold text-charcoal mb-1 group-hover:text-ink-600 transition-colors">{s.shop_name}</h3>
+                  <p className="text-sm text-sand-500 mb-4 flex items-center gap-1.5">
+                    <MapPin size={14} strokeWidth={1.5} className="text-sand-400" />
+                    {s.city ?? 'India'}
+                  </p>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-sand-400">
+                      {s.product_count.toLocaleString('en-IN')} product{s.product_count === 1 ? '' : 's'}
+                    </span>
+                    <span className="text-sm font-semibold text-ink-600 group-hover:text-ink-700 transition-colors">Visit store →</span>
+                  </div>
+                </Link>
+              </SelvedgeCard>
+            </motion.div>
+          ))}
+        </motion.div>
+
+        {showBeFirst && (
+          <div className="text-center py-12">
+            <p className="text-lg font-semibold text-charcoal mb-2">Be the first store on Kanchuki</p>
+            <p className="text-sand-500 text-sm max-w-md mx-auto mb-6">
+              Stores appear here as they complete onboarding — every listing is a real shop with a real catalog.
+            </p>
+            <Link
+              href="/pricing"
+              className="inline-flex bg-ink-600 text-white text-sm font-semibold px-6 py-3 rounded-full hover:bg-ink-700 transition active:scale-[0.97]"
+            >
+              Start your 14-day free trial
+            </Link>
+          </div>
+        )}
+
+        <div className="text-center mt-10">
+          <Link href="/stores" className="inline-flex items-center gap-2 text-sm font-semibold text-ink-600 hover:text-ink-700 transition-colors">
+            Explore all stores
+            <ArrowRight size={16} strokeWidth={1.5} />
+          </Link>
+        </div>
+      </div>
+    </Section>
+  )
+}
+
 // ── Testimonials ───────────────────────────────────────────────────
 
 function TestimonialsSection() {
@@ -413,6 +514,7 @@ export default function MarketingSections() {
       <FeaturesSection />
       <HowItWorks />
       <ComparisonMatrix />
+      <StoreTeaser />
       <TestimonialsSection />
       <PricingSection />
       <FaqSection />

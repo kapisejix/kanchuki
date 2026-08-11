@@ -2,26 +2,13 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, MapPin, Search, Store, X } from 'lucide-react'
-import Image from 'next/image'
 import Link from 'next/link'
+import StoreLogo from '@/components/site/StoreLogo'
 import { SelvedgeCard } from '@/components/site/Chrome'
 import type { StoresDirectoryData } from './page'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 const PAGE_SIZE = 12
-
-function StoreLogo({ shopName, logoUrl }: { shopName: string; logoUrl: string | null }) {
-  // Logo, or a tasteful placeholder monogram (first letter of the shop name)
-  // — never a fake logo image (docs/content honesty gate).
-  if (logoUrl) {
-    return <Image src={logoUrl} alt={`${shopName} logo`} width={64} height={64} className="w-full h-full object-cover" />
-  }
-  return (
-    <div className="w-full h-full bg-ink-600 flex items-center justify-center text-white font-display text-3xl font-semibold">
-      {shopName.trim().charAt(0).toUpperCase() || 'S'}
-    </div>
-  )
-}
 
 export default function StoresDirectory({ initial }: { initial: StoresDirectoryData | null }) {
   const [query, setQuery] = useState('')
