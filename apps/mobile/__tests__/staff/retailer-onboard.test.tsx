@@ -14,9 +14,12 @@ vi.mock('../../src/lib/team-api', () => ({
   teamApi: { onboardRetailer: vi.fn() },
 }))
 
-vi.mock('../../src/lib/theme', () => ({
-  useTheme: () => ({ primaryColor: '#1E2A3D' }),
-}))
+vi.mock('../../src/lib/theme', async () => {
+  const { COLORS } = await import('@kanchuki/shared')
+  return {
+    useTheme: () => ({ primaryColor: '#1E2A3D', colors: COLORS }),
+  }
+})
 
 // ── Tree helpers ───────────────────────────────────────────────────
 // The custom @testing-library mock (src/test/__mocks__/testing-library.js)

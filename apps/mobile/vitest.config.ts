@@ -16,6 +16,12 @@ export default defineConfig({
         __dirname,
         'src/test/__mocks__/react-native-reanimated.ts',
       ),
+      // LinearGradient mock — real vendor build ships JSX in a .js file,
+      // which Rolldown's SSR transform can't parse. Aliased the same way.
+      'expo-linear-gradient': resolve(
+        __dirname,
+        'src/test/__mocks__/expo-linear-gradient.ts',
+      ),
     },
   },
   test: {
