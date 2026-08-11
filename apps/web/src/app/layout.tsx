@@ -1,12 +1,25 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Fraunces } from 'next/font/google'
+import { Inter } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
-const fraunces = Fraunces({
-  subsets: ['latin'],
+// MatterSemiMono — the brand display type (uploaded to src/fonts/ 2026-08-11),
+// replacing the Space Grotesk stand-in used since the Colabs redesign. Served
+// locally via next/font/local (no Google Fonts request). Weights 400/500/600/700
+// cover every font-display heading on the site (semibold + bold dominate;
+// 500 is cheap insurance for any medium-weight usage). The customer storefront
+// layouts (/c, /store) declare their OWN --font-display (Bricolage) scoped to
+// their subtree, so they are NOT affected — this stays marketing/legal/billing.
+const matterSemiMono = localFont({
+  src: [
+    { path: '../fonts/MatterSemiMono-TRIAL-Regular.otf', weight: '400', style: 'normal' },
+    { path: '../fonts/MatterSemiMono-TRIAL-Medium.otf', weight: '500', style: 'normal' },
+    { path: '../fonts/MatterSemiMono-TRIAL-SemiBold.otf', weight: '600', style: 'normal' },
+    { path: '../fonts/MatterSemiMono-TRIAL-Bold.otf', weight: '700', style: 'normal' },
+  ],
   variable: '--font-display',
-  axes: ['opsz', 'SOFT'],
+  display: 'swap',
 })
 
 // Canonical origin for absolute social-share URLs (og:image must be
@@ -105,7 +118,7 @@ export default async function RootLayout({
   const primaryColor = await getPrimaryColor()
 
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable}`}>
+    <html lang="en" className={`${inter.variable} ${matterSemiMono.variable}`}>
       <head>
         {/* API origin — collection data, enquiries, favorites */}
         {API_ORIGIN && (

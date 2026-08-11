@@ -10,7 +10,7 @@ export default function StoreLogo({ shopName, logoUrl }: { shopName: string; log
     return <Image src={logoUrl} alt={`${shopName} logo`} width={64} height={64} className="w-full h-full object-cover" />
   }
   return (
-    <div className="w-full h-full bg-ink-600 flex items-center justify-center text-white font-display text-3xl font-semibold">
+    <div className="w-full h-full bg-cobalt-600 flex items-center justify-center text-white font-display text-3xl font-semibold">
       {shopName.trim().charAt(0).toUpperCase() || 'S'}
     </div>
   )

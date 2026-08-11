@@ -30,30 +30,30 @@ export default function DownloadPage() {
               a public direct-install link) — Play Store/iOS aren't live.
               No fake QR/download button and no simulated "join the waitlist"
               email capture (docs/content honesty gate). */}
-          <div className="rounded-xl border border-sand-200 bg-sand-50 p-8 sm:p-10">
-            <Smartphone size={28} strokeWidth={1.5} className="mx-auto mb-4 text-ink-600" />
-            <h2 className="font-display text-xl sm:text-2xl font-semibold text-charcoal mb-2">Get the Android app</h2>
-            <p className="text-sm sm:text-base text-sand-500 leading-relaxed mb-6">The Android app is in early access. Message us and we&apos;ll get you set up — a direct install link, or help onboarding your first products. Play Store and iOS listings are coming soon.</p>
-            <a href="/contact" className="inline-flex items-center justify-center bg-ink-600 text-white font-semibold px-8 py-3.5 rounded-full hover:bg-ink-700 transition active:scale-[0.97]">Request Android access</a>
+          <div className="rounded-2xl border border-carbon/10 bg-white p-8 sm:p-10">
+            <Smartphone size={28} strokeWidth={1.5} className="mx-auto mb-4 text-cobalt-600" />
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-carbon mb-2">Get the Android app</h2>
+            <p className="text-sm sm:text-base text-carbon/60 leading-relaxed mb-6">The Android app is in early access. Message us and we&apos;ll get you set up — a direct install link, or help onboarding your first products. Play Store and iOS listings are coming soon.</p>
+            <a href="/contact" className="inline-flex items-center justify-center bg-volt text-carbon font-semibold px-8 py-3.5 rounded-full hover:bg-volt-600 transition active:scale-[0.97]">Request Android access</a>
           </div>
         </div>
       </Section>
 
-      <Section className="bg-sand-50">
+      <Section className="bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
             <div className="text-center mb-12">
-              <h2 className="font-display text-2xl sm:text-3xl font-semibold text-charcoal">What&apos;s inside</h2>
+              <h2 className="font-display text-2xl sm:text-3xl font-semibold text-carbon">What&apos;s inside</h2>
             </div>
           </AnimatedSection>
           <div className="grid sm:grid-cols-3 gap-6">
             {FEATURES.map((f) => (
-              <div key={f.title} className="bg-white rounded-xl p-6 border border-sand-200">
-                <div className="w-10 h-10 bg-ink-50 rounded-xl flex items-center justify-center mb-4">
-                  <f.icon size={20} strokeWidth={1.5} className="text-ink-600" />
+              <div key={f.title} className="bg-white rounded-2xl p-6 border border-carbon/10 transition-all duration-300 hover:-translate-y-0.5 hover:border-cobalt-500">
+                <div className="w-10 h-10 bg-cobalt-600 rounded-xl flex items-center justify-center mb-4">
+                  <f.icon size={20} strokeWidth={1.5} className="text-white" />
                 </div>
-                <h3 className="font-semibold text-charcoal mb-1">{f.title}</h3>
-                <p className="text-sm text-sand-500 leading-relaxed">{f.desc}</p>
+                <h3 className="font-display font-semibold text-carbon mb-1">{f.title}</h3>
+                <p className="text-sm text-carbon/60 leading-relaxed">{f.desc}</p>
               </div>
             ))}
           </div>

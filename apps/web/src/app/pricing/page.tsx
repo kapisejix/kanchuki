@@ -73,22 +73,22 @@ export default function PricingPage() {
             <SectionHeader tag="Choose your plan" title="Every plan starts free for 14 days" />
           </AnimatedSection>
           <PricingTable pricing={PLAN_PRICING} rows={ROWS} />
-          <p className="text-center text-sm text-sand-400 mt-8">14-day free trial · no credit card · UPI (GPay/PhonePe/PayTM), cards, netbanking · INR only · GST invoices.</p>
+          <p className="text-center text-sm text-carbon/40 mt-8">14-day free trial · no credit card · UPI (GPay/PhonePe/PayTM), cards, netbanking · INR only · GST invoices.</p>
         </div>
       </Section>
 
-      <Section className="bg-sand-50">
+      <Section className="bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
             <SectionHeader tag="Add-ons" title="Only if you need more" subtitle="For shops on a plan who hit a limit in a busy month — buy more without changing plans." />
           </AnimatedSection>
-          <div className="overflow-x-auto rounded-xl border border-sand-200 bg-white">
+          <div className="overflow-x-auto rounded-2xl border border-carbon/10 bg-white">
             <table className="w-full text-sm">
               <tbody>
                 {addonLines.map((a, i) => (
-                  <tr key={a.label} className={i % 2 === 0 ? 'bg-white' : 'bg-sand-50/60'}>
-                    <td className="px-5 py-3.5 text-sand-700">{a.label}</td>
-                    <td className="px-5 py-3.5 text-charcoal font-semibold text-right">₹{(a.price_paise / 100).toLocaleString('en-IN')}</td>
+                  <tr key={a.label} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/70'}>
+                    <td className="px-5 py-3.5 text-carbon/70">{a.label}</td>
+                    <td className="px-5 py-3.5 text-carbon font-semibold text-right">₹{(a.price_paise / 100).toLocaleString('en-IN')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -102,21 +102,21 @@ export default function PricingPage() {
           <AnimatedSection>
             <SectionHeader tag="Compare" title="What you'd pay the old way" />
           </AnimatedSection>
-          <div className="overflow-x-auto rounded-xl border border-sand-200">
+          <div className="overflow-x-auto rounded-2xl border border-carbon/10">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-sand-100 bg-sand-50">
-                  <th className="text-left px-5 py-4 text-sand-500 font-medium text-xs uppercase tracking-wider"> </th>
-                  <th className="text-left px-5 py-4 text-sand-500 font-medium text-xs uppercase tracking-wider">Old way</th>
-                  <th className="text-left px-5 py-4 text-sand-500 font-medium text-xs uppercase tracking-wider">Kanchuki</th>
+                <tr className="border-b border-carbon/10 bg-cream">
+                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider"> </th>
+                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">Old way</th>
+                  <th className="text-left px-5 py-4 text-carbon/50 font-medium text-xs uppercase tracking-wider">Kanchuki</th>
                 </tr>
               </thead>
               <tbody>
                 {OLD_WAY.map((row, i) => (
-                  <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-sand-50/40'}>
-                    <td className="px-5 py-4 text-charcoal font-medium">{row.label}</td>
-                    <td className="px-5 py-4 text-sand-500">{row.old}</td>
-                    <td className="px-5 py-4 text-turmeric-700 font-medium">{row.kanchuki}</td>
+                  <tr key={row.label} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/60'}>
+                    <td className="px-5 py-4 text-carbon font-medium">{row.label}</td>
+                    <td className="px-5 py-4 text-carbon/60">{row.old}</td>
+                    <td className="px-5 py-4 text-cobalt-600 font-medium">{row.kanchuki}</td>
                   </tr>
                 ))}
               </tbody>
@@ -125,16 +125,16 @@ export default function PricingPage() {
         </div>
       </Section>
 
-      <Section className="bg-sand-50">
+      <Section className="bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
             <SectionHeader tag="FAQ" title="Pricing questions" />
           </AnimatedSection>
           <div className="space-y-3">
             {FAQ.map((f) => (
-              <div key={f.q} className="bg-white rounded-xl border border-sand-200 p-6">
-                <h3 className="text-sm font-semibold text-charcoal mb-2">{f.q}</h3>
-                <p className="text-sm text-sand-500 leading-relaxed">{f.a}</p>
+              <div key={f.q} className="bg-white rounded-2xl border border-carbon/10 p-6 transition-colors hover:border-carbon/25">
+                <h3 className="text-sm font-semibold text-carbon mb-2">{f.q}</h3>
+                <p className="text-sm text-carbon/60 leading-relaxed">{f.a}</p>
               </div>
             ))}
           </div>

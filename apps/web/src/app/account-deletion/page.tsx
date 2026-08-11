@@ -11,16 +11,16 @@ const SUPPORT_EMAIL = 'support@kanchuki.app';
 
 export default function AccountDeletionPage() {
   return (
-    <div className="min-h-screen bg-cotton text-ink-900">
+    <div className="min-h-screen bg-cream text-carbon">
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <Link href="/" className="text-sm text-rust-600 hover:underline">
+        <Link href="/" className="text-sm text-cobalt-600 hover:underline">
           &larr; Back to Kanchuki
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Account Deletion</h1>
-        <p className="mt-2 text-sm text-ink-500">Last updated: August 10, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: August 10, 2026</p>
 
-        <div className="mt-8 space-y-6 text-ink-700">
+        <div className="mt-8 space-y-6 text-carbon/70">
           <p>
             You can delete your Kanchuki retailer account at any time. Deleting your account
             deactivates your store and removes your collection links from the public storefront.
@@ -29,7 +29,7 @@ export default function AccountDeletionPage() {
           </p>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">
+            <h2 className="font-display text-xl font-semibold text-carbon">
               Option 1 — Delete from the app (recommended)
             </h2>
             <ol className="mt-3 list-decimal space-y-2 pl-5">
@@ -40,7 +40,7 @@ export default function AccountDeletionPage() {
                 Scroll to the bottom and tap <strong>Delete Account</strong>.
               </li>
               <li>
-                Type <code className="rounded bg-cotton px-1.5 py-0.5 text-sm">DELETE</code> to
+                Type <code className="rounded bg-white px-1.5 py-0.5 text-sm">DELETE</code> to
                 confirm.
               </li>
               <li>Your account is deactivated immediately.</li>
@@ -48,14 +48,14 @@ export default function AccountDeletionPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">
+            <h2 className="font-display text-xl font-semibold text-carbon">
               Option 2 — Request deletion by email
             </h2>
             <p className="mt-2">
               If you no longer have access to the app, email us at{' '}
               <a
                 href={`mailto:${SUPPORT_EMAIL}?subject=Account%20deletion%20request`}
-                className="text-rust-600 underline"
+                className="text-cobalt-600 underline"
               >
                 {SUPPORT_EMAIL}
               </a>{' '}
@@ -66,7 +66,7 @@ export default function AccountDeletionPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">
+            <h2 className="font-display text-xl font-semibold text-carbon">
               What happens to your data
             </h2>
             <ul className="mt-3 list-disc space-y-2 pl-5">
@@ -87,7 +87,7 @@ export default function AccountDeletionPage() {
             </ul>
             <p className="mt-3 text-sm">
               See our{' '}
-              <Link href="/privacy" className="text-rust-600 underline">
+              <Link href="/privacy" className="text-cobalt-600 underline">
                 Privacy Policy
               </Link>{' '}
               for full details on how we collect, use, and retain data.

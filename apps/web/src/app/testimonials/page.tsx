@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Navbar, Footer, Section, SectionHeader, SelvedgeCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
+import { Navbar, Footer, Section, SectionHeader, ColorCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
 import { LiveStats } from './LiveStats'
 
 export const metadata: Metadata = {
@@ -34,21 +34,21 @@ export default function TestimonialsPage() {
         </div>
       </Section>
 
-      <Section className="bg-sand-50">
+      <Section className="bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
             <SectionHeader tag="No fabricated testimonials" title="How stories get verified" subtitle="So you can trust them." />
           </AnimatedSection>
-          <SelvedgeCard accent="turmeric" className="p-6 sm:p-8">
+          <ColorCard accent="volt" className="p-6 sm:p-8">
             <ul className="space-y-3">
               {VERIFICATION.map((v) => (
-                <li key={v} className="flex gap-3 text-sm text-sand-600 leading-relaxed">
-                  <span className="text-turmeric-600 mt-0.5">✓</span>
+                <li key={v} className="flex gap-3 text-sm text-carbon/80 leading-relaxed">
+                  <span className="text-cobalt-700 mt-0.5">✓</span>
                   <span>{v}</span>
                 </li>
               ))}
             </ul>
-          </SelvedgeCard>
+          </ColorCard>
         </div>
       </Section>
 

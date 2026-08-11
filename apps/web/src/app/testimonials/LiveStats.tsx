@@ -33,8 +33,8 @@ export function LiveStats() {
 
   if (loaded && (!stats || stats.total_retailers === 0)) {
     return (
-      <div className="text-center py-10 border border-dashed border-sand-300 rounded-xl bg-sand-50">
-        <p className="text-sand-500">We&apos;re just getting started — be one of the first stores on Kanchuki.</p>
+      <div className="text-center py-10 border border-dashed border-carbon/25 rounded-2xl bg-white">
+        <p className="text-carbon/60">We&apos;re just getting started — be one of the first stores on Kanchuki.</p>
       </div>
     )
   }
@@ -47,14 +47,14 @@ export function LiveStats() {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 bg-white rounded-xl border border-sand-200 p-8">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 bg-white rounded-2xl border border-carbon/10 p-8">
       {items.map((item) => (
         <div key={item.label} className="text-center">
-          <item.icon size={22} strokeWidth={1.5} className="mx-auto mb-2 text-ink-500" />
-          <div className="font-display text-2xl sm:text-3xl font-semibold text-charcoal">
+          <item.icon size={22} strokeWidth={1.5} className="mx-auto mb-2 text-cobalt-600" />
+          <div className="font-display text-2xl sm:text-3xl font-semibold text-carbon tabular-nums">
             {item.value !== undefined ? item.value.toLocaleString('en-IN') : '—'}
           </div>
-          <div className="text-sm text-sand-500 mt-1">{item.label}</div>
+          <div className="text-sm text-carbon/50 mt-1">{item.label}</div>
         </div>
       ))}
     </div>

@@ -89,10 +89,75 @@ const config: Config = {
         // black-and-gold identity). A soft gold glow + a navy-black shadow.
         glow: '#FFC94D',
         veil: '#0B1322',
+
+        // ── "CoLab" marketing palette (2026-08-11, colabs.com.au) ─────────
+        // Added AFTER the legacy ink/rust/turmeric/sand set and used ONLY by
+        // the marketing/content pages (apps/web/src/components/site + the
+        // marketing page trees). The legacy tokens above stay untouched so
+        // the customer storefront (/c, /store) and admin panel keep their
+        // "Black & Gold" identity — this block is additive, not a repaint.
+        //
+        // Reference: colabs.com.au (Awwwards SOTD 2023). Warm off-white
+        // canvas #F9F8F6, near-black ink #060606, yellow-lime accent
+        // #D9DB4D, plus a rainbow of modular card colors — every service
+        // block is a solid color chip, not a white card.
+        cream: {
+          // Canvas — warm off-white page background.
+          DEFAULT: '#F9F8F6',
+          50: '#FBFAF8',
+          100: '#F5F2ED',
+          200: '#EAE5DD',
+        },
+        carbon: {
+          // Near-black ink for display type and dark sections.
+          DEFAULT: '#060606',
+          50: '#2A2A2A',
+          100: '#1A1A1A',
+        },
+        volt: {
+          // Yellow-lime — the single global accent (buttons, highlights).
+          // DEFAULT so bare `bg-volt`/`text-volt` resolve (like `bg-cream`).
+          DEFAULT: '#D9DB4D',
+          50: '#FBFCE9',
+          100: '#F6F8CE',
+          200: '#EEF1A2',
+          300: '#E5E974',
+          400: '#DFE15E',
+          500: '#D9DB4D',
+          600: '#B9BC32',
+          700: '#8E9126',
+          800: '#65671C',
+          900: '#3C3D10',
+        },
+        cobalt: {
+          // Vivid blue — links + secondary accents on light backgrounds.
+          50: '#EAF1FF',
+          100: '#D6E3FF',
+          200: '#ADC7FF',
+          300: '#7FA8F5',
+          400: '#4D84E8',
+          500: '#1D62D4',
+          600: '#0046C7',
+          700: '#00379C',
+          800: '#002A75',
+          900: '#001C4E',
+        },
+        // Modular service/card colors — each feature block is its own chip.
+        terracotta: '#B1653B',
+        iris: '#5757A5',
+        moss: '#66662A',
+        fern: '#59C28A',
+        lilac: '#BFB9E3',
+        mint: '#32C58B',
+        sandal: '#DCB688',
+        mist: '#BED2F5',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'system-ui', 'sans-serif'],
-        display: ['var(--font-display)', 'Georgia', 'serif'],
+        // MatterSemiMono (uploaded to src/fonts/, wired via next/font/local in
+        // layout.tsx) is a semi-mono grotesque — mono fallback keeps the
+        // character if the file ever fails to load, not a serif.
+        display: ['var(--font-display)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       borderRadius: {
         '2xl': '1rem',
@@ -110,6 +175,10 @@ const config: Config = {
         'fade-in': 'fadeIn 0.3s ease-in-out',
         'slide-up': 'slideUp 0.3s ease-out',
         spool: 'spool 0.7s linear infinite',
+        // Infinite leftward marquee — the Colabs signature (service cards
+        // scroll continuously). Track must contain exactly 2 copies of the
+        // content and shift -50% for a seamless loop.
+        marquee: 'marquee 45s linear infinite',
       },
       keyframes: {
         fadeIn: {
@@ -123,6 +192,10 @@ const config: Config = {
         spool: {
           '0%': { transform: 'rotate(0deg)' },
           '100%': { transform: 'rotate(360deg)' },
+        },
+        marquee: {
+          '0%': { transform: 'translateX(0)' },
+          '100%': { transform: 'translateX(-50%)' },
         },
       },
     },

@@ -32,17 +32,17 @@ export default function ContactPage() {
                 href={`https://wa.me/${WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-xl border border-sand-200 bg-white p-6 sm:p-8 hover:border-sand-300 transition-colors"
+                className="rounded-2xl border border-carbon/10 bg-white p-6 sm:p-8 hover:-translate-y-0.5 hover:border-cobalt-500 transition-all duration-300"
               >
-                <MessageCircle size={24} strokeWidth={1.5} className="text-turmeric-600 mb-3" />
-                <h3 className="text-base font-semibold text-charcoal mb-1">WhatsApp — fastest</h3>
-                <p className="text-sm text-sand-500 leading-relaxed">Best for quick questions, screenshots of your shop, getting set up. We reply in business hours.</p>
+                <MessageCircle size={24} strokeWidth={1.5} className="text-cobalt-600 mb-3" />
+                <h3 className="font-display text-base font-semibold text-carbon mb-1">WhatsApp — fastest</h3>
+                <p className="text-sm text-carbon/60 leading-relaxed">Best for quick questions, screenshots of your shop, getting set up. We reply in business hours.</p>
               </a>
             )}
-            <a href="mailto:support@kanchuki.app" className="rounded-xl border border-sand-200 bg-white p-6 sm:p-8 hover:border-sand-300 transition-colors">
-              <Mail size={24} strokeWidth={1.5} className="text-ink-600 mb-3" />
-              <h3 className="text-base font-semibold text-charcoal mb-1">Email</h3>
-              <p className="text-sm text-sand-500 leading-relaxed">support@kanchuki.app — best for longer questions, billing, partnership ideas.</p>
+            <a href="mailto:support@kanchuki.app" className="rounded-2xl border border-carbon/10 bg-white p-6 sm:p-8 hover:-translate-y-0.5 hover:border-cobalt-500 transition-all duration-300">
+              <Mail size={24} strokeWidth={1.5} className="text-cobalt-600 mb-3" />
+              <h3 className="font-display text-base font-semibold text-carbon mb-1">Email</h3>
+              <p className="text-sm text-carbon/60 leading-relaxed">support@kanchuki.app — best for longer questions, billing, partnership ideas.</p>
             </a>
           </div>
 
@@ -53,17 +53,17 @@ export default function ContactPage() {
         </div>
       </Section>
 
-      <Section className="bg-sand-50">
+      <Section className="bg-white">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <AnimatedSection>
             <SectionHeader tag="After you write" title="What happens next" align="left" />
           </AnimatedSection>
-          <ol className="space-y-3 list-decimal list-inside text-sm sm:text-base text-sand-600 leading-relaxed">
+          <ol className="space-y-3 list-decimal list-inside text-sm sm:text-base text-carbon/70 leading-relaxed">
             <li>We read it the same day (business hours).</li>
             <li>If it&apos;s about your shop, we&apos;ll ask for your store link or phone number to look at your account.</li>
             <li>We reply on the channel you used — WhatsApp or email.</li>
           </ol>
-          <p className="mt-8 text-sm text-sand-500">Prefer to just try it? <a href="/pricing" className="text-rust-600 font-semibold hover:underline">Start your 14-day free trial</a> — no card, cancel anytime.</p>
+          <p className="mt-8 text-sm text-carbon/60">Prefer to just try it? <a href="/pricing" className="text-cobalt-600 font-semibold hover:underline">Start your 14-day free trial</a> — no card, cancel anytime.</p>
         </div>
       </Section>
       <Footer />

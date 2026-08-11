@@ -8,16 +8,16 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-cotton text-ink-900">
+    <div className="min-h-screen bg-cream text-carbon">
       <div className="mx-auto max-w-2xl px-6 py-16">
-        <Link href="/" className="text-sm text-rust-600 hover:underline">
+        <Link href="/" className="text-sm text-cobalt-600 hover:underline">
           &larr; Back to Kanchuki
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-ink-500">Last updated: August 10, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: August 10, 2026</p>
 
-        <div className="mt-8 space-y-6 text-ink-700">
+        <div className="mt-8 space-y-6 text-carbon/70">
           <p>
             Kanchuki (&quot;we&quot;, &quot;us&quot;) provides an AI-powered catalog and commerce
             platform for clothing retailers in India. This policy explains what we collect from
@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">What we collect</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">What we collect</h2>
             <ul className="list-disc space-y-1 pl-5">
               <li>
                 <strong>Retailer account data:</strong> phone number (for OTP login), business name,
@@ -53,7 +53,7 @@ export default function PrivacyPolicyPage() {
               <li>
                 <strong>Try-on photos:</strong> only collected with your explicit consent, used to
                 generate virtual try-on previews. You can revoke this consent at any time from{' '}
-                <Link href="/consent/revoke" className="text-rust-600 hover:underline">
+                <Link href="/consent/revoke" className="text-cobalt-600 hover:underline">
                   the consent management page
                 </Link>
                 .
@@ -66,7 +66,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">How we use it</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">How we use it</h2>
             <p>
               To operate the catalog, customer CRM, WhatsApp collection links, checkout, and virtual
               try-on features a retailer has enabled — and nothing beyond that. We do not sell
@@ -75,7 +75,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">
+            <h2 className="font-display text-xl font-semibold text-carbon">
               Third parties we share data with
             </h2>
             <ul className="list-disc space-y-1 pl-5">
@@ -87,7 +87,7 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">
+            <h2 className="font-display text-xl font-semibold text-carbon">
               Deletion &amp; retention
             </h2>
             <p>
@@ -99,7 +99,7 @@ export default function PrivacyPolicyPage() {
               GST numbers, KYC documents, and invoicing records are retained as required by Indian
               tax law and our record-keeping obligations — including after account deletion — as
               described on our{' '}
-              <Link href="/account-deletion" className="text-rust-600 hover:underline">
+              <Link href="/account-deletion" className="text-cobalt-600 hover:underline">
                 account deletion page
               </Link>
               .
@@ -107,10 +107,10 @@ export default function PrivacyPolicyPage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-ink-900">Contact</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">Contact</h2>
             <p>
               Questions about this policy or your data:{' '}
-              <a href="mailto:privacy@kanchuki.app" className="text-rust-600 hover:underline">
+              <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
                 privacy@kanchuki.app
               </a>
               .

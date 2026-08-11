@@ -19,6 +19,13 @@
   --color-cotton: #FFFFFF;
   --color-charcoal: #000000;
   --color-sand: #737373;
+
+  /* "CoLab" marketing palette (2026-08-11, colabs.com.au) — same raw-CSS
+     mirror for the handful of spots that need a value instead of a class
+     (Lenis/scroll chrome, marquee fades). */
+  --color-cream: #F9F8F6;
+  --color-carbon: #060606;
+  --color-volt: #D9DB4D;
 }
 
 * {
@@ -33,6 +40,27 @@ body {
   background-color: var(--color-cotton);
   color: var(--color-charcoal);
   -webkit-font-smoothing: antialiased;
+}
+
+/* Lenis smooth scroll (colabs.com.au-style inertial scrolling) — only
+   instantiated on the marketing pages (see components/site/Chrome.tsx
+   Navbar). These rules keep native anchors/scroll-chaining working while
+   Lenis owns the wheel. */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
 }
 
 /* Custom scrollbar */
