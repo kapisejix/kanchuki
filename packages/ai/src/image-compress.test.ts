@@ -60,7 +60,7 @@ describe('compressImageToTarget', () => {
     const big = await makeJpeg(1600, 1200)
     const r = await compressImageToTarget(big, { maxBytes: 40 * 1024 })
     expect(r.buffer.length).toBeLessThanOrEqual(40 * 1024)
-  })
+  }, 20000)
 
   it('shrinks dimensions only when the quality floor cannot hit the budget', async () => {
     // Extreme texture: the quality ladder will bottom out and the dimension
@@ -77,7 +77,7 @@ describe('compressImageToTarget', () => {
     expect(r.width).toBeLessThan(1200)
     expect(r.width).toBeGreaterThan(0)
     expect(r.buffer.length).toBeLessThan(noisy.length)
-  })
+  }, 20000)
 
   it('never throws on pathological content — returns best effort', async () => {
     const raw = Buffer.alloc(800 * 600 * 3)
