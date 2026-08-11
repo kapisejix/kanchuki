@@ -233,7 +233,7 @@ export default function StoreProfileScreen() {
           <View className="w-full bg-white rounded-2xl border border-rust-300 p-4 mt-4">
             <Text className="text-sm font-bold text-sand-900 mb-1">Delete QR code?</Text>
             <Text className="text-xs text-sand-500 mb-3 leading-4">
-              Your store link and any printed QR will stop working. This can't be undone — type{' '}
+              Your store link and any printed QR will stop working. This can&apos;t be undone — type{' '}
               <Text className="font-semibold text-sand-900">{me?.shop_name}</Text> to confirm.
             </Text>
             <TextInput

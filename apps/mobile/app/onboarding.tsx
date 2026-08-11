@@ -835,7 +835,7 @@ export default function OnboardingScreen() {
             className="items-center justify-center py-2.5 mt-1"
           >
             <Text className="text-sm font-semibold text-rust-400">
-              Skip — I don't have a GST number
+              Skip — I don&apos;t have a GST number
             </Text>
           </AnimatedPressable>
         )}

@@ -460,7 +460,7 @@ export function CheckoutForm({
             </div>
             <h2 className="text-sm font-semibold text-gray-900">Online checkout is unavailable</h2>
             <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">
-              {shopName} isn't taking online payments right now. You can still enquire about the
+              {shopName} isn&apos;t taking online payments right now. You can still enquire about the
               items in your cart on WhatsApp.
             </p>
             <a

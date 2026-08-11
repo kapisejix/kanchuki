@@ -57,7 +57,7 @@ export default function BillingScreen() {
             </Text>
           </View>
           <Text className="text-xs text-sand-500 leading-relaxed">
-            You're on the {me?.plan_status === 'ACTIVE' ? 'active' : 'free trial'}{' '}
+            You&apos;re on the {me?.plan_status === 'ACTIVE' ? 'active' : 'free trial'}{' '}
             {me?.plan ?? 'Starter'} plan — keep using all your features.
           </Text>
         </View>
