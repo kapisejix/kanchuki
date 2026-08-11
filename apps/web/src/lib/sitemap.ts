@@ -70,6 +70,7 @@ export function staticEntries(): SitemapEntry[] {
     ['/testimonials', 0.5],
     ['/contact', 0.4],
     ['/download', 0.5],
+    ['/stores', 0.7],
   ] as const;
 
   return [

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Grid3x3, Eye, Heart, MessageCircle, ShoppingCart, ShieldCheck, MapPin } from 'lucide-react'
 import { Navbar, Footer, Section, SectionHeader, SelvedgeCard, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
 
@@ -89,7 +90,7 @@ export default function ForCustomersPage() {
           <div>
             <MapPin size={24} strokeWidth={1.5} className="text-rust-600 mb-3" />
             <h3 className="text-lg font-semibold text-charcoal mb-2">Looking for a particular store?</h3>
-            <p className="text-sm text-sand-500 leading-relaxed">Ask your favourite shop to join Kanchuki — it&apos;s free for 14 days. New stores join every week.</p>
+            <p className="text-sm text-sand-500 leading-relaxed">Browse the <Link href="/stores" className="font-semibold text-ink-600 hover:text-ink-700 underline decoration-ink-200 underline-offset-2 transition-colors">store directory</Link> to find shops by city — or ask your favourite shop to join Kanchuki. It&apos;s free for 14 days, and new stores join every week.</p>
           </div>
         </div>
       </Section>

@@ -7,6 +7,7 @@ import {
   publicMiscRoutes,
   publicProductsRoutes,
   publicRetailersRoutes,
+  publicStoresRoutes,
 } from './public/index.js';
 
 export const publicRoutes: FastifyPluginAsync = async (server) => {
@@ -20,4 +21,6 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicRetailersRoutes);
   // public-catalog-payment — auto-split module
   await server.register(publicCatalogPaymentRoutes);
+  // public-stores — store directory
+  await server.register(publicStoresRoutes);
 };

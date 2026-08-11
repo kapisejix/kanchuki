@@ -44,6 +44,7 @@ export const SITE_NAV_ITEMS = [
   { label: 'For Customers', href: '/for-customers' },
   { label: 'How It Works', href: '/how-it-works' },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Stores', href: '/stores' },
   { label: 'FAQ', href: '/faq' },
 ]
 
@@ -116,6 +117,7 @@ const FOOTER_PRODUCT_LINKS = [
   { label: 'For Customers', href: '/for-customers' },
   { label: 'How It Works', href: '/how-it-works' },
   { label: 'Pricing', href: '/pricing' },
+  { label: 'Stores', href: '/stores' },
 ]
 
 const FOOTER_COMPANY_LINKS = [

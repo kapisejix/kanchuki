@@ -110,8 +110,8 @@ describe('sitemap route handlers', () => {
     const urlsFirst = (first.match(/<loc>/g) ?? []).length;
     const urlsSecond = (second.match(/<loc>/g) ?? []).length;
     expect(urlsFirst).toBe(10_000);
-    // 12 static entries (home + 9 marketing pages + terms + privacy) + 18,000 store URLs from this test's fixture.
-    expect(urlsFirst + urlsSecond).toBe(18_012);
+    // 13 static entries (home + 10 marketing pages + terms + privacy) + 18,000 store URLs from this test's fixture.
+    expect(urlsFirst + urlsSecond).toBe(18_013);
   });
 
   it('attaches Google image extensions to category, All Products, and product entries', async () => {

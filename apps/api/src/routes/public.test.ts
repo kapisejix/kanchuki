@@ -6,12 +6,16 @@ import { publicRoutes } from './public.js';
 const {
   mockRetailerFindFirst,
   mockRetailerFindMany,
+  mockRetailerCount,
+  mockRetailerGroupBy,
   mockCustomerUpsert,
   mockCollectionFindFirst,
   mockAuditLogCreate,
 } = vi.hoisted(() => ({
   mockRetailerFindFirst: vi.fn(),
   mockRetailerFindMany: vi.fn(),
+  mockRetailerCount: vi.fn(),
+  mockRetailerGroupBy: vi.fn(),
   mockCustomerUpsert: vi.fn(),
   mockCollectionFindFirst: vi.fn(),
   mockAuditLogCreate: vi.fn(),
@@ -19,7 +23,12 @@ const {
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
-    retailer: { findFirst: mockRetailerFindFirst, findMany: mockRetailerFindMany },
+    retailer: {
+      findFirst: mockRetailerFindFirst,
+      findMany: mockRetailerFindMany,
+      count: mockRetailerCount,
+      groupBy: mockRetailerGroupBy,
+    },
     customer: { upsert: mockCustomerUpsert },
     collection: { findFirst: mockCollectionFindFirst, count: vi.fn(), update: vi.fn() },
     product: { count: vi.fn() },
@@ -308,6 +317,109 @@ describe('POST /public/contact', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().error.status).toBe(400);
+    await app.close();
+  });
+});
+
+describe('GET /public/stores (store directory)', () => {
+  const liveStore = {
+    public_slug: 'test-shop-ab12',
+    shop_name: 'Test Shop',
+    city: 'Jaipur',
+    logo_url: null,
+    _count: { products: 134 },
+  };
+
+  it('returns paginated stores with the city list for filter chips', async () => {
+    mockRetailerFindMany.mockResolvedValue([liveStore]);
+    mockRetailerCount.mockResolvedValue(1);
+    mockRetailerGroupBy.mockResolvedValue([
+      { city: 'Jaipur', _count: { _all: 1 } },
+      { city: null, _count: { _all: 2 } }, // null city must be filtered out
+    ]);
+
+    const app = await buildApp();
+    // Unique query param so the Redis response cache (public-cache.ts) can't
+    // serve one test's payload to another — cache keys are full URLs.
+    const res = await app.inject({ method: 'GET', url: '/v1/public/stores?test=1' });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data.stores).toEqual([
+      {
+        public_slug: 'test-shop-ab12',
+        shop_name: 'Test Shop',
+        city: 'Jaipur',
+        logo_url: null,
+        product_count: 134,
+      },
+    ]);
+    expect(body.data.total).toBe(1);
+    expect(body.data.page).toBe(1);
+    expect(body.data.total_pages).toBe(1);
+    expect(body.data.cities).toEqual([{ city: 'Jaipur', count: 1 }]);
+    await app.close();
+  });
+
+  it('filters live stores only (slug, not suspended, not deleted, ≥1 live product)', async () => {
+    mockRetailerFindMany.mockResolvedValue([]);
+    mockRetailerCount.mockResolvedValue(0);
+    mockRetailerGroupBy.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/v1/public/stores?test=2' });
+
+    const where = mockRetailerFindMany.mock.calls[0]?.[0]?.where;
+    expect(where.public_slug).toEqual({ not: null });
+    expect(where.is_suspended).toBe(false);
+    expect(where.deleted_at).toBeNull();
+    expect(where.products).toEqual({ some: { deleted_at: null } });
+    await app.close();
+  });
+
+  it('passes the city filter through to the query', async () => {
+    mockRetailerFindMany.mockResolvedValue([]);
+    mockRetailerCount.mockResolvedValue(0);
+    mockRetailerGroupBy.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/v1/public/stores?city=Jaipur&test=3' });
+
+    const where = mockRetailerFindMany.mock.calls[0]?.[0]?.where;
+    expect(where.city).toBe('Jaipur');
+    await app.close();
+  });
+
+  it('builds a case-insensitive OR search for the q param', async () => {
+    mockRetailerFindMany.mockResolvedValue([]);
+    mockRetailerCount.mockResolvedValue(0);
+    mockRetailerGroupBy.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/v1/public/stores?q=kurtis&test=4' });
+
+    const where = mockRetailerFindMany.mock.calls[0]?.[0]?.where;
+    expect(where.OR).toEqual([
+      { shop_name: { contains: 'kurtis', mode: 'insensitive' } },
+      { city: { contains: 'kurtis', mode: 'insensitive' } },
+    ]);
+    await app.close();
+  });
+
+  it('applies pagination (skip/take) and rejects invalid params with 422', async () => {
+    mockRetailerFindMany.mockResolvedValue([]);
+    mockRetailerCount.mockResolvedValue(0);
+    mockRetailerGroupBy.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/v1/public/stores?page=3&pageSize=12&test=5' });
+
+    const args = mockRetailerFindMany.mock.calls[0]?.[0];
+    expect(args.skip).toBe(24);
+    expect(args.take).toBe(12);
+
+    const bad = await app.inject({ method: 'GET', url: '/v1/public/stores?pageSize=999' });
+    expect(bad.statusCode).toBe(422);
     await app.close();
   });
 });
