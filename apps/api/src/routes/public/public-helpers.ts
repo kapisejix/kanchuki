@@ -97,9 +97,7 @@ function countBy<T>(values: T[]): { value: T; count: number }[] {
   );
 }
 
-export function buildFacets(
-  products: { category: string | null; primary_color: string | null }[],
-) {
+export function buildFacets(products: { category: string | null; primary_color: string | null }[]) {
   return {
     categories: countBy(products.map((p) => p.category).filter((c): c is string => c !== null)),
     colors: countBy(products.map((p) => p.primary_color).filter((c): c is string => c !== null)),

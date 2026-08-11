@@ -1,4 +1,4 @@
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -190,7 +190,10 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       // by phone so the upsert below matches instead of colliding on the
       // unique phone constraint.
       if (pending.auth_user_id !== user.id) {
-        await prisma.retailer.update({ where: { id: pending.id }, data: { auth_user_id: user.id } });
+        await prisma.retailer.update({
+          where: { id: pending.id },
+          data: { auth_user_id: user.id },
+        });
       }
     }
 
@@ -207,7 +210,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     } as const;
 
     // Upsert retailer (first login = registration, subsequent = login)
-    let retailer;
+    let retailer: Prisma.RetailerGetPayload<{ select: typeof retailerSelect }>;
     try {
       retailer = await prisma.retailer.upsert({
         where: { auth_user_id: user.id },

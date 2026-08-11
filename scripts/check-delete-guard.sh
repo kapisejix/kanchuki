@@ -139,10 +139,13 @@ echo ""
 echo -e "${YELLOW}🔍 F-017 Guardrail check: scanning for raw destructive SQL outside migrations...${NC}"
 
 # Allowlisted .sql files that intentionally reference destructive operations
-# (e.g., setup scripts that GRANT/REVOKE DELETE permissions)
+# (e.g., setup scripts that GRANT/REVOKE DELETE permissions, or admin/dev
+# tools that are already guardrail-aware via SET app.allow_hard_delete)
 SQL_ALLOWLIST=(
   "scripts/setup-role-separation.sql"
   "scripts/setup-vault-db.sql"
+  "scripts/reset-demo-data.sql"
+  "scripts/delete-test-retailers.generated.sql"
 )
 
 while IFS= read -r line; do

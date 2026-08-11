@@ -70,7 +70,10 @@ export async function resolveCategoryId(
     });
     if (rows.length === 0) return null;
     for (const needle of needles) {
-      const match = findBestMatch(needle, rows.map((r) => r.name));
+      const match = findBestMatch(
+        needle,
+        rows.map((r) => r.name),
+      );
       if (match) return rows.find((r) => r.name === match)?.id ?? null;
     }
     return null;

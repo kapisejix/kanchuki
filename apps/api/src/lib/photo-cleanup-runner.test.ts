@@ -37,7 +37,8 @@ beforeEach(() => {
   // The runner reads BOTH via getSecret (F-012 pattern) — mirror the real
   // env-fallback semantics per key.
   mockGetSecret.mockImplementation(async (key: string) => {
-    if (key === 'PHOTO_CLEANUP_SERVICE_URL') return process.env.PHOTO_CLEANUP_SERVICE_URL?.trim() || undefined;
+    if (key === 'PHOTO_CLEANUP_SERVICE_URL')
+      return process.env.PHOTO_CLEANUP_SERVICE_URL?.trim() || undefined;
     if (key === 'CLEANUP_SHARED_SECRET') return process.env.CLEANUP_SHARED_SECRET || undefined;
     return undefined;
   });

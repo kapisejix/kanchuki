@@ -353,7 +353,11 @@ describe('POST /products/:id/photos/:photoId/rotate', () => {
     // pre-rotate bytes at the unchanged URL forever.
     expect(body.data.url).toMatch(/^https:\/\/cdn\.example\.com\/p\.jpg\?v=\d+$/);
     expect(mockRotateImage).toHaveBeenCalledWith(Buffer.from('raw'), 90);
-    expect(mockUploadBuffer).toHaveBeenCalledWith('products/prod_1/p.jpg', Buffer.from('rotated'), 'image/jpeg');
+    expect(mockUploadBuffer).toHaveBeenCalledWith(
+      'products/prod_1/p.jpg',
+      Buffer.from('rotated'),
+      'image/jpeg',
+    );
     expect(mockPhotoUpdate).toHaveBeenCalledWith({
       where: { id: 'photo_1' },
       data: { url: body.data.url, width: 600, height: 800 },
@@ -373,7 +377,11 @@ describe('POST /products/:id/photos/:photoId/rotate', () => {
     });
     mockGetDownloadPresignedUrl.mockResolvedValue('https://signed.example.com/original.jpg');
     mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw-original'));
-    mockRotateImage.mockResolvedValue({ buffer: Buffer.from('rotated-original'), width: 600, height: 800 });
+    mockRotateImage.mockResolvedValue({
+      buffer: Buffer.from('rotated-original'),
+      width: 600,
+      height: 800,
+    });
     mockUploadBuffer.mockResolvedValue(undefined);
 
     const app = await buildApp(null);
@@ -385,7 +393,11 @@ describe('POST /products/:id/photos/:photoId/rotate', () => {
 
     expect(res.statusCode).toBe(200);
     const body = res.json();
-    expect(body.data).toMatchObject({ id: 'photo_1', target: 'original', url: 'https://signed.example.com/original.jpg' });
+    expect(body.data).toMatchObject({
+      id: 'photo_1',
+      target: 'original',
+      url: 'https://signed.example.com/original.jpg',
+    });
     expect(mockUploadBuffer).toHaveBeenCalledWith(
       'products/prod_1/p-original.jpg',
       Buffer.from('rotated-original'),
@@ -471,10 +483,7 @@ describe('PATCH /products/:id/photos/:photoId — is_primary promotion (F-029)',
     expect(mockPhotoFindUnique).toHaveBeenCalledWith({ where: { id: 'photo_1' } });
     // Both ops must run inside one $transaction — a partial failure would
     // otherwise leave zero or two primaries.
-    expect(mockTransaction).toHaveBeenCalledWith([
-      expect.anything(),
-      expect.anything(),
-    ]);
+    expect(mockTransaction).toHaveBeenCalledWith([expect.anything(), expect.anything()]);
   });
 
   it('still allows piece_type-only PATCH (no promotion, no demotion)', async () => {
