@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, MapPin, Search, Store, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Search, Star, Store, X } from 'lucide-react'
 import Link from 'next/link'
 import StoreLogo from '@/components/site/StoreLogo'
 import { SelvedgeCard } from '@/components/site/Chrome'
@@ -179,8 +179,16 @@ export default function StoresDirectory({ initial }: { initial: StoresDirectoryD
             {stores.map((s) => (
               <SelvedgeCard key={s.public_slug} accent="ink" className="group">
                 <Link href={`/${s.public_slug}`} className="block p-5 sm:p-6">
-                  <div className="w-16 h-16 rounded-xl overflow-hidden border border-sand-100 mb-4">
-                    <StoreLogo shopName={s.shop_name} logoUrl={s.logo_url} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-sand-100 mb-4">
+                      <StoreLogo shopName={s.shop_name} logoUrl={s.logo_url} />
+                    </div>
+                    {s.is_featured && (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-turmeric-700 bg-turmeric-50 border border-turmeric-200 px-2 py-1 rounded-full">
+                        <Star size={11} strokeWidth={1.5} className="fill-turmeric-400 text-turmeric-500" />
+                        Featured
+                      </span>
+                    )}
                   </div>
                   <h3 className="font-semibold text-charcoal mb-1 group-hover:text-ink-600 transition-colors">
                     {s.shop_name}

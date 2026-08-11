@@ -741,6 +741,21 @@ User ask: every stored image under 80KB with the highest possible quality, to cu
 
 ---
 
+## ✅ BUILT 2026-08-11: Featured Stores — admin-curated pins float to the top of /stores + homepage teaser
+
+**User ask:** "add featured stores: an admin-curated flag so the team can pin specific stores to the top of the directory."
+
+| Layer | Files | Summary |
+|---|---|---|
+| **DB** | `packages/db/prisma/schema.prisma`, `migrations/049_featured_stores/`, `docs/DATABASE.md` | `Retailer.is_featured Boolean @default(false)` + `featured_at DateTime?` + `@@index([is_featured])` |
+| **Admin API** | `apps/api/src/routes/admin/admin-retailers/admin-retailers-management.ts` | `POST /admin/retailers/:id/feature` / `unfeature` — mirrors suspend/unsuspend (404/422 guards, `FEATURE_STORE`/`UNFEATURE_STORE` audit logs). List/detail selects expose `is_featured`; list gains a `featured` boolean filter |
+| **Public API** | `apps/api/src/routes/public/public-stores.ts` | orderBy `[{is_featured:'desc'},{featured_at:'desc'},{updated_at:'desc'}]` — pinned stores first, most-recently-pinned first within the block; `is_featured` in the payload |
+| **Web badges** | `apps/web/src/app/stores/StoresDirectory.tsx`, `sections/MarketingSections.tsx` | Star "Featured" pill on pinned store cards (turmeric palette) |
+| **Admin UI** | `apps/web/src/app/admin/retailers/page.tsx`, `admin/retailers/[id]/page.tsx` | Featured filter dropdown + row badge on the list; Pin/Unpin toggle + header badge + ineligibility hint (no public_slug/zero products → pin would be invisible) on the detail page |
+| **Tests** | `apps/api/src/routes/public.test.ts`, `admin.test.ts` | 1 public orderBy test + 6 admin feature/unfeature tests (200/422/404). **Also fixed the `withPublicCache` test bypass:** vitest doesn't override an inherited `NODE_ENV=development` (repo `.env`), so route tests hit real Redis and served stale cached payloads across runs within the 60–90s TTL — now `process.env.VITEST === 'true'` bypasses (the canonical flag; the `NODE_ENV==='test'` check never fired) |
+
+**Verified:** db/api/web tsc clean; API **389/389** (was 382), web 93/93, lint clean, delete/secrets guards pass. **Deploy note:** migration 049 must be applied to prod (Supabase SQL Editor) before the pin endpoints are used; the endpoint 404s naturally (column missing → Prisma error) until then — apply DB first, then API/web deploy (Railway auto-deploys on push).
+
 ## ✅ MIGRATED 2026-08-06: Fashion V-Tone moved off Railway → self-hosted on Hetzner CX43
 
 **Why:** Railway Hobby's throttled/shared CPU gave ~26min/try-on (see live-test finding above). Deep-research pass (CX43: 8 shared AMD EPYC vCPU @2GHz, 16GB RAM, 160GB NVMe, **no GPU**) confirmed RAM/disk were never the bottleneck — only CPU speed matters, and CX43's dedicated-ish cores beat Railway's throttled hobby container for €12/mo vs a GPU box (Hetzner GEX44, €184/mo) that would've blown the pricing-tier AI-cost budget. Commit `dd0972d`.

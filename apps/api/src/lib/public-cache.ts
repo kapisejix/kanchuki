@@ -154,6 +154,11 @@ export async function publicCacheGetOrCompute<T>(
  * production any Redis failure fails open to a direct compute.
  */
 export function withPublicCache<T>(requestUrl: string, compute: () => Promise<T>): Promise<T> {
-  if (process.env.NODE_ENV === 'test') return compute();
+  // Vitest does NOT override an already-set NODE_ENV (this repo's .env files
+  // set NODE_ENV=development, which leaks into test runs), so the canonical
+  // `process.env.VITEST === 'true'` flag is the reliable bypass — without it,
+  // route tests hit real Redis and serve each other's cached payloads across
+  // runs within the 60–90s TTL window (seen on the public/stores suite).
+  if (process.env.NODE_ENV === 'test' || process.env.VITEST === 'true') return compute();
   return publicCacheGetOrCompute(getCacheRedis(), normalizedPublicCacheKey(requestUrl), compute);
 }

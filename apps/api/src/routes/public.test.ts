@@ -327,6 +327,7 @@ describe('GET /public/stores (store directory)', () => {
     shop_name: 'Test Shop',
     city: 'Jaipur',
     logo_url: null,
+    is_featured: false,
     _count: { products: 134 },
   };
 
@@ -352,6 +353,7 @@ describe('GET /public/stores (store directory)', () => {
         city: 'Jaipur',
         logo_url: null,
         product_count: 134,
+        is_featured: false,
       },
     ]);
     expect(body.data.total).toBe(1);
@@ -420,6 +422,23 @@ describe('GET /public/stores (store directory)', () => {
 
     const bad = await app.inject({ method: 'GET', url: '/v1/public/stores?pageSize=999' });
     expect(bad.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('sorts admin-pinned stores first, then pin order, then recency', async () => {
+    mockRetailerFindMany.mockResolvedValue([]);
+    mockRetailerCount.mockResolvedValue(0);
+    mockRetailerGroupBy.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({ method: 'GET', url: '/v1/public/stores?test=6' });
+
+    const args = mockRetailerFindMany.mock.calls[0]?.[0];
+    expect(args.orderBy).toEqual([
+      { is_featured: 'desc' },
+      { featured_at: 'desc' },
+      { updated_at: 'desc' },
+    ]);
     await app.close();
   });
 });

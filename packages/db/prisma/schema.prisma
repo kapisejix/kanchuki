@@ -257,6 +257,13 @@ model Retailer {
   suspended_reason String?
   suspended_by_id  String?  // TeamMember.id
 
+  // Store-directory curation — admin pins stores so they sort to the top of
+  // the public directory (/stores) and the homepage teaser. Admin-only flag,
+  // no retailer-facing surface. featured_at records when it was pinned (used
+  // as a secondary sort key among pinned stores).
+  is_featured Boolean   @default(false)
+  featured_at DateTime?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -288,6 +295,7 @@ model Retailer {
   @@index([city])
   @@index([territory_id])
   @@index([is_suspended])
+  @@index([is_featured])
   @@map("retailers")
 }
 

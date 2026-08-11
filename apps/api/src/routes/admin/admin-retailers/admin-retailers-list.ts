@@ -54,20 +54,23 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
         status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'CANCELLED']).optional(),
         suspended: z.coerce.boolean().optional(),
+        featured: z.coerce.boolean().optional(),
       })
       .safeParse(request.query);
-    const { cursor, limit, search, city, state, plan, status, suspended } = query.success
-      ? query.data
-      : {
-          cursor: undefined,
-          limit: 50,
-          search: undefined,
-          city: undefined,
-          state: undefined,
-          plan: undefined,
-          status: undefined,
-          suspended: undefined,
-        };
+    const { cursor, limit, search, city, state, plan, status, suspended, featured } =
+      query.success
+        ? query.data
+        : {
+            cursor: undefined,
+            limit: 50,
+            search: undefined,
+            city: undefined,
+            state: undefined,
+            plan: undefined,
+            status: undefined,
+            suspended: undefined,
+            featured: undefined,
+          };
 
     const retailers = await prisma.retailer.findMany({
       where: {
@@ -78,6 +81,7 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         ...(plan ? { plan } : {}),
         ...(status ? { plan_status: status } : {}),
         ...(suspended !== undefined ? { is_suspended: suspended } : {}),
+        ...(featured !== undefined ? { is_featured: featured } : {}),
         ...(search
           ? {
               OR: [
@@ -100,6 +104,7 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         created_at: true,
         onboarding_completed: true,
         is_suspended: true,
+        is_featured: true,
         _count: {
           select: {
             products: { where: { deleted_at: null } },

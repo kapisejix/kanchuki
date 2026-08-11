@@ -63,11 +63,16 @@ export const publicStoresRoutes: FastifyPluginAsync = async (server) => {
             shop_name: true,
             city: true,
             logo_url: true,
+            is_featured: true,
             _count: {
               select: { products: { where: { deleted_at: null } } },
             },
           },
-          orderBy: { updated_at: 'desc' },
+          // Admin-pinned stores first (is_featured desc), then most recently
+          // pinned first (featured_at desc — a fresh pin jumps to the top of
+          // the featured block), then recency. See POST
+          // /admin/retailers/:id/feature in admin-retailers-management.ts.
+          orderBy: [{ is_featured: 'desc' }, { featured_at: 'desc' }, { updated_at: 'desc' }],
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),
@@ -93,6 +98,7 @@ export const publicStoresRoutes: FastifyPluginAsync = async (server) => {
             city: r.city,
             logo_url: r.logo_url,
             product_count: r._count.products,
+            is_featured: r.is_featured,
           })),
           total,
           page,

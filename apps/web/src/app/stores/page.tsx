@@ -18,6 +18,7 @@ export interface StoreCardData {
   city: string | null
   logo_url: string | null
   product_count: number
+  is_featured: boolean
 }
 
 export interface StoresDirectoryData {

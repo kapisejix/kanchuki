@@ -39,6 +39,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
         plan_expires_at: true,
         onboarding_completed: true,
         onboarding_step: true,
+        public_slug: true,
         created_at: true,
         updated_at: true,
         max_products: true,
@@ -48,6 +49,8 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
         is_suspended: true,
         suspended_at: true,
         suspended_reason: true,
+        is_featured: true,
+        featured_at: true,
         _count: {
           select: {
             products: { where: { deleted_at: null } },

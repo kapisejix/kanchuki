@@ -679,6 +679,144 @@ describe('POST /admin/retailers/:id/extend-trial', () => {
   });
 });
 
+// ─── POST /admin/retailers/:id/feature ───────────────────────────
+// Store-directory pin: featured stores sort to the top of /stores and the
+// homepage teaser (public-stores.ts orderBy). Mirrors suspend/unsuspend.
+
+describe('POST /admin/retailers/:id/feature', () => {
+  it('pins a retailer to the store directory with an audit log', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_1',
+      shop_name: 'Test Shop',
+      is_featured: false,
+    });
+    mockRetailerUpdate.mockResolvedValue({ is_featured: true, featured_at: new Date() });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/retailer_1/feature',
+      headers: csrfHeaders(),
+      body: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.is_featured).toBe(true);
+    expect(mockRetailerUpdate).toHaveBeenCalledWith({
+      where: { id: 'retailer_1' },
+      data: { is_featured: true, featured_at: expect.any(Date) },
+    });
+    const audit = mockAuditLogCreate.mock.calls[0]?.[0];
+    expect(audit.data.action).toBe('FEATURE_STORE');
+    expect(audit.data.resource_type).toBe('Retailer');
+    expect(audit.data.metadata).toEqual({ shop_name: 'Test Shop' });
+    await app.close();
+  });
+
+  it('returns 422 when the retailer is already featured', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_1',
+      shop_name: 'Test Shop',
+      is_featured: true,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/retailer_1/feature',
+      headers: csrfHeaders(),
+      body: {},
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('returns 404 when retailer does not exist', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/nonexistent/feature',
+      headers: csrfHeaders(),
+      body: {},
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('NOT_FOUND');
+    await app.close();
+  });
+});
+
+// ─── POST /admin/retailers/:id/unfeature ─────────────────────────
+
+describe('POST /admin/retailers/:id/unfeature', () => {
+  it('unpins a featured retailer with an audit log', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_1',
+      shop_name: 'Test Shop',
+      is_featured: true,
+    });
+    mockRetailerUpdate.mockResolvedValue({ is_featured: false, featured_at: null });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/retailer_1/unfeature',
+      headers: csrfHeaders(),
+      body: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.is_featured).toBe(false);
+    expect(mockRetailerUpdate).toHaveBeenCalledWith({
+      where: { id: 'retailer_1' },
+      data: { is_featured: false, featured_at: null },
+    });
+    const audit = mockAuditLogCreate.mock.calls[0]?.[0];
+    expect(audit.data.action).toBe('UNFEATURE_STORE');
+    expect(audit.data.metadata).toEqual({ shop_name: 'Test Shop' });
+    await app.close();
+  });
+
+  it('returns 422 when the retailer is not featured', async () => {
+    mockRetailerFindUnique.mockResolvedValue({
+      id: 'retailer_1',
+      shop_name: 'Test Shop',
+      is_featured: false,
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/retailer_1/unfeature',
+      headers: csrfHeaders(),
+      body: {},
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('returns 404 when retailer does not exist', async () => {
+    mockRetailerFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/admin/retailers/nonexistent/unfeature',
+      headers: csrfHeaders(),
+      body: {},
+    });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
 // ─── POST /admin/retailers/:id/change-plan ────────────────────────
 
 describe('POST /admin/retailers/:id/change-plan', () => {

@@ -194,6 +194,12 @@ model Retailer {
   suspended_reason String?
   suspended_by_id  String?  // TeamMember.id
 
+  // Store-directory curation (built 2026-08-11) — admin pins stores so they
+  // sort to the top of /stores and the homepage teaser (see public-stores.ts
+  // orderBy). Admin-only flag, no retailer-facing surface.
+  is_featured     Boolean   @default(false)
+  featured_at     DateTime?
+
   // Timestamps
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt

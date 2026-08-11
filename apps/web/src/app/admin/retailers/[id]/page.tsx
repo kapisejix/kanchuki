@@ -22,6 +22,7 @@ import {
   UserCheck,
   IndianRupee,
   Sparkles,
+  Star,
   Sliders,
   Plus,
   X,
@@ -59,6 +60,7 @@ type RetailerDetail = {
   plan_expires_at: string | null
   onboarding_completed: boolean
   onboarding_step: number
+  public_slug: string | null
   created_at: string
   updated_at: string
   max_products: number
@@ -76,6 +78,8 @@ type RetailerDetail = {
   is_suspended: boolean
   suspended_at: string | null
   suspended_reason: string | null
+  is_featured: boolean
+  featured_at: string | null
   recent_products: Array<{
     id: string
     name: string | null
@@ -118,6 +122,8 @@ export default function RetailerDetailPage() {
   const [suspendedReason, setSuspendedReason] = useState('')
   const [showSuspendDialog, setShowSuspendDialog] = useState(false)
   const [suspendReasonInput, setSuspendReasonInput] = useState('')
+  // Store-directory pin: featured stores sort to the top of /stores
+  const [isFeatured, setIsFeatured] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -131,6 +137,7 @@ export default function RetailerDetailPage() {
         setRetailer(retailerJson.data)
         setIsSuspended(retailerJson.data.is_suspended ?? false)
         setSuspendedReason(retailerJson.data.suspended_reason ?? '')
+        setIsFeatured(retailerJson.data.is_featured ?? false)
         if (overridesRes.ok) {
           const overridesJson = await overridesRes.json()
           setOverrides(overridesJson.data ?? [])
@@ -298,6 +305,12 @@ export default function RetailerDetailPage() {
               </span>
               {isExpiring && (
                 <span className="text-xs text-red-600 bg-red-50 px-2 py-0.5 rounded-full">Expiring soon</span>
+              )}
+              {isFeatured && (
+                <span className="inline-flex items-center gap-1 text-xs text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                  <Star size={10} className="fill-amber-400 text-amber-500" />
+                  Featured
+                </span>
               )}
             </div>
             <p className="text-sm text-gray-500">{retailer.city}{retailer.state ? `, ${retailer.state}` : ''}</p>
@@ -509,6 +522,80 @@ export default function RetailerDetailPage() {
               {suspendedReason && (
                 <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
                   Reason: {suspendedReason}
+                </p>
+              )}
+            </div>
+
+            <hr className="my-4 border-gray-100" />
+
+            {/* Store-directory pin — featured stores sort to the top of
+                /stores and the homepage teaser (public-stores.ts orderBy). */}
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Store Directory</label>
+              {isFeatured ? (
+                <motion.button
+                  onClick={async () => {
+                    setActionMsg('')
+                    setActionLoading(true)
+                    try {
+                      const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/unfeature`, {
+                        ...(await adminMutateOptions()),
+                        method: 'POST',
+                      })
+                      if (!res.ok) throw new Error('Failed to unfeature')
+                      setIsFeatured(false)
+                      setActionMsg('Store removed from the featured directory — it returns to normal ordering')
+                    } catch (err) {
+                      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                    } finally {
+                      setActionLoading(false)
+                    }
+                  }}
+                  disabled={actionLoading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-amber-400 hover:bg-amber-300 text-amber-950 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  <Star size={14} className="fill-amber-900/20" />
+                  {actionLoading ? 'Unpinning...' : '★ Pinned — click to unpin'}
+                </motion.button>
+              ) : (
+                <motion.button
+                  onClick={async () => {
+                    setActionMsg('')
+                    setActionLoading(true)
+                    try {
+                      const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/feature`, {
+                        ...(await adminMutateOptions()),
+                        method: 'POST',
+                      })
+                      if (!res.ok) throw new Error('Failed to feature')
+                      setIsFeatured(true)
+                      setActionMsg('Store pinned to the top of the public directory and homepage teaser')
+                    } catch (err) {
+                      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                    } finally {
+                      setActionLoading(false)
+                    }
+                  }}
+                  disabled={actionLoading}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="w-full bg-gray-50 hover:bg-amber-50 text-gray-700 hover:text-amber-700 border border-gray-200 hover:border-amber-300 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  <Star size={14} strokeWidth={1.5} className="text-gray-400" />
+                  Pin to store directory
+                </motion.button>
+              )}
+              {!isFeatured && (retailer.public_slug === null || retailer.product_count === 0) ? (
+                <p className="text-[11px] text-amber-600 bg-amber-50 rounded-lg px-3 py-2 leading-relaxed">
+                  This store can&apos;t be listed in the directory yet — it needs a public store link
+                  (generate the store QR in the retailer app) and at least one product before a pin
+                  would be visible.
+                </p>
+              ) : (
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  Pinned stores appear first in the public store directory (/stores) and the homepage teaser.
                 </p>
               )}
             </div>

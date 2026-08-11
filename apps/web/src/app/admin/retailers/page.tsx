@@ -14,6 +14,7 @@ import {
   Share2,
   Clock,
   Sparkles,
+  Star,
   Trash2,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
@@ -41,6 +42,7 @@ type Retailer = {
   created_at: string
   onboarding_completed: boolean
   is_suspended: boolean
+  is_featured: boolean
   product_count: number
   customer_count: number
   collection_count: number
@@ -63,12 +65,12 @@ const rowVariants = {
   },
 }
 
-type Filters = { search: string; city: string; plan: string; status: string; state: string; suspended: string }
+type Filters = { search: string; city: string; plan: string; status: string; state: string; suspended: string; featured: string }
 
 function RetailersContent() {
   const searchParams = useSearchParams()
   const [retailers, setRetailers] = useState<Retailer[]>([])
-  const [filters, setFilters] = useState<Filters>({ search: '', city: '', plan: '', status: '', state: '', suspended: '' })
+  const [filters, setFilters] = useState<Filters>({ search: '', city: '', plan: '', status: '', state: '', suspended: '', featured: '' })
   const [cursor, setCursor] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -86,6 +88,7 @@ function RetailersContent() {
       if (f.status) params.set('status', f.status)
       if (f.state) params.set('state', f.state)
       if (f.suspended) params.set('suspended', f.suspended)
+      if (f.featured) params.set('featured', f.featured)
       if (cursorVal) params.set('cursor', cursorVal)
       params.set('limit', '20')
 
@@ -258,6 +261,15 @@ function RetailersContent() {
           <option value="false">Active Only</option>
           <option value="true">Suspended Only</option>
         </select>
+        <select
+          value={filters.featured}
+          onChange={(e) => setFilters((f) => ({ ...f, featured: e.target.value }))}
+          className={selectClass}
+        >
+          <option value="">All Directory</option>
+          <option value="true">Featured Only</option>
+          <option value="false">Not Featured</option>
+        </select>
         <motion.button
           type="submit"
           whileHover={{ scale: 1.02 }}
@@ -366,6 +378,12 @@ function RetailersContent() {
                           className="font-medium text-gray-900 hover:text-cyan-600 transition-colors"
                         >
                           {r.shop_name}
+                          {r.is_featured && (
+                            <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                              <Star size={9} className="fill-amber-400 text-amber-500" />
+                              Featured
+                            </span>
+                          )}
                           {r.is_suspended && (
                             <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
                               Suspended

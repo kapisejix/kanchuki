@@ -198,6 +198,66 @@ export const adminRetailersManagementRoutes: FastifyPluginAsync = async (server)
     return { data: { is_suspended: false } };
   });
 
+  // ─── POST /admin/retailers/:id/feature ──────────────────────────
+  // Pin a retailer to the top of the public store directory (/stores) and
+  // the homepage teaser — see public-stores.ts orderBy (featured first, then
+  // pinned order, then recency). Mirrors the suspend/unsuspend pattern:
+  // idempotent-guarded, audit-logged, reversible.
+  server.post('/retailers/:id/feature', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+
+    const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } });
+    if (!retailer) throw notFound('Retailer');
+    if (retailer.is_featured) throw validationError('Retailer is already featured');
+
+    await prisma.retailer.update({
+      where: { id },
+      data: { is_featured: true, featured_at: new Date() },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'FEATURE_STORE',
+        resource_type: 'Retailer',
+        resource_id: id,
+        metadata: { shop_name: retailer.shop_name },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ retailer_id: id, shop_name: retailer.shop_name }, 'Store featured');
+    return { data: { is_featured: true, featured_at: new Date().toISOString() } };
+  });
+
+  // ─── POST /admin/retailers/:id/unfeature ────────────────────────
+  server.post('/retailers/:id/unfeature', async (request) => {
+    const { id } = z.object({ id: z.string() }).parse(request.params);
+
+    const retailer = await prisma.retailer.findUnique({ where: { id, deleted_at: null } });
+    if (!retailer) throw notFound('Retailer');
+    if (!retailer.is_featured) throw validationError('Retailer is not featured');
+
+    await prisma.retailer.update({
+      where: { id },
+      data: { is_featured: false, featured_at: null },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'UNFEATURE_STORE',
+        resource_type: 'Retailer',
+        resource_id: id,
+        metadata: { shop_name: retailer.shop_name },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ retailer_id: id, shop_name: retailer.shop_name }, 'Store unfeatured');
+    return { data: { is_featured: false } };
+  });
+
   // ─── POST /admin/customers/:customerId/block ────────────────────
   server.post('/customers/:customerId/block', async (request) => {
     const { customerId } = z.object({ customerId: z.string() }).parse(request.params);
