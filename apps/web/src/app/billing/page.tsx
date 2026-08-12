@@ -17,6 +17,14 @@ import {
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {
+  isMsg91WidgetConfigured,
+  loadMsg91Widget,
+  retryOtpViaWidget,
+  sendOtpViaWidget,
+  verifyOtpViaWidget,
+  widgetErrorMessage,
+} from '../../lib/msg91-widget';
+import {
   ADDON_GROUP_LABEL,
   ADDON_GROUP_ORDER,
   type BillingPeriod,
@@ -149,6 +157,12 @@ async function apiCall<T>(
 
 // ─── Login card ───────────────────────────────────────────────────
 
+interface LoginResponse {
+  access_token: string;
+  refresh_token: string;
+  is_staff?: boolean;
+}
+
 function LoginCard({
   onLogin,
 }: {
@@ -160,23 +174,96 @@ function LoginCard({
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // MSG91 widget session (real OTP flow) — reqId pairs verify/retry with the
+  // original send. Empty when the widget is unconfigured/blocked → API fallback.
+  const [reqId, setReqId] = useState('');
+  const [widgetReady, setWidgetReady] = useState(false);
+  // Which channel issued the OTP — verify/resend must follow the SEND channel,
+  // not the live widgetReady flag (the widget can finish loading after the API
+  // already sent the code; routing verify on widgetReady would then fail a
+  // perfectly valid server-issued OTP against a widget session that never saw it).
+  const [channel, setChannel] = useState<'widget' | 'api' | null>(null);
 
   const validPhone = /^[6-9]\d{9}$/.test(phone.trim());
+
+  // Load the MSG91 widget lazily; the login card works without it (the API
+  // OTP flow is the fallback), so a blocked third-party CDN never breaks login.
+  useEffect(() => {
+    let cancelled = false;
+    if (isMsg91WidgetConfigured()) {
+      void loadMsg91Widget().then((ready) => {
+        if (!cancelled) setWidgetReady(ready);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Exchange a widget-verified access token for a session (server-reverified). */
+  const completeLoginWithToken = async (token: string) => {
+    const data = await apiCall<LoginResponse>('/auth/otp/verify', null, {
+      method: 'POST',
+      body: JSON.stringify({ phone: phone.trim(), msg91_token: token }),
+    });
+    if (data.is_staff) {
+      throw new Error(
+        "This number is registered as staff, not a store owner. Sign in with the store owner's phone number.",
+      );
+    }
+    onLogin(data.access_token, data.refresh_token);
+  };
 
   const sendOtp = async () => {
     if (!validPhone || sending) return;
     setSending(true);
     setError(null);
     try {
-      await apiCall<{ ok: boolean }>('/auth/otp/send', null, {
-        method: 'POST',
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-      setOtpSent(true);
+      if (widgetReady) {
+        // Real OTP flow: the widget sends the SMS itself (identifier needs the
+        // country code, no '+'). In invisible mode the send response may already
+        // carry the verified token — complete login directly in that case.
+        const result = await sendOtpViaWidget(`91${phone.trim()}`);
+        if (!result.ok) {
+          throw new Error(widgetErrorMessage(result.error, 'Could not send OTP. Try again.'));
+        }
+        if (result.token) {
+          await completeLoginWithToken(result.token);
+          return;
+        }
+        setChannel('widget');
+        setReqId(result.reqId ?? '');
+        setOtpSent(true);
+        if (result.reqId) {
+          // Invisible-mode probe: with Mobile Integration, the widget can verify
+          // the number carrier-side WITHOUT an SMS. If that happened, an empty
+          // code verify returns the token and login completes — otherwise the
+          // probe fails fast and the user just types the SMS code they received.
+          void attemptInvisibleVerify(result.reqId);
+        }
+      } else {
+        await apiCall<{ ok: boolean }>('/auth/otp/send', null, {
+          method: 'POST',
+          body: JSON.stringify({ phone: phone.trim() }),
+        });
+        setChannel('api');
+        setOtpSent(true);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send OTP. Try again.');
     } finally {
       setSending(false);
+    }
+  };
+
+  const attemptInvisibleVerify = async (sessionId: string) => {
+    try {
+      const result = await verifyOtpViaWidget('', sessionId, 6_000);
+      if (result.ok && result.token) {
+        await completeLoginWithToken(result.token);
+      }
+    } catch {
+      // Widget hung — the OTP box is already visible; the user proceeds normally.
     }
   };
 
@@ -185,24 +272,55 @@ function LoginCard({
     setVerifying(true);
     setError(null);
     try {
-      const data = await apiCall<{
-        access_token: string;
-        refresh_token: string;
-        is_staff?: boolean;
-      }>('/auth/otp/verify', null, {
-        method: 'POST',
-        body: JSON.stringify({ phone: phone.trim(), otp: otp.trim() }),
-      });
-      if (data.is_staff) {
-        throw new Error(
-          "This number is registered as staff, not a store owner. Sign in with the store owner's phone number.",
-        );
+      if (channel === 'widget') {
+        // Widget verifies the code client-side and returns the access token;
+        // our API re-confirms it with MSG91 before issuing a session.
+        const result = await verifyOtpViaWidget(otp.trim(), reqId || undefined);
+        if (!result.ok || !result.token) {
+          throw new Error(
+            widgetErrorMessage(result.error, 'Verification failed. Try again.'),
+          );
+        }
+        await completeLoginWithToken(result.token);
+      } else {
+        const data = await apiCall<LoginResponse>('/auth/otp/verify', null, {
+          method: 'POST',
+          body: JSON.stringify({ phone: phone.trim(), otp: otp.trim() }),
+        });
+        if (data.is_staff) {
+          throw new Error(
+            "This number is registered as staff, not a store owner. Sign in with the store owner's phone number.",
+          );
+        }
+        onLogin(data.access_token, data.refresh_token);
       }
-      onLogin(data.access_token, data.refresh_token);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed. Try again.');
     } finally {
       setVerifying(false);
+    }
+  };
+
+  const resendOtp = async () => {
+    if (sending) return;
+    setSending(true);
+    setError(null);
+    try {
+      if (channel === 'widget' && reqId) {
+        const result = await retryOtpViaWidget(reqId);
+        if (!result.ok) {
+          throw new Error(widgetErrorMessage(result.error, 'Failed to resend OTP.'));
+        }
+      } else {
+        await apiCall<{ ok: boolean }>('/auth/otp/send', null, {
+          method: 'POST',
+          body: JSON.stringify({ phone: phone.trim() }),
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to resend OTP.');
+    } finally {
+      setSending(false);
     }
   };
 
@@ -293,7 +411,7 @@ function LoginCard({
               </button>
               <button
                 type="button"
-                onClick={() => void sendOtp()}
+                onClick={() => void resendOtp()}
                 disabled={sending}
                 className="w-full text-center text-xs font-medium text-rust-600 hover:underline"
               >

@@ -28,6 +28,7 @@ import { sizeChartRoutes } from './routes/size-chart.js';
 import { staffRoutes } from './routes/staff.js';
 import { teamRoutes } from './routes/team.js';
 import { tryOnRoutes } from './routes/tryon.js';
+import { msg91WebhookRoutes } from './routes/webhooks/msg91.js';
 
 // Fail fast at boot instead of 500ing the first request that touches
 // encrypted secrets (F-012) — previously masterKey() only threw inside
@@ -154,6 +155,7 @@ await server.register(catalogImportRoutes, { prefix: '/v1' });
 await server.register(staffRoutes, { prefix: '/v1/staff' });
 await server.register(teamRoutes, { prefix: '/v1/team' });
 await server.register(checkoutRoutes, { prefix: '/v1' });
+await server.register(msg91WebhookRoutes, { prefix: '/v1' });
 
 // ─── Health Check ─────────────────────────────────────────────────
 

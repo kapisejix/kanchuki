@@ -10,20 +10,85 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
-import { authApi, setToken, ApiError } from '../../src/lib/api'
+import { authApi, setToken, ApiError, type VerifyOtpResult } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import {
+  extractMsg91AccessToken,
+  isMsg91OtpConfigured,
+  retryMsg91Otp,
+  verifyMsg91Otp,
+} from '../../src/lib/msg91-otp'
+
+/**
+ * Apply the login result returned by the backend — identical for the widget
+ * and legacy paths. Stores the session + staff/retailer context and routes.
+ */
+async function completeLogin(result: VerifyOtpResult) {
+  await setToken(result.access_token)
+  // TeamMember logins have no Supabase session → no refresh token (their team
+  // JWT expires in 12h like the /team/login path). Only store one when the
+  // backend actually returned one, and never keep a stale one from a previous
+  // retailer login.
+  if (result.refresh_token) {
+    await setItem('refresh_token', result.refresh_token)
+  } else {
+    await deleteItem('refresh_token')
+  }
+
+  if (result.is_staff && result.staff) {
+    // Staff (retailer's own shop employee) login — store staff context and
+    // redirect to staff dashboard
+    await setItem('staff_role', result.staff.role)
+    await setItem('staff_name', result.staff.name)
+    await setItem('staff_retailer_id', result.staff.retailer_id)
+    await setItem('retailer_id', result.staff.retailer_id)
+    router.replace('/staff')
+  } else if (result.is_staff && result.team_member) {
+    // TeamMember (Kanchuki's own field/sales/support agent) logged in via
+    // phone OTP. access_token is a team JWT — the staff screens' teamApi
+    // sends it to /team/* directly. No retailer scoping; clear any stale
+    // retailer/staff context from a previous login on this device so the
+    // agent is never shown the retailer UI or a stale shop identity.
+    await setItem('staff_role', result.team_member.role)
+    await setItem('staff_name', result.team_member.name)
+    await Promise.all([deleteItem('staff_retailer_id'), deleteItem('retailer_id')])
+    router.replace('/staff')
+  } else if (result.retailer) {
+    // Retailer owner login — existing flow. Clear any staff context left
+    // behind by a previous team-member session on this device (shared shop
+    // tablet), so the owner isn't shown the restricted staff UI.
+    await Promise.all([
+      deleteItem('staff_role'),
+      deleteItem('staff_name'),
+      deleteItem('staff_retailer_id'),
+    ])
+    await setItem('retailer_id', result.retailer.id)
+    router.replace(result.is_new ? '/onboarding' : '/')
+  }
+}
+
+/** Exchange a MSG91 widget access token for a backend session. */
+async function verifyWithMsg91Token(phone: string, accessToken: string) {
+  const { data: result } = await authApi.verifyMsg91(phone, accessToken)
+  await completeLogin(result)
+}
 
 export default function OtpScreen() {
   const insets = useSafeAreaInsets()
-  const { phone } = useLocalSearchParams<{ phone: string }>()
+  const { phone, reqId, token } = useLocalSearchParams<{
+    phone: string
+    reqId?: string
+    token?: string
+  }>()
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
   const [resendTimer, setResendTimer] = useState(30)
   const [resending, setResending] = useState(false)
   const inputRef = useRef<TextInput>(null)
+  const autoVerifyAttempted = useRef(false)
 
   // Countdown for resend
   useEffect(() => {
@@ -34,59 +99,33 @@ export default function OtpScreen() {
     return () => clearInterval(timer)
   }, [resendTimer])
 
+  const msg91 = isMsg91OtpConfigured() && Boolean(reqId || token)
+
   const handleVerify = async (code: string) => {
     if (code.length !== 6 || !phone || loading) return
     setLoading(true)
     try {
-      const { data: result } = await authApi.verifyOtp(phone, code)
-      await setToken(result.access_token)
-      // TeamMember logins have no Supabase session → no refresh token (their
-      // team JWT expires in 12h like the /team/login path). Only store one
-      // when the backend actually returned one, and never keep a stale one
-      // from a previous retailer login.
-      if (result.refresh_token) {
-        await setItem('refresh_token', result.refresh_token)
+      if (msg91 && reqId) {
+        // Real OTP flow: the widget verifies the code client-side and returns
+        // an access token; the API re-confirms it with MSG91 server-side.
+        const response = await verifyMsg91Otp(reqId, code)
+        const accessToken = extractMsg91AccessToken(response)
+        if (!accessToken) {
+          throw new ApiError(
+            'MSG91_VERIFY_FAILED',
+            'Verification did not return a token. Try again.',
+            400,
+          )
+        }
+        await verifyWithMsg91Token(phone, accessToken)
       } else {
-        await deleteItem('refresh_token')
-      }
-
-      if (result.is_staff && result.staff) {
-        // Staff (retailer's own shop employee) login — store staff context
-        // and redirect to staff dashboard
-        await setItem('staff_role', result.staff.role)
-        await setItem('staff_name', result.staff.name)
-        await setItem('staff_retailer_id', result.staff.retailer_id)
-        await setItem('retailer_id', result.staff.retailer_id)
-        router.replace('/staff')
-      } else if (result.is_staff && result.team_member) {
-        // TeamMember (Kanchuki's own field/sales/support agent) logged in via
-        // phone OTP. access_token is a team JWT — the staff screens' teamApi
-        // sends it to /team/* directly. No retailer scoping; clear any stale
-        // retailer/staff context from a previous login on this device so the
-        // agent is never shown the retailer UI or a stale shop identity.
-        await setItem('staff_role', result.team_member.role)
-        await setItem('staff_name', result.team_member.name)
-        await Promise.all([
-          deleteItem('staff_retailer_id'),
-          deleteItem('retailer_id'),
-        ])
-        router.replace('/staff')
-      } else if (result.retailer) {
-        // Retailer owner login — existing flow. Clear any staff context left
-        // behind by a previous team-member session on this device (shared
-        // shop tablet), so the owner isn't shown the restricted staff UI.
-        await Promise.all([
-          deleteItem('staff_role'),
-          deleteItem('staff_name'),
-          deleteItem('staff_retailer_id'),
-        ])
-        await setItem('retailer_id', result.retailer.id)
-        router.replace(result.is_new ? '/onboarding' : '/')
+        const { data: result } = await authApi.verifyOtp(phone, code)
+        await completeLogin(result)
       }
     } catch (err) {
       // Don't blanket-label every failure "Incorrect OTP" — a 500 (e.g. the
-      // phone number still being released after account deletion) or a 409
-      // is NOT a wrong code, and clearing the input to retype would mislead.
+      // phone number still being released after account deletion) or a 409 is
+      // NOT a wrong code, and clearing the input to retype would mislead.
       const apiErr = err instanceof ApiError ? err : null
       if (apiErr?.status === 401) {
         showError(err, 'Invalid or expired OTP. Try again.', 'Incorrect OTP', () => {
@@ -111,11 +150,59 @@ export default function OtpScreen() {
     }
   }
 
+  // Invisible-mode auto-verify (2026-08-12): with Mobile Integration enabled
+  // on the MSG91 widget, the number can be verified carrier-side WITHOUT an
+  // SMS/OTP. Two shapes:
+  //   - the send response already carried the access token (token param), or
+  //   - verifying with just the reqId succeeds without a code.
+  // Both land in the same completeLogin. On failure we simply show the OTP
+  // input — a normal code will have been sent as the fallback.
+  useEffect(() => {
+    if (!phone || autoVerifyAttempted.current) return
+    autoVerifyAttempted.current = true
+
+    if (token) {
+      setLoading(true)
+      verifyWithMsg91Token(phone, token).catch((err) => {
+        console.warn('Auto-verify with pre-issued token failed:', err)
+        setLoading(false)
+      })
+      return
+    }
+
+    if (!msg91 || !reqId) return
+
+    setLoading(true)
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('invisible verify timed out')), 4000),
+    )
+    Promise.race([verifyMsg91Otp(reqId), timeout])
+      .then((response) => {
+        const accessToken = extractMsg91AccessToken(response)
+        if (!accessToken) throw new Error('no token returned')
+        return authApi.verifyMsg91(phone, accessToken)
+      })
+      .then(({ data }) => completeLogin(data))
+      .catch((err) => {
+        // Not invisible mode (or already consumed) — show the OTP input.
+        if (!(err instanceof Error && err.message === 'invisible verify timed out')) {
+          console.warn('Invisible auto-verify unavailable:', err)
+        }
+        setLoading(false)
+      })
+    // autoVerifyAttempted.current guards against re-runs, so the param deps
+    // are safe to declare. completeLogin/verifyWithMsg91Token are module-level.
+  }, [phone, msg91, reqId, token])
+
   const handleResend = async () => {
     if (!phone || resendTimer > 0) return
     setResending(true)
     try {
-      await authApi.sendOtp(phone)
+      if (msg91 && reqId) {
+        await retryMsg91Otp(reqId)
+      } else {
+        await authApi.sendOtp(phone)
+      }
       setResendTimer(30)
       Alert.alert('OTP Sent', 'A new OTP has been sent to your number')
     } catch (err) {

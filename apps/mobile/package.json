@@ -18,6 +18,7 @@
     "@expo/metro-runtime": "~6.1.2",
     "@gorhom/bottom-sheet": "^4.6.4",
     "@kanchuki/shared": "workspace:*",
+    "@msg91comm/sendotp-react-native": "^2.1.0",
     "@react-navigation/native": "^7.3.8",
     "@tanstack/react-query": "^5.53.3",
     "expo": "~54.0.36",

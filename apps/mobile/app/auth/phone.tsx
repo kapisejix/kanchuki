@@ -1,4 +1,4 @@
-import { COLORS, isValidIndianPhone } from '@kanchuki/shared';
+import { COLORS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
@@ -15,6 +15,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../../src/components/GradientButton';
 import { authApi, ApiError } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
+import {
+  extractMsg91AccessToken,
+  extractMsg91ReqId,
+  isMsg91OtpConfigured,
+  sendMsg91Otp,
+} from '../../src/lib/msg91-otp';
 import { useTheme } from '../../src/lib/theme';
 import { WEB_URL } from '../../src/lib/web-url';
 
@@ -32,8 +38,32 @@ export default function PhoneScreen() {
     if (!isValid) return;
     setLoading(true);
     try {
-      await authApi.sendOtp(phone);
-      router.push({ pathname: '/auth/otp', params: { phone } });
+      const digits = normalizeIndianPhone(phone);
+      if (isMsg91OtpConfigured()) {
+        // Real OTP flow: the MSG91 widget sends the SMS itself. It returns a
+        // reqId the OTP screen uses to verify; in invisible mode it may return
+        // the verified access token right here — pass it through so the OTP
+        // screen can skip the code entry.
+        const response = await sendMsg91Otp(digits);
+        const reqId = extractMsg91ReqId(response) ?? ''
+        const token = extractMsg91AccessToken(response) ?? ''
+        if (!reqId && !token) {
+          // No verification session from the widget (misconfigured widget,
+          // send failure surfaced as a response) — don't navigate into a
+          // screen that would silently fall back to the legacy API OTP flow
+          // with no SMS behind it.
+          showError(
+            new Error('MSG91_WIDGET_NO_SESSION'),
+            'Could not start OTP verification. Check the MSG91 widget configuration and try again.',
+            'Could not send OTP',
+          )
+          return
+        }
+        router.push({ pathname: '/auth/otp', params: { phone, reqId, token } })
+      } else {
+        await authApi.sendOtp(phone);
+        router.push({ pathname: '/auth/otp', params: { phone } });
+      }
     } catch (err) {
       // Surface the backend's actionable message (rate limit, send failure)
       // instead of a generic fallback.

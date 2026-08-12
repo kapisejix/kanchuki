@@ -45,6 +45,11 @@ export const DEFAULT_RATE_LIMITS: Record<
     max_requests: 30,
     description: 'Razorpay webhooks per minute',
   },
+  'webhook:msg91': {
+    window_ms: 60_000,
+    max_requests: 60,
+    description: 'MSG91 event webhooks per minute',
+  },
 };
 
 // In-memory cache (populated from audit log on first load)

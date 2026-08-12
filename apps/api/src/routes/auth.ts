@@ -1,64 +1,155 @@
+import { randomBytes } from 'node:crypto';
 import { type Prisma, prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
+import type { Session, User } from '@supabase/supabase-js';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { supabase } from '../index.js';
 import { seedDefaultAttributes } from '../lib/default-attributes.js';
 import { seedDefaultCategories } from '../lib/default-categories.js';
+import {
+  isMsg91OtpConfigured,
+  sendOtpViaMsg91,
+  verifyMsg91WidgetToken,
+  verifyStoredOtp,
+} from '../lib/msg91-otp.js';
 import { AppError, validationError } from '../plugins/error-handler.js';
 import { signTeamToken } from '../plugins/team-auth.js';
 
-const PhoneSchema = z.object({
+const SendOtpSchema = z.object({
   phone: z
     .string()
     .min(10)
     .max(15)
     .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
     .transform((v) => normalizeIndianPhone(v)),
+  // Namespaces the Redis OTP slot per flow — a login OTP and a payment
+  // step-up OTP for the same phone never overwrite each other. Defaults to
+  // 'login'; step-up flows (checkout) may pass 'stepup'.
+  purpose: z.enum(['login', 'stepup']).optional().default('login'),
 });
 
-const OtpVerifySchema = z.object({
-  phone: z
-    .string()
-    .min(10)
-    .max(15)
-    .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
-    .transform((v) => normalizeIndianPhone(v)),
-  otp: z
-    .string()
-    .length(6)
-    .regex(/^\d{6}$/, 'OTP must be 6 digits'),
-});
+const OtpVerifySchema = z
+  .object({
+    phone: z
+      .string()
+      .min(10)
+      .max(15)
+      .refine((v) => isValidIndianPhone(v), 'Enter a valid 10-digit Indian mobile number')
+      .transform((v) => normalizeIndianPhone(v)),
+    // Legacy / web-billing channel: the 6-digit code the user typed. Verified
+    // against the Redis entry written by /otp/send (MSG91), or against
+    // Supabase when no entry exists (legacy installs/scripts).
+    otp: z
+      .string()
+      .length(6)
+      .regex(/^\d{6}$/, 'OTP must be 6 digits')
+      .optional(),
+    // MSG91 widget channel (mobile app): the access token returned by the
+    // SDK's verifyOTP after the widget verified the code client-side. The
+    // API re-verifies it with MSG91's Verify Access Token API server-side.
+    msg91_token: z.string().min(10, 'msg91_token must be a valid access token').optional(),
+  })
+  .refine((d) => d.otp || d.msg91_token, 'Provide an OTP or a verified MSG91 token');
 
 const RefreshSchema = z.object({
   refresh_token: z.string().min(1),
 });
 
+// ─── Supabase session minting for MSG91-verified phones ────────────
+// When MSG91 (not Supabase) verifies the OTP, Supabase never saw the code and
+// has no session to hand out. GoTrue's admin API can't mint a session
+// directly, so: find-or-create the auth user with a server-generated random
+// password, then phone+password sign-in to obtain a real session token. The
+// password is rotated on every login and never exposed to the app — it is a
+// pure session-issuance mechanism.
+
+async function findSupabaseUserByPhone(phone: string) {
+  // No admin filter-by-phone in supabase-js — paginate. Kanchuki's auth user
+  // count is small at MVP scale, so this is typically a single page.
+  for (let page = 1; page <= 200; page += 1) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+    if (error || !data?.users?.length) return null;
+    const hit = data.users.find((u) => u.phone === phone);
+    if (hit) return hit;
+    if (data.users.length < 1000) return null; // last page
+  }
+  return null;
+}
+
+function sessionIssuanceError() {
+  return new AppError('OTP_VERIFY_FAILED', 'Could not complete sign-in. Please try again.', 500);
+}
+
+async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
+  const e164 = `+91${phone}`;
+  const password = randomBytes(24).toString('base64url');
+
+  // Loop once to absorb the create-race: two concurrent first-time verifies
+  // can both miss the lookup and collide on createUser.
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const existing = await findSupabaseUserByPhone(e164);
+    if (existing) {
+      const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
+      if (error) throw sessionIssuanceError();
+    } else {
+      const { error } = await supabase.auth.admin.createUser({
+        phone: e164,
+        password,
+        phone_confirm: true,
+      });
+      if (error) {
+        if (attempt === 0 && /already/i.test(error.message ?? '')) continue;
+        throw sessionIssuanceError();
+      }
+    }
+    break;
+  }
+
+  const { data, error } = await supabase.auth.signInWithPassword({ phone: e164, password });
+  if (error || !data.session || !data.user) throw sessionIssuanceError();
+  return { user: data.user, session: data.session };
+}
+
 export const authRoutes: FastifyPluginAsync = async (server) => {
   // ─── POST /auth/otp/send ────────────────────────────────────────
   server.post('/otp/send', async (request, reply) => {
-    const body = PhoneSchema.safeParse(request.body);
+    const body = SendOtpSchema.safeParse(request.body);
     if (!body.success)
       throw validationError(body.error.issues[0]?.message ?? 'Invalid phone', 'phone');
 
     const phone = body.data.phone;
     const e164 = `+91${phone}`; // Indian numbers only for MVP
 
-    const { error } = await supabase.auth.signInWithOtp({
-      phone: e164,
-      options: { channel: 'sms' },
-    });
+    if (isMsg91OtpConfigured()) {
+      // Real OTP configuration: MSG91 generates + sends the SMS directly and
+      // the API stores the code in Redis for server-side verification.
+      // sendOtpViaMsg91 throws 429 RATE_LIMITED / 400 OTP_SEND_FAILED.
+      await sendOtpViaMsg91(phone, body.data.purpose);
+    } else {
+      // Legacy Supabase path — only used in environments without MSG91 keys
+      // on the API (local dev). The Supabase send-sms-hook Edge Function is
+      // the SMS carrier there.
+      const { error } = await supabase.auth.signInWithOtp({
+        phone: e164,
+        options: { channel: 'sms' },
+      });
 
-    if (error) {
-      // Don't leak Supabase internals — map to safe messages
-      if (error.message.includes('rate')) {
-        throw new AppError('RATE_LIMITED', 'Too many OTP requests. Try again in 15 minutes.', 429);
+      if (error) {
+        // Don't leak Supabase internals — map to safe messages
+        if (error.message.includes('rate')) {
+          throw new AppError(
+            'RATE_LIMITED',
+            'Too many OTP requests. Try again in 15 minutes.',
+            429,
+          );
+        }
+        throw new AppError(
+          'OTP_SEND_FAILED',
+          'Failed to send OTP. Check phone number and try again.',
+          400,
+        );
       }
-      throw new AppError(
-        'OTP_SEND_FAILED',
-        'Failed to send OTP. Check phone number and try again.',
-        400,
-      );
     }
 
     return reply.status(200).send({
@@ -71,21 +162,61 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     const body = OtpVerifySchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid', 'otp');
 
-    const { phone, otp } = body.data;
+    const { phone, otp, msg91_token } = body.data;
     const e164 = `+91${phone}`;
 
-    // Verify OTP with Supabase
-    const { data: authData, error: authError } = await supabase.auth.verifyOtp({
-      phone: e164,
-      token: otp,
-      type: 'sms',
-    });
+    // ── 1. Verify the OTP (three channels, all server-side) ──────────
+    //  - msg91_token: the widget verified the code client-side; re-confirm the
+    //    access token with MSG91 before trusting it.
+    //  - otp + Redis entry: /otp/send issued this OTP via MSG91; check the
+    //    stored code (one-time use).
+    //  - otp without a Redis entry ('absent'): legacy Supabase-issued OTP
+    //    (old installs, scripts, environments without MSG91 keys).
+    let user: User;
+    let session: Session;
+    let msg91Verified = false;
 
-    if (authError || !authData.user || !authData.session) {
-      throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+    if (msg91_token) {
+      await verifyMsg91WidgetToken(msg91_token, phone); // throws 401 on failure
+      msg91Verified = true;
+    } else if (otp) {
+      const result = await verifyStoredOtp(phone, otp);
+      if (result === 'verified') {
+        msg91Verified = true;
+      } else if (result === 'invalid' || result === 'locked') {
+        throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+      } else if (isMsg91OtpConfigured()) {
+        // 'absent' + MSG91 configured: the code was never issued (or expired).
+        // Never fall back to a second verification oracle in production —
+        // Supabase never issues OTPs once MSG91 is configured, so a fallback
+        // here could only ever fail while keeping a dead path alive.
+        throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+      }
+      // else: 'absent' + MSG91 unconfigured → legacy Supabase path below
+      // (local dev, scripts, old installs).
     }
 
-    const { user, session } = authData;
+    if (msg91Verified) {
+      // MSG91 verified the phone — mint a Supabase session for it (see
+      // ensureSupabaseSession: find-or-create the auth user with a rotated
+      // random password, then phone+password sign-in to obtain a session).
+      const created = await ensureSupabaseSession(phone);
+      user = created.user;
+      session = created.session;
+    } else {
+      // Legacy: verify the OTP with Supabase (auto-creates the auth user).
+      const { data: authData, error: authError } = await supabase.auth.verifyOtp({
+        phone: e164,
+        token: otp ?? '',
+        type: 'sms',
+      });
+
+      if (authError || !authData.user || !authData.session) {
+        throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+      }
+      user = authData.user;
+      session = authData.session;
+    }
 
     // ── Staff Login Detection ────────────────────────────────────────
     // Before treating this as a retailer login, check if the phone belongs

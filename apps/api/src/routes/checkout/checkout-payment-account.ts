@@ -3,6 +3,7 @@ import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { supabase } from '../../index.js';
 import { hasFeature } from '../../lib/features.js';
+import { isMsg91OtpConfigured, verifyStoredOtp } from '../../lib/msg91-otp.js';
 import {
   featureUnavailable,
   forbidden,
@@ -10,6 +11,24 @@ import {
   validationError,
 } from '../../plugins/error-handler.js';
 import { ConnectPaymentAccountSchema, razorpayAsRetailer } from './checkout-helpers.js';
+
+// Step-up OTP verification (SECURITY §11.8). The OTP comes from /v1/auth/otp/send,
+// which issues it via MSG91 and stores it in Redis (2026-08-12) — verify against
+// that entry first. The step-up OTP may have been requested with purpose
+// 'stepup' (future UIs) or through the default login slot (current flows), so
+// check both. The legacy Supabase-issued path runs ONLY when MSG91 is not
+// configured on the API — production never issues Supabase OTPs, so there is
+// no second oracle to fall back to.
+async function verifyStepUpOtp(phone: string, otp: string): Promise<boolean> {
+  const stepup = await verifyStoredOtp(phone, otp, 'stepup');
+  if (stepup !== 'absent') return stepup === 'verified';
+  const login = await verifyStoredOtp(phone, otp, 'login');
+  if (login !== 'absent') return login === 'verified';
+  if (isMsg91OtpConfigured()) return false;
+  const e164 = `+91${phone}`;
+  const { error } = await supabase.auth.verifyOtp({ phone: e164, token: otp, type: 'sms' });
+  return !error;
+}
 
 export const checkoutPaymentAccountRoutes: FastifyPluginAsync = async (server) => {
   // ═══════════════════════════════════════════════════════════════
@@ -79,21 +98,15 @@ export const checkoutPaymentAccountRoutes: FastifyPluginAsync = async (server) =
         );
       }
 
-      // Verify OTP server-side via Supabase Auth
+      // Step-up OTP verification (SECURITY §11.8) — MSG91-issued via
+      // /v1/auth/otp/send, checked server-side.
       const retailer = await prisma.retailer.findUnique({
         where: { id: request.retailerId },
         select: { phone: true },
       });
       if (!retailer) throw notFound('Retailer');
 
-      const e164 = `+91${retailer.phone}`;
-      const { error: otpError } = await supabase.auth.verifyOtp({
-        phone: e164,
-        token: otp,
-        type: 'sms',
-      });
-
-      if (otpError) {
+      if (!(await verifyStepUpOtp(retailer.phone, otp))) {
         throw validationError('Invalid or expired OTP. Request a new one via /auth/otp.');
       }
     }
@@ -195,14 +208,7 @@ export const checkoutPaymentAccountRoutes: FastifyPluginAsync = async (server) =
     });
     if (!retailer) throw notFound('Retailer');
 
-    const e164 = `+91${retailer.phone}`;
-    const { error: otpError } = await supabase.auth.verifyOtp({
-      phone: e164,
-      token: otp,
-      type: 'sms',
-    });
-
-    if (otpError) {
+    if (!(await verifyStepUpOtp(retailer.phone, otp))) {
       throw validationError('Invalid or expired OTP. Request a new one via /auth/otp.');
     }
 

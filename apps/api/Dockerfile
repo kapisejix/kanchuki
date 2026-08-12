@@ -36,7 +36,12 @@ WORKDIR /app
 
 COPY . .
 
-RUN pnpm install --frozen-lockfile
+# Retry once on failure: onnxruntime-node's postinstall (pulled in via
+# @imgly/background-removal-node) downloads a ~330MB binary from GitHub
+# releases, and Railway build egress to github.com intermittently times out
+# (2026-08-12). pnpm's content-addressable store makes a re-run cheap. The
+# binary itself is required at runtime, so we retry instead of skipping it.
+RUN pnpm install --frozen-lockfile || pnpm install --frozen-lockfile
 RUN pnpm exec turbo build --filter=@kanchuki/api
 
 EXPOSE 3001

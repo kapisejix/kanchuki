@@ -10,13 +10,17 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app"
+        "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app",
+        "EXPO_PUBLIC_MSG91_WIDGET_ID": "36686c6f6679343135333631",
+        "EXPO_PUBLIC_MSG91_TOKEN_AUTH": "505769TIAaX1pQa6a649a52P1"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app"
+        "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app",
+        "EXPO_PUBLIC_MSG91_WIDGET_ID": "36686c6f6679343135333631",
+        "EXPO_PUBLIC_MSG91_TOKEN_AUTH": "505769TIAaX1pQa6a649a52P1"
       }
     }
   },

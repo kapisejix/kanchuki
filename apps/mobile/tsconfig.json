@@ -8,6 +8,11 @@
       ],
       "@kanchuki/shared/*": [
         "../../packages/shared/src/*"
+      ],
+      // @msg91comm/sendotp-react-native ships raw TS source that fails strict
+      // typecheck — see src/types/msg91-sendotp.d.ts for why this shadows it.
+      "@msg91comm/sendotp-react-native": [
+        "./src/types/msg91-sendotp.d.ts"
       ]
     }
   },
