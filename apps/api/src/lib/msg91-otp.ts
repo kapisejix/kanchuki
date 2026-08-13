@@ -150,13 +150,31 @@ export async function sendOtpViaMsg91(
     }
   }
 
+  // v5 SendOTP contract (docs.msg91.com/otp/sendotp): POST with the params in
+  // the QUERY STRING — authkey is NOT a header and the params are NOT a JSON
+  // body. MSG91 answers failures with HTTP 200 + {"type":"error",...} in the
+  // body, so the status alone can never be trusted.
+  const params = new URLSearchParams({
+    authkey,
+    template_id: templateId,
+    mobile: `91${phone}`,
+    otp,
+  });
   try {
-    const res = await fetch(`${MSG91_BASE}/otp`, {
+    const res = await fetch(`${MSG91_BASE}/otp?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', authkey },
-      body: JSON.stringify({ template_id: templateId, mobile: `91${phone}`, otp }),
+      headers: { 'Content-Type': 'application/json' },
     });
-    if (!res.ok) {
+    let ok = res.ok;
+    if (ok) {
+      try {
+        const body = (await res.json()) as { type?: string };
+        ok = body?.type === 'success';
+      } catch {
+        ok = false; // unparseable body = not a success
+      }
+    }
+    if (!ok) {
       // Don't leak MSG91 internals — map to a safe message.
       throw new AppError(
         'OTP_SEND_FAILED',

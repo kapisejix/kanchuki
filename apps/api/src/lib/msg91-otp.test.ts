@@ -74,7 +74,9 @@ beforeEach(() => {
   delete process.env.VITEST; // enable the Redis path for these tests
   vi.stubGlobal('fetch', fetchMock);
   fetchMock.mockReset();
-  fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) } as Response);
+  // MSG91 answers success as HTTP 200 + {"type":"success"} in the body —
+  // the lib now requires both.
+  fetchMock.mockResolvedValue({ ok: true, json: async () => ({ type: 'success' }) } as Response);
 });
 
 afterEach(() => {
@@ -103,20 +105,20 @@ describe('sendOtpViaMsg91', () => {
     expect(masked).toBe('****3210');
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://control.msg91.com/api/v5/otp');
     expect(init.method).toBe('POST');
-    expect((init.headers as Record<string, string>).authkey).toBe('test-authkey');
-    const body = JSON.parse(String(init.body)) as {
-      template_id: string;
-      mobile: string;
-      otp: string;
-    };
-    expect(body.template_id).toBe('test-template');
-    expect(body.mobile).toBe('919876543210'); // country code, no '+'
-    expect(body.otp).toMatch(/^\d{6}$/);
+    // v5 SendOTP contract: params go in the query string, authkey is NOT a
+    // header and the params are NOT a JSON body.
+    const parsed = new URL(url);
+    expect(parsed.origin + parsed.pathname).toBe('https://control.msg91.com/api/v5/otp');
+    expect(parsed.searchParams.get('authkey')).toBe('test-authkey');
+    expect(parsed.searchParams.get('template_id')).toBe('test-template');
+    expect(parsed.searchParams.get('mobile')).toBe('919876543210'); // country code, no '+'
+    expect(parsed.searchParams.get('otp')).toMatch(/^\d{6}$/);
+    // authkey must NOT ride as a header (old bug) — only Content-Type stays.
+    expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
 
     // The stored entry verifies with the sent code.
-    expect(await verifyStoredOtp('9876543210', body.otp)).toBe('verified');
+    expect(await verifyStoredOtp('9876543210', parsed.searchParams.get('otp')!)).toBe('verified');
   });
 
   it('namespaces the Redis slot by purpose (login vs stepup)', async () => {
@@ -161,6 +163,20 @@ describe('sendOtpViaMsg91', () => {
       status: 429,
     });
     expect(fetchMock).toHaveBeenCalledTimes(1); // only the first send reached MSG91
+  });
+
+  it('fails the send when MSG91 answers HTTP 200 with an error body (never trust the status alone)', async () => {
+    // The exact production failure: MSG91 returns 200 + {"type":"error"} when
+    // the request is malformed or the authkey is not recognized — the old code
+    // reported "OTP sent" and no SMS ever went out.
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ type: 'error', message: 'wrong auth key or template' }),
+    } as Response);
+    await expect(sendOtpViaMsg91('9876543210')).rejects.toMatchObject({
+      code: 'OTP_SEND_FAILED',
+      status: 400,
+    });
   });
 
   it('does not leak MSG91 errors — maps to a safe 400', async () => {

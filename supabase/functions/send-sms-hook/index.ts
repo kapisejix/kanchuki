@@ -19,18 +19,33 @@ serve(async (req) => {
 
   const { user, sms } = data;
 
-  const res = await fetch('https://control.msg91.com/api/v5/otp', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      authkey: msg91AuthKey,
-    },
-    body: JSON.stringify({
-      template_id: msg91TemplateId,
-      mobile: user.phone.replace('+', ''), // MSG91 wants no leading +
-      otp: sms.otp,
-    }),
+  // v5 SendOTP contract (docs.msg91.com/otp/sendotp): POST with params in the
+  // QUERY STRING — authkey is not a header, params are not a JSON body, and
+  // failures come back as HTTP 200 + {"type":"error",...}, so never trust the
+  // status alone. Matches apps/api/src/lib/msg91-otp.ts.
+  const params = new URLSearchParams({
+    authkey: msg91AuthKey,
+    template_id: msg91TemplateId,
+    mobile: user.phone.replace('+', ''), // MSG91 wants no leading +
+    otp: sms.otp,
   });
+  const res = await fetch(
+    `https://control.msg91.com/api/v5/otp?${params.toString()}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    },
+  );
+
+  if (res.ok) {
+    try {
+      const body = (await res.json()) as { type?: string };
+      if (body.type === 'success') return new Response(JSON.stringify({}), { status: 200 });
+    } catch {
+      // fall through to the 500 below
+    }
+  }
+  return new Response('send failed', { status: 500 });
 
   if (!res.ok) return new Response('send failed', { status: 500 });
   return new Response(JSON.stringify({}), { status: 200 });

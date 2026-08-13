@@ -23,11 +23,15 @@ WORKDIR /app
 
 COPY . .
 
-# Retry once on failure: onnxruntime-node's postinstall (pulled in via
-# @imgly/background-removal-node) downloads a ~330MB binary from GitHub
-# releases, and Railway build egress to github.com intermittently times out
-# (2026-08-12). pnpm's content-addressable store makes a re-run cheap. The
-# binary itself is required at runtime, so we retry instead of skipping it.
+# Retry once on failure: pnpm install has historically failed on
+# onnxruntime-node's postinstall downloading CUDA EP binaries (~330MB) from
+# GitHub releases — Railway's Southeast-Asia build egress to github.com
+# intermittently times out (2026-08-12). The download is now disabled
+# outright via npm_config_onnxruntime_node_install_cuda=skip (below) because
+# the base ONNX Runtime binary is bundled in the npm package and production
+# containers have no GPU — CUDA providers would never be used. The `||`
+# retry stays as cheap insurance against other transient registry flakes.
+ENV npm_config_onnxruntime_node_install_cuda=skip
 RUN pnpm install --frozen-lockfile || pnpm install --frozen-lockfile
 
 # Railway only passes dashboard variables into `docker build` for ARGs
