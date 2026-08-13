@@ -1579,3 +1579,144 @@ Build this as a **generic "connected publishing accounts" module** (one `SocialA
 ### 23.11 Why not built yet
 
 Post-launch feature. Not in locked MVP scope; the launch (Play Store batch, billing, privacy) is the current focus. Slots into Phase 1 (post-MVP) — see `docs/PLAN.md`. Meta app review should be requested well before development starts if this becomes a priority.
+
+## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — 🔴 PLANNED (spec only, no code)
+
+**Written 2026-08-13** after deep research into PhotoRoom's published tech stack
+and the 2026 image/video model landscape. See `docs/BUILD-LOG.md` (F-032
+entry) for the full research write-up. Roadmap slot: `docs/PLAN.md` (Future,
+post-MVP — after F-031 ships).
+
+### 24.1 Problem
+
+Retailers photograph products on a rack or in a plain room — the photo is
+real but looks unprofessional. Today Kanchuki's pipeline (rembg cutout +
+ghost-mannequin + F-028 auto-contrast background) already produces a clean
+cutout, but the *background* is still a flat color and there is no video at
+all. PhotoRoom built a business on exactly this gap: "photo → studio shot →
+video ad." Retailers get a storefront that looks like a brand instead of a
+stall, and shareable video content for WhatsApp/social.
+
+### 24.2 What PhotoRoom actually does (research findings)
+
+| Layer | PhotoRoom's approach | Why it matters for us |
+|---|---|---|
+| Segmentation | Proprietary on-device background-removal model | We already have this: rembg + LaMa ghost-mannequin (`scripts/batch-clean-photos.py`) |
+| Studio backgrounds | Custom diffusion foundation model (~1B params, trained on ~90M images) doing **outpainting** — preserves the product's pixels exactly, invents matching lighting/shadow | Subject preservation is the #1 lesson: keep user pixels, generate only the scene |
+| Speed | Sub-second inference (distillation + TensorRT) | Interactive UX expectation; we can accept seconds, not realtime |
+| Video | Product-focused image-to-video + **300+ motion templates**; Multi-Image Video API (up to 7 refs → 360° spins) | Template-first (not prompt-first) is the right UX for SMB retailers |
+| AI Fashion Model | Lifestyle on-model shots from a single product photo (retailers report 25–32% photographer-cost cuts) | The stretch goal — V-Tone is the seed of this |
+
+**PhotoRoom's lessons to copy:** (1) own the subject, not the scene; (2) one
+model, many features; (3) templates beat free text for business users; (4)
+latency is part of the product.
+
+### 24.3 Model landscape (2026)
+
+**A. Studio images (product → studio shoot):**
+- **FLUX.1 Kontext** (Black Forest Labs, open weights + paid API) — 12B
+  instruction-based editing model, purpose-built for "put this product in X
+  scene" with strong subject consistency. Self-host needs ~24GB VRAM; API is
+  pay-per-image (~₹2–6/image via BFL/Replicate).
+- **FLUX Redux** — style re-render (secondary).
+- **SDXL/SD1.5 + ControlNet(depth) + LoRA** — the budget ComfyUI path, 8–12GB
+  GPU, needs per-retailer LoRA for subject consistency.
+- **SaaS APIs** (PhotoRoom, Remove.bg, Clipping Magic) — zero infra, per-image
+  cost forever, data leaves the platform.
+
+**B. Product videos:**
+- **Seedance 2.0** (ByteDance, API) — best reference-image consistency; ~5–10s
+  clips; **~$0.09–0.20/s ≈ ₹40–90 per 5s clip**.
+- **Kling 2.x** (API) — strong product motion presets.
+- **Veo 3** (API) — best quality, priciest.
+- **Wan 2.1/2.2** (Alibaba, open weights) — best open image-to-video; 1.3B
+  variant on ~8GB VRAM (slow); full model 24GB+.
+- **HunyuanVideo / LTX-Video** (open) — heavier / faster-and-lower-fidelity.
+
+### 24.4 Scope
+
+**Phase A — Studio shoot (build first):**
+- "Studio shoot" button on product detail (mobile) → server pipeline:
+  cutout (existing) → subject-consistent background generation → compose →
+  ≤80KB compress → write back to R2 (existing pipeline) → `?v=` cache bump
+- **Template presets only** (PhotoRoom-style dropdown): White Studio, Warm
+  Luxury, Gold Festive (Diwali), Flat-Lay Casual. No free-text prompts.
+- Generation via **FLUX Kontext** — start on paid API (BFL/Replicate), move
+  to a self-hosted GPU box (Hetzner GEX44-class, ~₹8–12k/mo) once usage is
+  real. GPU is mandatory — the CPU-only CX43 cannot run a 12B diffusion model.
+
+**Phase B — Product video:**
+- Product photo + motion preset (slow zoom, 360° spin, fabric sway) → 5s
+  1080p clip via commercial API (**Seedance 2.0** first for consistency;
+  **Kling** for motion presets).
+- Charge as a **paid add-on** (~₹49–99/clip) so the ~₹45 API cost is covered
+  (mirrors F-019's paid-service pattern).
+- Self-host **Wan 2.1 (1.3B)** later for a zero-API-cost automated spin-video
+  queue — defer until video is a proven revenue line.
+
+**Phase C — AI Fashion Model (stretch, not scoped):**
+- Consistent brand model (same face/pose) across listings — V-Tone's
+  garment-transfer is the seed, but this is the riskiest quality-wise for
+  ethnic wear (saree draping remains the known weakness). Explicitly a
+  post-post-MVP exploration, not a build commitment.
+
+### 24.5 Reuses existing infra (verified)
+
+- `scripts/batch-clean-photos.py` (rembg cutout, LaMa ghost-mannequin)
+- R2 image pipeline + ≤80KB compressor + `bumpPhotoUrlVersion()` cache bust
+- F-028 background tone auto-selection
+- V-Tone try-on engine (future AI Fashion Model seed)
+- F-012 encrypted secrets + admin-configurable provider pattern (AI Provider
+  Registry) — video/studio providers fit the same registry
+
+### 24.6 Explicitly NOT doing
+
+- ❌ Training a custom foundation diffusion model (PhotoRoom's 9-person ML
+  team / ~90M-image / multi-$M path is not ours)
+- ❌ Running image/video generation on the CX43 CPU box (V-Tone at ~32
+  min/image is the warning — video would take hours)
+- ❌ Flat-pasting cutouts onto stock photos (the fake look already rejected in
+  ghost-mannequin research)
+- ❌ Free-text prompts for retailers — templates only
+
+### 24.7 Costs / pricing math
+
+| Item | Est. cost | Charged as |
+|---|---|---|
+| Studio background (API) | ~₹2–6/image | Included in Growth/Pro (fits the existing AI cost budget pattern) |
+| Product video (API) | ~₹40–90 / 5s clip | Paid add-on ₹49–99/clip |
+| GPU box (self-host, optional Phase B) | ~₹8–12k/mo | Replaces per-image API cost at scale |
+
+### 24.8 Risks
+
+1. **Subject consistency** is the whole game — a warped or re-lit product
+   reads as fake instantly (PhotoRoom invested years here). FLUX Kontext is
+   the safest starting point.
+2. **Ethnic-wear fidelity** — drapes, pleats, and dupatta layering stress
+   generation models; expect template iteration per category.
+3. **API-vs-self-host cost curve** — API is fine for testing; self-host only
+   after usage justifies the GPU.
+4. **Trust** — an AI-edited product photo that misrepresents the actual item
+   is a customer-trust risk; keep the original photo one tap away in the
+   product gallery.
+
+### 24.9 Acceptance criteria (Phase A)
+
+- Retailer taps "Studio shoot" on a product → selects a template → receives a
+  studio-background image preserving the product's shape/color/pattern
+- Background looks cohesive (lighting matches), not a pasted cutout
+- Original photo stays available; edited image can be set as primary
+- Generation cost tracked per retailer (reuse `AiUsageLog` pattern) and
+  gated per plan
+- Works fully through the existing offline-tolerant mobile flow
+
+### 24.10 Complexity estimate
+
+Phase A ~2–3 weeks (integration + templates + plan gating). Phase B ~1–2
+weeks after A (API wiring + add-on billing). Phase C unestimated (research).
+
+### 24.11 Why not built yet
+
+Spec written 2026-08-13 on user request; F-031 (social publishing) is the
+current in-flight build and this is explicitly post-MVP scope. Do NOT start
+until the user says go.

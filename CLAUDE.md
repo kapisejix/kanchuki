@@ -180,6 +180,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 36 | Occasion removed everywhere + AI auto-selects Category Group & Style | ✅ Built | 2026-08-10 | BUILD-LOG §36 |
 | 37 | Play Store Launch Batch — web billing, privacy disclosures, location removal, launch checklist | ✅ Built | 2026-08-10 | BUILD-LOG §37 |
 | 38 | Real OTP — MSG91 widget (mobile) + server-side MSG91 everywhere + events webhook | ✅ Built | 2026-08-12 | BUILD-LOG §38 |
+| 39 | F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) | 🔴 Planned | 2026-08-13 | BUILD-LOG §39 |
 
 ### ✅ RESOLVED 2026-08-13: MSG91 OTP live-config session — wire-format fix + DLT finding
 
