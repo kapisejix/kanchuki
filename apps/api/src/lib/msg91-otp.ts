@@ -68,7 +68,11 @@ function getOtpRedis(): Redis {
   otpRedis ??= new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
-    connectTimeout: 2_000,
+    // Upstash's serverless Redis sleeps when idle; the first connection after
+    // wake can take several seconds. 2s here made the FIRST OTP of the day
+    // fail the fail-closed Redis guard ("Could not start a secure OTP
+    // session") instead of sending. 10s absorbs the cold start.
+    connectTimeout: 10_000,
     lazyConnect: true,
   });
   return otpRedis;

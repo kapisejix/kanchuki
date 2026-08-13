@@ -55,7 +55,9 @@ function getStateRedis(): Redis {
     stateRedis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
-      connectTimeout: 2_000,
+      // 10s for Upstash cold start (same fix as msg91-otp + public-cache) —
+      // the first connect of the day otherwise fails the 2s budget.
+      connectTimeout: 10_000,
       lazyConnect: true,
     });
   }

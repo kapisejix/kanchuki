@@ -31,7 +31,11 @@ function getCacheRedis(): Redis {
   cacheRedis ??= new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
-    connectTimeout: 2_000,
+    // 10s instead of 2s: Upstash's serverless Redis sleeps when idle and the
+    // first connection after wake can take several seconds — a 2s timeout
+    // failed the first storefront hit of the day (fail-open here, so it was
+    // silent, but the same cold start breaks OTP + social connect loudly).
+    connectTimeout: 10_000,
     lazyConnect: true,
   });
   return cacheRedis;
