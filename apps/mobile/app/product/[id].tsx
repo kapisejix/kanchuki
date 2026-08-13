@@ -3,6 +3,7 @@ import {
   PATTERN_TYPES,
   PIECE_TAGGABLE_CATEGORIES,
   SIZE_OPTIONS,
+  STUDIO_TEMPLATES,
   resolveFashionColor,
   COLORS,
 } from '@kanchuki/shared'
@@ -121,6 +122,15 @@ export default function ProductDetailScreen() {
   // F-029: "Set as main" — busy state for promoting the viewed photo to the
   // product's primary (the image the catalog + storefront show first).
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null)
+  // F-032: AI Studio Shoot — async generation (FLUX Kontext, 10–60s). The
+  // picker modal → POST returns a job_id → we poll status every 3s until
+  // ready (new photo row appears in the carousel) or failed.
+  const [studioModalOpen, setStudioModalOpen] = useState(false)
+  const [studioStarting, setStudioStarting] = useState(false)
+  const [studioJob, setStudioJob] = useState<{ jobId: string; photoId: string } | null>(null)
+  const [studioStatus, setStudioStatus] = useState<'processing' | 'ready' | 'failed' | null>(null)
+  const [studioError, setStudioError] = useState<string | null>(null)
+  const [studioResult, setStudioResult] = useState<{ photoId: string; url: string } | null>(null)
 
   // Editable AI fields
   const [editedName, setEditedName] = useState('')
@@ -728,6 +738,52 @@ export default function ProductDetailScreen() {
     }
   }
 
+  // F-032: start a studio-shoot generation for the currently-viewed photo.
+  // POST returns a job_id immediately; polling below picks up the result.
+  const handleStartStudioShoot = async (template: string) => {
+    const photo = currentPhoto
+    if (!product || !photo) return
+    if (photo.is_variant_preview || photo.is_original_preview) return
+    setStudioModalOpen(false)
+    setStudioStarting(true)
+    setStudioError(null)
+    setStudioResult(null)
+    try {
+      const res = await productApi.startStudioShoot(product.id, photo.id, template)
+      setStudioJob({ jobId: res.data.job_id, photoId: photo.id })
+      setStudioStatus('processing')
+    } catch (err) {
+      showError(err, 'Could not start the studio shoot')
+      setStudioStatus(null)
+    } finally {
+      setStudioStarting(false)
+    }
+  }
+
+  // Poll the studio-shoot job every 3s until ready/failed. Mirrors the
+  // spin/extraction poll cadence elsewhere in the app.
+  useEffect(() => {
+    if (!product || !studioJob || studioStatus !== 'processing') return
+    const timer = setInterval(async () => {
+      try {
+        const res = await productApi.getStudioShootStatus(product.id, studioJob.photoId, studioJob.jobId)
+        const s = res.data
+        if (s.status === 'ready' && s.photo_id && s.url) {
+          setStudioStatus('ready')
+          setStudioResult({ photoId: s.photo_id, url: s.url })
+          // New photo row — refresh the product so it appears in the carousel.
+          void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+        } else if (s.status === 'failed') {
+          setStudioStatus('failed')
+          setStudioError(s.error ?? 'The studio shoot failed. Please try again.')
+        }
+      } catch {
+        // Transient poll failure — keep polling, next tick decides.
+      }
+    }, 3_000)
+    return () => clearInterval(timer)
+  }, [product, studioJob, studioStatus, queryClient])
+
   // Many vendor "set" shots (kameez+dupatta draped on a mannequin, with the
   // folded bottom piece sitting on a stand in the same frame — see
   // docs/PRO-REQUIREMENTS.md F-102) can't be piece-tagged as-is: tagging is
@@ -1221,6 +1277,82 @@ export default function ProductDetailScreen() {
                   : 'Rotate'}
             </Text>
           </AnimatedPressable>
+        </View>
+      )}
+
+      {/* F-032: AI Studio Shoot — generate a professional studio backdrop
+          for the currently-viewed photo (FLUX Kontext, async 10–60s). Hidden
+          on variant / original slides — those aren't real ProductPhoto rows. */}
+      {currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+        <View className="mx-4 mt-2">
+          <AnimatedPressable
+            onPress={() => setStudioModalOpen(true)}
+            disabled={studioStarting || studioStatus === 'processing'}
+            accessibilityLabel="AI Studio Shoot — generate a professional studio background"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: studioStarting || studioStatus === 'processing' }}
+            className="flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
+          >
+            {studioStarting || studioStatus === 'processing' ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Sparkles size={14} color={primaryColor} />
+            )}
+            <Text className="text-ink-700 text-xs font-medium">
+              {studioStatus === 'processing'
+                ? 'Creating studio shot...'
+                : studioStatus === 'ready'
+                  ? 'AI Studio Shoot ✓'
+                  : 'AI Studio Shoot'}
+            </Text>
+          </AnimatedPressable>
+
+          {/* Inline status — spinner while generating, error on failure,
+              preview + set-as-main once the new photo is ready. */}
+          {studioStatus === 'processing' && (
+            <View className="mt-3 bg-white rounded-2xl p-4 border border-sand-100">
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator size="small" color={primaryColor} />
+                <Text className="text-xs text-sand-600 flex-1">
+                  Creating your studio shot... this usually takes under a minute.
+                </Text>
+              </View>
+            </View>
+          )}
+          {studioStatus === 'failed' && (
+            <View className="mt-3 bg-turmeric-50 border border-turmeric-100 rounded-xl px-3 py-2">
+              <Text className="text-xs text-turmeric-700">
+                {studioError ?? 'The studio shoot failed. Please try again.'}
+              </Text>
+            </View>
+          )}
+          {studioStatus === 'ready' && studioResult && (
+            <View className="mt-3 bg-white rounded-2xl p-4 border border-sand-100">
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+                Studio shot ready
+              </Text>
+              <Image
+                source={{ uri: studioResult.url }}
+                style={{ width: '100%', height: 200 }}
+                contentFit="cover"
+                className="rounded-xl mb-2"
+              />
+              <AnimatedPressable
+                onPress={() => void handleSetPrimary(studioResult.photoId)}
+                disabled={settingPrimaryId !== null}
+                className="flex-row items-center justify-center gap-1.5 rounded-xl py-2 border border-dashed border-ink-300"
+                accessibilityLabel="Set the studio shot as the main photo"
+                accessibilityRole="button"
+              >
+                {settingPrimaryId === studioResult.photoId ? (
+                  <ActivityIndicator size="small" color={primaryColor} />
+                ) : (
+                  <Star size={14} color={primaryColor} />
+                )}
+                <Text className="text-ink-700 text-xs font-medium">Set as main photo</Text>
+              </AnimatedPressable>
+            </View>
+          )}
         </View>
       )}
 
@@ -2069,6 +2201,55 @@ export default function ProductDetailScreen() {
         sku={product.sku}
         name={product.name}
       />
+
+      {/* F-032: AI Studio Shoot template picker — 4 curated presets (no free-
+          text prompts, per spec §24.6). Tap a template → POST the job → the
+          button area above shows the inline progress/result card. */}
+      <Modal
+        visible={studioModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setStudioModalOpen(false)}
+      >
+        <View className="flex-1 bg-black/60 justify-end">
+          <View
+            className="bg-white rounded-t-3xl px-5 pt-5"
+            style={{ paddingBottom: Math.max(insets.bottom, 20) }}
+          >
+            <Text className="text-base font-semibold text-ink-800 mb-1">AI Studio Shoot</Text>
+            <Text className="text-xs text-sand-500 mb-4">
+              Pick a backdrop — the product stays exactly the same, lighting blends in. Takes under a minute.
+            </Text>
+            <ScrollView bounces={false} style={{ maxHeight: 380 }}>
+              {STUDIO_TEMPLATES.map((t) => (
+                <AnimatedPressable
+                  key={t.id}
+                  onPress={() => void handleStartStudioShoot(t.id)}
+                  disabled={studioStarting}
+                  accessibilityLabel={`${t.label} — ${t.description}`}
+                  accessibilityRole="button"
+                  className="mb-3 border border-sand-200 rounded-2xl p-4"
+                >
+                  <View className="flex-row items-center gap-2">
+                    <Sparkles size={14} color={primaryColor} />
+                    <Text className="text-sm font-semibold text-ink-800">{t.label}</Text>
+                  </View>
+                  <Text className="text-xs text-sand-500 mt-1">{t.description}</Text>
+                </AnimatedPressable>
+              ))}
+            </ScrollView>
+            <AnimatedPressable
+              onPress={() => setStudioModalOpen(false)}
+              disabled={studioStarting}
+              accessibilityLabel="Cancel studio shoot"
+              accessibilityRole="button"
+              className="py-3 items-center"
+            >
+              <Text className="text-sm font-medium text-sand-500">Cancel</Text>
+            </AnimatedPressable>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }

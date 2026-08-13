@@ -206,4 +206,32 @@ export const productApi = {
       body: JSON.stringify({ image_url: imageUrl }),
       timeoutMs: 15_000,
     }),
+
+  // ─── F-032: AI Studio Shoots (FLUX Kontext, async job) ─────────────
+  /** Enqueue a studio-shoot generation for a photo. Returns 202 immediately
+   * with a job_id — poll getStudioShootStatus until ready/failed. */
+  startStudioShoot: (productId: string, photoId: string, template: string) =>
+    request<{ data: { job_id: string; status: string } }>(
+      `/v1/products/${productId}/photos/${photoId}/studio-shoot`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ template }),
+        timeoutMs: 15_000,
+      },
+    ),
+
+  /** Poll a studio-shoot job. 'processing' while the 10–60s generation runs;
+   * 'ready' returns the new photo id + url; 'failed' returns a safe error. */
+  getStudioShootStatus: (productId: string, photoId: string, jobId: string) =>
+    request<{
+      data: {
+        status: 'processing' | 'ready' | 'failed';
+        photo_id?: string;
+        url?: string;
+        error?: string;
+      };
+    }>(`/v1/products/${productId}/photos/${photoId}/studio-shoot/status?job_id=${jobId}`, {
+      getCacheTtlMs: 0,
+      timeoutMs: 15_000,
+    }),
 };
