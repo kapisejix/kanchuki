@@ -98,7 +98,8 @@ function sessionIssuanceError() {
 // the very same phone numbers (ensureSupabaseSession already find-or-creates
 // the auth user, so no data migration is needed).
 function otpTestBypassEnabled(): boolean {
-  return process.env.OTP_TEST_BYPASS === '1';
+  // Tolerant parse — operators may set 1 / true / yes / on in the dashboard.
+  return ['1', 'true', 'yes', 'on'].includes((process.env.OTP_TEST_BYPASS ?? '').trim().toLowerCase());
 }
 
 async function supabaseUserExistsForBypass(phone: string): Promise<boolean> {
@@ -106,9 +107,19 @@ async function supabaseUserExistsForBypass(phone: string): Promise<boolean> {
   // Accept users stored as E.164 (+91...) or bare 10 digits — the dashboard
   // may have either format.
   const e164 = `+91${phone}`;
-  if (await findSupabaseUserByPhone(e164)) return true;
-  if (e164 !== phone && (await findSupabaseUserByPhone(phone))) return true;
-  return false;
+  const hit =
+    (await findSupabaseUserByPhone(e164)) ||
+    (e164 !== phone ? await findSupabaseUserByPhone(phone) : null);
+  // Self-diagnosing: with the flag ON the bypass fails SILENTLY if the phone
+  // isn't whitelisted (not in Supabase auth.users) — the tester just sees
+  // "Invalid or expired OTP" with no hint which condition failed. Log which
+  // case we're in so the Railway logs say it outright. Only logs when the
+  // flag is set, so production (flag off) stays silent.
+  // biome-ignore lint/suspicious/noConsoleLog: operator-facing test-channel diagnostics
+  console.log(
+    `[auth] OTP test bypass: phone ${e164} ${hit ? 'whitelisted → bypass active' : 'NOT whitelisted — create this phone in Supabase auth.users (E.164 or bare 10 digits) to enable bypass'}`,
+  );
+  return Boolean(hit);
 }
 
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {

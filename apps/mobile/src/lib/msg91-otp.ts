@@ -12,7 +12,23 @@
 // defensive: reqId / access token can sit at different depths across MSG91
 // widget API versions, and the access token (a JWT) is what the API re-verifies
 // server-side via the Verify Access Token endpoint.
-import { OTPWidget } from '@msg91comm/sendotp-react-native'
+//
+// The SDK is loaded LAZILY (require, not import) because its index.ts touches
+// NativeModules.BiometricAuth at MODULE SCOPE and logs "BiometricAuth is
+// undefined!" on every module evaluation — which fires on EVERY app boot in
+// Expo Go, where the native module isn't linked, even though the widget is
+// never used there (isMsg91OtpConfigured() is false). The module scope only
+// runs once require() is actually called, i.e. only in EAS/dev builds that
+// really use the widget.
+type Msg91Sdk = typeof import('@msg91comm/sendotp-react-native')
+let sdk: Msg91Sdk | null = null
+function getSdk(): Msg91Sdk {
+  if (!sdk) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    sdk = require('@msg91comm/sendotp-react-native') as Msg91Sdk
+  }
+  return sdk
+}
 
 // EXPO_PUBLIC_* vars are statically inlined at build time (dot access keeps
 // expo lint's no-dynamic-env-var rule happy — the API_URL client uses the
@@ -29,7 +45,7 @@ export function isMsg91OtpConfigured(): boolean {
 
 function initWidget(): void {
   if (initialized || !WIDGET_ID || !TOKEN_AUTH) return
-  OTPWidget.initializeWidget(WIDGET_ID, TOKEN_AUTH)
+  getSdk().OTPWidget.initializeWidget(WIDGET_ID, TOKEN_AUTH)
   initialized = true
 }
 
@@ -90,13 +106,13 @@ export function extractMsg91AccessToken(response: unknown): string | undefined {
  */
 export function sendMsg91Otp(phoneDigits: string): Promise<unknown> {
   initWidget()
-  return OTPWidget.sendOTP({ identifier: `91${phoneDigits}` })
+  return getSdk().OTPWidget.sendOTP({ identifier: `91${phoneDigits}` })
 }
 
 /** Resend the OTP on the same channel (11 = SMS). */
 export function retryMsg91Otp(reqId: string): Promise<unknown> {
   initWidget()
-  return OTPWidget.retryOTP({ reqId, retryChannel: 11 })
+  return getSdk().OTPWidget.retryOTP({ reqId, retryChannel: 11 })
 }
 
 /**
@@ -106,5 +122,5 @@ export function retryMsg91Otp(reqId: string): Promise<unknown> {
 export function verifyMsg91Otp(reqId: string, otp?: string): Promise<unknown> {
   initWidget()
   const body = otp ? { reqId, otp } : { reqId }
-  return OTPWidget.verifyOTP(body)
+  return getSdk().OTPWidget.verifyOTP(body)
 }
