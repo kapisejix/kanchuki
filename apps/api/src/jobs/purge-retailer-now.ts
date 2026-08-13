@@ -25,39 +25,62 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
   // R2 objects aren't touched by SQL DELETE — collect keys before the rows
   // that reference them disappear. Best-effort, fired after the transaction
   // commits (a failed R2 delete shouldn't roll back the DB delete).
-  const [photos, spinFrames, variants, tryOnJobs, retailer] = await Promise.all([
-    db.$queryRawUnsafe<{ r2_key: string | null }[]>(
-      'SELECT r2_key FROM product_photos WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1)',
-      retailerId,
-    ),
-    db.$queryRawUnsafe<{ r2_key: string | null }[]>(
-      'SELECT r2_key FROM product_spin_frames WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1)',
-      retailerId,
-    ),
-    db.$queryRawUnsafe<{ r2_key: string | null }[]>(
-      'SELECT r2_key FROM product_variants WHERE retailer_id = $1',
-      retailerId,
-    ),
-    db.$queryRawUnsafe<{ customer_photo_r2_key: string | null; result_r2_key: string | null }[]>(
-      'SELECT customer_photo_r2_key, result_r2_key FROM try_on_jobs WHERE retailer_id = $1',
-      retailerId,
-    ),
-    db.retailer.findUnique({
-      where: { id: retailerId },
-      select: {
-        logo_r2_key: true,
-        banner_r2_key: true,
-        kyc_gst_r2_key: true,
-        kyc_aadhar_front_r2_key: true,
-        kyc_aadhar_back_r2_key: true,
-      },
-    }),
-  ]);
+  const [photos, spinFrames, variants, tryOnJobs, categoryCovers, measurementPhotos, retailer] =
+    await Promise.all([
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT r2_key FROM product_photos WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1)',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT r2_key FROM product_spin_frames WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1)',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT r2_key FROM product_variants WHERE retailer_id = $1',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ customer_photo_r2_key: string | null; result_r2_key: string | null }[]>(
+        'SELECT customer_photo_r2_key, result_r2_key FROM try_on_jobs WHERE retailer_id = $1',
+        retailerId,
+      ),
+      // Category cover images (product_categories.image_r2_key).
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT image_r2_key AS r2_key FROM product_categories WHERE retailer_id = $1',
+        retailerId,
+      ),
+      // Customer measurement photos (front/back capture).
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT front_photo_r2_key AS r2_key FROM customer_measurements WHERE retailer_id = $1 AND front_photo_r2_key IS NOT NULL UNION ALL SELECT back_photo_r2_key AS r2_key FROM customer_measurements WHERE retailer_id = $1 AND back_photo_r2_key IS NOT NULL',
+        retailerId,
+        retailerId,
+      ),
+      db.retailer.findUnique({
+        where: { id: retailerId },
+        select: {
+          logo_r2_key: true,
+          banner_r2_key: true,
+          kyc_gst_r2_key: true,
+          kyc_aadhar_front_r2_key: true,
+          kyc_aadhar_back_r2_key: true,
+        },
+      }),
+    ]);
+  // Consent-gated training copies (customer photo / garment photo / result) —
+  // stored under training_photo_consents keyed to the retailer's try_on_jobs.
+  const trainingPhotos = await db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+    'SELECT customer_photo_r2_key AS r2_key FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id = $1) UNION ALL SELECT garment_photo_r2_key AS r2_key FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id = $1) UNION ALL SELECT result_r2_key AS r2_key FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id = $1) AND result_r2_key IS NOT NULL',
+    retailerId,
+    retailerId,
+    retailerId,
+  );
   const r2Keys = [
     ...photos.map((r) => r.r2_key),
     ...spinFrames.map((r) => r.r2_key),
     ...variants.map((r) => r.r2_key),
     ...tryOnJobs.flatMap((j) => [j.customer_photo_r2_key, j.result_r2_key]),
+    ...categoryCovers.map((r) => r.r2_key),
+    ...measurementPhotos.map((r) => r.r2_key),
+    ...trainingPhotos.map((r) => r.r2_key),
     retailer?.logo_r2_key,
     retailer?.banner_r2_key,
     retailer?.kyc_gst_r2_key,
@@ -65,9 +88,7 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     retailer?.kyc_aadhar_back_r2_key,
   ].filter((k): k is string => !!k);
 
-  // Children-before-parents. See schema.prisma for the retailer_id FK graph —
-  // ponytail: category/measurement cover-image r2_keys aren't cleaned up here
-  // (small, rare assets) — add if that ever shows up as orphaned R2 cost.
+  // Children-before-parents. See schema.prisma for the retailer_id FK graph.
   const tables = [
     'DELETE FROM product_variants WHERE retailer_id = $1;',
     'DELETE FROM product_photos WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1);',
@@ -78,6 +99,10 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM collection_views WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
     'DELETE FROM collection_enquiries WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
     'DELETE FROM try_on_usage_logs WHERE retailer_id = $1;',
+    // Consent-gated training copies are keyed to the retailer's try_on_jobs
+    // (no FK — delete explicitly BEFORE the jobs they reference, or the
+    // subquery below finds nothing and they'd be orphaned).
+    'DELETE FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id = $1);',
     'DELETE FROM try_on_jobs WHERE retailer_id = $1;',
     'DELETE FROM customer_interactions WHERE retailer_id = $1;',
     'DELETE FROM customer_measurements WHERE retailer_id = $1;',
@@ -97,6 +122,14 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM store_sections WHERE retailer_id = $1;',
     'DELETE FROM product_categories WHERE retailer_id = $1;',
     'DELETE FROM usage_counters WHERE retailer_id = $1;',
+    // F-027 product_attributes + F-031 social accounts/posts have
+    // retailer_id FKs WITHOUT onDelete: Cascade (migrations 046/052) — they
+    // were missing from this list, so `DELETE FROM retailers` threw an FK
+    // violation and the whole transaction rolled back (the admin delete
+    // silently did nothing). Delete them before the retailer row.
+    'DELETE FROM social_posts WHERE retailer_id = $1;',
+    'DELETE FROM social_accounts WHERE retailer_id = $1;',
+    'DELETE FROM product_attributes WHERE retailer_id = $1;',
     // retailer_limit_overrides / retailer_payment_account have onDelete: Cascade
     // in the schema — Postgres removes them automatically with the row below.
     'DELETE FROM retailers WHERE id = $1;',
