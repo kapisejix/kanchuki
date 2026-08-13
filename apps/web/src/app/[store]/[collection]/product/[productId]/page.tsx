@@ -4,9 +4,32 @@ import { notFound, redirect } from 'next/navigation';
 import { SharedProductPage } from '../../../../c/[slug]/components/SharedProductPage';
 import { fetchCollection } from '../../../../c/[slug]/lib/fetchCollection';
 import { fetchProductDetail } from '../../../../c/[slug]/lib/fetchProductDetail';
+import { resolveStorefront } from '../../../lib/resolveStorefront';
+import type { PublicCollection } from '@kanchuki/shared';
 
 interface Props {
   params: Promise<{ store: string; collection: string; productId: string }>;
+}
+
+// Resolves the collection segment of a shared-product URL. It may be a real
+// collection slug (light page-1 fetch, same as before) OR a browse-page
+// pseudo-slug (all-{store} / cat-{categoryId}) — CollectionView passes the
+// browse slug into the product sheet's share button, so links shared from
+// "All Products" / category pages must resolve the same way the wishlist /
+// cart / checkout routes do (resolveStorefront fallback) instead of 404ing.
+// backHref is the "back to catalog" target: the real collection page, or the
+// browse page the customer was actually on (never the pseudo-slug URL, which
+// has no page behind it).
+async function resolveProductCollection(
+  store: string,
+  collectionSlug: string,
+): Promise<{ collection: PublicCollection; backHref: string } | null> {
+  const real = await fetchCollection(collectionSlug, { page: 1, pageSize: 1 });
+  if (real) return { collection: real, backHref: `/${store}/${collectionSlug}` };
+
+  const resolved = await resolveStorefront(store, collectionSlug);
+  if (!resolved) return null;
+  return { collection: resolved.collection, backHref: resolved.backHref };
 }
 
 // Shared product link — this page IS the URL customers forward on WhatsApp.
@@ -14,12 +37,14 @@ interface Props {
 // the product (not the collection/logo), and the page's primary CTA takes the
 // recipient back into the full catalog.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { collection: collectionSlug, productId } = await params;
-  const [collection, product] = await Promise.all([
-    fetchCollection(collectionSlug, { page: 1, pageSize: 1 }),
+  const { store, collection: collectionSlug, productId } = await params;
+  const [resolved, product] = await Promise.all([
+    resolveProductCollection(store, collectionSlug),
     fetchProductDetail(productId),
   ]);
-  if (!collection || !product) return { title: 'Product Not Found | Kanchuki' };
+  if (!resolved || !product) return { title: 'Product Not Found | Kanchuki' };
+
+  const collection = resolved.collection;
 
   const shop = collection.retailer.shop_name;
   const city = collection.retailer.city;
@@ -57,11 +82,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SharedProductPageRoute({ params }: Props) {
   const { store, collection: collectionSlug, productId } = await params;
-  const [collection, product] = await Promise.all([
-    fetchCollection(collectionSlug, { page: 1, pageSize: 1 }),
+  const [resolved, product] = await Promise.all([
+    resolveProductCollection(store, collectionSlug),
     fetchProductDetail(productId),
   ]);
-  if (!collection || !product) notFound();
+  if (!resolved || !product) notFound();
+
+  const { collection, backHref } = resolved;
 
   // Canonical URL enforcement — mirrors [store]/[collection]/page.tsx.
   const canonicalStore = collection.retailer.public_slug;
@@ -76,7 +103,10 @@ export default async function SharedProductPageRoute({ params }: Props) {
     <SharedProductPage
       collection={collection}
       product={product}
-      collectionPath={`/${store}/${collectionSlug}`}
+      // Real collection → back to the collection; pseudo-slug → back to the
+      // browse page the customer was on (All Products / category), never the
+      // pseudo-slug URL itself (no page behind it).
+      collectionPath={backHref}
     />
   );
 }
