@@ -1,0 +1,262 @@
+// F-032 Phase A — AI Studio Shoots route tests (2026-08-13).
+//
+// Covers the POST enqueue (plan gate, template validation, ownership check,
+// 202 + job_id) and the GET status poll (processing → ready/failed via
+// Redis, plus the persisted-photo fallback when Redis is absent).
+// Generation itself (FLUX Kontext) is lib-level — tested in
+// src/lib/studio-shoot.test.ts with a mocked fetch.
+import Fastify from 'fastify';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { errorHandler } from '../plugins/error-handler.js';
+import { productsStudioRoutes } from './products/products-studio.js';
+
+const {
+  mockRetailerFindUniqueOrThrow,
+  mockPhotoFindFirst,
+  mockPhotoCreate,
+  mockAddStudioShootJob,
+  mockGetStudioJobStatus,
+  mockIsStudioShootConfigured,
+} = vi.hoisted(() => ({
+  mockRetailerFindUniqueOrThrow: vi.fn(),
+  mockPhotoFindFirst: vi.fn(),
+  mockPhotoCreate: vi.fn(),
+  mockAddStudioShootJob: vi.fn(),
+  mockGetStudioJobStatus: vi.fn(),
+  mockIsStudioShootConfigured: vi.fn(),
+}));
+
+vi.mock('@kanchuki/db', () => ({
+  prisma: {
+    retailer: { findUniqueOrThrow: mockRetailerFindUniqueOrThrow },
+    productPhoto: {
+      findFirst: mockPhotoFindFirst,
+      create: mockPhotoCreate,
+    },
+  },
+}));
+
+vi.mock('../jobs/index.js', () => ({
+  addStudioShootJob: mockAddStudioShootJob,
+}));
+
+vi.mock('../lib/studio-shoot.js', () => ({
+  getStudioJobStatus: mockGetStudioJobStatus,
+  isStudioShootConfigured: mockIsStudioShootConfigured,
+}));
+
+const RETAILER_ID = 'retailer_1';
+
+async function buildApp() {
+  const app = Fastify();
+  app.setErrorHandler(errorHandler);
+  app.decorateRequest('retailerId', '');
+  app.addHook('preHandler', async (request) => {
+    request.retailerId = RETAILER_ID;
+  });
+  await app.register(productsStudioRoutes, { prefix: '/v1/products' });
+  await app.ready();
+  return app;
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockIsStudioShootConfigured.mockReturnValue(true);
+  mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'GROWTH' });
+  mockPhotoFindFirst.mockResolvedValue({ id: 'photo_1' });
+});
+
+describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
+  it('202 + job_id for a Growth retailer with a valid template', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'white_studio' },
+    });
+
+    expect(res.statusCode).toBe(202);
+    const data = res.json().data;
+    expect(data.status).toBe('processing');
+    expect(typeof data.job_id).toBe('string');
+    expect(data.job_id.length).toBeGreaterThan(0);
+    expect(mockAddStudioShootJob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        retailer_id: RETAILER_ID,
+        product_id: 'p1',
+        photo_id: 'photo_1',
+        template: 'white_studio',
+      }),
+    );
+    await app.close();
+  });
+
+  it('402 FEATURE_UNAVAILABLE for STARTER plan', async () => {
+    mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'STARTER' });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'white_studio' },
+    });
+
+    expect(res.statusCode).toBe(402);
+    expect(res.json().error.code).toBe('FEATURE_UNAVAILABLE');
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('422 for an unknown template', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'rainbow_laser' },
+    });
+
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('422 when template is missing', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('404 when the photo does not belong to this retailer', async () => {
+    mockPhotoFindFirst.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'white_studio' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('NOT_FOUND');
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('503 when BFL is not configured', async () => {
+    mockIsStudioShootConfigured.mockReturnValue(false);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'white_studio' },
+    });
+
+    expect(res.statusCode).toBe(503);
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('GET /products/:id/photos/:photoId/studio-shoot/status', () => {
+  it('returns ready + photo url when the job finished', async () => {
+    mockGetStudioJobStatus.mockResolvedValue({
+      status: 'ready',
+      photo_id: 'photo_new',
+      url: 'https://r2.example/studio.jpg',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot/status?job_id=job_1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({
+      status: 'ready',
+      photo_id: 'photo_new',
+      url: 'https://r2.example/studio.jpg',
+    });
+    await app.close();
+  });
+
+  it('returns failed + error message', async () => {
+    mockGetStudioJobStatus.mockResolvedValue({
+      status: 'failed',
+      error: 'The studio shoot timed out. Please try again.',
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot/status?job_id=job_1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe('failed');
+    await app.close();
+  });
+
+  it('falls back to the persisted studio photo when Redis status is absent', async () => {
+    mockGetStudioJobStatus.mockResolvedValue(null);
+    mockPhotoFindFirst
+      .mockResolvedValueOnce({ id: 'photo_1' }) // ownership check
+      .mockResolvedValueOnce({
+        id: 'photo_new',
+        url: 'https://r2.example/studio.jpg',
+      }); // persisted-photo fallback
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot/status?job_id=job_1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toEqual({
+      status: 'ready',
+      photo_id: 'photo_new',
+      url: 'https://r2.example/studio.jpg',
+    });
+    await app.close();
+  });
+
+  it('processing when nothing exists yet', async () => {
+    mockGetStudioJobStatus.mockResolvedValue(null);
+    mockPhotoFindFirst.mockResolvedValueOnce({ id: 'photo_1' }).mockResolvedValueOnce(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot/status?job_id=job_1',
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe('processing');
+    await app.close();
+  });
+
+  it('422 when job_id is missing', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot/status',
+    });
+
+    expect(res.statusCode).toBe(422);
+    await app.close();
+  });
+
+  it('404 when the photo does not belong to this retailer', async () => {
+    mockPhotoFindFirst.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot/status?job_id=job_1',
+    });
+
+    expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});

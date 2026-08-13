@@ -5,6 +5,7 @@ import {
   productsAiRoutes,
   productsCrudRoutes,
   productsMediaRoutes,
+  productsStudioRoutes,
   productsTrashRoutes,
   productsVariantsRoutes,
 } from './products/index.js';
@@ -20,4 +21,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   await server.register(productsVariantsRoutes);
   // products-ai — auto-split module
   await server.register(productsAiRoutes);
+  // products-studio — F-032 AI Studio Shoots
+  await server.register(productsStudioRoutes);
 };

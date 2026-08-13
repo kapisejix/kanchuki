@@ -262,7 +262,62 @@ export const R2_PATHS = {
   ghostMannequin: (retailerId: string, productId: string) =>
     `retailers/${retailerId}/products/${productId}/ghost-mannequin.jpg`,
   photoCleanupTest: (filename: string) => `admin/photo-cleanup-tests/${filename}`,
+  // F-032 Phase A: AI studio-shoot results. New KEY per generation (never
+  // overwrites the source photo) — the result is a new ProductPhoto row the
+  // retailer can promote to primary, keeping the original one tap away.
+  studioShot: (retailerId: string, productId: string, filename: string) =>
+    `retailers/${retailerId}/products/${productId}/studio/${filename}`,
 } as const;
+
+// ─── F-032 AI Studio Shoots — template presets (2026-08-13) ───────
+// PhotoRoom-style TEMPLATE-ONLY generation (no free-text prompts): the
+// retailer picks a preset, the API sends a fixed prompt to FLUX Kontext.
+// Shared with the mobile app so the picker labels can't drift from the
+// prompts the API uses. The prompts instruct subject preservation — keep
+// the product's pixels identical and generate only the scene (the "own the
+// subject, not the scene" lesson; see docs/PRO-REQUIREMENTS.md §24).
+
+export const STUDIO_TEMPLATES = [
+  {
+    id: 'white_studio',
+    label: 'White Studio',
+    description: 'Clean white backdrop, soft even lighting — marketplace ready',
+    prompt:
+      'Replace the background of this product photo with a clean, seamless white studio backdrop. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Add a soft, natural shadow under the product for grounding. Bright, even, professional lighting.',
+  },
+  {
+    id: 'warm_luxury',
+    label: 'Warm Luxury',
+    description: 'Rich warm beige backdrop with premium lighting',
+    prompt:
+      'Replace the background of this product photo with a warm, luxurious beige studio backdrop with subtle depth. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Premium soft lighting with warm tones and a natural grounding shadow.',
+  },
+  {
+    id: 'gold_festive',
+    label: 'Gold Festive',
+    description: 'Festive gold-tone backdrop (Diwali/wedding ready)',
+    prompt:
+      'Replace the background of this product photo with a festive, elegant gold-tone backdrop suitable for Diwali and wedding catalogues. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Rich celebratory lighting with warm glow and a natural grounding shadow.',
+  },
+  {
+    id: 'flat_lay',
+    label: 'Flat-Lay Casual',
+    description: 'Casual flat-lay style on a neutral textured surface',
+    prompt:
+      'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Soft, even, natural lighting.',
+  },
+] as const satisfies readonly {
+  id: string;
+  label: string;
+  description: string;
+  prompt: string;
+}[];
+
+export type StudioTemplateId = (typeof STUDIO_TEMPLATES)[number]['id'];
+
+export function getStudioTemplate(id: string): (typeof STUDIO_TEMPLATES)[number] | undefined {
+  return STUDIO_TEMPLATES.find((t) => t.id === id);
+}
 
 // ─── Integration Settings (F-012) ──────────────────────────────────
 // Canonical catalog of third-party credentials the super admin can manage
@@ -396,6 +451,11 @@ export const QUEUES = {
   FASHION_DNA: 'kanchuki-fashion-dna',
   SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
   GHOST_MANNEQUIN: 'kanchuki-ghost-mannequin',
+  // F-032 Phase A: AI studio-shoot generation (FLUX Kontext API). Own queue
+  // (not MAINTENANCE) — it's a retailer-facing, potentially concurrent hot
+  // path, and BFL caps active tasks (24 for kontext-pro / 6 for kontext-max),
+  // so a dedicated Worker with bounded concurrency protects that limit.
+  STUDIO_SHOOT: 'kanchuki-studio-shoot',
   // Cron-only, low-volume jobs share one queue — one Worker dispatches by job.name
   // instead of 4 separate Workers each holding their own duplicated Redis connection.
   MAINTENANCE: 'kanchuki-maintenance',

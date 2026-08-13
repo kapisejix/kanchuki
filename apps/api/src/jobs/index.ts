@@ -21,6 +21,9 @@ import { handleMeasureR2Storage } from './measure-r2-storage.js';
 // import { handleProcessTryOn } from './process-tryon.js';
 import type { TryOnJobData } from './process-tryon.js';
 import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
+import { handleStudioShoot } from './studio-shoot.js';
+import type { StudioShootJobData } from './studio-shoot.js';
+import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
 // import { handleUpdateFashionDNA } from './update-fashion-dna.js';
 import type { FashionDNAJobData } from './update-fashion-dna.js';
@@ -49,6 +52,7 @@ let tryOnQueue: Queue | null = null;
 let fashionDNAQueue: Queue | null = null;
 let spinFrameQueue: Queue | null = null;
 let ghostMannequinQueue: Queue | null = null;
+let studioShootQueue: Queue | null = null;
 let maintenanceQueue: Queue | null = null;
 
 function getTaggingQueue(): Queue {
@@ -84,6 +88,11 @@ function getSpinFrameQueue(): Queue {
 function getGhostMannequinQueue(): Queue {
   ghostMannequinQueue ??= new Queue(QUEUES.GHOST_MANNEQUIN, { connection: getRedis() });
   return ghostMannequinQueue;
+}
+
+function getStudioShootQueue(): Queue {
+  studioShootQueue ??= new Queue(QUEUES.STUDIO_SHOOT, { connection: getRedis() });
+  return studioShootQueue;
 }
 
 // Shared by cleanup / order-expiry / purge / backup — all cron-only, low-volume.
@@ -212,6 +221,17 @@ export async function addAdminTryOnJob(data: AdminTryOnJobData): Promise<void> {
   });
 }
 
+// F-032 Phase A: AI studio-shoot generation. Own queue + Worker with bounded
+// concurrency (BFL caps active tasks — see lib/studio-shoot.ts). No retries:
+// each run burns real BFL credits, so a failed job surfaces as status
+// 'failed' and the retailer retries deliberately (a fresh generation).
+export async function addStudioShootJob(data: StudioShootJobData): Promise<void> {
+  await getStudioShootQueue().add('studio-shoot', data, {
+    removeOnComplete: { count: 100 },
+    removeOnFail: { count: 50 },
+  });
+}
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -286,6 +306,18 @@ export async function startWorkers(): Promise<void> {
       await handleExtractSpinFrames(data);
     },
     { connection: redis, concurrency: 1 },
+  );
+
+  // AI studio-shoot worker (F-032 Phase A) — bounded concurrency to respect
+  // BFL's 24-active-task cap (see STUDIO_SHOOT_CONCURRENCY). No retries:
+  // each run costs real BFL credits.
+  const studioShootWorker = new Worker(
+    QUEUES.STUDIO_SHOOT,
+    async (job) => {
+      const data = job.data as StudioShootJobData;
+      await handleStudioShoot(data);
+    },
+    { connection: redis, concurrency: STUDIO_SHOOT_CONCURRENCY },
   );
 
   // Maintenance worker — cleanup / order-expiry / purge / backup, all cron-only
@@ -424,6 +456,10 @@ export async function startWorkers(): Promise<void> {
 
   spinFrameWorker.on('failed', (job, err) => {
     console.error(`[jobs] extract-spin-frames failed ${job?.id}:`, err.message);
+  });
+
+  studioShootWorker.on('failed', (job, err) => {
+    console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
   });
 
   maintenanceWorker.on('failed', (job, err) => {
