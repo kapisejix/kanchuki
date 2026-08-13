@@ -864,3 +864,25 @@ Spec: `docs/PRO-REQUIREMENTS.md` §24, roadmap `docs/PLAN.md` (Future slot). Wri
 **Model landscape (2026):** studio images — FLUX.1 Kontext (12B instruction-editing, best subject consistency, open weights + paid API ~₹2–6/img, self-host ~24GB VRAM), FLUX Redux, SDXL+ControlNet+LoRA (budget, 8–12GB), SaaS APIs. Product video — Seedance 2.0 (API, best reference consistency, ~$0.09–0.20/s ≈ ₹40–90/5s clip), Kling 2.x (motion presets), Veo 3 (best, priciest), Wan 2.1/2.2 (best open-weight i2v, 1.3B on 8GB slow), HunyuanVideo/LTX-Video.
 
 **Phases:** A) Studio-shoot button + template presets (White Studio / Warm Luxury / Gold Festive / Flat-Lay) on the existing cutout pipeline via FLUX Kontext — paid API first, GPU box (Hetzner GEX44 ~₹8–12k/mo) only after usage justifies; GPU mandatory, CX43 CPU can't run 12B. B) Product video via Seedance/Kling as a **paid add-on ₹49–99/clip** (covers ~₹45 API cost); self-host Wan 2.1 later. C, stretch) Consistent brand-model fashion shots (V-Tone is the seed; ethnic-wear draping is the known risk). **Explicitly NOT:** training a custom foundation model, running generation on CX43, flat-pasting onto stock photos, free-text prompts (templates only), hiding the original photo (trust).
+
+## ✅ FIXED 2026-08-13: Redis handshake race — first-request-of-the-day OTP/social failure (commit `9f6b16a`)
+
+**Symptom:** the first Redis-touching request of the day (OTP send, social connect) failed with `Could not start a secure OTP session` / `Stream isn't writeable`; retries succeeded. An earlier session misdiagnosed it as Upstash cold-start vs a 2s `connectTimeout`; bumping to 10s did not fix it.
+
+**Root cause:** all three short-fail ioredis clients (`msg91-otp`, `public-cache`, social OAuth state) used `lazyConnect: true` + `enableOfflineQueue: false`. With the offline queue disabled, any command sent before the `'ready'` handshake rejects instantly with `Stream isn't writeable` — the connectTimeout is never reached because the command dies on the still-connecting socket. The first command of every process/sleep cycle always hit the race.
+
+**Fix:** removed `lazyConnect` (eager connect) from all three clients; added `awaitRedisReady()` (waits for `'ready'`, bounded by connectTimeout + retry) to the two hard-fail paths (`sendOtpViaMsg91`/`verifyStoredOtp` in `apps/api/src/lib/msg91-otp.ts`; `createOAuthState`/`consumeOAuthState` in `apps/api/src/routes/retailers/retailers-social.ts`). public-cache stays fail-open so its first-hit race degrades to a direct DB read silently. FakeRedis test stand-ins gained `status: 'ready'` + `once`/`off`. Verified live: `POST /v1/auth/otp/send` → 200 `OTP sent` on first try; API tsc clean, 443/443 tests. Deployed `48784c77`.
+
+## ✅ BUILT 2026-08-13: F-031 Social Media Publishing — Phase 1 (Facebook Page) live
+
+Full build table + flow: `docs/PRO-REQUIREMENTS.md` §23, roadmap `docs/PLAN.md`. Commits `fbe131a` (feature), `efe6d63` (ESM ioredis import fix), `148ef4a` (correct Graph endpoints + mobile pre-flight removal).
+
+**What was built:** `SocialAccount`/`SocialPost` models + migration `052_social_publishing`; Meta Graph client (`apps/api/src/lib/meta-graph.ts` — OAuth URL, code→long-lived-token exchange, Page listing, photo post, link post); retailer routes (`retailers-social.ts` — connect/callback/accounts/posts/history/disconnect, F-012 encrypted page tokens, owner-only publish); web `/social/connect` + `/social/connect/callback` (OTP login → Meta consent → Page picker); mobile Settings → Social Media screen (connect via web flow + poll, composer with product/collection picker + caption, history, disconnect).
+
+**End-to-end review fixes (commit `148ef4a`):**
+1. `publishPhotoPost` posted to a bare `POST /photo` and `publishLinkPost` to a bare `POST /feed` — neither endpoint creates anything; every publish would have been rejected by Facebook. Fixed to `POST /{page-id}/photos?url=` and `POST /{page-id}/feed` (page id from the connected account).
+2. Mobile connect button pre-flighted `GET /me/social/connect`, minting an unused OAuth state and 503-blocking before the web page opened if Meta credentials hiccuped — removed; the app opens the web page directly.
+
+**Meta-side config still required (user, dashboard):** register `https://kanchuki.app/social/connect/callback` in the app's Valid OAuth Redirect URIs (else "URL Blocked"); add the test account as Admin/Developer/Tester (dev-mode access gate); app must go Live + App Review for `pages_manage_posts`/`pages_show_list` before real retailers connect with long-lived tokens.
+
+**Verified:** API tsc clean, 443/443 tests (9 social); web 106/106, page renders with 0 console errors; mobile tsc clean. Deployed: API `48784c77` → `c7e235d8` (SUCCESS), web unchanged (build-path filter correctly skipped — no web file changes since the feature push).

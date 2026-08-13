@@ -181,6 +181,8 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 37 | Play Store Launch Batch — web billing, privacy disclosures, location removal, launch checklist | ✅ Built | 2026-08-10 | BUILD-LOG §37 |
 | 38 | Real OTP — MSG91 widget (mobile) + server-side MSG91 everywhere + events webhook | ✅ Built | 2026-08-12 | BUILD-LOG §38 |
 | 39 | F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) | 🔴 Planned | 2026-08-13 | BUILD-LOG §39 |
+| 40 | Redis handshake race — first-request-of-the-day OTP/social failure | ✅ Fixed | 2026-08-13 | BUILD-LOG §40 |
+| 41 | F-031 Social Media Publishing Phase 1 (Facebook Page connect + post) | ✅ Built | 2026-08-13 | BUILD-LOG §41 |
 
 ### ✅ RESOLVED 2026-08-13: MSG91 OTP live-config session — wire-format fix + DLT finding
 
@@ -190,7 +192,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 
 2. **DLT root cause (NOT a code bug — do not re-diagnose):** with the wire format fixed, MSG91 returns `type:"success"` but no SMS arrives and no delivery webhook event fires. **The sender ID is not DLT-registered** (user confirmed: "dlt not registered"). India requires TRAI DLT registration for every transactional sender ID; the carrier silently drops the SMS post-acceptance. The widget flow (mobile) works because MSG91's own provisioned route bypasses the per-customer DLT sender — yesterday's widget OTP arrived. **Fix is account-side only:** register the sender ID under MSG91 → Sender ID → DLT registration (2–7 working days). No code change needed.
 
-**Verified this session:** new API build live (routes respond; `cbc55b8` confirmed in deployment metadata); `MSG91_AUTHKEY` + `MSG91_TEMPLATE_ID` set (probe flipped 500→401); `MSG91_WEBHOOK_SECRET` set and **matching the dashboard** (webhook probe → `{"received":true}`, wrong secret → 401); Redis reachable (transient Upstash cold-start on first attempt after idle — the 2s `connectTimeout` occasionally fires on the first daily send, retry succeeds; consider bumping to ~10s); tests: msg91-otp 23/23, auth-msg91 11/11, webhooks/msg91 12/12, auth-team 9/9, web widget 13/13, API tsc clean.
+**Verified this session:** new API build live (routes respond; `cbc55b8` confirmed in deployment metadata); `MSG91_AUTHKEY` + `MSG91_TEMPLATE_ID` set (probe flipped 500→401); `MSG91_WEBHOOK_SECRET` set and **matching the dashboard** (webhook probe → `{"received":true}`, wrong secret → 401); tests: msg91-otp 23/23, auth-msg91 11/11, webhooks/msg91 12/12, auth-team 9/9, web widget 13/13, API tsc clean. (The "transient Upstash cold-start / 2s connectTimeout" note once written here was a **misdiagnosis** — the real cause was the lazyConnect handshake race, **resolved later the same day**, see the "Redis handshake race" entry below. Do not re-blame timeouts.)
 
 **Still pending (account/device side):**
 1. **DLT registration** of the sender ID (blocks API-path SMS delivery).
@@ -199,6 +201,16 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 4. Lock the verifyAccessToken response shape: `npx tsx scripts/verify-msg91-token.ts "<widget_jwt>"` with a real widget JWT.
 
 **Railway debugging notes (don't re-investigate):** GraphQL `deployments(first:N)` = newest-first (the `last:` arg returned stale July entries — misleading); `deployment(id){diagnosis}` is null for build failures; `deploymentLogs(deploymentId, limit)` returns `[]` for failed builds (logs only visible in the dashboard build tab); `railway logs --deployment <full-id>` empty for failed builds and `--build`/`--deployment` flags can't combine. Old-image catch-all 401s unmatched paths — confirm the build is live before treating a 401 as a code bug.
+
+### ✅ RESOLVED 2026-08-13: Redis handshake race — first-request-of-the-day OTP/social failure
+
+**Symptom:** the FIRST Redis-touching request of the day (OTP send, social connect) failed with `Could not start a secure OTP session` / `Stream isn't writeable` — retries succeeded. The earlier entry above blamed the 2s `connectTimeout` vs Upstash idle-sleep cold start; **bumping to 10s did NOT fix it** (verified live — same failure with the longer timeout).
+
+**Real root cause (commit `9f6b16a`, deployed `48784c77`):** all three short-fail ioredis clients (msg91-otp, public-cache, social OAuth state) were created with `lazyConnect: true` + `enableOfflineQueue: false`. With the offline queue disabled, a command sent BEFORE the `'ready'` handshake event rejects instantly with `Stream isn't writeable` — the connectTimeout never gets a chance, because the command dies on the still-connecting socket rather than on the timeout. The first command of every process/sleep cycle always hit this race.
+
+**Fix:** removed `lazyConnect` from all three clients (eager connect at construction) and added an `awaitRedisReady()` helper — waits for the `'ready'` event (bounded by connectTimeout + retry), rejecting on `'error'` — to the two hard-fail paths (`sendOtpViaMsg91`/`verifyStoredOtp` in `apps/api/src/lib/msg91-otp.ts`, `createOAuthState`/`consumeOAuthState` in `retailers-social.ts`). public-cache stays fail-open (try/catch → direct compute) so its first-hit race degrades silently. FakeRedis test stand-ins gained `status: 'ready'` + `once`/`off`. **Verified live:** `POST /v1/auth/otp/send` → 200 `OTP sent` on the first attempt; API tsc clean, 443/443 tests.
+
+**Do NOT re-diagnose OTP cold-start failures as timeout issues** — the lazyConnect race is fixed. Any future "Could not start a secure OTP session" is either Redis actually down/unreachable from Railway, or the MSG91 DLT sender-ID registration (see the entry above).
 
 ## Key Risks
 
