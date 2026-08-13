@@ -1483,3 +1483,99 @@ Both take `--crop x1,y1,x2,y2` (isolates the subject before segmentation — tes
 - `apps/mobile/src/components/product-detail/types.ts` — `Product.add_shadow?: boolean`; `apps/mobile/src/lib/api/products.ts` — `cleanupPhoto(productId, photoId, backgroundImageId?, addShadow?)`.
 - Tests: `packages/ai/src/detector.test.ts` (3 — real sharp, mocked @imgly: shadow changes output bytes, omitted param is byte-identical to false, shadow survives bg-fallback); `products.test.ts` 29 (3 new: explicit override, product-default fallback, default-no-shadow); `tag-product.test.ts` 12 (2 new pass-through cases).
 - **Verified:** `db:generate` clean, `tsc --noEmit` clean across `packages/db`/`packages/ai`/`apps/api`/`apps/mobile`, API suite 358/358, AI suite 74/74 (image-compress needs >5s/test on this box — pre-existing, unrelated), biome clean on new code. **Deployed:** pushed to `main` (commit below), Railway auto-deploy triggered. **Migration 048 applied live 2026-08-10** (Supabase SQL Editor) + deployed API re-verified healthy. **Remaining:** app-side toggle re-verify (retailer taps SHADOW in the app).
+
+## 23. F-031 Social Media Publishing — Retailer connects Instagram/Facebook + posts products/collection links — 🔴 PLANNED (spec only, no code)
+
+**Status:** 🔴 Planned, not started. Spec written 2026-08-13. **Do not start development until explicitly told to proceed** — reference this entry + `CLAUDE.md` when the go-ahead is given.
+
+**User ask:** "retailer can configure their social media accounts within the app and they can push the selected product items, or catalog link with listing on their social media account like facebook, instagram etc."
+
+### 23.1 Problem
+
+Retailers already produce catalog-quality assets inside Kanchuki (ghost-mannequin-cleaned product photos, AI-generated name/subtype/description, priced products, a shareable collection page at `/c/[slug]`) — but those assets currently reach customers through exactly one outbound channel: WhatsApp. The same assets are exactly what a good Instagram/Facebook post needs, and the retailer has to redo all of it manually outside the app (download photos, open Instagram, write a caption, upload). No reuse of data Kanchuki already has.
+
+### 23.2 What this builds on (verified existing pieces, not assumptions)
+
+| Existing piece | Role in F-031 |
+|---|---|
+| Collection links `/c/[slug]` (customer PWA, F-006) | The shareable URL posted in social posts — already renders a full storefront page |
+| WhatsApp collection-link share (F-006, built) | Proves the "share an existing asset" pattern; social posts reuse the same link with `?utm_source=` attribution |
+| F-012 encrypted per-retailer secrets (Razorpay keys, AI provider keys) | The credential-vault mechanism that stores Meta OAuth tokens encrypted per retailer |
+| F-022 Auto-Post to Google Business Profile (planned, `docs/PRO-REQUIREMENTS.md` §10.13) | The same "OAuth-connect an external account → push products" pattern — F-031 should share one generic connected-account/publishing engine, not a third parallel integration |
+| Product photo pipeline (ghost-mannequin, ≤80KB compression, primary-image ordering) | The image assets for posts, already fit for social-media specs |
+
+### 23.3 Platform realities (facts that shape the design — verified 2026-08-13)
+
+- **Instagram Graph API requires a Business or Creator account** linked to a Facebook Page. Personal accounts cannot be posted to via API. Retailers running personal accounts must convert (free, one-time) or get a non-API fallback (below).
+- **Instagram feed captions cannot contain clickable links.** The collection link must live in the bio, a Stories link sticker, or the CTA must route to WhatsApp ("DM us"). Facebook page posts *can* carry clickable links. CTA handling is therefore per-platform.
+- **Meta app review is a process gate**: publishing permissions (`pages_manage_posts`, `instagram_business_content_publish`) require a Meta for Developers app + Meta review (demo screenshots/video, days–weeks, external timing). Must be submitted in parallel with development, not after.
+- **Tokens expire** (~60-day user tokens) and need refresh + re-auth flows; token lifecycle is a real work item (store via F-012 encrypted-secret mechanism).
+
+### 23.4 Scope — what the retailer can push
+
+Three post types, ascending effort:
+
+1. **Single product post** — pick one product → post its hero image + AI-generated name + price + CTA. Most common ("new arrival").
+2. **Multi-product carousel** — up to ~10 products → Instagram carousel / Facebook album, one image per swipe. Best for "new collection" drops.
+3. **Catalog/collection link post** — one image + the `/c/[slug]` collection link → the social post becomes a doorway to the full storefront.
+
+### 23.5 Phased build plan
+
+**Phase 1 — Facebook foundation (simplest API, no business-account barrier):**
+- Meta OAuth connect for a Facebook Page (retailer picks which Page; token stored via F-012 encrypted secrets)
+- Token expiry tracking + one-tap re-auth
+- Single-product post: select product → preview → post to Facebook Page
+- Post history (what was posted, when, link to the live post)
+- Meta app review submission for `pages_manage_posts` (parallel with build)
+
+**Phase 2 — Instagram + richer posts:**
+- Instagram Business connect (via the linked FB Page; guide personal-account retailers to convert)
+- Multi-product carousel posts
+- Auto-generated captions from existing product data (name + price + emoji + "Order via WhatsApp")
+- Per-platform CTA: Instagram → "DM us / link in bio"; Facebook → clickable collection link
+- **Non-API fallback for personal-account retailers**: "copy ready-made caption + share photo to the Instagram app" (works, but not automated — document the tradeoff)
+
+**Phase 3 — Automation & attribution:**
+- "Post to all connected accounts" (one tap → FB + IG, later Google Business Profile via shared engine)
+- Opt-in auto-post on new arrivals (mirror of F-022; default OFF, preview-first, never silently auto-post)
+- UTM-tagged collection links (`?utm_source=instagram&utm_campaign=...`) for visit attribution
+
+**Phase 4 — Stretch (decide later):** Instagram Stories link sticker, YouTube Shorts, scheduling (draft + pick time).
+
+### 23.6 Usability requirements
+
+- Settings → Social Media: Meta-branded connect flow (login popup → pick Page) with zero developer jargon; status shown (connected account name, post count)
+- Composer: product multi-select grid (reuse existing pickers) → live post preview (caption + image) → editable caption → Post
+- Post success: "Posted ✓ View on Instagram" linking to the live post
+- Failure states: token expired → "Reconnect to continue posting" (one tap, no data loss); API error → human-readable message + retry
+- **Every post is a deliberate retailer action** (or an explicit preview-first auto-publish toggle). No surprise posting.
+
+### 23.7 Architecture note (important)
+
+Build this as a **generic "connected publishing accounts" module** (one `SocialAccount` model: platform, account id, tokens, status) + one publishing service with per-platform adapters. Facebook, Instagram, and the planned Google Business Profile (F-022) then become *configurations* of the same engine instead of three parallel integrations. If that feels heavy for Phase 1, the pragmatic middle: Facebook adapter first, but the model/service shaped so adding Instagram (and later Google) is additive, not a rewrite.
+
+### 23.8 Acceptance criteria (Phase 1)
+
+- Retailer connects a Facebook Page via Meta login → Page name shown in Settings → Social Media
+- Retailer selects one product → previews the auto-generated post → posts → success screen links to the live FB post
+- Post history lists every post with timestamp + live link
+- Token expiry → app prompts one-tap reconnect (no silent breakage)
+- Personal-account Instagram retailer sees the guided conversion path (not a dead end)
+
+### 23.9 External blockers / risks
+
+- **Meta app review** — external timing, can stall a sprint; mitigation: submit in parallel with Phase 1 build, use development-mode for live retailer testing
+- **Instagram no-clickable-link rule** — CTA strategy must be WhatsApp-first ("DM us"), which plays to Kanchuki's core strength
+- **Token churn** — password changes break tokens; reconnect must be low-friction or posting silently breaks (covered by 23.6 failure states)
+- **Value depends on retailer social audience** — amplifier, not lead generator by itself; position accordingly in sales/marketing
+
+### 23.10 Complexity estimate
+
+- Phase 1 (Facebook single-product): ~3–5 dev days + Meta review time (external)
+- Phase 2 (Instagram + carousel + captions): ~4–6 dev days
+- Phase 3 (multi-post + auto-publish + UTM): ~3–4 dev days
+- Total ~2–3 weeks of build, plus Meta review wait and (if chosen) Instagram-commercial-app review
+
+### 23.11 Why not built yet
+
+Post-launch feature. Not in locked MVP scope; the launch (Play Store batch, billing, privacy) is the current focus. Slots into Phase 1 (post-MVP) — see `docs/PLAN.md`. Meta app review should be requested well before development starts if this becomes a priority.
