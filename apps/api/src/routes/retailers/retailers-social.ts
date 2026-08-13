@@ -25,6 +25,7 @@
 //   - Every post stores a SocialPost history row with status POSTED/FAILED.
 import { decryptSecret, encryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
+import { Redis } from 'ioredis';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import {
@@ -48,17 +49,17 @@ import { isRealOwner } from '../../plugins/auth.js';
 
 // Short-fail Redis for the OAuth state token — same pattern as public-cache
 // and msg91-otp (BullMQ's client would retry forever on a down connection).
-let stateRedis: import('ioredis').Redis | null = null;
-function getStateRedis(): import('ioredis').Redis {
+let stateRedis: Redis | null = null;
+function getStateRedis(): Redis {
   if (!stateRedis) {
-    stateRedis = new (require('ioredis').Redis)(process.env.REDIS_URL ?? 'redis://localhost:6379', {
+    stateRedis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
       connectTimeout: 2_000,
       lazyConnect: true,
     });
   }
-  return stateRedis!;
+  return stateRedis;
 }
 
 const STATE_TTL_SEC = 600; // 10 minutes — OAuth flows shouldn't sit open longer
