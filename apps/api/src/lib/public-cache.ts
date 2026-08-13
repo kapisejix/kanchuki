@@ -31,12 +31,10 @@ function getCacheRedis(): Redis {
   cacheRedis ??= new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
-    // 10s instead of 2s: Upstash's serverless Redis sleeps when idle and the
-    // first connection after wake can take several seconds — a 2s timeout
-    // failed the first storefront hit of the day (fail-open here, so it was
-    // silent, but the same cold start breaks OTP + social connect loudly).
+    // 10s for Upstash's idle-sleep cold start, and NO lazyConnect — same
+    // incident as msg91-otp (2026-08-13): lazyConnect + offlineQueue:false
+    // kills the first command before the handshake completes.
     connectTimeout: 10_000,
-    lazyConnect: true,
   });
   return cacheRedis;
 }

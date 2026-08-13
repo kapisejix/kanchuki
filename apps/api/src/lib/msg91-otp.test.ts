@@ -19,6 +19,12 @@ import type { AppError } from '../plugins/error-handler.js';
 const { FakeRedis, store: fakeStore } = vi.hoisted(() => {
   const store = new Map<string, { value: string; expiresAt: number }>();
   class FakeRedis {
+    // The lib's awaitRedisReady() waits for the connection handshake — the
+    // fake is always ready, so the status check short-circuits and the
+    // once/off event methods below are only present for interface parity.
+    status: 'ready' = 'ready' as const;
+    async once(): Promise<void> {}
+    async off(): Promise<void> {}
     async get(key: string): Promise<string | null> {
       const entry = store.get(key);
       if (!entry) return null;

@@ -68,14 +68,34 @@ function getOtpRedis(): Redis {
   otpRedis ??= new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
     maxRetriesPerRequest: 1,
     enableOfflineQueue: false,
-    // Upstash's serverless Redis sleeps when idle; the first connection after
-    // wake can take several seconds. 2s here made the FIRST OTP of the day
-    // fail the fail-closed Redis guard ("Could not start a secure OTP
-    // session") instead of sending. 10s absorbs the cold start.
+    // 10s for Upstash's serverless idle-sleep cold start.
     connectTimeout: 10_000,
-    lazyConnect: true,
   });
   return otpRedis;
+}
+
+/**
+ * Wait for the connection handshake before sending a command. With
+ * `enableOfflineQueue: false`, ioredis rejects a command sent before the
+ * 'ready' event with "Stream isn't writeable" — the 2026-08-13 production
+ * OTP incident: the FIRST send of the day always failed at this exact spot,
+ * regardless of connectTimeout (the handshake was still in flight). This
+ * await turns that race into a wait, bounded by connectTimeout + the retry.
+ */
+function awaitRedisReady(redis: Redis): Promise<void> {
+  if (redis.status === 'ready') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const onReady = () => {
+      redis.off('error', onError);
+      resolve();
+    };
+    const onError = (err: Error) => {
+      redis.off('ready', onReady);
+      reject(err);
+    };
+    redis.once('ready', onReady);
+    redis.once('error', onError);
+  });
 }
 
 // Vitest does NOT override an inherited NODE_ENV (repo .env sets
@@ -118,6 +138,7 @@ export async function sendOtpViaMsg91(
 
   if (redis) {
     try {
+      await awaitRedisReady(redis);
       // Atomic per-phone cooldown — SET NX so two parallel sends can't both
       // pass the check and double-fire an SMS.
       const guard = await redis.set(COOLDOWN_KEY(phone), '1', 'EX', SEND_COOLDOWN_SEC, 'NX');
@@ -219,6 +240,7 @@ export async function verifyStoredOtp(
   if (!redisAvailable()) return 'absent';
   const redis = getOtpRedis();
   try {
+    await awaitRedisReady(redis);
     // GETDEL is atomic — a concurrent second verify reads nothing and reports
     // 'absent', so a used code can never verify twice (matters for the
     // payment step-up path, not just login).

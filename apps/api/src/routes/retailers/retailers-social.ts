@@ -55,10 +55,10 @@ function getStateRedis(): Redis {
     stateRedis = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: 1,
       enableOfflineQueue: false,
-      // 10s for Upstash cold start (same fix as msg91-otp + public-cache) —
-      // the first connect of the day otherwise fails the 2s budget.
+      // 10s for Upstash cold start, NO lazyConnect — same 2026-08-13 incident
+      // as msg91-otp/public-cache: lazyConnect + offlineQueue:false kills the
+      // first command before the handshake completes.
       connectTimeout: 10_000,
-      lazyConnect: true,
     });
   }
   return stateRedis;
@@ -66,15 +66,28 @@ function getStateRedis(): Redis {
 
 const STATE_TTL_SEC = 600; // 10 minutes — OAuth flows shouldn't sit open longer
 
+/** Wait for the handshake before sending a command — same 2026-08-13 fix as
+ * msg91-otp: `enableOfflineQueue:false` rejects commands sent before 'ready'
+ * with "Stream isn't writeable" (the FIRST connect of the day always failed). */
+function awaitStateRedisReady(redis: Redis): Promise<void> {
+  if (redis.status === 'ready') return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    redis.once('ready', () => resolve());
+    redis.once('error', (err) => reject(err));
+  });
+}
+
 async function createOAuthState(retailerId: string): Promise<string> {
   const state = randomBytes(24).toString('base64url');
   const redis = getStateRedis();
+  await awaitStateRedisReady(redis);
   await redis.set(`social:oauth:${state}`, retailerId, 'EX', STATE_TTL_SEC);
   return state;
 }
 
 async function consumeOAuthState(state: string): Promise<string | null> {
   const redis = getStateRedis();
+  await awaitStateRedisReady(redis);
   const retailerId = await redis.getdel(`social:oauth:${state}`);
   return retailerId;
 }
