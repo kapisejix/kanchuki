@@ -6,6 +6,7 @@ import {
   retailersProfileRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
+  retailersSocialRoutes,
   retailersStatsRoutes,
   retailersUploadsRoutes,
   retailersWhatsappRoutes,
@@ -26,4 +27,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersSectionsRoutes);
   // retailers-catalog-upload — auto-split module
   await server.register(retailersCatalogUploadRoutes);
+  // retailers-social — F-031 social media publishing
+  await server.register(retailersSocialRoutes);
 };

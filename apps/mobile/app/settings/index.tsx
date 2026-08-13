@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Package,
   QrCode,
+  Share2,
   ShieldCheck,
   Smartphone,
   Trash2,
@@ -1219,6 +1220,13 @@ export default function SettingsScreen() {
               onPress={() => router.push('/settings/staff')}
             />
           )}
+
+          <SettingsRow
+            icon={<Share2 size={18} color={primaryColor} />}
+            label="Social Media"
+            subtitle="Post products to your Facebook Page"
+            onPress={() => router.push('/settings/social')}
+          />
 
           <SettingsRow
             icon={<QrCode size={18} color={primaryColor} />}

@@ -28,6 +28,32 @@ const {
   mockGetSecret: vi.fn(),
 }));
 
+// F-031 social publishing mocks (referenced by the @kanchuki/db + meta-graph
+// mock factories below, so they must be declared here — before those calls).
+const {
+  mockSocialAccountFindFirst,
+  mockSocialAccountUpdate,
+  mockSocialAccountFindMany,
+  mockSocialPostCreate,
+  mockSocialPostFindMany,
+  mockEncryptSecret,
+  mockDecryptSecret,
+  mockResolveMetaCredentials,
+  mockPublishPhotoPost,
+  mockPublishLinkPost,
+} = vi.hoisted(() => ({
+  mockSocialAccountFindFirst: vi.fn(),
+  mockSocialAccountUpdate: vi.fn(),
+  mockSocialAccountFindMany: vi.fn(),
+  mockSocialPostCreate: vi.fn(),
+  mockSocialPostFindMany: vi.fn(),
+  mockEncryptSecret: vi.fn((v: string) => `enc:${v}`),
+  mockDecryptSecret: vi.fn((v: string) => v.replace(/^enc:/, '')),
+  mockResolveMetaCredentials: vi.fn(),
+  mockPublishPhotoPost: vi.fn(),
+  mockPublishLinkPost: vi.fn(),
+}));
+
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
   getSecret: mockGetSecret,
@@ -52,15 +78,45 @@ vi.mock('@kanchuki/db', () => ({
       create: mockSupportTicketCreate,
       update: mockSupportTicketUpdate,
     },
+    socialAccount: {
+      findFirst: mockSocialAccountFindFirst,
+      update: mockSocialAccountUpdate,
+      findMany: mockSocialAccountFindMany,
+    },
+    socialPost: { create: mockSocialPostCreate, findMany: mockSocialPostFindMany },
     auditLog: { create: vi.fn() },
   },
+  encryptSecret: mockEncryptSecret,
+  decryptSecret: mockDecryptSecret,
   Prisma: {},
-}));
-
-vi.mock('@kanchuki/ai', () => ({
+}));vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: mockGetUploadPresignedUrl,
   publicUrl: mockPublicUrl,
 }));
+
+// F-031 social publishing — Meta Graph API + Redis are mocked; the suite only
+// exercises publish/list/history/disconnect (the connect flow's Redis state is
+// covered by the meta-graph lib tests).
+vi.mock('../lib/meta-graph.js', async () => {
+  const { AppError } = await import('../plugins/error-handler.js');
+  // Extends the REAL AppError so the error handler's instanceof check works
+  // (a plain Error subclass would fall through to a 500 in this suite).
+  class MockMetaApiError extends AppError {
+    constructor(message: string, status = 400, code = 'META_ERROR') {
+      super(code, message, status);
+      this.name = 'MetaApiError';
+    }
+  }
+  return {
+    MetaApiError: MockMetaApiError,
+    resolveMetaCredentials: mockResolveMetaCredentials,
+    buildOAuthUrl: vi.fn(),
+    exchangeCodeForToken: vi.fn(),
+    listPages: vi.fn(),
+    publishPhotoPost: mockPublishPhotoPost,
+    publishLinkPost: mockPublishLinkPost,
+  };
+});
 
 const RETAILER_ID = 'retailer_1';
 
@@ -68,6 +124,8 @@ async function buildApp() {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.decorateRequest('retailerId', '');
+  app.decorateRequest('staffRole', null);
+  app.decorateRequest('catalogDelegate', null);
   app.addHook('preHandler', async (request) => {
     request.retailerId = RETAILER_ID;
   });
@@ -565,6 +623,194 @@ describe('POST /retailers/me/banner-upload-url', () => {
     expect(res1.statusCode).toBe(200);
     expect(res2.statusCode).toBe(200);
     expect(res1.json().data.r2_key).not.toBe(res2.json().data.r2_key);
+    await app.close();
+  });
+
+  // ─── F-031 Social Media Publishing ───────────────────────────────────
+
+  const FACEBOOK_ACCOUNT = {
+    id: 'social_1',
+    retailer_id: RETAILER_ID,
+    platform: 'FACEBOOK',
+    platform_account_id: 'page_123',
+    platform_account_name: 'My Shop Page',
+    access_token_encrypted: 'enc:page-token',
+    is_active: true,
+    token_expires_at: null,
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  it('publishes a single product photo to a connected Page (owner)', async () => {
+
+    mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
+    mockPublishPhotoPost.mockResolvedValue({ postId: 'fb_post_1' });
+    mockSocialPostCreate.mockResolvedValue({
+      id: 'sp_1',
+      post_type: 'SINGLE_PRODUCT',
+      caption: 'New Kurti — ₹999',
+      status: 'POSTED',
+      external_post_url: 'https://www.facebook.com/page_123/posts/fb_post_1',
+    });
+
+    const prismaMock = (await import('@kanchuki/db')).prisma;
+    prismaMock.product.findFirst = vi.fn().mockResolvedValue({
+      id: 'prod_1',
+      name: 'New Kurti',
+      price_min: 99900,
+      photos: [{ id: 'ph_1', url: 'https://cdn.example.com/kurti.jpg' }],
+    });
+    prismaMock.retailer.findUnique = vi.fn().mockResolvedValue({ public_slug: 'my-shop-ab12' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/social/accounts/social_1/posts',
+      payload: { post_type: 'SINGLE_PRODUCT', product_id: 'prod_1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data.status).toBe('POSTED');
+    expect(mockPublishPhotoPost).toHaveBeenCalledWith(
+      'page-token',
+      'https://cdn.example.com/kurti.jpg',
+      expect.stringContaining('New Kurti'),
+    );
+    await app.close();
+  });
+
+  it('publishes a collection link post with the store URL', async () => {
+    mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
+    mockPublishLinkPost.mockResolvedValue({ postId: 'fb_post_2' });
+    mockSocialPostCreate.mockResolvedValue({
+      id: 'sp_2',
+      post_type: 'COLLECTION_LINK',
+      caption: 'Shop new collection — https://kanchuki.app/my-shop-ab12/festive',
+      status: 'POSTED',
+      external_post_url: 'https://www.facebook.com/page_123/posts/fb_post_2',
+    });
+
+    const prismaMock = (await import('@kanchuki/db')).prisma;
+    prismaMock.collection.findFirst = vi.fn().mockResolvedValue({
+      id: 'col_1',
+      title: 'Festive Collection',
+      slug: 'festive-collection',
+    });
+    prismaMock.retailer.findUnique = vi.fn().mockResolvedValue({ public_slug: 'my-shop-ab12' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/social/accounts/social_1/posts',
+      payload: { post_type: 'COLLECTION_LINK', collection_id: 'col_1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockPublishLinkPost).toHaveBeenCalledWith(
+      'page-token',
+      expect.stringContaining('festive-collection'),
+      expect.any(String),
+    );
+    await app.close();
+  });
+
+  it('records a FAILED history row when Facebook rejects the post', async () => {
+    mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
+    mockPublishPhotoPost.mockRejectedValue(new Error('Facebook rejected the photo post'));
+    mockSocialPostCreate.mockResolvedValue({ id: 'sp_3' });
+
+    const prismaMock = (await import('@kanchuki/db')).prisma;
+    prismaMock.product.findFirst = vi.fn().mockResolvedValue({
+      id: 'prod_1',
+      name: 'New Kurti',
+      price_min: 99900,
+      photos: [{ id: 'ph_1', url: 'https://cdn.example.com/kurti.jpg' }],
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/social/accounts/social_1/posts',
+      payload: { post_type: 'SINGLE_PRODUCT', product_id: 'prod_1' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    const failedRow = mockSocialPostCreate.mock.calls[0]?.[0]?.data;
+    expect(failedRow.status).toBe('FAILED');
+    expect(failedRow.error_message).toContain('rejected');
+    await app.close();
+  });
+
+  it('returns 503 when Meta credentials are not configured', async () => {
+    mockResolveMetaCredentials.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/retailers/me/social/connect' });
+    expect(res.statusCode).toBe(503);
+    await app.close();
+  });
+
+  it('lists connected accounts (masked, no tokens)', async () => {
+    mockSocialAccountFindMany.mockResolvedValue([FACEBOOK_ACCOUNT]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/retailers/me/social/accounts' });
+    expect(res.statusCode).toBe(200);
+    const data = res.json().data;
+    expect(data).toHaveLength(1);
+    expect(data[0].account_name).toBe('My Shop Page');
+    expect(JSON.stringify(data)).not.toContain('page-token');
+    await app.close();
+  });
+
+  it('returns post history for a connected account', async () => {
+    mockSocialAccountFindFirst.mockResolvedValue({ id: 'social_1' });
+    mockSocialPostFindMany.mockResolvedValue([
+      {
+        id: 'sp_1',
+        post_type: 'SINGLE_PRODUCT',
+        caption: 'New Kurti',
+        status: 'POSTED',
+        external_post_url: 'https://www.facebook.com/page_123/posts/fb_post_1',
+        error_message: null,
+        product_ids: ['prod_1'],
+        collection_id: null,
+        created_at: new Date(),
+      },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/retailers/me/social/accounts/social_1/posts',
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().data).toHaveLength(1);
+    expect(res.json().data[0].external_post_url).toContain('facebook.com');
+    await app.close();
+  });
+
+  it('disconnects an account (204, soft delete)', async () => {
+    mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
+    mockSocialAccountUpdate.mockResolvedValue(FACEBOOK_ACCOUNT);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/retailers/me/social/accounts/social_1',
+    });
+    expect(res.statusCode).toBe(204);
+    expect(mockSocialAccountUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { is_active: false } }),
+    );
+    await app.close();
+  });
+
+  it('404s when publishing to an account that does not exist', async () => {
+    mockSocialAccountFindFirst.mockResolvedValue(null);
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/social/accounts/nope/posts',
+      payload: { post_type: 'SINGLE_PRODUCT', product_id: 'prod_1' },
+    });
+    expect(res.statusCode).toBe(404);
     await app.close();
   });
 });

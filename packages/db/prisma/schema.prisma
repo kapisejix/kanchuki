@@ -290,6 +290,8 @@ model Retailer {
   support_tickets       SupportTicket[]
   payment_account       RetailerPaymentAccount?
   orders                Order[]
+  social_accounts       SocialAccount[]
+  social_posts          SocialPost[]
 
   @@index([phone])
   @@index([city])
@@ -1491,4 +1493,82 @@ model AiUsageLog {
   @@index([retailer_id, created_at])
   @@index([provider_id])
   @@map("ai_usage_logs")
+}
+
+// ─── SOCIAL MEDIA PUBLISHING (F-031) ──────────────────────────────
+// Retailer connects their social accounts (Facebook Page first, Instagram
+// Business later — Phase 2) and pushes product/collection posts to them.
+// OAuth tokens are per-retailer secrets encrypted via packages/db/src/
+// secrets.ts encryptSecret() (F-012 pattern, same as Razorpay).
+
+enum SocialPlatform {
+  FACEBOOK
+  INSTAGRAM
+}
+
+model SocialAccount {
+  id          String         @id @default(cuid())
+  retailer_id String
+  platform    SocialPlatform
+
+  // Platform-side identity — Facebook Page id (and its name for display),
+  // Instagram Business account id in Phase 2.
+  platform_account_id   String
+  platform_account_name String
+
+  // Encrypted long-lived access token (F-012 encryptSecret) + expiry.
+  // NEVER returned to clients — only masked previews.
+  access_token_encrypted String
+  token_expires_at       DateTime?
+
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  retailer Retailer   @relation(fields: [retailer_id], references: [id])
+  posts    SocialPost[]
+
+  @@unique([retailer_id, platform, platform_account_id])
+  @@index([retailer_id])
+  @@map("social_accounts")
+}
+
+enum SocialPostType {
+  SINGLE_PRODUCT   // one product's hero photo + caption
+  COLLECTION_LINK  // collection page link post
+  CAROUSEL         // multi-product carousel (Phase 2)
+}
+
+enum SocialPostStatus {
+  POSTED
+  FAILED
+}
+
+model SocialPost {
+  id               String           @id @default(cuid())
+  retailer_id      String
+  social_account_id String
+  platform         SocialPlatform
+  post_type        SocialPostType
+
+  // Content snapshot (product ids / collection id) for history display even
+  // if the underlying records change later.
+  product_ids      String[] @default([])
+  collection_id    String?
+  caption          String
+
+  // Platform-side result.
+  external_post_id  String?
+  external_post_url String?
+  status            SocialPostStatus
+  error_message     String?
+
+  created_at DateTime @default(now())
+
+  retailer Retailer     @relation(fields: [retailer_id], references: [id])
+  account  SocialAccount @relation(fields: [social_account_id], references: [id])
+
+  @@index([retailer_id, created_at])
+  @@index([social_account_id])
+  @@map("social_posts")
 }
