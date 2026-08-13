@@ -81,6 +81,36 @@ function sessionIssuanceError() {
   return new AppError('OTP_VERIFY_FAILED', 'Could not complete sign-in. Please try again.', 500);
 }
 
+// ─── TEST BYPASS (pre-production only) ─────────────────────────────
+// With OTP_TEST_BYPASS=1, phones that ALREADY EXIST as Supabase auth users
+// skip the real MSG91 OTP send + verify entirely — any code the tester types
+// is accepted. This lets testers log in with their own numbers before the
+// MSG91 sender's DLT registration lands (the API path currently returns
+// "success" while the carrier silently drops the SMS).
+//
+// The whitelist is the Supabase auth.users table: the operator pre-creates a
+// user with the tester's phone (E.164 like +919898989898, or bare digits) via
+// the Supabase dashboard, and that number becomes test-login-enabled.
+//
+// ⚠️ SECURITY: this is a full auth bypass for whitelisted phones. NEVER set
+// OTP_TEST_BYPASS on a real deployment — when the app goes live with real
+// MSG91 OTP, simply leave the flag unset and the real flow below applies to
+// the very same phone numbers (ensureSupabaseSession already find-or-creates
+// the auth user, so no data migration is needed).
+function otpTestBypassEnabled(): boolean {
+  return process.env.OTP_TEST_BYPASS === '1';
+}
+
+async function supabaseUserExistsForBypass(phone: string): Promise<boolean> {
+  if (!otpTestBypassEnabled()) return false;
+  // Accept users stored as E.164 (+91...) or bare 10 digits — the dashboard
+  // may have either format.
+  const e164 = `+91${phone}`;
+  if (await findSupabaseUserByPhone(e164)) return true;
+  if (e164 !== phone && (await findSupabaseUserByPhone(phone))) return true;
+  return false;
+}
+
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
   const e164 = `+91${phone}`;
   const password = randomBytes(24).toString('base64url');
@@ -120,6 +150,15 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
 
     const phone = body.data.phone;
     const e164 = `+91${phone}`; // Indian numbers only for MVP
+
+    // TEST BYPASS: whitelisted phones skip the real send — no MSG91 call, no
+    // DLT-dropped SMS, no rate-limit exposure. Verification is bypassed on
+    // the same whitelist in /otp/verify.
+    if (await supabaseUserExistsForBypass(phone)) {
+      return reply.status(200).send({
+        data: { message: 'OTP sent', phone: `****${phone.slice(-4)}` },
+      });
+    }
 
     if (isMsg91OtpConfigured()) {
       // Real OTP configuration: MSG91 generates + sends the SMS directly and
@@ -165,6 +204,10 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     const { phone, otp, msg91_token } = body.data;
     const e164 = `+91${phone}`;
 
+    // TEST BYPASS: whitelisted phones skip all OTP verification — any code
+    // they type is accepted (see supabaseUserExistsForBypass).
+    const bypassActive = await supabaseUserExistsForBypass(phone);
+
     // ── 1. Verify the OTP (three channels, all server-side) ──────────
     //  - msg91_token: the widget verified the code client-side; re-confirm the
     //    access token with MSG91 before trusting it.
@@ -176,7 +219,9 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     let session: Session;
     let msg91Verified = false;
 
-    if (msg91_token) {
+    if (bypassActive) {
+      msg91Verified = true; // test mode — accept without checking anything
+    } else if (msg91_token) {
       await verifyMsg91WidgetToken(msg91_token, phone); // throws 401 on failure
       msg91Verified = true;
     } else if (otp) {
@@ -301,7 +346,16 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     // that row has a placeholder `pending:<id>` auth_user_id since no real
     // Supabase user existed yet. Link it by phone instead of creating a
     // second, duplicate row keyed on the now-real auth_user_id.
-    const pending = await prisma.retailer.findUnique({ where: { phone } });
+    let pending = await prisma.retailer.findUnique({ where: { phone } });
+    if (pending?.deleted_at && bypassActive) {
+      // TEST BYPASS: revive a soft-deleted account instead of 409-ing —
+      // testers commonly reuse numbers that were deleted during testing.
+      await prisma.retailer.update({
+        where: { id: pending.id },
+        data: { deleted_at: null, auth_user_id: user.id },
+      });
+      pending = await prisma.retailer.findUnique({ where: { phone } });
+    }
     if (pending) {
       // Soft-deleted account still owns the unique phone. Until the row is
       // purged (admin/SQL-editor path — role separation blocks the app role's
