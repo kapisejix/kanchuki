@@ -672,6 +672,7 @@ describe('POST /retailers/me/banner-upload-url', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data.status).toBe('POSTED');
     expect(mockPublishPhotoPost).toHaveBeenCalledWith(
+      'page_123',
       'page-token',
       'https://cdn.example.com/kurti.jpg',
       expect.stringContaining('New Kurti'),
@@ -707,6 +708,7 @@ describe('POST /retailers/me/banner-upload-url', () => {
 
     expect(res.statusCode).toBe(200);
     expect(mockPublishLinkPost).toHaveBeenCalledWith(
+      'page_123',
       'page-token',
       expect.stringContaining('festive-collection'),
       expect.any(String),

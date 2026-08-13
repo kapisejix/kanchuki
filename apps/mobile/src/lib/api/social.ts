@@ -27,12 +27,8 @@ export interface SocialPostInfo {
 }
 
 export const socialApi = {
-  /** Returns the Meta OAuth start URL (the web page handles the rest). */
-  getConnectUrl: () =>
-    request<{ data: { auth_url: string; state: string } }>('/v1/retailers/me/social/connect', {
-      getCacheTtlMs: 0,
-    }),
-
+  // No getConnectUrl(): the app opens {WEB_URL}/social/connect directly — the
+  // web page does its own authenticated connect via GET /me/social/connect.
   listAccounts: () =>
     request<{ data: SocialAccountInfo[] }>('/v1/retailers/me/social/accounts', {
       getCacheTtlMs: 15_000,

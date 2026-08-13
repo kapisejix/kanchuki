@@ -316,7 +316,7 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
           const price = product.price_min ? ` — ₹${product.price_min / 100}` : '';
           caption = `${product.name ?? 'New arrival'}${price}\n\nShop the collection on WhatsApp: ${'https://kanchuki.app'}`;
         }
-        const { postId } = await publishPhotoPost(token, photo.url, caption);
+        const { postId } = await publishPhotoPost(account.platform_account_id, token, photo.url, caption);
         externalPostId = postId;
         externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
       } else {
@@ -338,7 +338,7 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
         const link = buildCollectionUrl(retailer?.public_slug ?? null, collection.slug);
 
         if (!caption) caption = `Shop ${collection.title} — new collection on WhatsApp. ${link}`;
-        const { postId } = await publishLinkPost(token, link, caption);
+        const { postId } = await publishLinkPost(account.platform_account_id, token, link, caption);
         externalPostId = postId;
         externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
       }

@@ -135,14 +135,18 @@ export async function listPages(accessToken: string): Promise<MetaPage[]> {
  * Publish a photo post to a Page. `imageUrl` must be a publicly fetchable
  * URL (product photo on R2); `caption` is the post text. Facebook post URLs
  * support clickable links in the caption/message, unlike Instagram (Phase 2).
+ *
+ * The endpoint is the Page's `photos` edge (POST /{page-id}/photos with a
+ * `url` param) — a bare POST /photo node does not create photos.
  */
 export async function publishPhotoPost(
+  pageId: string,
   pageToken: string,
   imageUrl: string,
   caption: string,
 ): Promise<{ postId: string }> {
   const res = await fetch(
-    `${GRAPH_BASE}/photo?${new URLSearchParams({
+    `${GRAPH_BASE}/${pageId}/photos?${new URLSearchParams({
       access_token: pageToken,
       url: imageUrl,
       caption,
@@ -159,8 +163,12 @@ export async function publishPhotoPost(
 /**
  * Publish a link post (message + link + optional picture) to a Page.
  * Used for COLLECTION_LINK posts where the /c/[slug] URL is the content.
+ *
+ * The endpoint is the Page's `feed` edge (POST /{page-id}/feed) — a bare
+ * POST /feed node does not create posts.
  */
 export async function publishLinkPost(
+  pageId: string,
   pageToken: string,
   link: string,
   message: string,
@@ -168,7 +176,7 @@ export async function publishLinkPost(
 ): Promise<{ postId: string }> {
   const params = new URLSearchParams({ access_token: pageToken, link, message });
   if (pictureUrl) params.set('picture', pictureUrl);
-  const res = await fetch(`${GRAPH_BASE}/feed?${params.toString()}`, { method: 'POST' });
+  const res = await fetch(`${GRAPH_BASE}/${pageId}/feed?${params.toString()}`, { method: 'POST' });
   const body = (await res.json()) as Record<string, unknown>;
   if (!res.ok || typeof body.id !== 'string') {
     throw new MetaApiError('Facebook rejected the link post', 400, 'PUBLISH_FAILED');

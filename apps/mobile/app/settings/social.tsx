@@ -63,11 +63,12 @@ export default function SocialSettingsScreen() {
 
   const openConnect = async () => {
     try {
-      // The web page handles OTP login + Meta OAuth + Page picker; on success
-      // the user closes the tab and we poll for the new account.
-      const res = await socialApi.getConnectUrl();
+      // The web page handles OTP login + Meta OAuth + Page picker entirely;
+      // the app just opens it. No pre-flight API call here — that used to
+      // mint an unused OAuth state and could 503-block the button before the
+      // web page even opened (2026-08-13). On success the user closes the tab
+      // and we poll for the new account.
       await Linking.openURL(`${WEB_URL}/social/connect`);
-      void res; // auth_url mirrors the same page; opening WEB_URL keeps the session simple
       // Poll briefly for the new account to appear.
       let tries = 0;
       const timer = setInterval(() => {
