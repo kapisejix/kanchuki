@@ -1652,18 +1652,6 @@ enum PromotionDiscountType {
   FIXED
 }
 
-enum KhataEntryType {
-  SALES
-  PURCHASE
-  EXPENSE
-}
-
-enum KhataPaymentMode {
-  CASH
-  UPI
-  OTHER
-}
-
 enum SupplierTransactionKind {
   ORDER
   PAYMENT
@@ -1676,27 +1664,28 @@ enum BookingStatus {
   COMPLETED
 }
 
-enum UdharTransactionKind {
-  CHARGE
-  PAYMENT
-}
-
 enum ReferralCreditStatus {
   PENDING
   CREDITED
 }
 
-// Pre-seeded festival calendar (roadmap D). Seed-managed; dates for 2026-27.
+// Festival calendar (roadmap D). Numeric auto-increment id — admins add/
+// edit/delete rows freely (state/region-wise offers with start/end dates),
+// so the id carries no semantic meaning. Campaigns snapshot festival_name.
 model Festival {
-  id        String   @id @default(cuid())
+  id        Int      @id @default(autoincrement())
   name      String
   region    String   @default("PAN_INDIA") // "PAN_INDIA" or a state/region key
   starts_at DateTime
   ends_at   DateTime
+  // Soft delete — the app role is DELETE-less (SECURITY §19); admin DELETE
+  // routes set this and reads filter it out.
+  deleted_at DateTime?
 
   created_at DateTime @default(now())
 
   @@index([starts_at, ends_at])
+  @@index([region])
   @@map("festivals")
 }
 
@@ -1710,7 +1699,9 @@ model Campaign {
   status      CampaignStatus @default(DRAFT)
 
   // Denormalized festival snapshot so the campaign survives festival edits.
-  festival_id   String?
+  // Loose pointer to Festival (Int id) — festivals are admin-managed and can
+  // be deleted without cascading campaigns.
+  festival_id   Int?
   festival_name String?
 
   message_template String
@@ -1773,24 +1764,6 @@ model Promotion {
   @@map("promotions")
 }
 
-// Daily khata P&L ledger (roadmap H).
-model KhataEntry {
-  id           String          @id @default(cuid())
-  retailer_id  String
-  entry_date   DateTime        @default(now()) // calendar day (date part used)
-  type         KhataEntryType
-  payment_mode KhataPaymentMode
-  amount_paise Int
-  note         String?
-  order_id     String? // loose pointer to Order when a SALES row comes from checkout
-
-  created_at DateTime @default(now())
-  created_by String?  // loose pointer to TeamMember id when staff-entered
-
-  @@index([retailer_id, entry_date])
-  @@map("khata_entries")
-}
-
 // Supplier directory + transaction ledger (roadmap K).
 model Supplier {
   id           String @id @default(cuid())
@@ -1842,36 +1815,6 @@ model Booking {
   @@index([retailer_id, status])
   @@index([retailer_id, starts_at])
   @@map("bookings")
-}
-
-// Udhar (customer credit) tracking (roadmap O).
-model UdharAccount {
-  id            String @id @default(cuid())
-  retailer_id   String
-  customer_id   String // loose pointer
-  balance_paise Int    @default(0) // positive = customer owes retailer
-
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-
-  @@unique([retailer_id, customer_id])
-  @@index([retailer_id])
-  @@map("udhar_accounts")
-}
-
-model UdharTransaction {
-  id           String               @id @default(cuid())
-  account_id   String
-  retailer_id  String
-  kind         UdharTransactionKind // CHARGE = customer owes more, PAYMENT = settles
-  amount_paise Int
-  note         String?
-
-  created_at DateTime @default(now())
-
-  @@index([account_id])
-  @@index([retailer_id, created_at])
-  @@map("udhar_transactions")
 }
 
 // Customer referral program (roadmap C).

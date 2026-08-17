@@ -185,7 +185,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 41 | F-031 Social Media Publishing Phase 1 (Facebook Page connect + post) | ✅ Built | 2026-08-13 | BUILD-LOG §41 |
 | 42 | Admin Commission Tracker — 3% of monthly payments as a pool + expense ledger (admin dashboard card + `/admin/commission` two-tab page: Monthly Summary, Expenditure grid, add-expense form, row detail popup) | ✅ Built | 2026-08-17 | BUILD-LOG §42, PRO-REQUIREMENTS §25 |
 | 43 | Retailer Auth — Login / Create Account segmented toggle on the single OTP phone screen (decision: keep one screen, two flows would be identical) | ✅ Built | 2026-08-17 | BUILD-LOG §43, PRO-REQUIREMENTS §26 |
-| 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), khata (H), suppliers (K), bookings (L), udhar (O), inventory alerts (J), videos (Q), AI translate (M) + migration 055 | ✅ Built (backend; UI pending) | 2026-08-17 | BUILD-LOG §44 |
+| 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), suppliers (K), bookings (L), inventory alerts (J), videos (Q), AI translate (M) + migration 055 (khata H + udhar O removed from scope) | ✅ Built (backend + mobile growth hub/campaigns UI + admin festival calendar; 7 modules UI pending) | 2026-08-17 | BUILD-LOG §44–45 |
 
 ---
 
@@ -194,7 +194,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 **Detail:** `docs/INDIA-RETAILER-GROWTH.md`  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
-**Status:** ✅ Backend built 2026-08-17 (BUILD-LOG §44, migration `055_growth_engine`, all routes gated behind the `GROWTH_ENGINE` plan feature). UI screens not yet built; migration 055 not yet applied.
+**Status:** ✅ Backend built 2026-08-17 (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057` — the `GROWTH_ENGINE` enum value + plan-feature rows are split out because PostgreSQL 55P04 forbids using a freshly-added enum value in the same transaction — all routes gated behind the `GROWTH_ENGINE` plan feature). UI: mobile growth hub + campaigns shipped (BUILD-LOG §45); remaining 7 modules pending; migration 055–057 not yet applied.
 
 ### Sprint Block A — Quick Wins (4 weeks)
 - QR Code Lead Capture (in-store + delivery)
@@ -210,7 +210,6 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 - Smart Promotion / Discount Engine
 
 ### Sprint Block C — Shop Management (6 weeks)
-- Daily Khata (P&L + ledger)
 - GST-Ready Invoicing
 - Supplier Management
 - Showroom / Try-On Room Booking
@@ -218,8 +217,9 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 ### Sprint Block D — Localization & Scale (6 weeks)
 - Multi-Language AI (Hindi + Hinglish + regional)
 - Indian Size & Fit System
-- Indian Payment + Udhar credit tracking
 - WhatsApp Native Catalog Sync
+
+> **Removed from scope 2026-08-17:** Daily Khata (H) and Udhar credit (O) — no khata, no udhar.
 
 ### Sprint Block E — Advanced (Post-Phase 1)
 - AI Campaign Assistant

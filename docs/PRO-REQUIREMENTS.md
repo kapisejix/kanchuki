@@ -1841,7 +1841,7 @@ without duplicating screens.
 - Both modes send an OTP and complete login exactly as before
 - Returning user → dashboard; first-time user → onboarding
 
-## 27. India Retailer Growth Engine — ✅ BUILT (backend) 2026-08-17
+## 27. India Retailer Growth Engine — ✅ BUILT (backend + first UI) 2026-08-17
 
 ### 27.1 Problem
 
@@ -1853,7 +1853,7 @@ adapt to Indian retail culture and language. The roadmap
 Acquisition, Marketing Strategy, Shop Organization, and Localized Indian
 Features.
 
-### 27.2 Scope shipped (this commit — backend only)
+### 27.2 Scope shipped (backend, then UI follow-up same day)
 
 | Letter | Feature | Status |
 |---|---|---|
@@ -1862,13 +1862,11 @@ Features.
 | D | Festival campaign automation — festival calendar + campaign CRUD/send | ✅ |
 | F | Smart promotions — promo CRUD + eligibility/apply logic | ✅ |
 | G | Customer reactivation — `inactive_days` audience filter + suggestions endpoint | ✅ |
-| H | Daily khata P&L — SALES/PURCHASE/EXPENSE ledger + summary rollup | ✅ |
 | J | Inventory intelligence — dead-stock/high-velocity/top-performer/unlisted alerts | ✅ |
 | K | Supplier management — CRUD + transaction ledger + pending calc | ✅ |
 | L | Showroom booking — retailer CRUD + public self-service slot booking | ✅ |
 | M | Multi-language AI — Hindi/Hinglish/regional product descriptions (translation only) | ✅ (partial) |
 | N | Indian size & fit — `is_unstitched`/`includes_blouse` product flags exposed publicly | ✅ (flags only) |
-| O | Udhar credit — accounts + CHARGE/PAYMENT ledger + WhatsApp reminder | ✅ |
 | Q | Product videos — presigned R2 upload + register/list/delete + public exposure | ✅ |
 | R | Campaign analytics — send/open stats endpoint | ✅ |
 | S | A/B testing — two-variant split on send with `send_pct` | ✅ (send split only) |
@@ -1876,16 +1874,23 @@ Features.
 | I | GST-ready invoicing | 🔴 Not built — PDF generation + HSN mapping |
 | P | WhatsApp native catalog sync | 🔴 Not built — extends Meta integration |
 
+> **Scope change 2026-08-17:** **Khata (H)** and **Udhar (O)** removed
+> completely — models, enums, routes, and migration sections deleted. No
+> khata, no udhar. 11 tables remain.
+
 ### 27.3 Data model
 
-Migration `055_growth_engine` (13 tables): `festivals`, `campaigns`
+Migration `055_growth_engine` (11 tables — the `GROWTH_ENGINE` enum value
+and its `plan_features` rows were split into migrations `056`/`057` because
+PostgreSQL 55P04 forbids using a newly-added enum value in the same
+transaction that adds it): `festivals`, `campaigns`
 (`audience_json` = declarative Customer filter spec, `ab_variants` for
 A/B), `campaign_sends` (per-customer QUEUED/SENT/OPENED rows),
 `promotions` (PERCENT/FIXED, product-restricted or store-wide),
-`khata_entries`, `suppliers` + `supplier_transactions`, `bookings`
-(REQUESTED/CONFIRMED/CANCELLED/COMPLETED), `udhar_accounts` +
-`udhar_transactions`, `referrals` + `referral_credits`
-(PENDING/CREDITED), `product_videos`. Existing-table additions:
+`suppliers` + `supplier_transactions`, `bookings`
+(REQUESTED/CONFIRMED/CANCELLED/COMPLETED), `referrals` +
+`referral_credits` (PENDING/CREDITED), `product_videos`. Existing-table
+additions:
 `customers.source` (enum `CustomerLeadSource`, default MANUAL),
 `retailers.referral_enabled`/`referral_reward_paise`,
 `products.is_unstitched`/`includes_blouse`, `PlanFeatureKey.GROWTH_ENGINE`.
@@ -1904,13 +1909,8 @@ A/B), `campaign_sends` (per-customer QUEUED/SENT/OPENED rows),
 - **Referrals**: `GET/PUT /referrals/settings`; `POST /referrals/codes`;
   `GET /referrals`; `POST /referrals/:id/credit` (manual PENDING →
   CREDITED).
-- **Khata**: `GET/POST /khata`, `PUT/DELETE /khata/:id`, `GET
-  /khata/summary` (sales/purchases/expenses/net + by payment mode).
 - **Suppliers**: CRUD + `POST /suppliers/:id/transactions`.
 - **Bookings**: CRUD with slot-conflict rejection.
-- **Udhar**: `GET /udhar` (accounts + balances), `POST /udhar/accounts`,
-  `POST /udhar/accounts/:id/transactions`, `POST
-  /udhar/accounts/:id/reminder` (wa.me message with balance).
 - **Inventory**: `GET /inventory-alerts`.
 - **Videos**: `POST /products/:id/videos/upload-url` (presigned R2 PUT),
   `POST /products/:id/videos`, `GET /products/:id/videos`, `DELETE
@@ -1940,8 +1940,22 @@ A/B), `campaign_sends` (per-customer QUEUED/SENT/OPENED rows),
 
 ### 27.7 Not done / next
 
-- **UI screens** (mobile + web) for all 10 modules — the next workstream
-- Per-route tests; migration `055_growth_engine` must be applied before
-  any live data (Supabase SQL Editor / `prisma migrate deploy`)
+- **UI screens for the remaining 7 modules** (referrals, promotions,
+  suppliers, showroom bookings, inventory alerts, product videos, AI
+  translate) — mobile growth hub + campaigns UI shipped 2026-08-17
+  (BUILD-LOG §45); the hub lists the rest as "Soon" cards
+- Per-route tests for the growth suite; migration `055_growth_engine`
+  must be applied before any live data (Supabase SQL Editor /
+  `prisma migrate deploy`)
 - Out of scope: E (AI Campaign Assistant), I (GST invoicing), P (WhatsApp
   native catalog)
+
+**UI follow-up (2026-08-17, same day):** mobile growth hub (`/growth`,
+entry from the home-tab **Growth Tools** quick action) + full campaigns
+UI (list with type filters, create/edit form with festival picker,
+placeholder chips, A/B editor, audience builder; detail screen with
+live audience-count preview, send → WhatsApp API or wa.me manual links,
+open-rate stats, delete) + admin festival calendar (`/v1/admin/festivals`
+CRUD, audit-logged, soft delete; `/admin/festivals` web page with
+add/edit modal + status badges). 11 admin-festivals tests; API/mobile/web
+tsc clean, 508/508 API tests.

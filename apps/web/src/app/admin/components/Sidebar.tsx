@@ -42,6 +42,7 @@ import {
   DatabaseBackup,
   Mail,
   Percent,
+  CalendarDays,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -55,6 +56,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
   { label: 'Commission', href: '/admin/commission', icon: Percent },
+  { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
   { separator: true },
   {
     label: 'Plans',

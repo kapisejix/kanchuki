@@ -1,11 +1,9 @@
 import type {
   Booking,
   Customer,
-  KhataEntry,
   Product,
   Promotion,
   SupplierTransaction,
-  UdharTransaction,
 } from '@kanchuki/db';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -148,36 +146,6 @@ export function applyPromotionDiscount(promo: PromotionLike, subtotalPaise: numb
   return Math.min(Math.round((subtotalPaise * percent) / 100), subtotalPaise);
 }
 
-// ─── Khata P&L (roadmap H) ────────────────────────────────────────
-
-export interface KhataSummary {
-  total_sales_paise: number
-  total_purchases_paise: number
-  total_expenses_paise: number
-  net_paise: number
-  by_payment_mode: Record<string, number>
-}
-
-/** Aggregate khata entries into a P&L summary (SALES - PURCHASES - EXPENSES). */
-export function summarizeKhata(entries: Pick<KhataEntry, 'type' | 'payment_mode' | 'amount_paise'>[]): KhataSummary {
-  const summary: KhataSummary = {
-    total_sales_paise: 0,
-    total_purchases_paise: 0,
-    total_expenses_paise: 0,
-    net_paise: 0,
-    by_payment_mode: {},
-  };
-  for (const entry of entries) {
-    summary.by_payment_mode[entry.payment_mode] =
-      (summary.by_payment_mode[entry.payment_mode] ?? 0) + entry.amount_paise;
-    if (entry.type === 'SALES') summary.total_sales_paise += entry.amount_paise;
-    else if (entry.type === 'PURCHASE') summary.total_purchases_paise += entry.amount_paise;
-    else if (entry.type === 'EXPENSE') summary.total_expenses_paise += entry.amount_paise;
-  }
-  summary.net_paise = summary.total_sales_paise - summary.total_purchases_paise - summary.total_expenses_paise;
-  return summary;
-}
-
 // ─── Inventory intelligence (roadmap J) ───────────────────────────
 // No stock quantities exist in the schema, so alerts are signal-based:
 // dead stock (no views/enquiries in N days), high velocity (recent sales),
@@ -315,15 +283,6 @@ export function hasBookingConflict(
       start < b.ends_at &&
       end > b.starts_at,
   );
-}
-
-// ─── Udhar balance (roadmap O) ────────────────────────────────────
-
-/** Running balance from transactions: CHARGE adds, PAYMENT subtracts. */
-export function computeUdharBalance(txs: Pick<UdharTransaction, 'kind' | 'amount_paise'>[]): number {
-  return txs.reduce((bal, tx) => {
-    return tx.kind === 'CHARGE' ? bal + tx.amount_paise : bal - tx.amount_paise;
-  }, 0);
 }
 
 // ─── Supplier ledger (roadmap K) ──────────────────────────────────

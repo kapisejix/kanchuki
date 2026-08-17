@@ -112,6 +112,10 @@ function AppShell() {
         <Stack.Screen name="customer/add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="tryon/in-store" options={{ presentation: 'fullScreenModal' }} />
         <Stack.Screen name="orders/[id]" />
+        <Stack.Screen name="growth/index" />
+        <Stack.Screen name="growth/campaigns" />
+        <Stack.Screen name="growth/campaign-new" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="growth/campaign/[id]" />
       </Stack>
     </View>
   )

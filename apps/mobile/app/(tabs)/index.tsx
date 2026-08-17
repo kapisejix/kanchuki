@@ -7,6 +7,7 @@ import {
   Eye,
   FolderKanban,
   Link2,
+  Megaphone,
   MessageCircle,
   Package,
   PackagePlus,
@@ -241,6 +242,13 @@ export default function HomeScreen() {
             sublabel="Scan to view your catalog"
             onPress={() => router.push('/store-profile')}
             accent={colors.rust[50]}
+          />
+          <QuickAction
+            icon={<Megaphone size={22} color={colors.turmeric[500]} />}
+            label="Growth Tools"
+            sublabel="Campaigns · Referrals · More"
+            onPress={() => router.push('/growth')}
+            accent={colors.turmeric[50]}
           />
           <QuickAction
             icon={<BarChart3 size={22} color={primaryColor} />}

@@ -32,7 +32,8 @@ const CampaignBaseSchema = z.object({
   message_template: z.string().min(1).max(2000),
   audience: AudienceSpecSchema,
   product_ids: z.array(z.string()).max(50).optional(),
-  festival_id: z.string().optional(),
+  // Festival ids are numeric auto-increment (admin-managed calendar).
+  festival_id: z.coerce.number().int().positive().optional(),
   schedule_at: z.string().datetime().optional(),
   ab_variants: AbVariantSchema.optional(),
 });

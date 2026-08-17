@@ -38,7 +38,7 @@ These four gaps are where the next wave of features must land.
 
 ## 3. Feature Roadmap: India Retailer Growth Engine
 
-### 3.1 Customer Acquisition Features
+> **Removed from scope 2026-08-17:** **H — Daily Khata (P&L)** and **O — Udhar credit** — no khata, no udhar. Sections deleted below; feature letters for the remaining items are unchanged.
 
 #### A. Kanchuki Store Directory (Free Discovery)
 
@@ -164,28 +164,6 @@ These four gaps are where the next wave of features must land.
 
 ### 3.3 Shop Organization Features
 
-#### H. Daily Khata (Simple P&L + Ledger)
-
-**What:** A dead-simple daily accounts entry optimized for Indian kirana-style bookkeeping.
-
-**Fields per entry:**
-- Date
-- Sales (cash / UPI / WhatsApp pay)
-- Purchases (stock buys)
-- Expenses (rent, electricity, staff)
-- Cash in hand
-
-**Outputs:**
-- Daily/weekly/monthly P&L
-- Best-selling categories
-- Profit per product (if cost price is entered)
-
-**Why it matters:** 90%+ of small Indian clothing retailers track finances in notebooks or Excel. A mobile-first khata that integrates with their order data is a must-have operational tool.
-
-**Effort:** Medium. Needs simple entry UI + reports. Can be basic v1: just sales + expenses, no double-entry.
-
----
-
 #### I. GST-Ready Invoicing
 
 **What:** Auto-generate GST-compliant invoices for every order, with HSN codes for apparel, CGST/SGST/IGST split, and invoice numbering.
@@ -287,23 +265,6 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### O. Indian Payment + Credit (Udhar)
-
-**What:** Expand beyond UPI to match how Indian small shops actually transact.
-
-**Features:**
-- UPI QR (current)
-- Cash-on-delivery flag
-- Paytm / PhonePe integration
-- Retailer-issued credit (udhar) tracking — "Rahul's balance: ₹2,400 pending"
-- Payment reminder automation via WhatsApp
-
-**Why it matters:** COD + udhar are 40–60% of small-store transactions. Not supporting these means losing the majority of potential sales.
-
-**Effort:** Medium. Needs ledger for udhar + COD tracking + payment reminder automation.
-
----
-
 #### P. WhatsApp Catalog Sync (Native)
 
 **What:** Push products directly to Meta's native WhatsApp Business catalog (the in-app product list under a business profile), not just web links.
@@ -392,7 +353,6 @@ These four gaps are where the next wave of features must land.
 
 | Feature | Effort | Impact | Priority |
 |---|---|---|---|
-| Daily Khata (P&L) | Medium | High | **P0** |
 | GST-Ready Invoicing | Medium | High | **P1** |
 | Supplier Management | Low | Medium | **P2** |
 | Showroom Booking | Low | Low | **P2** |
@@ -403,7 +363,6 @@ These four gaps are where the next wave of features must land.
 |---|---|---|---|
 | Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** |
 | Indian Size & Fit System | Low-Medium | Medium | **P1** |
-| Indian Payment + Udhar | Medium | High | **P1** |
 | WhatsApp Native Catalog Sync | Medium | High | **P1** |
 
 ### Sprint Block E — Advanced (Post-Phase 1)
@@ -441,9 +400,8 @@ These four gaps are where the next wave of features must land.
 | Virtual try-on for ethnic wear | ❌ | ❌ | ❌ | ❌ |
 | Festival/region-aware campaigns | 🕐 | ❌ | ❌ | ❌ |
 | Indian language support | Partial | ❌ | ❌ | ❌ |
-| Indian payment (UPI + Udhar) | 🕐 | ❌ | ❌ | ❌ |
 | QR lead capture + store directory | 🕐 | ❌ | ❌ | ❌ |
-| Shop management (khata, GST, supplier) | ❌ | ❌ | ❌ | ❌ |
+| Shop management (GST, supplier) | ❌ | ❌ | ❌ | ❌ |
 
 **The moat:** The combination of **catalog digitization + AI fashion intelligence + WhatsApp commerce + Indian retail operations** in one mobile-first tool. No single competitor covers all four. Building them separately is what retailers currently do — and why they're underserved.
 
