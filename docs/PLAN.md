@@ -23,6 +23,8 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 **BUILT (2026-08-17):** Admin Commission Tracker — 3% of each month's successful subscription payments shown as a commission pool in the admin dashboard, with a two-tab `/admin/commission` page (Monthly Summary table + Expenditure grid, add-expense modal, row detail popup) and an expense ledger (migration `053_admin_commission`). Plus retailer auth Login/Create Account toggle on the mobile phone screen (one OTP flow — two screens would be identical). Specs: `docs/PRO-REQUIREMENTS.md` §25–26.
 
+**BUILT (backend) 2026-08-17:** India Retailer Growth Engine — backend for the growth roadmap (`docs/INDIA-RETAILER-GROWTH.md`): 10 modules under `/v1/growth/*` (festival/reactivation/A-B campaigns, promotions, referrals, daily khata, suppliers, showroom bookings, udhar credit, inventory alerts, product videos, AI translate) + public referral/booking endpoints + migration `055_growth_engine` (13 tables), all gated behind the `GROWTH_ENGINE` plan feature. **UI pending; migration 055 not yet applied.** Spec: `docs/PRO-REQUIREMENTS.md` §27, build table: BUILD-LOG §44.
+
 ---
 
 ## Phase 0: MVP (Month 1–4)

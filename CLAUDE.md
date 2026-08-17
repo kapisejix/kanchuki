@@ -185,6 +185,48 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 41 | F-031 Social Media Publishing Phase 1 (Facebook Page connect + post) | ✅ Built | 2026-08-13 | BUILD-LOG §41 |
 | 42 | Admin Commission Tracker — 3% of monthly payments as a pool + expense ledger (admin dashboard card + `/admin/commission` two-tab page: Monthly Summary, Expenditure grid, add-expense form, row detail popup) | ✅ Built | 2026-08-17 | BUILD-LOG §42, PRO-REQUIREMENTS §25 |
 | 43 | Retailer Auth — Login / Create Account segmented toggle on the single OTP phone screen (decision: keep one screen, two flows would be identical) | ✅ Built | 2026-08-17 | BUILD-LOG §43, PRO-REQUIREMENTS §26 |
+| 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), khata (H), suppliers (K), bookings (L), udhar (O), inventory alerts (J), videos (Q), AI translate (M) + migration 055 | ✅ Built (backend; UI pending) | 2026-08-17 | BUILD-LOG §44 |
+
+---
+
+## India Retailer Growth Roadmap
+
+**Detail:** `docs/INDIA-RETAILER-GROWTH.md`  
+**Scope:** India-only small retailers  
+**Prerequisite:** Phase 0 live + F-031 social publishing shipped  
+**Status:** ✅ Backend built 2026-08-17 (BUILD-LOG §44, migration `055_growth_engine`, all routes gated behind the `GROWTH_ENGINE` plan feature). UI screens not yet built; migration 055 not yet applied.
+
+### Sprint Block A — Quick Wins (4 weeks)
+- QR Code Lead Capture (in-store + delivery)
+- Customer Reactivation Campaigns
+- Video Product Support
+- Festival Campaign Analytics
+- Inventory Intelligence Alerts
+
+### Sprint Block B — Customer Acquisition (6 weeks)
+- Kanchuki Store Directory (`/stores`)
+- Referral Program Engine
+- Festival Campaign Templates (Diwali, Navratri, regional)
+- Smart Promotion / Discount Engine
+
+### Sprint Block C — Shop Management (6 weeks)
+- Daily Khata (P&L + ledger)
+- GST-Ready Invoicing
+- Supplier Management
+- Showroom / Try-On Room Booking
+
+### Sprint Block D — Localization & Scale (6 weeks)
+- Multi-Language AI (Hindi + Hinglish + regional)
+- Indian Size & Fit System
+- Indian Payment + Udhar credit tracking
+- WhatsApp Native Catalog Sync
+
+### Sprint Block E — Advanced (Post-Phase 1)
+- AI Campaign Assistant
+- Instagram Business Publishing
+- A/B Testing for Collections
+
+---
 
 ### ✅ RESOLVED 2026-08-13: MSG91 OTP live-config session — wire-format fix + DLT finding
 
