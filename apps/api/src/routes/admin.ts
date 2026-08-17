@@ -24,6 +24,7 @@ import {
   adminPlansRoutes,
   adminRetailersRoutes,
   adminStorageRoutes,
+  adminCommissionRoutes,
 } from './admin/index.js';
 
 export {
@@ -194,4 +195,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminPhotoCleanupRoutes);
   // admin-storage — R2 compression savings report (reads COMPRESS_R2_IMAGES audit entries)
   await server.register(adminStorageRoutes);
+  // admin-commission — 3% monthly-commission pool + expense ledger
+  await server.register(adminCommissionRoutes);
 };

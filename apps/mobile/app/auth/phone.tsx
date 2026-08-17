@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { authApi, ApiError } from '../../src/lib/api';
 import { showError } from '../../src/lib/errors';
@@ -28,6 +29,7 @@ export default function PhoneScreen() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [loading, setLoading] = useState(false);
 
   // Complete validation: exactly 10 digits starting 6–9 (+91/91/0 prefix ok).
@@ -101,9 +103,51 @@ export default function PhoneScreen() {
             <Text className="text-white text-2xl font-bold">K</Text>
           </View>
 
-          <Text className="text-3xl font-bold text-sand-900">Welcome to{'\n'}Kanchuki</Text>
+          {/* Login / Create Account toggle — same OTP flow either way; the
+              backend routes new numbers to onboarding (is_new) and existing
+              numbers straight to their dashboard. */}
+          <View
+            className="flex-row rounded-full p-1 mb-8"
+            style={{ backgroundColor: colors.sand[100] }}
+          >
+            {(['login', 'register'] as const).map((m) => {
+              const active = mode === m
+              return (
+                <AnimatedPressable
+                  key={m}
+                  onPress={() => setMode(m)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={m === 'login' ? 'Login' : 'Create Account'}
+                  className={`flex-1 py-2.5 rounded-full items-center ${
+                    active ? 'bg-ink-600 shadow-sm' : ''
+                  }`}
+                >
+                  <Text
+                    className={`text-sm font-semibold ${
+                      active ? 'text-white' : 'text-sand-500'
+                    }`}
+                  >
+                    {m === 'login' ? 'Login' : 'Create Account'}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
+          </View>
+
+          {mode === 'login' ? (
+            <Text className="text-3xl font-bold text-sand-900">
+              Welcome back{'\n'}to Kanchuki
+            </Text>
+          ) : (
+            <Text className="text-3xl font-bold text-sand-900">
+              Create your{'\n'}Kanchuki account
+            </Text>
+          )}
           <Text className="text-sand-500 text-base mt-3">
-            Aapki dukan, AI ki taakat.{'\n'}Enter your mobile number to continue.
+            {mode === 'login'
+              ? "Aapki dukan, AI ki taakat. Enter your mobile number to continue."
+              : 'Start your free trial — no payment needed. Enter your mobile number to begin.'}
           </Text>
 
           {/* Phone input */}
@@ -142,7 +186,7 @@ export default function PhoneScreen() {
         {/* Bottom CTA */}
         <View>
           <GradientButton
-            label="Send OTP →"
+            label={mode === 'login' ? 'Send OTP →' : 'Create Account →'}
             onPress={() => void handleSend()}
             disabled={!isValid}
             loading={loading}

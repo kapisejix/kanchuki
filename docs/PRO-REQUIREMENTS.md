@@ -1720,3 +1720,113 @@ weeks after A (API wiring + add-on billing). Phase C unestimated (research).
 Spec written 2026-08-13 on user request; F-031 (social publishing) is the
 current in-flight build and this is explicitly post-MVP scope. Do NOT start
 until the user says go.
+
+---
+
+## 25. Admin Commission Tracker — 3% of Monthly Payments + Expense Ledger — ✅ BUILT 2026-08-17
+
+### 25.1 Problem
+
+The admin takes **3% of each month's total payments** as a commission pool and
+spends from it (marketing, travel, software, staff, ...). There was no place to
+see the pool size per month or record what was spent from it — money moved
+around without a ledger.
+
+### 25.2 What was decided (user-confirmed 2026-08-17)
+
+- **3% base = successful subscription payments only** (user choice) —
+  `subscription_payments` where `status='success'`, grouped by `paid_at`
+  month. Addon purchases intentionally excluded (can be added later).
+- **UI shape:** one admin page with two tabs — **Monthly Summary** (per-month
+  totals) and **Expenditure** (expense grid + add-expense form + row detail).
+- Commission is **computed on the fly** from payments — nothing is snapshotted,
+  so a refunded payment immediately shrinks the month's pool. Only expense
+  entries are stored.
+
+### 25.3 Data model
+
+`admin_commission_expenses` (migration `053_admin_commission`, new table only):
+
+| Column | Type | Meaning |
+|---|---|---|
+| `id` | TEXT PK | cuid |
+| `period` | TEXT | YYYY-MM commission month the expense is charged against |
+| `amount_inr` | INT | paise |
+| `category` | TEXT | free-text "where did the money go" (Marketing, Travel, ...) |
+| `expense_date` | TIMESTAMP(3) | date of the expense |
+| `notes` | TEXT? | explanation |
+| `created_at` / `updated_at` | TIMESTAMP(3) | audit trail |
+
+### 25.4 API (all `/v1/admin/*`, admin key + CSRF guarded)
+
+| Endpoint | Purpose |
+|---|---|
+| `GET /commission/overview?months=N` | Per-month rollup (last N, default 12, max 36): total payments, 3% commission, spent, remaining (can be negative = overspent), expense count. Newest month first. |
+| `GET /commission/expenses?month=YYYY-MM` | Month summary + ordered expense grid. Month defaults to current IST month. |
+| `POST /commission/expenses` | Record expense `{period, amount_inr, category, expense_date, notes?}`. Writes audit entry. |
+| `PATCH /commission/expenses/:id` | Edit any subset of `{period, amount_inr, category, expense_date, notes}` (`notes: null` clears it). Audited with before/after. Empty payload → 422. |
+| `DELETE /commission/expenses/:id` | Remove expense. Writes audit entry. |
+
+**Timezone:** months are bucketed in **IST** (+5:30) — the admin's business
+calendar — via `periodKey()`/`monthRange()` helpers (pure, unit-tested).
+
+### 25.5 Admin UI (`/admin/commission`)
+
+- Top row: 4 current-month cards — Total Payments, 3% Commission Pool, Spent,
+  Remaining (red + "overspent" when negative).
+- **Monthly Summary tab:** full table of months (24 shown); each row shows
+  payments → 3% → spent → remaining; click a row to jump to that month's
+  Expenditure tab.
+- **Expenditure tab:** month picker (`<input type="month">` + quick chips),
+  month summary strip, "Add Expense" button → modal form (amount ₹, where,
+  date, notes), expense grid; clicking a row opens a detail popup with full
+  notes and a delete (with confirm).
+- Admin **dashboard** (`/admin`) gains a "3% Commission Pool — this month"
+  card with payments/pool/spent/remaining and a link into the page.
+- Sidebar: new **Commission** item under Billing.
+
+### 25.6 Acceptance criteria
+
+- Admin sees per-month total payment and exactly 3% of it
+- Admin can add an expense (amount, where, date, notes) and it appears in the
+  month's grid + reduces that month's remaining
+- Clicking a grid row shows the complete details, with an **Edit expense** action (in-place form for amount / where / date / notes / month) and a delete (with confirm)
+- Overspending shows red, not a crash
+- All mutations (create / update / delete) land in the audit log
+
+---
+
+## 26. Retailer Auth — Login / Create Account toggle — ✅ BUILT 2026-08-17
+
+### 26.1 Problem
+
+New retailers and returning retailers previously shared one undifferentiated
+phone-entry screen. The user asked whether to split into two separate
+Login/Register screens.
+
+### 26.2 Decision (user-confirmed 2026-08-17)
+
+**Keep ONE phone screen with a Login / Create Account segmented toggle.**
+Rationale: OTP is the only authentication method (no password), so two full
+screens would be two identical flows — the backend already distinguishes new
+retailers (`is_new` = no shop name → onboarding) from returning ones
+automatically. The toggle gives users the login-vs-register mental model
+without duplicating screens.
+
+### 26.3 What changed
+
+`apps/mobile/app/auth/phone.tsx`:
+
+- Segmented pill toggle below the logo: **Login | Create Account** (default
+  Login, `accessibilityState.selected` wired).
+- Copy switches per mode: "Welcome back to Kanchuki" vs "Create your Kanchuki
+  account"; subtitle and CTA change too ("Send OTP →" vs "Create Account →").
+- Both modes push to the same `/auth/otp` screen and the same backend flow —
+  the OTP/verify path is untouched, so `is_new` routing still decides
+  onboarding vs dashboard.
+
+### 26.4 Acceptance criteria
+
+- Toggle clearly shows Login vs Create Account
+- Both modes send an OTP and complete login exactly as before
+- Returning user → dashboard; first-time user → onboarding

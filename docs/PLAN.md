@@ -21,6 +21,8 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 **BUILT (2026-08-03):** AI tagging expansion (subtype/SKU/description/name auto-generation, photo-slider fix, color-tap detection, catalog listing redesign) — backend + web catalog redesign + mobile edit screen all shipped and verified. Full detail: `CLAUDE.md` "Built" section, `docs/PRO-REQUIREMENTS.md` §13.
 
+**BUILT (2026-08-17):** Admin Commission Tracker — 3% of each month's successful subscription payments shown as a commission pool in the admin dashboard, with a two-tab `/admin/commission` page (Monthly Summary table + Expenditure grid, add-expense modal, row detail popup) and an expense ledger (migration `053_admin_commission`). Plus retailer auth Login/Create Account toggle on the mobile phone screen (one OTP flow — two screens would be identical). Specs: `docs/PRO-REQUIREMENTS.md` §25–26.
+
 ---
 
 ## Phase 0: MVP (Month 1–4)

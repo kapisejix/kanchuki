@@ -16,6 +16,8 @@ import {
   Shield,
   Sparkles,
   ArrowRight,
+  Percent,
+  PiggyBank,
   type LucideIcon,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -39,6 +41,15 @@ type Usage = {
   mrr_inr: number
   try_on_this_month: number
   try_on_cost_usd: number
+}
+
+type CommissionMonth = {
+  period: string
+  total_payment_inr: number
+  commission_inr: number
+  spent_inr: number
+  remaining_inr: number
+  expense_count: number
 }
 
 function getAdminHeaders() {
@@ -125,15 +136,17 @@ const itemVariants = {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [usage, setUsage] = useState<Usage | null>(null)
+  const [commission, setCommission] = useState<CommissionMonth | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     async function load() {
       try {
         const headers = getAdminHeaders()
-        const [s, u] = await Promise.all([
+        const [s, u, c] = await Promise.all([
           fetch(`${API_URL}/v1/admin/stats`, { headers }).then((r) => r.json()),
           fetch(`${API_URL}/v1/admin/usage`, { headers }).then((r) => r.json()),
+          fetch(`${API_URL}/v1/admin/commission/overview?months=1`, { headers }).then((r) => r.json()),
         ])
         // Guard: a 500 from the API returns { error: {...} } with no .data.
         // Writing undefined into state used to crash the render below on
@@ -144,6 +157,7 @@ export default function AdminDashboard() {
         }
         setStats(s.data)
         setUsage(u.data)
+        setCommission(c?.data?.[0] ?? null)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load stats')
       }
@@ -290,6 +304,54 @@ export default function AdminDashboard() {
               color="purple"
             />
           </motion.div>
+
+          {/* 3% commission pool (this month) */}
+          {commission && (
+            <motion.div variants={itemVariants}>
+              <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                    <Percent size={16} className="text-cyan-500" />
+                    3% Commission Pool
+                    <span className="text-[10px] font-medium text-gray-400 bg-gray-100 rounded-full px-2 py-0.5">
+                      this month
+                    </span>
+                  </h2>
+                  <Link
+                    href="/admin/commission"
+                    className="text-xs font-semibold text-cyan-600 hover:text-cyan-500 flex items-center gap-1"
+                  >
+                    Track expenditure
+                    <ArrowRight size={13} />
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <CommissionStat
+                    icon={TrendingUp}
+                    label="Total payments"
+                    value={`₹${(commission.total_payment_inr / 100).toLocaleString('en-IN')}`}
+                  />
+                  <CommissionStat
+                    icon={PiggyBank}
+                    label="3% pool"
+                    value={`₹${(commission.commission_inr / 100).toLocaleString('en-IN')}`}
+                    highlight="text-green-600"
+                  />
+                  <CommissionStat
+                    icon={DollarSign}
+                    label="Spent"
+                    value={`₹${(commission.spent_inr / 100).toLocaleString('en-IN')}`}
+                  />
+                  <CommissionStat
+                    icon={Activity}
+                    label="Remaining"
+                    value={`₹${Math.abs(commission.remaining_inr / 100).toLocaleString('en-IN')}${commission.remaining_inr < 0 ? ' (over)' : ''}`}
+                    highlight={commission.remaining_inr < 0 ? 'text-red-600' : 'text-gray-900'}
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
 
           {/* Conversion funnel */}
           <motion.div variants={itemVariants}>
@@ -456,6 +518,28 @@ function MiniMetricCard({
         {typeof value === 'number' ? <AnimatedCounter value={value} /> : value}
       </div>
     </motion.div>
+  )
+}
+
+function CommissionStat({
+  icon: Icon,
+  label,
+  value,
+  highlight,
+}: {
+  icon: LucideIcon
+  label: string
+  value: string
+  highlight?: string
+}) {
+  return (
+    <div className="bg-gray-50/70 border border-gray-100 rounded-xl p-3.5">
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Icon size={13} className="text-gray-400" />
+        <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">{label}</span>
+      </div>
+      <div className={`text-base font-bold tabular-nums ${highlight ?? 'text-gray-900'}`}>{value}</div>
+    </div>
   )
 }
 

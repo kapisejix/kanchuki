@@ -1002,6 +1002,30 @@ model SubscriptionPayment {
   @@map("subscription_payments")
 }
 
+// ─── ADMIN COMMISSION LEDGER (3% of monthly revenue) ────────────
+// Admin-only expense ledger charged against the 3% commission set aside
+// from each month's total successful subscription payments. The monthly
+// commission itself is computed on the fly from subscription_payments
+// (status='success', grouped by paid_at month) — only expense entries are
+// stored here. `period` is the YYYY-MM month the expense is charged against;
+// `category` is the free-text "where did the money go" (Marketing, Travel,
+// Software, Staff, ...). No retailer-facing surface — admin panel only.
+model AdminCommissionExpense {
+  id          String   @id @default(cuid())
+  period      String // YYYY-MM commission month this expense is charged against
+  amount_inr  Int // paise
+  category    String // where the money was spent
+  expense_date DateTime // date of the expense
+  notes       String?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([period])
+  @@index([expense_date])
+  @@map("admin_commission_expenses")
+}
+
 // ─── VIRTUAL TRY-ON (Phase 1 ready) ─────────────────────────────
 
 model TryOnJob {

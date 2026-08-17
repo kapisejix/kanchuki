@@ -47,6 +47,8 @@ incident, migration, and decision recorded after 2026-07-26.
 | 37 | [Play Store Launch Batch](#built-2026-08-10-play-store-launch-batch--web-billing-option-a-privacy-disclosures-location-removal-launch-checklist-commits-56357f6--b29b316) | Built | 2026-08-10 |
 | 38 | [MSG91 Real OTP](#built-2026-08-12-real-otp--msg91-widget-on-mobile--server-side-msg91-everywhere) | Built | 2026-08-12 |
 | 39 | [F-032 AI Studio Shoots + Product Videos](#planned-2026-08-13-f-032-ai-studio-shoots--product-videos-photoroom-style) | Planned | 2026-08-13 |
+| 42 | [Admin Commission Tracker — 3% of Monthly Payments + Expense Ledger](#built-2026-08-17-admin-commission-tracker--3-of-monthly-payments--expense-ledger) | Built | 2026-08-17 |
+| 43 | [Retailer Auth — Login / Create Account toggle](#built-2026-08-17-retailer-auth--login--create-account-toggle) | Built | 2026-08-17 |
 
 ---
 
@@ -886,3 +888,30 @@ Full build table + flow: `docs/PRO-REQUIREMENTS.md` §23, roadmap `docs/PLAN.md`
 **Meta-side config still required (user, dashboard):** register `https://kanchuki.app/social/connect/callback` in the app's Valid OAuth Redirect URIs (else "URL Blocked"); add the test account as Admin/Developer/Tester (dev-mode access gate); app must go Live + App Review for `pages_manage_posts`/`pages_show_list` before real retailers connect with long-lived tokens.
 
 **Verified:** API tsc clean, 443/443 tests (9 social); web 106/106, page renders with 0 console errors; mobile tsc clean. Deployed: API `48784c77` → `c7e235d8` (SUCCESS), web unchanged (build-path filter correctly skipped — no web file changes since the feature push).
+
+## Built 2026-08-17: Admin Commission Tracker (3% of Monthly Payments + Expense Ledger)
+
+User ask: in the web admin, whenever a payment comes in, set aside **3% of each month's total payments** as a commission pool; admin records expenses spent from that pool (amount, where, date, explanation notes); one page shows the monthly totals and a second tab shows the expenditure grid, with a form to add entries and a row-click detail view. **User-confirmed decisions:** 3% base = successful **subscription payments only** (addon purchases excluded); UI = single page with two tabs. Spec: `docs/PRO-REQUIREMENTS.md` §25.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **DB** | `packages/db/prisma/schema.prisma`, migration `053_admin_commission` | New `AdminCommissionExpense` table (`admin_commission_expenses`): `period` (YYYY-MM), `amount_inr` (paise), `category` (where), `expense_date`, `notes`. Monthly commission is **computed on the fly** from `subscription_payments` (status `success`, bucketed by `paid_at` in **IST** +5:30 via `periodKey()`/`monthRange()` helpers) — only expenses are stored |
+| **API** | `apps/api/src/routes/admin/admin-commission.ts` (new) + registered in `admin.ts`/`admin/index.ts` | `GET /commission/overview?months=N` (per-month payments→3%→spent→remaining, newest first, negative remaining = overspent), `GET /commission/expenses?month=YYYY-MM` (month summary + grid, defaults to current IST month), `POST /commission/expenses` (create + audit entry), `DELETE /commission/expenses/:id` (audit entry). All paise; admin key + CSRF guarded; zod-validated |
+| **API tests** | `apps/api/src/routes/admin/admin-commission.test.ts` (new, 15 tests) | commission math/IST bucketing (pure helpers), overview rollup + overspend, unauth 403, malformed-month 422, create validation, delete + 404 |
+| **Admin UI** | `apps/web/src/app/admin/commission/page.tsx` (new) | 4 current-month cards (Total Payments / 3% Pool / Spent / Remaining-red-when-negative); **Monthly Summary** tab (24-month table, click row → that month's expenditure); **Expenditure** tab (month picker + quick chips, summary strip, Add Expense modal form with amount ₹/where/date/notes, expense grid, row-click detail popup with notes + confirm-delete). Matches the existing cyan/blue admin design language |
+| **Expense edit (follow-up)** | `apps/api/src/routes/admin/admin-commission.ts` + `admin-commission.test.ts` (+5 tests) + `commission/page.tsx` | `PATCH /commission/expenses/:id` (any subset of period/amount/category/date/notes, `notes:null` clears, audited before/after, empty payload 422); the detail popup gains an **Edit expense** in-place form (same fields as add) alongside delete |
+| **Dashboard + nav** | `apps/web/src/app/admin/page.tsx`, `components/Sidebar.tsx` | Dashboard gains a "3% Commission Pool — this month" card (payments/pool/spent/remaining + link); sidebar gets a Commission item under Billing |
+
+**Verified:** API tsc clean, full API suite 493/493 (incl. 20 commission tests); web tsc clean + 108/108; mobile tsc clean + 38/38. **Not yet applied:** migration `053_admin_commission` must be applied (Supabase SQL Editor / `prisma migrate deploy`) before the page returns data. No API deployment triggered.
+
+**Browser verification (2026-08-17, same day):** local stack booted against the real API + DB; `/admin/commission` renders with the sidebar Commission item, authenticates via injected admin key, and shows the graceful error card instead of crashing when the table is missing. Full UI flow verified with route-mocked API responses (`apps/web/scripts/verify-commission-ui.mjs` — cards, monthly table, expense grid, detail popup, add/edit/delete, **0 console errors**). The run caught + fixed a real bug: the edit form prefilled dates via `toISOString()` (UTC), shifting IST dates a day early on re-edit — now round-tripped through IST (`istDate`/`isoFromIst` helpers, same +5:30 convention as the API's `periodKey`). Migration state check tool: `scripts/check-commission-migration.ts` (read-only; reports `admin_commission_expenses` PRESENT/MISSING).
+
+## Built 2026-08-17: Retailer Auth — Login / Create Account toggle
+
+User ask: add separate Login and Register screens for retailers in the mobile app — or keep one screen? Wanted a recommendation. **User-confirmed decision (2026-08-17): keep ONE phone screen with a Login / Create Account segmented toggle.** Rationale: OTP is the only auth method (no password), so two full screens would be two identical flows; the backend already routes new retailers (`is_new` = no shop name → onboarding) vs returning ones automatically. Spec: `docs/PRO-REQUIREMENTS.md` §26.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Mobile** | `apps/mobile/app/auth/phone.tsx` | Segmented pill toggle below the logo (**Login | Create Account**, default Login, `accessibilityState.selected` wired); copy switches per mode — "Welcome back to Kanchuki" / "Send OTP →" vs "Create your Kanchuki account" / "Create Account →" (free-trial subtitle). Both modes push to the same `/auth/otp` + backend flow — OTP/verify path untouched, so `is_new` onboarding routing is unchanged |
+
+**Verified:** mobile tsc clean, mobile 38/38. Ships via the next EAS build (Expo Go can't run the MSG91 native widget — standing limitation).

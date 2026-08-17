@@ -41,6 +41,7 @@ import {
   Wand2,
   DatabaseBackup,
   Mail,
+  Percent,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -53,6 +54,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Retailers', href: '/admin/retailers', icon: Store },
   { label: 'Customers', href: '/admin/customers', icon: Users },
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
+  { label: 'Commission', href: '/admin/commission', icon: Percent },
   { separator: true },
   {
     label: 'Plans',

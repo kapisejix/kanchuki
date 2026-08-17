@@ -183,6 +183,8 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 39 | F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) | 🔴 Planned | 2026-08-13 | BUILD-LOG §39 |
 | 40 | Redis handshake race — first-request-of-the-day OTP/social failure | ✅ Fixed | 2026-08-13 | BUILD-LOG §40 |
 | 41 | F-031 Social Media Publishing Phase 1 (Facebook Page connect + post) | ✅ Built | 2026-08-13 | BUILD-LOG §41 |
+| 42 | Admin Commission Tracker — 3% of monthly payments as a pool + expense ledger (admin dashboard card + `/admin/commission` two-tab page: Monthly Summary, Expenditure grid, add-expense form, row detail popup) | ✅ Built | 2026-08-17 | BUILD-LOG §42, PRO-REQUIREMENTS §25 |
+| 43 | Retailer Auth — Login / Create Account segmented toggle on the single OTP phone screen (decision: keep one screen, two flows would be identical) | ✅ Built | 2026-08-17 | BUILD-LOG §43, PRO-REQUIREMENTS §26 |
 
 ### ✅ RESOLVED 2026-08-13: MSG91 OTP live-config session — wire-format fix + DLT finding
 
