@@ -15,7 +15,7 @@ const {
   mockExpenseAggregate,
   mockExpenseCreate,
   mockExpenseUpdate,
-  mockExpenseFindUnique,
+  mockExpenseFindFirst,
   mockExpenseDelete,
   mockAuditLogCreate,
 } = vi.hoisted(() => ({
@@ -26,7 +26,7 @@ const {
   mockExpenseAggregate: vi.fn(),
   mockExpenseCreate: vi.fn(),
   mockExpenseUpdate: vi.fn(),
-  mockExpenseFindUnique: vi.fn(),
+  mockExpenseFindFirst: vi.fn(),
   mockExpenseDelete: vi.fn(),
   mockAuditLogCreate: vi.fn(),
 }));
@@ -42,7 +42,7 @@ vi.mock('@kanchuki/db', () => ({
       groupBy: mockExpenseGroupBy,
       aggregate: mockExpenseAggregate,
       create: mockExpenseCreate,
-      findUnique: mockExpenseFindUnique,
+      findFirst: mockExpenseFindFirst,
       update: mockExpenseUpdate,
       delete: mockExpenseDelete,
     },
@@ -149,6 +149,10 @@ describe('GET /admin/commission/overview', () => {
     });
 
     expect(res.statusCode).toBe(200);
+    // Soft-deleted expenses must never count toward the pool totals.
+    expect(mockExpenseGroupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ deleted_at: null }) }),
+    );
     const rows = res.json().data as Array<Record<string, number>>;
     expect(rows).toHaveLength(2);
     // Newest month first: Aug total ₹15,000 (1,000,000 + 500,000 + 999,999 → 2,499,999)
@@ -227,6 +231,10 @@ describe('GET /admin/commission/expenses', () => {
     });
 
     expect(res.statusCode).toBe(200);
+    // Soft-deleted expenses must not appear in the grid or the spent sum.
+    expect(mockExpenseFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ deleted_at: null }) }),
+    );
     const { month, summary, expenses } = res.json().data;
     expect(month).toBe('2026-08');
     expect(summary).toMatchObject({
@@ -375,7 +383,7 @@ describe('PATCH /admin/commission/expenses/:id', () => {
   };
 
   it('updates a subset of fields and writes an audit entry', async () => {
-    mockExpenseFindUnique.mockResolvedValue(prevExpense);
+    mockExpenseFindFirst.mockResolvedValue(prevExpense);
     mockExpenseUpdate.mockResolvedValue({
       ...prevExpense,
       amount_inr: 15_000,
@@ -410,7 +418,7 @@ describe('PATCH /admin/commission/expenses/:id', () => {
   });
 
   it('clears notes when null is sent', async () => {
-    mockExpenseFindUnique.mockResolvedValue(prevExpense);
+    mockExpenseFindFirst.mockResolvedValue(prevExpense);
     mockExpenseUpdate.mockResolvedValue({ ...prevExpense, notes: null });
 
     const app = await buildApp();
@@ -452,8 +460,8 @@ describe('PATCH /admin/commission/expenses/:id', () => {
     expect(mockExpenseUpdate).not.toHaveBeenCalled();
   });
 
-  it('404s for an unknown expense', async () => {
-    mockExpenseFindUnique.mockResolvedValue(null);
+  it('404s for an unknown or already-deleted expense', async () => {
+    mockExpenseFindFirst.mockResolvedValue(null);
 
     const app = await buildApp();
     const res = await app.inject({
@@ -469,16 +477,19 @@ describe('PATCH /admin/commission/expenses/:id', () => {
 
 // ─── DELETE /admin/commission/expenses/:id ────────────────────────
 
-describe('DELETE /admin/commission/expenses/:id', () => {
-  it('deletes an expense, audits it, and returns 204', async () => {
-    mockExpenseDelete.mockResolvedValue({
-      id: 'exp_1',
-      period: '2026-08',
-      amount_inr: 10_000,
-      category: 'Marketing',
-      expense_date: new Date('2026-08-10T06:00:00.000Z'),
-      notes: null,
-    });
+describe('DELETE /admin/commission/expenses/:id (soft delete)', () => {
+  const deleteTarget = {
+    id: 'exp_1',
+    period: '2026-08',
+    amount_inr: 10_000,
+    category: 'Marketing',
+    expense_date: new Date('2026-08-10T06:00:00.000Z'),
+    notes: null,
+  };
+
+  it('soft-deletes (sets deleted_at via update), audits, and returns 204', async () => {
+    mockExpenseFindFirst.mockResolvedValue(deleteTarget);
+    mockExpenseUpdate.mockResolvedValue({ ...deleteTarget, deleted_at: new Date() });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -488,13 +499,20 @@ describe('DELETE /admin/commission/expenses/:id', () => {
     });
 
     expect(res.statusCode).toBe(204);
+    // Soft delete = UPDATE with deleted_at, never prisma.delete.
+    expect(mockExpenseUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'exp_1' } }),
+    );
+    const updateCall = mockExpenseUpdate.mock.calls[0]?.[0] as { data?: { deleted_at?: Date } };
+    expect(updateCall?.data?.deleted_at).toBeInstanceOf(Date);
+    expect(mockExpenseDelete).not.toHaveBeenCalled();
     expect(mockAuditLogCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({ action: 'DELETE', resource_id: 'exp_1' }),
     });
   });
 
-  it('404s for an unknown expense', async () => {
-    mockExpenseDelete.mockRejectedValue(new Error('not found'));
+  it('404s for an unknown or already-deleted expense (no update)', async () => {
+    mockExpenseFindFirst.mockResolvedValue(null);
 
     const app = await buildApp();
     const res = await app.inject({
@@ -504,5 +522,22 @@ describe('DELETE /admin/commission/expenses/:id', () => {
     });
 
     expect(res.statusCode).toBe(404);
+    expect(mockExpenseUpdate).not.toHaveBeenCalled();
+  });
+
+  it('surfaces an update failure as 500, not a masked 404', async () => {
+    // Regression: errors must never be swallowed into a misleading 404.
+    mockExpenseFindFirst.mockResolvedValue(deleteTarget);
+    mockExpenseUpdate.mockRejectedValue(new Error('update failed'));
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/admin/commission/expenses/exp_1',
+      headers: csrfHeadersNoBody(),
+    });
+
+    expect(res.statusCode).toBe(500);
+    expect(mockAuditLogCreate).not.toHaveBeenCalled();
   });
 });

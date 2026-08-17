@@ -78,7 +78,7 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
       }),
       prisma.adminCommissionExpense.groupBy({
         by: ['period'],
-        where: { period: { in: periods } },
+        where: { period: { in: periods }, deleted_at: null },
         _sum: { amount_inr: true },
         _count: true,
       }),
@@ -124,7 +124,7 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
     const { start, end } = monthRange(query.month);
     const [expenses, paymentAgg, expenseAgg] = await Promise.all([
       prisma.adminCommissionExpense.findMany({
-        where: { period: query.month },
+        where: { period: query.month, deleted_at: null },
         orderBy: { expense_date: 'desc' },
       }),
       prisma.subscriptionPayment.aggregate({
@@ -132,7 +132,7 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
         _sum: { amount_inr: true },
       }),
       prisma.adminCommissionExpense.aggregate({
-        where: { period: query.month },
+        where: { period: query.month, deleted_at: null },
         _sum: { amount_inr: true },
         _count: true,
       }),
@@ -220,8 +220,8 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Nothing to update — send at least one field');
     }
 
-    const prev = await prisma.adminCommissionExpense.findUnique({
-      where: { id: request.params.id },
+    const prev = await prisma.adminCommissionExpense.findFirst({
+      where: { id: request.params.id, deleted_at: null },
     });
     if (!prev) throw notFound('Commission expense');
 
@@ -265,31 +265,40 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── DELETE /admin/commission/expenses/:id ──────────────────────
+  // SOFT delete: the app role is DELETE-less under SECURITY §19, so this
+  // sets deleted_at (an UPDATE the role can do) and every read filters
+  // deleted rows out — same pattern as products. A missing/already-deleted
+  // row 404s; real failures surface as 500 (no error swallowing).
   server.delete<{ Params: { id: string } }>(
     '/commission/expenses/:id',
     async (request, reply) => {
-      const expense = await prisma.adminCommissionExpense
-        .delete({ where: { id: request.params.id } })
-        .catch(() => null);
-      if (!expense) throw notFound('Commission expense');
+      const prev = await prisma.adminCommissionExpense.findFirst({
+        where: { id: request.params.id, deleted_at: null },
+      });
+      if (!prev) throw notFound('Commission expense');
+
+      await prisma.adminCommissionExpense.update({
+        where: { id: request.params.id },
+        data: { deleted_at: new Date() },
+      });
 
       await prisma.auditLog.create({
         data: {
           actor_type: 'admin',
           action: 'DELETE',
           resource_type: 'AdminCommissionExpense',
-          resource_id: expense.id,
+          resource_id: prev.id,
           metadata: {
-            period: expense.period,
-            amount_inr: expense.amount_inr,
-            category: expense.category,
-            expense_date: expense.expense_date.toISOString(),
+            period: prev.period,
+            amount_inr: prev.amount_inr,
+            category: prev.category,
+            expense_date: prev.expense_date.toISOString(),
           },
           ip_address: request.ip,
         },
       });
 
-      request.log.info({ id: expense.id }, 'Commission expense deleted');
+      request.log.info({ id: prev.id }, 'Commission expense deleted');
       return reply.status(204).send();
     },
   );

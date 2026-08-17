@@ -1755,6 +1755,7 @@ around without a ledger.
 | `category` | TEXT | free-text "where did the money go" (Marketing, Travel, ...) |
 | `expense_date` | TIMESTAMP(3) | date of the expense |
 | `notes` | TEXT? | explanation |
+| `deleted_at` | TIMESTAMP(3)? | soft delete (migration `054`; the app role is DELETE-less under SECURITY §19, so delete = `UPDATE deleted_at`, every read filters it out) |
 | `created_at` / `updated_at` | TIMESTAMP(3) | audit trail |
 
 ### 25.4 API (all `/v1/admin/*`, admin key + CSRF guarded)
@@ -1765,7 +1766,7 @@ around without a ledger.
 | `GET /commission/expenses?month=YYYY-MM` | Month summary + ordered expense grid. Month defaults to current IST month. |
 | `POST /commission/expenses` | Record expense `{period, amount_inr, category, expense_date, notes?}`. Writes audit entry. |
 | `PATCH /commission/expenses/:id` | Edit any subset of `{period, amount_inr, category, expense_date, notes}` (`notes: null` clears it). Audited with before/after. Empty payload → 422. |
-| `DELETE /commission/expenses/:id` | Remove expense. Writes audit entry. |
+| `DELETE /commission/expenses/:id` | **Soft delete** — sets `deleted_at` (UPDATE, works under the DELETE-less app role); missing/already-deleted → 404; errors surface as 500 (never masked). Audited. |
 
 **Timezone:** months are bucketed in **IST** (+5:30) — the admin's business
 calendar — via `periodKey()`/`monthRange()` helpers (pure, unit-tested).

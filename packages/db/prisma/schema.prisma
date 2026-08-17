@@ -1018,11 +1018,17 @@ model AdminCommissionExpense {
   expense_date DateTime // date of the expense
   notes       String?
 
+  // Soft delete (SECURITY §19: the app role kanchuki_app is DELETE-less, so
+  // admin "delete" sets deleted_at and every read filters it out — same
+  // deleted_at pattern as products). The purge cron can hard-delete later.
+  deleted_at DateTime?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
   @@index([period])
   @@index([expense_date])
+  @@index([deleted_at])
   @@map("admin_commission_expenses")
 }
 
