@@ -64,6 +64,20 @@ async function mockCommissionApi(page: Page, state: MockState): Promise<void> {
     if (url.includes('/admin/session')) return respond({ authenticated: true })
     if (url.includes('/admin/csrf-token')) return respond({ csrf_token: 'e2e-csrf-token' })
 
+    if (url.includes('/admin/commission/export')) {
+      return route.fulfill({
+        status: 200,
+        contentType: 'text/csv',
+        // access-control-expose-headers mirrors the real API's CORS config so
+        // the cross-origin page can read content-disposition (filename).
+        headers: {
+          'content-disposition': 'attachment; filename="kanchuki-commission-3m-202608.csv"',
+          'access-control-expose-headers': 'content-disposition',
+        },
+        body: 'Month,Date,Category,Amount (INR),Notes\r\n2026-08,2026-08-10,"Instagram Ads",1200.00,"Boosted posts"\r\n',
+      })
+    }
+
     if (url.includes('/admin/commission/overview')) return respond(OVERVIEW)
 
     if (url.includes('/admin/commission/expenses')) {
@@ -212,6 +226,22 @@ test('edit from the detail popup PATCHes the expense and closes', async ({ page 
   })
   // Grid refetches and shows the updated row
   await expect(page.getByText('Instagram + Meta ads', { exact: true })).toBeVisible()
+})
+
+test('exports expenditure as CSV for the selected range', async ({ page }) => {
+  const state = freshState()
+  await mockCommissionApi(page, state)
+  await seedAdminSession(page)
+
+  const downloadPromise = page.waitForEvent('download')
+  await page.goto('/admin/commission')
+  await openExpenditureTab(page)
+
+  await page.getByRole('button', { name: /Export CSV/ }).click()
+  await page.getByRole('button', { name: 'Last 3 months', exact: true }).click()
+
+  const download = await downloadPromise
+  expect(download.suggestedFilename()).toMatch(/kanchuki-commission-3m-.*\.csv/)
 })
 
 test('adds an expense from the form and deletes it from the popup', async ({ page }) => {

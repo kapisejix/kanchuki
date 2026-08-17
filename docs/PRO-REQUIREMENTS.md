@@ -1767,9 +1767,13 @@ around without a ledger.
 | `POST /commission/expenses` | Record expense `{period, amount_inr, category, expense_date, notes?}`. Writes audit entry. |
 | `PATCH /commission/expenses/:id` | Edit any subset of `{period, amount_inr, category, expense_date, notes}` (`notes: null` clears it). Audited with before/after. Empty payload → 422. |
 | `DELETE /commission/expenses/:id` | **Soft delete** — sets `deleted_at` (UPDATE, works under the DELETE-less app role); missing/already-deleted → 404; errors surface as 500 (never masked). Audited. |
+| `GET /commission/export?months=N` | CSV download (`text/csv`, `Content-Disposition` attachment): header block with period range, total payments, 3% pool, spent, remaining + per-expense rows (date, where, category, amount, notes). N in {1, 3, 6, 12}; soft-deleted rows excluded. Same IST bucketing. |
 
 **Timezone:** months are bucketed in **IST** (+5:30) — the admin's business
 calendar — via `periodKey()`/`monthRange()` helpers (pure, unit-tested).
+
+**CORS:** the API's `Access-Control-Expose-Headers` includes
+`Content-Disposition`, so browsers receive the server's CSV filename.
 
 ### 25.5 Admin UI (`/admin/commission`)
 
@@ -1782,6 +1786,9 @@ calendar — via `periodKey()`/`monthRange()` helpers (pure, unit-tested).
   month summary strip, "Add Expense" button → modal form (amount ₹, where,
   date, notes), expense grid; clicking a row opens a detail popup with full
   notes and a delete (with confirm).
+- **Export CSV dropdown** on the Expenditure tab: This month / 3 months /
+  6 months / 12 months — downloads a CSV (summary block + expense rows)
+  via `GET /commission/export`.
 - Admin **dashboard** (`/admin`) gains a "3% Commission Pool — this month"
   card with payments/pool/spent/remaining and a link into the page.
 - Sidebar: new **Commission** item under Billing.
@@ -1794,6 +1801,8 @@ calendar — via `periodKey()`/`monthRange()` helpers (pure, unit-tested).
 - Clicking a grid row shows the complete details, with an **Edit expense** action (in-place form for amount / where / date / notes / month) and a delete (with confirm)
 - Overspending shows red, not a crash
 - All mutations (create / update / delete) land in the audit log
+- Admin can export expenditure as CSV for 1 / 3 / 6 / 12 months and open
+  it in a spreadsheet (UTF-8 BOM + quoted fields, rupee amounts in paise→INR)
 
 ---
 

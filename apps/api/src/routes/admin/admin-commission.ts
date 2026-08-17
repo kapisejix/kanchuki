@@ -50,6 +50,77 @@ export function commissionOf(totalPaise: number): number {
   return Math.round(totalPaise * ADMIN_COMMISSION_RATE);
 }
 
+/** YYYY-MM-DD (IST) for an instant — used in CSV rows. */
+function istDateStr(iso: Date | string): string {
+  const d = new Date(new Date(iso).getTime() + IST_OFFSET_MS);
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`;
+}
+
+/** "Aug 2026" for a YYYY-MM period. */
+function fmtPeriod(period: string): string {
+  const [yStr, mStr] = period.split('-');
+  return new Date(Number(yStr), Number(mStr) - 1, 1).toLocaleDateString('en-IN', {
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+/** Rupees with 2 decimals (no ₹ symbol — the header says INR, avoids Excel encoding issues). */
+function fmtRs(paise: number): string {
+  return (paise / 100).toFixed(2);
+}
+
+/** CSV-escape a field: quote + double inner quotes (notes/categories can contain commas). */
+function csvField(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Build the full CSV document (summary block + expense table) for a range.
+ * Pure — unit-testable without a DB. `periods` are newest-first.
+ */
+export function buildCommissionCsv(params: {
+  periods: string[];
+  totalPaymentPaise: number;
+  expenses: Array<{
+    period: string;
+    amount_inr: number;
+    category: string;
+    expense_date: Date | string;
+    notes: string | null;
+  }>;
+}): string {
+  const { periods, totalPaymentPaise, expenses } = params;
+  const commission = commissionOf(totalPaymentPaise);
+  const spent = expenses.reduce((sum, e) => sum + e.amount_inr, 0);
+  const remaining = commission - spent;
+
+  const label =
+    periods.length === 1
+      ? fmtPeriod(periods[0]!)
+      : `${fmtPeriod(periods[periods.length - 1]!)} - ${fmtPeriod(periods[0]!)} (${periods.length} months)`;
+  const generated = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ') + ' IST';
+
+  const lines: string[] = [];
+  lines.push('Kanchuki Commission Expenditure Export');
+  lines.push(`Period,${csvField(label)}`);
+  lines.push(`Generated,${csvField(generated)}`);
+  lines.push(`Total Payments (INR),${fmtRs(totalPaymentPaise)}`);
+  lines.push(`3% Commission (INR),${fmtRs(commission)}`);
+  lines.push(`Total Spent (INR),${fmtRs(spent)}`);
+  lines.push(`Remaining (INR),${fmtRs(remaining)}`);
+  lines.push('');
+  lines.push('Month,Date,Category,Amount (INR),Notes');
+  for (const e of expenses) {
+    lines.push(
+      [e.period, istDateStr(e.expense_date), csvField(e.category), fmtRs(e.amount_inr), csvField(e.notes ?? '')].join(','),
+    );
+  }
+  lines.push('');
+  lines.push(`Total Spent (INR),${fmtRs(spent)}`);
+  return lines.join('\r\n') + '\r\n';
+}
+
 export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
 
@@ -200,6 +271,50 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
     request.log.info({ id: expense.id, period: expense.period }, 'Commission expense recorded');
 
     return { data: expense };
+  });
+
+  // ─── GET /admin/commission/export?months=N ───────────────────────
+  // CSV download of expenditure for the last N months (1/3/6/12). Includes a
+  // summary block (total payments → 3% → spent → remaining) plus one row per
+  // expense. Soft-deleted expenses excluded. Raw text/csv, not JSON.
+  server.get('/commission/export', async (request, reply) => {
+    const query = z
+      .object({ months: z.coerce.number().int().min(1).max(12).default(1) })
+      .parse(request.query);
+    const months = query.months;
+
+    const now = new Date();
+    // Newest-first, like overview.
+    const periods: string[] = [];
+    for (let i = 0; i < months; i++) {
+      periods.push(periodKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
+    }
+    const { start } = monthRange(periods[periods.length - 1]!); // oldest period's start
+
+    const [paymentAgg, expenses] = await Promise.all([
+      prisma.subscriptionPayment.aggregate({
+        where: { status: 'success', paid_at: { gte: start } },
+        _sum: { amount_inr: true },
+      }),
+      prisma.adminCommissionExpense.findMany({
+        where: { period: { in: periods }, deleted_at: null },
+        orderBy: [{ period: 'desc' }, { expense_date: 'asc' }],
+      }),
+    ]);
+
+    const csv = buildCommissionCsv({
+      periods,
+      totalPaymentPaise: paymentAgg._sum.amount_inr ?? 0,
+      expenses,
+    });
+
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
+    reply.header('Content-Type', 'text/csv; charset=utf-8');
+    reply.header(
+      'Content-Disposition',
+      `attachment; filename="kanchuki-commission-${months}m-${stamp}.csv"`,
+    );
+    return reply.send(csv);
   });
 
   // ─── PATCH /admin/commission/expenses/:id ────────────────────────

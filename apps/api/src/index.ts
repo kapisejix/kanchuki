@@ -94,6 +94,10 @@ await server.register(cors, {
       ? [process.env.WEB_URL ?? '', /(^|\.)kanchuki\.app$/]
       : true,
   credentials: true,
+  // Let the browser read download headers on cross-origin file responses
+  // (e.g. the admin commission CSV export reads content-disposition for the
+  // suggested filename — not on the default CORS-safelisted set).
+  exposedHeaders: ['content-disposition'],
 });
 
 // ─── Cookie Plugin (for admin CSRF protection) ────────────────────

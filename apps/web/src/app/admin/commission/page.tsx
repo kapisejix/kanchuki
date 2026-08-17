@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   IndianRupee,
@@ -17,6 +17,8 @@ import {
   NotebookPen,
   Tag,
   AlertTriangle,
+  Download,
+  ChevronDown,
   type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
@@ -161,6 +163,27 @@ export default function CommissionPage() {
     if (json?.data) setOverview(json.data)
   }
 
+  // CSV export of expenditure for the last N months (1/3/6/12).
+  const exportCsv = async (months: number) => {
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/commission/export?months=${months}`, adminGetOptions())
+      if (!res.ok) throw new Error(`Export failed (HTTP ${res.status})`)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const cd = res.headers.get('content-disposition') ?? ''
+      const name = cd.match(/filename="([^"]+)"/)?.[1] ?? `kanchuki-commission-${months}m.csv`
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Export failed')
+    }
+  }
+
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8">
       {/* Header */}
@@ -245,6 +268,7 @@ export default function CommissionPage() {
               data={monthData}
               onMonthChange={setSelectedMonth}
               onAdd={() => setFormOpen(true)}
+              onExport={(months) => void exportCsv(months)}
               onRowClick={setDetailExpense}
               onRefresh={refreshMonth}
             />
@@ -366,6 +390,7 @@ function ExpenditureTab({
   data,
   onMonthChange,
   onAdd,
+  onExport,
   onRowClick,
   onRefresh,
 }: {
@@ -374,6 +399,7 @@ function ExpenditureTab({
   data: MonthExpenses | null
   onMonthChange: (month: string) => void
   onAdd: () => void
+  onExport: (months: number) => void
   onRowClick: (expense: Expense) => void
   onRefresh: () => void
 }) {
@@ -407,15 +433,18 @@ function ExpenditureTab({
             </button>
           ))}
         </div>
-        <motion.button
-          onClick={onAdd}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="ml-auto bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center gap-2"
-        >
-          <Plus size={16} />
-          Add Expense
-        </motion.button>
+        <div className="ml-auto flex items-center gap-2">
+          <ExportMenu onExport={onExport} />
+          <motion.button
+            onClick={onAdd}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-sm font-semibold px-4 py-2.5 rounded-xl shadow-lg shadow-cyan-500/25 flex items-center gap-2"
+          >
+            <Plus size={16} />
+            Add Expense
+          </motion.button>
+        </div>
       </motion.div>
 
       {/* Selected-month summary strip */}
@@ -483,6 +512,73 @@ function ExpenditureTab({
           </div>
         )}
       </motion.div>
+    </div>
+  )
+}
+
+// ── Export CSV dropdown ───────────────────────────────────────────
+
+const EXPORT_RANGES = [
+  { label: 'This month', months: 1 },
+  { label: 'Last 3 months', months: 3 },
+  { label: 'Last 6 months', months: 6 },
+  { label: 'Last 12 months', months: 12 },
+]
+
+function ExportMenu({ onExport }: { onExport: (months: number) => void }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+
+  return (
+    <div ref={ref} className="relative">
+      <motion.button
+        onClick={() => setOpen((v) => !v)}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.97 }}
+        className="bg-white/80 border border-gray-200/80 hover:border-cyan-300 hover:text-cyan-700 text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-colors"
+      >
+        <Download size={16} />
+        Export CSV
+        <ChevronDown size={14} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
+      </motion.button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-full mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-2xl py-1.5 z-40"
+          >
+            <p className="px-4 pt-1.5 pb-1 text-[10px] font-semibold text-gray-400 uppercase tracking-widest">
+              Expenditure range
+            </p>
+            {EXPORT_RANGES.map((r) => (
+              <button
+                key={r.months}
+                onClick={() => {
+                  setOpen(false)
+                  onExport(r.months)
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-cyan-50 hover:text-cyan-700 transition-colors"
+              >
+                {r.label}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

@@ -368,6 +368,96 @@ describe('POST /admin/commission/expenses', () => {
   });
 });
 
+// ─── GET /admin/commission/export ─────────────────────────────────
+
+describe('GET /admin/commission/export', () => {
+  const exportExpenses = [
+    {
+      id: 'e1',
+      period: '2026-08',
+      amount_inr: 120_000,
+      category: 'Instagram Ads',
+      expense_date: new Date('2026-08-10T06:00:00.000Z'),
+      notes: 'Boosted, posts',
+      created_at: new Date(),
+    },
+    {
+      id: 'e2',
+      period: '2026-08',
+      amount_inr: 50_000,
+      category: 'Travel',
+      expense_date: new Date('2026-08-12T06:00:00.000Z'),
+      notes: null,
+      created_at: new Date(),
+    },
+    {
+      id: 'e3',
+      period: '2026-07',
+      amount_inr: 20_000,
+      category: 'Software',
+      expense_date: new Date('2026-07-05T06:00:00.000Z'),
+      notes: null,
+      created_at: new Date(),
+    },
+  ];
+
+  it('returns a CSV with the summary block and expense rows for the range', async () => {
+    mockSubscriptionPaymentAggregate.mockResolvedValue({ _sum: { amount_inr: 10_000_000 } });
+    mockExpenseFindMany.mockResolvedValue(exportExpenses);
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/commission/export?months=3',
+      headers: authedHeaders(),
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.headers['content-disposition']).toContain('attachment');
+    expect(res.headers['content-disposition']).toContain('kanchuki-commission-3m-');
+
+    const body = res.body;
+    expect(body).toContain('Kanchuki Commission Expenditure Export');
+    expect(body).toContain('Period,"Jun 2026 - Aug 2026 (3 months)"');
+    expect(body).toContain('Total Payments (INR),100000.00');
+    expect(body).toContain('3% Commission (INR),3000.00');
+    expect(body).toContain('Total Spent (INR),1900.00');
+    expect(body).toContain('Remaining (INR),1100.00');
+    expect(body).toContain('Month,Date,Category,Amount (INR),Notes');
+    // Row data: IST date (Aug 10), escaped category, escaped comma in notes
+    expect(body).toContain('2026-08,2026-08-10,"Instagram Ads",1200.00,"Boosted, posts"');
+    expect(body).toContain('2026-08,2026-08-12,"Travel",500.00,""');
+    expect(body).toContain('Total Spent (INR),1900.00');
+  });
+
+  it('excludes soft-deleted expenses from the export', async () => {
+    mockSubscriptionPaymentAggregate.mockResolvedValue({ _sum: { amount_inr: 0 } });
+    mockExpenseFindMany.mockResolvedValue([]);
+
+    const app = await buildApp();
+    await app.inject({
+      method: 'GET',
+      url: '/v1/admin/commission/export?months=1',
+      headers: authedHeaders(),
+    });
+
+    expect(mockExpenseFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ deleted_at: null }) }),
+    );
+  });
+
+  it('rejects months outside 1–12', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/admin/commission/export?months=13',
+      headers: authedHeaders(),
+    });
+    expect(res.statusCode).toBe(422);
+  });
+});
+
 // ─── PATCH /admin/commission/expenses/:id ─────────────────────────
 
 describe('PATCH /admin/commission/expenses/:id', () => {
