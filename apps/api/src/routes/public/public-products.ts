@@ -40,6 +40,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] },
             spin_frames: { orderBy: { frame_index: 'asc' } },
             variants: true,
+            videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'asc' }] },
             section: { select: { name: true } },
           },
         });
@@ -65,6 +66,9 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             description: p.description,
             search_tags: p.search_tags,
             sizes: p.sizes,
+            // Roadmap N: Indian fit flags (blouse-piece / unstitched markers).
+            is_unstitched: p.is_unstitched,
+            includes_blouse: p.includes_blouse,
             location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
             primary_photo_url: primaryPhoto
               ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)
@@ -83,6 +87,13 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
                 status: v.status as string,
               })),
             ),
+            // Roadmap Q: short product clips alongside photos.
+            videos: p.videos.map((v) => ({
+              id: v.id,
+              url: v.public_url,
+              duration_sec: v.duration_sec,
+              is_main: v.is_main,
+            })),
           },
         };
       });

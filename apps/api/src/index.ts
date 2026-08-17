@@ -28,6 +28,8 @@ import { sizeChartRoutes } from './routes/size-chart.js';
 import { staffRoutes } from './routes/staff.js';
 import { teamRoutes } from './routes/team.js';
 import { tryOnRoutes } from './routes/tryon.js';
+import { growthRoutes } from './routes/growth/index.js';
+import { publicGrowthRoutes } from './routes/public/public-growth.js';
 import { msg91WebhookRoutes } from './routes/webhooks/msg91.js';
 
 // Fail fast at boot instead of 500ing the first request that touches
@@ -153,6 +155,8 @@ await server.register(billingRoutes, { prefix: '/v1/billing' });
 await server.register(adminRoutes, { prefix: '/v1/admin' });
 await server.register(adminSettingsRoutes, { prefix: '/v1/admin' });
 await server.register(tryOnRoutes, { prefix: '/v1/try-on' });
+await server.register(growthRoutes, { prefix: '/v1/growth' });
+await server.register(publicGrowthRoutes, { prefix: '/v1/public' });
 await server.register(sizeChartRoutes, { prefix: '/v1/size-charts' });
 await server.register(consentRoutes, { prefix: '/v1/consent' });
 await server.register(catalogImportRoutes, { prefix: '/v1' });

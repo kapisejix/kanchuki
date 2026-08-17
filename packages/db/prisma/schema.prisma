@@ -141,6 +141,7 @@ enum PlanFeatureKey {
   API_ACCESS
   PRIORITY_AI_QUEUE
   MULTI_STORE
+  GROWTH_ENGINE
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -207,6 +208,10 @@ model Retailer {
   kyc_submitted_at        DateTime?
   kyc_reviewed_at         DateTime?
   kyc_rejection_reason    String?
+
+  // Customer referral program config (roadmap C).
+  referral_enabled      Boolean @default(false)
+  referral_reward_paise Int     @default(0)
 
   // Meta WhatsApp Business API — retailer's own credentials, bring-your-own.
   // When set, collection bulk-send uses this instead of the one-by-one wa.me
@@ -439,6 +444,11 @@ model Product {
   // Retailer-selected sizes available for this item (S, M, L, XL, XXL, XXXL)
   sizes String[] @default([])
 
+  // Indian fit flags (roadmap N) — blouse-piece / unstitched markers that
+  // matter for sarees and unstitched suit sets, shown on the product page.
+  is_unstitched Boolean @default(false)
+  includes_blouse Boolean @default(false)
+
   // Flexible extra metadata
   metadata Json?
   notes    String?
@@ -480,6 +490,7 @@ model Product {
   background_image BackgroundImage?      @relation(fields: [background_image_id], references: [id], onDelete: SetNull)
   product_category ProductCategory?      @relation(fields: [category_id], references: [id], onDelete: SetNull)
   photos           ProductPhoto[]
+  videos           ProductVideo[]
   spin_frames      ProductSpinFrame[]
   variants         ProductVariant[]
   embedding        ProductEmbedding?
@@ -610,6 +621,10 @@ model Customer {
   // profile gate, unset for retailer-manual-entry customers.
   consent_given Boolean   @default(false)
   consent_at    DateTime?
+
+  // Lead origin — how this customer first reached the retailer (roadmap B:
+  // QR lead capture source tracking). QR_SCAN = storefront QR contact gate.
+  source CustomerLeadSource @default(MANUAL)
 
   // Full address
   address_line1 String?
@@ -1601,4 +1616,310 @@ model SocialPost {
   @@index([retailer_id, created_at])
   @@index([social_account_id])
   @@map("social_posts")
+}
+
+// ─── INDIA RETAILER GROWTH ENGINE (docs/INDIA-RETAILER-GROWTH.md) ─
+
+enum CustomerLeadSource {
+  MANUAL
+  QR_SCAN
+  STORE_SCAN
+  REFERRAL
+  CAMPAIGN
+}
+
+enum CampaignType {
+  FESTIVAL
+  REACTIVATION
+  PROMOTION
+  AB_TEST
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENT
+}
+
+enum CampaignSendStatus {
+  QUEUED
+  SENT
+  OPENED
+}
+
+enum PromotionDiscountType {
+  PERCENT
+  FIXED
+}
+
+enum KhataEntryType {
+  SALES
+  PURCHASE
+  EXPENSE
+}
+
+enum KhataPaymentMode {
+  CASH
+  UPI
+  OTHER
+}
+
+enum SupplierTransactionKind {
+  ORDER
+  PAYMENT
+}
+
+enum BookingStatus {
+  REQUESTED
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+enum UdharTransactionKind {
+  CHARGE
+  PAYMENT
+}
+
+enum ReferralCreditStatus {
+  PENDING
+  CREDITED
+}
+
+// Pre-seeded festival calendar (roadmap D). Seed-managed; dates for 2026-27.
+model Festival {
+  id        String   @id @default(cuid())
+  name      String
+  region    String   @default("PAN_INDIA") // "PAN_INDIA" or a state/region key
+  starts_at DateTime
+  ends_at   DateTime
+
+  created_at DateTime @default(now())
+
+  @@index([starts_at, ends_at])
+  @@map("festivals")
+}
+
+// Marketing campaign (roadmap D/G/S). audience_json holds a Customer-filter
+// spec; ab_variants holds the two message variants for AB_TEST type.
+model Campaign {
+  id          String         @id @default(cuid())
+  retailer_id String
+  type        CampaignType
+  name        String
+  status      CampaignStatus @default(DRAFT)
+
+  // Denormalized festival snapshot so the campaign survives festival edits.
+  festival_id   String?
+  festival_name String?
+
+  message_template String
+  audience_json    Json
+  product_ids      String[] @default([])
+
+  // AB_TEST: [{ label, message_template, send_pct }] — max 2 variants.
+  ab_variants Json?
+
+  schedule_at  DateTime?
+  sent_at      DateTime?
+  sent_count   Int @default(0)
+  opened_count Int @default(0)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@index([retailer_id, status])
+  @@index([retailer_id, type])
+  @@map("campaigns")
+}
+
+model CampaignSend {
+  id          String             @id @default(cuid())
+  campaign_id String
+  retailer_id String
+  customer_id String? // loose pointer — customers are soft-deleted
+
+  variant_label String?
+  status        CampaignSendStatus @default(QUEUED)
+  sent_at       DateTime?
+  opened_at     DateTime?
+
+  created_at DateTime @default(now())
+
+  @@index([campaign_id])
+  @@index([retailer_id, status])
+  @@map("campaign_sends")
+}
+
+// Discount/promo code engine (roadmap F).
+model Promotion {
+  id              String                @id @default(cuid())
+  retailer_id     String
+  code            String
+  discount_type   PromotionDiscountType
+  discount_value  Int // percent (0-100) or paise for FIXED
+  min_order_paise Int?
+  product_ids     String[] @default([]) // empty = store-wide
+  starts_at       DateTime?
+  ends_at         DateTime?
+  is_active       Boolean  @default(true)
+  times_used      Int      @default(0)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@unique([retailer_id, code])
+  @@index([retailer_id, is_active])
+  @@map("promotions")
+}
+
+// Daily khata P&L ledger (roadmap H).
+model KhataEntry {
+  id           String          @id @default(cuid())
+  retailer_id  String
+  entry_date   DateTime        @default(now()) // calendar day (date part used)
+  type         KhataEntryType
+  payment_mode KhataPaymentMode
+  amount_paise Int
+  note         String?
+  order_id     String? // loose pointer to Order when a SALES row comes from checkout
+
+  created_at DateTime @default(now())
+  created_by String?  // loose pointer to TeamMember id when staff-entered
+
+  @@index([retailer_id, entry_date])
+  @@map("khata_entries")
+}
+
+// Supplier directory + transaction ledger (roadmap K).
+model Supplier {
+  id           String @id @default(cuid())
+  retailer_id  String
+  name         String
+  phone        String?
+  city         String?
+  notes        String?
+  pending_amount_paise Int @default(0)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@index([retailer_id])
+  @@map("suppliers")
+}
+
+model SupplierTransaction {
+  id               String                  @id @default(cuid())
+  supplier_id      String
+  retailer_id      String
+  kind             SupplierTransactionKind
+  amount_paise     Int
+  note             String?
+  transaction_date DateTime @default(now())
+
+  created_at DateTime @default(now())
+
+  @@index([supplier_id])
+  @@index([retailer_id, transaction_date])
+  @@map("supplier_transactions")
+}
+
+// Showroom / try-on room booking (roadmap L). Public create, retailer confirms.
+model Booking {
+  id          String        @id @default(cuid())
+  retailer_id String
+  customer_id String? // loose pointer — set when a known customer books
+  name        String
+  phone       String
+  starts_at   DateTime
+  ends_at     DateTime
+  status      BookingStatus @default(REQUESTED)
+  note        String?
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@index([retailer_id, status])
+  @@index([retailer_id, starts_at])
+  @@map("bookings")
+}
+
+// Udhar (customer credit) tracking (roadmap O).
+model UdharAccount {
+  id            String @id @default(cuid())
+  retailer_id   String
+  customer_id   String // loose pointer
+  balance_paise Int    @default(0) // positive = customer owes retailer
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@unique([retailer_id, customer_id])
+  @@index([retailer_id])
+  @@map("udhar_accounts")
+}
+
+model UdharTransaction {
+  id           String               @id @default(cuid())
+  account_id   String
+  retailer_id  String
+  kind         UdharTransactionKind // CHARGE = customer owes more, PAYMENT = settles
+  amount_paise Int
+  note         String?
+
+  created_at DateTime @default(now())
+
+  @@index([account_id])
+  @@index([retailer_id, created_at])
+  @@map("udhar_transactions")
+}
+
+// Customer referral program (roadmap C).
+model Referral {
+  id           String @id @default(cuid())
+  retailer_id  String
+  customer_id  String // loose pointer — the referrer
+  code         String @unique
+  reward_paise Int    @default(0) // credited to BOTH parties on first purchase
+  clicks       Int    @default(0)
+  signups      Int    @default(0)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@index([retailer_id])
+  @@map("referrals")
+}
+
+model ReferralCredit {
+  id           String                @id @default(cuid())
+  retailer_id  String
+  referral_id  String
+  customer_id  String // loose pointer — who receives the credit
+  amount_paise Int
+  status       ReferralCreditStatus  @default(PENDING)
+
+  created_at DateTime @default(now())
+
+  @@index([customer_id])
+  @@index([referral_id])
+  @@map("referral_credits")
+}
+
+// Simple product video (roadmap Q) — 5-10s clip alongside photos.
+model ProductVideo {
+  id           String  @id @default(cuid())
+  product_id   String
+  retailer_id  String
+  r2_key       String
+  public_url   String
+  duration_sec Int?
+  is_main      Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+  @@map("product_videos")
 }

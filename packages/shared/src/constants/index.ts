@@ -252,6 +252,8 @@ export const R2_PATHS = {
   ) => `retailers/${retailerId}/kyc/${docType}/${filename}`,
   spinVideo: (retailerId: string, productId: string) =>
     `retailers/${retailerId}/products/${productId}/spin/video.mp4`,
+  productVideo: (retailerId: string, productId: string, filename: string) =>
+    `retailers/${retailerId}/products/${productId}/videos/${filename}`,
   spinFrame: (retailerId: string, productId: string, frameIndex: number) =>
     `retailers/${retailerId}/products/${productId}/spin/frame-${frameIndex}.jpg`,
   backgroundImage: (filename: string) => `admin/background-images/${filename}`,

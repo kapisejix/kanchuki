@@ -532,12 +532,16 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         gender: body.data.gender,
         consent_given: true,
         consent_at: new Date(),
+        // Roadmap B: mark the lead's origin so retailers can filter CRM by
+        // QR-captured leads (Customer.source, migration 055).
+        source: 'QR_SCAN',
       },
       update: {
         name: body.data.name,
         gender: body.data.gender,
         consent_given: true,
         consent_at: new Date(),
+        source: 'QR_SCAN',
       },
       select: { id: true, name: true },
     });
