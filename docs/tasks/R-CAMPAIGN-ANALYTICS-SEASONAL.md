@@ -141,13 +141,13 @@ CREATE INDEX IF NOT EXISTS idx_campaign_send_campaign_sent
 
 ## Acceptance Criteria
 
-- [ ] Seasonal period definitions configurable (default: Oct–Feb = Wedding, Mar–Sep = Daily).
-- [ ] API returns category-level metrics for both periods with delta %.
-- [ ] Mobile Analytics screen has "Seasonal" tab with grouped bar chart + table.
-- [ ] Retailer can toggle metric (Opens/Enquiries/Orders/Revenue/Conv. Rate).
-- [ ] YoY compare works (Wedding 2025 vs Wedding 2024).
-- [ ] Empty state guides retailer: "Run festival campaigns to unlock seasonal insights."
-- [ ] Performance: API < 500ms for 12 months of data.
+- [x] Seasonal period definitions configurable (default: Oct–Feb = Wedding, Mar–Sep = Daily).
+- [x] API returns category-level metrics for both periods with delta %.
+- [x] Mobile Analytics screen has "Seasonal" tab with grouped bar chart + table.
+- [x] Retailer can toggle metric (Opens/Enquiries/Orders/Revenue/Conv. Rate).
+- [x] YoY compare works (Wedding 2025 vs Wedding 2024).
+- [x] Empty state guides retailer: "Run festival campaigns to unlock seasonal insights."
+- [x] Performance: API < 500ms for 12 months of data.
 
 ---
 
