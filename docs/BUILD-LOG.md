@@ -49,8 +49,14 @@ incident, migration, and decision recorded after 2026-07-26.
 | 39 | [F-032 AI Studio Shoots + Product Videos](#planned-2026-08-13-f-032-ai-studio-shoots--product-videos-photoroom-style) | Planned | 2026-08-13 |
 | 42 | [Admin Commission Tracker — 3% of Monthly Payments + Expense Ledger](#built-2026-08-17-admin-commission-tracker--3-of-monthly-payments--expense-ledger) | Built | 2026-08-17 |
 | 43 | [Retailer Auth — Login / Create Account toggle](#built-2026-08-17-retailer-auth--login--create-account-toggle) | Built | 2026-08-17 |
+| 44 | [India Retailer Growth Engine — Backend + Migration 055](#built-backend-2026-08-17-india-retailer-growth-engine--10-feature-modules--migration-055) | Built | 2026-08-17 |
+| 45 | [Growth Engine UI — Mobile Growth Hub + Campaigns + Admin Festival Calendar](#built-2026-08-17-growth-engine-ui--mobile-growth-hub--campaigns--admin-festival-calendar) | Built | 2026-08-17 |
+| 46 | [Growth Engine UI — Remaining 7 Modules (Mobile Screens)](#built-2026-08-17-growth-engine-ui--remaining-7-modules-mobile-screens) | Built | 2026-08-17 |
+| 47 | [Growth Engine — Roadmap M, N, R, S Completed](#built-2026-08-17-growth-engine--roadmap-m-n-r-s-completed-ai-translate-breadth--size--fit--campaign-analytics--collection-ab) | Built | 2026-08-17 |
 | 48 | [AI Campaign Assistant (E)](#built-2026-08-18-ai-campaign-assistant-roadmap-e) | Built | 2026-08-18 |
 | 49 | [Phase II — WhatsApp Native Catalog Sync](#built-2026-08-18-phase-ii--whatsapp-native-catalog-sync-f-307--roadmap-p) | Built | 2026-08-18 |
+| 50 | [Roadmap M — i18n Data Groundwork](#built-2026-08-18-roadmap-m--i18n-data-groundwork-deferred-post-launch) | Built | 2026-08-18 |
+| 51 | [Roadmap R — Seasonal Analytics](#built-2026-08-18-roadmap-r--seasonal-analytics-wedding-season-vs-daily-wear) | Built | 2026-08-18 |
 
 ---
 
