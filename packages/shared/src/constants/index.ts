@@ -250,6 +250,30 @@ export const HINDI_TO_ENGLISH: Record<string, string> = {
   party: 'party wear',
 };
 
+// ─── Roadmap M — Supported Locales ────────────────────────────────
+// Canonical list of locales the platform supports for AI descriptions,
+// campaign/WhatsApp message translation, and (post-launch) UI language.
+// Shared between web (customer PWA), mobile (retailer app), and API
+// (validation + content generation).
+export const SUPPORTED_LOCALES = [
+  { key: 'en-IN', label: 'English', native: 'English', script: 'latin' },
+  { key: 'hi-IN', label: 'Hindi', native: 'हिन्दी', script: 'devanagari' },
+  { key: 'hi-Latn-IN', label: 'Hinglish', native: 'Hinglish', script: 'latin' },
+  { key: 'ta-IN', label: 'Tamil', native: 'தமிழ்', script: 'tamil' },
+  { key: 'te-IN', label: 'Telugu', native: 'తెలుగు', script: 'telugu' },
+  { key: 'mr-IN', label: 'Marathi', native: 'मराठी', script: 'devanagari' },
+  { key: 'gu-IN', label: 'Gujarati', native: 'ગુજરાતી', script: 'gujarati' },
+  { key: 'bn-IN', label: 'Bengali', native: 'বাংলা', script: 'bengali' },
+] as const;
+
+export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]['key'];
+
+/** Default locale fallback chain: selected → retailer default → Hindi → English. */
+export const LOCALE_FALLBACK_CHAIN: readonly SupportedLocale[] = [
+  'hi-IN',
+  'en-IN',
+] as const;
+
 // ─── R2 Storage Paths ─────────────────────────────────────────────
 
 export const R2_PATHS = {

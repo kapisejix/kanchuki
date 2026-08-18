@@ -260,7 +260,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.4 Localized Indian Features
 
-#### M. Multi-Language AI (Hindi + Hinglish + Regional) — ✅ Built (Claude-generated product descriptions AND WhatsApp/campaign message translation in 7 languages, placeholders preserved; AI-search screen with Hindi/Hinglish search + voice via keyboard dictation). **Not built:** native in-app mic (needs dev build), PWA language toggle, retailer app UI language toggle
+#### M. Multi-Language AI (Hindi + Hinglish + Regional) — ✅ Built (Claude-generated product descriptions AND WhatsApp/campaign message translation in 7 languages, placeholders preserved; AI-search screen with Hindi/Hinglish search + voice via keyboard dictation). **Data groundwork landed** 2026-08-18: migration 063 (`retailers.preferred_locale`), shared `SUPPORTED_LOCALES` constant, API field. **Not built:** native in-app mic (needs dev build), PWA language toggle (no i18n infra), retailer app UI language toggle (no i18n infra)
 
 **What:** AI-generated product descriptions, WhatsApp messages, and campaign templates in multiple languages.
 

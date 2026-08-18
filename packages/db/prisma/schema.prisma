@@ -264,6 +264,11 @@ model Retailer {
   onboarding_completed Boolean @default(false)
   onboarding_step      Int     @default(0)
 
+  // Roadmap M — Multi-Language AI: preferred locale for the retailer app UI.
+  // Defaults to 'en-IN' (English). Content language (AI descriptions) is
+  // driven by the customer's locale, not the retailer's UI locale.
+  preferred_locale String? @default("en-IN")
+
   // Suspension (F-015) — reversible, distinct from deleted_at (soft-delete)
   is_suspended     Boolean  @default(false)
   suspended_at     DateTime?

@@ -216,7 +216,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 - ✅ Showroom / Try-On Room Booking
 
 ### Sprint Block D — Localization & Scale (6 weeks)
-- ✅ Multi-Language AI (M — descriptions + campaign messages; AI search UI; voice via keyboard dictation)
+- ✅ Multi-Language AI (M — descriptions + campaign messages; AI search UI; voice via keyboard dictation). **Data groundwork landed** 2026-08-18: migration 063 (`retailers.preferred_locale`), shared `SUPPORTED_LOCALES` constant, API field. Full sub-tasks (native mic, PWA toggle, retailer UI toggle) deferred post-launch — no i18n infra exists yet (BUILD-LOG §50)
 - ✅ Indian Size & Fit System (N — usual-size capture + per-customer recommendation + plus sizes XS/4XL–8XL + unstitched/blouse flags)
 - ✅ WhatsApp Native Catalog Sync (P — built Phase II 2026-08-18: sync engine + webhook + retailer mobile UI + admin monitor, BUILD-LOG §49)
 

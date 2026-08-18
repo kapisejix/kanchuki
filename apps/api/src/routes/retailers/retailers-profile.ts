@@ -29,6 +29,8 @@ const UpdateRetailerSchema = z.object({
     .optional(),
   // F-018: optional, skippable — a salesperson's referral code entered at self-serve signup
   referral_code: z.string().max(20).optional(),
+  // Roadmap M — preferred locale for the retailer app UI (ISO 639-1 + region, e.g. 'en-IN', 'hi-IN')
+  preferred_locale: z.string().max(10).optional(),
 });
 
 export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
