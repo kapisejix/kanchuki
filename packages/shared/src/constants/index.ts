@@ -88,7 +88,23 @@ export const EMBELLISHMENT_TYPES = [
   'None',
 ] as const;
 
-export const SIZE_OPTIONS = ['S', 'M', 'L', 'XL', 'XXL', 'XXXL'] as const;
+// Roadmap N — Indian Size & Fit: standard labels S–XXXL plus plus-size
+// ranges properly labeled (XS + 4XL–8XL). Products store their own size
+// arrays, so adding options is backward-compatible.
+export const SIZE_OPTIONS = [
+  'XS',
+  'S',
+  'M',
+  'L',
+  'XL',
+  'XXL',
+  'XXXL',
+  '4XL',
+  '5XL',
+  '6XL',
+  '7XL',
+  '8XL',
+] as const;
 
 // ─── Color Swatch Resolution ──────────────────────────────────────
 // Common Indian-fashion color names aren't valid CSS/RN color keywords

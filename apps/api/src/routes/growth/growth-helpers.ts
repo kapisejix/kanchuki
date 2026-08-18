@@ -299,3 +299,53 @@ export function computeSupplierPending(txs: Pick<SupplierTransaction, 'kind' | '
 export function parseReferralCode(raw: string): string {
   return raw.trim().toUpperCase();
 }
+
+// ─── A/B testing (roadmap S) ──────────────────────────────────────
+
+/** Two-proportion z-test on open rates between two variants. Pure + testable.
+ *  Returns the p-value and a winner only when both samples are large enough
+ *  (>= MIN_SAMPLE) to be meaningful — small samples report reliable: false.
+ */
+export const AB_MIN_SAMPLE_PER_VARIANT = 30;
+
+export interface AbVariantResult {
+  label: string;
+  sent: number;
+  opened: number;
+  open_rate: number; // 0..1
+}
+
+export interface AbSignificance {
+  p_value: number | null;
+  winner: string | null;
+  reliable: boolean;
+}
+
+function normalCdf(z: number): number {
+  // Abramowitz & Stegun 7.1.26 — accurate to ~7.5e-8, plenty for p-values.
+  const t = 1 / (1 + 0.2316419 * Math.abs(z));
+  const d = 0.3989422804014327 * Math.exp((-z * z) / 2);
+  let p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  p = 1 - p;
+  return z > 0 ? p : 1 - p;
+}
+
+/** Compare two variants' open rates (roadmap S significance). */
+export function abTestSignificance(a: AbVariantResult, b: AbVariantResult): AbSignificance {
+  const total = a.sent + b.sent;
+  if (total === 0) return { p_value: null, winner: null, reliable: false };
+
+  const pPool = (a.opened + b.opened) / total;
+  const se = Math.sqrt(pPool * (1 - pPool) * (1 / a.sent + 1 / b.sent));
+  if (!Number.isFinite(se) || se === 0) return { p_value: null, winner: null, reliable: false };
+
+  const z = (a.open_rate - b.open_rate) / se;
+  const pValue = 2 * (1 - normalCdf(Math.abs(z))); // two-tailed
+
+  const reliable = a.sent >= AB_MIN_SAMPLE_PER_VARIANT && b.sent >= AB_MIN_SAMPLE_PER_VARIANT;
+  const winner =
+    reliable && a.open_rate !== b.open_rate ? (a.open_rate > b.open_rate ? a.label : b.label) : null;
+
+  return { p_value: Number(pValue.toFixed(4)), winner, reliable };
+}
+

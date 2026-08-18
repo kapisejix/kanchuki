@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   ScrollView,
   Text,
@@ -15,6 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { productApi } from '../../src/lib/api'
 import {
   growthApi,
   type AudienceSpec,
@@ -180,9 +182,10 @@ export default function CampaignFormScreen() {
   const [neverPurchased, setNeverPurchased] = useState(false)
   const [sources, setSources] = useState<CustomerLeadSource[]>([])
 
-  // A/B
-  const [abA, setAbA] = useState({ label: '', message: '', pct: '50' })
-  const [abB, setAbB] = useState({ label: '', message: '', pct: '50' })
+  // A/B — variant collections (roadmap S) + stagger
+  const [abA, setAbA] = useState({ label: '', message: '', pct: '50', products: [] as string[], delay: '' })
+  const [abB, setAbB] = useState({ label: '', message: '', pct: '50', products: [] as string[], delay: '' })
+  const [variantPicker, setVariantPicker] = useState<'A' | 'B' | null>(null)
 
   // Edit mode — prefill from the existing campaign.
   const { data: existingData, isLoading: existingLoading } = useQuery({
@@ -213,11 +216,15 @@ export default function CampaignFormScreen() {
         label: existing.ab_variants[0].label,
         message: existing.ab_variants[0].message_template,
         pct: String(existing.ab_variants[0].send_pct),
+        products: existing.ab_variants[0].product_ids ?? [],
+        delay: existing.ab_variants[0].send_delay_min ? String(existing.ab_variants[0].send_delay_min) : '',
       })
       setAbB({
         label: existing.ab_variants[1].label,
         message: existing.ab_variants[1].message_template,
         pct: String(existing.ab_variants[1].send_pct),
+        products: existing.ab_variants[1].product_ids ?? [],
+        delay: existing.ab_variants[1].send_delay_min ? String(existing.ab_variants[1].send_delay_min) : '',
       })
     }
   }, [existing])
@@ -228,6 +235,30 @@ export default function CampaignFormScreen() {
     enabled: type === 'FESTIVAL',
   })
   const festivals = festivalsData?.data ?? []
+
+  // Products for the A/B collection picker (roadmap S). The modal keeps a
+  // working Set locally and only commits it to the variant on Done.
+  const [pickerSelection, setPickerSelection] = useState<Set<string>>(new Set())
+  const pickerProductsQuery = useQuery({
+    queryKey: ['products', 'list', 'ab-picker'],
+    queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 50 }),
+    enabled: variantPicker !== null,
+  })
+  const pickerProducts = (pickerProductsQuery.data?.data ?? []) as { id: string; category: string | null; primary_photo_url: string | null }[]
+  const activeVariantState = variantPicker === 'A' ? abA : variantPicker === 'B' ? abB : null
+  const activeVariantSet = variantPicker === 'A' ? setAbA : variantPicker === 'B' ? setAbB : null
+
+  const openPicker = (key: 'A' | 'B') => {
+    const current = key === 'A' ? abA.products : abB.products
+    setPickerSelection(new Set(current))
+    setVariantPicker(key)
+  }
+
+  const commitPicker = () => {
+    if (!variantPicker || !activeVariantSet || !activeVariantState) return
+    activeVariantSet({ ...activeVariantState, products: [...pickerSelection] })
+    setVariantPicker(null)
+  }
 
   const splitList = (raw: string) =>
     raw
@@ -299,8 +330,20 @@ export default function CampaignFormScreen() {
       ...(type === 'AB_TEST'
         ? {
             ab_variants: [
-              { label: abA.label.trim(), message_template: abA.message.trim(), send_pct: parseInt(abA.pct, 10) },
-              { label: abB.label.trim(), message_template: abB.message.trim(), send_pct: parseInt(abB.pct, 10) },
+              {
+                label: abA.label.trim(),
+                message_template: abA.message.trim(),
+                send_pct: parseInt(abA.pct, 10),
+                product_ids: abA.products,
+                send_delay_min: abA.delay ? parseInt(abA.delay, 10) : undefined,
+              },
+              {
+                label: abB.label.trim(),
+                message_template: abB.message.trim(),
+                send_pct: parseInt(abB.pct, 10),
+                product_ids: abB.products,
+                send_delay_min: abB.delay ? parseInt(abB.delay, 10) : undefined,
+              },
             ],
           }
         : {}),
@@ -478,10 +521,12 @@ export default function CampaignFormScreen() {
           {type === 'AB_TEST' && (
             <Section title="A/B variants — two messages, split audience">
               <View className="gap-3">
-                {[
-                  { key: 'A', state: abA, set: setAbA },
-                  { key: 'B', state: abB, set: setAbB },
-                ].map(({ key, state, set }) => (
+                {(
+                  [
+                    { key: 'A' as const, state: abA, set: setAbA },
+                    { key: 'B' as const, state: abB, set: setAbB },
+                  ]
+                ).map(({ key, state, set }) => (
                   <View key={key} className="bg-sand-50 rounded-xl p-3 border border-sand-100">
                     <View className="flex-row items-center justify-between mb-2">
                       <View className="flex-row items-center gap-2">
@@ -526,6 +571,36 @@ export default function CampaignFormScreen() {
                       />
                       <Text className="text-[11px] text-sand-500">% of audience</Text>
                     </View>
+
+                    {/* Collection A/B — per-variant product set + stagger */}
+                    <View className="flex-row items-center justify-between mt-2.5">
+                      <Text className="text-[11px] text-sand-500 font-medium">Collection products</Text>
+                      <AnimatedPressable
+                        onPress={() => openPicker(key)}
+                        accessibilityRole="button"
+                        accessibilityLabel={`Pick products for variant ${key}`}
+                        className="bg-white border border-sand-200 rounded-lg px-2.5 py-1.5"
+                      >
+                        <Text className="text-[11px] font-semibold" style={{ color: primaryColor }}>
+                          {state.products.length > 0
+                            ? `${state.products.length} selected${state.products.length > 0 ? ' · Edit' : ''}`
+                            : 'Pick products'}
+                        </Text>
+                      </AnimatedPressable>
+                    </View>
+                    <View className="flex-row items-center gap-2 mt-2">
+                      <Text className="text-[11px] text-sand-500 font-medium">Send after</Text>
+                      <TextInput
+                        value={state.delay}
+                        onChangeText={(v) => set({ ...state, delay: v.replace(/\D/g, '') })}
+                        placeholder="0"
+                        placeholderTextColor={colors.sand[400]}
+                        keyboardType="number-pad"
+                        maxLength={4}
+                        className="text-xs font-semibold text-sand-800 bg-white rounded-lg px-2.5 py-1.5 border border-sand-200 w-16 text-center"
+                      />
+                      <Text className="text-[11px] text-sand-500">min (stagger this variant)</Text>
+                    </View>
                   </View>
                 ))}
                 <View className="flex-row items-center justify-between px-1">
@@ -537,6 +612,89 @@ export default function CampaignFormScreen() {
               </View>
             </Section>
           )}
+
+          {/* A/B product picker modal */}
+          <Modal
+            visible={variantPicker !== null}
+            animationType="slide"
+            presentationStyle="pageSheet"
+            onRequestClose={() => setVariantPicker(null)}
+          >
+            <View className="flex-1 bg-ink-50">
+              <View
+                className="flex-row items-center justify-between px-4 pb-3 pt-5 bg-white border-b border-sand-100"
+                style={{ paddingTop: insets.top + 12 }}
+              >
+                <Text className="text-base font-bold text-sand-900">
+                  Variant {variantPicker} · collection products
+                </Text>
+                <GradientButton
+                  label={`Done (${pickerSelection.size})`}
+                  onPress={commitPicker}
+                />
+              </View>
+              <ScrollView className="flex-1 px-4 pt-3" contentContainerStyle={{ paddingBottom: 32 }}>
+                <Text className="text-[11px] text-sand-400 mb-3 leading-4">
+                  Each variant can point customers at a different set of products. Tap to select —
+                  the order you pick is the order shown.
+                </Text>
+                {pickerProductsQuery.isLoading ? (
+                  <View className="items-center py-10">
+                    <ActivityIndicator color={primaryColor} />
+                  </View>
+                ) : pickerProducts.length === 0 ? (
+                  <Text className="text-sm text-sand-400 text-center py-10">
+                    No available products. Add products first.
+                  </Text>
+                ) : (
+                  <View className="gap-2">
+                    {pickerProducts.map((p) => {
+                      const selected = pickerSelection.has(p.id)
+                      return (
+                        <AnimatedPressable
+                          key={p.id}
+                          onPress={() => {
+                            setPickerSelection((prev) => {
+                              const next = new Set(prev)
+                              if (next.has(p.id)) next.delete(p.id)
+                              else next.add(p.id)
+                              return next
+                            })
+                          }}
+                          accessibilityRole="button"
+                          accessibilityState={{ selected }}
+                          className={`flex-row items-center bg-white rounded-xl p-3 border ${
+                            selected ? 'border-ink-600' : 'border-sand-100'
+                          }`}
+                          style={selected ? { borderColor: primaryColor } : undefined}
+                        >
+                          <View
+                            className={`w-5 h-5 rounded-md border items-center justify-center mr-3 ${
+                              selected ? 'border-ink-600' : 'border-sand-300'
+                            }`}
+                            style={selected ? { backgroundColor: primaryColor, borderColor: primaryColor } : undefined}
+                          >
+                            {selected && <Text className="text-white text-[11px] font-bold">✓</Text>}
+                          </View>
+                          <Text
+                            className={`text-sm flex-1 ${selected ? 'font-semibold text-sand-900' : 'text-sand-600'}`}
+                            numberOfLines={1}
+                          >
+                            {p.category ?? 'Product'}
+                          </Text>
+                          {selected && (
+                            <Text className="text-[11px] text-sand-400">
+                              #{[...pickerSelection].indexOf(p.id) + 1}
+                            </Text>
+                          )}
+                        </AnimatedPressable>
+                      )
+                    })}
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </Modal>
 
           {/* Audience */}
           <Section title="Audience">

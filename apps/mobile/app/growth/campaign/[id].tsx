@@ -8,6 +8,7 @@ import {
   Pencil,
   Send,
   Trash2,
+  Trophy,
   Users,
 } from 'lucide-react-native'
 import { useState } from 'react'
@@ -307,6 +308,46 @@ export default function CampaignDetailScreen() {
           )}
         </View>
 
+        {/* A/B results — roadmap S */}
+        {campaign.variant_breakdown && campaign.variant_breakdown.length > 0 && (
+          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+            <View className="flex-row items-center gap-2 mb-2">
+              <Trophy size={16} color={colors.turmeric[600]} />
+              <Text className="text-sm font-bold text-sand-900">Variant results</Text>
+            </View>
+            <View className="gap-2">
+              {campaign.variant_breakdown.map((v) => (
+                <View
+                  key={v.label}
+                  className="flex-row items-center bg-sand-50 rounded-xl px-3 py-2.5 border border-sand-100"
+                >
+                  <View className="flex-1 mr-2">
+                    <View className="flex-row items-center gap-1.5">
+                      <Text className="text-xs font-semibold text-sand-800" numberOfLines={1}>
+                        {v.label}
+                      </Text>
+                      {v.winner === true && (
+                        <View className="bg-emerald-50 px-1.5 py-0.5 rounded-full">
+                          <Text className="text-[9px] font-bold text-emerald-700">WINNING</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="text-[11px] text-sand-500 mt-0.5">
+                      {v.sent} sent · {v.opened} opened
+                    </Text>
+                  </View>
+                  <Text className="text-sm font-bold" style={{ color: primaryColor }}>
+                    {Math.round(v.open_rate * 100)}%
+                  </Text>
+                </View>
+              ))}
+            </View>
+            <Text className="text-[11px] text-sand-400 mt-2 leading-4">
+              Open rate per variant — keep testing until one pulls clearly ahead.
+            </Text>
+          </View>
+        )}
+
         {/* Message */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
           <View className="flex-row items-center gap-2 mb-1.5">
@@ -326,9 +367,16 @@ export default function CampaignDetailScreen() {
                   key={v.label}
                   className="flex-row items-center bg-sand-50 rounded-xl px-3 py-2 border border-sand-100"
                 >
-                  <Text className="text-xs font-semibold text-sand-800 flex-1 mr-2" numberOfLines={1}>
-                    {v.label}
-                  </Text>
+                  <View className="flex-1 mr-2">
+                    <Text className="text-xs font-semibold text-sand-800" numberOfLines={1}>
+                      {v.label}
+                    </Text>
+                    {(v.product_ids?.length ?? 0) > 0 && (
+                      <Text className="text-[10px] text-sand-400 mt-0.5">
+                        {v.product_ids!.length} {v.product_ids!.length === 1 ? 'product' : 'products'} in this collection
+                      </Text>
+                    )}
+                  </View>
                   <Text className="text-[11px] text-sand-500">{v.send_pct}%</Text>
                 </View>
               ))}

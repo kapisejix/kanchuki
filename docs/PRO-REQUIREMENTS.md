@@ -1865,11 +1865,11 @@ Features.
 | J | Inventory intelligence — dead-stock/high-velocity/top-performer/unlisted alerts | ✅ |
 | K | Supplier management — CRUD + transaction ledger + pending calc | ✅ |
 | L | Showroom booking — retailer CRUD + public self-service slot booking | ✅ |
-| M | Multi-language AI — Hindi/Hinglish/regional product descriptions (translation only) | ✅ (partial) |
-| N | Indian size & fit — `is_unstitched`/`includes_blouse` product flags exposed publicly | ✅ (flags only) |
+| M | Multi-language AI — Hindi/Hinglish/regional descriptions **and campaign/WhatsApp messages** (placeholders preserved) + AI-search screen (voice via keyboard dictation) | ✅ Built 2026-08-17 (BUILD-LOG §47) |
+| N | Indian size & fit — flags + `customers.usual_size` capture + per-customer recommendation (usual → purchase history → size chart) + plus sizes XS/4XL–8XL | ✅ Built 2026-08-17 (BUILD-LOG §47) |
 | Q | Product videos — presigned R2 upload + register/list/delete + public exposure | ✅ |
-| R | Campaign analytics — send/open stats endpoint | ✅ |
-| S | A/B testing — two-variant split on send with `send_pct` | ✅ (send split only) |
+| R | Campaign analytics — send/open by festival/type/segment/hour + category + video-vs-photo + A/B results | ✅ Built 2026-08-17 (BUILD-LOG §47) |
+| S | A/B testing — per-variant product sets + stagger + variant stats + two-proportion z-test significance | ✅ Built 2026-08-17 (BUILD-LOG §47) |
 | E | AI Campaign Assistant | 🔴 Not built — needs Fashion DNA (Phase 1) |
 | I | GST-ready invoicing | 🔴 Not built — PDF generation + HSN mapping |
 | P | WhatsApp native catalog sync | 🔴 Not built — extends Meta integration |
@@ -1952,8 +1952,11 @@ additions:
   **not yet applied**
 - Out of scope: E (AI Campaign Assistant — needs Fashion DNA), I (GST
   invoicing), P (WhatsApp native catalog)
-- Partial: M (translation only — no voice search / UI toggle), N (flags
-  only), R (send/open stats only), S (send split only)
+- Future work (documented on-screen): M native in-app mic (needs a dev
+  build — voice currently via keyboard dictation) + PWA/retailer UI
+  language toggle; R wedding-vs-daily-wear seasonal dashboards; S
+  auto-built per-variant collection links (needs a hidden-collection
+  status so they don't hijack the ACTIVE storefront)
 
 **UI follow-up (2026-08-17, same day):** mobile growth hub (`/growth`,
 entry from the home-tab **Growth Tools** quick action) + full campaigns

@@ -6,9 +6,11 @@ import { notFound, validationError, featureUnavailable, forbidden } from '../../
 import { buildCollectionUrl } from '../../lib/store-urls.js';
 import {
   AudienceSpecSchema,
+  abTestSignificance,
   buildAudienceWhere,
   fillTemplate,
   buildWhatsAppDeepLink,
+  type AbVariantResult,
   type AudienceSpec,
 } from './growth-helpers.js';
 
@@ -20,6 +22,10 @@ const AbVariantSchema = z
     label: z.string().min(1).max(40),
     message_template: z.string().min(1).max(2000),
     send_pct: z.number().int().min(1).max(99),
+    // Roadmap S — collection A/B: per-variant product set (ordering = array
+    // order) and an optional stagger so variant B goes out later.
+    product_ids: z.array(z.string()).max(50).optional(),
+    send_delay_min: z.number().int().min(0).max(1440).optional(),
   })
   .array()
   .min(2)
@@ -57,6 +63,10 @@ function campaignWithStats(campaign: { id: string; type: string; status: string;
     status: campaign.status,
     name: campaign.name,
     festival_name: campaign.festival_name,
+    // Included for the AI-translate screen (roadmap M) to localize the
+    // message without a second fetch.
+    message_template: campaign.message_template,
+    product_ids: campaign.product_ids,
     sent_count: campaign.sent_count,
     opened_count: campaign.opened_count,
     schedule_at: campaign.schedule_at,
@@ -143,21 +153,57 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── GET /growth/campaigns/:id ──────────────────────────────────
+  // Includes per-status sends AND per-A/B-variant sent/opened (roadmap S) so
+  // the detail screen can show which variant is winning.
   server.get('/campaigns/:id', async (request) => {
     const retailerId = request.retailerId;
     await retailerGuard(request);
     const { id } = request.params as { id: string };
     const campaign = await prisma.campaign.findFirst({ where: { id, retailer_id: retailerId } });
     if (!campaign) throw notFound('Campaign');
-    const sends = await prisma.campaignSend.groupBy({
-      by: ['status'],
-      where: { campaign_id: id },
-      _count: { _all: true },
-    });
+    const [sends, variantSent, variantOpened] = await Promise.all([
+      prisma.campaignSend.groupBy({
+        by: ['status'],
+        where: { campaign_id: id },
+        _count: { _all: true },
+      }),
+      prisma.campaignSend.groupBy({
+        by: ['variant_label'],
+        where: { campaign_id: id },
+        _count: { _all: true },
+      }),
+      prisma.campaignSend.groupBy({
+        by: ['variant_label'],
+        where: { campaign_id: id, opened_at: { not: null } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    let variant_breakdown: { label: string; sent: number; opened: number; open_rate: number; winner: boolean | null }[] | null = null;
+    if (variantSent.length > 0) {
+      const openedBy = new Map(variantOpened.map((r) => [r.variant_label, r._count._all]));
+      variant_breakdown = variantSent
+        .map((r) => ({ label: r.variant_label, sent: r._count._all }))
+        .filter((r): r is { label: string; sent: number } => r.label != null)
+        .map((v) => {
+          const opened = openedBy.get(v.label) ?? 0;
+          return {
+            ...v,
+            opened,
+            open_rate: v.sent > 0 ? Number((opened / v.sent).toFixed(4)) : 0,
+            winner: null,
+          };
+        });
+      const maxOpened = Math.max(...variant_breakdown.map((v) => v.opened));
+      const winners = variant_breakdown.filter((v) => v.opened > 0 && v.opened === maxOpened);
+      if (winners.length === 1) winners[0]!.winner = true;
+    }
+
     return {
       data: {
         ...campaign,
         sends_breakdown: Object.fromEntries(sends.map((s) => [s.status, s._count._all])),
+        variant_breakdown,
       },
     };
   });
@@ -281,37 +327,66 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       (await hasFeature(retailerId, 'WHATSAPP_BUSINESS_API'));
 
     // A/B split: assign each customer to a variant by cumulative percentage.
-    const variants = (campaign.ab_variants as unknown as { label: string; message_template: string; send_pct: number }[] | null) ?? null;
-    const variantFor = (index: number): { label: string; message_template: string } | null => {
+    // Variants carry an optional product set (collection A/B) and a stagger
+    // (send_delay_min) so variant B can go out later than variant A.
+    const variants = (campaign.ab_variants as unknown as
+      | { label: string; message_template: string; send_pct: number; product_ids?: string[]; send_delay_min?: number }[]
+      | null) ?? null;
+    const variantFor = (index: number):
+      | { label: string; message_template: string; product_ids?: string[]; send_delay_min?: number }
+      | null => {
       if (!variants || variants.length !== 2) return null;
       const pct = (index % 100) + 1;
       return pct <= variants[0]!.send_pct ? variants[0]! : variants[1]!;
     };
 
-    const messages: { customer: { id: string; name: string; phone: string }; message: string; variantLabel: string | null }[] = [];
+    const messages: {
+      customer: { id: string; name: string; phone: string };
+      message: string;
+      variantLabel: string | null;
+      variantProducts: string[];
+      sendDelayMin: number;
+    }[] = [];
     for (let i = 0; i < customers.length; i++) {
       const customer = customers[i]!;
       const variant = variantFor(i);
       const template = variant?.message_template ?? campaign.message_template;
       const message = fillTemplate(template, { ...baseVars, name: customer.name ?? 'there' });
-      messages.push({ customer, message, variantLabel: variant?.label ?? null });
+      messages.push({
+        customer,
+        message,
+        variantLabel: variant?.label ?? null,
+        variantProducts: variant?.product_ids ?? [],
+        sendDelayMin: variant?.send_delay_min ?? 0,
+      });
     }
 
+    // Staggered sends: rows for delayed variants are timestamped at
+    // now + delay (drives hour-of-day analytics and the manual link list
+    // ordering); the WhatsApp API path sends them all in one pass below.
+    const now = new Date();
     const sends = await prisma.$transaction(
-      messages.map((m) =>
+      messages.map((m, i) =>
         prisma.campaignSend.create({
           data: {
             campaign_id: campaign.id,
             retailer_id: retailerId,
             customer_id: m.customer.id,
             variant_label: m.variantLabel,
+            sent_at: m.sendDelayMin > 0 ? new Date(now.getTime() + m.sendDelayMin * 60_000) : null,
           },
         }),
       ),
     );
 
     // ── Dispatch ──
-    const manualLinks: { customer_id: string; name: string; link: string }[] = [];
+    const manualLinks: {
+      customer_id: string;
+      name: string;
+      variant_label: string | null;
+      product_ids: string[];
+      link: string;
+    }[] = [];
     let apiSent = 0;
     let apiFailed = 0;
 
@@ -352,6 +427,8 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         manualLinks.push({
           customer_id: m.customer.id,
           name: m.customer.name ?? 'Customer',
+          variant_label: m.variantLabel,
+          product_ids: m.variantProducts,
           link: buildWhatsAppDeepLink(m.customer.phone, m.message),
         });
       }
@@ -374,6 +451,9 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         api_sent: apiSent,
         api_failed: apiFailed,
         manual_links: canUseApi ? undefined : manualLinks,
+        variants: variants
+          ? variants.map((v) => ({ label: v.label, send_pct: v.send_pct, product_ids: v.product_ids ?? [] }))
+          : undefined,
       },
     });
   });
@@ -402,6 +482,173 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       by_festival[key]!.campaigns += 1;
     }
     return { data: { by_type, by_festival, total_campaigns: campaigns.length } };
+  });
+
+  // ─── GET /growth/analytics ──────────────────────────────────────
+  // Roadmap R — campaign & commerce analytics with India-retail dimensions:
+  // festival, customer segment, hour-of-day, product category, video-vs-photo,
+  // and per-A/B-variant results with significance (roadmap S).
+  server.get('/analytics', async (request) => {
+    const retailerId = request.retailerId;
+    await retailerGuard(request);
+
+    const campaigns = await prisma.campaign.findMany({
+      where: { retailer_id: retailerId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        festival_name: true,
+        sent_count: true,
+        opened_count: true,
+        status: true,
+        ab_variants: true,
+      },
+    });
+
+    const by_type: Record<string, { sent: number; opened: number; campaigns: number }> = {};
+    const by_festival: Record<string, { sent: number; opened: number; campaigns: number }> = {};
+    for (const c of campaigns) {
+      if (c.status !== 'SENT') continue;
+      by_type[c.type] ??= { sent: 0, opened: 0, campaigns: 0 };
+      by_type[c.type]!.sent += c.sent_count;
+      by_type[c.type]!.opened += c.opened_count;
+      by_type[c.type]!.campaigns += 1;
+      const key = c.festival_name ?? 'Other';
+      by_festival[key] ??= { sent: 0, opened: 0, campaigns: 0 };
+      by_festival[key]!.sent += c.sent_count;
+      by_festival[key]!.opened += c.opened_count;
+      by_festival[key]!.campaigns += 1;
+    }
+
+    // Segment performance: CampaignSend → Customer (VIP = lifetime spend
+    // >= ₹2,000; Regular = below; Never purchased = zero purchases).
+    // CampaignSend.customer_id is a loose pointer (customers soft-delete) —
+    // fetch the customers in one pass and join in memory.
+    const sentRows = await prisma.campaignSend.findMany({
+      where: { retailer_id: retailerId, status: { in: ['SENT', 'OPENED'] } },
+      select: { customer_id: true, opened_at: true },
+    });
+    const customerIds = [...new Set(sentRows.map((r) => r.customer_id).filter(Boolean))] as string[];
+    const customersForSegments = customerIds.length
+      ? await prisma.customer.findMany({
+          where: { id: { in: customerIds } },
+          select: { id: true, total_spent: true, total_purchases: true },
+        })
+      : [];
+    const customerBySegmentId = new Map(customersForSegments.map((c) => [c.id, c]));
+    const by_segment: Record<string, { sent: number; opened: number }> = {
+      VIP: { sent: 0, opened: 0 },
+      REGULAR: { sent: 0, opened: 0 },
+      NEVER_PURCHASED: { sent: 0, opened: 0 },
+    };
+    const hourCounts = new Array<number>(24).fill(0);
+    let openedTotal = 0;
+    for (const row of sentRows) {
+      const c = row.customer_id ? customerBySegmentId.get(row.customer_id) : undefined;
+      const segment = !c
+        ? 'REGULAR'
+        : (c.total_purchases ?? 0) === 0
+          ? 'NEVER_PURCHASED'
+          : (c.total_spent ?? 0) >= 200_000
+            ? 'VIP'
+            : 'REGULAR';
+      by_segment[segment]!.sent += 1;
+      if (row.opened_at) {
+        by_segment[segment]!.opened += 1;
+        openedTotal += 1;
+        const hour = new Date(row.opened_at).getHours();
+        hourCounts[hour] = (hourCounts[hour] ?? 0) + 1;
+      }
+    }
+    const by_hour = hourCounts
+      .map((opens, hour) => ({ hour, opens, pct: openedTotal > 0 ? Number((opens / openedTotal).toFixed(4)) : 0 }))
+      .filter((h) => h.opens > 0)
+      .sort((a, b) => a.hour - b.hour);
+
+    // Product-category + video-vs-photo performance over the last 30 days
+    // (views + enquiries recorded as CustomerInteraction rows).
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const interactions = await prisma.customerInteraction.findMany({
+      where: { retailer_id: retailerId, created_at: { gte: since }, type: { in: ['view', 'enquiry'] } },
+      select: { type: true, product: { select: { category: true, videos: { select: { id: true } } } } },
+    });
+    const by_category: Record<string, { views: number; enquiries: number }> = {};
+    let videoViews = 0;
+    let videoEnquiries = 0;
+    let photoViews = 0;
+    let photoEnquiries = 0;
+    for (const i of interactions) {
+      const category = i.product?.category ?? 'Uncategorised';
+      by_category[category] ??= { views: 0, enquiries: 0 };
+      if (i.type === 'view') by_category[category]!.views += 1;
+      else by_category[category]!.enquiries += 1;
+      const hasVideo = (i.product?.videos.length ?? 0) > 0;
+      if (i.type === 'view') hasVideo ? (videoViews += 1) : (photoViews += 1);
+      else hasVideo ? (videoEnquiries += 1) : (photoEnquiries += 1);
+    }
+
+    // A/B variant results with significance (roadmap S).
+    const by_variant: {
+      campaign_id: string;
+      campaign_name: string;
+      variants: AbVariantResult[];
+      significance: ReturnType<typeof abTestSignificance>;
+    }[] = [];
+    for (const c of campaigns) {
+      const variants = c.ab_variants as unknown as { label: string }[] | null;
+      if (c.status !== 'SENT' || !variants || variants.length !== 2) continue;
+      const [sent, opened] = await Promise.all([
+        prisma.campaignSend.groupBy({
+          by: ['variant_label'],
+          where: { campaign_id: c.id },
+          _count: { _all: true },
+        }),
+        prisma.campaignSend.groupBy({
+          by: ['variant_label'],
+          where: { campaign_id: c.id, opened_at: { not: null } },
+          _count: { _all: true },
+        }),
+      ]);
+      const openedBy = new Map(opened.map((r) => [r.variant_label, r._count._all]));
+      const results = sent
+        .map((r) => ({ label: r.variant_label, sent: r._count._all }))
+        .filter((r): r is { label: string; sent: number } => r.label != null)
+        .map((v) => {
+          const openedCount = openedBy.get(v.label) ?? 0;
+          return {
+            label: v.label,
+            sent: v.sent,
+            opened: openedCount,
+            open_rate: v.sent > 0 ? openedCount / v.sent : 0,
+          } as AbVariantResult;
+        });
+      if (results.length !== 2) continue;
+      by_variant.push({
+        campaign_id: c.id,
+        campaign_name: c.name ?? 'A/B campaign',
+        variants: results,
+        significance: abTestSignificance(results[0]!, results[1]!),
+      });
+    }
+
+    return {
+      data: {
+        by_type,
+        by_festival,
+        by_segment,
+        by_hour,
+        by_category: Object.entries(by_category)
+          .map(([category, v]) => ({ category, ...v }))
+          .sort((a, b) => b.enquiries + b.views - (a.enquiries + a.views)),
+        video_vs_photo: {
+          video: { views: videoViews, enquiries: videoEnquiries },
+          photo: { views: photoViews, enquiries: photoEnquiries },
+        },
+        by_variant,
+        total_campaigns: campaigns.length,
+      },
+    };
   });
 
   // ─── POST /growth/reactivation-suggestions ──────────────────────

@@ -131,17 +131,28 @@ export default function GrowthHubScreen() {
             <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1">
               Campaigns
             </Text>
-            {campaigns.length > 0 && (
+            <View className="flex-row items-center gap-3">
               <AnimatedPressable
-                onPress={() => router.push('/growth/campaigns')}
+                onPress={() => router.push('/growth/analytics')}
                 hitSlop={8}
                 accessibilityRole="button"
               >
                 <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
-                  View all
+                  Analytics
                 </Text>
               </AnimatedPressable>
-            )}
+              {campaigns.length > 0 && (
+                <AnimatedPressable
+                  onPress={() => router.push('/growth/campaigns')}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                >
+                  <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
+                    View all
+                  </Text>
+                </AnimatedPressable>
+              )}
+            </View>
           </View>
 
           {loading ? (

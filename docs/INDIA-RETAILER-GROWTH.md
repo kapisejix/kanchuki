@@ -1,6 +1,6 @@
 # Kanchuki — India Retailer Growth & Profitability Roadmap
 
-**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **Not yet applied:** migration `055_growth_engine` + `056`/`057` (Supabase SQL Editor / `prisma migrate deploy`). **Not built:** E (AI Campaign Assistant — needs Fashion DNA), I (GST invoicing), P (WhatsApp native catalog), N beyond flags, M beyond description translation. See `docs/BUILD-LOG.md` §44–46.  
+**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **Not yet applied:** migrations `055_growth_engine` + `056`–`058` (Supabase SQL Editor / `prisma migrate deploy`). **Not built:** E (AI Campaign Assistant — needs Fashion DNA), I (GST invoicing), P (WhatsApp native catalog); future work: M native mic + UI language toggle, R seasonal dashboards, S auto-built variant links. See `docs/BUILD-LOG.md` §44–47.  
 **Date:** August 2026  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
@@ -22,12 +22,12 @@
 | J | Inventory Intelligence + Reorder Alerts | ✅ Built (signal-based alerts + mobile UI) |
 | K | Supplier Management | ✅ Built (backend + mobile UI) |
 | L | Showroom / Try-On Room Booking | ✅ Built (backend + mobile UI + public self-service booking) |
-| M | Multi-Language AI | 🕐 Partial — description translation only (Hindi/Hinglish/Tamil/Telugu/Marathi/Gujarati/Bengali); voice search + UI toggle not built |
-| N | Indian Size & Fit System | 🕐 Partial — `is_unstitched`/`includes_blouse` flags only |
+| M | Multi-Language AI | ✅ Built — descriptions + campaign/WhatsApp messages in 7 languages (placeholders preserved) + AI-search screen (Hindi/Hinglish, voice via keyboard dictation). Native in-app mic + PWA/retailer UI language toggle: future work |
+| N | Indian Size & Fit System | ✅ Built — usual-size quick capture, per-customer size recommendation (usual → purchase history → size chart), plus sizes XS + 4XL–8XL, unstitched/blouse flags |
 | P | WhatsApp Native Catalog Sync | 🔴 Not built — extends Meta integration |
 | Q | Video Product Support | ✅ Built (backend + mobile UI) |
-| R | Campaign Analytics by Region / Festival | 🕐 Partial — send/open stats endpoint only |
-| S | A/B Testing for Collections | 🕐 Partial — send split only, no collection A/B |
+| R | Campaign Analytics by Region / Festival | ✅ Built — campaign analytics screen: festival, customer segment, hour-of-day opens, category, video-vs-photo, A/B results. Seasonal (wedding vs daily-wear) deep-dive: Phase 1 |
+| S | A/B Testing for Collections | ✅ Built — per-variant product sets (collection A/B) + send stagger + variant stats + two-proportion z-test significance. Auto-built variant links: future work (needs hidden-collection status) |
 
 > **Removed from scope 2026-08-17:** H — Daily Khata (P&L) and O — Udhar credit — no khata, no udhar.
 
@@ -255,7 +255,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.4 Localized Indian Features
 
-#### M. Multi-Language AI (Hindi + Hinglish + Regional) — 🕐 Partial (Claude-generated product descriptions in 7 languages + mobile UI; voice search / PWA language / retailer UI toggle not built)
+#### M. Multi-Language AI (Hindi + Hinglish + Regional) — ✅ Built (Claude-generated product descriptions AND WhatsApp/campaign message translation in 7 languages, placeholders preserved; AI-search screen with Hindi/Hinglish search + voice via keyboard dictation). **Not built:** native in-app mic (needs dev build), PWA language toggle, retailer app UI language toggle
 
 **What:** AI-generated product descriptions, WhatsApp messages, and campaign templates in multiple languages.
 
@@ -275,7 +275,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### N. Indian Size & Fit System — 🕐 Partial (`is_unstitched`/`includes_blouse` product flags exposed publicly only)
+#### N. Indian Size & Fit System — ✅ Built (`is_unstitched`/`includes_blouse` flags + `customers.usual_size` quick capture + per-customer recommendation: usual size → purchase history → F-102c size chart; `SIZE_OPTIONS` extended to XS + 4XL–8XL). **Not built:** customer-facing "usual size" self-capture on the PWA (customers have no login)
 
 **What:** Standardized Indian sizing labels with chest/inch breakdown, unstitched vs. stitched flags, and blouse piece indicators for sarees.
 
@@ -325,7 +325,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.5 Campaign & Analytics Enhancements
 
-#### R. Campaign Analytics by Region / Festival — 🕐 Partial (send/open stats endpoint + campaign UI; region/festival dashboards not built)
+#### R. Campaign Analytics by Region / Festival — ✅ Built (analytics screen: sends/opens by festival + type, customer segments, hour-of-day, product category, video-vs-photo, per-A/B-variant). **Not built:** wedding-season vs daily-wear category comparison (Phase 1 dashboard refinement)
 
 **What:** Extend existing analytics with dimensions that matter for Indian retail.
 
@@ -342,7 +342,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### S. A/B Testing for Collections — 🕐 Partial (two-variant send split with cumulative `send_pct`; no collection-level A/B)
+#### S. A/B Testing for Collections — ✅ Built (two-variant split with per-variant product sets, send stagger, per-variant sent/opened stats and a two-proportion z-test winner callout). **Not built:** auto-generated per-variant collection links (needs a hidden-collection status so A/B links don't hijack the ACTIVE storefront)
 
 **What:** Test two product orderings, two message templates, or two send times → see which performs better.
 
@@ -363,7 +363,7 @@ These four gaps are where the next wave of features must land.
 | QR Code Lead Capture | Low | High | **P0** | ✅ Built |
 | Customer Reactivation Campaigns | Low-Medium | High | **P0** | ✅ Built |
 | Video Product Support | Low | Medium | **P1** | ✅ Built |
-| Campaign Analytics by Festival | Low | Medium | **P1** | 🕐 Partial (send/open stats only) |
+| Campaign Analytics by Festival | Low | Medium | **P1** | ✅ Built (analytics screen) |
 | Inventory Intelligence Alerts | Low-Medium | Medium | **P1** | ✅ Built |
 
 ### Sprint Block B — Customer Acquisition (6 weeks)
@@ -387,8 +387,8 @@ These four gaps are where the next wave of features must land.
 
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
-| Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** | 🕐 Partial (description translation only) |
-| Indian Size & Fit System | Low-Medium | Medium | **P1** | 🕐 Partial (flags only) |
+| Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** | ✅ Built (descriptions + campaign messages + AI search) |
+| Indian Size & Fit System | Low-Medium | Medium | **P1** | ✅ Built (usual size + recommendation + plus sizes) |
 | WhatsApp Native Catalog Sync | Medium | High | **P1** | 🔴 Not built |
 
 ### Sprint Block E — Advanced (Post-Phase 1)
@@ -397,7 +397,7 @@ These four gaps are where the next wave of features must land.
 |---|---|---|---|---|
 | AI Campaign Assistant | High | High | **P1** | 🔴 Not built (needs Fashion DNA) |
 | Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) |
-| A/B Testing | Medium | Medium | **P2** | 🕐 Partial (send split only) |
+| A/B Testing | Medium | Medium | **P2** | ✅ Built (collection sets + stagger + significance) |
 
 ---
 

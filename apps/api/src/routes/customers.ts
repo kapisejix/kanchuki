@@ -6,10 +6,11 @@ import {
   formatPreferenceVector,
 } from '@kanchuki/ai';
 import { Prisma, prisma, vaultDelete } from '@kanchuki/db';
-import { R2_PATHS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
+import { R2_PATHS, SIZE_OPTIONS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addFashionDNAJob, addMeasurementJob } from '../jobs/index.js';
+import { recommendSizeForProduct } from '../lib/size-recommend.js';
 import { notFound, validationError } from '../plugins/error-handler.js';
 
 const ManualMeasurementSchema = z.object({
@@ -47,6 +48,11 @@ const CustomerSchema = z.object({
   pref_fabrics: z.array(z.string().max(100)).max(10).optional().default([]),
   budget_min: z.number().int().min(0).max(100_000_000).optional(),
   budget_max: z.number().int().min(0).max(100_000_000).optional(),
+  // Roadmap N — "usual size" quick capture; label must be a known size.
+  usual_size: z
+    .enum(SIZE_OPTIONS)
+    .optional()
+    .nullable(),
   notes: z.string().max(2000).optional(),
 });
 
@@ -545,9 +551,18 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
       .map((id) => productMap.get(id))
       .filter((p): p is NonNullable<typeof p> => p != null);
 
+    // Roadmap N — annotate each matched product with the customer's
+    // suggested size (usual size → purchase history → size chart).
+    const withSize = await Promise.all(
+      ordered.map(async (p) => {
+        const size = await recommendSizeForProduct(retailerId, customer, p);
+        return { ...p, suggested_size: size.suggested_size, size_basis: size.basis };
+      }),
+    );
+
     return {
       data: {
-        products: ordered.map((p) => ({
+        products: withSize.map((p) => ({
           ...p,
           primary_photo_url: p.photos[0]?.url ?? null,
           photos: undefined,

@@ -99,4 +99,50 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
     });
     return reply.send({ data: { product_id: id, language, description: clean, cached: false } });
   });
+
+  // ─── POST /growth/translate/message ──────────────────────────────
+  // Roadmap M — WhatsApp messages & campaign templates in regional
+  // languages. Localizes a message template into a language, preserving
+  // {{placeholders}} verbatim so send-time fill still works. Stateless
+  // (no cache — templates are short and retailer-edited); metered like
+  // tagging.
+  server.post('/translate/message', async (request, reply) => {
+    const retailerId = request.retailerId;
+    if (!(await hasFeature(retailerId, 'GROWTH_ENGINE'))) throw featureUnavailable('Growth tools');
+
+    const body = z
+      .object({
+        message: z.string().min(1).max(2000),
+        language: z.enum(Object.keys(LANGUAGE_PROMPT) as [SupportedLanguage, ...SupportedLanguage[]]),
+        // Optional product context so the copywriter can stay on-topic.
+        context: z.string().max(300).optional(),
+      })
+      .safeParse(request.body);
+    if (!body.success) throw validationError('message and language are required');
+
+    const { message, language, context } = body.data;
+
+    await checkQuota(retailerId, 'AI_TAGGING_CALL');
+    await incrementUsage(retailerId, 'AI_TAGGING_CALL');
+
+    const req: VisionAskRequest = {
+      resourceType: 'AI_TAGGING_CALL',
+      onProviderUsed: recordAiUsage(retailerId),
+      images: [],
+      systemPrompt:
+        'You are a WhatsApp marketing copywriter for an Indian clothing store. Rewrite messages naturally in the requested language, keeping a warm, short, sales-friendly tone.',
+      userPrompt: `Rewrite this WhatsApp message ${LANGUAGE_PROMPT[language]}. Keep the same meaning and length. Preserve {{placeholders}} (e.g. {{name}}, {{shop}}, {{link}}) EXACTLY as-is — they are filled per customer later and must not be translated, reordered, or removed.${
+        context ? `\n\nContext about the offer/products: ${context}` : ''
+      }\n\nMessage to translate:\n${message}\n\nReturn only the translated message text.`,
+      maxTokens: 500,
+    };
+    const translated = await runVisionAsk(req).catch((err: unknown) => {
+      throw validationError(`AI translation failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    });
+
+    const clean = translated.trim().replace(/\s+/g, ' ');
+    if (!clean) throw validationError('AI returned an empty message — try again');
+
+    return reply.send({ data: { message: clean, language, placeholders_preserved: true } });
+  });
 };

@@ -127,6 +127,8 @@ function AppShell() {
         <Stack.Screen name="growth/inventory" />
         <Stack.Screen name="growth/videos" />
         <Stack.Screen name="growth/translate" />
+        <Stack.Screen name="growth/analytics" />
+        <Stack.Screen name="ai-search" />
       </Stack>
     </View>
   )

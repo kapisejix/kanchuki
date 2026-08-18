@@ -13,6 +13,7 @@ import {
   PackagePlus,
   QrCode,
   Ruler,
+  Search,
   Settings,
   ShoppingBag,
   Users,
@@ -249,6 +250,13 @@ export default function HomeScreen() {
             sublabel="Campaigns · Referrals · More"
             onPress={() => router.push('/growth')}
             accent={colors.turmeric[50]}
+          />
+          <QuickAction
+            icon={<Search size={22} color={primaryColor} />}
+            label="AI Search"
+            sublabel="Hindi / Hinglish voice-ready"
+            onPress={() => router.push('/ai-search')}
+            accent={colors.ink[50]}
           />
           <QuickAction
             icon={<BarChart3 size={22} color={primaryColor} />}

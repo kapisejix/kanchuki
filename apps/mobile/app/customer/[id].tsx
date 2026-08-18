@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { formatPrice, COLORS } from '@kanchuki/shared'
+import { formatPrice, COLORS, SIZE_OPTIONS } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -40,6 +40,7 @@ type Customer = {
   pref_fabrics: string[]
   budget_min: number | null
   budget_max: number | null
+  usual_size: string | null
   notes: string | null
   total_purchases: number
   total_spent: number
@@ -71,6 +72,9 @@ type MatchedProduct = {
   status: string
   primary_photo_url: string | null
   search_tags: string[]
+  /** Roadmap N — suggested size from usual size / purchase history / chart. */
+  suggested_size: string | null
+  size_basis: string | null
 }
 
 export default function CustomerDetailScreen() {
@@ -141,6 +145,7 @@ export default function CustomerDetailScreen() {
   const [prefFabrics, setPrefFabrics] = useState<string[]>([])
   const [budgetMin, setBudgetMin] = useState('')
   const [budgetMax, setBudgetMax] = useState('')
+  const [usualSize, setUsualSize] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
   // ── Manual measurement entry ────────────────────────────────────
@@ -202,6 +207,7 @@ export default function CustomerDetailScreen() {
     setPrefFabrics(customer.pref_fabrics ?? [])
     setBudgetMin(customer.budget_min ? String(customer.budget_min / 100) : '')
     setBudgetMax(customer.budget_max ? String(customer.budget_max / 100) : '')
+    setUsualSize(customer.usual_size ?? null)
   }, [customer])
 
   const toggle = (list: string[], setList: (v: string[]) => void, value: string) => {
@@ -231,6 +237,7 @@ export default function CustomerDetailScreen() {
         pref_fabrics: prefFabrics,
         budget_min: budgetMin ? Math.round(parseFloat(budgetMin) * 100) : undefined,
         budget_max: budgetMax ? Math.round(parseFloat(budgetMax) * 100) : undefined,
+        usual_size: usualSize ?? undefined,
       })
       void queryClient.invalidateQueries({ queryKey: ['customers'] })
       Alert.alert('Saved', 'Customer updated.')
@@ -445,6 +452,16 @@ export default function CustomerDetailScreen() {
                           {formatPrice(product.price_min)}
                         </Text>
                       )}
+                      {product.suggested_size && (
+                        <View
+                          className="mt-1 self-start rounded-full px-2 py-0.5"
+                          style={{ backgroundColor: `${primaryColor}1A` }}
+                        >
+                          <Text className="text-[9px] font-bold" style={{ color: primaryColor }}>
+                            Size {product.suggested_size}
+                          </Text>
+                        </View>
+                      )}
                     </View>
                   </View>
                 </AnimatedPressable>
@@ -546,6 +563,35 @@ export default function CustomerDetailScreen() {
                 >
                   {selected && <Check size={12} color="white" />}
                   <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f.name}</Text>
+                </AnimatedPressable>
+              )
+            })}
+          </View>
+        </View>
+
+        {/* Usual size — roadmap N quick capture */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
+            Usual Size
+          </Text>
+          <Text className="text-[11px] text-sand-400 mb-2.5">
+            Used to recommend sizes on products this customer browses.
+          </Text>
+          <View className="flex-row flex-wrap gap-1.5">
+            {SIZE_OPTIONS.map((s) => {
+              const selected = usualSize === s
+              return (
+                <AnimatedPressable
+                  key={s}
+                  onPress={() => setUsualSize(selected ? null : s)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  className={`px-2.5 py-1.5 rounded-lg border ${selected ? 'border-ink-600' : 'border-sand-200 bg-white'}`}
+                  style={selected ? { backgroundColor: primaryColor } : undefined}
+                >
+                  <Text className={`text-[11px] font-semibold ${selected ? 'text-white' : 'text-sand-600'}`}>
+                    {s}
+                  </Text>
                 </AnimatedPressable>
               )
             })}

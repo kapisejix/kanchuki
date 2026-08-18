@@ -641,6 +641,10 @@ model Customer {
   budget_min     Int? // paise
   budget_max     Int? // paise
 
+  // Roadmap N — "What's your usual size?" quick capture (S, M, XL, 4XL …).
+  // Drives per-customer size recommendation on products they browse.
+  usual_size String?
+
   notes String?
 
   last_visit_at   DateTime?

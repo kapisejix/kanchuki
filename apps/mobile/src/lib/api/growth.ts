@@ -43,6 +43,10 @@ export type AbVariant = {
   label: string
   message_template: string
   send_pct: number
+  /** Roadmap S — per-variant product set (ordering = array order). */
+  product_ids?: string[]
+  /** Roadmap S — stagger variant B by N minutes after variant A. */
+  send_delay_min?: number
 }
 
 export type CampaignSummary = {
@@ -51,6 +55,8 @@ export type CampaignSummary = {
   status: CampaignStatus
   name: string
   festival_name: string | null
+  message_template: string
+  product_ids: string[]
   sent_count: number
   opened_count: number
   schedule_at: string | null
@@ -64,6 +70,8 @@ export type CampaignDetail = CampaignSummary & {
   festival_id: number | null
   ab_variants: AbVariant[] | null
   sends_breakdown: Record<string, number>
+  /** Roadmap S — per-variant sent/opened once the campaign is sent. */
+  variant_breakdown?: { label: string; sent: number; opened: number; open_rate: number; winner: boolean | null }[] | null
 }
 
 export type CampaignStats = {
@@ -83,7 +91,33 @@ export type CampaignSendResult = {
   sent_via: 'whatsapp_api' | 'manual_links'
   api_sent: number
   api_failed: number
-  manual_links?: { customer_id: string; name: string; link: string }[]
+  manual_links?: {
+    customer_id: string
+    name: string
+    variant_label: string | null
+    product_ids: string[]
+    link: string
+  }[]
+  variants?: { label: string; send_pct: number; product_ids: string[] }[]
+}
+
+export type GrowthAnalytics = {
+  by_type: Record<string, { sent: number; opened: number; campaigns: number }>
+  by_festival: Record<string, { sent: number; opened: number; campaigns: number }>
+  by_segment: Record<string, { sent: number; opened: number }>
+  by_hour: { hour: number; opens: number; pct: number }[]
+  by_category: { category: string; views: number; enquiries: number }[]
+  video_vs_photo: {
+    video: { views: number; enquiries: number }
+    photo: { views: number; enquiries: number }
+  }
+  by_variant: {
+    campaign_id: string
+    campaign_name: string
+    variants: { label: string; sent: number; opened: number; open_rate: number }[]
+    significance: { p_value: number | null; winner: string | null; reliable: boolean }
+  }[]
+  total_campaigns: number
 }
 
 export type ReactivationSuggestions = {
@@ -426,6 +460,21 @@ export const growthApi = {
       body: JSON.stringify({ language }),
       timeoutMs: 30_000,
     }),
+
+  /** Roadmap M — localize a WhatsApp/campaign message, preserving {{placeholders}}. */
+  translateMessage: (message: string, language: TranslateLanguage, context?: string) =>
+    request<{ data: { message: string; language: string; placeholders_preserved: boolean } }>(
+      '/v1/growth/translate/message',
+      {
+        method: 'POST',
+        body: JSON.stringify({ message, language, context }),
+        timeoutMs: 30_000,
+      },
+    ),
+
+  // ─── Campaign analytics (roadmap R) ─────────────────────────────
+  analytics: () =>
+    request<{ data: GrowthAnalytics }>('/v1/growth/analytics', { getCacheTtlMs: 60_000 }),
 
   // ─── Festivals (roadmap D) ──────────────────────────────────────
   festivals: (upcoming = true) => {
