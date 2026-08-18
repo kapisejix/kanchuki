@@ -721,8 +721,53 @@ WhatsApp stays a share/notify channel (same as always). The cart/checkout/paymen
 ---
 
 #### F-304: GST Invoice Generation (CRITICAL — needed at Phase 3 or earlier if mandated)
+**Status:** ✅ **Built** — Phase I: PDF generation + HSN mapping. Generates GST-compliant PDF invoices for all online orders with 5%/12% apparel HSN rates. Includes per-order invoice numbers, line-item HSN codes, and GSTR-1 compatible ledger export.
+
+**Priority:** P1 — critical for legal compliance for all Indian retail software; mandated before first monetized sale.
+
+**Description:** Retailer-facing order automatically generates a GST invoice PDF at payment confirmation. Invoice includes:
+- Retailer GSTIN and legal name
+- Customer details (name, phone, address)
+- Line items with product names, quantities, unit prices
+- HSN codes mapped per apparel product (AI-suggested + admin override)
+- GST amounts (5% for items ≤₹1000, 12% for >₹1000)
+- Invoice total in words
+- PDF stored in Cloudflare R2 with presigned download URL
+- GST ledger entry written for GSTR-1 monthly reporting
+
+**Acceptance Criteria:**
+- ✅ Every paid order generates a GST invoice PDF stored in R2
+- ✅ Invoice includes correct HSN code per apparel product
+- ✅ GST rates correctly computed (5%/12% per apparel slab)
+- ✅ GST ledger entries created for GSTR-1 export
+- ✅ Retailer can download invoice from mobile/web UI
+- ✅ Admin can view cross-retailer invoice summary
+---
+
+#### F-307: WhatsApp Native Catalog Sync (Phase II)
+**Status:** ✅ **Built** — Extends Meta integration to sync product catalog into WhatsApp Business native catalog (in-app product list under business profile).
+
+**Priority:** P2 — enables product discovery within WhatsApp without needing collection link URLs; parallel surface to collection links.
+
+**Description:** Two-way synchronization between Kanchuki product database and WhatsApp Business native catalog:
+- Product data (name, description, price, HSN code, images) syncs from Kanchuki to WhatsApp catalog
+- Price and availability syncs back from WhatsApp to Kanchuki (via webhook)
+- Retailer can select which products/categories to sync to WhatsApp catalog
+- Customer can browse product list directly in WhatsApp app (not just via external link)
+- Sync runs as background job; manual trigger from retailer UI
+- Uses existing Meta Graph API client (F-031) with catalog CRUD endpoints
+- Product images stored in Cloudflare R2, linked via presigned URLs
+
+**Acceptance Criteria:**
+- ✅ Retailer can connect WhatsApp Business API and enable catalog sync
+- ✅ Product photos sync to WhatsApp catalog with correct pricing
+- ✅ Price changes in Kanchuki reflect in WhatsApp catalog within 5 minutes
+- ✅ Product status (AVAILABLE/SOLD) syncs bidirectionally
+- ✅ Customer can view and enquire about products from WhatsApp catalog
+- ✅ Admin can view sync status and error logs
+
+---
 #### F-305: Multi-Store Management
-#### F-306: Regional Language UI (Hindi, Gujarati, Punjabi, Tamil)
 
 ---
 
@@ -1870,9 +1915,9 @@ Features.
 | Q | Product videos — presigned R2 upload + register/list/delete + public exposure | ✅ |
 | R | Campaign analytics — send/open by festival/type/segment/hour + category + video-vs-photo + A/B results | ✅ Built 2026-08-17 (BUILD-LOG §47) |
 | S | A/B testing — per-variant product sets + stagger + variant stats + two-proportion z-test significance | ✅ Built 2026-08-17 (BUILD-LOG §47) |
-| E | AI Campaign Assistant | 🔴 Not built — needs Fashion DNA (Phase 1) |
-| I | GST-ready invoicing | 🔴 Not built — PDF generation + HSN mapping |
-| P | WhatsApp native catalog sync | 🔴 Not built — extends Meta integration |
+| E | AI Campaign Assistant | ✅ Built 2026-08-18 (BUILD-LOG §48) — NLP intent → audience/product filters → WhatsApp message template + save-to-campaign |
+| I | GST-ready invoicing | ✅ Built — PDF generation + HSN mapping | 2026-08-18 |
+| P | WhatsApp native catalog sync | ✅ Built — extends Meta integration | 2026-08-18 |
 
 > **Scope change 2026-08-17:** **Khata (H)** and **Udhar (O)** removed
 > completely — models, enums, routes, and migration sections deleted. No

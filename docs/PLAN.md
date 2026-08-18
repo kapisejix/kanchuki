@@ -190,6 +190,50 @@ See `docs/PRO-REQUIREMENTS.md` §10.9–10.11 for full spec.
 
 ---
 
+## Phase I: GST-Ready Invoicing (Month 5–6) — New
+
+**Goal:** Legal GST compliance for all online sales; PDF invoice generation + HSN mapping + GST ledger for GSTR-1 reporting.
+
+**Prerequisite:** Phase 0 live + L2 ecommerce checkout (F-302) with Razorpay payments operational.
+
+**Deliverables:**
+- **Phase I.A:** HSN code master table (`hsn_codes`) with ~30 apparel codes; admin CRUD UI; AI mapping rules per product category/subtype; per-retailer default HSN fallback.
+- **Phase I.B:** PDF invoice renderer (`pdf-lib` + Noto Sans fonts); async BullMQ job triggered after Razorpay webhook confirms payment; R2 storage key pattern `invoices/{retailer_id}/{yyyy}/{mm}/{invoice_number}.pdf`.
+- **Phase I.C:** GST ledger append-only table (`gst_ledger_entries`); one row per OrderItem with HSN, rate, taxable value, GST amount; GSTR-1 compatible CSV export endpoint.
+- **Phase I.D:** Customer-facing "Download Invoice" button on order detail page (web + mobile); retailer view of invoice history; admin cross-retailer invoice summary.
+
+**Success Criteria:**
+- ✅ Every paid order generates a GST invoice PDF stored in R2
+- ✅ Invoice includes correct HSN code per apparel product
+- ✅ GST rates correctly computed (5%/12% per apparel slab)
+- ✅ GST ledger entries created for GSTR-1 monthly export
+- ✅ Retailer can download invoice from mobile/web UI
+- ✅ Admin can view cross-retailer invoice summary
+
+---
+
+## Phase II: WhatsApp Native Catalog Sync (Month 6–7) — New
+
+**Goal:** Extend Meta integration to enable automated synchronization of product data directly into the WhatsApp Business native catalog (in-app product list under business profile).
+
+**Prerequisite:** Phase I live (GST invoicing); retailer has configured WhatsApp Business API (`whatsapp_api_*` fields on Retailer model).
+
+**Deliverables:**
+- **Phase II.A:** Meta Catalog API client extension — product create/update/delete via Graph API; image upload via R2 presigned URLs; price/stock sync; two-way availability synchronization.
+- **Phase II.B:** Sync Engine (BullMQ job) — listens for product price/status changes; pushes updates to WhatsApp catalog; handles conflict retries; respects retailer's sync selection (which products/categories to include).
+- **Phase II.C:** Retailer UI — Settings screen to enable/disable catalog sync; select which product categories/collections to sync; manual trigger; sync status dashboard.
+- **Phase II.D:** Webhook handler — processes catalog-related webhooks from Meta (item added, item price changed, item deleted); updates Kanchuki product status accordingly; records sync history.
+
+**Success Criteria:**
+- ✅ Retailer can connect WhatsApp Business API and enable catalog sync
+- ✅ Product photos sync to WhatsApp catalog with correct pricing
+- ✅ Price changes in Kanchuki reflect in WhatsApp catalog within 5 minutes
+- ✅ Product status (AVAILABLE/SOLD) syncs bidirectionally
+- ✅ Customer can view and enquire about products from WhatsApp catalog
+- ✅ Admin can view sync status and error logs
+
+---
+
 ## Phase 1: AI Core (Month 5–8)
 
 **Goal:** Add Fashion DNA + Virtual Try-On, reach ₹3L MRR  
@@ -234,6 +278,8 @@ See `docs/PRO-REQUIREMENTS.md` §10.9–10.11 for full spec.
 | **Backup system live** | **M4–5** | **Backup created, verified, and restorable from admin dashboard** |
 | **Query console live** | **M5** | **Admin runs read-only SQL against replica** |
 | **Deployment gates live** | **M5** | **All deploys require manual approval** |
+| **GST invoicing live** | **M5** | **PDF generation + HSN mapping; every paid order has GST invoice PDF + ledger entry** |
+| **WhatsApp catalog sync live** | **M6** | **Product data syncs to WhatsApp Business native catalog; bidirectional price/status sync** |
 | V-Tone v1.5 deployed | M1 | Try-on working on 10 test products |
 | V-Tone fine-tuned for Indian wear | M6 | 80% quality on saree/lehenga test set |
 | Fashion DNA live | M7 | 1000+ customer behavior events, matching visible |

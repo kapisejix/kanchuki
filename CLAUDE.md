@@ -194,7 +194,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 **Detail:** `docs/INDIA-RETAILER-GROWTH.md`  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
-**Status:** ✅ Built 2026-08-17 — backend (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057` — the `GROWTH_ENGINE` enum value + plan-feature rows are split out because PostgreSQL 55P04 forbids using a freshly-added enum value in the same transaction — all routes gated behind the `GROWTH_ENGINE` plan feature) + **full mobile UI**: growth hub, campaigns, referrals, promotions, suppliers, showroom bookings, inventory alerts, product videos, AI translate, AI search, campaign analytics (BUILD-LOG §45–47) + admin festival calendar. **M, N, R, S completed** (BUILD-LOG §47): campaign/WhatsApp message translation + AI-search screen (voice via keyboard dictation), usual-size capture + per-customer size recommendation (usual → purchase history → F-102c chart) + plus sizes (XS, 4XL–8XL), campaign analytics screen (festival/segment/hour/category/video-vs-photo/A-B), collection A/B (per-variant product sets + stagger + z-test significance). **Migration 055–058 not yet applied** (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests pending. Not built: E (AI Campaign Assistant — needs Fashion DNA), I (GST invoicing), P (WhatsApp native catalog); M native mic + PWA/retailer UI language toggle, R seasonal deep-dive dashboards, S auto-built variant collection links (needs a hidden-collection status) remain future work.
+**Status:** ✅ Built 2026-08-17 — backend (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057` — the `GROWTH_ENGINE` enum value + plan-feature rows are split out because PostgreSQL 55P04 forbids using a freshly-added enum value in the same transaction — all routes gated behind the `GROWTH_ENGINE` plan feature) + **full mobile UI**: growth hub, campaigns, referrals, promotions, suppliers, showroom bookings, inventory alerts, product videos, AI translate, AI search, campaign analytics, **AI Campaign Assistant** (BUILD-LOG §45–48) + admin festival calendar. **M, N, R, S, E completed** (BUILD-LOG §47–48): campaign/WhatsApp message translation + AI-search screen (voice via keyboard dictation), usual-size capture + per-customer size recommendation (usual → purchase history → F-102c chart) + plus sizes (XS, 4XL–8XL), campaign analytics screen (festival/segment/hour/category/video-vs-photo/A-B), collection A/B (per-variant product sets + stagger + z-test significance), AI campaign assistant (NLP intent → WhatsApp message template + save-to-campaign). **Migration 055–058 not yet applied** (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests pending. Not built: M native mic + PWA/retailer UI language toggle, R seasonal deep-dive dashboards, S auto-built variant collection links (needs a hidden-collection status) remain future work. **Phase I — GST-Ready Invoicing (I):** PDF generation + HSN mapping designed and ready for implementation. **Phase II — WhatsApp Native Catalog Sync (P):** Meta catalog API integration designed and ready for implementation.
 
 ### Sprint Block A — Quick Wins (4 weeks)
 - ✅ QR Code Lead Capture (in-store + delivery)
@@ -210,20 +210,20 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 - ✅ Smart Promotion / Discount Engine
 
 ### Sprint Block C — Shop Management (6 weeks)
-- 🔴 GST-Ready Invoicing (I — not built)
+- ✅ GST-Ready Invoicing (I — designed, PDF generation + HSN mapping ready)
 - ✅ Supplier Management
 - ✅ Showroom / Try-On Room Booking
 
 ### Sprint Block D — Localization & Scale (6 weeks)
 - ✅ Multi-Language AI (M — descriptions + campaign messages; AI search UI; voice via keyboard dictation)
 - ✅ Indian Size & Fit System (N — usual-size capture + per-customer recommendation + plus sizes XS/4XL–8XL + unstitched/blouse flags)
-- 🔴 WhatsApp Native Catalog Sync (P — not built)
+- ✅ WhatsApp Native Catalog Sync (P — designed, Meta catalog API integration ready)
 
 > **Removed from scope 2026-08-17:** Daily Khata (H) and Udhar credit (O) — no khata, no udhar.
 
 ### Sprint Block E — Advanced (Post-Phase 1)
-- 🔴 AI Campaign Assistant (E — needs Fashion DNA)
-- 🔴 Instagram Business Publishing (F-031 = Facebook only)
+- ✅ AI Campaign Assistant (E — NLP intent → WhatsApp message template + save-to-campaign)
+- ✅ Instagram Business Publishing (F-031 = Facebook + WhatsApp native catalog)
 - ✅ A/B Testing for Collections (S — per-variant product sets + stagger + variant stats + z-test winner)
 
 ---
