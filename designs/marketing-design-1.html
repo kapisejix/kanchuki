@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanchuki — Design 1: Dark Gradient</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+  :root {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #111118;
+    --bg-card: #16161f;
+    --text-primary: #f4f4f5;
+    --text-secondary: #a1a1aa;
+    --text-muted: #71717a;
+    --accent-1: #6366f1;
+    --accent-2: #8b5cf6;
+    --accent-3: #ec4899;
+    --accent-warm: #f59e0b;
+    --border: rgba(255,255,255,0.06);
+    --radius: 16px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    background: rgba(10,10,15,0.7);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700; font-size: 22px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .nav-links { display: flex; gap: 32px; }
+  .nav-links a {
+    color: var(--text-secondary); text-decoration: none; font-size: 14px;
+    font-weight: 500; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text-primary); }
+
+  .nav-cta {
+    padding: 10px 20px; border-radius: 8px; border: none;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: white; font-weight: 600; font-size: 14px; cursor: pointer;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 140px 24px 80px;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: ''; position: absolute; top: -40%; left: -20%; width: 80%; height: 140%;
+    background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 60%);
+    filter: blur(80px); pointer-events: none;
+  }
+
+  .hero::after {
+    content: ''; position: absolute; bottom: -30%; right: -20%; width: 70%; height: 120%;
+    background: radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 60%);
+    filter: blur(80px); pointer-events: none;
+  }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 16px; border-radius: 100px;
+    background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2);
+    color: var(--accent-1); font-size: 13px; font-weight: 500;
+    margin-bottom: 32px;
+  }
+
+  .badge-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--accent-1);
+    box-shadow: 0 0 8px var(--accent-1);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(48px, 8vw, 96px);
+    font-weight: 700; line-height: 1.05;
+    letter-spacing: -0.03em;
+    max-width: 1100px;
+    margin-bottom: 24px;
+  }
+
+  h1 .gradient {
+    background: linear-gradient(135deg, var(--accent-1) 0%, var(--accent-3) 50%, var(--accent-warm) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    font-size: 18px; color: var(--text-secondary); max-width: 560px;
+    margin-bottom: 40px; font-weight: 400; line-height: 1.7;
+  }
+
+  .cta-group { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn-primary {
+    padding: 14px 32px; border-radius: 10px; border: none;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: white; font-weight: 600; font-size: 15px; cursor: pointer;
+    box-shadow: 0 0 30px rgba(99,102,241,0.3);
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 40px rgba(99,102,241,0.4); }
+  .btn-secondary {
+    padding: 14px 32px; border-radius: 10px;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-primary); font-weight: 600; font-size: 15px; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .btn-secondary:hover { background: rgba(255,255,255,0.05); }
+
+  .social-proof {
+    display: flex; align-items: center; gap: 24px; margin-top: 64px;
+    opacity: 0.5;
+  }
+  .social-proof span { font-size: 13px; color: var(--text-muted); }
+  .logo-row { display: flex; gap: 32px; align-items: center; }
+  .logo-row div {
+    font-family: 'Space Grotesk'; font-weight: 600; font-size: 14px;
+    color: var(--text-muted); letter-spacing: 0.05em;
+  }
+
+  /* BENTO GRID */
+  .section { padding: 120px 48px; }
+  .section-header { text-align: center; margin-bottom: 64px; }
+  .section-header h2 {
+    font-family: 'Space Grotesk'; font-size: 42px; font-weight: 700;
+    letter-spacing: -0.02em; margin-bottom: 16px;
+  }
+  .section-header p { color: var(--text-secondary); font-size: 16px; max-width: 500px; margin: 0 auto; }
+
+  .bento {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 320px);
+    gap: 20px;
+    max-width: 1200px; margin: 0 auto;
+  }
+
+  .bento-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 32px;
+    position: relative; overflow: hidden;
+    transition: transform 0.3s, border-color 0.3s;
+  }
+  .bento-card:hover { transform: translateY(-4px); border-color: rgba(255,255,255,0.12); }
+
+  .bento-card.large { grid-column: span 2; }
+  .bento-card.tall { grid-row: span 2; }
+
+  .bento-icon {
+    width: 48px; height: 48px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 20px;
+  }
+
+  .bento-card h3 {
+    font-family: 'Space Grotesk'; font-size: 20px; font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .bento-card p { color: var(--text-secondary); font-size: 14px; line-height: 1.6; }
+
+  .bento-glow {
+    position: absolute; top: -50%; right: -30%; width: 300px; height: 300px;
+    border-radius: 50%; filter: blur(80px); opacity: 0.15; pointer-events: none;
+  }
+
+  /* STATS */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; max-width: 1000px; margin: 0 auto; }
+  .stat { text-align: center; }
+  .stat-value {
+    font-family: 'Space Grotesk'; font-size: 48px; font-weight: 700;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-3));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .stat-label { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+
+  /* PRICING */
+  .pricing-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    max-width: 1100px; margin: 0 auto;
+  }
+  .pricing-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 40px 32px; text-align: center;
+    position: relative;
+  }
+  .pricing-card.featured {
+    border-color: var(--accent-1);
+    background: linear-gradient(180deg, rgba(99,102,241,0.08) 0%, var(--bg-card) 100%);
+  }
+  .pricing-card.featured::before {
+    content: 'Most Popular'; position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    padding: 4px 16px; border-radius: 100px; font-size: 12px; font-weight: 600;
+  }
+  .price { font-family: 'Space Grotesk'; font-size: 48px; font-weight: 700; margin: 24px 0 8px; }
+  .price span { font-size: 16px; color: var(--text-muted); font-weight: 400; }
+  .pricing-card h4 { font-size: 18px; margin-bottom: 16px; }
+  .pricing-card p { color: var(--text-secondary); font-size: 14px; margin-bottom: 24px; }
+  .pricing-card ul { list-style: none; text-align: left; margin-bottom: 32px; }
+  .pricing-card ul li { padding: 8px 0; font-size: 14px; color: var(--text-secondary); }
+  .pricing-card ul li::before { content: '✓'; color: var(--accent-1); margin-right: 10px; font-weight: 700; }
+
+  /* FAQ */
+  .faq { max-width: 720px; margin: 0 auto; }
+  .faq-item {
+    border: 1px solid var(--border); border-radius: 12px; margin-bottom: 12px;
+    overflow: hidden;
+  }
+  .faq-question {
+    padding: 20px 24px; cursor: pointer; display: flex; justify-content: space-between;
+    align-items: center; font-weight: 600; font-size: 15px;
+    background: var(--bg-card);
+  }
+  .faq-question::after { content: '+'; font-size: 20px; color: var(--text-muted); }
+  .faq-item.open .faq-question::after { content: '−'; }
+  .faq-answer {
+    max-height: 0; overflow: hidden; transition: max-height 0.3s ease;
+    padding: 0 24px; color: var(--text-secondary); font-size: 14px;
+  }
+  .faq-item.open .faq-answer { max-height: 200px; padding: 0 24px 20px; }
+
+  /* CTA BOTTOM */
+  .bottom-cta {
+    text-align: center; padding: 120px 24px;
+    background: linear-gradient(180deg, var(--bg-primary) 0%, rgba(99,102,241,0.05) 100%);
+  }
+  .bottom-cta h2 {
+    font-family: 'Space Grotesk'; font-size: 52px; font-weight: 700;
+    letter-spacing: -0.02em; margin-bottom: 20px;
+  }
+  .bottom-cta p { color: var(--text-secondary); font-size: 16px; margin-bottom: 32px; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border); padding: 64px 48px 32px;
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  footer .brand { font-family: 'Space Grotesk'; font-size: 20px; font-weight: 700; margin-bottom: 12px; }
+  footer .desc { color: var(--text-muted); font-size: 14px; max-width: 280px; }
+  footer h5 { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+  footer ul { list-style: none; }
+  footer ul li { margin-bottom: 10px; }
+  footer ul a { color: var(--text-secondary); text-decoration: none; font-size: 14px; transition: color 0.2s; }
+  footer ul a:hover { color: var(--text-primary); }
+  .footer-bottom {
+    max-width: 1200px; margin: 0 auto; padding: 24px 48px;
+    border-top: 1px solid var(--border); display: flex; justify-content: space-between;
+    color: var(--text-muted); font-size: 13px;
+  }
+
+  /* RESPONSIVE */
+  @media (max-width: 900px) {
+    .bento { grid-template-columns: 1fr; grid-template-rows: auto; }
+    .bento-card.large, .bento-card.tall { grid-column: span 1; grid-row: span 1; }
+    .pricing-grid, .stats { grid-template-columns: 1fr; }
+    footer { grid-template-columns: 1fr 1fr; }
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Kanchuki</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#about">About</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <button class="nav-cta">Get Started</button>
+</nav>
+
+<section class="hero">
+  <div class="badge"><span class="badge-dot"></span> Now in Public Beta — India</div>
+  <h1>Commerce for the <span class="gradient">next billion</span> creators</h1>
+  <p class="subtitle">Kanchuki gives small businesses, artisans, and creators a beautiful storefront, WhatsApp-first checkout, and logistics that actually work across India.</p>
+  <div class="cta-group">
+    <button class="btn-primary">Start selling free</button>
+    <button class="btn-secondary">View demo →</button>
+  </div>
+  <div class="social-proof">
+    <span>Trusted by teams at</span>
+    <div class="logo-row">
+      <div>PHONEPE</div><div>RAZORPAY</div><div>MEESHO</div><div>ZOHO</div>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="features">
+  <div class="section-header">
+    <h2>Built for modern commerce</h2>
+    <p>Every tool you need to launch, manage, and scale — without writing code.</p>
+  </div>
+  <div class="bento">
+    <div class="bento-card large">
+      <div class="bento-glow" style="background: var(--accent-1);"></div>
+      <div class="bento-icon" style="background: rgba(99,102,241,0.1); color: var(--accent-1);">⚡</div>
+      <h3>WhatsApp-native checkout</h3>
+      <p>Customers discover your catalog, place orders, and pay — all inside WhatsApp. No app download required. UPI, cards, and COD built in.</p>
+    </div>
+    <div class="bento-card tall">
+      <div class="bento-glow" style="background: var(--accent-3);"></div>
+      <div class="bento-icon" style="background: rgba(236,72,153,0.1); color: var(--accent-3);">🎨</div>
+      <h3>Beautiful catalogs</h3>
+      <p>Curated product grids, lookbooks, and collections that feel premium. Image-first design with smart lazy loading.</p>
+    </div>
+    <div class="bento-card">
+      <div class="bento-glow" style="background: var(--accent-warm);"></div>
+      <div class="bento-icon" style="background: rgba(245,158,11,0.1); color: var(--accent-warm);">📊</div>
+      <h3>Real-time analytics</h3>
+      <p>Track views, carts, and orders as they happen. Know what sells.</p>
+    </div>
+    <div class="bento-card">
+      <div class="bento-glow" style="background: #10b981;"></div>
+      <div class="bento-icon" style="background: rgba(16,185,129,0.1); color: #10b981;">🚚</div>
+      <h3>Logistics hub</h3>
+      <p>Ship with Delhivery, Blue Dart, India Post. Labels and tracking in one place.</p>
+    </div>
+    <div class="bento-card large">
+      <div class="bento-glow" style="background: var(--accent-2);"></div>
+      <div class="bento-icon" style="background: rgba(139,92,246,0.1); color: var(--accent-2);">🔒</div>
+      <h3>Secure by default</h3>
+      <p>PCI-compliant payments, SSL encryption, and automated fraud detection. Your data and your customers' data stay safe.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section" id="pricing" style="background: var(--bg-secondary);">
+  <div class="section-header">
+    <h2>Simple, transparent pricing</h2>
+    <p>Start free. Upgrade when you're ready. No hidden fees.</p>
+  </div>
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <h4>Starter</h4>
+      <div class="price">₹0<span>/month</span></div>
+      <p>Perfect for trying out Kanchuki</p>
+      <ul>
+        <li>Up to 10 products</li>
+        <li>WhatsApp catalog</li>
+        <li>Basic analytics</li>
+        <li>Community support</li>
+      </ul>
+      <button class="btn-secondary" style="width:100%">Get started</button>
+    </div>
+    <div class="pricing-card featured">
+      <h4>Growth</h4>
+      <div class="price">₹999<span>/month</span></div>
+      <p>For serious sellers ready to scale</p>
+      <ul>
+        <li>Unlimited products</li>
+        <li>Custom storefront</li>
+        <li>Advanced analytics</li>
+        <li>Priority support</li>
+        <li>Multi-channel sync</li>
+      </ul>
+      <button class="btn-primary" style="width:100%">Start free trial</button>
+    </div>
+    <div class="pricing-card">
+      <h4>Enterprise</h4>
+      <div class="price">Custom</div>
+      <p>For brands and marketplaces</p>
+      <ul>
+        <li>Everything in Growth</li>
+        <li>Dedicated manager</li>
+        <li>Custom integrations</li>
+        <li>SLA guarantee</li>
+      </ul>
+      <button class="btn-secondary" style="width:100%">Contact sales</button>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-header">
+    <h2>Trusted by thousands</h2>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="stat-value">12K+</div><div class="stat-label">Active sellers</div></div>
+    <div class="stat"><div class="stat-value">₹240Cr</div><div class="stat-label">GMV processed</div></div>
+    <div class="stat"><div class="stat-value">98%</div><div class="stat-label">Uptime SLA</div></div>
+    <div class="stat"><div class="stat-value">4.9/5</div><div class="stat-label">App Store rating</div></div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-header"><h2>Frequently asked questions</h2></div>
+  <div class="faq">
+    <div class="faq-item open">
+      <div class="faq-question">Is there a free plan?</div>
+      <div class="faq-answer">Yes. The Starter plan is free forever with up to 10 products and WhatsApp catalog support.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-question">Do I need a website?</div>
+      <div class="faq-answer">No. You can sell entirely through WhatsApp, Instagram, or your custom storefront.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-question">Which payment methods are supported?</div>
+      <div class="faq-answer">UPI, credit/debit cards, netbanking, wallets, and cash on delivery across India.</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-question">Can I import products from Shopify or WooCommerce?</div>
+      <div class="faq-answer">Yes. One-click CSV imports and direct integrations with Shopify, WooCommerce, and Magento.</div>
+    </div>
+  </div>
+</section>
+
+<section class="bottom-cta">
+  <h2>Ready to start selling?</h2>
+  <p>Join 12,000+ sellers already growing with Kanchuki.</p>
+  <button class="btn-primary" style="font-size: 16px; padding: 16px 40px;">Create your free store →</button>
+</section>
+
+<footer>
+  <div>
+    <div class="brand">Kanchuki</div>
+    <p class="desc">Commerce infrastructure for Indian creators, artisans, and small businesses.</p>
+  </div>
+  <div>
+    <h5>Product</h5>
+    <ul>
+      <li><a href="#">Catalog</a></li><li><a href="#">Checkout</a></li><li><a href="#">Analytics</a></li><li><a href="#">Logistics</a></li>
+    </ul>
+  </div>
+  <div>
+    <h5>Company</h5>
+    <ul>
+      <li><a href="#">About</a></li><li><a href="#">Careers</a></li><li><a href="#">Blog</a></li><li><a href="#">Press</a></li>
+    </ul>
+  </div>
+  <div>
+    <h5>Legal</h5>
+    <ul>
+      <li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">Security</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span>© 2026 Kanchuki Technologies Pvt. Ltd.</span>
+  <span>Made in India, for India.</span>
+</div>
+
+<script>
+  document.querySelectorAll('.faq-question').forEach(q => {
+    q.addEventListener('click', () => {
+      const item = q.parentElement;
+      document.querySelectorAll('.faq-item').forEach(i => { if(i!==item) i.classList.remove('open'); });
+      item.classList.toggle('open');
+    });
+  });
+</script>
+</body>
+</html>

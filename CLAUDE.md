@@ -185,7 +185,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 41 | F-031 Social Media Publishing Phase 1 (Facebook Page connect + post) | ✅ Built | 2026-08-13 | BUILD-LOG §41 |
 | 42 | Admin Commission Tracker — 3% of monthly payments as a pool + expense ledger (admin dashboard card + `/admin/commission` two-tab page: Monthly Summary, Expenditure grid, add-expense form, row detail popup) | ✅ Built | 2026-08-17 | BUILD-LOG §42, PRO-REQUIREMENTS §25 |
 | 43 | Retailer Auth — Login / Create Account segmented toggle on the single OTP phone screen (decision: keep one screen, two flows would be identical) | ✅ Built | 2026-08-17 | BUILD-LOG §43, PRO-REQUIREMENTS §26 |
-| 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), suppliers (K), bookings (L), inventory alerts (J), videos (Q), AI translate (M) + migration 055 (khata H + udhar O removed from scope) | ✅ Built (backend + mobile growth hub/campaigns UI + admin festival calendar; 7 modules UI pending) | 2026-08-17 | BUILD-LOG §44–45 |
+| 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), suppliers (K), bookings (L), inventory alerts (J), videos (Q), AI translate (M) + migration 055 (khata H + udhar O removed from scope) | ✅ Built (backend + full mobile UI: growth hub, campaigns, referrals, promotions, suppliers, bookings, inventory alerts, videos, AI translate + admin festival calendar) | 2026-08-17 | BUILD-LOG §44–46 |
 
 ---
 
@@ -194,37 +194,37 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 **Detail:** `docs/INDIA-RETAILER-GROWTH.md`  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
-**Status:** ✅ Backend built 2026-08-17 (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057` — the `GROWTH_ENGINE` enum value + plan-feature rows are split out because PostgreSQL 55P04 forbids using a freshly-added enum value in the same transaction — all routes gated behind the `GROWTH_ENGINE` plan feature). UI: mobile growth hub + campaigns shipped (BUILD-LOG §45); remaining 7 modules pending; migration 055–057 not yet applied.
+**Status:** ✅ Built 2026-08-17 — backend (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057` — the `GROWTH_ENGINE` enum value + plan-feature rows are split out because PostgreSQL 55P04 forbids using a freshly-added enum value in the same transaction — all routes gated behind the `GROWTH_ENGINE` plan feature) + **full mobile UI**: growth hub, campaigns, referrals, promotions, suppliers, showroom bookings, inventory alerts, product videos, AI translate (BUILD-LOG §45–46) + admin festival calendar. **Migration 055–057 not yet applied** (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests pending. Not built: E (AI Campaign Assistant — needs Fashion DNA), I (GST invoicing), P (WhatsApp native catalog); partial: M (translation only), N (flags only), R (send/open stats only), S (send split only).
 
 ### Sprint Block A — Quick Wins (4 weeks)
-- QR Code Lead Capture (in-store + delivery)
-- Customer Reactivation Campaigns
-- Video Product Support
-- Festival Campaign Analytics
-- Inventory Intelligence Alerts
+- ✅ QR Code Lead Capture (in-store + delivery)
+- ✅ Customer Reactivation Campaigns
+- ✅ Video Product Support
+- 🕐 Festival Campaign Analytics (send/open stats only)
+- ✅ Inventory Intelligence Alerts
 
 ### Sprint Block B — Customer Acquisition (6 weeks)
-- Kanchuki Store Directory (`/stores`)
-- Referral Program Engine
-- Festival Campaign Templates (Diwali, Navratri, regional)
-- Smart Promotion / Discount Engine
+- ✅ Kanchuki Store Directory (`/stores` — city filter + search + featured pins)
+- ✅ Referral Program Engine
+- ✅ Festival Campaign Templates (Diwali, Navratri, regional — admin calendar + campaigns)
+- ✅ Smart Promotion / Discount Engine
 
 ### Sprint Block C — Shop Management (6 weeks)
-- GST-Ready Invoicing
-- Supplier Management
-- Showroom / Try-On Room Booking
+- 🔴 GST-Ready Invoicing (I — not built)
+- ✅ Supplier Management
+- ✅ Showroom / Try-On Room Booking
 
 ### Sprint Block D — Localization & Scale (6 weeks)
-- Multi-Language AI (Hindi + Hinglish + regional)
-- Indian Size & Fit System
-- WhatsApp Native Catalog Sync
+- 🕐 Multi-Language AI (M — description translation only)
+- 🕐 Indian Size & Fit System (N — `is_unstitched`/`includes_blouse` flags only)
+- 🔴 WhatsApp Native Catalog Sync (P — not built)
 
 > **Removed from scope 2026-08-17:** Daily Khata (H) and Udhar credit (O) — no khata, no udhar.
 
 ### Sprint Block E — Advanced (Post-Phase 1)
-- AI Campaign Assistant
-- Instagram Business Publishing
-- A/B Testing for Collections
+- 🔴 AI Campaign Assistant (E — needs Fashion DNA)
+- 🔴 Instagram Business Publishing (F-031 = Facebook only)
+- 🕐 A/B Testing for Collections (S — send split only)
 
 ---
 

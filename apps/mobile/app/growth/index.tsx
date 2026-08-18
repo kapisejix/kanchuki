@@ -29,16 +29,15 @@ const TYPE_LABEL: Record<CampaignType, string> = {
   AB_TEST: 'A/B Test',
 }
 
-// Modules from the growth roadmap that ship in later passes. Kept on the hub
-// so retailers see the full roadmap — disabled until the screens exist.
-const COMING_SOON = [
-  { icon: Users, label: 'Referrals', hint: 'Customers bring customers' },
-  { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers' },
-  { icon: Truck, label: 'Suppliers', hint: 'Orders & pending payments' },
-  { icon: DoorOpen, label: 'Try-on Bookings', hint: 'In-store slot booking' },
-  { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders' },
-  { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog' },
-  { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions' },
+// Every growth module now has a live screen. Each card routes to its module.
+const GROWTH_MODULES = [
+  { icon: Users, label: 'Referrals', hint: 'Customers bring customers', href: '/growth/referrals' as const },
+  { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers', href: '/growth/promotions' as const },
+  { icon: Truck, label: 'Suppliers', hint: 'Orders & pending payments', href: '/growth/suppliers' as const },
+  { icon: DoorOpen, label: 'Try-on Bookings', hint: 'In-store slot booking', href: '/growth/bookings' as const },
+  { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders', href: '/growth/inventory' as const },
+  { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
+  { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {
@@ -245,27 +244,31 @@ export default function GrowthHubScreen() {
           </AnimatedPressable>
         )}
 
-        {/* Coming soon — rest of the roadmap */}
+        {/* All growth modules — each opens its live screen */}
         <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-2.5">
           More Growth Tools
         </Text>
         <View className="gap-2.5">
-          {COMING_SOON.map(({ icon: Icon, label, hint }) => (
-            <View
+          {GROWTH_MODULES.map(({ icon: Icon, label, hint, href }) => (
+            <AnimatedPressable
               key={label}
-              className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100 opacity-60"
+              onPress={() => router.push(href)}
+              accessibilityRole="button"
+              accessibilityLabel={label}
+              className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
             >
-              <View className="w-9 h-9 rounded-xl bg-sand-100 items-center justify-center mr-3">
-                <Icon size={18} color={colors.sand[500]} />
+              <View
+                className="w-9 h-9 rounded-xl items-center justify-center mr-3"
+                style={{ backgroundColor: `${primaryColor}1A` }}
+              >
+                <Icon size={18} color={primaryColor} />
               </View>
               <View className="flex-1">
                 <Text className="text-sm font-semibold text-sand-900">{label}</Text>
                 <Text className="text-xs text-sand-400 mt-0.5">{hint}</Text>
               </View>
-              <View className="bg-sand-100 rounded-full px-2.5 py-1">
-                <Text className="text-[10px] font-semibold text-sand-500 uppercase">Soon</Text>
-              </View>
-            </View>
+              <ChevronRight size={16} color={colors.sand[300]} />
+            </AnimatedPressable>
           ))}
         </View>
       </ScrollView>

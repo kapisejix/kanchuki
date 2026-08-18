@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanchuki Mobile — Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #e5e5e5;
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 24px;
+  }
+
+  .phone {
+    width: 375px; height: 812px;
+    background: #fafafa;
+    border-radius: 40px;
+    box-shadow: 0 25px 80px rgba(0,0,0,0.15), 0 0 0 12px #1c1917;
+    overflow: hidden; position: relative;
+  }
+
+  .notch {
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 150px; height: 30px; background: #1c1917;
+    border-radius: 0 0 20px 20px; z-index: 50;
+  }
+
+  .screen {
+    height: 100%; overflow-y: auto; padding: 48px 20px 100px;
+    background: linear-gradient(180deg, #1c1917 0%, #292524 40%, #fafafa 40%);
+  }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 12px 12px; color: white; font-size: 12px; font-weight: 600;
+    position: sticky; top: 0; z-index: 40;
+  }
+
+  /* HEADER */
+  .header {
+    padding: 16px 4px 24px; color: white;
+  }
+  .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; }
+  .greeting { font-size: 14px; opacity: 0.7; }
+  .greeting strong { display: block; font-size: 22px; font-weight: 700; margin-top: 2px; }
+  .avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #c2410c, #f59e0b);
+    border: 2px solid rgba(255,255,255,0.2);
+  }
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,0.1); border-radius: 12px; padding: 12px 16px;
+    backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08);
+  }
+  .search-bar input {
+    flex: 1; background: none; border: none; outline: none;
+    color: white; font-size: 14px;
+  }
+  .search-bar input::placeholder { color: rgba(255,255,255,0.4); }
+  .search-icon { color: rgba(255,255,255,0.5); font-size: 14px; }
+
+  /* STATS */
+  .stats-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: white; border-radius: 16px; padding: 16px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .stat-card .label { font-size: 11px; color: #78716c; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
+  .stat-card .value { font-size: 22px; font-weight: 700; color: #1c1917; }
+  .stat-card .change { font-size: 12px; margin-top: 4px; }
+  .change.up { color: #16a34a; }
+  .change.down { color: #dc2626; }
+
+  /* SECTION HEADER */
+  .section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+  }
+  .section-header h3 { font-size: 17px; font-weight: 700; color: #1c1917; }
+  .section-header a { font-size: 13px; color: #c2410c; text-decoration: none; font-weight: 600; }
+
+  /* QUICK ACTIONS */
+  .quick-actions {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+    margin-bottom: 28px;
+  }
+  .action-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    padding: 14px 8px; background: white; border-radius: 14px;
+    border: none; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    transition: transform 0.15s;
+  }
+  .action-btn:active { transform: scale(0.96); }
+  .action-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center; font-size: 16px;
+  }
+  .action-btn span { font-size: 11px; color: #44403c; font-weight: 500; }
+
+  /* ORDERS */
+  .orders { margin-bottom: 28px; }
+  .order-item {
+    display: flex; align-items: center; gap: 14px;
+    background: white; border-radius: 16px; padding: 14px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .order-thumb {
+    width: 52px; height: 52px; border-radius: 12px;
+    background: linear-gradient(135deg, #f5ebe0, #e8d5c4);
+    flex-shrink: 0;
+  }
+  .order-thumb.purple { background: linear-gradient(135deg, #ede9fe, #ddd6fe); }
+  .order-thumb.green { background: linear-gradient(135deg, #dcfce7, #bbf7d0); }
+  .order-info { flex: 1; }
+  .order-title { font-size: 14px; font-weight: 600; color: #1c1917; margin-bottom: 2px; }
+  .order-meta { font-size: 12px; color: #78716c; }
+  .order-status {
+    padding: 4px 10px; border-radius: 100px; font-size: 11px; font-weight: 600;
+  }
+  .status-progress { background: #fef3c7; color: #92400e; }
+  .status-shipped { background: #dbeafe; color: #1e40af; }
+  .status-delivered { background: #dcfce7; color: #166534; }
+  .order-amount { font-size: 14px; font-weight: 700; color: #1c1917; margin-left: 8px; }
+
+  /* CHART */
+  .chart-card {
+    background: white; border-radius: 16px; padding: 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04); margin-bottom: 28px;
+  }
+  .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .chart-header h3 { font-size: 15px; font-weight: 700; }
+  .chart-header span { font-size: 12px; color: #78716c; }
+  .bars { display: flex; align-items: flex-end; gap: 8px; height: 100px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .bar {
+    width: 100%; border-radius: 6px 6px 0 0;
+    background: linear-gradient(180deg, #c2410c, #f59e0b);
+    min-height: 8px; transition: height 0.4s;
+  }
+  .bar-label { font-size: 10px; color: #a8a29e; }
+
+  /* BOTTOM NAV */
+  .bottom-nav {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: white; border-top: 1px solid #e7e5e4;
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 12px 0 24px; z-index: 40;
+  }
+  .nav-item { display: flex; flex-direction: column; align-items: center; gap: 4px; text-decoration: none; color: #a8a29e; }
+  .nav-item.active { color: #c2410c; }
+  .nav-item span { font-size: 10px; font-weight: 500; }
+  .nav-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+
+  /* SCROLLBAR */
+  .screen::-webkit-scrollbar { width: 0; }
+
+  @media (max-width: 420px) {
+    .phone { width: 100%; height: 100vh; border-radius: 0; box-shadow: none; border: none; }
+    body { padding: 0; }
+    .notch { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <div class="notch"></div>
+  <div class="screen">
+    <div class="status-bar">
+      <span>9:41</span>
+      <span>●●●●○ WiFi 🔋</span>
+    </div>
+
+    <div class="header">
+      <div class="header-top">
+        <div class="greeting">
+          Good morning,
+          <strong>Aarav's Boutique</strong>
+        </div>
+        <div class="avatar"></div>
+      </div>
+      <div class="search-bar">
+        <span class="search-icon">🔍</span>
+        <input type="text" placeholder="Search orders, products...">
+      </div>
+    </div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="label">Today's Sales</div>
+        <div class="value">₹12,450</div>
+        <div class="change up">↑ 12.5% vs yesterday</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">New Orders</div>
+        <div class="value">18</div>
+        <div class="change up">↑ 3 pending</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Store Views</div>
+        <div class="value">1,284</div>
+        <div class="change up">↑ 8.2%</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Avg. Order</div>
+        <div class="value">₹691</div>
+        <div class="change down">↓ 2.1%</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h3>Quick Actions</h3>
+    </div>
+    <div class="quick-actions">
+      <button class="action-btn">
+        <div class="action-icon" style="background:#fff7ed; color:#c2410c;">+</div>
+        <span>Add Product</span>
+      </button>
+      <button class="action-btn">
+        <div class="action-icon" style="background:#fef3c7; color:#92400e;">📦</div>
+        <span>New Order</span>
+      </button>
+      <button class="action-btn">
+        <div class="action-icon" style="background:#dcfce7; color:#166534;">📊</div>
+        <span>Reports</span>
+      </button>
+      <button class="action-btn">
+        <div class="action-icon" style="background:#ede9fe; color:#6d28d9;">⚙️</div>
+        <span>Settings</span>
+      </button>
+    </div>
+
+    <div class="section-header">
+      <h3>Recent Orders</h3>
+      <a href="#">View all</a>
+    </div>
+    <div class="orders">
+      <div class="order-item">
+        <div class="order-thumb"></div>
+        <div class="order-info">
+          <div class="order-title">Handloom Cotton Saree</div>
+          <div class="order-meta">#ORD-2847 · 2 mins ago</div>
+        </div>
+        <span class="order-status status-progress">Processing</span>
+        <span class="order-amount">₹2,499</span>
+      </div>
+      <div class="order-item">
+        <div class="order-thumb purple"></div>
+        <div class="order-info">
+          <div class="order-title">Block Print Dupatta</div>
+          <div class="order-meta">#ORD-2846 · 18 mins ago</div>
+        </div>
+        <span class="order-status status-shipped">Shipped</span>
+        <span class="order-amount">₹899</span>
+      </div>
+      <div class="order-item">
+        <div class="order-thumb green"></div>
+        <div class="order-info">
+          <div class="order-title">Embroidered Kurta Set</div>
+          <div class="order-meta">#ORD-2845 · 1 hr ago</div>
+        </div>
+        <span class="order-status status-delivered">Delivered</span>
+        <span class="order-amount">₹3,200</span>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Weekly Revenue</h3>
+        <span>This week</span>
+      </div>
+      <div class="bars">
+        <div class="bar-wrap"><div class="bar" style="height:45%"></div><div class="bar-label">Mon</div></div>
+        <div class="bar-wrap"><div class="bar" style="height:70%"></div><div class="bar-label">Tue</div></div>
+        <div class="bar-wrap"><div class="bar" style="height:55%"></div><div class="bar-label">Wed</div></div>
+        <div class="bar-wrap"><div class="bar" style="height:85%"></div><div class="bar-label">Thu</div></div>
+        <div class="bar-wrap"><div class="bar" style="height:65%"></div><div class="bar-label">Fri</div></div>
+        <div class="bar-wrap"><div class="bar" style="height:95%"></div><div class="bar-label">Sat</div></div>
+        <div class="bar-wrap"><div class="bar" style="height:50%"></div><div class="bar-label">Sun</div></div>
+      </div>
+    </div>
+
+    <div style="height: 40px;"></div>
+  </div>
+
+  <div class="bottom-nav">
+    <a href="#" class="nav-item active">
+      <div class="nav-icon">🏠</div>
+      <span>Home</span>
+    </a>
+    <a href="#" class="nav-item">
+      <div class="nav-icon">📋</div>
+      <span>Orders</span>
+    </a>
+    <a href="#" class="nav-item">
+      <div class="nav-icon">📊</div>
+      <span>Insights</span>
+    </a>
+    <a href="#" class="nav-item">
+      <div class="nav-icon">👤</div>
+      <span>Profile</span>
+    </a>
+  </div>
+</div>
+
+</body>
+</html>

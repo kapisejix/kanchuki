@@ -1,9 +1,35 @@
 # Kanchuki — India Retailer Growth & Profitability Roadmap
 
-**Status:** Proposed enhancement  
+**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **Not yet applied:** migration `055_growth_engine` + `056`/`057` (Supabase SQL Editor / `prisma migrate deploy`). **Not built:** E (AI Campaign Assistant — needs Fashion DNA), I (GST invoicing), P (WhatsApp native catalog), N beyond flags, M beyond description translation. See `docs/BUILD-LOG.md` §44–46.  
 **Date:** August 2026  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
+
+---
+
+## Status at a Glance (2026-08-17)
+
+| Letter | Feature | Status |
+|---|---|---|
+| A | Kanchuki Store Directory | ✅ Built (pre-existing `/stores`, city filter + search + admin featured pins) |
+| B | QR Code Lead Capture | ✅ Built (`customers.source` + `QR_SCAN` stamp on public contact gate) |
+| C | Referral Program Engine | ✅ Built (backend + mobile UI) |
+| D | Festival Campaign Automation | ✅ Built (admin calendar + campaign CRUD/send + mobile UI) |
+| E | AI Campaign Assistant | 🔴 Not built — needs Fashion DNA (Phase 1) |
+| F | Smart Promotion / Discount Engine | ✅ Built (backend + mobile UI) |
+| G | Customer Reactivation Campaigns | ✅ Built (backend + mobile UI) |
+| I | GST-Ready Invoicing | 🔴 Not built — PDF generation + HSN mapping |
+| J | Inventory Intelligence + Reorder Alerts | ✅ Built (signal-based alerts + mobile UI) |
+| K | Supplier Management | ✅ Built (backend + mobile UI) |
+| L | Showroom / Try-On Room Booking | ✅ Built (backend + mobile UI + public self-service booking) |
+| M | Multi-Language AI | 🕐 Partial — description translation only (Hindi/Hinglish/Tamil/Telugu/Marathi/Gujarati/Bengali); voice search + UI toggle not built |
+| N | Indian Size & Fit System | 🕐 Partial — `is_unstitched`/`includes_blouse` flags only |
+| P | WhatsApp Native Catalog Sync | 🔴 Not built — extends Meta integration |
+| Q | Video Product Support | ✅ Built (backend + mobile UI) |
+| R | Campaign Analytics by Region / Festival | 🕐 Partial — send/open stats endpoint only |
+| S | A/B Testing for Collections | 🕐 Partial — send split only, no collection A/B |
+
+> **Removed from scope 2026-08-17:** H — Daily Khata (P&L) and O — Udhar credit — no khata, no udhar.
 
 ---
 
@@ -40,7 +66,7 @@ These four gaps are where the next wave of features must land.
 
 > **Removed from scope 2026-08-17:** **H — Daily Khata (P&L)** and **O — Udhar credit** — no khata, no udhar. Sections deleted below; feature letters for the remaining items are unchanged.
 
-#### A. Kanchuki Store Directory (Free Discovery)
+#### A. Kanchuki Store Directory (Free Discovery) — ✅ Built (pre-existing: `/stores` live, city filter + search + admin featured pins)
 
 **What:** A public `kanchuki.app/stores` page listing all active retailers, filterable by city, category, and style. Each store card shows verified products, ratings, and a "Browse Collection" CTA.
 
@@ -56,7 +82,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### B. QR Code Lead Capture (In-Store + On Delivery)
+#### B. QR Code Lead Capture (In-Store + On Delivery) — ✅ Built (QR generation pre-existing; lead source tracking `customers.source` + `QR_SCAN` stamp on the public contact gate)
 
 **What:** Auto-generated QR codes for every retailer that link directly to their storefront. Physical + digital placement drives anonymous visitor → CRM lead conversion.
 
@@ -77,7 +103,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### C. Referral Program Engine
+#### C. Referral Program Engine — ✅ Built (backend + mobile UI: settings, KAN-XXXXXX codes, credit ledger, public landing/signup)
 
 **What:** Built-in referral system where existing customers share a unique link → friend makes first purchase → both receive a discount credit.
 
@@ -96,7 +122,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.2 Marketing Strategy Features
 
-#### D. Festival Campaign Automation (India-First)
+#### D. Festival Campaign Automation (India-First) — ✅ Built (admin-managed festival calendar + campaign CRUD/preview/send + mobile UI)
 
 **What:** Pre-built, culturally accurate campaign templates for every major Indian festival, with region-specific product recommendations.
 
@@ -117,7 +143,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### E. AI Campaign Assistant
+#### E. AI Campaign Assistant — 🔴 Not built (needs Fashion DNA live first, Phase 1)
 
 **What:** Natural language campaign creation. Retailer types or speaks a command → AI generates the customer segment, product selection, WhatsApp message draft, and send schedule.
 
@@ -133,7 +159,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### F. Smart Promotion / Discount Engine
+#### F. Smart Promotion / Discount Engine — ✅ Built (backend + mobile UI: PERCENT/FIXED codes, min order, product-restricted, dates)
 
 **What:** Automated suggestions for markdowns and promotions based on inventory age and demand signals.
 
@@ -148,7 +174,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### G. Customer Reactivation Campaigns
+#### G. Customer Reactivation Campaigns — ✅ Built (backend + mobile UI: inactive-customer suggestions + one-tap REACTIVATION campaign)
 
 **What:** Automated identification of inactive customers + one-tap reactivation campaign.
 
@@ -164,7 +190,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.3 Shop Organization Features
 
-#### I. GST-Ready Invoicing
+#### I. GST-Ready Invoicing — 🔴 Not built (needs PDF generation + HSN code mapping)
 
 **What:** Auto-generate GST-compliant invoices for every order, with HSN codes for apparel, CGST/SGST/IGST split, and invoice numbering.
 
@@ -179,7 +205,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### J. Inventory Intelligence + Reorder Alerts
+#### J. Inventory Intelligence + Reorder Alerts — ✅ Built (signal-based alerts: dead stock / high velocity / top performer / unlisted + mobile UI)
 
 **What:** Go beyond status tracking to predictive inventory management.
 
@@ -194,7 +220,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### K. Supplier Management
+#### K. Supplier Management — ✅ Built (backend + mobile UI: CRUD + ORDER/PAYMENT ledger + pending balance)
 
 **What:** Track suppliers, purchase orders, payment history, and pending orders.
 
@@ -211,7 +237,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### L. Showroom / Try-On Room Booking
+#### L. Showroom / Try-On Room Booking — ✅ Built (backend + mobile UI + public self-service slot booking with conflict check)
 
 **What:** In-app booking system for private shopping slots, bridal consultations, or group try-on sessions.
 
@@ -229,7 +255,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.4 Localized Indian Features
 
-#### M. Multi-Language AI (Hindi + Hinglish + Regional)
+#### M. Multi-Language AI (Hindi + Hinglish + Regional) — 🕐 Partial (Claude-generated product descriptions in 7 languages + mobile UI; voice search / PWA language / retailer UI toggle not built)
 
 **What:** AI-generated product descriptions, WhatsApp messages, and campaign templates in multiple languages.
 
@@ -249,7 +275,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### N. Indian Size & Fit System
+#### N. Indian Size & Fit System — 🕐 Partial (`is_unstitched`/`includes_blouse` product flags exposed publicly only)
 
 **What:** Standardized Indian sizing labels with chest/inch breakdown, unstitched vs. stitched flags, and blouse piece indicators for sarees.
 
@@ -265,7 +291,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### P. WhatsApp Catalog Sync (Native)
+#### P. WhatsApp Catalog Sync (Native) — 🔴 Not built (extends Meta integration, Phase 2)
 
 **What:** Push products directly to Meta's native WhatsApp Business catalog (the in-app product list under a business profile), not just web links.
 
@@ -281,7 +307,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### Q. Video Product Support
+#### Q. Video Product Support — ✅ Built (backend: presigned R2 upload + register/list/delete + public exposure; mobile UI with gallery picker)
 
 **What:** Allow retailers to attach 5–10 second product videos in addition to photos.
 
@@ -299,7 +325,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.5 Campaign & Analytics Enhancements
 
-#### R. Campaign Analytics by Region / Festival
+#### R. Campaign Analytics by Region / Festival — 🕐 Partial (send/open stats endpoint + campaign UI; region/festival dashboards not built)
 
 **What:** Extend existing analytics with dimensions that matter for Indian retail.
 
@@ -316,7 +342,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### S. A/B Testing for Collections
+#### S. A/B Testing for Collections — 🕐 Partial (two-variant send split with cumulative `send_pct`; no collection-level A/B)
 
 **What:** Test two product orderings, two message templates, or two send times → see which performs better.
 
@@ -332,46 +358,46 @@ These four gaps are where the next wave of features must land.
 
 ### Sprint Block A — Quick Wins (4 weeks)
 
-| Feature | Effort | Impact | Priority |
-|---|---|---|---|
-| QR Code Lead Capture | Low | High | **P0** |
-| Customer Reactivation Campaigns | Low-Medium | High | **P0** |
-| Video Product Support | Low | Medium | **P1** |
-| Campaign Analytics by Festival | Low | Medium | **P1** |
-| Inventory Intelligence Alerts | Low-Medium | Medium | **P1** |
+| Feature | Effort | Impact | Priority | Status |
+|---|---|---|---|---|
+| QR Code Lead Capture | Low | High | **P0** | ✅ Built |
+| Customer Reactivation Campaigns | Low-Medium | High | **P0** | ✅ Built |
+| Video Product Support | Low | Medium | **P1** | ✅ Built |
+| Campaign Analytics by Festival | Low | Medium | **P1** | 🕐 Partial (send/open stats only) |
+| Inventory Intelligence Alerts | Low-Medium | Medium | **P1** | ✅ Built |
 
 ### Sprint Block B — Customer Acquisition (6 weeks)
 
-| Feature | Effort | Impact | Priority |
-|---|---|---|---|
-| Kanchuki Store Directory | Medium | High | **P0** |
-| Referral Program Engine | Medium | High | **P1** |
-| Festival Campaign Templates | Medium | High | **P0** |
-| Smart Promotion Engine | Medium | Medium | **P1** |
+| Feature | Effort | Impact | Priority | Status |
+|---|---|---|---|---|
+| Kanchuki Store Directory | Medium | High | **P0** | ✅ Built (pre-existing) |
+| Referral Program Engine | Medium | High | **P1** | ✅ Built |
+| Festival Campaign Templates | Medium | High | **P0** | ✅ Built (admin calendar + campaigns) |
+| Smart Promotion Engine | Medium | Medium | **P1** | ✅ Built |
 
 ### Sprint Block C — Shop Management (6 weeks)
 
-| Feature | Effort | Impact | Priority |
-|---|---|---|---|
-| GST-Ready Invoicing | Medium | High | **P1** |
-| Supplier Management | Low | Medium | **P2** |
-| Showroom Booking | Low | Low | **P2** |
+| Feature | Effort | Impact | Priority | Status |
+|---|---|---|---|---|
+| GST-Ready Invoicing | Medium | High | **P1** | 🔴 Not built |
+| Supplier Management | Low | Medium | **P2** | ✅ Built |
+| Showroom Booking | Low | Low | **P2** | ✅ Built |
 
 ### Sprint Block D — Localization & Scale (6 weeks)
 
-| Feature | Effort | Impact | Priority |
-|---|---|---|---|
-| Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** |
-| Indian Size & Fit System | Low-Medium | Medium | **P1** |
-| WhatsApp Native Catalog Sync | Medium | High | **P1** |
+| Feature | Effort | Impact | Priority | Status |
+|---|---|---|---|---|
+| Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** | 🕐 Partial (description translation only) |
+| Indian Size & Fit System | Low-Medium | Medium | **P1** | 🕐 Partial (flags only) |
+| WhatsApp Native Catalog Sync | Medium | High | **P1** | 🔴 Not built |
 
 ### Sprint Block E — Advanced (Post-Phase 1)
 
-| Feature | Effort | Impact | Priority |
-|---|---|---|---|
-| AI Campaign Assistant | High | High | **P1** |
-| Instagram Business Publishing | Medium | Medium | **P1** |
-| A/B Testing | Medium | Medium | **P2** |
+| Feature | Effort | Impact | Priority | Status |
+|---|---|---|---|---|
+| AI Campaign Assistant | High | High | **P1** | 🔴 Not built (needs Fashion DNA) |
+| Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) |
+| A/B Testing | Medium | Medium | **P2** | 🕐 Partial (send split only) |
 
 ---
 
@@ -398,9 +424,9 @@ These four gaps are where the next wave of features must land.
 | WhatsApp-native commerce | ✅ | ❌ | Partial | ❌ |
 | Fashion DNA + AI matching | 🕐 | ❌ | ❌ | ❌ |
 | Virtual try-on for ethnic wear | ❌ | ❌ | ❌ | ❌ |
-| Festival/region-aware campaigns | 🕐 | ❌ | ❌ | ❌ |
+| Festival/region-aware campaigns | ✅ | ❌ | ❌ | ❌ |
 | Indian language support | Partial | ❌ | ❌ | ❌ |
-| QR lead capture + store directory | 🕐 | ❌ | ❌ | ❌ |
+| QR lead capture + store directory | ✅ | ❌ | ❌ | ❌ |
 | Shop management (GST, supplier) | ❌ | ❌ | ❌ | ❌ |
 
 **The moat:** The combination of **catalog digitization + AI fashion intelligence + WhatsApp commerce + Indian retail operations** in one mobile-first tool. No single competitor covers all four. Building them separately is what retailers currently do — and why they're underserved.

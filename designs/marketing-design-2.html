@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanchuki — Design 2: Warm Editorial</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=DM+Serif+Display:ital@0;1&display=swap');
+
+  :root {
+    --cream: #faf8f5;
+    --warm-50: #fdf8f6;
+    --warm-100: #f5ebe0;
+    --warm-200: #e8d5c4;
+    --warm-300: #d4b896;
+    --warm-400: #c69f7a;
+    --warm-500: #a87c5c;
+    --warm-600: #8b5e3c;
+    --ink: #1c1917;
+    --ink-soft: #44403c;
+    --ink-muted: #78716c;
+    --accent: #c2410c;
+    --accent-light: #fff7ed;
+    --border: #e7e5e4;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: var(--cream);
+    color: var(--ink);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 48px;
+    background: rgba(250,248,245,0.85);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: 'DM Serif Display', serif; font-size: 26px; color: var(--ink);
+  }
+  .nav-links { display: flex; gap: 36px; }
+  .nav-links a {
+    color: var(--ink-muted); text-decoration: none; font-size: 14px;
+    font-weight: 500; transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta {
+    padding: 10px 22px; border-radius: 8px; border: none;
+    background: var(--ink); color: white; font-weight: 600; font-size: 14px; cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .nav-cta:hover { opacity: 0.85; }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px;
+    align-items: center; padding: 140px 48px 80px;
+    max-width: 1300px; margin: 0 auto;
+  }
+  .hero-text h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(44px, 6vw, 76px);
+    line-height: 1.05; letter-spacing: -0.02em;
+    margin-bottom: 24px;
+  }
+  .hero-text h1 em {
+    font-style: italic; color: var(--accent);
+  }
+  .hero-text p {
+    font-size: 18px; color: var(--ink-muted); margin-bottom: 36px; max-width: 480px; line-height: 1.7;
+  }
+  .cta-group { display: flex; gap: 14px; flex-wrap: wrap; }
+  .btn-primary {
+    padding: 14px 28px; border-radius: 8px; border: none;
+    background: var(--ink); color: white; font-weight: 600; font-size: 15px; cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .btn-primary:hover { transform: translateY(-2px); }
+  .btn-secondary {
+    padding: 14px 28px; border-radius: 8px;
+    border: 1px solid var(--border); background: white;
+    color: var(--ink); font-weight: 600; font-size: 15px; cursor: pointer;
+  }
+  .hero-visual {
+    position: relative; height: 520px;
+    background: linear-gradient(135deg, var(--warm-100) 0%, var(--warm-200) 100%);
+    border-radius: 24px; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .hero-visual::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23c69f7a' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.6;
+  }
+  .mock-store {
+    position: relative; z-index: 1; width: 260px;
+    background: white; border-radius: 16px; padding: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+    transform: rotate(-2deg);
+  }
+  .mock-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .mock-avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--warm-300); }
+  .mock-line { height: 8px; background: var(--warm-100); border-radius: 4px; }
+  .mock-line.w60 { width: 60%; }
+  .mock-line.w40 { width: 40%; }
+  .mock-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mock-card { aspect-ratio: 3/4; background: var(--warm-100); border-radius: 8px; }
+  .mock-card:nth-child(2) { background: var(--warm-200); }
+  .mock-card:nth-child(3) { background: var(--warm-200); }
+  .mock-card:nth-child(4) { background: var(--warm-100); }
+
+  /* TRUST BAR */
+  .trust-bar {
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 32px 48px;
+    display: flex; justify-content: center; gap: 64px; flex-wrap: wrap;
+  }
+  .trust-item { display: flex; align-items: center; gap: 12px; }
+  .trust-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--warm-100); display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .trust-text small { display: block; font-size: 12px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+  .trust-text strong { font-size: 15px; font-weight: 600; }
+
+  /* FEATURES */
+  .section { padding: 120px 48px; max-width: 1200px; margin: 0 auto; }
+  .section-header { margin-bottom: 72px; }
+  .section-header .eyebrow {
+    font-size: 13px; font-weight: 600; color: var(--accent);
+    text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 12px;
+  }
+  .section-header h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 48px; line-height: 1.15; letter-spacing: -0.01em;
+    max-width: 700px;
+  }
+  .section-header p { color: var(--ink-muted); font-size: 16px; max-width: 520px; margin-top: 16px; }
+
+  .feature-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+    margin-bottom: 120px;
+  }
+  .feature-row.reverse { direction: rtl; }
+  .feature-row.reverse .feature-text { direction: ltr; }
+  .feature-row.reverse .feature-visual { direction: ltr; }
+
+  .feature-visual {
+    aspect-ratio: 4/3; border-radius: 20px; overflow: hidden; position: relative;
+  }
+  .feature-visual.warm { background: linear-gradient(135deg, var(--warm-100), var(--warm-300)); }
+  .feature-visual.sage { background: linear-gradient(135deg, #e8f0e8, #c4d4c4); }
+  .feature-visual.clay { background: linear-gradient(135deg, #f5e6dc, #d4a574); }
+  .feature-visual.slate { background: linear-gradient(135deg, #e8eaed, #b8bcc2); }
+
+  .feature-inner {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    padding: 40px;
+  }
+  .feature-card-ui {
+    background: white; border-radius: 12px; padding: 24px;
+    width: 100%; max-width: 360px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+  }
+  .fc-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .fc-thumb { width: 56px; height: 56px; border-radius: 8px; background: var(--warm-100); flex-shrink: 0; }
+  .fc-text { flex: 1; }
+  .fc-line { height: 6px; background: var(--warm-100); border-radius: 3px; margin-bottom: 6px; }
+  .fc-line.w70 { width: 70%; }
+  .fc-line.w50 { width: 50%; }
+
+  .feature-text h3 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 36px; line-height: 1.2; margin-bottom: 16px;
+  }
+  .feature-text p { color: var(--ink-muted); font-size: 16px; line-height: 1.7; margin-bottom: 24px; }
+  .feature-list { list-style: none; }
+  .feature-list li { padding: 8px 0; font-size: 15px; color: var(--ink-soft); }
+  .feature-list li::before { content: '→'; color: var(--accent); margin-right: 10px; font-weight: 700; }
+
+  /* TESTIMONIALS */
+  .testimonials { padding: 100px 48px; background: white; }
+  .testimonials-inner { max-width: 1200px; margin: 0 auto; }
+  .testimonials-inner h2 {
+    font-family: 'DM Serif Display', serif; font-size: 42px; text-align: center; margin-bottom: 64px;
+  }
+  .testi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .testi-card {
+    border: 1px solid var(--border); border-radius: 16px; padding: 32px;
+    background: var(--warm-50);
+  }
+  .testi-card p { font-size: 15px; color: var(--ink-soft); line-height: 1.7; margin-bottom: 24px; font-style: italic; }
+  .testi-author { display: flex; align-items: center; gap: 12px; }
+  .testi-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--warm-300), var(--warm-500));
+  }
+  .testi-author strong { display: block; font-size: 14px; }
+  .testi-author span { font-size: 13px; color: var(--ink-muted); }
+
+  /* CTA */
+  .cta-section {
+    padding: 120px 48px; text-align: center;
+    background: linear-gradient(180deg, var(--cream) 0%, var(--warm-100) 100%);
+  }
+  .cta-section h2 {
+    font-family: 'DM Serif Display', serif;
+    font-size: 52px; line-height: 1.1; margin-bottom: 20px;
+  }
+  .cta-section p { color: var(--ink-muted); font-size: 16px; margin-bottom: 32px; }
+  .cta-section .btn-primary { font-size: 16px; padding: 16px 36px; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border); padding: 64px 48px 32px;
+    max-width: 1200px; margin: 0 auto;
+    display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 48px;
+  }
+  footer .brand { font-family: 'DM Serif Display', serif; font-size: 22px; margin-bottom: 12px; }
+  footer .desc { color: var(--ink-muted); font-size: 14px; max-width: 280px; }
+  footer h5 { font-size: 13px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 16px; }
+  footer ul { list-style: none; }
+  footer ul li { margin-bottom: 10px; }
+  footer ul a { color: var(--ink-muted); text-decoration: none; font-size: 14px; }
+  footer ul a:hover { color: var(--ink); }
+  .footer-bottom {
+    max-width: 1200px; margin: 0 auto; padding: 24px 0;
+    border-top: 1px solid var(--border); display: flex; justify-content: space-between;
+    color: var(--ink-muted); font-size: 13px;
+  }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; padding: 120px 24px 60px; }
+    .hero-visual { height: 360px; order: -1; }
+    .feature-row { grid-template-columns: 1fr; gap: 40px; }
+    .feature-row.reverse { direction: ltr; }
+    .testi-grid { grid-template-columns: 1fr; }
+    footer { grid-template-columns: 1fr 1fr; }
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    .section { padding: 80px 24px; }
+    .section-header h2 { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Kanchuki</div>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#features">Features</a>
+    <a href="#stories">Stories</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <button class="nav-cta">Start free</button>
+</nav>
+
+<section class="hero">
+  <div class="hero-text">
+    <h1>Your store, <em>beautifully</em> curated.</h1>
+    <p>Kanchuki helps Indian artisans, boutiques, and D2C brands create stunning catalogs and sell directly to customers — no code, no hassle.</p>
+    <div class="cta-group">
+      <button class="btn-primary">Open your store →</button>
+      <button class="btn-secondary">Watch video</button>
+    </div>
+  </div>
+  <div class="hero-visual">
+    <div class="mock-store">
+      <div class="mock-header">
+        <div class="mock-avatar"></div>
+        <div style="flex:1">
+          <div class="mock-line w60"></div>
+          <div class="mock-line w40"></div>
+        </div>
+      </div>
+      <div class="mock-grid">
+        <div class="mock-card"></div>
+        <div class="mock-card"></div>
+        <div class="mock-card"></div>
+        <div class="mock-card"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="trust-bar">
+  <div class="trust-item">
+    <div class="trust-icon">🧵</div>
+    <div class="trust-text"><small>Industry</small><strong>Fashion & Retail</strong></div>
+  </div>
+  <div class="trust-item">
+    <div class="trust-icon">📱</div>
+    <div class="trust-text"><small>Platform</small><strong>WhatsApp-first</strong></div>
+  </div>
+  <div class="trust-item">
+    <div class="trust-icon">🇮🇳</div>
+    <div class="trust-text"><small>Presence</small><strong>Pan-India logistics</strong></div>
+  </div>
+  <div class="trust-item">
+    <div class="trust-icon">💳</div>
+    <div class="trust-text"><small>Payments</small><strong>UPI, Cards, COD</strong></div>
+  </div>
+</div>
+
+<section class="section" id="how">
+  <div class="section-header">
+    <div class="eyebrow">How it works</div>
+    <h2>Three steps to your own store.</h2>
+    <p>Launch in minutes, not months. We handle the hard parts.</p>
+  </div>
+  <div class="feature-row">
+    <div class="feature-visual warm">
+      <div class="feature-inner">
+        <div class="feature-card-ui">
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <div style="width:12px; height:12px; border-radius:50%; background:#ef4444;"></div>
+            <div style="width:12px; height:12px; border-radius:50%; background:#f59e0b;"></div>
+            <div style="width:12px; height:12px; border-radius:50%; background:#22c55e;"></div>
+          </div>
+          <div style="text-align:center; padding:12px;">
+            <div style="width:100%; height:120px; background:var(--warm-100); border-radius:8px; margin-bottom:12px;"></div>
+            <div class="fc-line w70" style="margin:0 auto 6px;"></div>
+            <div class="fc-line w50" style="margin:0 auto;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="feature-text">
+      <h3>1. Curate your catalog</h3>
+      <p>Upload products with beautiful photos, set prices, and organize into collections. Our editor makes it feel like arranging a boutique window.</p>
+      <ul class="feature-list">
+        <li>Bulk CSV import</li>
+        <li>Auto image optimization</li>
+        <li>Variants for size, color, fit</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feature-row reverse">
+    <div class="feature-visual sage">
+      <div class="feature-inner">
+        <div class="feature-card-ui" style="background:#f0f4f0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div style="width:40px; height:40px; border-radius:50%; background:#d4d4d4;"></div>
+            <div style="width:80px; height:24px; background:#22c55e; border-radius:6px;"></div>
+          </div>
+          <div class="fc-row">
+            <div class="fc-thumb" style="background:#c4d4c4;"></div>
+            <div class="fc-text"><div class="fc-line w70"></div><div class="fc-line w50"></div></div>
+          </div>
+          <div class="fc-row">
+            <div class="fc-thumb" style="background:#c4d4c4;"></div>
+            <div class="fc-text"><div class="fc-line w70"></div><div class="fc-line w50"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="feature-text">
+      <h3>2. Share everywhere</h3>
+      <p>Send your catalog link via WhatsApp, Instagram, or email. Customers browse and order without leaving their favorite app.</p>
+      <ul class="feature-list">
+        <li>One-tap WhatsApp sharing</li>
+        <li>Instagram catalog sync</li>
+        <li>QR codes for offline stores</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="feature-row">
+    <div class="feature-visual clay">
+      <div class="feature-inner">
+        <div class="feature-card-ui" style="background:#fff8f5;">
+          <div style="display:flex; gap:6px; margin-bottom:16px;">
+            <div style="flex:1; height:80px; background:var(--warm-200); border-radius:6px;"></div>
+            <div style="flex:1; height:80px; background:var(--warm-300); border-radius:6px;"></div>
+            <div style="flex:1; height:80px; background:var(--warm-200); border-radius:6px;"></div>
+          </div>
+          <div style="height:8px; background:var(--warm-100); border-radius:4px; margin-bottom:8px;"></div>
+          <div style="height:8px; background:var(--warm-100); border-radius:4px; width:60%;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="feature-text">
+      <h3>3. Fulfill with confidence</h3>
+      <p>Track orders, print labels, and manage returns — all in one dashboard. We integrate with every major Indian courier.</p>
+      <ul class="feature-list">
+        <li>Auto label generation</li>
+        <li>Real-time tracking</li>
+        <li>Return management</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="testimonials" id="stories">
+  <div class="testimonials-inner">
+    <h2>Loved by creators across India</h2>
+    <div class="testi-grid">
+      <div class="testi-card">
+        <p>"Kanchuki replaced three tools for me. My catalog, WhatsApp orders, and shipping labels — all in one place. It feels like it was made for Indian sellers."</p>
+        <div class="testi-author">
+          <div class="testi-avatar"></div>
+          <div><strong>Priya Mehta</strong><span>Founder, Aavya Handlooms</span></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <p>"The design is stunning. My customers keep telling me how professional my catalog looks. Sales went up 40% in the first month."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:linear-gradient(135deg,#d4b896,#a87c5c);"></div>
+          <div><strong>Rahul Verma</strong><span>Owner, The Rug Studio</span></div>
+        </div>
+      </div>
+      <div class="testi-card">
+        <p>"Finally, a platform that understands Indian logistics. Delhivery integration is seamless and COD reconciliation is a breeze."</p>
+        <div class="testi-author">
+          <div class="testi-avatar" style="background:linear-gradient(135deg,#c4d4c4,#8ba88b);"></div>
+          <div><strong>Anjali Kapoor</strong><span>CEO, Kraft & Clay</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="cta-section">
+  <h2>Start your store today.</h2>
+  <p>Free forever for small catalogs. No credit card required.</p>
+  <button class="btn-primary">Get started — it's free →</button>
+</section>
+
+<footer>
+  <div>
+    <div class="brand">Kanchuki</div>
+    <p class="desc">Beautiful commerce tools for Indian creators, artisans, and small businesses.</p>
+  </div>
+  <div>
+    <h5>Product</h5>
+    <ul>
+      <li><a href="#">Catalog</a></li><li><a href="#">Storefront</a></li><li><a href="#">Analytics</a></li><li><a href="#">Logistics</a></li>
+    </ul>
+  </div>
+  <div>
+    <h5>Company</h5>
+    <ul>
+      <li><a href="#">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Careers</a></li><li><a href="#">Press</a></li>
+    </ul>
+  </div>
+  <div>
+    <h5>Support</h5>
+    <ul>
+      <li><a href="#">Help Center</a></li><li><a href="#">Contact</a></li><li><a href="#">Status</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom" style="max-width:1200px; margin:0 auto; padding:24px 0;">
+  <span>© 2026 Kanchuki Technologies Pvt. Ltd.</span>
+  <span>Crafted with care in Bangalore</span>
+</div>
+
+</body>
+</html>

@@ -116,6 +116,17 @@ function AppShell() {
         <Stack.Screen name="growth/campaigns" />
         <Stack.Screen name="growth/campaign-new" options={{ presentation: 'modal' }} />
         <Stack.Screen name="growth/campaign/[id]" />
+        <Stack.Screen name="growth/referrals" />
+        <Stack.Screen name="growth/promotions" />
+        <Stack.Screen name="growth/promotion-form" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="growth/suppliers" />
+        <Stack.Screen name="growth/supplier-form" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="growth/supplier/[id]" />
+        <Stack.Screen name="growth/bookings" />
+        <Stack.Screen name="growth/booking-form" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="growth/inventory" />
+        <Stack.Screen name="growth/videos" />
+        <Stack.Screen name="growth/translate" />
       </Stack>
     </View>
   )

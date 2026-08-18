@@ -958,3 +958,21 @@ Follow-up to the backend commit above (point 3 of the scope-removal note). Retai
 **Verified:** API `tsc --noEmit` clean + `vitest run` 508/508 (incl. 11 new admin-festivals tests); mobile `tsc --noEmit` clean; web `tsc --noEmit` clean. **Still pending:** migration `055_growth_engine` not applied (Supabase SQL Editor / `prisma migrate deploy`); remaining 7 growth modules (referrals/promotions/suppliers/bookings/inventory/videos/translate) still backend-only — UI lands in later passes; no deployment.
 
 **Migration apply fix (2026-08-17, same day):** running migration `055` through the Supabase SQL editor failed with `ERROR: 55P04: unsafe use of new value "GROWTH_ENGINE" of enum type "PlanFeatureKey"` — PostgreSQL forbids *using* an enum value in the same transaction that adds it, and Prisma runs each migration as one transaction. Split into three: `055` keeps all tables/columns/seeds, new `056_plan_feature_growth_engine_enum` contains only `ALTER TYPE "PlanFeatureKey" ADD VALUE 'GROWTH_ENGINE';`, new `057_plan_feature_growth_engine_rows` has the two `plan_features` inserts. Apply order matters: 055 → 056 → 057 (each its own transaction). `prisma validate` clean.
+
+## ✅ BUILT 2026-08-17: Growth Engine UI — remaining 7 modules (mobile screens)
+
+Follow-up to the §45 commit: the growth hub's "Soon" cards are gone — every roadmap module now has a live mobile screen wired to its `/v1/growth/*` endpoint, registered in `app/_layout.tsx` (form screens as modals). All screens share the hub's design language (`AnimatedPressable` cards, `GradientButton`, `useTheme` primary color, sand palette) and handle loading/empty/error states plus `FEATURE_UNAVAILABLE` (upgrade card). API client: `apps/mobile/src/lib/api/growth.ts` extended with typed calls for all 7 modules. Mobile `tsc --noEmit` clean.
+
+| Module | Files | Summary |
+|---|---|---|
+| Referrals (C) | `apps/mobile/app/growth/referrals.tsx` | Settings toggle + ₹ reward (paise), customer picker → generate KAN-XXXXXX code, code list with click/signup counts + share via wa.me, manual credit action creating PENDING reward credits, credit ledger per code |
+| Promotions (F) | `promotions.tsx`, `promotion-form.tsx` (modal) | Code list with discount (PERCENT/FIXED), min-order ₹, validity window, usage count, active toggle + delete confirm; create/edit form with product multi-pick |
+| Suppliers (K) | `suppliers.tsx`, `supplier-form.tsx` (modal), `supplier/[id].tsx` | Supplier list with pending balance + add/edit (name, phone, city, notes); detail screen with ORDER/PAYMENT transaction ledger, pending-amount calc, add-transaction form (Stock order / Payment made chips) |
+| Bookings (L) | `bookings.tsx`, `booking-form.tsx` (modal) | Booking list with status filter chips (ALL/REQUESTED/CONFIRMED/COMPLETED/CANCELLED) + status badges; create form (optional customer, name/phone, start/end slot, note); status transition actions + delete; backend slot-conflict errors surfaced |
+| Inventory alerts (J) | `inventory.tsx` | Signal cards grouped by kind (dead stock / high velocity / top performer / unlisted) with message, views/enquiries/sales 30d, days-since-interaction; pull-to-refresh |
+| Videos (Q) | `videos.tsx` | Product picker → per-product video list (duration badge); gallery upload via `expo-image-picker` → presigned R2 PUT → register; set-as-main + delete |
+| AI Translate (M) | `translate.tsx` | Product picker → language chips (Hindi/Hinglish/Tamil/Telugu/Marathi/Gujarati/Bengali from `TRANSLATE_LANGUAGES`) → Claude description; result shown with cached badge; Copy button shows a toast-style confirmation (expo-clipboard not a dependency yet — text stays on screen for manual copy) |
+
+**Design decisions:** mirror the §45 conventions — festival ids stay opaque, money stays paise (rendered via `₹` + `en-IN`), send/credit flows stay manual-dispatch first. Referral credits are shown as a ledger (PENDING/CREDITED) rather than wallet math; the retailer confirms conversion manually.
+
+**Verified:** mobile `tsc --noEmit` clean. **Still pending:** migration `055_growth_engine` + `056`/`057` not applied (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests not written; no deployment. Not built / partial per roadmap: E, I, P, and partial M/N/R/S (see `docs/INDIA-RETAILER-GROWTH.md` status table).

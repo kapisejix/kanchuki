@@ -1853,7 +1853,7 @@ adapt to Indian retail culture and language. The roadmap
 Acquisition, Marketing Strategy, Shop Organization, and Localized Indian
 Features.
 
-### 27.2 Scope shipped (backend, then UI follow-up same day)
+### 27.2 Scope shipped (backend + full mobile UI)
 
 | Letter | Feature | Status |
 |---|---|---|
@@ -1877,6 +1877,12 @@ Features.
 > **Scope change 2026-08-17:** **Khata (H)** and **Udhar (O)** removed
 > completely — models, enums, routes, and migration sections deleted. No
 > khata, no udhar. 11 tables remain.
+
+> **UI (2026-08-17, same-day follow-up):** every growth module now has a
+> live mobile screen — growth hub + campaigns + admin festival calendar
+> (BUILD-LOG §45) and referrals, promotions, suppliers, showroom
+> bookings, inventory alerts, product videos, AI translate (BUILD-LOG
+> §46). The hub's "Soon" cards are gone; each card routes to its module.
 
 ### 27.3 Data model
 
@@ -1940,15 +1946,14 @@ additions:
 
 ### 27.7 Not done / next
 
-- **UI screens for the remaining 7 modules** (referrals, promotions,
-  suppliers, showroom bookings, inventory alerts, product videos, AI
-  translate) — mobile growth hub + campaigns UI shipped 2026-08-17
-  (BUILD-LOG §45); the hub lists the rest as "Soon" cards
 - Per-route tests for the growth suite; migration `055_growth_engine`
-  must be applied before any live data (Supabase SQL Editor /
-  `prisma migrate deploy`)
-- Out of scope: E (AI Campaign Assistant), I (GST invoicing), P (WhatsApp
-  native catalog)
+  (`056`/`057` for the enum value + plan-feature rows) must be applied
+  before any live data (Supabase SQL Editor / `prisma migrate deploy`) —
+  **not yet applied**
+- Out of scope: E (AI Campaign Assistant — needs Fashion DNA), I (GST
+  invoicing), P (WhatsApp native catalog)
+- Partial: M (translation only — no voice search / UI toggle), N (flags
+  only), R (send/open stats only), S (send split only)
 
 **UI follow-up (2026-08-17, same day):** mobile growth hub (`/growth`,
 entry from the home-tab **Growth Tools** quick action) + full campaigns
@@ -1959,3 +1964,12 @@ open-rate stats, delete) + admin festival calendar (`/v1/admin/festivals`
 CRUD, audit-logged, soft delete; `/admin/festivals` web page with
 add/edit modal + status badges). 11 admin-festivals tests; API/mobile/web
 tsc clean, 508/508 API tests.
+
+**Remaining 7 module UIs (2026-08-17, same day, BUILD-LOG §46):**
+referrals (settings/codes/credit ledger), promotions (CRUD + form
+modal), suppliers (list/form/detail with ORDER/PAYMENT ledger), showroom
+bookings (status filters + form modal + status transitions), inventory
+alerts (kind-grouped signal cards), product videos (gallery picker →
+presigned upload → register/set-main/delete), AI translate (product
+picker + 7 language chips → Claude description). Mobile `tsc --noEmit`
+clean.
