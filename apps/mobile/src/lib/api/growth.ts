@@ -344,6 +344,28 @@ export type AiCampaignDraft = {
   audience_count: number
 }
 
+// ─── Roadmap R — Seasonal Analytics ─────────────────────────────
+
+export type SeasonalCategory = {
+  category: string
+  current: { sends: number; opens: number; enquiries: number }
+  compare: { sends: number; opens: number; enquiries: number }
+  deltaPct: { sends: number; opens: number; enquiries: number }
+}
+
+export type SeasonalAnalytics = {
+  period: { label: string; start: string; end: string }
+  comparePeriod?: { label: string; start: string; end: string }
+  categories: SeasonalCategory[]
+  summary: {
+    topCurrentCategory: string | null
+    topCompareCategory: string | null
+    biggestSwing: { category: string; metric: string; deltaPct: number } | null
+  }
+}
+
+export type SeasonalPeriod = 'wedding' | 'daily'
+
 export const growthApi = {
   // ─── Referrals (roadmap C) ──────────────────────────────────────
   referralSettings: () =>
@@ -555,4 +577,11 @@ export const growthApi = {
       method: 'POST',
       body: JSON.stringify({ inactive_days: inactiveDays }),
     }),
+
+  // ─── Seasonal analytics (roadmap R) ─────────────────────────────
+  seasonal: (period: SeasonalPeriod = 'wedding') =>
+    request<{ data: SeasonalAnalytics }>(
+      `/v1/growth/analytics/seasonal?period=${period}`,
+      { getCacheTtlMs: 60_000 },
+    ),
 }

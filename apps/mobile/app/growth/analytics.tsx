@@ -1,7 +1,9 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
   BarChart3,
+  Calendar,
   ChevronLeft,
   Clock,
   Film,
@@ -14,7 +16,7 @@ import {
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { growthApi, type GrowthAnalytics } from '../../src/lib/api/growth'
+import { growthApi, type GrowthAnalytics, type SeasonalAnalytics, type SeasonalPeriod } from '../../src/lib/api/growth'
 import { useTheme } from '../../src/lib/theme'
 
 // ─── Roadmap R — campaign & commerce analytics with India-retail
@@ -71,6 +73,116 @@ function OpenRateRow({
   )
 }
 
+// ─── Roadmap R — Seasonal Section ──────────────────────────────
+
+function SeasonalSection({ data, loading, period, onPeriodChange }: {
+  data: SeasonalAnalytics | undefined
+  loading: boolean
+  period: SeasonalPeriod
+  onPeriodChange: (p: SeasonalPeriod) => void
+}) {
+  const { primaryColor, colors } = useTheme()
+
+  return (
+    <Section icon={<Calendar size={15} color={colors.turmeric[600]} />} title="Seasonal comparison">
+      {/* Period toggle */}
+      <View className="flex-row bg-sand-100 rounded-xl p-1 mb-3">
+        {([
+          { key: 'wedding' as const, label: 'Wedding Season' },
+          { key: 'daily' as const, label: 'Daily Wear' },
+        ]).map((p) => {
+          const active = period === p.key
+          return (
+            <AnimatedPressable
+              key={p.key}
+              onPress={() => onPeriodChange(p.key)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              className={`flex-1 flex-row items-center justify-center rounded-lg py-2 ${
+                active ? '' : 'bg-transparent'
+              }`}
+              style={active ? { backgroundColor: primaryColor } : undefined}
+            >
+              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-500'}`}>
+                {p.label}
+              </Text>
+            </AnimatedPressable>
+          )
+        })}
+      </View>
+
+      {loading ? (
+        <View className="items-center py-6">
+          <ActivityIndicator color={primaryColor} />
+        </View>
+      ) : !data || data.categories.length === 0 ? (
+        <Empty text="Run festival or promotion campaigns to unlock seasonal insights." />
+      ) : (
+        <>
+          {/* Summary badge */}
+          {data.summary.biggestSwing && (
+            <View className="bg-turmeric-50 rounded-xl p-3 mb-3 border border-turmeric-100">
+              <Text className="text-[11px] font-semibold text-turmeric-700">
+                Biggest swing: {data.summary.biggestSwing.category}{' '}
+                ({data.summary.biggestSwing.metric})
+                {' '}{data.summary.biggestSwing.deltaPct > 0 ? '+' : ''}{data.summary.biggestSwing.deltaPct}%
+              </Text>
+            </View>
+          )}
+
+          {/* Period labels */}
+          <View className="flex-row justify-between mb-2">
+            <Text className="text-[10px] font-semibold text-sand-400 uppercase">
+              {data.period.label}
+            </Text>
+            {data.comparePeriod && (
+              <Text className="text-[10px] font-semibold text-sand-400 uppercase">
+                {data.comparePeriod.label}
+              </Text>
+            )}
+          </View>
+
+          {/* Category rows */}
+          {data.categories.slice(0, 8).map((cat) => (
+            <View key={cat.category} className="mb-3">
+              <View className="flex-row items-center justify-between mb-1">
+                <Text className="text-xs font-medium text-sand-700 flex-1 mr-2" numberOfLines={1}>
+                  {cat.category}
+                </Text>
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-[10px] text-sand-400">
+                    {cat.current.opens} opens
+                  </Text>
+                  {data.comparePeriod && (
+                    <Text className="text-[10px] text-sand-500 font-semibold">
+                      {cat.deltaPct.opens > 0 ? '+' : ''}{cat.deltaPct.opens}%
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View className="h-1.5 bg-sand-100 rounded-full overflow-hidden">
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(100, Math.max(2, (cat.current.opens / Math.max(1, ...data.categories.map((c) => c.current.opens))) * 100))}%`,
+                    backgroundColor: colors.turmeric[500],
+                  }}
+                />
+              </View>
+            </View>
+          ))}
+
+          {data.categories.length > 8 && (
+            <Text className="text-[10px] text-sand-400 text-center mt-1">
+              +{data.categories.length - 8} more categories
+            </Text>
+          )}
+        </>
+      )}
+    </Section>
+  )
+}
+
 function Empty({ text }: { text: string }) {
   const { colors } = useTheme()
   return <Text className="text-xs text-sand-400 text-center py-4">{text}</Text>
@@ -79,12 +191,19 @@ function Empty({ text }: { text: string }) {
 export default function GrowthAnalyticsScreen() {
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
+  const [seasonalPeriod, setSeasonalPeriod] = useState<SeasonalPeriod>('wedding')
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['growth', 'analytics'],
     queryFn: () => growthApi.analytics(),
   })
   const stats = data?.data
+
+  const { data: seasonalData, isLoading: seasonalLoading } = useQuery({
+    queryKey: ['growth', 'analytics', 'seasonal', seasonalPeriod],
+    queryFn: () => growthApi.seasonal(seasonalPeriod),
+  })
+  const seasonal = seasonalData?.data
 
   const maxHourOpens = stats ? Math.max(1, ...stats.by_hour.map((h) => h.opens)) : 1
   const maxCategoryTotal = stats
@@ -291,6 +410,14 @@ export default function GrowthAnalyticsScreen() {
                 its weight.
               </Text>
             </Section>
+
+            {/* Seasonal comparison — roadmap R */}
+            <SeasonalSection
+              data={seasonal}
+              loading={seasonalLoading}
+              period={seasonalPeriod}
+              onPeriodChange={setSeasonalPeriod}
+            />
 
             <View className="flex-row items-center gap-1.5 justify-center pt-1">
               <TrendingUp size={13} color={colors.sand[400]} />

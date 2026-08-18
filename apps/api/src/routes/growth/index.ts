@@ -5,6 +5,7 @@ import { growthCampaignRoutes } from './growth-campaigns.js';
 import { growthInventoryRoutes } from './growth-inventory.js';
 import { growthPromotionRoutes } from './growth-promotions.js';
 import { growthReferralRoutes } from './growth-referrals.js';
+import { growthSeasonalRoutes } from './growth-seasonal.js';
 import { growthSizeRoutes } from './growth-sizes.js';
 import { growthSupplierRoutes } from './growth-suppliers.js';
 import { growthTranslateRoutes } from './growth-translate.js';
@@ -33,4 +34,5 @@ export const growthRoutes: FastifyPluginAsync = async (server) => {
   await server.register(growthInventoryRoutes);
   await server.register(growthVideoRoutes);
   await server.register(growthTranslateRoutes);
+  await server.register(growthSeasonalRoutes); // R — seasonal analytics
 };

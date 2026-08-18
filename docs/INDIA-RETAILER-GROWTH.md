@@ -339,7 +339,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.5 Campaign & Analytics Enhancements
 
-#### R. Campaign Analytics by Region / Festival — ✅ Built (analytics screen: sends/opens by festival + type, customer segments, hour-of-day, product category, video-vs-photo, per-A/B-variant). **Not built:** wedding-season vs daily-wear category comparison (Phase 1 dashboard refinement)
+#### R. Campaign Analytics by Region / Festival — ✅ Built (analytics screen: sends/opens by festival + type, customer segments, hour-of-day, product category, video-vs-photo, per-A/B-variant; **seasonal comparison** 2026-08-18: wedding-season vs daily-wear category performance with delta %, BUILD-LOG §51). **Not built:** seasonal deep-dive dashboards (beyond category-level comparison)
 
 **What:** Extend existing analytics with dimensions that matter for Indian retail.
 
