@@ -72,11 +72,11 @@ ADD CONSTRAINT "catalog_items_product_id_fkey" FOREIGN KEY ("product_id") REFERE
 ALTER TABLE "catalog_sync_logs" 
 ADD CONSTRAINT "catalog_sync_logs_retailer_id_fkey" FOREIGN KEY ("retailer_id") REFERENCES "retailers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
--- Add PlanFeatureKey enum value
-ALTER TYPE "PlanFeatureKey" ADD VALUE 'WHATSAPP_CATALOG_SYNC';
-
--- Seed plan_features for WHATSAPP_CATALOG_SYNC
--- Starter=off, Growth=on, Pro=on (matches Phase II roadmap)
-INSERT INTO "plan_features" ("plan", "feature_key", "enabled") VALUES
-  ('GROWTH', 'WHATSAPP_CATALOG_SYNC', true),
-  ('PRO', 'WHATSAPP_CATALOG_SYNC', true);
+-- NOTE: the WHATSAPP_CATALOG_SYNC PlanFeatureKey enum value + the plan_features
+-- rows that reference it live in migrations 061 + 062 — NOT here.
+-- PostgreSQL 55P04: a value added via ALTER TYPE ... ADD VALUE cannot be USED
+-- in the same transaction that added it ("new enum values must be committed
+-- before they can be used"). Prisma wraps each migration in a single
+-- transaction, so the value is added alone in 061 and the rows referencing it
+-- are inserted in 062 (a separate transaction). Same split as growth's
+-- 056/057 (see those files).

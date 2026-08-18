@@ -2,6 +2,17 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-18 — Phase II migrations 060–062 APPLIED + VERIFIED in prod
+
+**User ask:** apply the Phase II migrations and verify the catalog tables exist; audit remaining growth-roadmap tasks; update docs.
+
+- **55P04 fix shipped first:** the original single-file migration `060` did `ALTER TYPE "PlanFeatureKey" ADD VALUE 'WHATSAPP_CATALOG_SYNC'` and then INSERTed that value into `plan_features` in the same transaction — PostgreSQL 55P04 forbids using a fresh enum value in the same transaction (Prisma wraps each migration in one). Exactly the bug that already broke growth's 055. Fixed by splitting: `060` keeps only the schema, new `061_plan_feature_whatsapp_catalog_enum` adds the enum value alone, new `062_plan_feature_whatsapp_catalog_rows` seeds the plan rows (mirrors the known-good 056/057 split — diffed, structurally identical). Also corrected stale "061–063" doc references (no migration 063 ever existed).
+- **Applied by user via Supabase SQL Editor (060, 061, 062).**
+- **Verified read-only against prod:** `catalog_items` + `catalog_sync_logs` tables exist; Retailer has `whatsapp_catalog_id`/`sync_enabled`/`sync_categories`/`last_synced_at`; Product has `whatsapp_catalog_item_id`; `PlanFeatureKey` enum contains `WHATSAPP_CATALOG_SYNC`; `CatalogSyncStatus` enum has SUCCESS/FAILED/PARTIAL/IN_PROGRESS; `plan_features` has Growth+Pro enabled (Starter off).
+- **Growth migrations audit:** 055–057 confirmed applied (festivals/campaigns/campaign_sends/promotions/suppliers/supplier_transactions/bookings/referrals/referral_credits/product_videos tables + GROWTH_ENGINE enum + Growth/Pro plan rows live). **⚠️ 058 NOT applied — `customers.usual_size` column missing**; roadmap N's per-customer size recommendation reads it. SQL: `ALTER TABLE "customers" ADD COLUMN "usual_size" TEXT;`
+
+**Verified:** migrations live. **Still pending (ops):** growth 058 (above); no deployment; Meta WABA/webhook dashboard + DLT/account setup before live syncs.
+
 ## 2026-08-18 — Phase II WhatsApp Native Catalog Sync COMPLETE (63/63 tasks)
 
 **User ask:** build Phase II (WhatsApp native catalog sync, F-307 / roadmap P) per `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`, then finish the tail (auto-sync wiring, cron, timeout, admin visibility) and commit.
@@ -19,7 +30,7 @@ One file, update at end of each work session: what's done, what's next, what's b
 - **Tests:** 14 meta-client + 30 catalog-sync (incl. cron fan-out + timeout) + 11 retailer routes + 12 webhook + 10 admin + 5 mobile. API 601/601, mobile 43/43, web tsc clean.
 - **Docs:** BUILD-LOG §49, CLAUDE.md index #45, PLAN.md Phase II Built, growth-roadmap P → Built, DEPLOY.md webhook setup section, breakdown doc 63/63.
 
-**Verified:** API tsc clean + 601/601; mobile tsc clean + 43/43; web tsc clean. **Pending (ops):** migrations 060–063 not applied (Supabase SQL Editor / `prisma migrate deploy`); no deployment; Meta WABA + webhook dashboard + DLT/account setup before live syncs.
+**Verified:** API tsc clean + 601/601; mobile tsc clean + 43/43; web tsc clean. **Pending (ops):** migrations 060–062 applied + verified later the same day (see next entry); no deployment; Meta WABA + webhook dashboard + DLT/account setup before live syncs.
 
 ## 2026-08-18 — AI Campaign Assistant (Roadmap E) BUILT
 

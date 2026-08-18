@@ -1,6 +1,6 @@
 # Phase II: WhatsApp Native Catalog Sync — Implementation Task Breakdown
 
-**Status:** ✅ **COMPLETE — 63/63 tasks done** (Sprints 1-6). **Still pending (ops):** migration `060` (+ `061`–`063`) not applied; no deployment; Meta WABA/DLT account setup before live syncs.  
+**Status:** ✅ **COMPLETE — 63/63 tasks done** (Sprints 1-6). **Migrations `060`–`062` APPLIED + VERIFIED 2026-08-18** (tables `catalog_items`/`catalog_sync_logs`, Retailer/Product columns, `PlanFeatureKey`/`CatalogSyncStatus` enums, Growth+Pro plan rows all confirmed in prod). **Still pending (ops):** no deployment; Meta WABA/webhook dashboard + DLT/account setup before live syncs.  
 **Date:** 2026-08-18  
 **Related:** `docs/PLAN.md` Phase II, `docs/PRO-REQUIREMENTS.md` F-307  
 **Commits:** Sprint 1 `d501913`, Sprint 2 `adfe34d`
@@ -17,7 +17,7 @@
 | A4 | Add `whatsapp_catalog_id` to Retailer model | `schema.prisma` | ✅ |
 | A5 | Add `sync_enabled`, `sync_categories`, `last_synced_at` to Retailer | `schema.prisma` | ✅ |
 | A6 | Add `Product.whatsapp_catalog_item_id` (stores Meta's item ID) | `schema.prisma` | ✅ |
-| A7 | Run `prisma migrate dev` + `prisma generate` | CLI | ✅ (migration file created) |
+| A7 | Run `prisma migrate dev` + `prisma generate` | CLI | ✅ (migration file created; **applied via Supabase SQL Editor 2026-08-18 + verified** — see header) |
 
 ---
 
@@ -170,4 +170,4 @@
 
 ---
 
-**Completed: 63/63 tasks** — Phase II WhatsApp Native Catalog Sync fully built (Sprints 1-6). Verified: API tsc clean + 593/593 tests (55 new); web tsc clean; mobile tsc clean + 43/43 tests (5 new). **Bonus: auto-sync on product mutations** — edit/status/delete enqueue `single_product` jobs, tag completion syncs new products, bulk-delete enqueues one full sync (all gated on `sync_enabled`, fail-open). **Still pending (ops):** migration `060` (+ `061`–`063`) not applied; no deployment; Meta WABA + DLT account setup required before live syncs.
+**Completed: 63/63 tasks** — Phase II WhatsApp Native Catalog Sync fully built (Sprints 1-6) **and migrations 060–062 applied + verified in prod**. Verified: API tsc clean + 601/601 tests; web tsc clean; mobile tsc clean + 43/43 tests. **Bonus: auto-sync on product mutations** — edit/status/delete enqueue `single_product` jobs, tag completion syncs new products, bulk-delete enqueues one full sync (all gated on `sync_enabled`, fail-open). **Still pending (ops):** no deployment; Meta WABA + DLT account setup required before live syncs.
