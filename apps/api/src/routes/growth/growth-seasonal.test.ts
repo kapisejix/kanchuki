@@ -43,7 +43,7 @@ async function runRoute(query: Record<string, string> = {}): Promise<any> {
   };
 
   // growthSeasonalRoutes calls server.get which captures the handler promise.
-  await growthSeasonalRoutes(server as any);
+  await growthSeasonalRoutes(server as any, {});
   // Now await the handler's promise (if any).
   if (handlerPromise) {
     try {

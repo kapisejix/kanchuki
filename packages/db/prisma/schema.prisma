@@ -42,6 +42,7 @@ enum CollectionStatus {
   ACTIVE
   EXPIRED
   ARCHIVED
+  HIDDEN // Roadmap S — A/B variant collections, direct-link only
 }
 
 enum EnquiryStatus {
@@ -1733,6 +1734,13 @@ model Campaign {
 
   // AB_TEST: [{ label, message_template, send_pct }] — max 2 variants.
   ab_variants Json?
+
+  // Roadmap S — auto-generated per-variant collection links.
+  // HIDDEN collections hold the A/B variant product sets so each variant
+  // gets its own storefront link without appearing in the public ACTIVE listing.
+  variant_a_collection_id String?
+  variant_b_collection_id String?
+  cleanup_ttl_days        Int? // auto-archive variant collections N days after campaign send
 
   schedule_at  DateTime?
   sent_at      DateTime?

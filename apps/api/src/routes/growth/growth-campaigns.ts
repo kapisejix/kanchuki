@@ -1,4 +1,5 @@
 import { Prisma, prisma } from '@kanchuki/db';
+import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
@@ -16,6 +17,8 @@ import {
 
 const CAMPAIGN_TYPES = ['FESTIVAL', 'REACTIVATION', 'PROMOTION', 'AB_TEST'] as const;
 const CAMPAIGN_STATUSES = ['DRAFT', 'SCHEDULED', 'SENT'] as const;
+
+const COLLECTION_STATUS_HIDDEN = 'HIDDEN' as const;
 
 const AbVariantSchema = z
   .object({
@@ -56,21 +59,29 @@ async function requireGrowth(retailerId: string): Promise<void> {
   }
 }
 
-function campaignWithStats(campaign: { id: string; type: string; status: string; name: string; festival_name: string | null; sent_count: number; opened_count: number; schedule_at: Date | null; sent_at: Date | null; message_template: string; product_ids: string[] }) {
+function campaignWithStats(campaign: {
+  id: string; type: string; status: string; name: string;
+  festival_name: string | null; sent_count: number; opened_count: number;
+  schedule_at: Date | null; sent_at: Date | null; message_template: string;
+  product_ids: string[];
+  variant_a_collection_id?: string | null;
+  variant_b_collection_id?: string | null;
+}) {
   return {
     id: campaign.id,
     type: campaign.type,
     status: campaign.status,
     name: campaign.name,
     festival_name: campaign.festival_name,
-    // Included for the AI-translate screen (roadmap M) to localize the
-    // message without a second fetch.
     message_template: campaign.message_template,
     product_ids: campaign.product_ids,
     sent_count: campaign.sent_count,
     opened_count: campaign.opened_count,
     schedule_at: campaign.schedule_at,
     sent_at: campaign.sent_at,
+    // Roadmap S — variant collection IDs for link generation.
+    variant_a_collection_id: campaign.variant_a_collection_id ?? null,
+    variant_b_collection_id: campaign.variant_b_collection_id ?? null,
   };
 }
 
@@ -83,6 +94,89 @@ async function storefrontLink(retailerId: string, publicSlug: string | null): Pr
   });
   if (!storefront) return `${process.env.WEB_URL ?? 'https://kanchuki.app'}`;
   return buildCollectionUrl(publicSlug, storefront.slug);
+}
+
+// ─── Roadmap S — Variant Collection Sync ─────────────────────────
+// When an A/B campaign is created or edited with variant product sets,
+// auto-generate (or update) two HIDDEN collections — one per variant —
+// so each variant gets its own storefront link without appearing in the
+// public ACTIVE listing.
+
+ type AbVariant = {
+  label: string
+  message_template: string
+  send_pct: number
+  product_ids?: string[]
+  send_delay_min?: number
+}
+
+async function syncVariantCollections(
+  retailerId: string,
+  campaignId: string,
+  campaignName: string,
+  abVariants: AbVariant[] | null,
+  existing?: { variant_a_collection_id: string | null; variant_b_collection_id: string | null } | null,
+): Promise<{ variant_a_collection_id: string | null; variant_b_collection_id: string | null }> {
+  // No A/B variants or variants without product sets → clear any existing variant collections.
+  if (!abVariants || abVariants.length !== 2 || !abVariants[0]!.product_ids?.length || !abVariants[1]!.product_ids?.length) {
+    // Archive any existing variant collections.
+    for (const cid of [existing?.variant_a_collection_id, existing?.variant_b_collection_id]) {
+      if (cid) {
+        await prisma.collection.update({ where: { id: cid }, data: { status: 'ARCHIVED' } }).catch(() => {});
+      }
+    }
+    return { variant_a_collection_id: null, variant_b_collection_id: null };
+  }
+
+  const [vA, vB] = abVariants;
+
+  async function upsertVariant(
+    variant: AbVariant,
+    label: string,
+    existingId: string | null,
+  ): Promise<string> {
+    const title = `${campaignName} — ${label}`;
+    const productIds = variant.product_ids!;
+
+    if (existingId) {
+      // Update existing: sync products + title.
+      const collection = await prisma.collection.findUnique({ where: { id: existingId } });
+      if (collection && collection.status !== 'ACTIVE') {
+        await prisma.collection.update({
+          where: { id: existingId },
+          data: { title },
+        });
+        // Sync products: remove old, add new.
+        await prisma.collectionProduct.deleteMany({ where: { collection_id: existingId } });
+        await prisma.collectionProduct.createMany({
+          data: productIds.map((pid, i) => ({ collection_id: existingId, product_id: pid, sort_order: i })),
+        });
+        return existingId;
+      }
+    }
+
+    // Create new HIDDEN collection.
+    const slug = generateCollectionSlug(title);
+    const collection = await prisma.collection.create({
+      data: {
+        retailer_id: retailerId,
+        title,
+        slug,
+        status: 'HIDDEN',
+        products: {
+          create: productIds.map((pid, i) => ({ product_id: pid, sort_order: i })),
+        },
+      },
+    });
+    return collection.id;
+  }
+
+  const [aId, bId] = await Promise.all([
+    upsertVariant(vA!, 'Variant A', existing?.variant_a_collection_id ?? null),
+    upsertVariant(vB!, 'Variant B', existing?.variant_b_collection_id ?? null),
+  ]);
+
+  return { variant_a_collection_id: aId, variant_b_collection_id: bId };
 }
 
 // ─── Routes ──────────────────────────────────────────────────────
@@ -149,7 +243,20 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         schedule_at: schedule_at ? new Date(schedule_at) : null,
       },
     });
-    return reply.status(201).send({ data: campaignWithStats(campaign) });
+
+    // Roadmap S — auto-generate HIDDEN variant collections for A/B campaigns.
+    const variantIds = await syncVariantCollections(
+      retailerId, campaign.id, name,
+      (ab_variants as unknown as AbVariant[] | null) ?? null,
+    );
+    if (variantIds.variant_a_collection_id || variantIds.variant_b_collection_id) {
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: variantIds,
+      });
+    }
+
+    return reply.status(201).send({ data: campaignWithStats({ ...campaign, ...variantIds }) });
   });
 
   // ─── GET /growth/campaigns/:id ──────────────────────────────────
@@ -244,7 +351,22 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         schedule_at: data.schedule_at ? new Date(data.schedule_at) : null,
       },
     });
-    return reply.send({ data: campaignWithStats(updated) });
+
+    // Roadmap S — sync variant collections when A/B product sets change.
+    const abVariants = (data.ab_variants as unknown as AbVariant[] | null) ?? (existing.ab_variants as unknown as AbVariant[] | null);
+    const variantIds = await syncVariantCollections(
+      retailerId, id, data.name ?? existing.name,
+      abVariants,
+      existing,
+    );
+    if (
+      variantIds.variant_a_collection_id !== existing.variant_a_collection_id ||
+      variantIds.variant_b_collection_id !== existing.variant_b_collection_id
+    ) {
+      await prisma.campaign.update({ where: { id }, data: variantIds });
+    }
+
+    return reply.send({ data: campaignWithStats({ ...updated, ...variantIds }) });
   });
 
   // ─── DELETE /growth/campaigns/:id ───────────────────────────────
@@ -320,6 +442,17 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       festival: campaign.festival_name ?? '',
     };
 
+    // Roadmap S — build variant collection links for A/B attribution.
+    // Variant at index 0 → variant_a_collection → ?variant=a
+    // Variant at index 1 → variant_b_collection → ?variant=b
+    const variantCollectionLinks: Record<string, string | null> = { a: null, b: null };
+    if (campaign.variant_a_collection_id) {
+      variantCollectionLinks['a'] = `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_a_collection_id}?variant=a`;
+    }
+    if (campaign.variant_b_collection_id) {
+      variantCollectionLinks['b'] = `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_b_collection_id}?variant=b`;
+    }
+
     const canUseApi =
       retailer?.whatsapp_api_phone_number_id &&
       retailer.whatsapp_api_access_token &&
@@ -346,6 +479,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       variantLabel: string | null;
       variantProducts: string[];
       sendDelayMin: number;
+      variantCollectionLink: string | null;
     }[] = [];
     for (let i = 0; i < customers.length; i++) {
       const customer = customers[i]!;
@@ -358,6 +492,8 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         variantLabel: variant?.label ?? null,
         variantProducts: variant?.product_ids ?? [],
         sendDelayMin: variant?.send_delay_min ?? 0,
+        variantCollectionLink:
+          (variant?.label === (variants?.[0]?.label ?? '') ? variantCollectionLinks['a'] : variantCollectionLinks['b']) ?? null,
       });
     }
 
@@ -454,6 +590,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         variants: variants
           ? variants.map((v) => ({ label: v.label, send_pct: v.send_pct, product_ids: v.product_ids ?? [] }))
           : undefined,
+        variant_collection_links: variantCollectionLinks,
       },
     });
   });

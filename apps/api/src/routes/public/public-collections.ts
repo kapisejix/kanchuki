@@ -37,8 +37,10 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
 
       // Redis-cached with single-flight stampede protection (see lib/public-cache.ts).
       return withPublicCache(request.url, async () => {
+        // HIDDEN collections (Roadmap S — A/B variant links) are accessible
+        // via direct slug link but excluded from storefront listings.
         const collection = await prisma.collection.findFirst({
-          where: { slug, status: 'ACTIVE', deleted_at: null },
+          where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null },
           select: {
             id: true,
             title: true,
