@@ -2,6 +2,40 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-18 — Phase II WhatsApp Native Catalog Sync COMPLETE (63/63 tasks)
+
+**User ask:** build Phase II (WhatsApp native catalog sync, F-307 / roadmap P) per `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`, then finish the tail (auto-sync wiring, cron, timeout, admin visibility) and commit.
+
+- **DB (Sprints 1):** migration `060_whatsapp_catalog_sync` — `CatalogItem` (product ↔ Meta item mapping with name/price/status/HSN snapshots) + `CatalogSyncLog` (audit trail) + `Retailer.whatsapp_catalog_id`/`sync_enabled`/`sync_categories`/`last_synced_at` + `Product.whatsapp_catalog_item_id` + `WHATSAPP_CATALOG_SYNC` plan feature (Growth/Pro).
+- **Meta client (Sprint 2):** `apps/api/src/lib/meta-catalog.ts` — catalog get-or-create, item create/update/delete/list, image upload (R2→Meta media hash), batch ops; external id = Kanchuki product id for idempotency; every fetch accepts an `AbortSignal`.
+- **Sync engine (Sprint 3):** `apps/api/src/jobs/catalog-sync.ts` — BullMQ `catalog-sync` queue; `syncAllProducts` full reconciliation (create/update + delete for soft-deleted/category-removed, chunked 5-at-a-time), `syncSingleProduct` incremental; interim HSN keyword map (Phase I hsn_codes table not built yet); status map AVAILABLE→in stock / SOLD→out of stock; retries + exponential backoff.
+- **Retailer API (Sprint 3):** `apps/api/src/routes/retailers/retailers-whatsapp-catalog.ts` — D1–D7 (status, settings, sync triggers, logs, items), gated behind `WHATSAPP_CATALOG_SYNC`.
+- **Webhook (Sprint 4):** `apps/api/src/routes/webhooks/whatsapp-catalog.ts` at `/v1/public/webhooks/whatsapp-catalog` — GET handshake (verify token) + HMAC-SHA256 signature over **META_APP_SECRET** (contract fix: the breakdown's original META_WEBHOOK_SECRET wording was wrong — that's only the verify token); added/updated/deleted/out-of-stock events, every event audited to CatalogSyncLog, fail-closed 503 when unconfigured.
+- **Mobile UI (Sprint 5):** `apps/mobile/app/settings/whatsapp-catalog.tsx` + `src/lib/api/whatsapp-catalog.ts` — F1–F7 (toggle, category chips, Sync Now, status card, logs with pull-to-refresh, per-product synced/pending/error dots on the catalog tab + legend).
+- **Admin monitor (Sprint 5):** `apps/api/src/routes/admin/admin-whatsapp-catalog.ts` + `apps/web/src/app/admin/whatsapp-catalog/page.tsx` — G1–G5: overview with health cards (incl. **Daily Cron** card), retailer table, drill-down modal (Sync Logs/Items tabs), manual sync trigger (audited, `triggered_by: 'admin'`).
+- **Auto-sync (bonus):** product edit / status change / delete enqueue single-product jobs, tag completion syncs newly-created products, bulk-delete enqueues one full sync — all fail-open, gated on `sync_enabled`.
+- **Daily cron (C10):** maintenance worker `catalog-daily-full-sync` — `CATALOG_SYNC_CRON` env (default `0 5 * * *` 5:00 AM UTC, 30 min after image compression); `handleDailyCatalogSync()` fans out one full-sync per enabled+configured retailer; fail-open per retailer.
+- **Per-retailer timeout (C11):** `handleCatalogSync` wraps every run in an AbortController budget (`CATALOG_SYNC_TIMEOUT_MS`, default 10 min); signal threaded into every Meta fetch; timed-out runs record FAILED (`timed_out: true`) and skip BullMQ retry; real errors still retry.
+- **Tests:** 14 meta-client + 30 catalog-sync (incl. cron fan-out + timeout) + 11 retailer routes + 12 webhook + 10 admin + 5 mobile. API 601/601, mobile 43/43, web tsc clean.
+- **Docs:** BUILD-LOG §49, CLAUDE.md index #45, PLAN.md Phase II Built, growth-roadmap P → Built, DEPLOY.md webhook setup section, breakdown doc 63/63.
+
+**Verified:** API tsc clean + 601/601; mobile tsc clean + 43/43; web tsc clean. **Pending (ops):** migrations 060–063 not applied (Supabase SQL Editor / `prisma migrate deploy`); no deployment; Meta WABA + webhook dashboard + DLT/account setup before live syncs.
+
+## 2026-08-18 — AI Campaign Assistant (Roadmap E) BUILT
+
+**User ask:** build E — AI Campaign Assistant (needs Fashion DNA).
+
+- **AI service** (`packages/ai/src/campaign-assistant.ts`): `parseCampaignIntent()` sends retailer natural language to Claude via `runVisionAsk` with a structured JSON schema (campaign type, name, audience filters, product criteria, message tone). `generateCampaignMessage()` creates a WhatsApp template with `{{placeholders}}`. Falls back to raw text on JSON parse failure.
+- **Backend route** (`apps/api/src/routes/growth/growth-ai-campaign.ts`): `POST /v1/growth/ai-campaign` gated behind `GROWTH_ENGINE` + `AI_TAGGING_CALL` quota. Parses intent → queries matching products (category/color/style/fabric/price via Prisma `hasSome`/`in`) → generates message → resolves audience count via existing `buildAudienceWhere` + `resolveAudienceCustomerIds`. Returns a draft; saving goes through the normal campaign create endpoint.
+- **Mobile screen** (`apps/mobile/app/growth/ai-campaign.tsx`): prompt input with 5 example chips, Generate button, editable draft preview (name, type, festival, message, audience count, rationale, matched products), Save Campaign → `growthApi.createCampaign`.
+- **Growth hub** (`apps/mobile/app/growth/index.tsx`): AI Campaign Assistant card added as first module.
+- **API client** (`apps/mobile/src/lib/api/growth.ts`): `AiCampaignDraft` type + `aiCampaign(prompt)` method.
+- **Tests**: `growth-ai-campaign.test.ts` (4 tests: valid draft, feature guard 402, empty prompt 422, non-JSON fallback). Full API suite 528/528; mobile `tsc --noEmit` clean; AI package 74/74.
+
+**Fashion DNA note:** Built against explicit customer preference fields (`preferred_colors`, `preferred_styles`, `preferred_fabrics`, `preferred_budget_paise`). The standalone `computeFashionDNA()` vector helper exists but is not yet wired to a background job.
+
+**Verified:** API tsc clean, mobile tsc clean, tests pass. **Pending:** migrations 055–058 not applied; no deployment.
+
 ## 2026-08-11 — Colabs-inspired marketing redesign + brand wordmark logo + MatterSemiMono headings
 
 **User ask:** make the frontend web content pages look and animate like https://colabs.com.au — same structure, same animation. Confirmed scoping: full Colabs palette adopted, marketing/content pages only (storefront + admin keep Black & Gold), add lenis smooth scroll.

@@ -1,6 +1,6 @@
 # Kanchuki — India Retailer Growth & Profitability Roadmap
 
-**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **Not yet applied:** migrations `055_growth_engine` + `056`–`058` (Supabase SQL Editor / `prisma migrate deploy`). **Not built:** E (AI Campaign Assistant — needs Fashion DNA), I (GST invoicing), P (WhatsApp native catalog); future work: M native mic + UI language toggle, R seasonal dashboards, S auto-built variant links. See `docs/BUILD-LOG.md` §44–47.  
+**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **E (AI Campaign Assistant) completed 2026-08-18** (BUILD-LOG §48). **Not yet applied:** migrations `055_growth_engine` + `056`–`058` (Supabase SQL Editor / `prisma migrate deploy`). **P (WhatsApp native catalog) completed 2026-08-18** (BUILD-LOG §49, Phase II — catalog sync engine, API, webhook, admin monitor, mobile UI; migrations `060_whatsapp_catalog_sync` + `061`–`063` not yet applied). **Not built:** I (GST invoicing); future work: M native mic + UI language toggle, R seasonal dashboards, S auto-built variant links. See `docs/BUILD-LOG.md` §44–48.  
 **Date:** August 2026  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
@@ -15,7 +15,7 @@
 | B | QR Code Lead Capture | ✅ Built (`customers.source` + `QR_SCAN` stamp on public contact gate) |
 | C | Referral Program Engine | ✅ Built (backend + mobile UI) |
 | D | Festival Campaign Automation | ✅ Built (admin calendar + campaign CRUD/send + mobile UI) |
-| E | AI Campaign Assistant | 🔴 Not built — needs Fashion DNA (Phase 1) |
+| E | AI Campaign Assistant | ✅ Built (NLP intent → audience/product filters → WhatsApp message template + save-to-campaign) |
 | F | Smart Promotion / Discount Engine | ✅ Built (backend + mobile UI) |
 | G | Customer Reactivation Campaigns | ✅ Built (backend + mobile UI) |
 | I | GST-Ready Invoicing | 🔴 Not built — PDF generation + HSN mapping |
@@ -24,7 +24,7 @@
 | L | Showroom / Try-On Room Booking | ✅ Built (backend + mobile UI + public self-service booking) |
 | M | Multi-Language AI | ✅ Built — descriptions + campaign/WhatsApp messages in 7 languages (placeholders preserved) + AI-search screen (Hindi/Hinglish, voice via keyboard dictation). Native in-app mic + PWA/retailer UI language toggle: future work |
 | N | Indian Size & Fit System | ✅ Built — usual-size quick capture, per-customer size recommendation (usual → purchase history → size chart), plus sizes XS + 4XL–8XL, unstitched/blouse flags |
-| P | WhatsApp Native Catalog Sync | 🔴 Not built — extends Meta integration |
+| P | WhatsApp Native Catalog Sync | ✅ Built (Phase II: DB schema + sync engine + API + webhook + admin monitor + retailer mobile UI — see `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`) |
 | Q | Video Product Support | ✅ Built (backend + mobile UI) |
 | R | Campaign Analytics by Region / Festival | ✅ Built — campaign analytics screen: festival, customer segment, hour-of-day opens, category, video-vs-photo, A/B results. Seasonal (wedding vs daily-wear) deep-dive: Phase 1 |
 | S | A/B Testing for Collections | ✅ Built — per-variant product sets (collection A/B) + send stagger + variant stats + two-proportion z-test significance. Auto-built variant links: future work (needs hidden-collection status) |
@@ -143,7 +143,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### E. AI Campaign Assistant — 🔴 Not built (needs Fashion DNA live first, Phase 1)
+#### E. AI Campaign Assistant — ✅ Built (NLP intent → audience/product filters → WhatsApp message template + save-to-campaign)
 
 **What:** Natural language campaign creation. Retailer types or speaks a command → AI generates the customer segment, product selection, WhatsApp message draft, and send schedule.
 
@@ -155,7 +155,12 @@ These four gaps are where the next wave of features must land.
 
 **Why it matters:** Most small retailers don't have the time or skill to segment customers manually. AI-powered campaign creation makes personalized marketing accessible to non-technical shopkeepers.
 
-**Effort:** High. Needs Fashion DNA live first (Phase 1), then campaign-generation AI layer.
+**Effort:** High. Built on top of existing customer preference fields (Fashion DNA signals: `preferred_colors`, `preferred_styles`, `preferred_fabrics`, `preferred_budget_paise`) + existing campaign infrastructure.
+
+**Implementation:**
+- Backend: `POST /v1/growth/ai-campaign` parses natural language into structured intent (campaign type, audience filters, product criteria, message tone) via Claude, queries matching products, generates a WhatsApp message template, and resolves audience count.
+- Mobile: `ai-campaign.tsx` screen with prompt input, example chips, editable draft preview (name, type, message, matched products, audience count), and save-to-campaign flow.
+- Fashion DNA usage: matches against explicit customer preference fields stored on the `Customer` model. The standalone `computeFashionDNA()` vector helper exists but is not yet wired to a background job; matching is rule-based on explicit preferences for now.
 
 ---
 
@@ -291,7 +296,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### P. WhatsApp Catalog Sync (Native) — 🔴 Not built (extends Meta integration, Phase 2)
+#### P. WhatsApp Catalog Sync (Native) — ✅ Built (Phase II — full pipeline: DB schema + Meta Catalog API client + BullMQ sync engine + webhook + retailer mobile UI + admin monitor)
 
 **What:** Push products directly to Meta's native WhatsApp Business catalog (the in-app product list under a business profile), not just web links.
 
@@ -304,6 +309,15 @@ These four gaps are where the next wave of features must land.
 **Why it matters:** WhatsApp's native catalog is where Indian customers already browse and buy. Having products inside WhatsApp (not just links to external pages) dramatically increases discovery and conversion.
 
 **Effort:** Medium. Extends existing Meta integration to WhatsApp Catalog API.
+
+**Implementation (Phase II, 2026-08-18):**
+- DB: migration `060_whatsapp_catalog_sync` — `CatalogItem` (product ↔ Meta item mapping) + `CatalogSyncLog` (audit trail) + `Retailer.whatsapp_catalog_id`/`sync_enabled`/`sync_categories`/`last_synced_at` + `Product.whatsapp_catalog_item_id` + `WHATSAPP_CATALOG_SYNC` plan feature (Growth/Pro).
+- Sync engine: `apps/api/src/jobs/catalog-sync.ts` — BullMQ queue, full + single-product syncs, status/availability mapping (AVAILABLE→in stock, SOLD→out of stock), interim HSN keyword map, chunked concurrency, retries. Auto-wired: product edit/status/delete enqueue incremental syncs; tag completion syncs newly created products; bulk-delete enqueues a full reconciliation (gated on `sync_enabled`, fail-open).
+- Meta client: `apps/api/src/lib/meta-catalog.ts` — catalog get-or-create, item create/update/delete/list, image upload.
+- Webhook: `apps/api/src/routes/webhooks/whatsapp-catalog.ts` at `/v1/public/webhooks/whatsapp-catalog` — GET handshake (verify token) + HMAC-SHA256 signature over `META_APP_SECRET`; `catalog_item_added`/`updated`/`deleted`/`out_of_stock` events sync price/availability back and are audited to `CatalogSyncLog`.
+- Retailer UI: `apps/mobile/app/settings/whatsapp-catalog.tsx` — toggle, category picker, Sync Now, status card, logs with pull-to-refresh + per-product synced/pending/error badges in the catalog tab.
+- Admin monitor: `apps/web/src/app/admin/whatsapp-catalog/` — health cards, per-retailer table, drill-down logs/items, manual sync trigger.
+- Docs: `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md` (63/63 tasks) + `docs/DEPLOY.md` webhook setup section.
 
 ---
 
@@ -389,13 +403,13 @@ These four gaps are where the next wave of features must land.
 |---|---|---|---|---|
 | Multi-Language AI (Hindi + 3 regional) | Medium | High | **P0** | ✅ Built (descriptions + campaign messages + AI search) |
 | Indian Size & Fit System | Low-Medium | Medium | **P1** | ✅ Built (usual size + recommendation + plus sizes) |
-| WhatsApp Native Catalog Sync | Medium | High | **P1** | 🔴 Not built |
+| WhatsApp Native Catalog Sync | Medium | High | **P1** | ✅ Built (Phase II — `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`) |
 
 ### Sprint Block E — Advanced (Post-Phase 1)
 
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
-| AI Campaign Assistant | High | High | **P1** | 🔴 Not built (needs Fashion DNA) |
+| AI Campaign Assistant | High | High | **P1** | ✅ Built (NLP intent → WhatsApp message template + save-to-campaign) |
 | Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) |
 | A/B Testing | Medium | Medium | **P2** | ✅ Built (collection sets + stagger + significance) |
 

@@ -5,6 +5,7 @@ export * from './r2.js';
 export * from './tryon.js';
 export * from './detector.js';
 export * from './fashion-dna.js';
+export * from './campaign-assistant.js';
 export * from './phash.js';
 export * from './snappyit.js';
 export * from './safe-fetch.js';

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, memo } from 'react'
+import { useState, useCallback, useEffect, useMemo, memo } from 'react'
 import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import {
   View,
@@ -16,7 +16,7 @@ import { Plus, MapPin, SlidersHorizontal, X, Trash2, ScanLine } from 'lucide-rea
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
-import { productApi, retailerApi } from '../../src/lib/api'
+import { productApi, retailerApi, whatsappCatalogApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
@@ -102,12 +102,14 @@ const CatalogCard = memo(function CatalogCard({
   onLongPress,
   onMarkSold,
   selected,
+  catalogSyncStatus,
 }: {
   product: Product
   onPress: () => void
   onLongPress: () => void
   onMarkSold: () => void
   selected: boolean
+  catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null
 }) {
   const { colors } = useTheme()
   return (
@@ -118,6 +120,7 @@ const CatalogCard = memo(function CatalogCard({
       selected={selected}
       statusBadge={product.status !== 'AVAILABLE' ? product.status : null}
       showAIDot={!product.ai_tagged}
+      catalogSyncStatus={catalogSyncStatus}
       footer={
         <View className="p-2.5 gap-1">
           <Text className="text-xs text-sand-500 truncate" numberOfLines={1}>
@@ -188,6 +191,27 @@ export default function CatalogScreen() {
       prefetchProductImages(unfilteredProducts).catch(() => {})
     }
   }, [unfilteredProducts])
+
+  // Phase II F7 — WhatsApp catalog sync badges. The status query returns
+  // { data: null } when the plan feature is off; items only load once the
+  // retailer is actually connected, so a non-Growth retailer pays nothing here.
+  const { data: waStatusData } = useQuery({
+    queryKey: ['whatsapp-catalog', 'status'],
+    queryFn: () => whatsappCatalogApi.getStatus(),
+    staleTime: 60_000,
+  })
+  const waConfigured = waStatusData?.data?.configured ?? false
+  const { data: waItemsData } = useQuery({
+    queryKey: ['whatsapp-catalog', 'items'],
+    queryFn: () => whatsappCatalogApi.getItems(),
+    enabled: waConfigured,
+    staleTime: 60_000,
+  })
+  const waSyncStatusByProduct = useMemo(() => {
+    const map = new Map<string, 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS'>()
+    for (const item of waItemsData?.data ?? []) map.set(item.product_id, item.status)
+    return map
+  }, [waItemsData])
 
   const categoryOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.category).filter((c): c is string => !!c)),
@@ -291,9 +315,10 @@ export default function CatalogScreen() {
         }
         onLongPress={() => toggleSelect(item.id)}
         onMarkSold={() => void handleMarkSold(item.id)}
+        catalogSyncStatus={waSyncStatusByProduct.get(item.id) ?? null}
       />
     ),
-    [handleMarkSold, selectionMode, selectedIds, toggleSelect],
+    [handleMarkSold, selectionMode, selectedIds, toggleSelect, waSyncStatusByProduct],
   )
 
   const keyExtractor = useCallback((item: Product) => item.id, [])
@@ -395,8 +420,19 @@ export default function CatalogScreen() {
           contentContainerStyle={{ padding: 12, gap: 12, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={
-            (categoryImages.length > 0 || showFilters) ? (
+            (categoryImages.length > 0 || showFilters || waSyncStatusByProduct.size > 0) ? (
               <View className="bg-white rounded-2xl px-4 py-3 mb-3">
+                {/* F7 legend — WhatsApp catalog sync badges on product photos */}
+                {waSyncStatusByProduct.size > 0 && (
+                  <View className="flex-row items-center gap-3 mb-2">
+                    <Text className="text-[10px] font-semibold text-sand-400 uppercase tracking-wide">
+                      WhatsApp sync
+                    </Text>
+                    <LegendDot color="#059669" label="Synced" />
+                    <LegendDot color="#d97706" label="Pending" />
+                    <LegendDot color="#dc2626" label="Error" />
+                  </View>
+                )}
                 {/* Category shortcuts — medium circles, horizontal scroll */}
                 {categoryImages.length > 0 && (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
@@ -486,7 +522,6 @@ export default function CatalogScreen() {
           initialNumToRender={6}
         />
       )}
-
       {/* Selection action bar — replaces the FAB while items are selected */}
       {selectionMode ? (
         <View
@@ -542,6 +577,16 @@ export default function CatalogScreen() {
           </AnimatedPressable>
         </View>
       )}
+    </View>
+  )
+}
+
+// ── F7 legend dot ─────────────────────────────────────────────────
+function LegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <View className="flex-row items-center gap-1">
+      <View className="w-2 h-2 rounded-full border border-white" style={{ backgroundColor: color }} />
+      <Text className="text-[10px] text-sand-500">{label}</Text>
     </View>
   )
 }

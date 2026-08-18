@@ -474,6 +474,8 @@ export const QUEUES = {
   // path, and BFL caps active tasks (24 for kontext-pro / 6 for kontext-max),
   // so a dedicated Worker with bounded concurrency protects that limit.
   STUDIO_SHOOT: 'kanchuki-studio-shoot',
+  // Phase II: WhatsApp native catalog sync. Retailer-facing sync jobs.
+  CATALOG_SYNC: 'kanchuki-catalog-sync',
   // Cron-only, low-volume jobs share one queue — one Worker dispatches by job.name
   // instead of 4 separate Workers each holding their own duplicated Redis connection.
   MAINTENANCE: 'kanchuki-maintenance',

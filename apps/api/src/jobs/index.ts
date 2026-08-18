@@ -27,6 +27,8 @@ import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
 // import { handleUpdateFashionDNA } from './update-fashion-dna.js';
 import type { FashionDNAJobData } from './update-fashion-dna.js';
+import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
+import type { CatalogSyncJobData } from './catalog-sync.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -53,6 +55,7 @@ let fashionDNAQueue: Queue | null = null;
 let spinFrameQueue: Queue | null = null;
 let ghostMannequinQueue: Queue | null = null;
 let studioShootQueue: Queue | null = null;
+let catalogSyncQueue: Queue | null = null;
 let maintenanceQueue: Queue | null = null;
 
 function getTaggingQueue(): Queue {
@@ -93,6 +96,11 @@ function getGhostMannequinQueue(): Queue {
 function getStudioShootQueue(): Queue {
   studioShootQueue ??= new Queue(QUEUES.STUDIO_SHOOT, { connection: getRedis() });
   return studioShootQueue;
+}
+
+function getCatalogSyncQueue(): Queue {
+  catalogSyncQueue ??= new Queue(QUEUES.CATALOG_SYNC, { connection: getRedis() });
+  return catalogSyncQueue;
 }
 
 // Shared by cleanup / order-expiry / purge / backup — all cron-only, low-volume.
@@ -222,7 +230,7 @@ export async function addAdminTryOnJob(data: AdminTryOnJobData): Promise<void> {
 }
 
 // F-032 Phase A: AI studio-shoot generation. Own queue + Worker with bounded
-// concurrency (BFL caps active tasks — see lib/studio-shoot.ts). No retries:
+// concurrency (BFL caps active tasks — see STUDIO_SHOOT_CONCURRENCY). No retries:
 // each run burns real BFL credits, so a failed job surfaces as status
 // 'failed' and the retailer retries deliberately (a fresh generation).
 export async function addStudioShootJob(data: StudioShootJobData): Promise<void> {
@@ -230,6 +238,18 @@ export async function addStudioShootJob(data: StudioShootJobData): Promise<void>
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 50 },
   });
+}
+
+// Phase II: WhatsApp native catalog sync. Sync jobs for product catalog.
+// CatalogSyncJobData type + handleCatalogSync live in ./catalog-sync.ts.
+export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<string> {
+  const job = await getCatalogSyncQueue().add('catalog-sync', data, {
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 10_000 },
+    removeOnComplete: { count: 1000 },
+    removeOnFail: { count: 100 },
+  });
+  return job.id ?? '';
 }
 
 // ─── Workers ─────────────────────────────────────────────────────
@@ -320,6 +340,17 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: STUDIO_SHOOT_CONCURRENCY },
   );
 
+  // Phase II: WhatsApp native catalog sync worker. Low concurrency (1-2) to
+  // respect Meta API rate limits. Retries with exponential backoff.
+  const catalogSyncWorker = new Worker(
+    QUEUES.CATALOG_SYNC,
+    async (job) => {
+      const data = job.data as CatalogSyncJobData;
+      await handleCatalogSync(data);
+    },
+    { connection: redis, concurrency: 2 },
+  );
+
   // Maintenance worker — cleanup / order-expiry / purge / backup, all cron-only
   // and low-volume. One Worker dispatching on job.name instead of 4 separate
   // Workers, each of which would hold its own duplicated Redis connection.
@@ -349,6 +380,8 @@ export async function startWorkers(): Promise<void> {
           const data = job.data as AdminTryOnJobData;
           return handleAdminTryOn(data);
         }
+        case 'catalog-daily-full-sync':
+          return handleDailyCatalogSync();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -420,6 +453,27 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
+  // WhatsApp catalog full-sync daily — default 5:00 AM UTC (30 min after the
+  // image compression pass, before India store hours), configurable per
+  // deployment via CATALOG_SYNC_CRON (standard 5-field cron expression, e.g.
+  // '0 5 * * *' or '30 1 * * *'). Enqueues one full-sync job per retailer with
+  // sync enabled + a configured WhatsApp Business API — a reconciliation
+  // safety net so catalogs refresh even with zero product activity (auto-sync
+  // on edits covers the active case). Note: changing CATALOG_SYNC_CRON on a
+  // live deployment creates a new repeat schedule — the old one must be
+  // removed from Redis (BullMQ dedupes by job name + repeat key) if the run
+  // time should move rather than duplicate.
+  const catalogSyncCron = process.env.CATALOG_SYNC_CRON ?? '0 5 * * *';
+  await getMaintenanceQueue().add(
+    'catalog-daily-full-sync',
+    {},
+    {
+      repeat: { pattern: catalogSyncCron, limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
   // Weekly backup Sunday at 4:00 AM UTC (staggered 1h after daily)
   await getMaintenanceQueue().add(
     'backup-database',
@@ -460,6 +514,10 @@ export async function startWorkers(): Promise<void> {
 
   studioShootWorker.on('failed', (job, err) => {
     console.error(`[jobs] studio-shoot failed ${job?.id}:`, err.message);
+  });
+
+  catalogSyncWorker.on('failed', (job, err) => {
+    console.error(`[jobs] catalog-sync failed ${job?.id}:`, err.message);
   });
 
   maintenanceWorker.on('failed', (job, err) => {

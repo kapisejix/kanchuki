@@ -323,6 +323,27 @@ export type TranslateResult = {
   cached: boolean
 }
 
+export type SuggestedProduct = {
+  id: string
+  name: string | null
+  category: string | null
+  primary_color: string | null
+  price_min: number | null
+}
+
+export type AiCampaignDraft = {
+  name: string
+  type: 'FESTIVAL' | 'REACTIVATION' | 'PROMOTION'
+  festival_id: number | null
+  message_template: string
+  audience: AudienceSpec
+  product_ids: string[]
+  schedule_hint: string | null
+  rationale: string
+  matched_products: SuggestedProduct[]
+  audience_count: number
+}
+
 export const growthApi = {
   // ─── Referrals (roadmap C) ──────────────────────────────────────
   referralSettings: () =>
@@ -519,6 +540,14 @@ export const growthApi = {
   // ─── Campaign analytics (roadmap R) ─────────────────────────────
   campaignStats: () =>
     request<{ data: CampaignStats }>('/v1/growth/campaigns/stats', { getCacheTtlMs: 60_000 }),
+
+  // ─── AI Campaign Assistant (roadmap E) ───────────────────────────
+  aiCampaign: (prompt: string) =>
+    request<{ data: AiCampaignDraft }>('/v1/growth/ai-campaign', {
+      method: 'POST',
+      body: JSON.stringify({ prompt }),
+      timeoutMs: 60_000,
+    }),
 
   // ─── Reactivation suggestions (roadmap G) ───────────────────────
   reactivationSuggestions: (inactiveDays = 60) =>

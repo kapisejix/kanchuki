@@ -142,6 +142,14 @@ R2_PUBLIC_URL="https://pub-xxx.r2.dev"
 ANTHROPIC_API_KEY="..."
 OPENAI_API_KEY="..."
 
+# Meta (F-031 social publishing + Phase II WhatsApp catalog sync)
+# getSecret-first: these can be set as IntegrationSetting rows (admin panel) or env vars.
+META_APP_ID=""                          # Meta for Developers App ID
+META_APP_SECRET=""                      # App Secret — signs webhook payloads (X-Hub-Signature-256)
+META_WHATSAPP_BUSINESS_ACCOUNT_ID=""    # WABA ID (numeric) — owns the product catalog
+META_WEBHOOK_SECRET=""                  # Webhook verify token (GET handshake, see below)
+CATALOG_SYNC_CRON="0 5 * * *"           # Daily full-sync cron (UTC, 5-field); default 5:00 AM
+
 # Virtual Try-On (Fashion V-Tone v1.5 — runs on CPU, ~$0.0003/try-on)
 # Deploy the V-Tone microservice: see services/fashion-vtone/
 VTONE_API_URL="http://localhost:8000"
@@ -476,6 +484,74 @@ docker run -d -p 8000:8000 \
 - [ ] V-Tone Railway service created and healthy
 - [ ] `VTONE_API_URL` added to API service environment variables
 - [ ] Test try-on completed successfully with a real photo
+
+---
+
+## Deploy WhatsApp Native Catalog Sync (Phase II)
+
+Retailers with the **Growth/Pro** `WHATSAPP_CATALOG_SYNC` feature can push their
+product catalog into WhatsApp Business (visible in the business profile chat, no
+app needed). The API syncs products via the Meta Graph Catalog API; edits/status
+changes auto-enqueue incremental syncs; an admin page (`/admin/whatsapp-catalog`)
+monitors health.
+
+### Step 1: Add the Meta environment variables
+
+Add the `META_*` vars above to the **API** service. They are
+`getSecret`-first — the admin panel's Integrations settings can hold them as
+IntegrationSetting rows instead, but env vars work identically.
+
+- `CATALOG_SYNC_CRON` — optional. The daily reconciliation full-sync schedule
+  (standard 5-field cron expression, UTC), default `0 5 * * *` (5:00 AM — 30
+  minutes after the R2 image-compression pass, before India store hours).
+  ⚠️ Changing this on a live deployment creates a **new** BullMQ repeat
+  schedule — remove the old `catalog-daily-full-sync` repeatable job from Redis
+  (or wipe the repeat set) if the run time should move rather than duplicate.
+
+- `META_WHATSAPP_BUSINESS_ACCOUNT_ID` — the numeric WABA ID from Meta Business
+  Suite → WhatsApp → Business Account settings.
+- `META_WEBHOOK_SECRET` — any long random string. This is the **verify token**
+  you enter in the Meta dashboard below (NOT the signature secret).
+- `META_APP_ID` + `META_APP_SECRET` — the Meta for Developers app. The app
+  secret is what Meta uses to sign webhook POSTs (`X-Hub-Signature-256`).
+
+### Step 2: Configure the webhook in the Meta dashboard
+
+1. Open **Meta for Developers** → your app → **WhatsApp** → **Configuration** →
+   **Webhook**.
+2. Callback URL:
+
+   ```
+   https://api.kanchuki.app/v1/public/webhooks/whatsapp-catalog
+   ```
+
+3. Verify token: paste `META_WEBHOOK_SECRET`.
+4. Meta sends a GET handshake (`hub.mode=subscribe&hub.verify_token=...&hub.challenge=...`);
+   the API echoes the challenge back when the token matches.
+5. Subscribe to the **WhatsApp Business Account** object — the catalog update
+   fields (`catalog_item_added/updated/deleted`, availability changes).
+
+> **Signature contract:** Meta signs every webhook POST with
+> `X-Hub-Signature-256: sha256=<HMAC-SHA256(raw body, META_APP_SECRET)>`. The API
+> verifies against the **app secret** (timing-safe, fail-closed) — the
+> `META_WEBHOOK_SECRET` is only used for the GET handshake verify token.
+
+### Step 3: Retailer setup + first sync
+
+1. Retailer connects their own WhatsApp Business API account (Settings →
+   WhatsApp Business API — bring-your-own token).
+2. Settings → **WhatsApp Native Catalog** → toggle **Sync to WhatsApp Catalog**
+   (optionally pick categories) → **Sync Now**. The catalog is created on their
+   WABA on first sync.
+3. Product edits, status changes and deletes auto-sync afterwards; the admin
+   panel (`/admin/whatsapp-catalog`) can force a full sync per retailer.
+
+### Production Checklist (add to existing checklist)
+
+- [ ] `META_APP_ID` / `META_APP_SECRET` / `META_WHATSAPP_BUSINESS_ACCOUNT_ID` / `META_WEBHOOK_SECRET` set on the API service
+- [ ] Webhook callback URL + verify token configured in Meta for Developers
+- [ ] WABA subscribed to the WhatsApp Business Account catalog fields
+- [ ] A test retailer connected + synced, item visible in WhatsApp Business
 
 ---
 

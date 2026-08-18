@@ -186,6 +186,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 42 | Admin Commission Tracker — 3% of monthly payments as a pool + expense ledger (admin dashboard card + `/admin/commission` two-tab page: Monthly Summary, Expenditure grid, add-expense form, row detail popup) | ✅ Built | 2026-08-17 | BUILD-LOG §42, PRO-REQUIREMENTS §25 |
 | 43 | Retailer Auth — Login / Create Account segmented toggle on the single OTP phone screen (decision: keep one screen, two flows would be identical) | ✅ Built | 2026-08-17 | BUILD-LOG §43, PRO-REQUIREMENTS §26 |
 | 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), suppliers (K), bookings (L), inventory alerts (J), videos (Q), AI translate (M) + migration 055 (khata H + udhar O removed from scope); M/N/R/S completed: campaign-message translation + AI search UI, usual-size capture + size recommendation + plus sizes, campaign analytics screen, collection A/B (per-variant products + stagger + significance) | ✅ Built (backend + full mobile UI: growth hub, campaigns, referrals, promotions, suppliers, bookings, inventory alerts, videos, AI translate, AI search, campaign analytics + admin festival calendar) | 2026-08-17 | BUILD-LOG §44–47 |
+| 45 | Phase II — WhatsApp Native Catalog Sync (F-307 / roadmap P): migration 060 (CatalogItem + CatalogSyncLog + Retailer sync fields + WHATSAPP_CATALOG_SYNC feature), Meta Catalog API client, BullMQ sync engine (full/single + auto-sync on product edit/status/delete/tag-completion), retailer routes D1–D7, HMAC-verified webhook E1–E7, mobile settings UI F1–F7 (+ per-product badges), admin monitor G1–G5, deploy docs | ✅ Built (all 63/63 breakdown tasks; migration 060 + 061–063 not yet applied) | 2026-08-18 | BUILD-LOG §49 |
 
 ---
 
@@ -217,7 +218,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 ### Sprint Block D — Localization & Scale (6 weeks)
 - ✅ Multi-Language AI (M — descriptions + campaign messages; AI search UI; voice via keyboard dictation)
 - ✅ Indian Size & Fit System (N — usual-size capture + per-customer recommendation + plus sizes XS/4XL–8XL + unstitched/blouse flags)
-- ✅ WhatsApp Native Catalog Sync (P — designed, Meta catalog API integration ready)
+- ✅ WhatsApp Native Catalog Sync (P — built Phase II 2026-08-18: sync engine + webhook + retailer mobile UI + admin monitor, BUILD-LOG §49)
 
 > **Removed from scope 2026-08-17:** Daily Khata (H) and Udhar credit (O) — no khata, no udhar.
 

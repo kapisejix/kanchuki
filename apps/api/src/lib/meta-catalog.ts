@@ -93,7 +93,8 @@ export async function resolveCatalogCredentials(
 export async function getOrCreateCatalog(
   wabaId: string,
   accessToken: string,
-  catalogName: string = 'Kanchuki Product Catalog'
+  catalogName: string = 'Kanchuki Product Catalog',
+  signal?: AbortSignal,
 ): Promise<string> {
   // First try to list existing catalogs for this WABA
   const listRes = await fetch(
@@ -101,6 +102,7 @@ export async function getOrCreateCatalog(
       access_token: accessToken,
       fields: 'id,name',
     })}`,
+    { signal },
   );
   const listBody = (await listRes.json()) as { data?: Catalog[] };
 
@@ -120,6 +122,7 @@ export async function getOrCreateCatalog(
         name: catalogName,
         vertical: 'ECOMMERCE',
       }),
+      signal,
     },
   );
   const createBody = (await createRes.json()) as { id?: string; error?: Record<string, unknown> };
@@ -142,9 +145,10 @@ export async function getOrCreateCatalog(
 export async function uploadCatalogImage(
   imageUrl: string,
   accessToken: string,
+  signal?: AbortSignal,
 ): Promise<string> {
   // Download the image from R2 (public URL)
-  const imageRes = await fetch(imageUrl);
+  const imageRes = await fetch(imageUrl, { signal });
   if (!imageRes.ok) {
     throw new MetaApiError('Failed to fetch image from R2', 400, 'IMAGE_FETCH_FAILED');
   }
@@ -159,6 +163,7 @@ export async function uploadCatalogImage(
     {
       method: 'POST',
       body: formData,
+      signal,
     },
   );
   const uploadBody = (await uploadRes.json()) as CatalogImageUploadResponse & { error?: Record<string, unknown> };
@@ -182,6 +187,7 @@ export async function createCatalogItem(
   accessToken: string,
   item: CatalogItemCreateInput,
   retailerId: string,
+  signal?: AbortSignal,
 ): Promise<{ id: string }> {
   // Build the item payload
   const payload: Record<string, unknown> = {
@@ -203,7 +209,7 @@ export async function createCatalogItem(
   // Handle image: if image_url provided, upload first
   if (item.image_url) {
     try {
-      const imageHash = await uploadCatalogImage(item.image_url, accessToken);
+      const imageHash = await uploadCatalogImage(item.image_url, accessToken, signal);
       payload.image_hash = imageHash;
     } catch (err) {
       // Log warning but continue without image
@@ -217,6 +223,7 @@ export async function createCatalogItem(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal,
     },
   );
   const body = (await res.json()) as { id?: string; error?: Record<string, unknown> };
@@ -240,6 +247,7 @@ export async function updateCatalogItem(
   accessToken: string,
   itemId: string,
   updates: CatalogItemUpdateInput,
+  signal?: AbortSignal,
 ): Promise<void> {
   const payload: Record<string, unknown> = { access_token: accessToken };
 
@@ -254,7 +262,7 @@ export async function updateCatalogItem(
   // Handle image update
   if (updates.image_url) {
     try {
-      const imageHash = await uploadCatalogImage(updates.image_url, accessToken);
+      const imageHash = await uploadCatalogImage(updates.image_url, accessToken, signal);
       payload.image_hash = imageHash;
     } catch (err) {
       console.warn(`Failed to upload image for catalog item update ${itemId}:`, err);
@@ -267,6 +275,7 @@ export async function updateCatalogItem(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal,
     },
   );
   const body = (await res.json()) as { success?: boolean; error?: Record<string, unknown> };
@@ -287,10 +296,11 @@ export async function deleteCatalogItem(
   catalogId: string,
   accessToken: string,
   itemId: string,
+  signal?: AbortSignal,
 ): Promise<void> {
   const res = await fetch(
     `${GRAPH_BASE}/${itemId}?${new URLSearchParams({ access_token: accessToken })}`,
-    { method: 'DELETE' },
+    { method: 'DELETE', signal },
   );
   const body = (await res.json()) as { success?: boolean; error?: Record<string, unknown> };
 
@@ -312,6 +322,7 @@ export async function listCatalogItems(
   accessToken: string,
   limit: number = 100,
   after?: string,
+  signal?: AbortSignal,
 ): Promise<{ items: CatalogItem[]; nextCursor?: string }> {
   const params = new URLSearchParams({
     access_token: accessToken,
@@ -320,7 +331,7 @@ export async function listCatalogItems(
   });
   if (after) params.set('after', after);
 
-  const res = await fetch(`${GRAPH_BASE}/${catalogId}/items?${params}`);
+  const res = await fetch(`${GRAPH_BASE}/${catalogId}/items?${params}`, { signal });
   const body = (await res.json()) as { data?: CatalogItem[]; paging?: { cursors?: { after: string } } };
 
   if (!res.ok || !Array.isArray(body.data)) {
@@ -346,6 +357,7 @@ export async function batchCatalogItems(
     retailer_id: string;
     item?: CatalogItemCreateInput;
   }>,
+  signal?: AbortSignal,
 ): Promise<Array<{ retailer_id: string; id?: string; success: boolean; error?: string }>> {
   // Meta's batch API format
   const batch = operations.map((op, index) => ({
@@ -365,7 +377,7 @@ export async function batchCatalogItems(
       batch: JSON.stringify(batch),
       include_headers: 'false',
     })}`,
-    { method: 'POST' },
+    { method: 'POST', signal },
   );
   const body = (await res.json()) as Array<{ code: number; body: Record<string, unknown> }>;
 
@@ -391,6 +403,7 @@ export async function getCatalogItemByRetailerId(
   catalogId: string,
   accessToken: string,
   retailerId: string,
+  signal?: AbortSignal,
 ): Promise<CatalogItem | null> {
   // Filter by retailer_id (external_id)
   const params = new URLSearchParams({
@@ -399,7 +412,7 @@ export async function getCatalogItemByRetailerId(
     filter: JSON.stringify({ retailer_id: { eq: retailerId } }),
   });
 
-  const res = await fetch(`${GRAPH_BASE}/${catalogId}/items?${params}`);
+  const res = await fetch(`${GRAPH_BASE}/${catalogId}/items?${params}`, { signal });
   const body = (await res.json()) as { data?: CatalogItem[] };
 
   if (!res.ok || !Array.isArray(body.data) || body.data.length === 0) {

@@ -14,6 +14,7 @@ import { resolveCategoryId } from '../lib/default-categories.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../lib/quota.js';
 import { withUniqueSku } from '../lib/sku.js';
+import { maybeEnqueueProductSync } from './catalog-sync.js';
 import { addEmbeddingJob } from './index.js';
 import type { TaggingJobData } from './index.js';
 
@@ -191,6 +192,14 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
     // ai_tagged: false + ai_tag_error, giving the user visible feedback
     // in the product detail screen. BullMQ retries with exponential backoff.
     await addEmbeddingJob({ product_id, retailer_id });
+
+    // Phase II: WhatsApp catalog — the product is now fully formed (name,
+    // price, category, tags), so push it to the retailer's Meta catalog.
+    // Fire-and-forget + fail-open: the hook no-ops unless the retailer has
+    // catalog sync enabled; a catalog hiccup must never fail tagging.
+    maybeEnqueueProductSync(retailer_id, product_id).catch((err) => {
+      console.error(`Failed to enqueue catalog sync after tagging product ${product_id}:`, err);
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     // ponytail: this write can itself fail on a transient DB error (e.g. pooler

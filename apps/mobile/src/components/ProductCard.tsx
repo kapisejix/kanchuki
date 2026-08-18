@@ -53,6 +53,9 @@ export interface ProductCardProps {
   statusBadge?: string | null
   /** Optional: Small dot indicator when AI tagging is pending */
   showAIDot?: boolean
+  /** Optional: WhatsApp catalog sync badge (bottom-right dot): green = synced,
+   *  amber = pending, red = error. Only rendered when provided. (Phase II F7) */
+  catalogSyncStatus?: 'SUCCESS' | 'FAILED' | 'PARTIAL' | 'IN_PROGRESS' | null
   /** Optional: Selected state overlay (checkmark) */
   selected?: boolean
   /** Optional: Custom image height (defaults to aspect-[3/4]) */
@@ -73,6 +76,7 @@ const ProductCard = memo(function ProductCard({
   flex = true,
   statusBadge,
   showAIDot,
+  catalogSyncStatus,
   selected,
   imageHeight,
   cachePolicy = 'memory-disk',
@@ -132,6 +136,21 @@ const ProductCard = memo(function ProductCard({
           {/* AI tagging pending indicator (top-right) */}
           {showAIDot && (
             <View className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-turmeric-400 border border-white" />
+          )}
+
+          {/* WhatsApp catalog sync badge (bottom-right) — F7 */}
+          {catalogSyncStatus && (
+            <View
+              className="absolute bottom-2 right-2 w-3 h-3 rounded-full border border-white"
+              style={{
+                backgroundColor:
+                  catalogSyncStatus === 'SUCCESS'
+                    ? '#059669' // emerald-600 — synced
+                    : catalogSyncStatus === 'FAILED'
+                      ? '#dc2626' // red-600 — error
+                      : '#d97706', // amber-600 — pending / partial
+              }}
+            />
           )}
 
           {/* Selected checkmark overlay */}

@@ -2,6 +2,7 @@
 export { retailersProfileRoutes } from './retailers-profile.js';
 export { retailersUploadsRoutes } from './retailers-uploads.js';
 export { retailersWhatsappRoutes } from './retailers-whatsapp.js';
+export { retailersWhatsappCatalogRoutes } from './retailers-whatsapp-catalog.js';
 export { retailersStatsRoutes } from './retailers-stats.js';
 export { retailersSettingsRoutes } from './retailers-settings.js';
 export { retailersSectionsRoutes } from './retailers-sections.js';

@@ -693,8 +693,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
   });
 };
 
-/** Resolve the audience spec into concrete customer ids (incl. inactive_days). */
-async function resolveAudienceCustomerIds(retailerId: string, spec: AudienceSpec): Promise<string[]> {
+export async function resolveAudienceCustomerIds(retailerId: string, spec: AudienceSpec): Promise<string[]> {
   const where = buildAudienceWhere(spec, retailerId) as NonNullable<
     Parameters<typeof prisma.customer.findMany>[0]
   >['where'];

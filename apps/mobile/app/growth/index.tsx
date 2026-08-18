@@ -13,6 +13,7 @@ import {
   Truck,
   Users,
   Video,
+  Wand2,
 } from 'lucide-react-native'
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -31,6 +32,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 
 // Every growth module now has a live screen. Each card routes to its module.
 const GROWTH_MODULES = [
+  { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
   { icon: Users, label: 'Referrals', hint: 'Customers bring customers', href: '/growth/referrals' as const },
   { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers', href: '/growth/promotions' as const },
   { icon: Truck, label: 'Suppliers', hint: 'Orders & pending payments', href: '/growth/suppliers' as const },
@@ -261,10 +263,10 @@ export default function GrowthHubScreen() {
         </Text>
         <View className="gap-2.5">
           {GROWTH_MODULES.map(({ icon: Icon, label, hint, href }) => (
-            <AnimatedPressable
-              key={label}
-              onPress={() => router.push(href)}
-              accessibilityRole="button"
+                  <AnimatedPressable
+                    key={label}
+                    onPress={() => router.push(href as any)}
+                    accessibilityRole="button"
               accessibilityLabel={label}
               className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
             >

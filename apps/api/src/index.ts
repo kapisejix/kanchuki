@@ -31,6 +31,7 @@ import { tryOnRoutes } from './routes/tryon.js';
 import { growthRoutes } from './routes/growth/index.js';
 import { publicGrowthRoutes } from './routes/public/public-growth.js';
 import { msg91WebhookRoutes } from './routes/webhooks/msg91.js';
+import { whatsappCatalogWebhookRoutes } from './routes/webhooks/whatsapp-catalog.js';
 
 // Fail fast at boot instead of 500ing the first request that touches
 // encrypted secrets (F-012) — previously masterKey() only threw inside
@@ -162,8 +163,9 @@ await server.register(consentRoutes, { prefix: '/v1/consent' });
 await server.register(catalogImportRoutes, { prefix: '/v1' });
 await server.register(staffRoutes, { prefix: '/v1/staff' });
 await server.register(teamRoutes, { prefix: '/v1/team' });
-await server.register(checkoutRoutes, { prefix: '/v1' });
-await server.register(msg91WebhookRoutes, { prefix: '/v1' });
+await server.register(checkoutRoutes, { prefix: '/v1' });  await server.register(msg91WebhookRoutes, { prefix: '/v1' });
+  // Phase II: WhatsApp catalog webhook (Meta → Kanchuki, HMAC-verified)
+  await server.register(whatsappCatalogWebhookRoutes, { prefix: '/v1' });
 
 // ─── Health Check ─────────────────────────────────────────────────
 

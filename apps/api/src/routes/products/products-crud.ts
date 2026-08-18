@@ -4,6 +4,10 @@ import { type Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
+import {
+  maybeEnqueueFullSync,
+  maybeEnqueueProductSync,
+} from '../../jobs/catalog-sync.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import {
@@ -356,6 +360,12 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       });
     }
 
+    // Phase II: WhatsApp catalog — keep the Meta item in sync with the edit
+    // (price, availability, name, category). Fire-and-forget + fail-open.
+    maybeEnqueueProductSync(request.retailerId, id).catch(() => {
+      // Non-critical — the next manual Sync Now reconciles
+    });
+
     await prisma.auditLog.create({
       data: {
         actor_type: 'retailer',
@@ -391,6 +401,13 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     });
 
     void revalidateCollectionsForProduct(id);
+
+    // Phase II: WhatsApp catalog — status changes map to Meta availability
+    // (AVAILABLE→in stock, SOLD→out of stock), so a quick "Mark Sold" must
+    // reach the catalog. Fire-and-forget + fail-open.
+    maybeEnqueueProductSync(request.retailerId, id).catch(() => {
+      // Non-critical — the next manual Sync Now reconciles
+    });
 
     await prisma.auditLog.create({
       data: {
@@ -450,6 +467,12 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    // Phase II: WhatsApp catalog — one reconciliation pass beats N per-product
+    // jobs for a bulk delete; it also drops all their Meta items. Fire-and-forget.
+    maybeEnqueueFullSync(request.retailerId).catch(() => {
+      // Non-critical — the next manual Sync Now reconciles
+    });
+
     return reply.status(200).send({ data: { deleted_count: result.count } });
   });
 
@@ -475,6 +498,12 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       payload: existing as unknown as Record<string, unknown>,
       delete_reason: 'user_delete',
       deleted_by: request.retailerId,
+    });
+
+    // Phase II: WhatsApp catalog — the soft-deleted product must be removed
+    // from Meta (syncSingleProduct drops ineligible items). Fire-and-forget.
+    maybeEnqueueProductSync(request.retailerId, id).catch(() => {
+      // Non-critical — the next manual Sync Now reconciles
     });
 
     await prisma.auditLog.create({

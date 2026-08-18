@@ -212,7 +212,7 @@ See `docs/PRO-REQUIREMENTS.md` §10.9–10.11 for full spec.
 
 ---
 
-## Phase II: WhatsApp Native Catalog Sync (Month 6–7) — New
+## Phase II: WhatsApp Native Catalog Sync (Month 6–7) — ✅ **Built 2026-08-18** (BUILD-LOG §49)
 
 **Goal:** Extend Meta integration to enable automated synchronization of product data directly into the WhatsApp Business native catalog (in-app product list under business profile).
 

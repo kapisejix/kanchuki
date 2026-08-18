@@ -9,6 +9,7 @@ import {
   retailersSocialRoutes,
   retailersStatsRoutes,
   retailersUploadsRoutes,
+  retailersWhatsappCatalogRoutes,
   retailersWhatsappRoutes,
 } from './retailers/index.js';
 
@@ -19,6 +20,8 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersUploadsRoutes);
   // retailers-whatsapp — auto-split module
   await server.register(retailersWhatsappRoutes);
+  // retailers-whatsapp-catalog — Phase II WhatsApp native catalog sync
+  await server.register(retailersWhatsappCatalogRoutes);
   // retailers-stats — auto-split module
   await server.register(retailersStatsRoutes);
   // retailers-settings — auto-split module

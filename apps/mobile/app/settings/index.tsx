@@ -1197,6 +1197,13 @@ export default function SettingsScreen() {
                 onPress={() => setShowWhatsAppApi(true)}
               />
 
+              <SettingsRow
+                icon={<MessageCircle size={18} color={primaryColor} />}
+                label="WhatsApp Native Catalog"
+                subtitle="Sync products into WhatsApp Business"
+                onPress={() => router.push('/settings/whatsapp-catalog')}
+              />
+
               <View className="h-2" />
             </>
           )}
