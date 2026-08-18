@@ -133,6 +133,7 @@ enum PlanFeatureKey {
   SPIN_360
   VIRTUAL_TRY_ON
   WHATSAPP_BUSINESS_API
+  WHATSAPP_CATALOG_SYNC
   CHECKOUT_CART
   DATA_EXPORT_CSV
   CUSTOM_BRANDING
@@ -223,6 +224,13 @@ model Retailer {
   whatsapp_api_template_lang   String?
   whatsapp_api_configured_at   DateTime?
 
+  // WhatsApp Native Catalog Sync (Phase II) — sync product catalog to
+  // WhatsApp Business native catalog (in-app product list under business profile).
+  whatsapp_catalog_id    String? // Meta catalog ID (from WABA)
+  sync_enabled           Boolean  @default(false)
+  sync_categories        String[] @default([]) // ProductCategory IDs to sync
+  last_synced_at         DateTime?
+
   categories String[] // ["suits", "sarees", "kurtis"]
 
   // Public QR profile — visitors scan a QR encoding /store/{public_slug},
@@ -288,6 +296,8 @@ model Retailer {
   usage_counters        UsageCounter[]
   quota_addon_purchases QuotaAddonPurchase[]
   ai_usage_logs         AiUsageLog[]
+  catalog_items         CatalogItem[]
+  catalog_sync_logs     CatalogSyncLog[]
   territory             Territory?              @relation(fields: [territory_id], references: [id])
   onboarded_by          TeamMember?             @relation("OnboardedRetailers", fields: [onboarded_by_id], references: [id])
   support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
@@ -481,6 +491,9 @@ model Product {
   // from the free-text `category` AI tag above.
   category_id String?
 
+  // WhatsApp Native Catalog Sync — stores Meta's catalog item ID
+  whatsapp_catalog_item_id String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -497,6 +510,7 @@ model Product {
   collection_items CollectionProduct[]
   interactions     CustomerInteraction[]
   order_items      OrderItem[]
+  catalog_item     CatalogItem?
 
   @@unique([retailer_id, sku])
   @@index([retailer_id])
@@ -1869,4 +1883,70 @@ model ProductVideo {
 
   @@index([product_id])
   @@map("product_videos")
+}
+
+// ─── WHATSAPP NATIVE CATALOG SYNC (Phase II) ──────────────────────
+// Sync Kanchuki product catalog to WhatsApp Business native catalog.
+
+enum CatalogSyncStatus {
+  SUCCESS
+  FAILED
+  PARTIAL
+  IN_PROGRESS
+}
+
+model CatalogItem {
+  id                      String   @id @default(cuid())
+  retailer_id             String
+  product_id              String   @unique // One product = one catalog item
+  whatsapp_catalog_item_id String  // Meta's catalog item ID
+  whatsapp_catalog_id     String   // Meta's catalog ID (cached)
+
+  // Sync state
+  status                  CatalogSyncStatus @default(IN_PROGRESS)
+  last_synced_at          DateTime?
+  error_message           String?
+
+  // Retailer's product data snapshot at sync time
+  product_name_snapshot   String
+  product_price_paise     Int
+  product_status_snapshot String // AVAILABLE/SOLD/RESERVED
+  hsn_code_snapshot       String?
+
+  created_at              DateTime @default(now())
+  updated_at              DateTime @updatedAt
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id])
+  @@index([whatsapp_catalog_id])
+  @@map("catalog_items")
+}
+
+model CatalogSyncLog {
+  id              String   @id @default(cuid())
+  retailer_id     String
+  catalog_item_id String?
+
+  // Operation type
+  operation       String   // 'full_sync' | 'single_product' | 'webhook'
+  product_id      String?
+
+  // Meta API details
+  meta_item_id    String?
+  meta_catalog_id String?
+
+  // Result
+  status          CatalogSyncStatus
+  error_message   String?
+  payload_json    Json?    // Request/response payload for debugging
+
+  created_at      DateTime @default(now())
+
+  retailer Retailer @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@index([retailer_id, created_at])
+  @@index([catalog_item_id])
+  @@map("catalog_sync_logs")
 }

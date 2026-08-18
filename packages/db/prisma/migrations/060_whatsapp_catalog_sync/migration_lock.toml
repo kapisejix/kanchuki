@@ -1,0 +1,3 @@
+provider = "postgresql"
+migration_id = "060_whatsapp_catalog_sync"
+checksum = "checksum_placeholder_will_be_updated_by_prisma"
