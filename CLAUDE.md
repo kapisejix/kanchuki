@@ -169,7 +169,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 25 | Colabs-inspired marketing redesign — palette, marquee, logo, MatterSemiMono | ✅ Built | 2026-08-11 | BUILD-LOG §25 |
 | 26 | ⚠️ INCIDENT: test-retailer cleanup deleted live retailer's R2 photos — prevention shipped | Fixed | 2026-08-11 | BUILD-LOG §26 |
 | 27 | Fashion V-Tone migrated Railway → self-hosted Hetzner CX43 (+ shared-secret auth) | ✅ Migrated | 2026-08-06 | BUILD-LOG §27 |
-| 28 | Multi-Photo Ken Burns Effect (product photos → pseudo-video loop) | 🕐 Planned | — | BUILD-LOG §28 |
+| 28 | F-033 Ken Burns Auto-Video (photos → ffmpeg slideshow) + Video Social Posting (F-031 posts video over photo when present) | ✅ Built | 2026-08-19 | BUILD-LOG §28 |
 | 29 | F-027 DB-backed Category/Style/Occasion/Fabric taxonomy — migrated + live-verified | ✅ Built | 2026-08-07 | BUILD-LOG §29 |
 | 30 | Store QR Self-Service + Store-URL Rename Sync + Onboarding QR Nudge | ✅ Built | 2026-08-08 | BUILD-LOG §30 |
 | 31 | Add-Product Flow Rework — AI-in-background + F-028 Auto-Contrast Background | ✅ Built | 2026-08-08 | BUILD-LOG §31 |

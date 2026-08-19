@@ -292,6 +292,7 @@ export type ProductVideo = {
   public_url: string
   duration_sec: number | null
   is_main: boolean
+  source: 'UPLOAD' | 'KEN_BURNS'
   created_at: string
 }
 
@@ -495,6 +496,13 @@ export const growthApi = {
 
   deleteVideo: (videoId: string) =>
     request<void>(`/v1/growth/videos/${videoId}`, { method: 'DELETE' }),
+
+  // F-033 Slice 1: Ken Burns pan/zoom slideshow built from the product's
+  // own photos server-side — no file to upload, just enqueues the job.
+  generateVideo: (productId: string) =>
+    request<{ data: { message: string } }>(`/v1/growth/products/${productId}/video/generate`, {
+      method: 'POST',
+    }),
 
   // ─── AI Translate (roadmap M) ───────────────────────────────────
   generateDescription: (productId: string, language: TranslateLanguage) =>

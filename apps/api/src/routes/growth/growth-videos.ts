@@ -4,6 +4,7 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -101,6 +102,29 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       });
     });
     return reply.status(201).send({ data: video });
+  });
+
+  // ─── POST /growth/products/:id/video/generate ───────────────────
+  // F-033 Slice 1: enqueue a Ken Burns pan/zoom slideshow built from the
+  // product's own photos — no upload needed. Same 3-video cap + feature
+  // gate as manual upload above; the ffmpeg job itself needs ≥2 photos.
+  server.post('/products/:id/video/generate', async (request, reply) => {
+    const retailerId = request.retailerId;
+    await guard(retailerId);
+    const { id } = request.params as { id: string };
+
+    const product = await prisma.product.findFirst({
+      where: { id, retailer_id: retailerId, deleted_at: null },
+      include: { _count: { select: { videos: true, photos: true } } },
+    });
+    if (!product) throw notFound('Product');
+    if (product._count.videos >= 3) throw validationError('Maximum 3 videos per product');
+    if (product._count.photos < 2) {
+      throw validationError('Add at least 2 photos before generating a video');
+    }
+
+    await addKenBurnsVideoJob({ product_id: id, retailer_id: retailerId });
+    return reply.status(202).send({ data: { message: 'Video generation started' } });
   });
 
   // ─── GET /growth/products/:id/videos ────────────────────────────

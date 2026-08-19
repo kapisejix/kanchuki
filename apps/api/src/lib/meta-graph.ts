@@ -161,6 +161,35 @@ export async function publishPhotoPost(
 }
 
 /**
+ * Publish a video post to a Page (F-033 Slice 2). `videoUrl` must be a
+ * publicly fetchable URL (product video on R2); `caption` becomes the
+ * video's description.
+ *
+ * The endpoint is the Page's `videos` edge (POST /{page-id}/videos with a
+ * `file_url` param, mirroring publishPhotoPost's `url` param on `/photos`).
+ */
+export async function publishVideoPost(
+  pageId: string,
+  pageToken: string,
+  videoUrl: string,
+  caption: string,
+): Promise<{ postId: string }> {
+  const res = await fetch(
+    `${GRAPH_BASE}/${pageId}/videos?${new URLSearchParams({
+      access_token: pageToken,
+      file_url: videoUrl,
+      description: caption,
+    })}`,
+    { method: 'POST' },
+  );
+  const body = (await res.json()) as Record<string, unknown>;
+  if (!res.ok || typeof body.id !== 'string') {
+    throw new MetaApiError('Facebook rejected the video post', 400, 'PUBLISH_FAILED');
+  }
+  return { postId: body.id as string };
+}
+
+/**
  * Publish a link post (message + link + optional picture) to a Page.
  * Used for COLLECTION_LINK posts where the /c/[slug] URL is the content.
  *

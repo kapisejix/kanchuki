@@ -13,6 +13,8 @@ import type { MeasurementJobData } from './extract-measurement.js';
 import { handleExtractSpinFrames } from './extract-spin-frames.js';
 import type { SpinFrameJobData } from './extract-spin-frames.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
+import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
+import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
 // handleGhostMannequin, handleProcessTryOn, handleUpdateFashionDNA: paused, see startWorkers() below.
 // Re-enable: uncomment these 3 imports + the matching Worker block.
 // import { handleGhostMannequin } from './ghost-mannequin.js';
@@ -229,6 +231,16 @@ export async function addAdminTryOnJob(data: AdminTryOnJobData): Promise<void> {
   });
 }
 
+// F-033 Slice 1: on-demand ffmpeg Ken Burns slideshow from a product's
+// existing photos. Same on-demand maintenance-queue pattern as admin-tryon —
+// no dedicated queue/worker for a low-volume, button-triggered job.
+export async function addKenBurnsVideoJob(data: KenBurnsVideoJobData): Promise<void> {
+  await getMaintenanceQueue().add('generate-ken-burns-video', data, {
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 20 },
+  });
+}
+
 // F-032 Phase A: AI studio-shoot generation. Own queue + Worker with bounded
 // concurrency (BFL caps active tasks — see STUDIO_SHOOT_CONCURRENCY). No retries:
 // each run burns real BFL credits, so a failed job surfaces as status
@@ -382,6 +394,10 @@ export async function startWorkers(): Promise<void> {
         }
         case 'catalog-daily-full-sync':
           return handleDailyCatalogSync();
+        case 'generate-ken-burns-video': {
+          const data = job.data as KenBurnsVideoJobData;
+          return handleGenerateKenBurnsVideo(data);
+        }
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }

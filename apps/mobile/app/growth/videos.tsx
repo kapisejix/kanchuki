@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
-import { ChevronLeft, ChevronRight, Clapperboard, Plus, Search, Star, Trash2, Upload } from 'lucide-react-native'
+import { ChevronLeft, ChevronRight, Clapperboard, Plus, Search, Sparkles, Star, Trash2, Upload } from 'lucide-react-native'
 import { useState } from 'react'
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -58,6 +58,15 @@ export default function VideosScreen() {
     mutationFn: (videoId: string) => growthApi.deleteVideo(videoId),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['growth', 'videos'] }),
     onError: (err) => showError(err, 'Failed to delete video'),
+  })
+
+  // F-033 Slice 1: ffmpeg job runs server-side (no file to upload) — just
+  // enqueues it and lets the retailer check back; no status polling yet.
+  const generate = useMutation({
+    mutationFn: () => growthApi.generateVideo(picked!.id),
+    onSuccess: () =>
+      Alert.alert('Generating video', 'Building a video from your product photos — check back in a minute.'),
+    onError: (err) => showError(err, 'Could not start video generation'),
   })
 
   const handleUpload = async () => {
@@ -240,12 +249,30 @@ export default function VideosScreen() {
                   </Text>
                 </View>
               ) : (
-                <GradientButton
-                  label={uploading ? `Uploading… ${uploadPct}%` : '+ Add Video'}
-                  onPress={() => void handleUpload()}
-                  loading={uploading}
-                  icon={<Upload size={16} color="white" />}
-                />
+                <>
+                  <GradientButton
+                    label={uploading ? `Uploading… ${uploadPct}%` : '+ Add Video'}
+                    onPress={() => void handleUpload()}
+                    loading={uploading}
+                    icon={<Upload size={16} color="white" />}
+                  />
+                  <AnimatedPressable
+                    onPress={() => generate.mutate()}
+                    disabled={generate.isPending}
+                    accessibilityRole="button"
+                    accessibilityLabel="Generate video from photos"
+                    className="flex-row items-center justify-center gap-2 bg-white border border-sand-200 rounded-2xl py-3.5 mt-2.5"
+                  >
+                    {generate.isPending ? (
+                      <ActivityIndicator size="small" color={primaryColor} />
+                    ) : (
+                      <Sparkles size={16} color={primaryColor} />
+                    )}
+                    <Text className="text-sm font-semibold" style={{ color: primaryColor }}>
+                      {generate.isPending ? 'Starting…' : 'Generate from photos'}
+                    </Text>
+                  </AnimatedPressable>
+                </>
               )}
               <Text className="text-[11px] text-sand-400 text-center mt-3 leading-4">
                 5–10 second clips (max 50MB, MP4 preferred). They appear on your customer storefront.

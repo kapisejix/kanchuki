@@ -2021,3 +2021,85 @@ alerts (kind-grouped signal cards), product videos (gallery picker →
 presigned upload → register/set-main/delete), AI translate (product
 picker + 7 language chips → Claude description). Mobile `tsc --noEmit`
 clean.
+
+---
+
+## 28. F-033 Ken Burns Auto-Video + Video Social Posting — ✅ BUILT 2026-08-19
+
+**Written 2026-08-19 on user request** ("scope the Ken Burns + video-post
+feature first ... then start building"). Two small, independent slices —
+both pure reuse of infra that already exists, no new dependency, no new
+paid API. Roadmap slot: `docs/PLAN.md` (post F-031). CLAUDE.md index #28
+("Multi-Photo Ken Burns Effect") is this feature.
+
+### 28.1 Problem
+
+Q (Video Product Support, already built) gives retailers a place to upload
+clips, but most won't ever film one — they only have the product *photos*
+they already uploaded via F-001. A pan/zoom slideshow stitched from those
+existing photos is a free, good-enough video for the ones who never film
+anything. Separately, F-031 (social publishing) can only ever post a photo
+today — once a product has a video (uploaded or Ken-Burns-generated),
+Facebook should get the more engaging video post instead.
+
+### 28.2 Scope
+
+**Slice 1 — Ken Burns auto-video (server-side, ffmpeg):**
+- Trigger: on-demand "Generate from photos" button on the existing Q video
+  screen (`apps/mobile/app/growth/videos.tsx`), shown when the product has
+  ≥2 photos and <3 videos (the existing cap). No automatic/background
+  generation for every product — that's speculative load or product decisions
+  not needed for what's asked.
+- Pipeline: reuse the exact ffmpeg `execFile` pattern already in
+  `apps/api/src/jobs/extract-spin-frames.ts` — zoompan (Ken Burns pan/zoom)
+  per photo + xfade crossfade between them, up to 5 primary-ordered photos,
+  ~2s per photo, output one MP4.
+- Storage: reuse `R2_PATHS.productVideo()` (already generic) and the
+  existing `ProductVideo` model — add one column, `source` enum
+  (`UPLOAD` default | `KEN_BURNS`), so the UI can badge/distinguish a
+  generated clip from a retailer-filmed one. No new table.
+- Job: reuse the existing `maintenanceQueue`/`maintenanceWorker` dispatch
+  (`apps/api/src/jobs/index.ts`) — one new `case` (mirrors the
+  `admin-tryon` on-demand pattern), not a new BullMQ Queue/Worker.
+- Route: one new endpoint on the existing growth-videos router
+  (`apps/api/src/routes/growth/growth-videos.ts`), same `GROWTH_ENGINE`
+  feature gate and 3-video cap the upload route already enforces.
+
+**Slice 2 — Video post on F-031 (Facebook):**
+- Add `publishVideoPost()` to `apps/api/src/lib/meta-graph.ts` — same shape
+  as the existing `publishPhotoPost()`, POSTs to the Page's `videos` edge
+  (`file_url` param) instead of `photos`.
+- Wire into `retailers-social.ts`'s `SINGLE_PRODUCT` publish branch: select
+  the product's main video alongside its main photo; if a video exists,
+  post video, else fall back to the existing photo post. No API contract
+  change — same endpoint, same request shape, purely which asset it picks.
+
+### 28.3 Explicitly NOT doing
+
+- ❌ No AI video-generation API (Seedance/Kling/Wan — that's F-032 Phase B,
+  a different, paid-add-on feature). Ken Burns is a deterministic ffmpeg
+  slideshow, not model-generated motion.
+- ❌ No automatic background generation for every product on upload —
+  on-demand button only, until retailers actually ask for automatic.
+  (ponytail: raise this rung if the button goes unused and retailers ask
+  for it to just happen.)
+- ❌ No new queue/worker/table — see reuse list above.
+- ❌ No Instagram video posting (Instagram isn't wired into F-031 yet at
+  all, still Facebook-only — out of scope here same as the rest of F-031).
+
+### 28.4 Acceptance criteria
+
+- Retailer with ≥2 product photos and no video taps "Generate from photos"
+  → within the maintenance worker's normal turnaround, a ≤15s MP4 appears
+  in the product's video list, marked main if it's the first video.
+- Generated video plays in the collection link / storefront exactly like
+  an uploaded one (same `ProductVideo` row shape, same public URL).
+- Posting a product with a video (uploaded or generated) to a connected
+  Facebook Page publishes a video post, not a photo post; products with no
+  video still post as a photo, unchanged from today.
+
+### 28.5 Complexity estimate
+
+Half a day: migration (1 column) + job (reuses ffmpeg pattern verbatim) +
+1 route + 1 mobile button (Slice 1); under an hour for Slice 2 (one new
+Graph API function + a 2-line branch in an existing route).

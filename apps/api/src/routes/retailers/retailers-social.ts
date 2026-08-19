@@ -35,6 +35,7 @@ import {
   listPages,
   publishLinkPost,
   publishPhotoPost,
+  publishVideoPost,
   resolveMetaCredentials,
 } from '../../lib/meta-graph.js';
 import { buildCollectionUrl } from '../../lib/store-urls.js';
@@ -304,11 +305,13 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
             name: true,
             price_min: true,
             photos: { where: { is_primary: true }, take: 1 },
+            videos: { where: { is_main: true }, take: 1 },
           },
         });
         if (!product) throw notFound('Product');
         const photo = product.photos[0];
-        if (!photo) throw validationError('This product has no photo to post');
+        const video = product.videos[0];
+        if (!photo && !video) throw validationError('This product has no photo to post');
 
         productIds = [product.id];
         if (!caption) {
@@ -316,7 +319,11 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
           const price = product.price_min ? ` — ₹${product.price_min / 100}` : '';
           caption = `${product.name ?? 'New arrival'}${price}\n\nShop the collection on WhatsApp: ${'https://kanchuki.app'}`;
         }
-        const { postId } = await publishPhotoPost(account.platform_account_id, token, photo.url, caption);
+        // F-033 Slice 2: a video (uploaded or Ken-Burns-generated) posts as
+        // video — more engaging than a photo post — falling back to photo.
+        const { postId } = video
+          ? await publishVideoPost(account.platform_account_id, token, video.public_url, caption)
+          : await publishPhotoPost(account.platform_account_id, token, photo!.url, caption);
         externalPostId = postId;
         externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
       } else {

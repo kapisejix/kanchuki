@@ -1882,15 +1882,21 @@ model ReferralCredit {
   @@map("referral_credits")
 }
 
+enum ProductVideoSource {
+  UPLOAD
+  KEN_BURNS
+}
+
 // Simple product video (roadmap Q) — 5-10s clip alongside photos.
 model ProductVideo {
-  id           String  @id @default(cuid())
+  id           String             @id @default(cuid())
   product_id   String
   retailer_id  String
   r2_key       String
   public_url   String
   duration_sec Int?
-  is_main      Boolean @default(false)
+  is_main      Boolean            @default(false)
+  source       ProductVideoSource @default(UPLOAD)
 
   created_at DateTime @default(now())
 

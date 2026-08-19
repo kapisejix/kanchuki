@@ -1071,3 +1071,23 @@ Gap per `docs/tasks/R-CAMPAIGN-ANALYTICS-SEASONAL.md`: the existing campaign ana
 **Design decisions:** No new DB tables — queries existing `CustomerInteraction` + `Campaign` + `CampaignSend` models. Period definitions are hardcoded (Oct–Feb = wedding, Mar–Sep = daily) rather than admin-configurable — a config layer can be added later if retailers in non-Hindi-belt regions need different definitions. Sends-per-category are attributed proportionally across a campaign's product categories. The compare period auto-selects the opposite season (wedding → compare with most recent daily, daily → compare with most recent wedding); custom date ranges disable comparison. |
 
 **Verified:** API `tsc --noEmit` clean + `vitest run` **605/605** (4 new seasonal tests); mobile `tsc --noEmit` clean; web `tsc --noEmit` clean.
+
+---
+
+## BUILT 2026-08-19: F-033 Ken Burns Auto-Video + Video Social Posting
+
+Spec `docs/PRO-REQUIREMENTS.md` §28. Two reuse-only slices, no new dependency or paid API — both built on existing infra (Q Video Product Support's storage/routes, `extract-spin-frames.ts`'s ffmpeg pattern, F-031's Facebook publish flow).
+
+| Layer | Files | Summary |
+|---|---|---|
+| **DB** | `packages/db/prisma/schema.prisma` + `migrations/065_product_video_source/migration.sql` | New `ProductVideoSource` enum (`UPLOAD` \| `KEN_BURNS`) + `ProductVideo.source` column, default `UPLOAD` (existing rows backfill automatically). **Migration applied live** (2026-08-19). |
+| **API — Slice 1 (video generation)** | `apps/api/src/jobs/generate-ken-burns-video.ts` (new) | ffmpeg `execFile` job (same pattern as `extract-spin-frames.ts`) — downloads up to 5 primary-ordered product photos, builds a per-photo zoompan (pan/zoom) clip, concats via `filter_complex`, uploads the MP4 to the existing `R2_PATHS.productVideo()` path, inserts a `ProductVideo` row (`source: KEN_BURNS`, `is_main` if the product has no video yet). |
+| **API — job wiring** | `apps/api/src/jobs/index.ts` | `addKenBurnsVideoJob()` producer + one new `case` in the existing `maintenanceWorker` switch — no new BullMQ Queue/Worker (mirrors the `admin-tryon` on-demand pattern). |
+| **API — route** | `apps/api/src/routes/growth/growth-videos.ts` | `POST /v1/growth/products/:id/video/generate` — same `GROWTH_ENGINE` feature gate + 3-video cap as manual upload; validates ≥2 photos before enqueueing. |
+| **API — Slice 2 (video post)** | `apps/api/src/lib/meta-graph.ts` | `publishVideoPost()` — same shape as `publishPhotoPost()`, POSTs to the Page's `videos` edge (`file_url` param) instead of `photos`. |
+| **API — social wiring** | `apps/api/src/routes/retailers/retailers-social.ts` | `SINGLE_PRODUCT` publish branch now selects the product's main video alongside its main photo; posts video when one exists, falls back to photo otherwise — no API contract change. |
+| **Mobile** | `apps/mobile/src/lib/api/growth.ts`, `apps/mobile/app/growth/videos.tsx` | `growthApi.generateVideo()` + `ProductVideo.source` type field; "Generate from photos" button on the existing Q video screen (shown whenever <3 videos — server validates the ≥2-photo requirement and surfaces the error via the existing `showError` pattern). |
+
+**Explicitly not done (see spec §28.3):** no AI video-generation API (that's F-032 Phase B, a different paid feature), no automatic/background generation on upload (on-demand button only), no crossfade between Ken Burns segments (hard cuts), no mobile badge distinguishing a generated clip from an uploaded one, no Instagram video posting (F-031 itself is still Facebook-only).
+
+**Verified:** API `tsc --noEmit` clean; mobile `tsc --noEmit` clean; `prisma generate` succeeded (transient Windows file-lock on the query-engine binary from an unrelated process, cleared on retry — not a code issue). No new automated tests added for this pass (ffmpeg job has no unit-test harness in this repo's pattern — same as `extract-spin-frames.ts`).
