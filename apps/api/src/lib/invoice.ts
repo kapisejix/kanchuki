@@ -1,6 +1,11 @@
-import { PDFDocument } from 'pdfkit';
+import PDFDocument from 'pdfkit';
 import { uploadBuffer, publicUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
+import type { z } from 'zod';
+import type { CreateOrderSchema } from '../routes/checkout/checkout-helpers.js';
+import { resolveHsnForCatalog } from '../jobs/catalog-sync.js';
+
+type ShippingAddress = z.infer<typeof CreateOrderSchema>['shipping_address'];
 
 /**
  * Generate a GST invoice PDF for an order and upload it to R2.
@@ -46,15 +51,14 @@ export async function generateAndAttachInvoicePdf(orderId: string): Promise<void
     throw new Error(`Order not found: ${orderId}`);
   }
 
+  const shippingAddress = order.shipping_address as ShippingAddress;
+
   // Create a new PDF document
   const doc = new PDFDocument({ size: 'A4', margin: 50 });
   const buffers: Buffer[] = [];
 
-  doc.on('data', (chunk) => {
+  doc.on('data', (chunk: Buffer) => {
     buffers.push(chunk);
-  });
-  doc.on('end', () => {
-    // This will be called when the PDF is finalized
   });
 
   // --- Invoice Header ---
@@ -87,7 +91,7 @@ export async function generateAndAttachInvoicePdf(orderId: string): Promise<void
     .text('Buyer:', { underline: true })
     .fontSize(10)
     .text(order.customer_name)
-    .text(`Address: ${order.shipping_address.line1}, ${order.shipping_address.line2 || ''}, ${order.shipping_address.city}, ${order.shipping_address.state} - ${order.shipping_address.pincode}`)
+    .text(`Address: ${shippingAddress.line1}, ${shippingAddress.line2 || ''}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}`)
     .text(`Phone: ${order.customer_phone}`)
     .moveDown();
 
@@ -108,9 +112,7 @@ export async function generateAndAttachInvoicePdf(orderId: string): Promise<void
   let rowIndex = 0;
   let tableY = tableTop + 20;
   for (const item of order.items) {
-    // Since we don't have HSN code in the order item snapshot, we'll leave it blank for now.
-    // In the future, we can add HSN code to the product snapshot.
-    const hsnCode = ''; // TODO: Fetch HSN code from product or retailer settings
+    const hsnCode = resolveHsnForCatalog({ name: item.product_name_snapshot });
     const unitPrice = (item.price_snapshot / 100).toFixed(2); // Convert paise to rupees
     const quantity = item.quantity;
     const amount = (item.price_snapshot * item.quantity) / 100; // Total in rupees
@@ -144,11 +146,13 @@ export async function generateAndAttachInvoicePdf(orderId: string): Promise<void
     .text('This is a computer generated invoice and does not require signature.', 50, doc.page.height - 50, { align: 'center' })
     .moveDown();
 
-  // Finalize the PDF
-  doc.end();
-
-  // Wait for the PDF to be generated
-  const pdfBuffer = Buffer.concat(buffers);
+  // Finalize the PDF — 'end' fires once the stream has flushed all chunks,
+  // so wait for it instead of concatenating buffers synchronously.
+  const pdfBuffer = await new Promise<Buffer>((resolve, reject) => {
+    doc.on('end', () => resolve(Buffer.concat(buffers)));
+    doc.on('error', reject);
+    doc.end();
+  });
 
   // Upload the PDF to R2
   const r2Key = `invoices/${order.id}-${Date.now()}.pdf`;

@@ -134,7 +134,7 @@ const pollingUrl = submit.polling_url;
        poll = (await res.json()) as { status?: string; result?: { sample?: string }; error?: string };
      } catch {
        // Transient network hiccup — keep polling until the deadline.
-       await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]);
+       await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
        pollIntervalIndex++;
        
        // Update progress during wait
@@ -172,7 +172,7 @@ const pollingUrl = submit.polling_url;
        onProgress({ progress, etaMs });
      }
      
-     await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]);
+     await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
      pollIntervalIndex++;
    }
 

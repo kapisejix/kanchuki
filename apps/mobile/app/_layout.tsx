@@ -8,7 +8,7 @@ import {
 } from '@expo-google-fonts/inter'
 import type { PlatformTheme } from '@kanchuki/shared'
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query'
-import { Stack, router } from 'expo-router'
+import { Stack, router, useRootNavigationState } from 'expo-router'
 import { vars } from 'nativewind'
 import { useEffect, useRef, useState } from 'react'
 import { AppState, Platform, Text, TextInput, View } from 'react-native'
@@ -181,7 +181,11 @@ export default function RootLayout() {
   }, [])
 
   // ── Auth redirect ─────────────────────────────────────────────
+  // router.replace() before the navigator's ref attaches throws "Couldn't
+  // find a navigation context" — wait for rootNavigationState.key first.
+  const rootNavigationState = useRootNavigationState()
   useEffect(() => {
+    if (!rootNavigationState?.key) return
     getToken()
       .then(async (token) => {
         if (!token) {
@@ -198,7 +202,7 @@ export default function RootLayout() {
         // SecureStore unavailable — treat as unauthenticated
         router.replace('/auth/phone')
       })
-  }, [])
+  }, [rootNavigationState?.key])
 
   // ── Persist cache on background + pause/resume queries ────────
   useEffect(() => {
