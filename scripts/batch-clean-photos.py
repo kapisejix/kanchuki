@@ -569,7 +569,7 @@ def clean_one(
     backdrop.paste(shadow, (0, 15), shadow)
 
     backdrop.paste(fg, (0, 0), fg)
-    backdrop.convert("RGB").save(output_path, quality=95)
+    backdrop.convert("RGB").save(output_path, quality=args.quality)
 
 
 def blur_one(
@@ -591,7 +591,7 @@ def blur_one(
 
     result = src.filter(ImageFilter.GaussianBlur(blur_radius)).convert("RGBA")
     result.paste(fg, (0, 0), fg)
-    result.convert("RGB").save(output_path, quality=95)
+    result.convert("RGB").save(output_path, quality=args.quality)
 
 
 def main() -> None:
@@ -608,6 +608,7 @@ def main() -> None:
     ap.add_argument("--prompt-points", default=None, help="interactive tap-to-fix: normalized (0..1) foreground points marking hardware to remove, 'x,y;x,y;...' (SAM2 point prompts; wins over --remove-hardware for that photo)")
     ap.add_argument("--prompt-excludes", default=None, help="normalized (0..1) negative points marking the garment so a --prompt-points mask can't swallow it; 'x,y;x,y;...'")
     ap.add_argument("--tight-crop", action="store_true", help="crop the final composite to the garment bounding box + small margin")
+    ap.add_argument("--quality", type=int, default=95, help="Output JPEG quality (1-100, default: 95)")
     args = ap.parse_args()
 
     bg_color = tuple(int(x) for x in args.bg.split(","))

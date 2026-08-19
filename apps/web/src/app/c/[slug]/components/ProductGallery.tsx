@@ -107,29 +107,30 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
-        {current ? (
-          <>
-            {/* The photo layer is a real button — tap/click opens the
-                fullscreen viewer (arrows/badges are siblings above it). */}
-            <button
-              type="button"
-              onClick={() => {
-                if (swipedRef.current) return;
-                setFullscreen(true);
-              }}
-              aria-label="Open photo in fullscreen"
-              className="absolute inset-0 block w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-            >
-              <Image
-                key={current.url}
-                src={current.url}
-                alt={alt}
-                fill
-                priority
-                sizes="(max-width: 640px) 100vw, 448px"
-                className={`object-cover ${sold ? 'grayscale opacity-80' : ''} animate-gallery-fade`}
-              />
-            </button>
+{current ? (
+             <>
+               {/* The photo layer is a real button — tap/click opens the
+                   fullscreen viewer (arrows/badges are siblings above it). */}
+               <button
+                 type="button"
+                 onClick={() => {
+                   if (swipedRef.current) return;
+                   setFullscreen(true);
+                 }}
+                 aria-label="Open photo in fullscreen"
+                 className="absolute inset-0 block w-full h-full p-0 border-0 bg-transparent cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+               >
+                 <Image
+                   key={current.url}
+                   src={current.url}
+                   alt={alt}
+                   fill
+                   priority={index === 0} // Only first slide gets priority for LCP
+                   loading={index === 0 ? undefined : 'lazy'} // Lazy load non-priority images
+                   sizes="(max-width: 640px) 100vw, 448px"
+                   className={`object-cover ${sold ? 'grayscale opacity-80' : ''} animate-gallery-fade`}
+                 />
+               </button>
 
             {/* Variant color badge — bottom-left so it can't collide with the
                 Sold/Reserved ribbon (top-left) or the counter (bottom-right). */}
@@ -201,25 +202,26 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
       {/* ── Thumbnail strip (photos + variant photos) ── */}
       {slideCount > 1 && (
         <div className="mt-2.5 flex gap-2 overflow-x-auto -mx-4 px-4 pb-1 scrollbar-hide snap-x">
-          {slides.map((slide, i) => (
-            <button
-              type="button"
-              key={slide.url}
-              onClick={() => goTo(i)}
-              aria-label={slide.color ? `${slide.color} photo` : `Photo ${i + 1}`}
-              className={`relative flex-shrink-0 w-14 aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all snap-start ${
-                i === index
-                  ? 'border-cyan-500 shadow-soft'
-                  : 'border-transparent opacity-70 hover:opacity-100'
-              }`}
-            >
-              <Image
-                src={slide.url}
-                alt=""
-                fill
-                sizes="56px"
-                className={`object-cover ${sold ? 'grayscale opacity-80' : ''}`}
-              />
+{slides.map((slide, i) => (
+             <button
+               type="button"
+               key={slide.url}
+               onClick={() => goTo(i)}
+               aria-label={slide.color ? `${slide.color} photo` : `Photo ${i + 1}`}
+               className={`relative flex-shrink-0 w-14 aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all snap-start ${
+                 i === index
+                   ? 'border-cyan-500 shadow-soft'
+                   : 'border-transparent opacity-70 hover:opacity-100'
+               }`}
+             >
+               <Image
+                 src={slide.url}
+                 alt=""
+                 fill
+                 sizes="56px"
+                 loading="lazy" // Lazy load all thumbnail images
+                 className={`object-cover ${sold ? 'grayscale opacity-80' : ''}`}
+               />
               {slide.color && (
                 <span className="absolute bottom-0.5 left-1 text-[7px] font-semibold text-white bg-black/50 rounded px-1 py-px truncate max-w-full">
                   {slide.color}
@@ -231,46 +233,51 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
       )}
 
       {/* ── Color chips — tapping one jumps to its photo ── */}
-      {variants.length > 0 && (
-        <div className="mt-3">
-          <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1.5">
-            <Palette size={12} />
-            Available Colors
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {variants.map((v) =>
-              v.photoUrl ? (
-                <button
-                  type="button"
-                  key={v.color}
-                  onClick={() => goToVariant(v.color)}
-                  className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
-                  title={`See ${v.color} photo`}
-                >
-                  <span
-                    className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                    style={{ backgroundColor: resolveFashionColor(v.color) }}
-                  />
-                  {v.color}
-                  {v.status === 'SOLD' && <span className="text-xs text-red-400">(Sold)</span>}
-                </button>
-              ) : (
-                <span
-                  key={v.color}
-                  className="flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-700"
-                >
-                  <span
-                    className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
-                    style={{ backgroundColor: resolveFashionColor(v.color) }}
-                  />
-                  {v.color}
-                  {v.status === 'SOLD' && <span className="text-xs text-red-400">(Sold)</span>}
-                </span>
-              ),
-            )}
-          </div>
-        </div>
-      )}
+{variants.length > 0 && (
+         <div className="mt-3">
+           <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1.5">
+             <Palette size={12} />
+             Available Colors
+           </p>
+           <div className="flex flex-wrap gap-2">
+             {variants.map((v) =>
+               v.photoUrl ? (
+                 <button
+                   type="button"
+                   key={v.color}
+                   onClick={v.status === 'SOLD' ? undefined : () => goToVariant(v.color)}
+                   className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 ${
+                     v.status === 'SOLD' ? 'opacity-50 cursor-not-allowed' : ''
+                   }`}
+                   title={v.status === 'SOLD' ? 'Sold out' : `See ${v.color} photo`}
+                   disabled={v.status === 'SOLD'}
+                 >
+                   <span
+                     className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+                     style={{ backgroundColor: resolveFashionColor(v.color) }}
+                   />
+                   {v.color}
+                   {v.status === 'SOLD' && <span className="text-xs text-red-400">(Sold)</span>}
+                 </button>
+               ) : (
+                 <span
+                   key={v.color}
+                   className={`flex items-center gap-1.5 rounded-full bg-gray-50 border border-gray-200 px-3 py-1.5 text-xs text-gray-700 ${
+                     v.status === 'SOLD' ? 'opacity-50' : ''
+                   }`}
+                 >
+                   <span
+                     className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+                     style={{ backgroundColor: resolveFashionColor(v.color) }}
+                   />
+                   {v.color}
+                   {v.status === 'SOLD' && <span className="text-xs text-red-400">(Sold)</span>}
+                 </span>
+               ),
+             )}
+           </div>
+         </div>
+       )}
 
       {/* ── Fullscreen lightbox ── */}
       {fullscreen && current && (
@@ -318,14 +325,17 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
               <ChevronRight size={20} className="text-white" />
             </button>
           )}
-          <div
-            className="relative w-full h-full max-w-lg max-h-[100vh]"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-          >
-            <Image src={current.url} alt={alt} fill sizes="100vw" className="object-contain" />
+<div
+             className="relative w-full h-full max-w-lg max-h-[100vh]"
+             onClick={(e) => e.stopPropagation()}
+             onKeyDown={(e) => e.stopPropagation()}
+             onTouchStart={handleTouchStart}
+             onTouchEnd={handleTouchEnd}
+           >
+             <Image src={current.url} alt={alt} fill sizes="100vw" 
+                    priority={index === 0} // Only first slide gets priority for LCP
+                    loading={index === 0 ? undefined : 'lazy'} // Lazy load non-priority images
+                    className="object-contain" />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full">
               {index + 1} / {slideCount}
             </div>

@@ -57,18 +57,22 @@ export interface StudioGenerationResult {
 }
 
 /** How long to poll for a single generation before giving up. */
-const POLL_TIMEOUT_MS = 120_000;
-const POLL_INTERVAL_MS = 1_000;
+const POLL_TIMEOUT_MS = 180_000; // Increased to 3 minutes to match BFL expectations
+// Adaptive polling intervals: start frequent, then back off
+const POLL_INTERVALS_MS = [1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 3_000, 3_000, 5_000, 5_000, 10_000, 10_000, 15_000, 15_000];
 
 /**
  * Run one FLUX Kontext generation: submit the photo URL + template prompt,
  * poll until Ready, and return the signed result URL (must be downloaded
  * and re-served from R2 within 10 minutes). Throws AppError on hard
  * failures (unconfigured key, submit rejected, out of credits).
+ * 
+ * @param onProgress Optional callback to report progress during polling
  */
 export async function generateStudioImage(
-  templateId: StudioTemplateId,
-  inputImageUrl: string,
+   templateId: StudioTemplateId,
+   inputImageUrl: string,
+   onProgress?: (progress: { progress: number; etaMs: number }) => void,
 ): Promise<StudioGenerationResult> {
   const template = getStudioTemplate(templateId);
   if (!template) {
@@ -112,39 +116,70 @@ export async function generateStudioImage(
     );
   }
 
-  const pollingUrl = submit.polling_url;
-  if (!pollingUrl) {
-    throw new AppError('STUDIO_SHOOT_FAILED', 'AI Studio Shoots returned no task. Please retry.', 503);
-  }
+const pollingUrl = submit.polling_url;
+   if (!pollingUrl) {
+     throw new AppError('STUDIO_SHOOT_FAILED', 'AI Studio Shoots returned no task. Please retry.', 503);
+   }
 
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    let poll: { status?: string; result?: { sample?: string }; error?: string };
-    try {
-      const res = await fetch(pollingUrl, {
-        headers: { accept: 'application/json', 'x-key': auth },
-        signal: AbortSignal.timeout(10_000),
-      });
-      poll = (await res.json()) as { status?: string; result?: { sample?: string }; error?: string };
-    } catch {
-      // Transient network hiccup — keep polling until the deadline.
-      await sleep(POLL_INTERVAL_MS);
-      continue;
-    }
+   const startTime = Date.now();
+   const deadline = Date.now() + POLL_TIMEOUT_MS;
+   let pollIntervalIndex = 0;
+   while (Date.now() < deadline) {
+     let poll: { status?: string; result?: { sample?: string }; error?: string };
+     try {
+       const res = await fetch(pollingUrl, {
+         headers: { accept: 'application/json', 'x-key': auth },
+         signal: AbortSignal.timeout(10_000),
+       });
+       poll = (await res.json()) as { status?: string; result?: { sample?: string }; error?: string };
+     } catch {
+       // Transient network hiccup — keep polling until the deadline.
+       await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]);
+       pollIntervalIndex++;
+       
+       // Update progress during wait
+       if (onProgress) {
+         const elapsed = Date.now() - startTime;
+         const progress = Math.min(95, Math.floor((elapsed / POLL_TIMEOUT_MS) * 100));
+         const etaMs = Math.max(0, POLL_TIMEOUT_MS - elapsed);
+         onProgress({ progress, etaMs });
+       }
+       
+       continue;
+     }
 
-    if (poll.status === 'Ready' && poll.result?.sample) {
-      return { status: 'ready', sampleUrl: poll.result.sample };
-    }
-    if (poll.status === 'Error' || poll.status === 'Failed' || poll.status === 'Content Moderated') {
-      return {
-        status: 'failed',
-        error: poll.error ?? 'The studio shoot could not be generated. Please try again.',
-      };
-    }
-    await sleep(POLL_INTERVAL_MS);
-  }
+     if (poll.status === 'Ready' && poll.result?.sample) {
+       if (onProgress) {
+         onProgress({ progress: 100, etaMs: 0 });
+       }
+       return { status: 'ready', sampleUrl: poll.result.sample };
+     }
+     if (poll.status === 'Error' || poll.status === 'Failed' || poll.status === 'Content Moderated') {
+       if (onProgress) {
+         onProgress({ progress: 0, etaMs: 0 });
+       }
+       return {
+         status: 'failed',
+         error: poll.error ?? 'The studio shoot could not be generated. Please try again.',
+       };
+     }
+     
+     // Update progress during polling
+     if (onProgress) {
+       const elapsed = Date.now() - startTime;
+       const progress = Math.min(90, Math.floor((elapsed / POLL_TIMEOUT_MS) * 100)); // Cap at 90% until complete
+       const etaMs = Math.max(0, POLL_TIMEOUT_MS - elapsed);
+       onProgress({ progress, etaMs });
+     }
+     
+     await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]);
+     pollIntervalIndex++;
+   }
 
-  return { status: 'failed', error: 'The studio shoot timed out. Please try again.' };
+   if (onProgress) {
+     onProgress({ progress: 0, etaMs: 0 });
+   }
+   return { status: 'failed', error: 'The studio shoot timed out. Please try again.' };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -185,11 +220,15 @@ export async function downloadCompressAndUpload(
 // would retry forever on a down connection and hang the hot path).
 
 export interface StudioJobStatus {
-  status: 'processing' | 'ready' | 'failed';
-  photo_id?: string;
-  url?: string;
-  error?: string;
-}
+   status: 'processing' | 'ready' | 'failed';
+   photo_id?: string;
+   url?: string;
+   error?: string;
+   /** Progress percentage (0-100) */
+   progress?: number;
+   /** Estimated time until completion in milliseconds */
+   etaMs?: number;
+ }
 
 const STATUS_KEY = (jobId: string) => `studio:job:${jobId}`;
 const STATUS_TTL_SEC = 60 * 30; // 30 min — far longer than a generation

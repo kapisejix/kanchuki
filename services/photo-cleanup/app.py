@@ -76,6 +76,54 @@ RUN_TIMEOUT = int(os.environ.get("CLEANUP_RUN_TIMEOUT", "600"))  # seconds; SAM2
 # on the 16 GB box keeps the worst case bounded and predictable.
 _clean_lock = threading.Lock()
 
+# Pre-warmed models to reduce cold-start latency
+_pipelines_warmed = False
+
+
+def warm_up_pipelines():
+    """Initialize and warm up all Python models to reduce cold-start latency."""
+    global _pipelines_warmed
+    if _pipelines_warmed:
+        return
+        
+    logger.info("Warming up photo cleanup pipelines...")
+    try:
+        # Import and initialize rembg session
+        from rembg import new_session
+        _rembg_session = new_session("isnet-general-use")
+        
+        # Import and initialize LaMa model
+        try:
+            from simple_lama_inpainting import SimpleLama
+            _lama = SimpleLama()
+        except ImportError:
+            logger.warning("LaMa not available, skipping warmup")
+        
+        # Import and initialize SAM2 models (if available)
+        try:
+            import torch
+            from sam2.build_sam import build_sam2
+            from sam2.automatic_mask_generator import SAM2AutomaticMaskGenerator
+            from sam2.sam2_image_predictor import SAM2ImagePredictor
+            
+            # Initialize SAM2 model
+            _resolve_sam2_cfg = lambda: "configs/sam2.1/sam2.1_hiera_t.yaml"
+            _load_sam2_model = lambda: build_sam2(
+                _resolve_sam2_cfg(), 
+                os.environ.get("SAM2_CHECKPOINT", "checkpoints/sam2.1_hiera_tiny.pt"),
+                device="cuda" if torch.cuda.is_available() else "cpu"
+            )
+            _sam2_generator = SAM2AutomaticMaskGenerator(_load_sam2_model(), points_per_side=16)
+            _sam2_predictor = SAM2ImagePredictor(_load_sam2_model())
+        except ImportError:
+            logger.warning("SAM2 not available, skipping warmup")
+            
+        _pipelines_warmed = True
+        logger.info("Photo cleanup pipelines warmed up successfully")
+    except Exception as e:
+        logger.error(f"Failed to warm up pipelines: {e}")
+
+
 app = FastAPI(title="Kanchuki Photo-Cleanup Service", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
@@ -84,6 +132,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Warm up pipelines on startup to reduce cold-start latency
+warm_up_pipelines()
 
 
 class HealthResponse(BaseModel):
@@ -106,12 +157,15 @@ def build_args(opts: dict) -> list[str]:
     args: list[str] = []
     blur = opts.get("blur")
     ghost_mannequin = _to_bool(opts.get("ghost_mannequin"))
+    quality = opts.get("quality")
     # Blur (portrait) mode wins over composite unless ghost-mannequin forces
     # composite — same branching as the script's main().
     if blur is not None and not ghost_mannequin:
         args += ["--blur", str(blur)]
         if _to_bool(opts.get("shine")):
             args.append("--shine")
+        if quality:
+            args += ["--quality", quality]
         crop = opts.get("crop")
         if crop:
             args += ["--crop", crop]
@@ -131,6 +185,8 @@ def build_args(opts: dict) -> list[str]:
         args += ["--prompt-excludes", opts["prompt_excludes"]]
     if _to_bool(opts.get("tight_crop")):
         args.append("--tight-crop")
+    if quality:
+        args += ["--quality", quality]
     crop = opts.get("crop")
     if crop:
         args += ["--crop", crop]
@@ -165,6 +221,7 @@ def clean(
     blur: str | None = Form(default=None),
     ghost_mannequin: str | None = Form(default=None),
     shine: str | None = Form(default=None),
+    quality: str | None = Form(default=None),
     x_cleanup_key: str | None = Header(default=None),
 ):
     # Deliberately a SYNC endpoint (not async): the pipeline runs a blocking
@@ -197,6 +254,7 @@ def clean(
         "blur": blur_int,
         "ghost_mannequin": ghost_mannequin,
         "shine": shine,
+        "quality": quality,
     }
 
     start = time.time()

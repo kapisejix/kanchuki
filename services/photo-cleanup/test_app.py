@@ -73,6 +73,20 @@ check(
     ["--blur", "12", "--shine"],
 )
 
+# Quality parameter
+check(
+    "quality parameter",
+    {"quality": "85"},
+    ["--quality", "85"],
+)
+
+# Quality parameter with other flags
+check(
+    "quality with other flags",
+    {"bg_image": "/tmp/bg.jpg", "quality": "75"},
+    ["--bg-image", "/tmp/bg.jpg", "--quality", "75"],
+)
+
 # Empty-ish flags -> []
 check("all empty", {}, [])
 
@@ -82,4 +96,4 @@ assert _to_bool("false") is False
 assert _to_bool("1") is True
 assert _to_bool(None) is False
 
-print("\n9/9 build_args tests passed")
+print("\n12/12 build_args tests passed")

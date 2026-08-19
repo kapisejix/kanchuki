@@ -15,15 +15,92 @@ interface Props {
 type Step = 'intro' | 'uploading' | 'processing' | 'result' | 'error'
 
 export function TryOnModal({ productName, productPhotoUrl, collectionSlug, productId, onClose }: Props) {
-  const [step, setStep] = useState<Step>('intro')
-  const [customerPhoto, setCustomerPhoto] = useState<string | null>(null)
-  const [customerFile, setCustomerFile] = useState<File | null>(null)
-  const [tryOnJobId, setTryOnJobId] = useState<string | null>(null)
-  const [resultUrl, setResultUrl] = useState<string | null>(null)
-  const [revocationToken, setRevocationToken] = useState<string | null>(null)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [consentToTraining, setConsentToTraining] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+   const [step, setStep] = useState<Step>('intro')
+   const [customerPhoto, setCustomerPhoto] = useState<string | null>(null)
+   const [customerFile, setCustomerFile] = useState<File | null>(null)
+   const [tryOnJobId, setTryOnJobId] = useState<string | null>(null)
+   const [resultUrl, setResultUrl] = useState<string | null>(null)
+   const [revocationToken, setRevocationToken] = useState<string | null>(null)
+   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+   const [consentToTraining, setConsentToTraining] = useState(false)
+   const [resultCompletedAt, setResultCompletedAt] = useState<number | null>(null)
+   const [timeRemaining, setTimeRemaining] = useState<number>(0) // Time remaining in milliseconds
+   const [countdownTimer, setCountdownTimer] = useState<NodeJS.Timeout | null>(null)
+   const fileInputRef = useRef<HTMLInputElement>(null)
+
+   // ── Countdown timer for result expiration ───────────────────────
+   useEffect(() => {
+     if (step === 'result' && resultCompletedAt !== null) {
+       // Initialize time remaining
+       const initialTimeLeft = Math.max(0, 24 * 60 * 60 * 1000 - (Date.now() - resultCompletedAt))
+       setTimeRemaining(initialTimeLeft)
+       
+       // Set up countdown timer that updates every second
+       const timer = setInterval(() => {
+         const timeLeft = Math.max(0, 24 * 60 * 60 * 1000 - (Date.now() - resultCompletedAt))
+         setTimeRemaining(timeLeft)
+         
+         // Stop timer when time runs out
+         if (timeLeft <= 0) {
+           clearInterval(timer)
+           setCountdownTimer(null)
+         }
+       }, 1000)
+       setCountdownTimer(timer)
+       return () => clearInterval(timer)
+     }
+     // Clean up timer when leaving result step
+     if (countdownTimer !== null) {
+       clearInterval(countdownTimer)
+       setCountdownTimer(null)
+       setTimeRemaining(0)
+     }
+   }, [step, resultCompletedAt, countdownTimer])
+
+   // Clean up countdown timer on unmount
+   useEffect(() => {
+     return () => {
+       if (countdownTimer !== null) {
+         clearInterval(countdownTimer)
+       }
+     }
+   }, [countdownTimer])
+
+   // Format milliseconds as hh:mm:ss
+   const formatCountdown = (ms: number): string => {
+     const totalSeconds = Math.floor(ms / 1000)
+     const hours = Math.floor(totalSeconds / 3600)
+     const minutes = Math.floor((totalSeconds % 3600) / 60)
+     const seconds = totalSeconds % 60
+     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+   }
+
+   // ── Countdown timer for result expiration ───────────────────────
+   useEffect(() => {
+     if (step === 'result' && resultCompletedAt !== null) {
+       // Set up countdown timer
+       const timer = setInterval(() => {
+         // Timer will be cleaned up automatically when component unmounts
+         // or when step changes due to the useEffect dependency array
+       }, 1000)
+       setCountdownTimer(timer)
+       return () => clearInterval(timer)
+     }
+     // Clean up timer when leaving result step
+     if (countdownTimer !== null) {
+       clearInterval(countdownTimer)
+       setCountdownTimer(null)
+     }
+   }, [step, resultCompletedAt, countdownTimer])
+
+   // Clean up countdown timer on unmount
+   useEffect(() => {
+     return () => {
+       if (countdownTimer !== null) {
+         clearInterval(countdownTimer)
+       }
+     }
+   }, [countdownTimer])
 
   // ── Upload customer photo to temp storage ───────────────────────
 
@@ -77,38 +154,46 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
 
       setTryOnJobId(data.id)
 
-      // Poll for result
-      const pollInterval = setInterval(async () => {
-        try {
-          const pollRes = await fetch(`/api/try-on/remote/${data.id}`)
-          if (!pollRes.ok) {
-            clearInterval(pollInterval)
-            throw new Error('Failed to check status')
-          }
-          const pollData = await pollRes.json() as {
-            data: {
-              status: string
-              result_url: string | null
-              error_message: string | null
-            }
-          }
+// Poll for result with exponential backoff: 2s, 4s, 8s, 16s, 16s, ...
+       let pollAttempt = 0;
+       const pollForResult = async () => {
+         try {
+           const pollRes = await fetch(`/api/try-on/remote/${data.id}`)
+           if (!pollRes.ok) {
+             throw new Error('Failed to check status')
+           }
+           const pollData = await pollRes.json() as {
+             data: {
+               status: string
+               result_url: string | null
+               error_message: string | null
+             }
+           }
 
-          if (pollData.data.status === 'COMPLETED' && pollData.data.result_url) {
-            clearInterval(pollInterval)
-            setResultUrl(pollData.data.result_url)
-            setRevocationToken((pollData.data as { revocation_token?: string | null }).revocation_token ?? null)
-            setStep('result')
-          } else if (pollData.data.status === 'FAILED') {
-            clearInterval(pollInterval)
-            setErrorMessage(pollData.data.error_message ?? 'Try-on failed')
-            setStep('error')
-          }
-        } catch {
-          clearInterval(pollInterval)
-          setErrorMessage('Failed to check try-on status')
-          setStep('error')
-        }
-      }, 2000)
+           if (pollData.data.status === 'COMPLETED' && pollData.data.result_url) {
+             setResultUrl(pollData.data.result_url)
+             setRevocationToken((pollData.data as { revocation_token?: string | null }).revocation_token ?? null)
+             setResultCompletedAt(Date.now()) // Set completion timestamp
+             setStep('result')
+             return
+           } else if (pollData.data.status === 'FAILED') {
+             setErrorMessage(pollData.data.error_message ?? 'Try-on failed')
+             setStep('error')
+             return
+           }
+           
+           // Continue polling with exponential backoff
+           pollAttempt++
+           const delay = Math.min(2000 * Math.pow(2, pollAttempt), 16000) // 2s, 4s, 8s, 16s, 16s, ...
+           setTimeout(pollForResult, delay)
+         } catch (err) {
+           setErrorMessage('Failed to check try-on status')
+           setStep('error')
+         }
+       }
+       
+       // Start polling
+       setTimeout(pollForResult, 2000)
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : 'Try-on failed')
       setStep('error')
@@ -117,15 +202,22 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
 
   // ── Handle retry ───────────────────────────────────────────────
 
-  const handleRetry = useCallback(() => {
-    setCustomerPhoto(null)
-    setCustomerFile(null)
-    setTryOnJobId(null)
-    setResultUrl(null)
-    setErrorMessage(null)
-    setConsentToTraining(false)
-    setStep('intro')
-  }, [])
+const handleRetry = useCallback(() => {
+     setCustomerPhoto(null)
+     setCustomerFile(null)
+     setTryOnJobId(null)
+     setResultUrl(null)
+     setRevocationToken(null)
+     setErrorMessage(null)
+     setConsentToTraining(false)
+     setResultCompletedAt(null)
+     setTimeRemaining(0)
+     if (countdownTimer !== null) {
+       clearInterval(countdownTimer)
+       setCountdownTimer(null)
+     }
+     setStep('intro')
+   }, [countdownTimer])
 
   // ── Share / Save result ────────────────────────────────────────
 
@@ -356,25 +448,32 @@ export function TryOnModal({ productName, productPhotoUrl, collectionSlug, produ
               </button>
             </div>
 
-            {revocationToken && (
-              <div className="mt-4 bg-gray-50 border border-gray-100 rounded-xl p-3">
-                <p className="text-[10px] text-gray-500 leading-4">
-                  You opted in to let Kanchuki use this try-on to improve results.{' '}
-                  <a
-                    href={`/consent/revoke?token=${encodeURIComponent(revocationToken)}`}
-                    className="text-cyan-600 hover:text-cyan-700 underline"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Revoke consent and delete my photos
-                  </a>
-                </p>
-              </div>
-            )}
-
-            <p className="text-[10px] text-gray-400 text-center mt-3">
-              Try-on preview expires in 24 hours. Your uploaded photo was not stored.
-            </p>
+{revocationToken && (
+               <div className="mt-4 bg-gray-50 border border-gray-100 rounded-xl p-3">
+                 <p className="text-[10px] text-gray-500 leading-4">
+                   You opted in to let Kanchuki use this try-on to improve results.{' '}
+                   <a
+                     href={`/consent/revoke?token=${encodeURIComponent(revocationToken)}`}
+                     className="text-cyan-600 hover:text-cyan-700 underline"
+                     target="_blank"
+                     rel="noopener noreferrer"
+                   >
+                     Revoke consent and delete my photos
+                   </a>
+                 </p>
+               </div>
+             )}
+             
+             {/* Countdown timer */}
+             {resultCompletedAt !== null && (
+               <div className="mt-4 text-center text-sm text-gray-500">
+                 Try-on preview expires in: <span className="font-mono">{formatCountdown(timeRemaining)}</span>
+               </div>
+             )}
+             
+             <p className="text-[10px] text-gray-400 text-center mt-3">
+               Your uploaded photo was not stored.
+             </p>
           </div>
         )}
 

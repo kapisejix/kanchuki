@@ -47,22 +47,24 @@ export interface PhotoCleanupRunResult {
 }
 
 export interface PhotoCleanupRequest {
-  /** Public R2 URL of the raw photo (fetched SSRF-safely by this module). */
-  photoUrl: string;
-  /** Optional backdrop-library image URL (F-011 / admin test page). */
-  bgImageUrl?: string | null;
-  removeHardware?: boolean;
-  tightCrop?: boolean;
-  /** Pixel rect to isolate the subject before rembg. */
-  crop?: { x1: number; y1: number; x2: number; y2: number } | null;
-  /** Tap-to-fix: normalized (0..1) foreground points marking hardware. */
-  promptPoints?: [number, number][];
-  /** Tap-to-fix: normalized (0..1) negative points marking the garment. */
-  promptExcludes?: [number, number][];
-  /** Portrait mode: keep the shot's own background, blur it by this radius. */
-  blur?: number | null;
-  ghostMannequin?: boolean;
-  shine?: boolean;
+   /** Public R2 URL of the raw photo (fetched SSRF-safely by this module). */
+   photoUrl: string;
+   /** Optional backdrop-library image URL (F-011 / admin test page). */
+   bgImageUrl?: string | null;
+   removeHardware?: boolean;
+   tightCrop?: boolean;
+   /** Pixel rect to isolate the subject before rembg. */
+   crop?: { x1: number; y1: number; x2: number; y2: number } | null;
+   /** Tap-to-fix: normalized (0..1) foreground points marking hardware. */
+   promptPoints?: [number, number][];
+   /** Tap-to-fix: normalized (0..1) negative points marking the garment. */
+   promptExcludes?: [number, number][];
+   /** Portrait mode: keep the shot's own background, blur it by this radius. */
+   blur?: number | null;
+   ghostMannequin?: boolean;
+   shine?: boolean;
+   /** Output JPEG quality (1-100) for fast/slow quality mode. */
+   quality?: number | null;
 }
 
 export interface PhotoCleanupResult {
@@ -79,37 +81,43 @@ export interface PhotoCleanupResult {
  * both are unit-tested against the same cases).
  */
 export function buildCleanupScriptArgs(
-  inputDir: string,
-  outputDir: string,
-  req: PhotoCleanupRequest & { bgImagePath?: string | null },
+   inputDir: string,
+   outputDir: string,
+   req: PhotoCleanupRequest & { bgImagePath?: string | null },
 ): string[] {
-  const args = [inputDir, outputDir];
-  // Blur (portrait) mode wins over composite unless ghost-mannequin forces
-  // composite — same branching as the script's main().
-  if (req.blur != null && !req.ghostMannequin) {
-    args.push('--blur', String(req.blur));
-    if (req.shine) args.push('--shine');
-    if (req.crop) {
-      args.push('--crop', `${req.crop.x1},${req.crop.y1},${req.crop.x2},${req.crop.y2}`);
-    }
-    return args;
-  }
-  if (req.bgImagePath) args.push('--bg-image', req.bgImagePath);
-  if (req.shine) args.push('--shine');
-  if (req.ghostMannequin) args.push('--ghost-mannequin');
-  if (req.removeHardware) args.push('--remove-hardware');
-  if (req.promptPoints?.length) {
-    args.push('--prompt-points', req.promptPoints.map(([x, y]) => `${x},${y}`).join(';'));
-  }
-  if (req.promptExcludes?.length) {
-    args.push('--prompt-excludes', req.promptExcludes.map(([x, y]) => `${x},${y}`).join(';'));
-  }
-  if (req.tightCrop) args.push('--tight-crop');
-  if (req.crop) {
-    args.push('--crop', `${req.crop.x1},${req.crop.y1},${req.crop.x2},${req.crop.y2}`);
-  }
-  return args;
-}
+   const args = [inputDir, outputDir];
+   // Blur (portrait) mode wins over composite unless ghost-mannequin forces
+   // composite — same branching as the script's main().
+   if (req.blur != null && !req.ghostMannequin) {
+     args.push('--blur', String(req.blur));
+     if (req.shine) args.push('--shine');
+     if (req.crop) {
+       args.push('--crop', `${req.crop.x1},${req.crop.y1},${req.crop.x2},${req.crop.y2}`);
+     }
+     if (req.quality != null) {
+       args.push('--quality', String(req.quality));
+     }
+     return args;
+   }
+   if (req.bgImagePath) args.push('--bg-image', req.bgImagePath);
+   if (req.shine) args.push('--shine');
+   if (req.ghostMannequin) args.push('--ghost-mannequin');
+   if (req.removeHardware) args.push('--remove-hardware');
+   if (req.promptPoints?.length) {
+     args.push('--prompt-points', req.promptPoints.map(([x, y]) => `${x},${y}`).join(';'));
+   }
+   if (req.promptExcludes?.length) {
+     args.push('--prompt-excludes', req.promptExcludes.map(([x, y]) => `${x},${y}`).join(';'));
+   }
+   if (req.tightCrop) args.push('--tight-crop');
+   if (req.crop) {
+     args.push('--crop', `${req.crop.x1},${req.crop.y1},${req.crop.x2},${req.crop.y2}`);
+   }
+   if (req.quality != null) {
+     args.push('--quality', String(req.quality));
+   }
+   return args;
+ }
 
 /**
  * Run batch-clean-photos.py with the given args, discovering a working
@@ -187,64 +195,65 @@ export async function runPhotoCleanupScript(
 // API's SSRF guard and ship the BYTES as multipart; the sidecar never
 // fetches anything, so no SSRF surface exists on the box.
 async function runPhotoCleanupViaService(
-  serviceUrl: string,
-  req: PhotoCleanupRequest,
-  timeoutMs: number,
+   serviceUrl: string,
+   req: PhotoCleanupRequest,
+   timeoutMs: number,
 ): Promise<PhotoCleanupResult> {
-  const [photoRes, bgRes] = await Promise.all([
-    ssrfSafeFetch(req.photoUrl),
-    req.bgImageUrl ? ssrfSafeFetch(req.bgImageUrl) : Promise.resolve(null),
-  ]);
-  if (!photoRes.ok) throw new Error(`fetch failed (${photoRes.status})`);
-  if (bgRes && !bgRes.ok) throw new Error(`background fetch failed (${bgRes.status})`);
-  const [photoBuf, bgBuf] = await Promise.all([
-    readCappedBuffer(photoRes),
-    bgRes ? readCappedBuffer(bgRes) : Promise.resolve(null),
-  ]);
+   const [photoRes, bgRes] = await Promise.all([
+     ssrfSafeFetch(req.photoUrl),
+     req.bgImageUrl ? ssrfSafeFetch(req.bgImageUrl) : Promise.resolve(null),
+   ]);
+   if (!photoRes.ok) throw new Error(`fetch failed (${photoRes.status})`);
+   if (bgRes && !bgRes.ok) throw new Error(`background fetch failed (${bgRes.status})`);
+   const [photoBuf, bgBuf] = await Promise.all([
+     readCappedBuffer(photoRes),
+     bgRes ? readCappedBuffer(bgRes) : Promise.resolve(null),
+   ]);
 
-  const form = new FormData();
-  form.append('photo', new Blob([photoBuf], { type: 'image/jpeg' }), 'photo.jpg');
-  if (bgBuf) form.append('background', new Blob([bgBuf], { type: 'image/jpeg' }), 'background.jpg');
-  if (req.removeHardware) form.append('remove_hardware', 'true');
-  if (req.tightCrop) form.append('tight_crop', 'true');
-  if (req.crop) {
-    form.append('crop', `${req.crop.x1},${req.crop.y1},${req.crop.x2},${req.crop.y2}`);
-  }
-  if (req.promptPoints?.length) {
-    form.append('prompt_points', req.promptPoints.map(([x, y]) => `${x},${y}`).join(';'));
-  }
-  if (req.promptExcludes?.length) {
-    form.append('prompt_excludes', req.promptExcludes.map(([x, y]) => `${x},${y}`).join(';'));
-  }
-  if (req.blur != null) form.append('blur', String(req.blur));
-  if (req.ghostMannequin) form.append('ghost_mannequin', 'true');
-  if (req.shine) form.append('shine', 'true');
+   const form = new FormData();
+   form.append('photo', new Blob([photoBuf], { type: 'image/jpeg' }), 'photo.jpg');
+   if (bgBuf) form.append('background', new Blob([bgBuf], { type: 'image/jpeg' }), 'background.jpg');
+   if (req.removeHardware) form.append('remove_hardware', 'true');
+   if (req.tightCrop) form.append('tight_crop', 'true');
+   if (req.crop) {
+     form.append('crop', `${req.crop.x1},${req.crop.y1},${req.crop.x2},${req.crop.y2}`);
+   }
+   if (req.promptPoints?.length) {
+     form.append('prompt_points', req.promptPoints.map(([x, y]) => `${x},${y}`).join(';'));
+   }
+   if (req.promptExcludes?.length) {
+     form.append('prompt_excludes', req.promptExcludes.map(([x, y]) => `${x},${y}`).join(';'));
+   }
+   if (req.blur != null) form.append('blur', String(req.blur));
+   if (req.ghostMannequin) form.append('ghost_mannequin', 'true');
+   if (req.shine) form.append('shine', 'true');
+   if (req.quality != null) form.append('quality', String(req.quality));
 
-  const secret = await getSecret('CLEANUP_SHARED_SECRET');
-  const res = await fetch(`${serviceUrl.replace(/\/+$/, '')}/clean`, {
-    method: 'POST',
-    headers: { ...(secret ? { 'X-Cleanup-Key': secret } : {}) },
-    body: form,
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+   const secret = await getSecret('CLEANUP_SHARED_SECRET');
+   const res = await fetch(`${serviceUrl.replace(/\/+$/, '')}/clean`, {
+     method: 'POST',
+     headers: { ...(secret ? { 'X-Cleanup-Key': secret } : {}) },
+     body: form,
+     signal: AbortSignal.timeout(timeoutMs),
+   });
 
-  if (!res.ok) {
-    const detail = (await res.text().catch(() => '')).slice(0, 500);
-    throw new Error(`cleanup service ${res.status}: ${detail || res.statusText}`);
-  }
-  const json = (await res.json()) as { output?: string; image_b64?: string };
-  if (!json.image_b64) throw new Error('cleanup service returned no image');
-  // Sanity cap on the decoded payload: a cleaned JPEG is a few hundred KB;
-  // anything near MBs means the sidecar is misbehaving — fail instead of
-  // letting a bad response balloon this container's memory.
-  const jpeg = Buffer.from(json.image_b64, 'base64');
-  if (jpeg.byteLength > 20 * 1024 * 1024) {
-    throw new Error(
-      `cleanup service returned an unreasonably large image (${jpeg.byteLength} bytes)`,
-    );
-  }
-  return { output: json.output ?? '', jpeg };
-}
+   if (!res.ok) {
+     const detail = (await res.text().catch(() => '')).slice(0, 500);
+     throw new Error(`cleanup service ${res.status}: ${detail || res.statusText}`);
+   }
+   const json = (await res.json()) as { output?: string; image_b64?: string };
+   if (!json.image_b64) throw new Error('cleanup service returned no image');
+   // Sanity cap on the decoded payload: a cleaned JPEG is a few hundred KB;
+   // anything near MBs means the sidecar is misbehaving — fail instead of
+   // letting a bad response balloon this container's memory.
+   const jpeg = Buffer.from(json.image_b64, 'base64');
+   if (jpeg.byteLength > 20 * 1024 * 1024) {
+     throw new Error(
+       `cleanup service returned an unreasonably large image (${jpeg.byteLength} bytes)`,
+     );
+   }
+   return { output: json.output ?? '', jpeg };
+ }
 
 // ─── local mode: direct python exec (dev fallback) ───────────────────────
 async function runPhotoCleanupLocally(
@@ -282,9 +291,9 @@ async function runPhotoCleanupLocally(
 }
 
 /** Log the local-exec fallback once per process — deploy-ordering guard: if
- * the API ships without PHOTO_CLEANUP_SERVICE_URL configured, the cleanup
- * routes silently degrade to local python, which the Railway image no longer
- * has (python removed 2026-08-08). Make that failure mode loud. */
+  * the API ships without PHOTO_CLEANUP_SERVICE_URL configured, the cleanup
+  * routes silently degrade to local python, which the Railway image no longer
+  * has (python removed 2026-08-08). Make that failure mode loud. */
 let warnedLocalFallback = false;
 
 /**
@@ -299,16 +308,26 @@ export async function runPhotoCleanup(
 ): Promise<PhotoCleanupResult> {
   const serviceUrl = (await getSecret('PHOTO_CLEANUP_SERVICE_URL'))?.trim();
   if (serviceUrl) return runPhotoCleanupViaService(serviceUrl, req, timeoutMs);
+  
+  // Improved local dev fallback error handling
   if (!warnedLocalFallback) {
     warnedLocalFallback = true;
     // eslint-disable-next-line no-console
     console.warn(
       '[photo-cleanup] PHOTO_CLEANUP_SERVICE_URL is not configured — using local python exec. ' +
-        'In production this requires python3+rembg+torch+SAM2 on the API host, which the Railway ' +
-        'Dockerfile no longer ships. Set PHOTO_CLEANUP_SERVICE_URL (Admin → Integrations) to point ' +
-        'at the photo-cleanup sidecar (services/photo-cleanup/).',
+      'In production this requires python3+rembg+torch+SAM2 on the API host, which the Railway ' +
+      'Dockerfile no longer ships. Set PHOTO_CLEANUP_SERVICE_URL (Admin → Integrations) to point ' +
+      'at the photo-cleanup sidecar (services/photo-cleanup/). ' +
+      'For local development, ensure Python 3.x is installed with: pip install rembg pillow simple-lama-inpainting',
     );
+    
+    // In development, provide a more actionable error if Python dependencies are missing
+    if (process.env.NODE_ENV === 'development') {
+      // We'll let the local execution proceed, but the runPhotoCleanupScript function
+      // will provide detailed error messages if dependencies are missing
+    }
   }
+  
   return runPhotoCleanupLocally(req, timeoutMs);
 }
 

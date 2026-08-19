@@ -64,81 +64,113 @@ export interface StudioShootJobData {
 }
 
 export async function handleStudioShoot(data: StudioShootJobData): Promise<void> {
-  const { job_id, retailer_id, product_id, photo_id, template } = data;
-  const startedAt = new Date();
+   const { job_id, retailer_id, product_id, photo_id, template } = data;
+   const startedAt = new Date();
+   const START_TIME = startedAt.getTime();
 
-  try {
-    // Re-verify ownership at execution time (queue = trust boundary).
-    const photo = await prisma.productPhoto.findFirst({
-      where: { id: photo_id, product_id, retailer_id },
-    });
-    if (!photo) {
-      await setStudioJobStatus(job_id, {
-        status: 'failed',
-        error: 'Product photo not found. It may have been deleted.',
-      });
-      return;
-    }
+   // Estimated total time for studio shoot generation (based on BFL docs and observed performance)
+   const ESTIMATED_TOTAL_TIME_MS = 30_000; // 30 seconds average
 
-    const displayUrl = await studioSourceUrl(photo);
-    if (!displayUrl) {
-      await setStudioJobStatus(job_id, {
-        status: 'failed',
-        error: 'Could not resolve the source photo URL.',
-      });
-      return;
-    }
+   // Set initial status
+   await setStudioJobStatus(job_id, {
+     status: 'processing',
+     progress: 0,
+     etaMs: ESTIMATED_TOTAL_TIME_MS,
+   }).catch(() => {
+     // Ignore errors in initial status setting - job will still proceed
+   });
 
-    // 2. Generate (async submit + poll inside generateStudioImage).
-    const result = await generateStudioImage(template, displayUrl);
-    if (result.status !== 'ready' || !result.sampleUrl) {
-      await setStudioJobStatus(job_id, {
-        status: 'failed',
-        error: result.error ?? 'The studio shoot could not be generated. Please try again.',
-      });
-      return;
-    }
+   try {
+     // Re-verify ownership at execution time (queue = trust boundary).
+     const photo = await prisma.productPhoto.findFirst({
+       where: { id: photo_id, product_id, retailer_id },
+     });
+     if (!photo) {
+       await setStudioJobStatus(job_id, {
+         status: 'failed',
+         error: 'Product photo not found. It may have been deleted.',
+         progress: 0,
+         etaMs: 0,
+       });
+       return;
+     }
 
-    // 3–4. Download → compress → upload to a NEW key → create a new photo row.
-    const filename = `studio-${photo.id}-${createId()}.jpg`;
-    const r2Key = R2_PATHS.studioShot(retailer_id, product_id, filename);
-    const uploaded = await downloadCompressAndUpload(result.sampleUrl, r2Key);
+     const displayUrl = await studioSourceUrl(photo);
+     if (!displayUrl) {
+       await setStudioJobStatus(job_id, {
+         status: 'failed',
+         error: 'Could not resolve the source photo URL.',
+         progress: 0,
+         etaMs: 0,
+       });
+       return;
+     }
 
-    const newPhoto = await prisma.productPhoto.create({
-      data: {
-        product_id,
-        retailer_id,
-        r2_key: uploaded.key,
-        url: uploaded.url,
-        is_primary: false,
-        width: uploaded.width,
-        height: uploaded.height,
-        metadata: {
-          studio: {
-            job_id,
-            template,
-            source_photo_id: photo.id,
-            generated_at: startedAt.toISOString(),
-          },
-        },
-      },
-    });
+     // 2. Generate (async submit + poll inside generateStudioImage).
+     const result = await generateStudioImage(template, displayUrl, (progressInfo) => {
+       // Update Redis with progress information (best-effort)
+       setStudioJobStatus(job_id, {
+         status: 'processing',
+         progress: progressInfo.progress,
+         etaMs: progressInfo.etaMs,
+       }).catch(() => {
+         // Ignore errors in progress updates - they're best effort
+       });
+     });
+     if (result.status !== 'ready' || !result.sampleUrl) {
+       await setStudioJobStatus(job_id, {
+         status: 'failed',
+         error: result.error ?? 'The studio shoot could not be generated. Please try again.',
+         progress: 0,
+         etaMs: 0,
+       });
+       return;
+     }
 
-    // 5. Status AFTER the DB row exists — ready means the photo is live.
-    await setStudioJobStatus(job_id, {
-      status: 'ready',
-      photo_id: newPhoto.id,
-      url: newPhoto.url,
-    });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error(`[studio-shoot] job ${job_id} failed:`, err);
-    await setStudioJobStatus(job_id, {
-      status: 'failed',
-      error: 'The studio shoot failed. Please try again.',
-    });
-    // Mark the job failed for BullMQ visibility (no auto-retry by default —
-    // each generation costs real BFL credits, so don't burn credits on retry).
-    throw new Error(message);
-  }
-}
+     // 3–4. Download → compress → upload to a NEW key → create a new photo row.
+     const filename = `studio-${photo.id}-${createId()}.jpg`;
+     const r2Key = R2_PATHS.studioShot(retailer_id, product_id, filename);
+     const uploaded = await downloadCompressAndUpload(result.sampleUrl, r2Key);
+
+     const newPhoto = await prisma.productPhoto.create({
+       data: {
+         product_id,
+         retailer_id,
+         r2_key: uploaded.key,
+         url: uploaded.url,
+         is_primary: false,
+         width: uploaded.width,
+         height: uploaded.height,
+         metadata: {
+           studio: {
+             job_id,
+             template,
+             source_photo_id: photo.id,
+             generated_at: startedAt.toISOString(),
+           },
+         },
+       },
+     });
+
+     // 5. Status AFTER the DB row exists — ready means the photo is live.
+     await setStudioJobStatus(job_id, {
+       status: 'ready',
+       photo_id: newPhoto.id,
+       url: newPhoto.url,
+       progress: 100,
+       etaMs: 0,
+     });
+   } catch (err) {
+     const message = err instanceof Error ? err.message : String(err);
+     console.error(`[studio-shoot] job ${job_id} failed:`, err);
+     await setStudioJobStatus(job_id, {
+       status: 'failed',
+       error: 'The studio shoot failed. Please try again.',
+       progress: 0,
+       etaMs: 0,
+     });
+     // Mark the job failed for BullMQ visibility (no auto-retry by default —
+     // each generation costs real BFL credits, so don't burn credits on retry).
+     throw new Error(message);
+   }
+ }
