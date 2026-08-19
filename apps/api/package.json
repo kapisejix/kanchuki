@@ -31,12 +31,13 @@
     "otplib": "^13.4.1",
     "pino": "^9.3.2",
     "pino-pretty": "^11.2.2",
+    "pdfkit": "^0.15.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "tsx": "^4.17.0",
     "typescript": "^5.5.0",
-    "vitest": "^3.2.6"
+    "vitetest": "^3.2.6"
   }
 }

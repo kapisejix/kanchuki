@@ -1426,12 +1426,14 @@ model Order {
   razorpay_order_id   String? @unique
   razorpay_payment_id String?
 
-  gst_invoice_number String?
+gst_invoice_number String?
+   gst_invoice_pdf_r2_key String?
+   gst_invoice_pdf_url String?
 
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-  paid_at      DateTime?
-  cancelled_at DateTime?
+   created_at   DateTime  @default(now())
+   updated_at   DateTime  @updatedAt
+   paid_at      DateTime?
+   cancelled_at DateTime?
 
   retailer Retailer    @relation(fields: [retailer_id], references: [id])
   items    OrderItem[]
