@@ -1,0 +1,23 @@
+{
+  "name": "@kanchuki/incentive-engine",
+  "version": "0.1.0",
+  "main": "src/incentive-engine.ts",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "ts-node src/incentive-engine.ts",
+    "dev": "ts-node-dev --respawn --transpile-only src/incentive-engine.ts",
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "fastify": "^4.0.0",
+    "@kanchuki/db": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "ts-node": "^10.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^4.0.0"
+  }
+}

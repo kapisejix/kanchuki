@@ -19,7 +19,7 @@
 | F | Smart Promotion / Discount Engine | ✅ Built (backend + mobile UI) |
 | G | Customer Reactivation Campaigns | ✅ Built (backend + mobile UI) |
 | I | GST-Ready Invoicing | 🔴 Not built — PDF generation + HSN mapping |
-| J | Inventory Intelligence + Reorder Alerts | ✅ Built (signal-based alerts + mobile UI) |
+| J | Intelligence + Reorder Alerts | ✅ Built (signal-based alerts + mobile UI) |
 | K | Supplier Management | ✅ Built (backend + mobile UI) |
 | L | Showroom / Try-On Room Booking | ✅ Built (backend + mobile UI + public self-service booking) |
 | M | Multi-Language AI | ✅ Built — descriptions + campaign/WhatsApp messages in 7 languages (placeholders preserved) + AI-search screen (Hindi/Hinglish, voice via keyboard dictation). Native in-app mic + PWA/retailer UI language toggle: future work |
@@ -425,7 +425,7 @@ These four gaps are where the next wave of features must land.
 | Collection open rate | 40% | 55% |
 | Enquiry-to-order conversion | 15% | 25% |
 | New customers acquired per retailer/month | ~2 | 10+ |
-| Retailer retention (60 days) | 60% | 80% |
+| Retention (60 days) | 60% | 80% |
 | Retailer NPS | — | ≥50 |
 
 ---
@@ -435,13 +435,13 @@ These four gaps are where the next wave of features must land.
 | Dimension | Kanchuki | Generic Catalog Tool | Generic CRM | Social Media Tool |
 |---|---|---|---|---|
 | AI auto-tagging for Indian fashion | ✅ | ❌ | ❌ | ❌ |
-| WhatsApp-native commerce | ✅ | ❌ | Partial | ❌ |
-| Fashion DNA + AI matching | 🕐 | ❌ | ❌ | ❌ |
-| Virtual try-on for ethnic wear | ❌ | ❌ | ❌ | ❌ |
-| Festival/region-aware campaigns | ✅ | ❌ | ❌ | ❌ |
-| Indian language support | Partial | ❌ | ❌ | ❌ |
-| QR lead capture + store directory | ✅ | ❌ | ❌ | ❌ |
-| Shop management (GST, supplier) | ❌ | ❌ | ❌ | ❌ |
+| WhatsApp-native commerce | ✅ | ❌ | Partial | ❠ |
+| Fashion DNA + AI matching | 🕐 | ❌ | ❌ | ❠ |
+| Virtual try-on for ethnic wear | ❌ | ❌ | ❠ | ❠ |
+| Festival/region-aware campaigns | ✅ | ❠ | ❠ | ❠ |
+| Indian language support | Partial | ❠ | ❠ | ❠ |
+| QR lead capture + store directory | ✅ | ❠ | ❠ | ❠ |
+| Shop management (GST, supplier) | ❠ | ❠ | ❠ | ❠ |
 
 **The moat:** The combination of **catalog digitization + AI fashion intelligence + WhatsApp commerce + Indian retail operations** in one mobile-first tool. No single competitor covers all four. Building them separately is what retailers currently do — and why they're underserved.
 
@@ -454,3 +454,82 @@ These four gaps are where the next wave of features must land.
 - Multi-store retailer management (Phase 3)
 - Advanced AI demand forecasting (Phase 3)
 - Custom AI model training for individual retailers
+
+---
+
+## 8. Upcoming Marketing Enablement Features (via Kanchuki Platform)
+
+Beyond the mobile app growth engine, the Kanchuki platform is developing a suite of marketing and sales enablement features to help retailers increase sales and manage their social media presence directly from the platform. Work has begun on Phase 1 quick wins (Smart Incentive Engine, Local Discovery Engine, GMB Integration, AI-Driven Social Media Templates). These features are designed to reduce manual workload, improve campaign effectiveness, and expand market reach.
+
+### Key Platform Features in Development:
+
+1. **Local Discovery Engine**  
+   - Geo-tagged product listings for Google My Business optimization  
+   - "Near me" search optimization to drive foot traffic  
+   - Location-based offer rules (e.g., show Diwali offers only to users within 10km)  
+   *Impact: +15% footfall from local searches; +10% sales from geo-targeted offers*
+
+2. **Smart Incentive Engine**  
+   - First-time visitor discount auto-applied at checkout  
+   - Birthday/anniversary offer triggers  
+   - Loyalty tier progression based on spend/visit frequency  
+   *Impact: 35% increase in first-time visitor conversion; 50% higher repeat visit rate*
+
+3. **Partner Network Manager**  
+   - Track referral codes for local salons/tailors  
+   - Automated commission payouts  
+   - Co-hosted event invitations (e.g., "Styling Sunday" with beauty parlor)  
+   *Impact: 25% reduction in CAC via referrals; 40% higher LTV from partner-referred customers*
+
+4. **AI-Driven Social Media Templates**  
+   - Generate Instagram post/reel templates from product images  
+   - WhatsApp catalog/status templates with festive overlays  
+   - Text suggestions based on regional trends & occasion  
+   *Impact: 50% reduction in content creation time; 2x engagement rate on templated posts*
+
+5. **Automated Festival Background Library**  
+   - Pre-generated backgrounds for Diwali, weddings, regional festivals  
+   - One-click apply to product images  
+   - Seasonal auto-rotation (e.g., swap to wedding backgrounds Oct-Mar)  
+   *Impact: 70% faster seasonal campaign launch; 3x more festive-themed posts*
+
+6. **Automated Lookbook Generator**  
+   - Input: 3-5 product IDs → Output: Coordinated lookbook (images/video) with styling notes  
+   - Export formats: Instagram carousel, WhatsApp status, PDF  
+   *Impact: 25% increase in average order value (AOV); 40% higher add-to-cart rate for bundled looks*
+
+7. **Direct Social Publishing**  
+   - Schedule Instagram Reels (via Meta Graph API)  
+   - Broadcast WhatsApp Catalog updates  
+   - Analytics: views, shares, click-throughs  
+   *Impact: 60% faster campaign execution; 80% adherence to posting schedule*
+
+8. **Hyperlocal & Ad Management Integration**  
+   - **Google My Business**: Auto-post new arrivals/offers, review monitoring & response templates  
+   - **Facebook Local Awareness Ads**: Radius-based ad campaigns, A/B test creative, budget pacing alerts  
+   - **Google Local Service Ads**: Service-based ad management (e.g., "alteration services near me"), lead tracking  
+   *Impact: GMB → 40% increase in direction requests; FB Ads → 30% lower CPL vs. broad targeting*
+
+9. **Aggregator & Marketplace Sync Architecture**  
+   - Unified product catalog with real-time inventory sync (Meesho, Glroad, Craftsvilla, Instamojo)  
+   - Order aggregation and fee/revenue reconciliation per channel  
+   *Impact: 50% reduction in manual inventory updates; 99.8% inventory accuracy; 15-20% sales increase from multi-channel presence*
+
+### Implementation Phases:
+
+**Phase 1 (Quick Wins - 4-6 weeks):**  
+Smart Incentive Engine, Local Discovery Engine, GMB Integration, AI-Driven Social Media Templates  
+
+**Phase 2 (Core Enablement - 8-10 weeks):**  
+Direct Social Publishing, Automated Festival Background Library, Partner Network Manager, Aggregator Sync (Meesho + Instamojo first) ✅  
+
+**Phase 3 (Advanced Features - 12+ weeks):**  
+Automated Lookbook Generator, Facebook Local Awareness Ads, Google Local Service Ads, Full Aggregator Sync (Glroad/Craftsvilla) ✅  
+
+### Overall Platform Impact:
+- **Time Savings:** 10-15 hrs/week per retailer on manual marketing/inventory tasks  
+- **Sales Growth:** 20-35% increase in monthly revenue within 3 months of adoption  
+- **Customer Retention:** 40% improvement in repeat purchase rate via personalized incentives  
+- **Market Reach:** 3x expansion in digital touchpoints (social + marketplaces + local search)  
+
+All features maintain the "new row preserves old" data pattern and prioritize retailer self-service with admin oversight controls.

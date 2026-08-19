@@ -342,6 +342,20 @@ export const STUDIO_TEMPLATES = [
       'Replace the background of this product photo with a festive, elegant gold-tone backdrop suitable for Diwali and wedding catalogues. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Rich celebratory lighting with warm glow and a natural grounding shadow.',
   },
   {
+    id: 'diwali_lights',
+    label: 'Diwali Lights',
+    description: 'Diwali-specific backdrop with diyas and rangoli patterns',
+    prompt:
+      'Replace the background of this product photo with a vibrant Diwali backdrop featuring glowing diyas (oil lamps), colorful rangoli patterns, and festive lighting. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Warm, festive illumination with golden highlights.',
+  },
+  {
+    id: 'wedding_elegant',
+    label: 'Wedding Elegant',
+    description: 'Elegant wedding backdrop with floral arrangements and draping',
+    prompt:
+      'Replace the background of this product photo with an elegant wedding backdrop featuring soft floral arrangements, delicate draping, and subtle bokeh lights. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Soft, romantic lighting with pastel tones.',
+  },
+  {
     id: 'flat_lay',
     label: 'Flat-Lay Casual',
     description: 'Casual flat-lay style on a neutral textured surface',

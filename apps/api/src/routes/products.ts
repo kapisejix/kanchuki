@@ -8,6 +8,7 @@ import {
   productsStudioRoutes,
   productsTrashRoutes,
   productsVariantsRoutes,
+  productsFestivalBackgroundRoutes,
 } from './products/index.js';
 
 export const productRoutes: FastifyPluginAsync = async (server) => {
@@ -23,4 +24,6 @@ export const productRoutes: FastifyPluginAsync = async (server) => {
   await server.register(productsAiRoutes);
   // products-studio — F-032 AI Studio Shoots
   await server.register(productsStudioRoutes);
+  // products-festival-background — F-032 Phase B Automated Festival Background Library
+  await server.register(productsFestivalBackgroundRoutes);
 };

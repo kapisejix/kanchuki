@@ -215,22 +215,29 @@ model Retailer {
   referral_enabled      Boolean @default(false)
   referral_reward_paise Int     @default(0)
 
-  // Meta WhatsApp Business API — retailer's own credentials, bring-your-own.
-  // When set, collection bulk-send uses this instead of the one-by-one wa.me
-  // flow. Requires a pre-approved message template in the retailer's Meta
-  // Business Manager (single body variable — see collections.ts bulk-send).
-  whatsapp_api_phone_number_id String?
-  whatsapp_api_access_token    String?
-  whatsapp_api_template_name   String?
-  whatsapp_api_template_lang   String?
-  whatsapp_api_configured_at   DateTime?
+// Meta WhatsApp Business API — retailer's own credentials, bring-your-own.
+   // When set, collection bulk-send uses this instead of the one-by-one wa.me
+   // flow. Requires a pre-approved message template in the retailer's Meta
+   // Business Manager (single body variable — see collections.ts bulk-send).
+   whatsapp_api_phone_number_id String?
+   whatsapp_api_access_token    String?
+   whatsapp_api_template_name   String?
+   whatsapp_api_template_lang   String?
+   whatsapp_api_configured_at   DateTime?
 
-  // WhatsApp Native Catalog Sync (Phase II) — sync product catalog to
-  // WhatsApp Business native catalog (in-app product list under business profile).
-  whatsapp_catalog_id    String? // Meta catalog ID (from WABA)
-  sync_enabled           Boolean  @default(false)
-  sync_categories        String[] @default([]) // ProductCategory IDs to sync
-  last_synced_at         DateTime?
+   // Google My Business
+   gmb_account_id   String? // Google My Business account ID
+   gmb_location_id  String? // Google My Business location ID (for the retailer's shop)
+   gmb_access_token String? // Encrypted access token for GMB API
+   gmb_refresh_token String? // Encrypted refresh token
+   gmb_token_expiry DateTime? // Expiry time of the access token
+
+   // WhatsApp Native Catalog Sync (Phase II) — sync product catalog to
+   // WhatsApp Business native catalog (in-app product list under business profile).
+   whatsapp_catalog_id    String? // Meta catalog ID (from WABA)
+   sync_enabled           Boolean  @default(false)
+   sync_categories        String[] @default([]) // ProductCategory IDs to sync
+   last_synced_at         DateTime?
 
   categories String[] // ["suits", "sarees", "kurtis"]
 
@@ -317,13 +324,65 @@ model Retailer {
   @@index([phone])
   @@index([city])
   @@index([territory_id])
-  @@index([is_suspended])
-  @@index([is_featured])
-  @@map("retailers")
+@@index([is_suspended])
+   @@index([is_featured])
+// Location for geo-targeting and GMB
+   latitude   Float?
+   longitude  Float?
+   @@index([latitude, longitude])
+   @@map("retailers")
+}
+  
+
+// ─── SMART INCENTIVE ENGINE ────────────────────────────────────────
+model CustomerVisit {
+   id          String   @id @default(cuid())
+   retailer    Retailer @relation(fields: [retailer_id], references: [id])
+   retailer_id String
+   customer    Customer @relation(fields: [customer_id], references: [id])
+   customer_id String
+   visit_at    DateTime @default(now())
+
+   @@index([retailer_id])
+   @@index([customer_id])
+   @@map("customer_visits")
 }
 
-// ─── STORE STRUCTURE ─────────────────────────────────────────────
+model IncentiveRule {
+   id             String   @id @default(cuid())
+   retailer       Retailer @relation(fields: [retailer_id], references: [id])
+   retailer_id    String
+   name           String
+   description    String?
+   trigger_type   IncentiveTriggerType
+   discount_type  IncentiveDiscountType
+   discount_value Int // in paise
+   conditions     Json? // for loyalty tier: { min_spent: 10000, min_visits: 5 }
+   active         Boolean @default(true)
+   starts_at      DateTime?
+   ends_at        DateTime?
 
+   created_at DateTime @default(now())
+   updated_at DateTime @updatedAt
+
+   @@index([retailer_id])
+   @@map("incentive_rules")
+}
+
+enum IncentiveTriggerType {
+   FIRST_VISIT
+   BIRTHDAY
+   ANNIVERSARY
+   LOYALTY_TIER
+}
+
+enum IncentiveDiscountType {
+   PERCENT
+   FIXED_AMOUNT
+}
+
+
+// ─── STORE STRUCTURE ─────────────────────────────────────────────
 model StoreSection {
   id          String  @id @default(cuid())
   retailer_id String
@@ -1852,34 +1911,128 @@ model Booking {
 
 // Customer referral program (roadmap C).
 model Referral {
-  id           String @id @default(cuid())
-  retailer_id  String
-  customer_id  String // loose pointer — the referrer
-  code         String @unique
-  reward_paise Int    @default(0) // credited to BOTH parties on first purchase
-  clicks       Int    @default(0)
-  signups      Int    @default(0)
+   id           String @id @default(cuid())
+   retailer_id  String
+   customer_id  String // loose pointer — the referrer
+   code         String @unique
+   reward_paise Int    @default(0) // credited to BOTH parties on first purchase
+   clicks       Int    @default(0)
+   signups      Int    @default(0)
 
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
+   created_at DateTime  @default(now())
+   updated_at DateTime  @updatedAt
 
-  @@index([retailer_id])
-  @@map("referrals")
+   @@index([retailer_id])
+   @@map("referrals")
 }
 
 model ReferralCredit {
-  id           String                @id @default(cuid())
-  retailer_id  String
-  referral_id  String
-  customer_id  String // loose pointer — who receives the credit
-  amount_paise Int
-  status       ReferralCreditStatus  @default(PENDING)
+   id           String                @id @default(cuid())
+   retailer_id  String
+   referral_id  String
+   customer_id  String // loose pointer — who receives the credit
+   amount_paise Int
+   status       ReferralCreditStatus  @default(PENDING)
 
-  created_at DateTime @default(now())
+   created_at DateTime @default(now())
 
-  @@index([customer_id])
-  @@index([referral_id])
-  @@map("referral_credits")
+   @@index([customer_id])
+   @@index([referral_id])
+   @@map("referral_credits")
+}
+
+// Partner Network Manager (roadmap P) — B2B partnerships with salons, tailors, etc.
+enum PartnerType {
+   SALON
+   TAILOR
+   STYLIST
+   MAKEUP_ARTIST
+   OTHER
+}
+
+model Partner {
+   id             String   @id @default(cuid())
+   retailer_id    String
+   name           String
+   type           PartnerType
+   contact_person String?
+   phone          String?
+   email          String?
+   address        String?
+   // Referral tracking
+   referral_code  String   @unique
+   is_active      Boolean  @default(true)
+   // Commission structure
+   commission_rate Int     // percentage (0-100) of referred sale
+   commission_type Enum { // FIXED_AMOUNT or PERCENTAGE_OF_SALE
+     FIXED_AMOUNT
+     PERCENTAGE_OF_SALE
+   } @default(PERCENTAGE_OF_SALE)
+   fixed_commission_paise Int? // if commission_type is FIXED_AMOUNT
+   created_at DateTime  @default(now())
+   updated_at DateTime  @updatedAt
+
+   retailer Retailer @relation(fields: [retailer_id], references: [id])
+   referrals PartnerReferral[]
+
+   @@index([retailer_id])
+   @@index([referral_code])
+   @@map("partners")
+}
+
+model PartnerReferral {
+   id              String   @id @default(cuid())
+   partner_id      String
+   // The referred customer (end user who purchased)
+   customer_id     String
+   // Optional: track what was purchased
+   order_id        String?
+   // Commission earned
+   commission_paise Int
+   status          Enum { // PENDING, PAID, CANCELLED
+     PENDING
+     PAID
+     CANCELLED
+   } @default(PENDING)
+   created_at DateTime  @default(now())
+   updated_at DateTime  @updatedAt
+
+   partner   Partner   @relation(fields: [partner_id], references: [id])
+   customer  Customer  @relation(fields: [customer_id], references: [id])
+   order     Order?    @relation(fields: [order_id], references: [id])
+
+   @@index([partner_id])
+   @@index([customer_id])
+   @@index([status])
+   @@map("partner_referrals")
+}
+
+// Co-hosted events with partners
+model PartnerEvent {
+   id           String   @id @default(cuid())
+   retailer_id  String
+   partner_id   String
+   name         String
+   description  String?
+   starts_at    DateTime
+   ends_at      DateTime?
+   location     String?
+   // Whether this is a virtual or in-person event
+   is_virtual   Boolean  @default(false)
+   // Promotion details
+   discount_code String? // Special discount code for event attendees
+   discount_paise Int?   // Amount of discount
+   is_active    Boolean  @default(true)
+   created_at DateTime  @default(now())
+   updated_at DateTime  @updatedAt
+
+   retailer Retailer @relation(fields: [retailer_id], references: [id])
+   partner  Partner   @relation(fields: [partner_id], references: [id])
+
+   @@index([retailer_id])
+   @@index([partner_id])
+   @@index([starts_at])
+   @@map("partner_events")
 }
 
 enum ProductVideoSource {
