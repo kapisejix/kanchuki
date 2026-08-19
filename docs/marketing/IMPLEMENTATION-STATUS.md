@@ -62,6 +62,7 @@
 3. **GST Report Generator** (`packages/gst-report-generator/`) - PDF-based GST reporting service using PDFKit to generate GST-compliant reports with taxable sales, GST amount, and total sales calculations; includes self-validation demo for calculation logic
 4. **Facebook Ads Service** (`services/facebook-ads/`) - Placeholder for Meta API integration with endpoints for campaign creation, performance reporting (impressions, clicks, spend, CTR), and budget management; includes self-check demo for ID generation logic
 5. **Google Local Service Ads Service** (`services/google-local-service-ads/`) - Placeholder for Google Ads API integration with endpoints for lead reception, retrieval, and status updates; includes self-check demo for lead ID generation logic
+6. **Analytics Service** (`services/analytics-service/`) - Service for feature performance metrics, A/B testing capabilities, and basic predictive analytics; includes endpoints for recording/retrieving metrics, managing A/B tests, and generating simple predictions
 
 ### Pre-existing Services Leveraged:
 1. **Smart Incentive Engine** (`services/incentive-engine/`) - Visitor incentive management including first-time visitor discounts, birthday/anniversary triggers, and loyalty tier progression
@@ -76,7 +77,7 @@
 - **Microservices Architecture**: Each major feature implemented as independent service where appropriate
 - **Fastify Framework**: Used for Node.js services for high performance
 - **TypeScript**: End-to-end type safety
-- **Prisma ORM**: Database interactions across services (used in lookbook-generator and gst-report-generator)
+- **Prisma ORM**: Database interactions across services (used in lookbook-generator, gst-report-generator, and analytics-service)
 - **Webhook Patterns**: Implemented as placeholder endpoints for real-time synchronization with external platforms
 - **RESTful APIs**: Standard interface for service communication
 - **PDFKit**: Used for PDF generation in GST report service
@@ -130,9 +131,9 @@ While all features have been implemented as minimum viable versions (MVPs), the 
 
 ### Short-term Enhancements (1-3 months):
 1. **Advanced analytics and reporting**:
-   - Build dashboards for feature performance metrics
-   - Add A/B testing capabilities for campaign optimization
-   - Implement predictive analytics for inventory and demand forecasting
+   - Build dashboards for feature performance metrics ✅ (Started - analytics service created)
+   - Add A/B testing capabilities for campaign optimization ✅ (Started - analytics service created)
+   - Implement predictive analytics for inventory and demand forecasting ✅ (Started - analytics service created)
 
 2. **User experience improvements**:
    - Build intuitive admin interfaces for each feature
