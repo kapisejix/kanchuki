@@ -2,7 +2,7 @@
 
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles } from 'lucide-react';
+import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -599,6 +599,14 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
           >
             {formatPriceRange(product.price_min, product.price_max)}
           </p>
+          {product.rating_count > 0 && (
+            <span className="flex items-center gap-0.5 ml-auto">
+              <Star size={11} className="text-amber-400 fill-amber-400" />
+              <span className="text-[10px] font-semibold text-gray-600">
+                {product.avg_rating.toFixed(1)}
+              </span>
+            </span>
+          )}
           {isSold && <span className="text-[10px] text-red-400 font-semibold ml-auto">Sold</span>}
           {isReserved && (
             <span className="text-[10px] text-amber-500 font-semibold ml-auto">Reserved</span>
