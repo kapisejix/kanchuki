@@ -38,13 +38,13 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 | # | Feature | Real Code Exists? | API Route | Admin UI | Mobile UI | Plan Gate | Overall |
 |---|---------|-------------------|-----------|----------|-----------|-----------|---------|
-| 1 | Smart Incentive Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ✅ | **Schema ready** |
+| 1 | Smart Incentive Engine | ✅ Folded into apps/ | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 2 | Local Discovery Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 3 | GMB Integration | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 4 | AI Social Media Templates | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 5 | Direct Social Publishing | ✅ F-031 exists | ✅ | ❌ | ❌ | ✅ | **Partial** |
 | 6 | Festival Background Library | ❌ Doc-only | ❌ | ❌ | ❌ | ❌ | **Not Built** |
-| 7 | Partner Network Manager | ✅ API route exists | ✅ | ❌ | ❌ | ✅ | **Route fixed, needs UI** |
+| 7 | Partner Network Manager | ✅ API route exists | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 8 | Aggregator Sync | ⚠️ 1-file orphan | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 9 | Lookbook Generator | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 10 | Facebook Local Awareness Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
@@ -91,21 +91,24 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 1 — Smart Incentive Engine (Retailer ROI: ₹200-300 uplift/new customer)
-> **Source:** `services/incentive-engine/` (orphan stub with real Prisma CRUD logic to extract)
+### Phase 1 — Smart Incentive Engine ✅ Completed
+> **Done 2026-08-20.** Commits `d0e3980`, `0f32267`, `f36fba1`.
+> **Source:** `services/incentive-engine/` (orphan stub) → folded into `apps/`.
 
-| Layer | What to Build | File | Status |
-|-------|--------------|------|--------|
+| Layer | What was Built | File | Status |
+|-------|---------------|------|--------|
 | Schema | `IncentiveRule` model | `packages/db/prisma/schema.prisma` | ✅ Exists (line 355) |
 | Schema | `CustomerVisit` model | `packages/db/prisma/schema.prisma` | ✅ Exists (line 342) |
 | Schema | `INCENTIVE_ENGINE` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` | ✅ Exists (line 146) |
 | Migration | 066 — tables + enums | `packages/db/prisma/migrations/066_*` | ✅ Created |
-| **Backend** | Incentive rule CRUD + visit tracking + loyalty check endpoint | `apps/api/src/routes/growth/growth-incentives.ts` | 🔴 To build |
-| Backend | Register in growth routes barrel | `apps/api/src/routes/growth/index.ts` | 🔴 To build |
-| **Admin UI** | Rules list, create/edit form, analytics (redemption rate, ROI) | `apps/web/src/app/admin/incentives/page.tsx` | 🔴 To build |
-| Admin UI | Sidebar nav entry | `apps/web/src/app/admin/components/Sidebar.tsx` | 🔴 To build |
-| **Mobile UI** | Retailer manages incentive rules, views redemption stats | `apps/mobile/app/growth/incentives.tsx` | 🔴 To build |
-| Mobile UI | API client function | `apps/mobile/src/lib/api/growth.ts` (extend) | 🔴 To build |
+| **Backend** | Incentive rule CRUD + visit tracking + loyalty check + stats | `apps/api/src/routes/growth/growth-incentives.ts` | ✅ Built (9 endpoints) |
+| Backend | Registered in growth routes barrel | `apps/api/src/routes/growth/index.ts` | ✅ Built |
+| **Admin API** | List all rules, stats, toggle, delete | `apps/api/src/routes/admin/admin-incentives.ts` | ✅ Built (5 endpoints) |
+| Admin API | Registered in admin barrel + route aggregator | `apps/api/src/routes/admin/index.ts`, `admin.ts` | ✅ Built |
+| **Admin UI** | Rules table, stats cards, create/edit modal | `apps/web/src/app/admin/incentives/page.tsx` | ✅ Built |
+| Admin UI | Sidebar nav entry (Gift icon) | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
+| **Mobile UI** | Rules list, toggle, create modal, stats strip | `apps/mobile/app/growth/incentives.tsx` | ✅ Built |
+| Mobile UI | API client (7 methods + 4 types) | `apps/mobile/src/lib/api/growth.ts` | ✅ Built |
 
 **Business logic to extract from orphan:**
 - Trigger evaluation: FIRST_VISIT (visitCount === 0), BIRTHDAY (needs customer DOB), LOYALTY_TIER (spend/visit thresholds)
@@ -116,17 +119,19 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 2 — Partner Network Manager (API exists, needs UI)
-> **Source:** `apps/api/src/routes/retailers/retailers-partners/index.ts` (real route, schema broken)
+### Phase 2 — Partner Network Manager ✅ Completed
+> **Done 2026-08-20.** Commit `20b6052`.
+> **Source:** `apps/api/src/routes/retailers/retailers-partners/index.ts` (existing route) + new admin API.
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | Fix broken enums (Phase 0 covers this) | `packages/db/prisma/schema.prisma` |
-| **Admin UI** | Partner list, referral tracking, commission payouts, event management | `apps/web/src/app/admin/partners/page.tsx` |
-| Admin UI | Sidebar nav entry | `apps/web/src/app/admin/components/Sidebar.tsx` |
-| **Mobile UI** | Add partner, view referrals, mark commission paid, create events | `apps/mobile/app/growth/partners.tsx` |
-
-**Note:** Backend API route already exists and works (once schema is fixed). Only UI needs building.
+| Layer | What was Built | File | Status |
+|-------|---------------|------|--------|
+| Backend | Retailer CRUD (already existed) | `apps/api/src/routes/retailers/retailers-partners/index.ts` | ✅ Existing |
+| **Admin API** | List all partners, view detail, aggregate stats | `apps/api/src/routes/admin/admin-partners.ts` | ✅ Built (3 endpoints) |
+| Admin API | Registered in admin barrel + route aggregator | `apps/api/src/routes/admin/index.ts`, `admin.ts` | ✅ Built |
+| **Admin UI** | Partners table, stats cards, detail modal with referrals | `apps/web/src/app/admin/partners/page.tsx` | ✅ Built |
+| Admin UI | Sidebar nav entry (Handshake icon) | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
+| **Mobile UI** | Partners list, create partner modal, delete | `apps/mobile/app/growth/partners.tsx` | ✅ Built |
+| Mobile UI | API client (8 methods + 7 types) | `apps/mobile/src/lib/api/growth.ts` | ✅ Built |
 
 **Acceptance:** Retailer adds partner → partner refers customer → commission tracked → admin sees overview.
 
@@ -259,7 +264,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Feature | Route File | Status |
 |---------|-----------|--------|
 | Growth Engine (campaigns, referrals, etc.) | `growth/index.ts` + `growth-*.ts` | ✅ Built |
-| Partner Network | `retailers/retailers-partners/index.ts` | ✅ Route fixed (Phase 0) |
+| Partner Network | `retailers/retailers-partners/index.ts` | ✅ Built (Phase 0+2) |
 | Smart Incentive Engine | `growth/growth-incentives.ts` | 🔴 To build (Phase 1) |
 | Partner Network | `retailers/retailers-partners/index.ts` | ✅ Built (Phase 0) |
 | Local Discovery | `public/near-me.ts` | 🔴 To build (Phase 3) |
@@ -277,7 +282,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Commission | `commission/` | ✅ Built |
 | WhatsApp Catalog | `whatsapp-catalog/` | ✅ Built |
 | Incentives | `incentives/` | 🔴 To build (Phase 1) |
-| Partners | `partners/` | 🔴 To build (Phase 2) |
+| Partners | `partners/` | ✅ Built (Phase 2) |
 | Discovery Map | `discovery/` | 🔴 To build (Phase 3) |
 | Festival Backgrounds | `festival-backgrounds/` | 🔴 To build (Phase 4) |
 | Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
@@ -296,7 +301,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Videos | `videos.tsx` | ✅ Built |
 | Translate | `translate.tsx` | ✅ Built |
 | Incentives | `incentives.tsx` | 🔴 To build (Phase 1) |
-| Partners | `partners.tsx` | 🔴 To build (Phase 2) |
+| Partners | `partners.tsx` | ✅ Built (Phase 2) |
 | Templates | `templates.tsx` | 🔴 To build (Phase 5) |
 | Lookbook | `lookbook.tsx` | 🔴 To build (Phase 6) |
 | Aggregators | `aggregators.tsx` | 🔴 To build (Phase 7) |
@@ -313,6 +318,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | F-032 AI Studio Shoots status | Social Templates (Phase 5) | Check if FLUX Kontext is live |
 | ~~`PARTNER_NETWORK` missing from PlanFeatureKey~~ | ~~Partner Network (Phase 2)~~ | ✅ Resolved (Phase 0, commit `b990e64`) |
 | Migration 066 not applied to DB | All Phase 1+2 features | Apply via `npx prisma migrate deploy` or Supabase SQL Editor |
+| Partner API route pre-existing errors | `retailers-social.ts`, `products-festival-background.ts` | Pre-existing, not introduced by this work |
 
 ---
 
