@@ -222,6 +222,8 @@ export interface PublicProduct {
   location: string | null
   primary_photo_url: string
   has_360: boolean
+  avg_rating: number
+  rating_count: number
 }
 
 export interface PublicProductDetail extends PublicProduct {

@@ -715,7 +715,7 @@ WhatsApp stays a share/notify channel (same as always). The cart/checkout/paymen
 ---
 
 #### F-303: Order Management & Delivery Tracking
-**Status:** 🔴 **Not started** — depends on F-302 (Order/OrderItem models).
+**Status:** ✅ **Built** (2026-08-20). Order list + detail + status management in mobile app. Delivery tracking (Shiprocket/Delhivery) deferred — retailers fulfill manually at launch.
 **Description:** Retailer-facing order list (mobile + admin): view, mark fulfilled/shipped/cancelled, filter by status. Delivery tracking (Shiprocket/Delhivery, see PRO-REQUIREMENTS §8 Optional/Future) is a later add, not required for F-302 to ship — retailers can fulfill manually (call/WhatsApp customer) at launch.
 
 ---

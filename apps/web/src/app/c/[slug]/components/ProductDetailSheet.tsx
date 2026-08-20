@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info } from 'lucide-react'
+import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
@@ -589,6 +589,17 @@ export function ProductDetailSheet({
               <p className="text-sm text-gray-500 mt-0.5">
                 {product.category}
               </p>
+              {product.rating_count > 0 && (
+                <div className="flex items-center gap-1 mt-1">
+                  <Star size={14} className="text-amber-400 fill-amber-400" />
+                  <span className="text-sm font-semibold text-gray-700">
+                    {product.avg_rating.toFixed(1)}
+                  </span>
+                  <span className="text-xs text-gray-400">
+                    ({product.rating_count})
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               <button

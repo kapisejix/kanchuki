@@ -55,6 +55,8 @@ function makeProduct(i: number): PublicCollection['products'][number] {
     location: null,
     primary_photo_url: `https://cdn-test.r2.dev/design-${i}.jpg`,
     has_360: false,
+    avg_rating: 0,
+    rating_count: 0,
   }
 }
 

@@ -88,6 +88,8 @@ const fetchRoutes: Record<string, { status: number; body: unknown }> = {
         location: null,
         primary_photo_url: 'https://cdn-test.r2.dev/prod-1.jpg',
         has_360: false,
+        avg_rating: 0,
+        rating_count: 0,
         photos: ['https://cdn-test.r2.dev/prod-1.jpg'],
         spin_frames: [],
         variants: [],

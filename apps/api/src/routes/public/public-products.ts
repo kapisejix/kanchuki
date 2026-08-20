@@ -74,6 +74,8 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
               ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)
               : '',
             has_360: p.spin_frames.length > 0,
+            avg_rating: p.avg_rating,
+            rating_count: p.rating_count,
             photos: await Promise.all(
               p.photos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
             ),

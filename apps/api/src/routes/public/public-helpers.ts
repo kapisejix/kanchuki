@@ -64,6 +64,8 @@ export async function toPublicProductSummary(p: {
   section: { name: string | null } | null;
   photos: { url: string; r2_key: string }[];
   _count: { spin_frames: number };
+  avg_rating?: number;
+  rating_count?: number;
 }) {
   const photo = p.photos[0];
   return {
@@ -82,6 +84,8 @@ export async function toPublicProductSummary(p: {
     location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
     primary_photo_url: photo ? await displayUrl(photo.url, photo.r2_key) : '',
     has_360: p._count.spin_frames > 0,
+    avg_rating: p.avg_rating ?? 0,
+    rating_count: p.rating_count ?? 0,
   };
 }
 

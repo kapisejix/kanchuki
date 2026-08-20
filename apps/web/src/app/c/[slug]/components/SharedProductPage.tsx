@@ -1,6 +1,6 @@
 import type { PublicCollection, PublicProductDetail } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { ArrowLeft, Info, MapPin, MessageCircle, ShoppingBag, Sparkles } from 'lucide-react';
+import { ArrowLeft, Info, MapPin, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
 import { ProductGallery } from './ProductGallery';
 
@@ -88,6 +88,17 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
             )}
             {product.category && product.name && (
               <p className="text-sm text-gray-500">{product.category}</p>
+            )}
+            {product.rating_count > 0 && (
+              <div className="flex items-center gap-1 mt-1">
+                <Star size={14} className="text-amber-400 fill-amber-400" />
+                <span className="text-sm font-semibold text-gray-700">
+                  {product.avg_rating.toFixed(1)}
+                </span>
+                <span className="text-xs text-gray-400">
+                  ({product.rating_count})
+                </span>
+              </div>
             )}
           </div>
 

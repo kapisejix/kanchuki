@@ -55,6 +55,8 @@ function makeProduct(i: number): PublicProduct {
     // get cached and survive an offline reload (asserted via naturalWidth).
     primary_photo_url: `https://cdn-e2e.r2.dev/design-${n}.jpg`,
     has_360: false,
+    avg_rating: 0,
+    rating_count: 0,
   }
 }
 
