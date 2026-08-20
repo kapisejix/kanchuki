@@ -48,6 +48,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
             expires_at: true,
             retailer: {
               select: {
+                id: true,
                 shop_name: true,
                 city: true,
                 phone: true,

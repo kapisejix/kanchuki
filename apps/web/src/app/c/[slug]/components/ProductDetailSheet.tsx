@@ -8,6 +8,7 @@ import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanc
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
+import { ReviewForm } from './StarPicker'
 
 // ponytail: Try-On feature not finished yet — flip to true when ready.
 const TRY_ON_ENABLED = false
@@ -797,6 +798,16 @@ export function ProductDetailSheet({
             <MessageCircle size={18} />
             {isSold ? 'Sold Out' : 'Enquire'}
           </button>
+        </div>
+
+        {/* Review Form */}
+        <div className="px-4 pt-2">
+          <ReviewForm
+            productName={product.name ?? product.category ?? 'this product'}
+            retailerId={retailer.id}
+            productId={product.id}
+            retailerName={retailer.shop_name}
+          />
         </div>
 
         {/* Related Products — same category from same retailer */}

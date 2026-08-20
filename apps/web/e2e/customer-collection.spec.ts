@@ -68,6 +68,7 @@ function collectionFor(slug: string, page: number): PublicCollection {
   const start = (page - 1) * PAGE_SIZE
   return {
     retailer: {
+      id: 'retailer-meera',
       shop_name: 'Meera Sarees',
       city: 'Jaipur',
       phone: '919999999999',

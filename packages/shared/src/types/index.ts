@@ -182,6 +182,7 @@ export interface CollectionEnquiryItem {
 
 export interface PublicCollection {
   retailer: {
+    id: string
     shop_name: string
     city: string
     phone: string  // for WhatsApp enquiry

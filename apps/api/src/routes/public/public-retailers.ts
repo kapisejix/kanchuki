@@ -294,6 +294,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
       return {
         data: {
           retailer: {
+            id: retailer.id,
             shop_name: retailer.shop_name,
             city: retailer.city,
             phone: retailer.phone,
@@ -402,6 +403,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
       return {
         data: {
           retailer: {
+            id: retailer.id,
             shop_name: retailer.shop_name,
             city: retailer.city,
             phone: retailer.phone,

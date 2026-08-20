@@ -6,3 +6,4 @@ export { publicRetailersRoutes } from './public-retailers.js';
 export { publicCatalogPaymentRoutes } from './public-catalog-payment.js';
 export { publicNearMeRoutes } from './near-me.js';
 export { publicStoresRoutes } from './public-stores.js';
+export { publicReviewsRoutes } from './public-reviews.js';

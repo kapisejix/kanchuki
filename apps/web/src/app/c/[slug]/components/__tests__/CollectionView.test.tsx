@@ -62,6 +62,7 @@ function makeProduct(i: number): PublicCollection['products'][number] {
 
 const COLLECTION: PublicCollection = {
   retailer: {
+    id: 'retailer-meera',
     shop_name: 'Meera Sarees',
     city: 'Jaipur',
     phone: '919999999999',

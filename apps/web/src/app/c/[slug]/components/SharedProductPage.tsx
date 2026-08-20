@@ -3,6 +3,7 @@ import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from 
 import { ArrowLeft, Info, MapPin, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
 import { ProductGallery } from './ProductGallery';
+import { ReviewForm } from './StarPicker';
 
 interface Props {
   collection: PublicCollection;
@@ -181,6 +182,16 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           <ShoppingBag size={18} />
           View Full Catalog
         </Link>
+
+        {/* Review Form */}
+        <div className="mt-5">
+          <ReviewForm
+            productName={product.name ?? product.category ?? 'this product'}
+            retailerId={collection.retailer.id}
+            productId={product.id}
+            retailerName={shop}
+          />
+        </div>
 
         <p className="text-center text-xs text-gray-400 mt-4">
           Shared from {shop}
