@@ -137,20 +137,18 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 3 — Local Discovery Engine (Geo-search)
-> **Source:** `services/local-discovery-engine/src/routes/near-me.ts` (orphan with real Haversine logic)
+### Phase 3 — Local Discovery Engine (Geo-search) ✅ Built
+> **Source:** Extracted from `services/local-discovery-engine/src/routes/near-me.ts`
+> **Commit:** `7efc6db`
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| **Backend** | Near-me geo-search endpoint (Haversine + bounding box) | `apps/api/src/routes/public/near-me.ts` |
-| Backend | Register in public routes | `apps/api/src/routes/public.ts` or `apps/api/src/routes/index.ts` |
-| **Admin UI** | Map view of retailers, location management, geo-fence offers | `apps/web/src/app/admin/discovery/page.tsx` |
+| Layer | What | File | Status |
+|-------|------|------|--------|
+| **Backend** | Near-me geo-search (Haversine + bounding box) | `apps/api/src/routes/public/near-me.ts` | ✅ Built |
+| Backend | Register in public routes barrel + aggregator | `apps/api/src/routes/public/index.ts` + `public.ts` | ✅ Built |
+| **Admin UI** | Retailer grid with locations, stats, search, storefront links | `apps/web/src/app/admin/discovery/page.tsx` | ✅ Built |
+| Sidebar | MapPin icon entry | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
 
-**Business logic to extract from orphan:**
-- `getBoundingBox(lat, lng, radiusKm)` → narrowing query
-- `haversineDistance(lat1, lon1, lat2, lon2)` → exact distance filter
-- Retailer location query with `latitude`/`longitude` bounds
-
+**Business logic extracted:** Haversine distance, bounding-box narrowing, retailer location query.
 **Acceptance:** Customer web page shows "near me" retailers within radius → admin sees map of all retailer locations.
 
 ---

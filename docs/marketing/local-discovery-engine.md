@@ -1,29 +1,26 @@
 # Local Discovery Engine
 
-**Status:** 🔴 Not Built — orphan stub in `services/local-discovery-engine/`, not wired into any app.  
+**Status:** ✅ Built — folded into `apps/` architecture  
 **Plan:** Phase 3 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Commit:** `7efc6db`  
 **Date:** 2026-08-20
 
 ---
 
-## What Exists (Unreachable)
-- `services/local-discovery-engine/src/routes/near-me.ts` — Haversine distance calculation, bounding box geo-query
-- `services/local-discovery-engine/src/local-discovery-engine.ts` — Standalone Fastify server on port 3002 (never deployed)
-
-**None of this is reachable** — not in pnpm workspace, not referenced from `apps/api`.
-
-## What Needs Building (Phase 3)
+## What Was Built
 
 ### Backend
 - `apps/api/src/routes/public/near-me.ts` — Public geo-search endpoint
   - GET /v1/near-me?latitude=&longitude=&radius= — find nearby retailers
-  - Uses Haversine formula + bounding box optimization (extract from orphan)
+  - Uses Haversine formula + bounding box optimization (extracted from orphan)
   - Retailers filtered by `is_suspended: false`, `deleted_at: null`
+- Registered in `apps/api/src/routes/public/index.ts` barrel + `public.ts` aggregator
 
 ### Admin UI
-- `apps/web/src/app/admin/discovery/page.tsx` — Map view, location management
+- `apps/web/src/app/admin/discovery/page.tsx` — Retailer grid with locations, stats, search, storefront links
+- Sidebar entry (MapPin icon) in `apps/web/src/app/admin/components/Sidebar.tsx`
 
-## Business Logic to Extract
+## Business Logic Extracted
 - `getBoundingBox(lat, lng, radiusKm)` → narrowing query for Prisma
 - `haversineDistance(lat1, lon1, lat2, lon2)` → exact distance filter
 - Retailer location query with `latitude`/`longitude` bounds
