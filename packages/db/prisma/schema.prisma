@@ -146,6 +146,7 @@ enum PlanFeatureKey {
   GROWTH_ENGINE
   PARTNER_NETWORK
   INCENTIVE_ENGINE
+  FESTIVAL_BACKGROUNDS
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -326,6 +327,7 @@ model Retailer {
   incentive_rules       IncentiveRule[]
   partners              Partner[]
   partner_events        PartnerEvent[]
+  festival_backgrounds  FestivalBackground[]
 
   @@index([phone])
   @@index([city])
@@ -2047,6 +2049,44 @@ model PartnerEvent {
    @@index([partner_id])
    @@index([starts_at])
    @@map("partner_events")
+}
+
+// ─── FESTIVAL BACKGROUND LIBRARY ──────────────────────────────────
+// Admin-curated seasonal background images for AI Studio Shoots.
+// Retailers apply them via POST /products/:id/photos/:photoId/festival-background.
+model FestivalBackground {
+  id          String   @id @default(cuid())
+  retailer_id String
+  retailer    Retailer @relation(fields: [retailer_id], references: [id])
+
+  // Background metadata
+  name        String   // e.g. "Diwali Gold Sparkle"
+  description String?
+  image_url   String   // R2 URL of the background image
+  image_r2_key String? // R2 storage key for deletion
+  thumbnail_url String? // Smaller preview version
+
+  // Seasonal/festival tagging
+  occasion    String   // e.g. "Diwali", "Wedding", "Eid", "Navratri"
+  season      String?  // e.g. "autumn", "winter", "spring"
+  region      String?  // e.g. "north_india", "south_india", "all"
+
+  // Scheduling
+  is_active   Boolean  @default(true)
+  valid_from  DateTime? // When this background becomes available
+  valid_to    DateTime? // When it expires
+  priority    Int      @default(0) // Higher = shown first in admin
+
+  // Usage stats
+  usage_count Int      @default(0) // How many times applied
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([retailer_id])
+  @@index([occasion])
+  @@index([is_active, valid_from, valid_to])
+  @@map("festival_backgrounds")
 }
 
 enum ProductVideoSource {

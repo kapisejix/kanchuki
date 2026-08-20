@@ -47,6 +47,7 @@ import {
   Gift,
   Handshake,
   MapPin,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -61,6 +62,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
   { label: 'Commission', href: '/admin/commission', icon: Percent },
   { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
+  { label: 'Festival BGs', href: '/admin/festival-backgrounds', icon: Sparkles },
   { label: 'Incentives', href: '/admin/incentives', icon: Gift },
   { label: 'Partners', href: '/admin/partners', icon: Handshake },
   { label: 'Discovery', href: '/admin/discovery', icon: MapPin },
