@@ -1,229 +1,322 @@
-# Marketing & Sales Enablement Features - Implementation Status Report
+# Marketing & Sales Enablement — Implementation Status & Development Plan
 
-**Date:** 2026-08-19  
-**Version:** 1.0  
-**Objective:** Provide a detailed status of all marketing and sales enablement features based on the original PRD in `marketing-sales-enablement-overview.md`
-
----
-
-## 📊 Overall Status Summary
-
-| Phase | Total Features | Completed | In Progress | Not Started | Completion % |
-|-------|----------------|-----------|-------------|-------------|--------------|
-| Phase 1 (Quick Wins - 4-6 weeks) | 4 | 4 | 0 | 0 | 100% |
-| Phase 2 (Core Enablement - 8-10 weeks) | 4 | 3 | 1 | 0 | 75% |
-| Phase 3 (Advanced Features - 12+ weeks) | 4 | 4 | 0 | 0 | 100% |
-| **Overall** | **12** | **11** | **1** | **0** | **92%** |
-
-> ⚠️ **Correction 2026-08-20** (`docs/marketing/WIRING-AUDIT-2026-08-20.md`): every "COMPLETE" row below is a `services/<name>/` standalone stub — not in `pnpm-workspace.yaml`, not in `turbo.json`, zero references from `apps/api`/`apps/web`/`apps/mobile`. None are reachable by a retailer or admin today. **Partner Network Manager** (row below) additionally has a broken `schema.prisma` (`npx prisma validate` fails) blocking `db:generate` for the whole monorepo — downgraded from ✅ to 🟡 here since its API route is at least real, unlike the other 9. Full fix plan: `docs/PRO-REQUIREMENTS.md` §29. Treat every other "✅ COMPLETE" claim in this file as unverified until checked the same way.
+**Last updated:** 2026-08-20  
+**File purpose:** Single source of truth for all marketing/sales enablement features. Track everything here.  
+**Replaces:** the previous "100% COMPLETE" claim (now proven false by `WIRING-AUDIT-2026-08-20.md`).
 
 ---
 
-## 📋 Detailed Feature Implementation Status
+## 🏗️ Unified Architecture (One Pattern for All Features)
 
-### Phase 1: Quick Wins (4-6 weeks) - **100% COMPLETED**
+Every feature in this project follows the same 4-layer pattern. No exceptions.
 
-| Feature | Status | Implementation Details | Location |
-|---------|--------|------------------------|----------|
-| **1. Smart Incentive Engine** | ✅ COMPLETE | - First-time visitor discount auto-applied at checkout<br>- Birthday/anniversary offer triggers<br>- Loyalty tier progression based on spend/visit frequency<br>- Integrated with checkout flow<br>- WhatsApp/SMS automation for incentive delivery | `services/incentive-engine/` |
-| **2. Local Discovery Engine** | ✅ COMPLETE | - Geo-tagged product listings for Google My Business<br>- "Near me" search optimization<br>- Location-based offer rules (e.g., show Diwali offers only to users within 10km)<br>- Extended existing `getSecret`/`prisma` to store location metadata | `services/local-discovery-engine/` |
-| **3. GMB Integration** | ✅ COMPLETE | - Auto-post new arrivals/offers<br>- Review monitoring & response templates<br>- Q&A management for common queries (size, fabric)<br>- New `gmb-sync` service (Node.js)<br>- Webhook for review alerts<br>- Template engine for automated responses | `services/gmb-sync/` |
-| **4. AI-Driven Social Media Templates** | ✅ COMPLETE | - Generate Instagram post/reel templates from product images<br>- WhatsApp catalog/status templates with festive overlays<br>- Text suggestions based on regional trends & occasion<br>- Used existing `studio-shoot` FLUX Konnet integration<br>- New `social-template` microservice (Node.js)<br>- Store templates in S3/R2; serve via CDN<br>- Integrated with WhatsApp Business API for catalog updates | `services/social-template/` |
-
----
-
-### Phase 2: Core Enablement (8-10 weeks) - **100% COMPLETED**
-
-| Feature | Status | Implementation Details | Location |
-|---------|--------|------------------------|----------|
-| **1. Direct Social Publishing** | ✅ COMPLETE | - Schedule Instagram Reels (via Meta Graph API)<br>- Broadcast WhatsApp Catalog updates<br>- Analytics: views, shares, click-throughs<br>- Integrated with Meta Graph API for Reels scheduling<br>- Used WhatsApp Cloud API for catalog broadcasts<br>- New `social-scheduler` table for queued posts<br>- Webhook for post-publish analytics (impressions, engagement) | Leverages existing WhatsApp/IG integrations in core platform |
-| **2. Automated Festival Background Library** | ✅ COMPLETE | - Pre-generated backgrounds for Diwali, weddings, regional festivals<br>- One-click apply to product images<br>- Seasonal auto-rotation (e.g., swap to wedding backgrounds Oct-Mar)<br>- Extended `studio-shoot` job to generate background variants during off-peak hours<br>- New `festival-bg` table in DB with metadata (occasion, validity dates)<br>- Admin UI to preview/select backgrounds<br>- API endpoint: `/apply-background/{productId}/{festivalId}` | Part of `services/photo-cleanup/` and AI fashion DNA module |
-| **3. Partner Network Manager** | 🟡 API route real, everything else broken/missing | - Real CRUD route exists (partners, referrals, mark-paid, events) — but `schema.prisma`'s `Partner`/`PartnerReferral` models fail `npx prisma validate` (invalid inline enum syntax), no migration was ever applied, `PARTNER_NETWORK` missing from `PlanFeatureKey`, no admin UI, no mobile UI. Fix plan: `docs/PRO-REQUIREMENTS.md` §29. | `apps/api/src/routes/retailers/retailers-partners/` |
-| **4. Aggregator Sync (Meesho + Instamojo first)** | ✅ COMPLETE | - Unified product catalog (single source of truth in Kanchuki DB)<br>- Real-time inventory sync (prevent overselling)<br>- Order aggregation (centralized fulfillment view)<br>- Fee/revenue reconciliation per channel<br>- Meesho & Instamojo adapters implemented<br>- Product Mapper normalizes Kanchuki product schema<br>- Inventory Sync Service polls channel APIs<br>- Order Hub pulls new orders via webhooks/polling<br>- Fee Tracker aggregates transaction fees | `services/aggregator-sync/` |
-
----
-
-### Phase 3: Advanced Features (12+ weeks) - **100% COMPLETED**
-
-| Feature | Status | Implementation Details | Location |
-|---------|--------|------------------------|----------|
-| **1. Automated Lookbook Generator** | ✅ COMPLETE | - Input: 3-5 product IDs<br>- Output: Coordinated lookbook (images/video) with styling notes<br>- Export formats: Instagram carousel, WhatsApp status, PDF<br>- New `lookbook-generator` service (Python)<br>- Uses style rules from `fashion-dna` module<br>- Leverages existing image compression/upload pipeline<br>- Output stored as new ProductPhoto rows with `is_lookbook: true` flag | `services/lookbook-generator/` |
-| **2. Facebook Local Awareness Ads** | ✅ COMPLETE | - Create radius-based ad campaigns (5km/10km)<br>- A/B test creative (product vs. lifestyle)<br>- Budget pacing alerts<br>- Integrated with Meta Marketing API<br>- New `fb-ads` manager in retailer dashboard<br>- Used existing product image library for ad creatives<br>- Auto-pause when budget exhausted | `services/facebook-ads/` |
-| **3. Google Local Service Ads** | ✅ COMPLETE | - Service-based ad management (e.g., "alteration services near me")<br>- Lead tracking & follow-up reminders<br>- Extended existing Google Ads integration<br>- New `gla-leads` table for service inquiries<br>- SMS/email alerts for new leads<br>- Integration with appointment booking (if available) | `services/google-local-service-ads/` |
-| **4. Full Aggregator Sync (Glroad/Craftsvilla)** | ✅ COMPLETE | - Added Glroad & Craftsvilla adapters to existing aggregator-sync service<br>- Unified product catalog across all 4 channels<br>- Real-time inventory sync for all channels<br>- Order aggregation from all sales channels<br>- Fee/revenue reconciliation per channel<br>- Product Mapper normalizes Kanchuki product schema for each channel's requirements<br>- Inventory Sync Service polls channel APIs every 15 mins<br>- Conflict resolution: "last write wins" with manual override for high-value items<br>- Order Hub tags orders by source channel<br>- Fee Tracker aggregates in `channel_finance` table | `services/aggregator-sync/` (extended) |
-
----
-
-## 🔧 Technical Implementation Summary
-
-### Services Created During This Implementation Cycle:
-1. **Aggregator Sync Service** (`services/aggregator-sync/`) - Enhanced sync service with realistic API integrations for Meesho, Instamojo, Glroad, and Craftsvilla (including API client classes, webhook endpoints with signature verification placeholders, sync initiation endpoints, and inventory update endpoints); all four platforms follow the same integration pattern
-2. **Lookbook Generator Service** (`services/lookbook-generator/`) - Coordinated lookbook generation service that fetches retailer products and generates HTML lookbooks with basic product information (name, price, SKU, description, images); foundation for future enhancement with fashion-dna module styling rules
-3. **GST Report Generator** (`packages/gst-report-generator/`) - Enhanced PDF-based GST reporting service using PDFKit to generate government-compliant GSTR-3B format reports with detailed tax rate breakdown, retailer information, and proper formatting; includes self-validation demo for calculation logic
-4. **Facebook Ads Service** (`services/facebook-ads/`) - Enhanced service with realistic Meta API integration (including API client class, webhook endpoint with signature verification placeholder, campaign management endpoints, ad set/ad creation endpoints, and insights endpoints); follows Meta Marketing API patterns
-5. **Google Local Service Ads Service** (`services/google-local-service-ads/`) - Enhanced service with realistic Google Ads API integration (including API client class, webhook endpoint with signature verification placeholder, campaign management endpoints, ad group/ad creation endpoints, lead management endpoints, and insights endpoints); follows Google Ads API patterns
-6. **Analytics Service** (`services/analytics-service/`) - Service for feature performance metrics, A/B testing capabilities, and basic predictive analytics; includes endpoints for recording/retrieving metrics, managing A/B tests, and generating simple predictions
-7. **Auth Service** (`services/auth-service/`) - Authentication service with API key management, OAuth client management, JWT-based authentication, and role-based access control patterns; includes endpoints for API key generation/validation, OAuth client registration, and token endpoints
-
-### Pre-existing Services Leveraged:
-1. **Smart Incentive Engine** (`services/incentive-engine/`) - Visitor incentive management including first-time visitor discounts, birthday/anniversary triggers, and loyalty tier progression
-2. **Local Discovery Engine** (`services/local-discovery-engine/`) - Geo-targeting and "near me" search optimization with location-based offer rules
-3. **GMB Sync Service** (`services/gmb-sync/`) - Google My Business integration for auto-posting new arrivals/offers and review management
-4. **Social Template Service** (`services/social-template/`) - AI-driven social media templates using studio-shoot FLUX Konnet integration and OpenAI API for caption generation
-5. **Photo Cleanup Service** (`services/photo-cleanup/`) - Festival background library processing for Diwali, weddings, and regional festivals with one-click apply functionality
-6. **Fashion DNA Module** (`packages/ai/src/fashion-dna.ts`) - Interaction weights and similarity thresholds for product matching (referenced for future lookbook styling enhancements)
-7. **Retailers Partners Routes** (`apps/api/src/routes/retailers/retailers-partners/`) - Partner network manager for tracking referral codes, automated commission payouts, and co-hosted event invitations
-
-### Key Technical Approaches Used:
-- **Microservices Architecture**: Each major feature implemented as independent service where appropriate
-- **Fastify Framework**: Used for Node.js services for high performance
-- **TypeScript**: End-to-end type safety
-- **Prisma ORM**: Database interactions across services (used in lookbook-generator, gst-report-generator, analytics-service)
-- **RESTful API Clients**: Implemented for external platform integrations (Meesho, Instamojo, Glroad, Craftsvilla, Facebook/Meta, Google Ads) with realistic API patterns
-- **Webhook Pattern Implementation**: Created webhook endpoints with signature verification placeholders for external platform callbacks
-- **API Authentication Patterns**: Implemented API key/token based authentication patterns for marketplace and ad platform integrations, plus JWT-based authentication for internal services
-- **Error Handling and Logging**: Comprehensive error handling with proper HTTP status codes, try/catch blocks for asynchronous operations, and structured logging for debugging and monitoring
-- **Modular Service Design**: Separated concerns with dedicated API client classes and service endpoints
-- **PDF Generation with Formatting**: Enhanced PDFKit usage for structured, government-compliant report layouts (GSTR-3B format)
-- **Authentication & Authorization**: Implemented API key management (generation, validation, revocation), OAuth client management, and simplified OAuth token endpoints
-
----
-
-## 📈 Value Delivery Assessment
-
-Based on the original ROI metrics specified in the PRD:
-
-| Feature | Expected ROI Metrics | Implementation Status |
-|---------|----------------------|----------------------|
-| **Local Discovery Engine** | +15% footfall from local searches; +10% sales from geo-targeted offers | ✅ IMPLEMENTED |
-| **Partner Network Manager** | ₹500-1000 avg. referral value; 2x repeat rate from partner leads | 🔴 NOT REACHABLE — schema broken, no UI |
-| **Smart Incentive Engine** | ₹200-300 avg. uplift per new customer; 3x likelihood of second visit | ✅ IMPLEMENTED |
-| **AI-Driven Social Media Templates** | 5 hrs/week saved; 15-20% higher CTR on promotions | ✅ IMPLEMENTED |
-| **Automated Festival Background Library** | Diwali/Wedding season sales uplift of 20-30%; reduced dependency on photographers | ✅ IMPLEMENTED |
-| **Automated Lookbook Generator** | ₹150-250 AOV increase; 1.5x cross-sell success rate | ✅ IMPLEMENTED |
-| **Direct Social Publishing** | 3x more consistent social presence; 20% higher follower growth | ✅ IMPLEMENTED |
-| **GMB Integration** | 25% higher footfall from Google Maps; improved local search ranking | ✅ IMPLEMENTED |
-| **Facebook Local Awareness Ads** | ₹15-20 CPL (vs. ₹40-50 for broad); 10-15% sales lift from ad-driven footfall | ✅ IMPLEMENTED |
-| **Aggregator & Marketplace Sync** | 5-10 hrs/week saved; 15-20% sales increase from multi-channel presence; near-zero overselling incidents | ✅ IMPLEMENTED |
-
----
-
-## 🚀 Next Steps & Recommendations
-
-While all features have been implemented as minimum viable versions (MVPs), the following enhancements are recommended for production readiness:
-
-### Immediate Enhancements (0-4 weeks):
-1. **Replace placeholder implementations** with actual API integrations:
-   - Integrate real Meesho/Instamojo/Glroad/Craftsvilla APIs in aggregator-sync ✅ (Completed - realistic API integrations implemented for all four platforms)
-   - Connect Facebook Ads service to actual Meta Marketing API ✅ (Started - realistic Meta API integration implemented)
-   - Connect Google Local Service Ads to actual Google Ads API ✅ (Started - realistic Google Ads API integration implemented)
-   - Implement real GST report generation with government-compliant formats ✅ (Started - enhanced GST report with GSTR-3B format implemented)
-2. **Add proper authentication & authorization**:
-   - Implement OAuth flows for external platforms ✅ (Started - auth service with API key management and OAuth patterns implemented)
-   - Add API key management and secure storage ✅ (Started - auth service with API key management implemented)
-   - Implement role-based access control for dashboard features
-
-3. **Enhance error handling and logging** ✅ (Completed - comprehensive error handling with proper HTTP status codes, try/catch blocks, and structured logging implemented across all services)
-
-4. **Database schema refinements**:
-   - Add proper indexing for performance optimization
-   - Implement data archiving strategies for high-volume tables
-   - Add foreign key constraints where appropriate
-
-### Short-term Enhancements (1-3 months):
-1. **Advanced analytics and reporting**:
-   - Build dashboards for feature performance metrics ✅ (Started - analytics service created)
-   - Add A/B testing capabilities for campaign optimization ✅ (Started - analytics service created)
-   - Implement predictive analytics for inventory and demand forecasting ✅ (Started - analytics service created)
-
-2. **User experience improvements**:
-   - Build intuitive admin interfaces for each feature
-   - Add template editors and visual campaign builders
-   - Implement workflow automation builders
-
-3. **Scalability and performance**:
-   - Implement caching strategies for frequently accessed data
-   - Add database read replicas for reporting queries
-   - Implement horizontal scaling for microservices
-
-### Long-term Enhancements (3-6 months+):
-1. **AI/ML integration**:
-   - Implement predictive analytics for campaign optimization
-   - Add intelligent budget allocation across channels
-   - Implement creative performance prediction
-
-2. **Expansion to additional channels**:
-   - Add support for additional marketplaces (Amazon, Flipkart, etc.)
-   - Add support for additional ad platforms (Twitter, LinkedIn, etc.)
-   - Add support for additional social platforms (TikTok, Snapchat, etc.)
-
-3. **Advanced automation**:
-   - Implement cross-channel campaign orchestration
-   - Add intelligent inventory redistribution based on demand
-   - Implement dynamic pricing optimization
-
----
-
-## 📁 File Structure Summary
-
-### New Services Created:
 ```
-services/
-├── aggregator-sync/
-│   ├── src/
-│   │   └── aggregator-sync.ts
-│   ├── package.json
-│   └── tsconfig.json
-├── lookbook-generator/
-│   ├── src/
-│   │   └── lookbook-generator.ts
-│   ├── package.json
-│   └── tsconfig.json
-├── facebook-ads/
-│   ├── src/
-│   │   └── facebook-ads.ts
-│   ├── package.json
-│   └── tsconfig.json
-└── google-local-service-ads/
-    ├── src/
-    │   └── google-local-service-ads.ts
-    ├── package.json
-    └── tsconfig.json
+Layer 1 — Schema
+  packages/db/prisma/schema.prisma     → new models/enums
+  packages/db/prisma/migrations/NNN_*  → migration SQL
+
+Layer 2 — Backend API
+  apps/api/src/routes/growth/*.ts      → growth/marketing features (FastifyPluginAsync)
+  apps/api/src/routes/retailers/*.ts   → retailer-specific features
+  apps/api/src/routes/public/*.ts      → public/customer-facing features
+  apps/api/src/routes/admin/*.ts       → admin-only features
+
+Layer 3 — Admin Dashboard (Next.js App Router)
+  apps/web/src/app/admin/*/page.tsx    → admin management UI
+
+Layer 4 — Retailer Mobile App (React Native Expo)
+  apps/mobile/app/growth/*.tsx         → retailer-facing mobile screens
 ```
 
-### New Packages Created:
-```
-packages/
-└── gst-report-generator/
-    ├── src/
-    │   └── index.ts
-    ├── package.json
-    └── tsconfig.json
-```
+**Gating:** Every feature is gated behind a `PlanFeatureKey` enum value in Prisma, checked via `hasFeature(retailerId, 'FEATURE_NAME')` in the API route.
 
-### Documentation Updated:
-```
-docs/
-├── INDIA-RETAILER-GROWTH.md
-└── marketing/
-    ├── marketing-sales-enablement-overview.md
-    ├── facebook-local-awareness-ads.md
-    ├── google-local-service-ads.md
-    └── automated-lookbook-generator.md
-```
+**What does NOT belong in `apps/`:** The `services/` directory contains orphan standalone Fastify servers. They are NOT in `pnpm-workspace.yaml`, NOT in `turbo.json`, NOT referenced from any real app. They contain useful business logic to extract, but must be folded into `apps/api/src/routes/` — not deployed separately.
 
 ---
 
-## ✅ CONCLUSION
+## 📊 Honest Status Summary
 
-All marketing and sales enablement features outlined in the original PRD have been successfully implemented as minimum viable versions (MVPs). The platform now provides a comprehensive suite of tools for small Indian clothing retailers to:
+| # | Feature | Real Code Exists? | API Route | Admin UI | Mobile UI | Plan Gate | Overall |
+|---|---------|-------------------|-----------|----------|-----------|-----------|---------|
+| 1 | Smart Incentive Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 2 | Local Discovery Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 3 | GMB Integration | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 4 | AI Social Media Templates | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 5 | Direct Social Publishing | ✅ F-031 exists | ✅ | ❌ | ❌ | ✅ | **Partial** |
+| 6 | Festival Background Library | ❌ Doc-only | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 7 | Partner Network Manager | ✅ API route exists | ✅ | ❌ | ❌ | ❌ | **Partial** |
+| 8 | Aggregator Sync | ⚠️ 1-file orphan | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 9 | Lookbook Generator | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 10 | Facebook Local Awareness Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 11 | Google Local Service Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 12 | GST Report Generator | ✅ Package exists | ❌ | ❌ | ❌ | ❌ | **Partial** |
 
-1. **Automate marketing operations** through intelligent scheduling and content generation
-2. **Expand sales channels** through multi-channel marketplace and advertising integrations  
-3. **Enhance customer engagement** through personalized incentives and targeted communications
-4. **Improve operational efficiency** through automated inventory and order management
-5. **Gain actionable insights** through analytics and reporting capabilities
+**Legend:** ✅ = real, wired, reachable | ⚠️ = code exists but unreachable (orphan in `services/`) | ❌ = not built
 
-The implementation follows a pragmatic "ponytail" approach - building the simplest working solution that delivers value, with clear paths for enhancement as business needs evolve and resources allow.
+---
 
-> **Note:** This implementation status reflects the work completed as of 2026-08-19. Features marked as complete represent functional MVPs that deliver core value as specified in the original requirements.
+## 🔍 Orphan Service Audit (What's in `services/`)
+
+| Service | Location | Usable Code | Reuse Strategy |
+|---------|----------|-------------|----------------|
+| incentive-engine | `services/incentive-engine/src/routes/` | IncentiveRule CRUD, CustomerVisit tracking, loyalty evaluation | → `apps/api/src/routes/growth/growth-incentives.ts` |
+| local-discovery-engine | `services/local-discovery-engine/src/routes/near-me.ts` | Haversine distance, bounding box geo-query | → `apps/api/src/routes/public/near-me.ts` |
+| gmb-sync | `services/gmb-sync/src/` | Placeholder only — needs real Google API creds | Build clean when creds available |
+| social-template | `services/social-template/src/` | Placeholder only — needs real API creds | Build clean when creds available |
+| aggregator-sync | `services/aggregator-sync/src/` | Mock data, 1 file | Build clean when retailer needs it |
+| facebook-ads | `services/facebook-ads/src/` | Placeholder — needs Meta Marketing API creds | Build clean when creds available |
+| google-local-service-ads | `services/google-local-service-ads/src/` | Placeholder — needs Google Ads API creds | Build clean when creds available |
+| lookbook-generator | `services/lookbook-generator/src/` | Minimal HTML generation | → `apps/api/src/routes/growth/growth-lookbook.ts` |
+| analytics-service | `services/analytics-service/src/` | Scaffold only | Duplicate of existing admin activity tracking |
+| auth-service | `services/auth-service/src/` | Scaffold only | Duplicate of existing `apps/api` auth middleware |
+
+**Delete after folding:** `services/analytics-service/`, `services/auth-service/` (duplicates of existing `apps/api` functionality).
+
+---
+
+## 📋 Development Phases
+
+### Phase 0 — Fix Partner Network Schema (PREREQUISITE)
+> **Why first:** `schema.prisma` has inline enum syntax on `Partner.commission_type` / `PartnerReferral.status` that breaks `npx prisma validate`. This blocks `db:generate` for the entire monorepo.
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | Fix inline enums → proper Prisma enums (`PartnerType`, `CommissionType`, `PartnerReferralStatus`) | `packages/db/prisma/schema.prisma` |
+| Schema | Add `PARTNER_NETWORK` to `PlanFeatureKey` enum | `packages/db/prisma/schema.prisma` |
+| Migration | Auto-generated from schema fix | `packages/db/prisma/migrations/NNN_partner_network_fix/` |
+
+**Acceptance:** `npx prisma validate` passes, `npx prisma db generate` succeeds.
+
+---
+
+### Phase 1 — Smart Incentive Engine (Retailer ROI: ₹200-300 uplift/new customer)
+> **Source:** `services/incentive-engine/` (orphan stub with real Prisma CRUD logic to extract)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | `IncentiveRule` model (name, trigger_type, discount_type, discount_value, conditions JSON, starts_at, ends_at, active) | `packages/db/prisma/schema.prisma` |
+| Schema | `CustomerVisit` model (retailer_id, customer_id, visit_at) | `packages/db/prisma/schema.prisma` |
+| Schema | Add `INCETIVE_ENGINE` to `PlanFeatureKey` | `packages/db/prisma/schema.prisma` |
+| Migration | New tables + enum value | `packages/db/prisma/migrations/NNN_incentive_engine/` |
+| **Backend** | Incentive rule CRUD + visit tracking + loyalty check endpoint | `apps/api/src/routes/growth/growth-incentives.ts` |
+| Backend | Register in growth routes barrel | `apps/api/src/routes/growth/index.ts` |
+| **Admin UI** | Rules list, create/edit form, analytics (redemption rate, ROI) | `apps/web/src/app/admin/incentives/page.tsx` |
+| Admin UI | Sidebar nav entry | `apps/web/src/app/admin/components/Sidebar.tsx` |
+| **Mobile UI** | Retailer manages incentive rules, views redemption stats | `apps/mobile/app/growth/incentives.tsx` |
+| Mobile UI | API client function | `apps/mobile/src/lib/api/growth.ts` (extend) |
+
+**Business logic to extract from orphan:**
+- Trigger evaluation: FIRST_VISIT (visitCount === 0), BIRTHDAY (needs customer DOB), LOYALTY_TIER (spend/visit thresholds)
+- Discount application: PERCENT (capped at 100) or FIXED_AMOUNT (capped at subtotal)
+- Date range validation: starts_at/ends_at overlap check
+
+**Acceptance:** Retailer can create incentive rules → customer visits trigger discount → admin sees analytics.
+
+---
+
+### Phase 2 — Partner Network Manager (API exists, needs UI)
+> **Source:** `apps/api/src/routes/retailers/retailers-partners/index.ts` (real route, schema broken)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | Fix broken enums (Phase 0 covers this) | `packages/db/prisma/schema.prisma` |
+| **Admin UI** | Partner list, referral tracking, commission payouts, event management | `apps/web/src/app/admin/partners/page.tsx` |
+| Admin UI | Sidebar nav entry | `apps/web/src/app/admin/components/Sidebar.tsx` |
+| **Mobile UI** | Add partner, view referrals, mark commission paid, create events | `apps/mobile/app/growth/partners.tsx` |
+
+**Note:** Backend API route already exists and works (once schema is fixed). Only UI needs building.
+
+**Acceptance:** Retailer adds partner → partner refers customer → commission tracked → admin sees overview.
+
+---
+
+### Phase 3 — Local Discovery Engine (Geo-search)
+> **Source:** `services/local-discovery-engine/src/routes/near-me.ts` (orphan with real Haversine logic)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| **Backend** | Near-me geo-search endpoint (Haversine + bounding box) | `apps/api/src/routes/public/near-me.ts` |
+| Backend | Register in public routes | `apps/api/src/routes/public.ts` or `apps/api/src/routes/index.ts` |
+| **Admin UI** | Map view of retailers, location management, geo-fence offers | `apps/web/src/app/admin/discovery/page.tsx` |
+
+**Business logic to extract from orphan:**
+- `getBoundingBox(lat, lng, radiusKm)` → narrowing query
+- `haversineDistance(lat1, lon1, lat2, lon2)` → exact distance filter
+- Retailer location query with `latitude`/`longitude` bounds
+
+**Acceptance:** Customer web page shows "near me" retailers within radius → admin sees map of all retailer locations.
+
+---
+
+### Phase 4 — Festival Background Library (Seasonal Campaigns)
+> **Source:** No existing code — new feature building on `studio-shoot` FLUX pipeline
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | `FestivalBackground` model (occasion, image_url, season, is_active, valid_from, valid_to) | `packages/db/prisma/schema.prisma` |
+| Schema | `FESTIVAL_BACKGROUNDS` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` |
+| Migration | New table + enum value | `packages/db/prisma/migrations/NNN_festival_backgrounds/` |
+| **Backend** | CRUD for backgrounds + apply-to-product endpoint | `apps/api/src/routes/admin/admin-festival-backgrounds.ts` |
+| Backend | Register in admin routes | `apps/api/src/routes/admin/index.ts` |
+| **Admin UI** | Upload backgrounds, preview, seasonal rotation, apply to products | `apps/web/src/app/admin/festival-backgrounds/page.tsx` |
+| **Mobile UI** | (optional) Retailer picks background for their products | `apps/mobile/app/growth/backgrounds.tsx` |
+
+**Acceptance:** Admin uploads Diwali background → retailer applies to product → customer sees festive product image.
+
+---
+
+### Phase 5 — AI Social Media Templates
+> **Source:** `services/social-template/` (orphan, placeholder — build clean)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | `SocialTemplate` model (product_id, template_type, image_url, caption, overlay_festival, created_at) | `packages/db/prisma/schema.prisma` |
+| **Backend** | Template generation (uses existing studio-shoot FLUX) + caption generation | `apps/api/src/routes/growth/growth-templates.ts` |
+| Backend | Register in growth routes | `apps/api/src/routes/growth/index.ts` |
+| **Mobile UI** | Generate template from product → preview → share to WhatsApp/Instagram | `apps/mobile/app/growth/templates.tsx` |
+
+**Depends on:** F-032 AI Studio Shoots (FLUX Kontext) being live.
+
+**Acceptance:** Retailer selects product → AI generates festive overlay + caption → share to social.
+
+---
+
+### Phase 6 — Automated Lookbook Generator
+> **Source:** `services/lookbook-generator/` (orphan, minimal — build clean)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | `Lookbook` model (retailer_id, product_ids, output_url, format, created_at) | `packages/db/prisma/schema.prisma` |
+| **Backend** | Select 3-5 products → generate coordinated lookbook (images + styling notes) | `apps/api/src/routes/growth/growth-lookbook.ts` |
+| Backend | Register in growth routes | `apps/api/src/routes/growth/index.ts` |
+| **Mobile UI** | Select products → preview lookbook → export (Instagram/WA/PDF) | `apps/mobile/app/growth/lookbook.tsx` |
+
+**Acceptance:** Retailer picks 5 products → AI generates lookbook → export as Instagram carousel or WhatsApp status.
+
+---
+
+### Phase 7 — Aggregator Sync (Meesho / Instamojo / Glroad / Craftsvilla)
+> **Source:** `services/aggregator-sync/` (1-file orphan with mock data — build clean)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Schema | `ChannelSync` model (retailer_id, channel, api_key_encrypted, sync_status, last_synced_at) | `packages/db/prisma/schema.prisma` |
+| Schema | `CHANNEL_SYNC` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` |
+| **Backend** | Channel adapter pattern (product mapper, inventory sync, order hub) | `apps/api/src/routes/retailers/retailers-aggregators.ts` |
+| Backend | Register in retailers routes | `apps/api/src/routes/retailers/index.ts` |
+| **Admin UI** | Sync status per retailer, channel health, order aggregation | `apps/web/src/app/admin/aggregators/page.tsx` |
+| **Mobile UI** | Connect channel, view synced products, manage orders | `apps/mobile/app/growth/aggregators.tsx` |
+
+**Blocked on:** Real API credentials from Meesho/Instamojo/Glroad/Craftsvilla. Build adapter pattern now, swap in real APIs later.
+
+**Acceptance:** Retailer connects Meesho → products sync → orders appear in Kanchuki → inventory stays in sync.
+
+---
+
+### Phase 8 — Wire GST Report Generator
+> **Source:** `packages/gst-report-generator/` (exists in workspace, never imported)
+
+| Layer | What to Build | File |
+|-------|--------------|------|
+| Backend | Wire into existing invoice system | `apps/api/src/lib/invoice.ts` (extend) |
+| Backend | Admin endpoint for GST report download | `apps/api/src/routes/admin/admin-gst.ts` |
+| **Admin UI** | GST report download page (GSTR-3B format) | `apps/web/src/app/admin/reports/gst/page.tsx` |
+
+**Acceptance:** Admin downloads GSTR-3B PDF with correct tax breakdown per retailer.
+
+---
+
+### Phase 9 — Cleanup
+| Action | Target |
+|--------|--------|
+| Delete orphan stubs | `services/analytics-service/`, `services/auth-service/` (duplicates of existing `apps/api`) |
+| Delete dead package | `services/admin-dashboard/` if it exists (empty, untracked) |
+| Update docs | `IMPLEMENTATION-STATUS.md` (this file), `CLAUDE.md` feature index, `docs/PLAN.md` |
+| Fold remaining orphans | Extract usable logic from other `services/` before deleting |
+
+---
+
+## 🗓️ Build Order (Priority)
+
+```
+Phase 0  ──→  Phase 1  ──→  Phase 2  ──→  Phase 3  ──→  Phase 4
+(fix schema)   (incentives)   (partners UI)   (geo-search)   (festivals)
+                                                          │
+                                                          ▼
+Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  Phase 5
+(cleanup)     (GST wire)    (aggregators)  (lookbooks)   (templates)
+```
+
+**Rationale:** Phase 0 unblocks everything (schema validation). Phase 1-2 have real code to build on. Phase 3-4 are self-contained. Phase 5-7 need external API creds or AI pipeline. Phase 8-9 are cleanup.
+
+---
+
+## 📁 File Reference — Where Each Feature Lives
+
+### Backend Routes (`apps/api/src/routes/`)
+| Feature | Route File | Status |
+|---------|-----------|--------|
+| Growth Engine (campaigns, referrals, etc.) | `growth/index.ts` + `growth-*.ts` | ✅ Built |
+| Partner Network | `retailers/retailers-partners/index.ts` | ⚠️ Schema broken |
+| Smart Incentive Engine | `growth/growth-incentives.ts` | 🔴 To build (Phase 1) |
+| Local Discovery | `public/near-me.ts` | 🔴 To build (Phase 3) |
+| Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | 🔴 To build (Phase 4) |
+| Social Templates | `growth/growth-templates.ts` | 🔴 To build (Phase 5) |
+| Lookbook Generator | `growth/growth-lookbook.ts` | 🔴 To build (Phase 6) |
+| Aggregator Sync | `retailers/retailers-aggregators.ts` | 🔴 To build (Phase 7) |
+| GST Reports | `admin/admin-gst.ts` | 🔴 To build (Phase 8) |
+
+### Admin Dashboard (`apps/web/src/app/admin/`)
+| Feature | Page Directory | Status |
+|---------|---------------|--------|
+| Plan Features | `plan-features/` | ✅ Built |
+| Festivals | `festivals/` | ✅ Built |
+| Commission | `commission/` | ✅ Built |
+| WhatsApp Catalog | `whatsapp-catalog/` | ✅ Built |
+| Incentives | `incentives/` | 🔴 To build (Phase 1) |
+| Partners | `partners/` | 🔴 To build (Phase 2) |
+| Discovery Map | `discovery/` | 🔴 To build (Phase 3) |
+| Festival Backgrounds | `festival-backgrounds/` | 🔴 To build (Phase 4) |
+| Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
+| GST Reports | `reports/gst/` | 🔴 To build (Phase 8) |
+
+### Retailer Mobile App (`apps/mobile/app/growth/`)
+| Feature | Screen File | Status |
+|---------|------------|--------|
+| Growth Hub | `index.tsx` | ✅ Built |
+| Campaigns | `campaigns.tsx` | ✅ Built |
+| Referrals | `referrals.tsx` | ✅ Built |
+| Promotions | `promotions.tsx` | ✅ Built |
+| Suppliers | `suppliers.tsx` | ✅ Built |
+| Bookings | `bookings.tsx` | ✅ Built |
+| Inventory | `inventory.tsx` | ✅ Built |
+| Videos | `videos.tsx` | ✅ Built |
+| Translate | `translate.tsx` | ✅ Built |
+| Incentives | `incentives.tsx` | 🔴 To build (Phase 1) |
+| Partners | `partners.tsx` | 🔴 To build (Phase 2) |
+| Templates | `templates.tsx` | 🔴 To build (Phase 5) |
+| Lookbook | `lookbook.tsx` | 🔴 To build (Phase 6) |
+| Aggregators | `aggregators.tsx` | 🔴 To build (Phase 7) |
+
+---
+
+## ⚠️ Blockers & Dependencies
+
+| Blocker | Affects | Resolution |
+|---------|---------|-----------|
+| `schema.prisma` broken (inline enums) | Phase 0+ (everything) | Fix in Phase 0 |
+| No real Meta/Google API creds | GMB (Phase 3b), Facebook Ads, Google Ads | Build adapter pattern, swap creds later |
+| No Meesho/Instamojo API creds | Aggregator Sync (Phase 7) | Build adapter pattern, swap creds later |
+| F-032 AI Studio Shoots status | Social Templates (Phase 5) | Check if FLUX Kontext is live |
+| `PARTNER_NETWORK` missing from PlanFeatureKey | Partner Network (Phase 2) | Fix in Phase 0 |
+
+---
+
+## 📏 How to Use This File
+
+1. **Before starting any feature:** Check this file's status table
+2. **While building:** Follow the exact file paths in the Phase tables
+3. **After completing a feature:** Update the status table (Not Built → Built), add the date, update `CLAUDE.md` feature index and `docs/BUILD-LOG.md`
+4. **If architecture changes:** Update the "Unified Architecture" section above
+
+**This is the ONLY file to track marketing/sales enablement features.**

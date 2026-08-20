@@ -10,10 +10,10 @@
 //   - Partners are retailer-scoped (can only access own partners)
 //   - Every action records an audit log
 //   - Feature gated behind PARTNER_NETWORK feature flag
-import { decryptSecret, encryptSecret, prisma } from '@kanchuki/db';
+import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { hasFeature } from '../../lib/features.js';
+import { hasFeature } from '../../../lib/features.js';
 import {
   AppError,
   featureUnavailable,
@@ -21,13 +21,10 @@ import {
   notFound,
   serviceUnavailable,
   validationError,
-} from '../../plugins/error-handler.js';
-import { isRealOwner } from '../../plugins/auth.js';
+} from '../../../plugins/error-handler.js';
+import { isRealOwner } from '../../../plugins/auth.js';
 
-// Define literal types for PartnerType to match the Prisma enum
-type PartnerType = 'SALON' | 'TAILOR' | 'STYLIST' | 'MAKEUP_ARTIST' | 'OTHER';
-// Define literal types for CommissionType to match the Prisma enum
-type CommissionType = 'FIXED_AMOUNT' | 'PERCENTAGE_OF_SALE';
+
 
 export const retailersPartnersRoutes: FastifyPluginAsync = async (
   server
@@ -270,7 +267,7 @@ export const retailersPartnersRoutes: FastifyPluginAsync = async (
         order: {
           select: {
             id: true,
-            amount_paise: true,
+            total_amount: true,
             status: true,
           },
         },
@@ -558,7 +555,6 @@ export const retailersPartnersRoutes: FastifyPluginAsync = async (
         resource_id: event.id,
         metadata: {
           partner_id: event.partner_id,
-          partner_name: event.partner.name,
           event_name: event.name,
         },
         ip_address: request.ip,

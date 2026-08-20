@@ -1,25 +1,24 @@
 # AI-Driven Social Media Templates
 
-**Status:** Done (Phase 1 - Quick Wins)
+**Status:** 🔴 Not Built — orphan stub in `services/social-template/`, not wired into any app.  
+**Plan:** Phase 5 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Date:** 2026-08-20
 
-**Description:** Generate social media post templates from product images with AI-powered text suggestions and festive overlays to reduce content creation time and increase engagement.
+---
 
-## Functional Specification
-- Generate Instagram post/reel templates from product images
-- WhatsApp catalog/status templates with festive overlays
-- Text suggestions based on regional trends & occasion
+## What Exists (Unreachable)
+- `services/social-template/src/social-template.ts` — Standalone Fastify server with placeholder OpenAI API config
 
-## Technical Implementation
-- Use existing `studio-shoot` FLUX Konnet integration to apply stylized backgrounds
-- New `social-template` microservice (Node.js) with OpenAI API for caption generation
-- Store templates in S3/R2; serve via CDN
-- Integrate with WhatsApp Business API for catalog updates
+**None of this is reachable** — not in pnpm workspace, not referenced from `apps/api`.
 
-## Priority (Ease/Impact)
-High (Reuses AI studio tech; Low-Medium dev; High impact on social engagement)
+## Dependency
+- F-032 AI Studio Shoots (FLUX Kontext template backgrounds) must be live first
 
-## Implementation Phase
-Phase 1 (Quick Wins - 4-6 weeks)
+## What Needs Building (Phase 5)
+- `apps/api/src/routes/growth/growth-templates.ts` — Template generation using existing studio-shoot FLUX
+- `apps/mobile/app/growth/templates.tsx` — Retailer generates and shares templates
 
-## Notes
-This feature builds on the existing AI studio technology and integrates with the WhatsApp Business API for catalog updates.
+## ROI Metrics
+- 5 hrs/week saved on content creation
+- 15-20% higher CTR on promotions
+- 2x engagement rate on templated posts

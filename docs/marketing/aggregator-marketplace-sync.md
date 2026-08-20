@@ -1,48 +1,28 @@
-# Aggregator & Marketplace Sync Architecture
+# Aggregator & Marketplace Sync
 
-**Status:** Planned (Phase 2 & 3 - Core Enablement & Advanced Features)
+**Status:** 🔴 Not Built — 1-file orphan stub in `services/aggregator-sync/` with mock data. Not wired into any app.  
+**Plan:** Phase 7 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Date:** 2026-08-20
 
-**Description:** Unified product catalog with real-time inventory sync, order aggregation, and fee/revenue reconciliation across multiple marketplaces (Meesho, Glroad, Craftsvilla, Instamojo) to expand market reach and prevent overselling.
+---
 
-## Core Principles
-- Unified product catalog (single source of truth in Kanchuki DB)
-- Real-time inventory sync (prevent overselling)
-- Order aggregation (centralized fulfillment view)
-- Fee/revenue reconciliation per channel
+## What Exists (Unreachable)
+- `services/aggregator-sync/src/aggregator-sync.ts` — Single file with mock API clients for Meesho, Instamojo, Glroad, Craftsvilla. All returning placeholder data. No real HTTP calls. Standalone Fastify server on its own port.
 
-## Technical Architecture
-[Retailer Dashboard] 
-        ↓ (REST/WebSocket)
-[Kanchuki API Gateway] 
-        ↓ 
-[Channel Adapter Layer] 
-        ↓ 
-[Meesho Adapter] → Meesho API  
-[Glroad Adapter]  → Glroad API  
-[Craftsvilla Adapter] → Craftsvilla API  
-[Instamojo Adapter] → Instamojo API (for store/payment links)
+**None of this is reachable** — not in pnpm workspace, not referenced from `apps/api`.
 
-## Key Components
-- **Product Mapper:** Normalizes Kanchuki product schema to each channel's requirements (e.g., Meesho requires specific attribute names)
-- **Inventory Sync Service:** 
-  - Polls channel APIs every 15 mins for stock changes
-  - Pushes Kanchuki inventory updates via channel APIs
-  - Conflict resolution: "last write wins" with manual override for high-value items
-- **Order Hub:** 
-  - Pulls new orders from all channels via webhooks/polling
-  - Tags orders by source channel
-  - Updates Kanchuki `orders` table with channel metadata
-  - Triggers workflow (existing or new)
-- **Fee Tracker:** 
-  - Retrieves transaction fees from channel APIs
-  - Aggregates in `channel_finance` table for payout reconciliation
+## Blockers
+- No real API credentials from Meesho/Instamojo/Glroad/Craftsvilla
+- No evidence any pilot retailer sells on these channels yet
 
-## Priority (Ease/Impact)
-High (Medium dev effort due to multiple APIs; Very High impact on sales channels)
+## What Needs Building (Phase 7)
+- `apps/api/src/routes/retailers/retailers-aggregators.ts` — Channel adapter pattern
+- `ChannelSync` DB model (retailer_id, channel, api_key_encrypted, sync_status, last_synced_at)
+- `CHANNEL_SYNC` in `PlanFeatureKey`
+- Admin UI for sync status + order aggregation
+- Mobile UI for channel connection + order management
 
-## Implementation Phase
-- Phase 2 (Core Enablement - 8-10 weeks): Start with Meesho & Instamojo (simplest APIs)
-- Phase 3 (Advanced Features - 12+ weeks): Full Aggregator Sync (Glroad/Craftsvilla)
-
-## Notes
-This feature requires building adapters for each marketplace API and integrating with the existing Kanchuki API gateway and order management system.
+## ROI Metrics
+- 5-10 hrs/week saved on manual inventory updates
+- 15-20% sales increase from multi-channel presence
+- Near-zero overselling incidents

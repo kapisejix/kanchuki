@@ -1,25 +1,29 @@
-# Google My Business
+# Google My Business Integration
 
-**Status:** Done (Phase 1 - Quick Wins)
+**Status:** 🔴 Not Built — orphan stub in `services/gmb-sync/`, not wired into any app. Blocked on Google API access approval.  
+**Plan:** Deferred until Google API access is approved (F-022 in CLAUDE.md).  
+**Date:** 2026-08-20
 
-**Description:** Auto-post new arrivals/offers, monitor and respond to reviews, and manage Q&A for common queries to improve local SEO and customer engagement.
+---
 
-## Kanchuki Integration Features
-- Auto-post new arrivals/offers
+## What Exists (Unreachable)
+- `services/gmb-sync/src/gmb-sync.ts` — Standalone Fastify server with placeholder Google API config
+- `services/gmb-sync/src/routes/gmb.ts` — Placeholder webhook and management routes
+
+**None of this is reachable** — not in pnpm workspace, not referenced from `apps/api`.
+
+## Blockers
+- Google Business Profile API access approval required (unpredictable timeline)
+- No real Google API credentials available
+- F-022 in CLAUDE.md is marked "Planned (blocked on Google API access)"
+
+## What Needs Building (When API Access Approved)
+- Retailer OAuth-connects Google Business Profile
+- Auto-post new arrivals via `localPosts.create`
 - Review monitoring & response templates
-- Q&A management for common queries (size, fabric)
+- Q&A management
 
-## Technical Approach
-- Use Google My Business API
-- New `gmb-sync` service (Node.js)
-- Webhook for review alerts
-- Template engine for automated responses
-
-## Priority (Ease/Impact)
-High (Well-documented API; Low dev; High impact on local SEO)
-
-## Implementation Phase
-Phase 1 (Quick Wins - 4-6 weeks)
-
-## Notes
-This feature uses the newly added GMB fields in the Retailer model and integrates with the Google My Business API.
+## ROI Metrics
+- 25% higher footfall from Google Maps
+- Improved local search ranking
+- 40% increase in direction requests

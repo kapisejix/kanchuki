@@ -1,22 +1,34 @@
 # Local Discovery Engine
 
-**Status:** Done (Phase 1 - Quick Wins)
+**Status:** 🔴 Not Built — orphan stub in `services/local-discovery-engine/`, not wired into any app.  
+**Plan:** Phase 3 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Date:** 2026-08-20
 
-**Description:** Geo-tagged product listings for Google My Business, "near me" search optimization, and location-based offer rules to drive foot traffic and local sales.
+---
 
-## Key Functionalities
-- Geo-tagged product listings for Google My Business
-- "Near me" search optimization
-- Location-based offer rules (e.g., show Diwali offers only to users within 10km)
+## What Exists (Unreachable)
+- `services/local-discovery-engine/src/routes/near-me.ts` — Haversine distance calculation, bounding box geo-query
+- `services/local-discovery-engine/src/local-discovery-engine.ts` — Standalone Fastify server on port 3002 (never deployed)
 
-## Technical Approach
-Extend existing `getSecret`/`prisma` to store location metadata; add geo-indexing to product photos; integrate with Google My Business API for automatic post generation
+**None of this is reachable** — not in pnpm workspace, not referenced from `apps/api`.
 
-## Priority (Ease/Impact)
-High (Leverages existing location data; Medium dev effort; High impact on footfall)
+## What Needs Building (Phase 3)
 
-## Implementation Phase
-Phase 1 (Quick Wins - 4-6 weeks)
+### Backend
+- `apps/api/src/routes/public/near-me.ts` — Public geo-search endpoint
+  - GET /v1/near-me?latitude=&longitude=&radius= — find nearby retailers
+  - Uses Haversine formula + bounding box optimization (extract from orphan)
+  - Retailers filtered by `is_suspended: false`, `deleted_at: null`
 
-## Notes
-This feature leverages the existing location fields (latitude, longitude) added to the Retailer model.
+### Admin UI
+- `apps/web/src/app/admin/discovery/page.tsx` — Map view, location management
+
+## Business Logic to Extract
+- `getBoundingBox(lat, lng, radiusKm)` → narrowing query for Prisma
+- `haversineDistance(lat1, lon1, lat2, lon2)` → exact distance filter
+- Retailer location query with `latitude`/`longitude` bounds
+
+## ROI Metrics
+- +15% footfall from local searches
+- +10% sales from geo-targeted offers
+- 30% increase in "near me" search impressions

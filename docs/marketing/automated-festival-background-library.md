@@ -1,25 +1,22 @@
 # Automated Festival Background Library
 
-**Status:** Planned (Phase 2 - Core Enablement)
+**Status:** 🔴 Not Built — doc-only spec, no code exists. The IMPLEMENTATION-STATUS.md previously claimed this was part of `services/photo-cleanup/` but that's a different feature (mannequin removal).  
+**Plan:** Phase 4 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Date:** 2026-08-20
 
-**Description:** Pre-generated backgrounds for festivals with one-click apply to product images and seasonal auto-rotation to streamline seasonal campaign creation.
+---
 
-## Functional Specification
-- Pre-generated backgrounds for Diwali, weddings, regional festivals
-- One-click apply to product images
-- Seasonal auto-rotation (e.g., swap to wedding backgrounds Oct-Mar)
+## What Exists
+- `services/photo-cleanup/` — Mannequin removal + LaMa inpainting (different feature, not festival backgrounds)
+- Existing `studio-shoot` FLUX pipeline (F-032) can generate backgrounds
 
-## Technical Implementation
-- Extend `studio-shoot` job to generate background variants during off-peak hours
-- New `festival-bg` table in DB with metadata (occasion, validity dates)
-- Admin UI to preview/select backgrounds
-- API endpoint: `/apply-background/{productId}/{festivalId}`
+## What Needs Building (Phase 4)
+- `FestivalBackground` DB model (occasion, image_url, season, is_active, valid_from, valid_to)
+- `FESTIVAL_BACKGROUNDS` in `PlanFeatureKey`
+- `apps/api/src/routes/admin/admin-festival-backgrounds.ts` — CRUD + apply-to-product
+- `apps/web/src/app/admin/festival-backgrounds/page.tsx` — Upload, preview, seasonal rotation
 
-## Priority (Ease/Impact)
-Medium (Builds on studio-shoot; Low dev; High impact for seasonal campaigns)
-
-## Implementation Phase
-Phase 2 (Core Enablement - 8-10 weeks)
-
-## Notes
-This feature extends the existing studio-shoot functionality and adds a new database table for festival background metadata.
+## ROI Metrics
+- Diwali/Wedding season sales uplift of 20-30%
+- Reduced dependency on photographers
+- 70% faster seasonal campaign launch

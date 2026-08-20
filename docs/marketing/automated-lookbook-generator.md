@@ -1,25 +1,22 @@
 # Automated Lookbook Generator
 
-**Status:** Completed (Phase 3 - Advanced Features) ✅
+**Status:** 🔴 Not Built — orphan stub in `services/lookbook-generator/`, not wired into any app.  
+**Plan:** Phase 6 of `docs/marketing/IMPLEMENTATION-STATUS.md`  
+**Date:** 2026-08-20
 
-**Description:** Generate coordinated lookbooks from product IDs with styling notes and multiple export formats to increase average order value and cross-sell opportunities.
+---
 
-## Functional Specification
-- Input: 3-5 product IDs
-- Output: Coordinated lookbook (images/video) with styling notes
-- Export formats: Instagram carousel, WhatsApp status, PDF
+## What Exists (Unreachable)
+- `services/lookbook-generator/src/lookbook-generator.ts` — Minimal HTML lookbook generation with basic product info. Standalone Fastify server.
 
-## Technical Implementation
-- New `lookbook-generator` service (Python)
-- Uses style rules from `fashion-dna` module
-- Leverages existing image compression/upload pipeline
-- Output stored as new ProductPhoto rows with `is_lookbook: true` flag
+**None of this is reachable** — not in pnpm workspace, not referenced from `apps/api`.
 
-## Priority (Ease/Impact)
-Medium (Requires new service; Medium dev; High impact on upsell/cross-sell)
+## What Needs Building (Phase 6)
+- `apps/api/src/routes/growth/growth-lookbook.ts` — Select 3-5 products → generate coordinated lookbook
+- `Lookbook` DB model (retailer_id, product_ids, output_url, format, created_at)
+- `apps/mobile/app/growth/lookbook.tsx` — Retailer selects products, previews, exports
 
-## Implementation Phase
-Phase 3 (Advanced Features - 12+ weeks)
-
-## Notes
-This feature requires a new service and integrates with the existing fashion-dna module for style rules.
+## ROI Metrics
+- ₹150-250 AOV increase
+- 1.5x cross-sell success rate
+- 25% increase in average order value

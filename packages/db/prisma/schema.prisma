@@ -144,6 +144,8 @@ enum PlanFeatureKey {
   PRIORITY_AI_QUEUE
   MULTI_STORE
   GROWTH_ENGINE
+  PARTNER_NETWORK
+  INCENTIVE_ENGINE
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -320,6 +322,10 @@ model Retailer {
   orders                Order[]
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
+  customer_visits       CustomerVisit[]
+  incentive_rules       IncentiveRule[]
+  partners              Partner[]
+  partner_events        PartnerEvent[]
 
   @@index([phone])
   @@index([city])
@@ -745,6 +751,8 @@ model Customer {
   interactions     CustomerInteraction[]
   collections_sent Collection[]          @relation("CustomerCollections")
   measurements     CustomerMeasurement[]
+  visits           CustomerVisit[]
+  partner_referrals PartnerReferral[]
 
   @@unique([retailer_id, phone])
   @@index([retailer_id])
@@ -1496,6 +1504,7 @@ gst_invoice_number String?
 
   retailer Retailer    @relation(fields: [retailer_id], references: [id])
   items    OrderItem[]
+  partner_referrals PartnerReferral[]
 
   @@index([retailer_id])
   @@index([status])
@@ -1982,6 +1991,7 @@ model Partner {
 
    retailer Retailer @relation(fields: [retailer_id], references: [id])
    referrals PartnerReferral[]
+   events    PartnerEvent[]
 
    @@index([retailer_id])
    @@index([referral_code])
