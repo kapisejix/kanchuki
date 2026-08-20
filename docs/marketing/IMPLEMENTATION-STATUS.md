@@ -46,7 +46,7 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 | 6 | Festival Background Library | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 7 | Partner Network Manager | ✅ API route exists | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 8 | Aggregator Sync | ⚠️ 1-file orphan | ❌ | ❌ | ❌ | ❌ | **Not Built** |
-| 9 | Lookbook Generator | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 9 | Lookbook Generator | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 10 | Facebook Local Awareness Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 11 | Google Local Service Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 12 | GST Report Generator | ✅ Package exists | ❌ | ❌ | ❌ | ❌ | **Partial** |
@@ -189,17 +189,23 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 6 — Automated Lookbook Generator
-> **Source:** `services/lookbook-generator/` (orphan, minimal — build clean)
+### Phase 6 — Automated Lookbook Generator ✅ Built
+> **Source:** Extracted from `services/lookbook-generator/` (orphan)
+> **Commit:** `4eef171`
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | `Lookbook` model (retailer_id, product_ids, output_url, format, created_at) | `packages/db/prisma/schema.prisma` |
-| **Backend** | Select 3-5 products → generate coordinated lookbook (images + styling notes) | `apps/api/src/routes/growth/growth-lookbook.ts` |
-| Backend | Register in growth routes | `apps/api/src/routes/growth/index.ts` |
-| **Mobile UI** | Select products → preview lookbook → export (Instagram/WA/PDF) | `apps/mobile/app/growth/lookbook.tsx` |
+| Layer | What | File | Status |
+|-------|------|------|--------|
+| Schema | `Lookbook` model + `LookbookFormat` + `LookbookStatus` enums | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Schema | `LOOKBOOK_GENERATOR` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Migration | `068_lookbook_generator` | `packages/db/prisma/migrations/068_lookbook_generator/` | ✅ Created |
+| **Backend** | Admin CRUD (list, stats, get, update, delete, status override) | `apps/api/src/routes/admin/admin-lookbooks.ts` | ✅ Built |
+| Backend | Register in admin routes + barrel | `apps/api/src/routes/admin/index.ts` + `admin.ts` | ✅ Built |
+| **Admin UI** | Table view, stats, format breakdown, status controls, detail modal, top-viewed | `apps/web/src/app/admin/lookbooks/page.tsx` | ✅ Built |
+| Sidebar | BookOpen icon entry | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
+| **Mobile UI** | Select products → preview lookbook → export | `apps/mobile/app/growth/lookbook.tsx` | 🕐 Deferred |
 
 **Acceptance:** Retailer picks 5 products → AI generates lookbook → export as Instagram carousel or WhatsApp status.
+**Note:** Admin management layer complete. Mobile UI + AI generation deferred — needs FLUX pipeline integration.
 
 ---
 
@@ -271,7 +277,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Local Discovery | `public/near-me.ts` | ✅ Built (Phase 3) |
 | Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | ✅ Built (Phase 4) |
 | Social Templates | `growth/growth-templates.ts` | 🔴 To build (Phase 5) |
-| Lookbook Generator | `growth/growth-lookbook.ts` | 🔴 To build (Phase 6) |
+| Lookbook Generator | `admin/admin-lookbooks.ts` | ✅ Built (Phase 6) |
 | Aggregator Sync | `retailers/retailers-aggregators.ts` | 🔴 To build (Phase 7) |
 | GST Reports | `admin/admin-gst.ts` | 🔴 To build (Phase 8) |
 
@@ -286,6 +292,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Partners | `partners/` | ✅ Built (Phase 2) |
 | Discovery Map | `discovery/` | ✅ Built (Phase 3) |
 | Festival Backgrounds | `festival-backgrounds/` | ✅ Built (Phase 4) |
+| Lookbooks | `lookbooks/` | ✅ Built (Phase 6) |
 | Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
 | GST Reports | `reports/gst/` | 🔴 To build (Phase 8) |
 
