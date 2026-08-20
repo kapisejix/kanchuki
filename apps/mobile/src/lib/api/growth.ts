@@ -191,6 +191,55 @@ export type PromotionPayload = {
   is_active?: boolean
 }
 
+// ─── Smart Incentive Engine (Phase 1) ─────────────────────────────
+
+export type IncentiveTriggerType = 'FIRST_VISIT' | 'BIRTHDAY' | 'ANNIVERSARY' | 'LOYALTY_TIER'
+export type IncentiveDiscountType = 'PERCENT' | 'FIXED_AMOUNT'
+
+export type IncentiveRule = {
+  id: string
+  retailer_id: string
+  name: string
+  description: string | null
+  trigger_type: IncentiveTriggerType
+  discount_type: IncentiveDiscountType
+  discount_value: number
+  conditions: Record<string, number> | null
+  active: boolean
+  starts_at: string | null
+  ends_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type IncentiveRulePayload = {
+  name: string
+  description?: string
+  trigger_type: IncentiveTriggerType
+  discount_type: IncentiveDiscountType
+  discount_value: number
+  conditions?: { min_spent?: number; min_visits?: number }
+  starts_at?: string
+  ends_at?: string
+  active?: boolean
+}
+
+export type IncentiveApplicable = {
+  rule_id: string
+  name: string
+  description: string | null
+  trigger_type: IncentiveTriggerType
+  discount_type: IncentiveDiscountType
+  discount_value: number
+}
+
+export type IncentiveStats = {
+  total_rules: number
+  active_rules: number
+  total_visits: number
+  visits_last_30d: number
+}
+
 // ─── Suppliers (roadmap K) ────────────────────────────────────────
 
 export type Supplier = {
@@ -592,4 +641,38 @@ export const growthApi = {
       `/v1/growth/analytics/seasonal?period=${period}`,
       { getCacheTtlMs: 60_000 },
     ),
+
+  // ─── Smart Incentive Engine (Phase 1) ──────────────────────────
+  incentiveRules: () =>
+    request<{ data: IncentiveRule[] }>('/v1/growth/incentives/rules', { getCacheTtlMs: 15_000 }),
+
+  createIncentiveRule: (payload: IncentiveRulePayload) =>
+    request<{ data: IncentiveRule }>('/v1/growth/incentives/rules', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateIncentiveRule: (id: string, payload: Partial<IncentiveRulePayload>) =>
+    request<{ data: IncentiveRule }>(`/v1/growth/incentives/rules/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteIncentiveRule: (id: string) =>
+    request<void>(`/v1/growth/incentives/rules/${id}`, { method: 'DELETE' }),
+
+  recordVisit: (customerId: string) =>
+    request<{ data: { id: string } }>('/v1/growth/incentives/visits', {
+      method: 'POST',
+      body: JSON.stringify({ customer_id: customerId }),
+    }),
+
+  checkIncentives: (customerId: string) =>
+    request<{ data: { applicable: IncentiveApplicable[] } }>('/v1/growth/incentives/check', {
+      method: 'POST',
+      body: JSON.stringify({ customer_id: customerId }),
+    }),
+
+  incentiveStats: () =>
+    request<{ data: IncentiveStats }>('/v1/growth/incentives/stats', { getCacheTtlMs: 30_000 }),
 }
