@@ -50,6 +50,7 @@ import {
   BookOpen,
   Sparkles,
   Share2,
+  Receipt,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -110,7 +111,14 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Contact Submissions', href: '/admin/contact-submissions', icon: Mail },
     ],
   },
-  { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
+  {
+    label: 'Reports',
+    icon: BarChart3,
+    children: [
+      { label: 'Overview', href: '/admin/reports', icon: BarChart3 },
+      { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
+    ],
+  },
   { separator: true },
   {
     label: 'Operations',

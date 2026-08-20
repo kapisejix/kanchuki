@@ -32,6 +32,7 @@ import {
   adminFestivalBackgroundsRoutes,
   adminLookbookRoutes,
   adminSocialTemplateRoutes,
+  adminGstRoutes,
 } from './admin/index.js';
 
 export {
@@ -217,4 +218,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminLookbookRoutes);
   // admin-social-templates — AI Social Media Templates management
   await server.register(adminSocialTemplateRoutes);
+  // admin-gst — GST report dashboard + transaction list
+  await server.register(adminGstRoutes);
 };

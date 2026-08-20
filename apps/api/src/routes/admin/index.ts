@@ -20,3 +20,4 @@ export { adminWhatsAppCatalogRoutes } from './admin-whatsapp-catalog.js';
 export { adminFestivalBackgroundsRoutes } from './admin-festival-backgrounds.js';
 export { adminLookbookRoutes } from './admin-lookbooks.js';
 export { adminSocialTemplateRoutes } from './admin-social-templates.js';
+export { adminGstRoutes } from './admin-gst.js';
