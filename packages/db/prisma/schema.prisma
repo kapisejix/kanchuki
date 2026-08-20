@@ -147,6 +147,7 @@ enum PlanFeatureKey {
   PARTNER_NETWORK
   INCENTIVE_ENGINE
   FESTIVAL_BACKGROUNDS
+  LOOKBOOK_GENERATOR
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -328,6 +329,7 @@ model Retailer {
   partners              Partner[]
   partner_events        PartnerEvent[]
   festival_backgrounds  FestivalBackground[]
+  lookbooks             Lookbook[]
 
   @@index([phone])
   @@index([city])
@@ -2177,4 +2179,53 @@ model CatalogSyncLog {
   @@index([retailer_id, created_at])
   @@index([catalog_item_id])
   @@map("catalog_sync_logs")
+}
+
+// ─── LOOKBOOK GENERATOR ──────────────────────────────────────────
+// Retailer-curated product lookbooks: pick 3-10 products → AI generates
+// styled lookbook with layout, captions, and export to Instagram/WA/PDF.
+model Lookbook {
+  id          String   @id @default(cuid())
+  retailer_id String
+  retailer    Retailer @relation(fields: [retailer_id], references: [id])
+
+  name        String   // e.g. "Diwali Collection 2026"
+  description String?
+  cover_url   String?  // Cover image URL
+  format      LookbookFormat @default(CAROUSEL)
+  status      LookbookStatus @default(DRAFT)
+
+  // Product references (stored as JSON array of IDs)
+  product_ids String[] // Array of product IDs included
+
+  // Output
+  output_url  String?  // Generated lookbook URL (HTML/PDF)
+  output_r2_key String?
+  thumbnail_url String?
+
+  // Sharing
+  share_url   String?  // Public shareable link
+  view_count  Int      @default(0)
+  share_count Int      @default(0)
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([retailer_id])
+  @@index([status])
+  @@map("lookbooks")
+}
+
+enum LookbookFormat {
+  CAROUSEL   // Instagram carousel style
+  GRID       // Grid layout
+  EDITORIAL  // Magazine-style
+  PDF        // Downloadable PDF
+}
+
+enum LookbookStatus {
+  DRAFT
+  GENERATING
+  READY
+  FAILED
 }

@@ -18,3 +18,4 @@ export { adminIncentiveRoutes } from './admin-incentives.js';
 export { adminPartnerRoutes } from './admin-partners.js';
 export { adminWhatsAppCatalogRoutes } from './admin-whatsapp-catalog.js';
 export { adminFestivalBackgroundsRoutes } from './admin-festival-backgrounds.js';
+export { adminLookbookRoutes } from './admin-lookbooks.js';

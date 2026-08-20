@@ -30,6 +30,7 @@ import {
   adminPartnerRoutes,
   adminWhatsAppCatalogRoutes,
   adminFestivalBackgroundsRoutes,
+  adminLookbookRoutes,
 } from './admin/index.js';
 
 export {
@@ -211,4 +212,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminWhatsAppCatalogRoutes);
   // admin-festival-backgrounds — Seasonal background library management
   await server.register(adminFestivalBackgroundsRoutes);
+  // admin-lookbooks — Lookbook Generator management
+  await server.register(adminLookbookRoutes);
 };
