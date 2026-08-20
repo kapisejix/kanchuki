@@ -39,11 +39,11 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 | # | Feature | Real Code Exists? | API Route | Admin UI | Mobile UI | Plan Gate | Overall |
 |---|---------|-------------------|-----------|----------|-----------|-----------|---------|
 | 1 | Smart Incentive Engine | ✅ Folded into apps/ | ✅ | ✅ | ✅ | ✅ | **Built** |
-| 2 | Local Discovery Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 2 | Local Discovery Engine | ✅ Folded into apps/ | ✅ | ✅ | ❌ | ❌ | **Built** |
 | 3 | GMB Integration | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 4 | AI Social Media Templates | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 5 | Direct Social Publishing | ✅ F-031 exists | ✅ | ❌ | ❌ | ✅ | **Partial** |
-| 6 | Festival Background Library | ❌ Doc-only | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 6 | Festival Background Library | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 7 | Partner Network Manager | ✅ API route exists | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 8 | Aggregator Sync | ⚠️ 1-file orphan | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 9 | Lookbook Generator | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
@@ -155,20 +155,23 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 4 — Festival Background Library (Seasonal Campaigns)
-> **Source:** No existing code — new feature building on `studio-shoot` FLUX pipeline
+### Phase 4 — Festival Background Library (Seasonal Campaigns) ✅ Built
+> **Source:** New feature building on `studio-shoot` FLUX pipeline
+> **Commit:** `7d39d18`
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | `FestivalBackground` model (occasion, image_url, season, is_active, valid_from, valid_to) | `packages/db/prisma/schema.prisma` |
-| Schema | `FESTIVAL_BACKGROUNDS` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` |
-| Migration | New table + enum value | `packages/db/prisma/migrations/NNN_festival_backgrounds/` |
-| **Backend** | CRUD for backgrounds + apply-to-product endpoint | `apps/api/src/routes/admin/admin-festival-backgrounds.ts` |
-| Backend | Register in admin routes | `apps/api/src/routes/admin/index.ts` |
-| **Admin UI** | Upload backgrounds, preview, seasonal rotation, apply to products | `apps/web/src/app/admin/festival-backgrounds/page.tsx` |
-| **Mobile UI** | (optional) Retailer picks background for their products | `apps/mobile/app/growth/backgrounds.tsx` |
+| Layer | What | File | Status |
+|-------|------|------|--------|
+| Schema | `FestivalBackground` model | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Schema | `FESTIVAL_BACKGROUNDS` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Migration | `067_festival_background_library` | `packages/db/prisma/migrations/067_festival_background_library/` | ✅ Created |
+| **Backend** | Admin CRUD (list, stats, get, create, update, delete, toggle) | `apps/api/src/routes/admin/admin-festival-backgrounds.ts` | ✅ Built |
+| Backend | Register in admin routes + barrel | `apps/api/src/routes/admin/index.ts` + `admin.ts` | ✅ Built |
+| **Admin UI** | Grid view, image preview, occasion filters, create/edit modal, stats, top-used | `apps/web/src/app/admin/festival-backgrounds/page.tsx` | ✅ Built |
+| Sidebar | Sparkles icon entry | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
+| **Mobile UI** | Retailer picks background for their products | `apps/mobile/app/growth/backgrounds.tsx` | 🕐 Deferred |
 
 **Acceptance:** Admin uploads Diwali background → retailer applies to product → customer sees festive product image.
+**Note:** Retailer-facing apply endpoint already exists at `products-festival-background.ts`. Mobile UI deferred — admin curation layer is complete.
 
 ---
 
@@ -265,10 +268,10 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 |---------|-----------|--------|
 | Growth Engine (campaigns, referrals, etc.) | `growth/index.ts` + `growth-*.ts` | ✅ Built |
 | Partner Network | `retailers/retailers-partners/index.ts` | ✅ Built (Phase 0+2) |
-| Smart Incentive Engine | `growth/growth-incentives.ts` | 🔴 To build (Phase 1) |
+| Smart Incentive Engine | `growth/growth-incentives.ts` | ✅ Built (Phase 1) |
 | Partner Network | `retailers/retailers-partners/index.ts` | ✅ Built (Phase 0) |
-| Local Discovery | `public/near-me.ts` | 🔴 To build (Phase 3) |
-| Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | 🔴 To build (Phase 4) |
+| Local Discovery | `public/near-me.ts` | ✅ Built (Phase 3) |
+| Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | ✅ Built (Phase 4) |
 | Social Templates | `growth/growth-templates.ts` | 🔴 To build (Phase 5) |
 | Lookbook Generator | `growth/growth-lookbook.ts` | 🔴 To build (Phase 6) |
 | Aggregator Sync | `retailers/retailers-aggregators.ts` | 🔴 To build (Phase 7) |
@@ -281,10 +284,10 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Festivals | `festivals/` | ✅ Built |
 | Commission | `commission/` | ✅ Built |
 | WhatsApp Catalog | `whatsapp-catalog/` | ✅ Built |
-| Incentives | `incentives/` | 🔴 To build (Phase 1) |
+| Incentives | `incentives/` | ✅ Built (Phase 1) |
 | Partners | `partners/` | ✅ Built (Phase 2) |
-| Discovery Map | `discovery/` | 🔴 To build (Phase 3) |
-| Festival Backgrounds | `festival-backgrounds/` | 🔴 To build (Phase 4) |
+| Discovery Map | `discovery/` | ✅ Built (Phase 3) |
+| Festival Backgrounds | `festival-backgrounds/` | ✅ Built (Phase 4) |
 | Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
 | GST Reports | `reports/gst/` | 🔴 To build (Phase 8) |
 
