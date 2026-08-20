@@ -1,6 +1,6 @@
 # Kanchuki — India Retailer Growth & Profitability Roadmap
 
-**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **E (AI Campaign Assistant) completed 2026-08-18** (BUILD-LOG §48). **Migrations:** 055–058 + 060–063 **applied and verified** (growth tables/enum/plan-rows live; Phase II catalog tables + WHATSAPP_CATALOG_SYNC feature live; `customers.usual_size` column live; `retailers.preferred_locale` column live). **P (WhatsApp native catalog) completed 2026-08-18** (BUILD-LOG §49, Phase II — catalog sync engine, API, webhook, admin monitor, mobile UI). **R seasonal analytics (wedding-season vs daily-wear) completed 2026-08-18** (BUILD-LOG §51). **S auto-built variant collection links completed 2026-08-18** (BUILD-LOG §49 — HIDDEN collection status + variant sync on campaign create/edit + variant links in send response). **i18n data groundwork completed 2026-08-18** (BUILD-LOG §50 — preferred_locale + SUPPORTED_LOCALES). **Not built:** I (GST invoicing), Instagram Business publishing; future work: M native mic + UI language toggle. See `docs/BUILD-LOG.md` §44–51.  
+**Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **E (AI Campaign Assistant) completed 2026-08-18** (BUILD-LOG §48). **Migrations:** 055–058 + 060–063 **applied and verified** (growth tables/enum/plan-rows live; Phase II catalog tables + WHATSAPP_CATALOG_SYNC feature live; `customers.usual_size` column live; `retailers.preferred_locale` column live). **P (WhatsApp native catalog) completed 2026-08-18** (BUILD-LOG §49, Phase II — catalog sync engine, API, webhook, admin monitor, mobile UI). **R seasonal analytics (wedding-season vs daily-wear) completed 2026-08-18** (BUILD-LOG §51). **S auto-built variant collection links completed 2026-08-18** (BUILD-LOG §49 — HIDDEN collection status + variant sync on campaign create/edit + variant links in send response). **i18n data groundwork completed 2026-08-18** (BUILD-LOG §50 — preferred_locale + SUPPORTED_LOCALES). **Not built:** Instagram Business publishing; future work: M native mic + UI language toggle. See `docs/BUILD-LOG.md` §44–51. Full remaining-work task list: `docs/20-August-changes.md`.  
 **Date:** August 2026  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
@@ -18,7 +18,7 @@
 | E | AI Campaign Assistant | ✅ Built (NLP intent → audience/product filters → WhatsApp message template + save-to-campaign) |
 | F | Smart Promotion / Discount Engine | ✅ Built (backend + mobile UI) |
 | G | Customer Reactivation Campaigns | ✅ Built (backend + mobile UI) |
-| I | GST-Ready Invoicing | 🔴 Not built — PDF generation + HSN mapping |
+| I | GST-Ready Invoicing | ✅ Built — PDF generation + HSN mapping (see `PRO-REQUIREMENTS.md §F-304`) |
 | J | Intelligence + Reorder Alerts | ✅ Built (signal-based alerts + mobile UI) |
 | K | Supplier Management | ✅ Built (backend + mobile UI) |
 | L | Showroom / Try-On Room Booking | ✅ Built (backend + mobile UI + public self-service booking) |
@@ -195,7 +195,7 @@ These four gaps are where the next wave of features must land.
 
 ### 3.3 Shop Organization Features
 
-#### I. GST-Ready Invoicing — 🔴 Not built (needs PDF generation + HSN code mapping)
+#### I. GST-Ready Invoicing — ✅ Built (PDF generation + HSN mapping, see `PRO-REQUIREMENTS.md §F-304`)
 
 **What:** Auto-generate GST-compliant invoices for every order, with HSN codes for apparel, CGST/SGST/IGST split, and invoice numbering.
 
@@ -393,7 +393,7 @@ These four gaps are where the next wave of features must land.
 
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
-| GST-Ready Invoicing | Medium | High | **P1** | 🔴 Not built |
+| GST-Ready Invoicing | Medium | High | **P1** | ✅ Built (PDF + HSN mapping) |
 | Supplier Management | Low | Medium | **P2** | ✅ Built |
 | Showroom Booking | Low | Low | **P2** | ✅ Built |
 
@@ -410,7 +410,7 @@ These four gaps are where the next wave of features must land.
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
 | AI Campaign Assistant | High | High | **P1** | ✅ Built (NLP intent → WhatsApp message template + save-to-campaign) |
-| Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) |
+| Instagram Business Publishing | Medium | Medium | **P1** | 🔴 Not built (F-031 = Facebook only) — see `docs/20-August-changes.md` item 7 |
 | A/B Testing | Medium | Medium | **P2** | ✅ Built (collection sets + stagger + significance) |
 
 ---

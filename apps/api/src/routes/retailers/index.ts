@@ -11,3 +11,4 @@ export { retailersSocialRoutes } from './retailers-social.js';
 export { retailersPartnersRoutes } from './retailers-partners/index.js';
 export { retailersAggregatorRoutes } from './retailers-aggregators.js';
 export { retailersIntegrationsRoutes } from './retailers-integrations.js';
+export { retailersRatingsRoutes } from './retailers-ratings.js';

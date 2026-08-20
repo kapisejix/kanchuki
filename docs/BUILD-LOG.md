@@ -4,18 +4,21 @@ Full chronological build history for Kanchuki. **CLAUDE.md** keeps only a
 one-line index of these entries; this file is the detail for every feature,
 incident, migration, and decision recorded after 2026-07-26.
 
+> **Remaining work:** `docs/20-August-changes.md` — 31 prioritized coding items + 5 devOps tasks (items 1–3 marked ✅ done).
+
 ## Table of Contents
 
 | # | Section | Status | Date |
 |---|---------|--------|------|
 | 1 | [Admin Control Center — Permission Matrix, Trust & Safety, Deletion Vault, DB Guardrails (F-013…F-017)](#built-admin-control-center--permission-matrix-trust--safety-deletion-vault-db-guardrails) | Built | 2026-07-26 |
 | 2 | [Phase 0.5: Internal Team Management](#phase-05-internal-team-management--all-code-items-completed-) | Built | — |
-| 3 | [L2 Ecommerce Checkout (planned)](#planned-l2-ecommerce-checkout-whatsapp-stays-messaging-only) | Planned | 2026-07-24 |
+| 3 | [L2 Ecommerce Checkout](#built-l2-ecommerce-checkout-whatsapp-stays-messaging-only) | Built | 2026-08-18 |
 | 4 | [Sales Referral Attribution + Paid Catalog Upload (F-018/F-019)](#built-sales-referral-attribution--paid-on-site-catalog-upload-service-f-018f-019) | Built | 2026-07-28 |
 | 5 | [Marketing Page Redesign — Loom Design System](#built-marketing-page-redesign--loom-design-system-option-a) | Built | 2026-07-29 |
 | 6 | [Admin-Configurable Platform Theme](#built-admin-configurable-platform-theme-2026-07-29) | Built | 2026-07-29 |
 | 7 | [Product-Level WhatsApp Share + Ratings Reviewed](#built-product-level-whatsapp-share-button-f-006-gap--ratings-reviewed) | Built | 2026-07-30 |
 | 8 | [F-023 AI Provider Registry](#built-f-023-ai-provider-registry--admin-configurable-tagging-models--per-provider-usage) | Built | 2026-08-01 |
+| 52 | [F-021 Product & Store Ratings](#built-f-021-product--store-ratings) | Built | 2026-08-20 |
 | 9 | [F-022 Auto-Post New Arrivals to Google Business Profile](#planned--not-started-f-022-auto-post-new-arrivals-to-google-business-profile) | Planned | — |
 | 10 | [Mobile Accessibility Audit + Harden Pass](#built-mobile-accessibility-audit--harden-pass-appsmobile) | Built | 2026-07-31 |
 | 11 | [Production DB Outage Fix + Purge-Cron Scoped Role](#built-2026-08-02--production-db-outage-fix-pooler-suffix--purge-cron-scoped-role--adminweb-hardening) | Built | 2026-08-02 |
@@ -1222,3 +1225,93 @@ Completes the last remaining coding item in `docs/marketing/IMPLEMENTATION-STATU
 - **PDF** — A4 document with title page + 2 products per page
 
 **Verified:** API `tsc --noEmit` clean (0 errors); `prisma validate` + `prisma generate` clean.
+
+---
+
+## Built: F-021 Product & Store Ratings — 2026-08-20
+
+**Spec:** `docs/PRO-REQUIREMENTS.md §10.12`  
+**Date:** 2026-08-20  
+**PRD ref:** F-021 — Product & Store Ratings
+
+### Schema (migration 072)
+
+| Change | Detail |
+|--------|--------|
+| `product_reviews` table | `(id, product_id, customer_id, retailer_id, rating 1–5, comment, is_flagged, is_hidden, timestamps)` — unique `(product_id, customer_id)` |
+| `store_reviews` table | `(id, retailer_id, customer_id, rating 1–5, comment, is_flagged, is_hidden, timestamps)` — unique `(retailer_id, customer_id)` |
+| `products.avg_rating` | `Float @default(0)` — denormalized, recomputed on every review write |
+| `products.rating_count` | `Int @default(0)` — denormalized |
+| `retailers.avg_rating` | `Float @default(0)` — denormalized |
+| `retailers.rating_count` | `Int @default(0)` — denormalized |
+| `retailers.google_place_id` | `String?` — retailer pastes once; Kanchuki builds write-review URL |
+
+### Retailer API (`apps/api/src/routes/retailers/retailers-ratings.ts`)
+
+| Method | Path | Purpose |
+|--------|------|--------|
+| POST | `/v1/retailers/me/reviews/product` | Submit/update a product review (eligibility-checked, upserts) |
+| POST | `/v1/retailers/me/reviews/store` | Submit/update a store review (eligibility-checked) |
+| GET | `/v1/retailers/me/reviews/products` | List product reviews (filterable by product_id, paginated) |
+| GET | `/v1/retailers/me/reviews/store` | List store reviews (paginated) |
+| GET | `/v1/retailers/me/reviews/summary` | Store rating summary + distribution + top products + recent reviews + Google review URL |
+| PATCH | `/v1/retailers/me/reviews/google-place` | Set/clear `google_place_id` |
+
+### Admin Moderation API (`apps/api/src/routes/admin/admin-ratings.ts`)
+
+| Method | Path | Purpose |
+|--------|------|--------|
+| GET | `/v1/admin/reviews` | List all reviews (product + store, filterable by type/retailer/flagged/hidden/rating) |
+| GET | `/v1/admin/reviews/stats` | Aggregate stats (total, avg rating, flagged, hidden) |
+| PATCH | `/v1/admin/reviews/:type/:id/flag` | Flag a review for moderation |
+| PATCH | `/v1/admin/reviews/:type/:id/hide` | Soft-hide a review (recomputes denormalized counters) |
+| PATCH | `/v1/admin/reviews/:type/:id/unhide` | Restore a hidden review |
+
+### Mobile Screen (`apps/mobile/app/growth/ratings.tsx`)
+
+- **Summary tab:** Store rating card (avg + star distribution bar chart), Google review link, top reviewed products, recent reviews
+- **Products tab:** Product review list with star rating, product name, customer name, comment, flagged badge
+- **Store tab:** Store review list with star rating, customer name, comment, flagged badge
+- Growth Hub entry with Star icon added to `growth/index.tsx`
+
+### Review Eligibility Logic
+
+- **Product review:** customer must have a prior `CustomerInteraction` (favorite/enquiry/purchase/try_on) with the retailer, or any interaction with the retailer
+- **Store review:** customer must have any prior `CustomerInteraction` with the retailer
+- One review per customer per product/store — upserts on re-submit
+
+### Google Review Routing
+
+- Rating ≥ 4 + `google_place_id` set → return `{ action: 'google_review', url: 'https://search.google.com/local/writereview?placeid=...' }`
+- Rating ≤ 3 → return `{ action: 'private_feedback', message: 'Tell us what went wrong' }`
+- No `google_place_id` → return `{ action: 'none' }`
+
+### Files Created
+
+| File | Purpose |
+|------|--------|
+| `packages/db/prisma/migrations/072_product_store_ratings/migration.sql` | Schema migration |
+| `apps/api/src/routes/retailers/retailers-ratings.ts` | Retailer API (6 endpoints) |
+| `apps/api/src/routes/admin/admin-ratings.ts` | Admin moderation API (5 endpoints) |
+| `apps/mobile/app/growth/ratings.tsx` | Mobile ratings screen (358 lines) |
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `packages/db/prisma/schema.prisma` | Added ProductReview + StoreReview models, denormalized counters on Product + Retailer, google_place_id on Retailer |
+| `apps/api/src/routes/retailers/index.ts` | Exported `retailersRatingsRoutes` |
+| `apps/api/src/routes/retailers.ts` | Registered `retailersRatingsRoutes` |
+| `apps/api/src/routes/admin/index.ts` | Exported `adminRatingsRoutes` |
+| `apps/api/src/routes/admin.ts` | Registered `adminRatingsRoutes` |
+| `apps/mobile/src/lib/api/growth.ts` | Added 5 types + 3 API methods |
+| `apps/mobile/app/growth/index.tsx` | Added Star import + "Ratings & Reviews" to Growth Hub |
+
+### Verified
+
+- `npx prisma validate` — schema valid ✅
+- `npx prisma generate` — Prisma Client generated ✅
+- `apps/api` `tsc --noEmit` — 0 errors ✅
+- `apps/mobile` `tsc --noEmit` — 0 errors ✅
+
+**Remaining:** customer-facing star display on `ProductDetailSheet` (P2 item), wiring reviews into the public collection page (customer submits review after purchase).

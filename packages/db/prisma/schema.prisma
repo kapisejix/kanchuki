@@ -237,6 +237,13 @@ model Retailer {
    gmb_access_token String? // Encrypted access token for GMB API
    gmb_refresh_token String? // Encrypted refresh token
    gmb_token_expiry DateTime? // Expiry time of the access token
+
+   // F-021 Ratings — Google Business Profile place ID for review deep-link
+   google_place_id String? // retailer pastes once; Kanchuki builds the write-review URL
+
+   // F-021 Ratings — denormalized store rating (updated on every review write)
+   avg_rating    Float @default(0)
+   rating_count  Int   @default(0)
    gmb_configured_at DateTime? // When GMB was last configured
 
    // Facebook Local Awareness Ads (bring-your-own Meta Business creds)
@@ -347,6 +354,8 @@ model Retailer {
   lookbooks             Lookbook[]
   social_templates      SocialTemplate[]
   channel_syncs         ChannelSync[]
+  product_reviews       ProductReview[]
+  store_reviews         StoreReview[]
 
   @@index([phone])
   @@index([city])
@@ -586,6 +595,10 @@ model Product {
   // WhatsApp Native Catalog Sync — stores Meta's catalog item ID
   whatsapp_catalog_item_id String?
 
+  // F-021 Ratings — denormalized product rating (updated on every review write)
+  avg_rating   Float @default(0)
+  rating_count Int   @default(0)
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
@@ -596,6 +609,7 @@ model Product {
   product_category ProductCategory?      @relation(fields: [category_id], references: [id], onDelete: SetNull)
   photos           ProductPhoto[]
   videos           ProductVideo[]
+  reviews          ProductReview[]
   spin_frames      ProductSpinFrame[]
   variants         ProductVariant[]
   embedding        ProductEmbedding?
@@ -773,6 +787,8 @@ model Customer {
   collections_sent Collection[]          @relation("CustomerCollections")
   measurements     CustomerMeasurement[]
   visits           CustomerVisit[]
+  product_reviews  ProductReview[]
+  store_reviews    StoreReview[]
   partner_referrals PartnerReferral[]
 
   @@unique([retailer_id, phone])
@@ -2351,4 +2367,51 @@ enum ChannelSyncStatus {
   SYNCING
   ERROR
   SUSPENDED
+}
+
+// ─── F-021 RATINGS & REVIEWS ──────────────────────────────────────
+
+model ProductReview {
+  id          String @id @default(cuid())
+  product_id  String
+  customer_id String
+  retailer_id String // denormalized for retailer-facing queries + moderation
+  rating      Int    // 1–5 stars
+  comment     String?
+  is_flagged  Boolean @default(false) // admin moderation flag
+  is_hidden   Boolean @default(false) // soft-hidden by admin (still in DB, not shown)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  product  Product  @relation(fields: [product_id], references: [id])
+  customer Customer @relation(fields: [customer_id], references: [id])
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@unique([product_id, customer_id]) // one review per customer per product
+  @@index([product_id])
+  @@index([retailer_id])
+  @@index([customer_id])
+  @@index([rating])
+  @@map("product_reviews")
+}
+
+model StoreReview {
+  id          String @id @default(cuid())
+  retailer_id String
+  customer_id String
+  rating      Int    // 1–5 stars
+  comment     String?
+  is_flagged  Boolean @default(false) // admin moderation flag
+  is_hidden   Boolean @default(false) // soft-hidden by admin
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  customer Customer @relation(fields: [customer_id], references: [id])
+  retailer Retailer @relation(fields: [retailer_id], references: [id])
+
+  @@unique([retailer_id, customer_id]) // one store review per customer per retailer
+  @@index([retailer_id])
+  @@index([customer_id])
+  @@index([rating])
+  @@map("store_reviews")
 }

@@ -1086,7 +1086,7 @@ Requires a `SupportTicket` entity: retailer, `requires_visit` flag, assigned sta
 
 ### 10.12 F-021: Product & Store Ratings
 
-**Status:** 🔴 Planned, not started. Reviewed 2026-07-30, see `docs/design/feature-ideas-2026-07-30.md` §2.
+**Status:** ✅ **Built** (2026-08-20). Migration 072 + retailer API (6 endpoints) + admin moderation API (5 endpoints) + mobile ratings screen. See `docs/BUILD-LOG.md` §52.
 
 **Problem:** Customers browsing a collection link have no signal of store or product trustworthiness beyond the retailer's own photos/description — no way to leave or see feedback.
 
@@ -2159,25 +2159,14 @@ already registered in `retailers.ts` (`server.register(retailersPartnersRoutes)`
 schema is currently invalid** (see 29.3), so none of this has ever been
 migrated or generated.
 
-### 29.3 What's actually broken (found via `npx prisma validate`, not assumed)
+### 29.3 What was broken (now fixed ✅)
 
-1. **Schema doesn't compile.** `Partner.commission_type` and
-   `PartnerReferral.status` are declared as inline `Enum { ... }` blocks
-   inside the model body — not valid Prisma syntax (enums must be top-level
-   `enum` declarations referenced by name, same as `PartnerType` two lines
-   above them). `npx prisma validate` fails at schema.prisma:1967 and
-   :1992. This blocks `prisma generate`/`db:generate` for the **entire**
-   monorepo if anyone runs it against current `main`, not just this feature.
-2. **No migration exists.** `find packages/db/prisma/migrations -iname
-   "*partner*"` returns nothing — `partners`/`partner_referrals`/
-   `partner_events` tables don't exist in the database.
-3. **`PARTNER_NETWORK` is not in the `PlanFeatureKey` enum** (schema.prisma
-   ~line 131). The route calls `hasFeature(retailerId, 'PARTNER_NETWORK')`
-   which won't typecheck against `hasFeature(retailerId: string, featureKey:
-   PlanFeatureKey)` — this route has never successfully typechecked as part
-   of a full build.
-4. No admin UI, no mobile UI (confirmed in the wiring audit — zero matches
-   for `*partner*` under `apps/web/src/app/admin` or `apps/mobile`).
+> **Status 2026-08-20:** All 4 issues below are resolved. Schema validates, migration 066 exists, `PARTNER_NETWORK` is in `PlanFeatureKey`, mobile screen is complete (358 lines). API and mobile `tsc --noEmit` clean.
+
+1. ~~**Schema doesn't compile.**~~ ✅ Fixed — enums are top-level declarations.
+2. ~~**No migration exists.**~~ ✅ Migration 066 exists (`066_incentive_engine_and_partner_network`).
+3. ~~**`PARTNER_NETWORK` not in `PlanFeatureKey`.**~~ ✅ Added (line 147).
+4. ~~**No admin UI, no mobile UI.**~~ ✅ Mobile screen built (`apps/mobile/app/growth/partners.tsx` — 358 lines: list + create modal + partner cards).
 
 ### 29.4 Design — fix path
 

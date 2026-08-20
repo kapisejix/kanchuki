@@ -14,6 +14,7 @@ import {
   retailersWhatsappRoutes,
   retailersAggregatorRoutes,
   retailersIntegrationsRoutes,
+  retailersRatingsRoutes,
 } from './retailers/index.js';
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
@@ -41,4 +42,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersAggregatorRoutes);
   // retailers-integrations — Platform API credentials (GMB, FB Ads, Google Ads)
   await server.register(retailersIntegrationsRoutes);
+  // retailers-ratings — F-021 Product & Store Ratings
+  await server.register(retailersRatingsRoutes);
 };

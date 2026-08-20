@@ -12,6 +12,7 @@ import {
   Link2,
   Megaphone,
   Share2,
+  Star,
   PackageSearch,
   Percent,
   Plug,
@@ -53,6 +54,7 @@ const GROWTH_MODULES = [
   { icon: Share2, label: 'Social Templates', hint: 'AI-powered social posts', href: '/growth/templates' as const },
   { icon: BookOpen, label: 'Lookbooks', hint: 'Curated product collections', href: '/growth/lookbook' as const },
   { icon: Sparkles, label: 'Festival Backgrounds', hint: 'Seasonal product overlays', href: '/growth/backgrounds' as const },
+  { icon: Star, label: 'Ratings & Reviews', hint: 'Customer feedback & Google reviews', href: '/growth/ratings' as const },
   { icon: Receipt, label: 'GST Report', hint: 'Tax summary & invoices', href: '/growth/gst' as const },
   { icon: Plug, label: 'Integrations', hint: 'GMB, Facebook & Google Ads', href: '/growth/integrations' as const },
 ]

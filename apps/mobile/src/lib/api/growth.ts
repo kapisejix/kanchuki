@@ -696,6 +696,60 @@ export type GstTransactions = {
   pagination: { page: number; limit: number; total: number; pages: number }
 }
 
+// ─── F-021 Ratings & Reviews ─────────────────────────────────────
+
+export type ProductReview = {
+  id: string
+  product_id: string
+  customer_id: string
+  retailer_id: string
+  rating: number
+  comment: string | null
+  is_flagged: boolean
+  is_hidden: boolean
+  created_at: string
+  updated_at: string
+  product?: { id: string; name: string | null; primary_color: string | null }
+  customer?: { id: string; name: string }
+}
+
+export type StoreReview = {
+  id: string
+  retailer_id: string
+  customer_id: string
+  rating: number
+  comment: string | null
+  is_flagged: boolean
+  is_hidden: boolean
+  created_at: string
+  updated_at: string
+  customer?: { id: string; name: string }
+}
+
+export type ReviewSummary = {
+  store: {
+    avg_rating: number
+    rating_count: number
+    distribution: { star: number; count: number }[]
+  }
+  top_products: {
+    id: string
+    name: string | null
+    avg_rating: number
+    rating_count: number
+    primary_color: string | null
+  }[]
+  recent_reviews: ((ProductReview & { type: 'product' }) | (StoreReview & { type: 'store'; product: null }))[]
+  google_review_url: string | null
+}
+
+export type Pagination = {
+  page: number
+  limit: number
+  total: number
+  pages: number
+}
+
 // ─── Integrations (retailer settings) ────────────────────────────
 
 export type IntegrationsStatus = {
@@ -1330,4 +1384,35 @@ export const growthApi = {
       '/v1/retailers/me/integrations/google-ads/test',
       { method: 'POST' },
     ),
+
+  // ─── F-021 Ratings & Reviews ─────────────────────────────────────
+  reviewSummary: () =>
+    request<{ data: ReviewSummary }>('/v1/retailers/me/reviews/summary'),
+
+  productReviews: (params?: { product_id?: string; page?: number; limit?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.product_id) qs.set('product_id', params.product_id)
+    if (params?.page) qs.set('page', String(params.page))
+    if (params?.limit) qs.set('limit', String(params.limit))
+    const q = qs.toString()
+    return request<{ data: ProductReview[]; pagination: Pagination }>(
+      `/v1/retailers/me/reviews/products${q ? `?${q}` : ''}`,
+    )
+  },
+
+  storeReviews: (params?: { page?: number; limit?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.page) qs.set('page', String(params.page))
+    if (params?.limit) qs.set('limit', String(params.limit))
+    const q = qs.toString()
+    return request<{ data: StoreReview[]; pagination: Pagination }>(
+      `/v1/retailers/me/reviews/store${q ? `?${q}` : ''}`,
+    )
+  },
+
+  updateGooglePlaceId: (google_place_id: string | null) =>
+    request<{ success: boolean }>('/v1/retailers/me/reviews/google-place', {
+      method: 'PATCH',
+      body: JSON.stringify({ google_place_id }),
+    }),
 }

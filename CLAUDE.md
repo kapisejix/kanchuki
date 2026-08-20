@@ -144,11 +144,11 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 |---|---------|--------|------|--------|
 | 1 | Admin Control Center — Plan Feature Matrix (F-013), Activity Tracking (F-014), Suspension (F-015), Deletion Vault (F-016), DB Guardrails (F-017) | ✅ Built | 2026-07-26 | BUILD-LOG §1 |
 | 2 | Phase 0.5 Internal Team Management — SupportTicket routing, manager rollup reports, staff Expo mode | ✅ Built | — | BUILD-LOG §2 |
-| 3 | L2 Ecommerce Checkout (cart → address → pay, per-retailer Razorpay; WhatsApp stays share-only) | 🕐 Planned | — | BUILD-LOG §3 |
+| 3 | L2 Ecommerce Checkout (cart → address → pay, per-retailer Razorpay; WhatsApp stays share-only) | ✅ Built | 2026-08-18 | BUILD-LOG §3 |
 | 4 | F-018 Sales Referral Attribution + F-019 Paid On-Site Catalog Upload Service | ✅ Built | 2026-07-28 | BUILD-LOG §4 |
 | 5 | Marketing Page Redesign — Loom Design System (Option A; B/C/D documented as alternatives) | ✅ Built | 2026-07-29 | BUILD-LOG §5 |
 | 6 | Admin-Configurable Platform Theme (rebrand without app rebuild) | ✅ Built | 2026-07-29 | BUILD-LOG §6 |
-| 7 | Product-Level WhatsApp Share Button (F-006 gap) + Ratings reviewed (F-021, not built) | ✅ Built | 2026-07-30 | BUILD-LOG §7 |
+| 7 | Product-Level WhatsApp Share Button (F-006 gap) + Ratings reviewed (F-021) | ✅ Built | 2026-07-30 | BUILD-LOG §7 |
 | 8 | F-023 AI Provider Registry — admin-configurable tagging models + per-provider usage + weighted quota | ✅ Built | 2026-08-01 | BUILD-LOG §8 |
 | 9 | F-022 Auto-Post New Arrivals to Google Business Profile | 🕐 Planned (blocked on Google API access) | — | BUILD-LOG §9 |
 | 10 | Mobile Accessibility Audit + Harden Pass (`apps/mobile` — labels, Reduce Motion, touch targets) | ✅ Built | 2026-07-31 | BUILD-LOG §10 |
@@ -188,7 +188,8 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 44 | India Retailer Growth Engine — backend: campaigns/festivals (D/G/R/S), promotions (F), referrals (C), suppliers (K), bookings (L), inventory alerts (J), videos (Q), AI translate (M) + migration 055 (khata H + udhar O removed from scope); M/N/R/S completed: campaign-message translation + AI search UI, usual-size capture + size recommendation + plus sizes, campaign analytics screen, collection A/B (per-variant products + stagger + significance) | ✅ Built (backend + full mobile UI: growth hub, campaigns, referrals, promotions, suppliers, bookings, inventory alerts, videos, AI translate, AI search, campaign analytics + admin festival calendar). Migrations 055–057 applied + verified; **058 (`customers.usual_size`) NOT applied** — size-recommend reads it, needs the SQL before N works | 2026-08-17 | BUILD-LOG §44–47 |
 | 45 | Phase II — WhatsApp Native Catalog Sync (F-307 / roadmap P): migration 060–062 (CatalogItem + CatalogSyncLog + Retailer sync fields + WHATSAPP_CATALOG_SYNC feature split for PostgreSQL 55P04 — 060 schema, 061 enum, 062 plan rows), Meta Catalog API client, BullMQ sync engine (full/single + auto-sync on product edit/status/delete/tag-completion), retailer routes D1–D7, HMAC-verified webhook E1–E7, mobile settings UI F1–F7 (+ per-product badges), admin monitor G1–G5, deploy docs | ✅ Built + live (all 63/63 breakdown tasks; migrations 060–062 **applied + verified** 2026-08-18 — tables/enum/plan-rows confirmed in prod) | 2026-08-18 | BUILD-LOG §49 |
 | 46 | Marketing & Sales Enablement — Smart Incentive Engine, Local Discovery Engine, AI Social Media Templates, Festival Backgrounds, Lookbook Generator, Aggregator Sync, GST Reports, Partner Network, GMB/Facebook/Google Ads (retailer self-service credentials) | ✅ Built (Phases 0–9; all mobile screens + integrations settings added 2026-08-20; GMB/FB/Google Ads built with bring-your-own-key pattern) | 2026-08-20 | BUILD-LOG, `docs/marketing/IMPLEMENTATION-STATUS.md` |
-| 47 | Partner Network Manager (Marketing & Sales Enablement) — full stack (retailer CRUD + admin API + admin UI + mobile UI + schema + migration 066) | ✅ Built | 2026-08-20 | BUILD-LOG, `docs/marketing/IMPLEMENTATION-STATUS.md` |
+| 47 | Partner Network Manager (Marketing & Sales Enablement) — full stack (retailer CRUD + admin API + admin UI + mobile UI + schema + migration 066) | ✅ Built (schema fixed, mobile screen complete) | 2026-08-20 | BUILD-LOG, `docs/marketing/IMPLEMENTATION-STATUS.md` |
+| 48 | Remaining Work Audit — 31 prioritized coding items + 5 devOps tasks across PRO-REQUIREMENTS, INDIA-RETAILER-GROWTH, photo-feature-audit, PHASE-II-WHATSAPP-CATALOG-BREAKDOWN | 📋 Task list | 2026-08-20 | `docs/20-August-changes.md` |
  
 ---
 

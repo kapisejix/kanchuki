@@ -23,3 +23,4 @@ export { adminSocialTemplateRoutes } from './admin-social-templates.js';
 export { adminGstRoutes } from './admin-gst.js';
 export { adminAggregatorRoutes } from './admin-aggregators.js';
 export { adminSocialRoutes } from './admin-social.js';
+export { adminRatingsRoutes } from './admin-ratings.js';
