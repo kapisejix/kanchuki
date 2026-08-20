@@ -73,10 +73,33 @@ export async function generateStudioImage(
    templateId: StudioTemplateId,
    inputImageUrl: string,
    onProgress?: (progress: { progress: number; etaMs: number }) => void,
+   inputImageMeta?: { width?: number | null; height?: number | null; sizeBytes?: number | null },
 ): Promise<StudioGenerationResult> {
   const template = getStudioTemplate(templateId);
   if (!template) {
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
+  }
+
+  // BFL FLUX Kontext accepts ≤20MP and ≤20MB. Validate early to avoid
+  // wasting API credits on inputs that will be rejected.
+  const MAX_MP = 20_000_000;
+  const MAX_BYTES = 20 * 1024 * 1024;
+  if (inputImageMeta?.width && inputImageMeta?.height) {
+    const mp = inputImageMeta.width * inputImageMeta.height;
+    if (mp > MAX_MP) {
+      throw new AppError(
+        'STUDIO_SHOOT_FAILED',
+        `Image is too large (${(mp / 1_000_000).toFixed(1)}MP). Maximum is 20MP.`,
+        422,
+      );
+    }
+  }
+  if (inputImageMeta?.sizeBytes && inputImageMeta.sizeBytes > MAX_BYTES) {
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      `Image file is too large (${(inputImageMeta.sizeBytes / 1024 / 1024).toFixed(1)}MB). Maximum is 20MB.`,
+      422,
+    );
   }
 
   const auth = bflKey();

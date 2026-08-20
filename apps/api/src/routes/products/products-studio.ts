@@ -60,9 +60,29 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     // Photo must belong to this retailer's product.
     const photo = await prisma.productPhoto.findFirst({
       where: { id: photoId, product_id: id, retailer_id: request.retailerId },
-      select: { id: true },
+      select: { id: true, width: true, height: true, size_bytes: true },
     });
     if (!photo) throw notFound('Product photo');
+
+    // BFL FLUX Kontext accepts ≤20MP (megapixels) and ≤20MB.
+    // Reject early to avoid wasting API credits on oversized inputs.
+    const MAX_MP = 20_000_000 // 20 megapixels
+    const MAX_BYTES = 20 * 1024 * 1024 // 20 MB
+    if (photo.width && photo.height) {
+      const megapixels = photo.width * photo.height
+      if (megapixels > MAX_MP) {
+        throw validationError(
+          `Image is too large (${(megapixels / 1_000_000).toFixed(1)}MP). Maximum is 20MP. Please use a smaller image.`,
+          'photo',
+        )
+      }
+    }
+    if (photo.size_bytes && photo.size_bytes > MAX_BYTES) {
+      throw validationError(
+        `Image file is too large (${(photo.size_bytes / 1024 / 1024).toFixed(1)}MB). Maximum is 20MB. Please compress the image first.`,
+        'photo',
+      )
+    }
 
     const jobId = createId();
     await addStudioShootJob({
