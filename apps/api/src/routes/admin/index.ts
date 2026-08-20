@@ -22,3 +22,4 @@ export { adminLookbookRoutes } from './admin-lookbooks.js';
 export { adminSocialTemplateRoutes } from './admin-social-templates.js';
 export { adminGstRoutes } from './admin-gst.js';
 export { adminAggregatorRoutes } from './admin-aggregators.js';
+export { adminSocialRoutes } from './admin-social.js';

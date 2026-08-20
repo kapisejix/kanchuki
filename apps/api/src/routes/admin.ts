@@ -34,6 +34,7 @@ import {
   adminSocialTemplateRoutes,
   adminGstRoutes,
   adminAggregatorRoutes,
+  adminSocialRoutes,
 } from './admin/index.js';
 
 export {
@@ -223,4 +224,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminGstRoutes);
   // admin-aggregators — Aggregator / Marketplace Sync oversight
   await server.register(adminAggregatorRoutes);
+  // admin-social — Social Publishing (Facebook/Instagram) oversight
+  await server.register(adminSocialRoutes);
 };

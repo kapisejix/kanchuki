@@ -1,15 +1,20 @@
 import { useQuery } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
+  BookOpen,
   CalendarHeart,
   ChevronLeft,
   ChevronRight,
   DoorOpen,
+  Gift,
+  Handshake,
   Languages,
   Link2,
   Megaphone,
+  Share2,
   PackageSearch,
   Percent,
+  Receipt,
   Sparkles,
   Truck,
   Users,
@@ -42,6 +47,12 @@ const GROWTH_MODULES = [
   { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
   { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
   { icon: Link2, label: 'Marketplace Sync', hint: 'Meesho, Instamojo & more', href: '/growth/aggregators' as const },
+  { icon: Gift, label: 'Incentives', hint: 'Automated rewards & loyalty', href: '/growth/incentives' as const },
+  { icon: Handshake, label: 'Partners', hint: 'Salons, tailors & stylists', href: '/growth/partners' as const },
+  { icon: Share2, label: 'Social Templates', hint: 'AI-powered social posts', href: '/growth/templates' as const },
+  { icon: BookOpen, label: 'Lookbooks', hint: 'Curated product collections', href: '/growth/lookbook' as const },
+  { icon: Sparkles, label: 'Festival Backgrounds', hint: 'Seasonal product overlays', href: '/growth/backgrounds' as const },
+  { icon: Receipt, label: 'GST Report', hint: 'Tax summary & invoices', href: '/growth/gst' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {

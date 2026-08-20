@@ -518,6 +518,184 @@ export type ChannelConnectPayload = {
   channel_shop_url?: string
 }
 
+// ─── AI Social Media Templates (Phase 5) ───────────────────────
+
+export type SocialTemplateType =
+  | 'INSTAGRAM_POST'
+  | 'INSTAGRAM_REEL'
+  | 'INSTAGRAM_STORY'
+  | 'WHATSAPP_STATUS'
+  | 'WHATSAPP_CATALOG'
+  | 'FACEBOOK_POST'
+  | 'FACEBOOK_STORY'
+  | 'PDF_FLYER'
+
+export type SocialTemplate = {
+  id: string
+  retailer_id: string
+  name: string
+  description: string | null
+  template_type: SocialTemplateType
+  occasion: string | null
+  platform: string | null
+  overlay_festival: string | null
+  background_style: string | null
+  image_url: string | null
+  image_r2_key: string | null
+  caption: string | null
+  hashtags: string[]
+  usage_count: number
+  product_ids: string[]
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type SocialTemplateStats = {
+  total: number
+  active: number
+  inactive: number
+  total_usage: number
+}
+
+export type SocialTemplateCreatePayload = {
+  name: string
+  description?: string
+  template_type: SocialTemplateType
+  occasion?: string
+  product_id: string
+  studio_template: string
+}
+
+export type SocialTemplateUpdatePayload = {
+  name?: string
+  description?: string
+  template_type?: SocialTemplateType
+  occasion?: string
+  caption?: string
+  hashtags?: string[]
+  is_active?: boolean
+}
+
+// ─── Lookbook Generator (Phase 6) ──────────────────────────────
+
+export type LookbookFormat = 'CAROUSEL' | 'GRID' | 'EDITORIAL' | 'PDF'
+export type LookbookStatus = 'DRAFT' | 'GENERATING' | 'READY' | 'FAILED'
+
+export type Lookbook = {
+  id: string
+  retailer_id: string
+  name: string
+  description: string | null
+  cover_url: string | null
+  format: LookbookFormat
+  status: LookbookStatus
+  product_ids: string[]
+  output_url: string | null
+  output_r2_key: string | null
+  thumbnail_url: string | null
+  share_url: string | null
+  view_count: number
+  share_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type LookbookStats = {
+  total: number
+  ready: number
+  generating: number
+  failed: number
+  total_views: number
+  total_shares: number
+}
+
+export type LookbookCreatePayload = {
+  name: string
+  description?: string
+  format: LookbookFormat
+  product_ids: string[]
+  cover_product_id?: string
+}
+
+export type LookbookUpdatePayload = {
+  name?: string
+  description?: string
+  format?: LookbookFormat
+  product_ids?: string[]
+  cover_product_id?: string
+}
+
+// ─── Festival Background Library (Phase 4) ──────────────────────
+
+export type FestivalBackground = {
+  id: string
+  retailer_id: string
+  name: string
+  description: string | null
+  image_url: string
+  image_r2_key: string | null
+  thumbnail_url: string | null
+  occasion: string
+  season: string | null
+  region: string | null
+  is_active: boolean
+  valid_from: string | null
+  valid_to: string | null
+  priority: number
+  usage_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type FestivalBackgroundStats = {
+  total: number
+  active: number
+  occasions: { occasion: string; count: number }[]
+}
+
+// ─── GST Report (retailer-facing) ───────────────────────────────
+
+export type GstSummary = {
+  total_orders: number
+  invoiced_orders: number
+  pending_invoices: number
+  total_taxable: number
+  total_gst: number
+  total_sales: number
+  estimated_cgst: number
+  estimated_sgst: number
+  estimated_igst: number
+}
+
+export type GstMonthly = {
+  year: number
+  months: {
+    month: number
+    month_name: string
+    taxable: number
+    gst: number
+    sales: number
+    orders: number
+  }[]
+}
+
+export type GstTransaction = {
+  id: string
+  customer: string | null
+  taxable: number
+  gst: number
+  total: number
+  invoice_number: string | null
+  has_invoice: boolean
+  date: string
+}
+
+export type GstTransactions = {
+  transactions: GstTransaction[]
+  pagination: { page: number; limit: number; total: number; pages: number }
+}
+
 export const growthApi = {
   // ─── Referrals (roadmap C) ──────────────────────────────────────
   referralSettings: () =>
@@ -843,4 +1021,199 @@ export const growthApi = {
       `/v1/retailers/me/aggregators/${id}/sync`,
       { method: 'POST' },
     ),
+
+  // ─── AI Social Media Templates (Phase 5) ─────────────────────
+  socialTemplates: (filters?: { template_type?: string; occasion?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.template_type) params.set('template_type', filters.template_type)
+    if (filters?.occasion) params.set('occasion', filters.occasion)
+    const qs = params.toString()
+    return request<{ data: SocialTemplate[] }>(
+      `/v1/growth/social-templates${qs ? `?${qs}` : ''}`,
+      { getCacheTtlMs: 15_000 },
+    )
+  },
+
+  socialTemplate: (id: string) =>
+    request<{ data: SocialTemplate }>(`/v1/growth/social-templates/${id}`, {
+      getCacheTtlMs: 15_000,
+    }),
+
+  socialTemplateStats: () =>
+    request<{ data: SocialTemplateStats }>('/v1/growth/social-templates/stats', {
+      getCacheTtlMs: 30_000,
+    }),
+
+  createSocialTemplate: (payload: SocialTemplateCreatePayload) =>
+    request<{ data: SocialTemplate }>('/v1/growth/social-templates', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateSocialTemplate: (id: string, payload: SocialTemplateUpdatePayload) =>
+    request<{ data: SocialTemplate }>(`/v1/growth/social-templates/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteSocialTemplate: (id: string) =>
+    request<void>(`/v1/growth/social-templates/${id}`, { method: 'DELETE' }),
+
+  generateSocialTemplate: (id: string, productId?: string) =>
+    request<{ data: { job_id: string; status: string } }>(
+      `/v1/growth/social-templates/${id}/generate`,
+      {
+        method: 'POST',
+        body: JSON.stringify(productId ? { product_id: productId } : {}),
+      },
+    ),
+
+  socialTemplateGenerateStatus: (id: string, jobId: string) =>
+    request<{ data: { status: string; photo_id?: string; url?: string } }>(
+      `/v1/growth/social-templates/${id}/generate/status?job_id=${jobId}`,
+    ),
+
+  useSocialTemplate: (id: string) =>
+    request<{ data: SocialTemplate }>(`/v1/growth/social-templates/${id}/use`, {
+      method: 'POST',
+    }),
+
+  // ─── Lookbook Generator (Phase 6) ─────────────────────────────
+  lookbooks: (filters?: { status?: string; format?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.status) params.set('status', filters.status)
+    if (filters?.format) params.set('format', filters.format)
+    const qs = params.toString()
+    return request<{ data: Lookbook[] }>(
+      `/v1/growth/lookbooks${qs ? `?${qs}` : ''}`,
+      { getCacheTtlMs: 15_000 },
+    )
+  },
+
+  lookbook: (id: string) =>
+    request<{ data: Lookbook }>(`/v1/growth/lookbooks/${id}`, {
+      getCacheTtlMs: 15_000,
+    }),
+
+  lookbookStats: () =>
+    request<{ data: LookbookStats }>('/v1/growth/lookbooks/stats', {
+      getCacheTtlMs: 30_000,
+    }),
+
+  createLookbook: (payload: LookbookCreatePayload) =>
+    request<{ data: Lookbook }>('/v1/growth/lookbooks', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateLookbook: (id: string, payload: LookbookUpdatePayload) =>
+    request<{ data: Lookbook }>(`/v1/growth/lookbooks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteLookbook: (id: string) =>
+    request<void>(`/v1/growth/lookbooks/${id}`, { method: 'DELETE' }),
+
+  generateLookbook: (id: string) =>
+    request<{ data: { job_id: string; status: string } }>(
+      `/v1/growth/lookbooks/${id}/generate`,
+      { method: 'POST' },
+    ),
+
+  shareLookbook: (id: string) =>
+    request<{ data: { share_url: string; share_count: number } }>(
+      `/v1/growth/lookbooks/${id}/share`,
+      { method: 'POST' },
+    ),
+
+  viewLookbook: (id: string) =>
+    request<{ data: { view_count: number } }>(
+      `/v1/growth/lookbooks/${id}/view`,
+      { method: 'POST' },
+    ),
+
+  // ─── Festival Background Library (Phase 4) ────────────────────
+  backgrounds: (filters?: { occasion?: string; season?: string; region?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.occasion) params.set('occasion', filters.occasion)
+    if (filters?.season) params.set('season', filters.season)
+    if (filters?.region) params.set('region', filters.region)
+    const qs = params.toString()
+    return request<{ data: FestivalBackground[] }>(
+      `/v1/growth/backgrounds${qs ? `?${qs}` : ''}`,
+      { getCacheTtlMs: 15_000 },
+    )
+  },
+
+  background: (id: string) =>
+    request<{ data: FestivalBackground }>(`/v1/growth/backgrounds/${id}`, {
+      getCacheTtlMs: 15_000,
+    }),
+
+  backgroundStats: () =>
+    request<{ data: FestivalBackgroundStats }>('/v1/growth/backgrounds/stats', {
+      getCacheTtlMs: 30_000,
+    }),
+
+  backgroundOccasions: () =>
+    request<{ data: { occasion: string; count: number }[] }>('/v1/growth/backgrounds/occasions', {
+      getCacheTtlMs: 60_000,
+    }),
+
+  applyBackground: (id: string, productId: string, photoId?: string) =>
+    request<{ data: { job_id: string; status: string } }>(
+      `/v1/growth/backgrounds/${id}/apply`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ product_id: productId, photo_id: photoId }),
+      },
+    ),
+
+  backgroundApplyStatus: (id: string, jobId: string) =>
+    request<{ data: { status: string; photo_id?: string; url?: string } }>(
+      `/v1/growth/backgrounds/${id}/apply/status`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ job_id: jobId }),
+      },
+    ),
+
+  // ─── GST Report (retailer-facing) ─────────────────────────────
+  gstSummary: (filters?: { month?: number; year?: number }) => {
+    const params = new URLSearchParams()
+    if (filters?.month) params.set('month', String(filters.month))
+    if (filters?.year) params.set('year', String(filters.year))
+    const qs = params.toString()
+    return request<{ data: GstSummary }>(
+      `/v1/growth/gst/summary${qs ? `?${qs}` : ''}`,
+      { getCacheTtlMs: 30_000 },
+    )
+  },
+
+  gstMonthly: (year?: number) => {
+    const qs = year ? `?year=${year}` : ''
+    return request<{ data: GstMonthly }>(
+      `/v1/growth/gst/monthly${qs}`,
+      { getCacheTtlMs: 30_000 },
+    )
+  },
+
+  gstTransactions: (filters?: {
+    month?: number
+    year?: number
+    invoiced?: boolean
+    page?: number
+  }) => {
+    const params = new URLSearchParams()
+    if (filters?.month) params.set('month', String(filters.month))
+    if (filters?.year) params.set('year', String(filters.year))
+    if (filters?.invoiced !== undefined) params.set('invoiced', String(filters.invoiced))
+    if (filters?.page) params.set('page', String(filters.page))
+    const qs = params.toString()
+    return request<{ data: GstTransactions }>(
+      `/v1/growth/gst/transactions${qs ? `?${qs}` : ''}`,
+      { getCacheTtlMs: 15_000 },
+    )
+  },
 }

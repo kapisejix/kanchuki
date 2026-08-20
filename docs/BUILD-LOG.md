@@ -1104,3 +1104,81 @@ Spec `docs/PRO-REQUIREMENTS.md` §28. Two reuse-only slices, no new dependency o
 **Explicitly not done (see spec §28.3):** no AI video-generation API (that's F-032 Phase B, a different paid feature), no automatic/background generation on upload (on-demand button only), no crossfade between Ken Burns segments (hard cuts), no mobile badge distinguishing a generated clip from an uploaded one, no Instagram video posting (F-031 itself is still Facebook-only).
 
 **Verified:** API `tsc --noEmit` clean; mobile `tsc --noEmit` clean; `prisma generate` succeeded (transient Windows file-lock on the query-engine binary from an unrelated process, cleared on retry — not a code issue). No new automated tests added for this pass (ffmpeg job has no unit-test harness in this repo's pattern — same as `extract-spin-frames.ts`).
+
+---
+
+## BUILT 2026-08-20: Phase 5+6 — Social Templates + Lookbook Generator Mobile Screens
+
+Completes the mobile UI gaps identified in `docs/marketing/IMPLEMENTATION-STATUS.md`. Both features had admin API + admin dashboard built (Phases 5+6) but no retailer-facing API routes or mobile screens. This commit adds the full retailer stack for both.
+
+### Phase 5 — AI Social Media Templates (mobile)
+
+| Layer | Files | Summary |
+|---|---|---|
+| **API** | `apps/api/src/routes/growth/growth-social-templates.ts` (new) + `growth/index.ts` | 8 retailer endpoints: list (filterable by type/occasion), stats, get, create (validates product ownership), update (caption/hashtags/name), delete, generate (triggers FLUX studio-shoot pipeline via `addStudioShootJob`, returns job_id for polling), poll generate status, use tracking (increments usage_count). Gated behind `SOCIAL_TEMPLATES` plan feature. |
+| **Mobile client** | `apps/mobile/src/lib/api/growth.ts` | 8 types (`SocialTemplate`, `SocialTemplateType`, `SocialTemplateStats`, `SocialTemplateCreatePayload`, `SocialTemplateUpdatePayload`) + 8 API methods (`socialTemplates`, `socialTemplate`, `socialTemplateStats`, `createSocialTemplate`, `updateSocialTemplate`, `deleteSocialTemplate`, `generateSocialTemplate`, `socialTemplateGenerateStatus`, `useSocialTemplate`). |
+| **Mobile UI** | `apps/mobile/app/growth/templates.tsx` (new) | Template list with image previews, filter chips by type, stats strip, create modal (name/type/occasion/background style/product ID), detail modal with generate button + caption/hashtags editor + share/copy/regenerate actions, usage tracking. |
+| **Growth Hub** | `apps/mobile/app/growth/index.tsx` | Added `Share2` import + "Social Templates" entry to `GROWTH_MODULES`. |
+
+### Phase 6 — Lookbook Generator (mobile)
+
+| Layer | Files | Summary |
+|---|---|---|
+| **API** | `apps/api/src/routes/growth/growth-lookbooks.ts` (new) + `growth/index.ts` | 9 retailer endpoints: list (filterable by status/format), stats (total/ready/views/shares), get, create (validates product ownership, auto-sets cover from first product photo), update (name/description/format/products/cover), delete, generate (marks as GENERATING — BullMQ job TBD for actual HTML/PDF rendering), share (generates share_url + increments share_count), view (public endpoint, increments view_count). Gated behind `LOOKBOOK_GENERATOR` plan feature. |
+| **Mobile client** | `apps/mobile/src/lib/api/growth.ts` | 8 types (`Lookbook`, `LookbookFormat`, `LookbookStatus`, `LookbookStats`, `LookbookCreatePayload`, `LookbookUpdatePayload`) + 8 API methods (`lookbooks`, `lookbook`, `lookbookStats`, `createLookbook`, `updateLookbook`, `deleteLookbook`, `generateLookbook`, `shareLookbook`, `viewLookbook`). |
+| **Mobile UI** | `apps/mobile/app/growth/lookbook.tsx` (new) | Lookbook cards with cover images, filter by status (Ready/Draft/Generating/Failed), stats strip, create modal (name/description/format picker/product ID input with live count), detail modal with generate button + product ID chips + share/copy link + view tracking. |
+| **Growth Hub** | `apps/mobile/app/growth/index.tsx` | Added `BookOpen` import + "Lookbooks" entry to `GROWTH_MODULES`. |
+
+### Shared fixes
+
+| File | Fix |
+|---|---|
+| `apps/mobile/app/growth/templates.tsx` | Replaced `variant="secondary"` on `GradientButton` (which doesn't accept that prop) with plain styled `AnimatedPressable` buttons. |
+| `apps/mobile/app/growth/lookbook.tsx` | Same `variant="secondary"` fix. |
+| `docs/marketing/IMPLEMENTATION-STATUS.md` | Updated templates + lookbook status from "Deferred" → "Built"; updated honest status summary table; updated orphan cleanup section. |
+
+**Verified:** API `tsc --noEmit` clean (0 new errors — 21 pre-existing in `retailers-social.ts` and `products-festival-background.ts`); mobile `tsc --noEmit` clean; `prisma validate` + `prisma generate` clean.
+
+---
+
+## BUILT 2026-08-20: Phase 4 — Festival Backgrounds Mobile Screen
+
+Completes the mobile UI gap in `docs/marketing/IMPLEMENTATION-STATUS.md` Phase 4. The admin API + dashboard were built (commit `7d39d18`) but no retailer-facing API routes or mobile screen existed.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **API** | `apps/api/src/routes/growth/growth-backgrounds.ts` (new) + `growth/index.ts` | 6 retailer endpoints: list active backgrounds (filterable by occasion/season/regional, validity-window aware), list all (including inactive), stats (total/active/by-occasion), occasions (distinct list for filter chips), get single, apply (picks FLUX studio template by occasion → `addStudioShootJob`, increments usage_count), poll apply status. Gated behind `FESTIVAL_BACKGROUNDS` plan feature. |
+| **Mobile client** | `apps/mobile/src/lib/api/growth.ts` | 2 types (`FestivalBackground`, `FestivalBackgroundStats`) + 6 API methods (`backgrounds`, `background`, `backgroundStats`, `backgroundOccasions`, `applyBackground`, `backgroundApplyStatus`). |
+| **Mobile UI** | `apps/mobile/app/growth/backgrounds.tsx` (new) | 2-column grid of background image previews, occasion filter chips (from API), stats strip, detail modal (full image + occasion/season/region tags + usage stats + apply button), apply modal (product ID input → FLUX generation → poll status → success/failure feedback). |
+| **Growth Hub** | `apps/mobile/app/growth/index.tsx` | Added "Festival Backgrounds" entry to `GROWTH_MODULES` (Sparkles icon already imported). |
+
+**Verified:** API `tsc --noEmit` clean (0 new errors); mobile `tsc --noEmit` clean.
+
+---
+
+## BUILT 2026-08-20: Phase 8 — GST Report Mobile Screen
+
+Completes the mobile UI gap in `docs/marketing/IMPLEMENTATION-STATUS.md` Phase 8. The admin API + dashboard were built (commit `0a9b8cb`) but no retailer-facing API routes or mobile screen existed.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **API** | `apps/api/src/routes/growth/gst.ts` (new) + `growth/index.ts` | 3 retailer endpoints: GST summary (total taxable/gst/sales/orders/invoiced, CGST/SGST/IGST estimates, filterable by month/year), monthly breakdown (12-month bar data with orders), transactions (paginated, filterable by month/year/invoiced status). All queries scoped to `retailer_id`. |
+| **Mobile client** | `apps/mobile/src/lib/api/growth.ts` | 4 types (`GstSummary`, `GstMonthly`, `GstTransaction`, `GstTransactions`) + 3 API methods (`gstSummary`, `gstMonthly`, `gstTransactions`). |
+| **Mobile UI** | `apps/mobile/app/growth/gst.tsx` (new) | 3-tab layout: Summary (stat cards + GST breakdown CGST/SGST/IGST + invoice status), Monthly (12-month bar chart with GST amounts), Transactions (paginated list with customer, GST, invoice status badges). Year selector + month filter chips. |
+| **Growth Hub** | `apps/mobile/app/growth/index.tsx` | Added `Receipt` import + "GST Report" entry to `GROWTH_MODULES`. |
+
+**Verified:** API `tsc --noEmit` clean (0 new errors); mobile `tsc --noEmit` clean.
+
+---
+
+## BUILT 2026-08-20: Social Publishing Admin UI (F-031)
+
+Completes the admin dashboard gap in `docs/marketing/IMPLEMENTATION-STATUS.md` for Direct Social Publishing. The retailer-facing API already existed (`retailers-social.ts`) but no admin oversight UI existed.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Admin API** | `apps/api/src/routes/admin/admin-social.ts` (new) + `admin/index.ts` + `admin.ts` | 5 endpoints: list all connected accounts (filterable by retailer/platform/status), stats (accounts by platform, posts by status), get account detail with post history, list all posts (paginated, filterable by retailer/platform/status/type), force-disconnect account. |
+| **Admin UI** | `apps/web/src/app/admin/social/page.tsx` (new) | Tabbed layout: Accounts tab (table with retailer, platform, account name, post count, status, connected date) + Posts tab (table with retailer, platform, type, caption, status badge, date, external link). Stats cards (connected accounts, total posts, failed posts, platforms). Detail modal with force-disconnect. |
+| **Sidebar** | `apps/web/src/app/admin/components/Sidebar.tsx` | Added `Megaphone` import + "Social Publishing" nav entry. |
+
+**Verified:** API `tsc --noEmit` clean (0 new errors); web `tsc --noEmit` clean.
