@@ -44,6 +44,7 @@ import {
   Percent,
   CalendarDays,
   MessageCircle,
+  Gift,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -58,6 +59,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Billing', href: '/admin/billing', icon: CreditCard },
   { label: 'Commission', href: '/admin/commission', icon: Percent },
   { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
+  { label: 'Incentives', href: '/admin/incentives', icon: Gift },
   { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
   { separator: true },
   {
