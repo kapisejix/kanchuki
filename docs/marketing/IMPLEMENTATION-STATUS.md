@@ -41,7 +41,7 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 | 1 | Smart Incentive Engine | ✅ Folded into apps/ | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 2 | Local Discovery Engine | ✅ Folded into apps/ | ✅ | ✅ | ❌ | ❌ | **Built** |
 | 3 | GMB Integration | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
-| 4 | AI Social Media Templates | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 4 | AI Social Media Templates | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 5 | Direct Social Publishing | ✅ F-031 exists | ✅ | ❌ | ❌ | ✅ | **Partial** |
 | 6 | Festival Background Library | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 7 | Partner Network Manager | ✅ API route exists | ✅ | ✅ | ✅ | ✅ | **Built** |
@@ -173,19 +173,24 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 5 — AI Social Media Templates
-> **Source:** `services/social-template/` (orphan, placeholder — build clean)
+### Phase 5 — AI Social Media Templates ✅ Built
+> **Source:** Extracted from `services/social-template/` (orphan)
+> **Commit:** `7ea6688`
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | `SocialTemplate` model (product_id, template_type, image_url, caption, overlay_festival, created_at) | `packages/db/prisma/schema.prisma` |
-| **Backend** | Template generation (uses existing studio-shoot FLUX) + caption generation | `apps/api/src/routes/growth/growth-templates.ts` |
-| Backend | Register in growth routes | `apps/api/src/routes/growth/index.ts` |
-| **Mobile UI** | Generate template from product → preview → share to WhatsApp/Instagram | `apps/mobile/app/growth/templates.tsx` |
+| Layer | What | File | Status |
+|-------|------|------|--------|
+| Schema | `SocialTemplate` model + `SocialTemplateType` enum | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Schema | `SOCIAL_TEMPLATES` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Migration | `069_social_media_templates` | `packages/db/prisma/migrations/069_social_media_templates/` | ✅ Created |
+| **Backend** | Admin CRUD (list, stats, get, update, delete, toggle) | `apps/api/src/routes/admin/admin-social-templates.ts` | ✅ Built |
+| Backend | Register in admin routes + barrel | `apps/api/src/routes/admin/index.ts` + `admin.ts` | ✅ Built |
+| **Admin UI** | Grid view, type/occasion filters, stats, caption preview, hashtags, detail modal | `apps/web/src/app/admin/social-templates/page.tsx` | ✅ Built |
+| Sidebar | Share2 icon entry | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
+| **Mobile UI** | Generate template from product → preview → share | `apps/mobile/app/growth/templates.tsx` | 🕐 Deferred |
 
-**Depends on:** F-032 AI Studio Shoots (FLUX Kontext) being live.
-
+**Depends on:** F-032 AI Studio Shoots (FLUX Kontext) — already live.
 **Acceptance:** Retailer selects product → AI generates festive overlay + caption → share to social.
+**Note:** Admin management layer complete. Mobile UI + generation flow deferred — needs FLUX pipeline integration on mobile.
 
 ---
 
@@ -276,7 +281,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Partner Network | `retailers/retailers-partners/index.ts` | ✅ Built (Phase 0) |
 | Local Discovery | `public/near-me.ts` | ✅ Built (Phase 3) |
 | Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | ✅ Built (Phase 4) |
-| Social Templates | `growth/growth-templates.ts` | 🔴 To build (Phase 5) |
+| Social Templates | `admin/admin-social-templates.ts` | ✅ Built (Phase 5) |
 | Lookbook Generator | `admin/admin-lookbooks.ts` | ✅ Built (Phase 6) |
 | Aggregator Sync | `retailers/retailers-aggregators.ts` | 🔴 To build (Phase 7) |
 | GST Reports | `admin/admin-gst.ts` | 🔴 To build (Phase 8) |
@@ -293,6 +298,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Discovery Map | `discovery/` | ✅ Built (Phase 3) |
 | Festival Backgrounds | `festival-backgrounds/` | ✅ Built (Phase 4) |
 | Lookbooks | `lookbooks/` | ✅ Built (Phase 6) |
+| Social Templates | `social-templates/` | ✅ Built (Phase 5) |
 | Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
 | GST Reports | `reports/gst/` | 🔴 To build (Phase 8) |
 
