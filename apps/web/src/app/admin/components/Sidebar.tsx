@@ -46,6 +46,7 @@ import {
   MessageCircle,
   Gift,
   Handshake,
+  MapPin,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -62,6 +63,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
   { label: 'Incentives', href: '/admin/incentives', icon: Gift },
   { label: 'Partners', href: '/admin/partners', icon: Handshake },
+  { label: 'Discovery', href: '/admin/discovery', icon: MapPin },
   { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
   { separator: true },
   {

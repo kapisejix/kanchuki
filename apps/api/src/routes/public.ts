@@ -5,6 +5,7 @@ import {
   publicCatalogPaymentRoutes,
   publicCollectionsRoutes,
   publicMiscRoutes,
+  publicNearMeRoutes,
   publicProductsRoutes,
   publicRetailersRoutes,
   publicStoresRoutes,
@@ -21,6 +22,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicRetailersRoutes);
   // public-catalog-payment — auto-split module
   await server.register(publicCatalogPaymentRoutes);
+  // public-near-me — geo-search for nearby retailers
+  await server.register(publicNearMeRoutes);
   // public-stores — store directory
   await server.register(publicStoresRoutes);
 };
