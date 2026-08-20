@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { PLAN_LIMITS, COLORS } from '@kanchuki/shared'
+import { pollWithBackoff } from '../../src/lib/polling'
 import {
   View,
   Text,
@@ -60,6 +61,14 @@ export default function InStoreTryOnScreen() {
 
   const cameraRef = useRef<CameraView>(null)
   const queryClient = useQueryClient()
+  const stopPollingRef = useRef<(() => void) | null>(null)
+
+  // Clean up polling on unmount
+  useEffect(() => {
+    return () => {
+      stopPollingRef.current?.()
+    }
+  }, [])
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
     queryKey: ['products', 'list'],
@@ -223,28 +232,30 @@ export default function InStoreTryOnScreen() {
       setTryOnJobId(jobId)
       setStep('processing')
 
-      // Poll for result
-      const pollInterval = setInterval(async () => {
-        try {
+      // Poll for result with exponential backoff (2s → 4s → 8s → 16s max)
+      const stopPolling = pollWithBackoff({
+        initialMs: 2000,
+        maxMs: 16_000,
+        maxAttempts: 60,
+        onPoll: async () => {
           const jobResult = await tryOnApi.getJob(jobId)
           const job = jobResult.data
 
           if (job.status === 'COMPLETED') {
-            clearInterval(pollInterval)
             setResultUrl(job.result_url)
             setRevocationToken(job.revocation_token ?? null)
             setStep('result')
+            return true
           } else if (job.status === 'FAILED') {
-            clearInterval(pollInterval)
             setError(job.error_message ?? 'Try-on failed')
             setStep('preview')
+            return true
           }
-        } catch {
-          clearInterval(pollInterval)
-          setError('Failed to check try-on status')
-          setStep('preview')
-        }
-      }, 2000)
+          return false
+        },
+      })
+      // Store cleanup ref so it can be cancelled on unmount
+      stopPollingRef.current = stopPolling
     } catch (err) {
       logError(err)
       setError('Try-on failed')

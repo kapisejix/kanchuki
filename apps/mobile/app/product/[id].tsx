@@ -37,6 +37,7 @@ import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { pollWithBackoff } from '../../src/lib/polling'
 import { GradientButton } from '../../src/components/GradientButton'
 import { RelatedProductsSection } from '../../src/components/product-detail/RelatedProducts'
 import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
@@ -760,12 +761,14 @@ export default function ProductDetailScreen() {
     }
   }
 
-  // Poll the studio-shoot job every 3s until ready/failed. Mirrors the
-  // spin/extraction poll cadence elsewhere in the app.
+  // Poll the studio-shoot job with exponential backoff (2s → 4s → 8s → 16s max).
   useEffect(() => {
     if (!product || !studioJob || studioStatus !== 'processing') return
-    const timer = setInterval(async () => {
-      try {
+    const stopPolling = pollWithBackoff({
+      initialMs: 2000,
+      maxMs: 16_000,
+      maxAttempts: 60,
+      onPoll: async () => {
         const res = await productApi.getStudioShootStatus(product.id, studioJob.photoId, studioJob.jobId)
         const s = res.data
         if (s.status === 'ready' && s.photo_id && s.url) {
@@ -773,15 +776,16 @@ export default function ProductDetailScreen() {
           setStudioResult({ photoId: s.photo_id, url: s.url })
           // New photo row — refresh the product so it appears in the carousel.
           void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+          return true
         } else if (s.status === 'failed') {
           setStudioStatus('failed')
           setStudioError(s.error ?? 'The studio shoot failed. Please try again.')
+          return true
         }
-      } catch {
-        // Transient poll failure — keep polling, next tick decides.
-      }
-    }, 3_000)
-    return () => clearInterval(timer)
+        return false
+      },
+    })
+    return stopPolling
   }, [product, studioJob, studioStatus, queryClient])
 
   // Many vendor "set" shots (kameez+dupatta draped on a mannequin, with the
