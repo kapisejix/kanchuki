@@ -20,21 +20,11 @@
 
 ## 🔴 P0 — Critical / Blocker
 
-### 1. Fix Partner Network Manager Schema (BLOCKS BUILD)
+### 1. ~~Fix Partner Network Manager Schema~~ ✅ DONE
+- **Status:** Schema validates clean, enums are top-level declarations, migration 066 exists.
 
-- **What:** `schema.prisma` has two inline `Enum {}` blocks (`Partner.commission_type` and `PartnerReferral.status`) — invalid Prisma syntax. `npx prisma validate` fails, blocking `prisma generate` for the **entire monorepo**.
-- **Source:** `docs/PRO-REQUIREMENTS.md §29.3`
-- **Fix:** Replace inline enums with top-level `enum CommissionType { FIXED_AMOUNT PERCENTAGE_OF_SALE }` and `enum PartnerReferralStatus { PENDING PAID CANCELLED }`. Fix stray comment syntax on `PartnerReferral.order_id`.
-- **Verify:** `cd packages/db && npx prisma validate` passes clean.
-- **Estimate:** 30 minutes
-
-### 2. Partner Network Manager — Migrations + Mobile UI
-
-- **What:** After schema fix: write 3 migrations (enum add → tables → plan-feature rows per PostgreSQL 55P04 split pattern), then build `apps/mobile/app/growth/partners.tsx` (list/add/edit partner, referrals, mark-paid, events) + add API client functions to `growth.ts`.
-- **Source:** `docs/PRO-REQUIREMENTS.md §29.4`
-- **Route already exists:** `apps/api/src/routes/retailers/retailers-partners/index.ts` — full CRUD, already registered.
-- **Blocked on:** Item 1 (schema fix)
-- **Estimate:** ~1 day
+### 2. ~~Partner Network Manager — Migrations + Mobile UI~~ ✅ DONE
+- **Status:** Migration 066 applied, mobile screen complete (358 lines: list + create modal + partner cards). API routes already registered.
 
 ---
 
@@ -290,7 +280,7 @@
 
 | Priority             | Count  | Est. Total Effort     |
 | -------------------- | ------ | --------------------- |
-| 🔴 P0 (Critical)     | 2      | ~1.5 days             |
+| 🔴 P0 (Critical)     | 0 ✅   | Done                  |
 | 🟠 P1 (High)         | 4      | ~1.5 weeks            |
 | 🟡 P2 (Medium)       | 10     | ~1 week               |
 | 🔵 P3 (Blocked/Low)  | 9      | Varies (most blocked) |
