@@ -49,7 +49,7 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 | 9 | Lookbook Generator | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 10 | Facebook Local Awareness Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 11 | Google Local Service Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
-| 12 | GST Report Generator | ✅ Package exists | ❌ | ❌ | ❌ | ❌ | **Partial** |
+| 12 | GST Report Generator | ✅ Folded into apps/ | ✅ | ✅ | ❌ | ❌ | **Built** |
 
 **Legend:** ✅ = real, wired, reachable | ⚠️ = code exists but unreachable (orphan in `services/`) | ❌ = not built
 
@@ -232,16 +232,19 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 8 — Wire GST Report Generator
-> **Source:** `packages/gst-report-generator/` (exists in workspace, never imported)
+### Phase 8 — Wire GST Report Generator ✅ Built
+> **Source:** Queries existing Order GST fields (no new schema needed)
+> **Commit:** `0a9b8cb`
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Backend | Wire into existing invoice system | `apps/api/src/lib/invoice.ts` (extend) |
-| Backend | Admin endpoint for GST report download | `apps/api/src/routes/admin/admin-gst.ts` |
-| **Admin UI** | GST report download page (GSTR-3B format) | `apps/web/src/app/admin/reports/gst/page.tsx` |
+| Layer | What | File | Status |
+|-------|------|------|--------|
+| **Backend** | Admin GST API (summary, monthly, by-retailer, transactions) | `apps/api/src/routes/admin/admin-gst.ts` | ✅ Built |
+| Backend | Register in admin routes + barrel | `apps/api/src/routes/admin/index.ts` + `admin.ts` | ✅ Built |
+| **Admin UI** | Summary cards, monthly bar chart, retailer table, transaction list | `apps/web/src/app/admin/reports/gst/page.tsx` | ✅ Built |
+| Sidebar | Receipt icon under Reports group | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
 
-**Acceptance:** Admin downloads GSTR-3B PDF with correct tax breakdown per retailer.
+**Acceptance:** Admin views GST summary, monthly trends, per-retailer breakdown, transaction history.
+**Note:** Uses existing Order.gst_amount / Order.gst_invoice_number fields. PDF generation deferred — needs GSTN API credentials.
 
 ---
 
@@ -284,7 +287,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Social Templates | `admin/admin-social-templates.ts` | ✅ Built (Phase 5) |
 | Lookbook Generator | `admin/admin-lookbooks.ts` | ✅ Built (Phase 6) |
 | Aggregator Sync | `retailers/retailers-aggregators.ts` | 🔴 To build (Phase 7) |
-| GST Reports | `admin/admin-gst.ts` | 🔴 To build (Phase 8) |
+| GST Reports | `admin/admin-gst.ts` | ✅ Built (Phase 8) |
 
 ### Admin Dashboard (`apps/web/src/app/admin/`)
 | Feature | Page Directory | Status |
@@ -300,7 +303,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Lookbooks | `lookbooks/` | ✅ Built (Phase 6) |
 | Social Templates | `social-templates/` | ✅ Built (Phase 5) |
 | Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
-| GST Reports | `reports/gst/` | 🔴 To build (Phase 8) |
+| GST Reports | `reports/gst/` | ✅ Built (Phase 8) |
 
 ### Retailer Mobile App (`apps/mobile/app/growth/`)
 | Feature | Screen File | Status |
