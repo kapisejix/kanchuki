@@ -63,6 +63,7 @@
 4. **Facebook Ads Service** (`services/facebook-ads/`) - Enhanced service with realistic Meta API integration (including API client class, webhook endpoint with signature verification placeholder, campaign management endpoints, ad set/ad creation endpoints, and insights endpoints); follows Meta Marketing API patterns
 5. **Google Local Service Ads Service** (`services/google-local-service-ads/`) - Enhanced service with realistic Google Ads API integration (including API client class, webhook endpoint with signature verification placeholder, campaign management endpoints, ad group/ad creation endpoints, lead management endpoints, and insights endpoints); follows Google Ads API patterns
 6. **Analytics Service** (`services/analytics-service/`) - Service for feature performance metrics, A/B testing capabilities, and basic predictive analytics; includes endpoints for recording/retrieving metrics, managing A/B tests, and generating simple predictions
+7. **Auth Service** (`services/auth-service/`) - Authentication service with API key management, OAuth client management, JWT-based authentication, and role-based access control patterns; includes endpoints for API key generation/validation, OAuth client registration, and token endpoints
 
 ### Pre-existing Services Leveraged:
 1. **Smart Incentive Engine** (`services/incentive-engine/`) - Visitor incentive management including first-time visitor discounts, birthday/anniversary triggers, and loyalty tier progression
@@ -80,10 +81,11 @@
 - **Prisma ORM**: Database interactions across services (used in lookbook-generator, gst-report-generator, analytics-service)
 - **RESTful API Clients**: Implemented for external platform integrations (Meesho, Instamojo, Glroad, Craftsvilla, Facebook/Meta, Google Ads) with realistic API patterns
 - **Webhook Pattern Implementation**: Created webhook endpoints with signature verification placeholders for external platform callbacks
-- **API Authentication Patterns**: Implemented API key/token based authentication patterns for marketplace and ad platform integrations
+- **API Authentication Patterns**: Implemented API key/token based authentication patterns for marketplace and ad platform integrations, plus JWT-based authentication for internal services
 - **Error Handling and Logging**: Comprehensive error handling with proper HTTP status codes and logging
 - **Modular Service Design**: Separated concerns with dedicated API client classes and service endpoints
 - **PDF Generation with Formatting**: Enhanced PDFKit usage for structured, government-compliant report layouts (GSTR-3B format)
+- **Authentication & Authorization**: Implemented API key management (generation, validation, revocation), OAuth client management, and simplified OAuth token endpoints
 
 ---
 
@@ -116,10 +118,9 @@ While all features have been implemented as minimum viable versions (MVPs), the 
    - Connect Facebook Ads service to actual Meta Marketing API ✅ (Started - realistic Meta API integration implemented)
    - Connect Google Local Service Ads to actual Google Ads API ✅ (Started - realistic Google Ads API integration implemented)
    - Implement real GST report generation with government-compliant formats ✅ (Started - enhanced GST report with GSTR-3B format implemented)
-
 2. **Add proper authentication & authorization**:
-   - Implement OAuth flows for external platforms
-   - Add API key management and secure storage
+   - Implement OAuth flows for external platforms ✅ (Started - auth service with API key management and OAuth patterns implemented)
+   - Add API key management and secure storage ✅ (Started - auth service with API key management implemented)
    - Implement role-based access control for dashboard features
 
 3. **Enhance error handling and logging**:
