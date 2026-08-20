@@ -659,6 +659,7 @@ describe('POST /retailers/me/banner-upload-url', () => {
       name: 'New Kurti',
       price_min: 99900,
       photos: [{ id: 'ph_1', url: 'https://cdn.example.com/kurti.jpg' }],
+      videos: [],
     });
     prismaMock.retailer.findUnique = vi.fn().mockResolvedValue({ public_slug: 'my-shop-ab12' });
 
@@ -727,6 +728,7 @@ describe('POST /retailers/me/banner-upload-url', () => {
       name: 'New Kurti',
       price_min: 99900,
       photos: [{ id: 'ph_1', url: 'https://cdn.example.com/kurti.jpg' }],
+      videos: [],
     });
 
     const app = await buildApp();
