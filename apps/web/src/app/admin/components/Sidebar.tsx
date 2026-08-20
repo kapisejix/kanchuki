@@ -49,6 +49,7 @@ import {
   MapPin,
   BookOpen,
   Sparkles,
+  Share2,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -68,6 +69,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Partners', href: '/admin/partners', icon: Handshake },
   { label: 'Discovery', href: '/admin/discovery', icon: MapPin },
   { label: 'Lookbooks', href: '/admin/lookbooks', icon: BookOpen },
+  { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
   { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
   { separator: true },
   {

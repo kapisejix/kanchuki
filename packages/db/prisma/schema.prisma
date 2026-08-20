@@ -148,6 +148,7 @@ enum PlanFeatureKey {
   INCENTIVE_ENGINE
   FESTIVAL_BACKGROUNDS
   LOOKBOOK_GENERATOR
+  SOCIAL_TEMPLATES
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -330,6 +331,7 @@ model Retailer {
   partner_events        PartnerEvent[]
   festival_backgrounds  FestivalBackground[]
   lookbooks             Lookbook[]
+  social_templates      SocialTemplate[]
 
   @@index([phone])
   @@index([city])
@@ -2228,4 +2230,53 @@ enum LookbookStatus {
   GENERATING
   READY
   FAILED
+}
+
+// ─── AI SOCIAL MEDIA TEMPLATES ───────────────────────────────────
+// Admin-managed template presets for social media image generation.
+// Retailers generate social posts from product photos using these templates.
+model SocialTemplate {
+  id          String   @id @default(cuid())
+  retailer_id String
+  retailer    Retailer @relation(fields: [retailer_id], references: [id])
+
+  name        String   // e.g. "Diwali Instagram Post"
+  description String?
+  template_type SocialTemplateType @default(INSTAGRAM_POST)
+
+  // Template configuration
+  occasion    String?  // e.g. "Diwali", "Wedding", "Eid"
+  platform    String?  // e.g. "instagram", "whatsapp", "facebook"
+  overlay_festival String? // Festival overlay style
+  background_style String? // e.g. "gold_festive", "white_studio", "wedding_elegant"
+
+  // Generation metadata
+  image_url   String?  // Generated template image URL
+  image_r2_key String?
+  caption     String?  // AI-generated caption text
+  hashtags    String[] // Generated hashtags
+
+  // Usage stats
+  usage_count Int      @default(0)
+  product_ids String[] // Products used with this template
+
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([retailer_id])
+  @@index([template_type])
+  @@index([occasion])
+  @@map("social_templates")
+}
+
+enum SocialTemplateType {
+  INSTAGRAM_POST
+  INSTAGRAM_REEL
+  INSTAGRAM_STORY
+  WHATSAPP_STATUS
+  WHATSAPP_CATALOG
+  FACEBOOK_POST
+  FACEBOOK_STORY
+  PDF_FLYER
 }
