@@ -221,7 +221,8 @@ export const productApi = {
     ),
 
   /** Poll a studio-shoot job. 'processing' while the 10–60s generation runs;
-   * 'ready' returns the new photo id + url; 'failed' returns a safe error. */
+   * 'ready' returns the new photo id + url; 'failed' returns a safe error.
+   * Progress (0–100) and ETA (ms) are included while processing. */
   getStudioShootStatus: (productId: string, photoId: string, jobId: string) =>
     request<{
       data: {
@@ -229,6 +230,8 @@ export const productApi = {
         photo_id?: string;
         url?: string;
         error?: string;
+        progress?: number;
+        etaMs?: number;
       };
     }>(`/v1/products/${productId}/photos/${photoId}/studio-shoot/status?job_id=${jobId}`, {
       getCacheTtlMs: 0,

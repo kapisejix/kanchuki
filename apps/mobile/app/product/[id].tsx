@@ -132,6 +132,8 @@ export default function ProductDetailScreen() {
   const [studioStatus, setStudioStatus] = useState<'processing' | 'ready' | 'failed' | null>(null)
   const [studioError, setStudioError] = useState<string | null>(null)
   const [studioResult, setStudioResult] = useState<{ photoId: string; url: string } | null>(null)
+  const [studioProgress, setStudioProgress] = useState<number>(0)
+  const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
 
   // Editable AI fields
   const [editedName, setEditedName] = useState('')
@@ -774,6 +776,8 @@ export default function ProductDetailScreen() {
         if (s.status === 'ready' && s.photo_id && s.url) {
           setStudioStatus('ready')
           setStudioResult({ photoId: s.photo_id, url: s.url })
+          setStudioProgress(100)
+          setStudioEtaMs(0)
           // New photo row — refresh the product so it appears in the carousel.
           void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
           return true
@@ -782,6 +786,9 @@ export default function ProductDetailScreen() {
           setStudioError(s.error ?? 'The studio shoot failed. Please try again.')
           return true
         }
+        // Update progress/eta from server
+        if (s.progress != null) setStudioProgress(s.progress)
+        if (s.etaMs != null) setStudioEtaMs(s.etaMs)
         return false
       },
     })
@@ -1318,9 +1325,28 @@ export default function ProductDetailScreen() {
               <View className="flex-row items-center gap-2">
                 <ActivityIndicator size="small" color={primaryColor} />
                 <Text className="text-xs text-sand-600 flex-1">
-                  Creating your studio shot... this usually takes under a minute.
+                  {studioProgress > 0
+                    ? `Generating... ${studioProgress}%`
+                    : 'Creating your studio shot...'}
                 </Text>
+                {studioEtaMs > 0 && (
+                  <Text className="text-[10px] text-sand-400">
+                    ~{Math.ceil(studioEtaMs / 1000)}s left
+                  </Text>
+                )}
               </View>
+              {/* Progress bar */}
+              {studioProgress > 0 && (
+                <View className="mt-2 h-1.5 bg-sand-100 rounded-full overflow-hidden">
+                  <View
+                    className="h-full rounded-full"
+                    style={{
+                      width: `${Math.min(studioProgress, 100)}%`,
+                      backgroundColor: primaryColor,
+                    }}
+                  />
+                </View>
+              )}
             </View>
           )}
           {studioStatus === 'failed' && (

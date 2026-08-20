@@ -31,6 +31,7 @@ import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS, type StudioTemplateId } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
+import { recordBflStudioUsage } from '../lib/ai-usage.js';
 import {
   downloadCompressAndUpload,
   generateStudioImage,
@@ -160,6 +161,9 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
        progress: 100,
        etaMs: 0,
      });
+
+     // 6. Record BFL credit consumption for the Admin → AI Usage dashboard.
+     recordBflStudioUsage(retailer_id, template);
    } catch (err) {
      const message = err instanceof Error ? err.message : String(err);
      console.error(`[studio-shoot] job ${job_id} failed:`, err);

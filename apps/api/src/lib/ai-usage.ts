@@ -16,6 +16,31 @@ function realProviderId(id: string): string | null {
   return id.startsWith('legacy-') ? null : id;
 }
 
+// F-032: record a BFL FLUX Kontext studio-shoot generation as one credit
+// per retailer. Admin → AI Usage dashboard shows these under the BFL provider
+// type so retailers can see their studio-shoot consumption at a glance.
+//
+// Best-effort: a DB write failure must not fail the completed generation.
+export function recordBflStudioUsage(
+  retailerId: string,
+  template: string,
+): void {
+  prisma.aiUsageLog
+    .create({
+      data: {
+        retailer_id: retailerId,
+        provider_id: null, // no AiProviderConfig row for BFL (external API)
+        provider_type: 'BFL',
+        model_name: 'flux-kontext-pro',
+        resource_type: `STUDIO_SHOOT_${template.toUpperCase()}`,
+        credits_used: 1,
+      },
+    })
+    .catch((err) => {
+      console.error(`[ai-usage] failed to log BFL studio shoot for ${retailerId}:`, err);
+    });
+}
+
 export function recordAiUsage(retailerId: string) {
   return (info: ProviderUsedInfo): void => {
     // Quota consumption is gated on the AI_TAGGING_CALL resource only — that's

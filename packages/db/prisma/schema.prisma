@@ -1610,6 +1610,7 @@ enum AiProviderType {
   ANTHROPIC
   OPENAI_COMPAT
   GEMINI
+  BFL // Black Forest Labs — FLUX Kontext studio shoots (F-032)
 }
 
 model AiProviderConfig {

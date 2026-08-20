@@ -85,7 +85,7 @@ export default function PhotoCleanupTestPage() {
   // Uploaded model photo URL — reused across runs so the model photo is only
   // uploaded once per session.
   const modelUrlRef = useRef<string | null>(null);
-  const tryOnPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const tryOnPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const productRef = useRef<HTMLInputElement>(null);
   const sampleRef = useRef<HTMLInputElement>(null);
@@ -119,9 +119,9 @@ export default function PhotoCleanupTestPage() {
     setTryOnBusy(true);
     setError('');
     // Double-click guard: a second click before the re-render lands would pass
-    // the tryOnBusy check and leak the previous poll interval. Clear any
-    // existing interval up front so only one poll chain can exist at a time.
-    if (tryOnPollRef.current) clearInterval(tryOnPollRef.current);
+    // the tryOnBusy check and leak the previous poll timer. Clear any
+    // existing timer up front so only one poll chain can exist at a time.
+    if (tryOnPollRef.current) clearTimeout(tryOnPollRef.current);
     tryOnPollRef.current = null;
     const jobId = crypto.randomUUID();
     try {
@@ -143,20 +143,20 @@ export default function PhotoCleanupTestPage() {
       if (!res.ok) throw new Error(json?.error?.message ?? 'On-model generation failed to enqueue');
 
       // Poll the results feed until a row with this job_id lands (success or
-      // failure). V-Tone takes ~30-60s on CPU, so poll up to 3 min.
+      // failure). V-Tone takes ~30-60s on CPU — use exponential backoff
+      // (2s → 4s → 8s → 16s max) to reduce unnecessary load.
       let attempts = 0;
       await new Promise<void>((resolve) => {
         const poll = async () => {
           try {
             attempts += 1; // count only successful feed fetches — a flaky
-            // network must not burn the whole 3-min window without polling.
+            // network must not burn the whole window without polling.
             const feed = await fetch(`${API_URL}/v1/admin/photo-cleanup/tryon-results`, adminGetOptions());
             const feedJson = await feed.json();
             const rows: TryOnResult[] = feedJson?.data ?? [];
             const mine = rows.find((r) => r.job_id === jobId);
             if (mine) {
               setTryOnResults((prev) => [mine, ...prev.filter((r) => r.job_id !== jobId)]);
-              if (tryOnPollRef.current) clearInterval(tryOnPollRef.current);
               tryOnPollRef.current = null;
               resolve();
               return;
@@ -168,16 +168,21 @@ export default function PhotoCleanupTestPage() {
                 { id: jobId, job_id: jobId, status: 'failed', result_url: null, error: 'Timed out waiting for the result — it may still be running or the V-Tone service may be cold-starting. Check the API logs.', model_url: null, product_url: garmentUrl, category: tryOnCategory, duration_ms: null, ran_at: new Date().toISOString() },
                 ...prev,
               ]);
-              if (tryOnPollRef.current) clearInterval(tryOnPollRef.current);
               tryOnPollRef.current = null;
               resolve();
+              return;
             }
+            // Exponential backoff: 2s, 4s, 8s, 16s (capped)
+            const delay = Math.min(2000 * Math.pow(2, attempts - 1), 16_000);
+            tryOnPollRef.current = setTimeout(poll, delay);
           } catch {
-            // transient network hiccup — keep polling
+            // Transient network hiccup — keep polling with backoff
+            const delay = Math.min(2000 * Math.pow(2, attempts - 1), 16_000);
+            tryOnPollRef.current = setTimeout(poll, delay);
           }
         };
-        poll();
-        tryOnPollRef.current = setInterval(poll, 5000);
+        // First poll fires immediately, then backs off
+        void poll();
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'On-model generation failed');
@@ -186,10 +191,10 @@ export default function PhotoCleanupTestPage() {
     }
   };
 
-  // Clear the poll interval on unmount
+  // Clear the poll timer on unmount
   useEffect(
-    () => () => {
-      if (tryOnPollRef.current) clearInterval(tryOnPollRef.current);
+    () =>    () => {
+      if (tryOnPollRef.current) clearTimeout(tryOnPollRef.current);
     },
     [],
   );
