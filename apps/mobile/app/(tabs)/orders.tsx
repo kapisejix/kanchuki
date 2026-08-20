@@ -193,13 +193,15 @@ export default function OrdersScreen() {
           onRefresh={() => void refetch()}
         />
       ) : orders.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-4 pt-20">
-          <PackageCheck size={48} color={colors.sand[300]} />
-          <Text className="text-sand-400 text-base mt-3 font-medium">
+        <View className="flex-1 items-center justify-center px-8 pt-20">
+          <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
+            <PackageCheck size={28} color={colors.sand[400]} />
+          </View>
+          <Text className="text-sand-700 text-base font-semibold text-center">
             No orders {filter ? `with status "${filter}"` : 'yet'}
           </Text>
-          <Text className="text-sand-400 text-xs mt-1 text-center">
-            Orders from your customers will appear here
+          <Text className="text-sand-400 text-xs mt-1 text-center leading-5">
+            Share a collection link on WhatsApp —{'\n'}customers can order directly from their phone.
           </Text>
         </View>
       ) : (

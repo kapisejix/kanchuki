@@ -310,14 +310,17 @@ export default function CollectionsScreen() {
 
   const listEmpty = useCallback(
     () => (
-      <View className="items-center py-16">
-        <Link2 size={40} color={colors.sand[300]} />
-        <Text className="text-sand-400 text-sm mt-4 text-center">
-          No collections yet.{'\n'}Create one to share products with customers.
+      <View className="items-center py-16 px-8">
+        <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
+          <Link2 size={28} color={colors.sand[400]} />
+        </View>
+        <Text className="text-sand-700 text-base font-semibold text-center">No collections yet</Text>
+        <Text className="text-sand-400 text-xs text-center mt-1 leading-5">
+          Create a collection and share it on WhatsApp{'\n'}so customers can browse and enquire.
         </Text>
         <AnimatedPressable
           onPress={() => router.push('/collection/new')}
-          className="mt-4 bg-ink-600 px-5 py-2.5 rounded-xl"
+          className="mt-4 bg-ink-600 px-6 py-3 rounded-xl"
         >
           <Text className="text-white text-sm font-semibold">Create Collection</Text>
         </AnimatedPressable>

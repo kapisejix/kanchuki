@@ -3,7 +3,7 @@ import { formatPrice, COLORS } from '@kanchuki/shared'
 import { View, Text, FlatList, TextInput } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Plus, Search, ChevronRight, MapPin } from 'lucide-react-native'
+import { Plus, Search, ChevronRight, MapPin, Users } from 'lucide-react-native'
 import { customerApi } from '../../src/lib/api'
 import { CustomerListSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
@@ -119,19 +119,29 @@ export default function CustomersScreen() {
 
   const listEmpty = useCallback(
     () => (
-      <View className="items-center py-16">
-        <Text className="text-sand-400 text-sm">
-          {search ? 'No customers found' : 'No customers yet'}
-        </Text>
-        <AnimatedPressable
-          onPress={() => router.push('/customer/add')}
-          className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
-        >
-          <Text className="text-white text-sm font-semibold">Add First Customer</Text>
-        </AnimatedPressable>
+      <View className="items-center py-16 px-8">
+        {search ? (
+          <Text className="text-sand-400 text-sm">No customers found</Text>
+        ) : (
+          <>
+            <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
+              <Users size={28} color={colors.sand[400]} />
+            </View>
+            <Text className="text-sand-700 text-base font-semibold text-center">No customers yet</Text>
+            <Text className="text-sand-400 text-xs text-center mt-1 leading-5">
+              Scan a QR code or add customers manually{'\n'}to start building your CRM.
+            </Text>
+            <AnimatedPressable
+              onPress={() => router.push('/customer/add')}
+              className="mt-4 bg-ink-600 px-6 py-3 rounded-xl"
+            >
+              <Text className="text-white text-sm font-semibold">Add First Customer</Text>
+            </AnimatedPressable>
+          </>
+        )}
       </View>
     ),
-    [search],
+    [search, colors],
   )
 
   return (

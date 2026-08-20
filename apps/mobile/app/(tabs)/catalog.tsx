@@ -12,7 +12,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, MapPin, SlidersHorizontal, X, Trash2, ScanLine } from 'lucide-react-native'
+import { Plus, MapPin, SlidersHorizontal, X, Trash2, ScanLine, Camera } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
@@ -325,22 +325,32 @@ export default function CatalogScreen() {
 
   const listEmpty = useCallback(
     () => (
-      <View className="items-center py-16">
-        <Text className="text-sand-400 text-sm">
-          {activeFilterCount > 0 ? 'No products match the filter' : 'No products yet'}
-        </Text>
-        {activeFilterCount > 0 && (
-          <AnimatedPressable onPress={clearFilters} className="mt-2">
-            <Text className="text-ink-600 text-xs font-medium underline">Clear filters</Text>
-          </AnimatedPressable>
-        )}
-        {activeFilterCount === 0 && (
-          <AnimatedPressable
-            onPress={() => router.push('/product/add')}
-            className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl"
-          >
-            <Text className="text-white text-sm font-semibold">Add First Product</Text>
-          </AnimatedPressable>
+      <View className="items-center py-16 px-8">
+        {activeFilterCount > 0 ? (
+          <>
+            <Text className="text-sand-400 text-sm">
+              No products match the filter
+            </Text>
+            <AnimatedPressable onPress={clearFilters} className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl">
+              <Text className="text-white text-sm font-semibold">Clear Filters</Text>
+            </AnimatedPressable>
+          </>
+        ) : (
+          <>
+            <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
+              <Camera size={28} color={colors.sand[400]} />
+            </View>
+            <Text className="text-sand-700 text-base font-semibold text-center">No products yet</Text>
+            <Text className="text-sand-400 text-xs text-center mt-1 leading-5">
+              Take a photo of any product — AI tags it{'\n'}with category, color, and fabric in seconds.
+            </Text>
+            <AnimatedPressable
+              onPress={() => router.push('/product/add')}
+              className="mt-4 bg-ink-600 px-6 py-3 rounded-xl"
+            >
+              <Text className="text-white text-sm font-semibold">Add First Product</Text>
+            </AnimatedPressable>
+          </>
         )}
       </View>
     ),
