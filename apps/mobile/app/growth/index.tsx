@@ -6,6 +6,7 @@ import {
   ChevronRight,
   DoorOpen,
   Languages,
+  Link2,
   Megaphone,
   PackageSearch,
   Percent,
@@ -40,6 +41,7 @@ const GROWTH_MODULES = [
   { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders', href: '/growth/inventory' as const },
   { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
   { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
+  { icon: Link2, label: 'Marketplace Sync', hint: 'Meesho, Instamojo & more', href: '/growth/aggregators' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {

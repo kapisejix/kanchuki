@@ -149,6 +149,7 @@ enum PlanFeatureKey {
   FESTIVAL_BACKGROUNDS
   LOOKBOOK_GENERATOR
   SOCIAL_TEMPLATES
+  CHANNEL_SYNC
 }
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
@@ -332,6 +333,7 @@ model Retailer {
   festival_backgrounds  FestivalBackground[]
   lookbooks             Lookbook[]
   social_templates      SocialTemplate[]
+  channel_syncs         ChannelSync[]
 
   @@index([phone])
   @@index([city])
@@ -2279,4 +2281,61 @@ enum SocialTemplateType {
   FACEBOOK_POST
   FACEBOOK_STORY
   PDF_FLYER
+}
+
+// ─── AGGREGATOR / MARKETPLACE SYNC ───────────────────────────────
+// Track retailer connections to external marketplaces (Meesho, Instamojo, etc.)
+// and sync status for product listings, inventory, and orders.
+model ChannelSync {
+  id          String   @id @default(cuid())
+  retailer_id String
+  retailer    Retailer @relation(fields: [retailer_id], references: [id])
+
+  channel     ChannelType
+  status      ChannelSyncStatus @default(DISCONNECTED)
+
+  // API credentials (encrypted at app layer)
+  api_key_encrypted   String?
+  api_secret_encrypted String?
+  auth_token_encrypted String?
+  webhook_secret       String?
+
+  // Sync metadata
+  last_synced_at  DateTime?
+  last_sync_error String?
+  products_synced Int      @default(0)
+  orders_synced   Int      @default(0)
+
+  // Channel-specific config
+  channel_shop_id  String?  // External marketplace shop/seller ID
+  channel_shop_url String?  // Public shop URL on marketplace
+
+  is_active Boolean @default(true)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@unique([retailer_id, channel])
+  @@index([retailer_id])
+  @@index([channel])
+  @@index([status])
+  @@map("channel_syncs")
+}
+
+enum ChannelType {
+  MEESHO
+  INSTAMOJO
+  GLOAD
+  CRAFTSVILLA
+  FLIPKART
+  AMAZON
+  OTHER
+}
+
+enum ChannelSyncStatus {
+  DISCONNECTED
+  CONNECTING
+  CONNECTED
+  SYNCING
+  ERROR
+  SUSPENDED
 }

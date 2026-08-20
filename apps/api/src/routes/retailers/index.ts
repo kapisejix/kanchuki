@@ -9,3 +9,4 @@ export { retailersSectionsRoutes } from './retailers-sections.js';
 export { retailersCatalogUploadRoutes } from './retailers-catalog-upload.js';
 export { retailersSocialRoutes } from './retailers-social.js';
 export { retailersPartnersRoutes } from './retailers-partners/index.js';
+export { retailersAggregatorRoutes } from './retailers-aggregators.js';

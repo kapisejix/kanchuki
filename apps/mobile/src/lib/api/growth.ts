@@ -488,6 +488,36 @@ export type SeasonalAnalytics = {
 
 export type SeasonalPeriod = 'wedding' | 'daily'
 
+// ─── Aggregator / Marketplace Sync (Phase 7) ─────────────────────
+
+export type ChannelType = 'MEESHO' | 'INSTAMOJO' | 'GLOAD' | 'CRAFTSVILLA' | 'FLIPKART' | 'AMAZON' | 'OTHER'
+export type ChannelSyncStatus = 'DISCONNECTED' | 'CONNECTING' | 'CONNECTED' | 'SYNCING' | 'ERROR' | 'SUSPENDED'
+
+export type ChannelSync = {
+  id: string
+  channel: ChannelType
+  status: ChannelSyncStatus
+  last_synced_at: string | null
+  last_sync_error: string | null
+  products_synced: number
+  orders_synced: number
+  channel_shop_id: string | null
+  channel_shop_url: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ChannelConnectPayload = {
+  channel: ChannelType
+  api_key: string
+  api_secret?: string
+  auth_token?: string
+  webhook_secret?: string
+  channel_shop_id?: string
+  channel_shop_url?: string
+}
+
 export const growthApi = {
   // ─── Referrals (roadmap C) ──────────────────────────────────────
   referralSettings: () =>
@@ -785,4 +815,32 @@ export const growthApi = {
 
   incentiveStats: () =>
     request<{ data: IncentiveStats }>('/v1/growth/incentives/stats', { getCacheTtlMs: 30_000 }),
+
+  // ─── Aggregator / Marketplace Sync (Phase 7) ──────────────────
+  aggregators: () =>
+    request<{ data: ChannelSync[] }>('/v1/retailers/me/aggregators', { getCacheTtlMs: 15_000 }),
+
+  aggregator: (id: string) =>
+    request<{ data: ChannelSync }>(`/v1/retailers/me/aggregators/${id}`, { getCacheTtlMs: 15_000 }),
+
+  connectChannel: (payload: ChannelConnectPayload) =>
+    request<{ data: ChannelSync }>('/v1/retailers/me/aggregators', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateChannel: (id: string, payload: Partial<ChannelConnectPayload>) =>
+    request<{ data: ChannelSync }>(`/v1/retailers/me/aggregators/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  disconnectChannel: (id: string) =>
+    request<void>(`/v1/retailers/me/aggregators/${id}`, { method: 'DELETE' }),
+
+  triggerSync: (id: string) =>
+    request<{ data: { message: string; channel: string; status: string } }>(
+      `/v1/retailers/me/aggregators/${id}/sync`,
+      { method: 'POST' },
+    ),
 }

@@ -12,6 +12,7 @@ import {
   retailersUploadsRoutes,
   retailersWhatsappCatalogRoutes,
   retailersWhatsappRoutes,
+  retailersAggregatorRoutes,
 } from './retailers/index.js';
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
@@ -35,4 +36,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersSocialRoutes);
   // retailers-partners — F-03? Partner Network Manager (Phase 2)
   await server.register(retailersPartnersRoutes);
+  // retailers-aggregators — Phase 7 Aggregator / Marketplace Sync
+  await server.register(retailersAggregatorRoutes);
 };

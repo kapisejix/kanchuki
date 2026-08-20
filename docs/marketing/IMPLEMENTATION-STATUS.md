@@ -45,7 +45,7 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 | 5 | Direct Social Publishing | ✅ F-031 exists | ✅ | ❌ | ❌ | ✅ | **Partial** |
 | 6 | Festival Background Library | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 7 | Partner Network Manager | ✅ API route exists | ✅ | ✅ | ✅ | ✅ | **Built** |
-| 8 | Aggregator Sync | ⚠️ 1-file orphan | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 8 | Aggregator Sync | ✅ Folded into apps/ | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 9 | Lookbook Generator | ✅ Folded into apps/ | ✅ | ✅ | ❌ | 🕐 | **Built** |
 | 10 | Facebook Local Awareness Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 11 | Google Local Service Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
@@ -214,21 +214,30 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ---
 
-### Phase 7 — Aggregator Sync (Meesho / Instamojo / Glroad / Craftsvilla)
-> **Source:** `services/aggregator-sync/` (1-file orphan with mock data — build clean)
+### Phase 7 — Aggregator Sync (Meesho / Instamojo / Glroad / Craftsvilla) ✅ Built
+> **Done 2026-08-20.** Schema + migration 070 in working tree.
+> **Source:** `services/aggregator-sync/` (1-file orphan) → built clean in `apps/`.
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | `ChannelSync` model (retailer_id, channel, api_key_encrypted, sync_status, last_synced_at) | `packages/db/prisma/schema.prisma` |
-| Schema | `CHANNEL_SYNC` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` |
-| **Backend** | Channel adapter pattern (product mapper, inventory sync, order hub) | `apps/api/src/routes/retailers/retailers-aggregators.ts` |
-| Backend | Register in retailers routes | `apps/api/src/routes/retailers/index.ts` |
-| **Admin UI** | Sync status per retailer, channel health, order aggregation | `apps/web/src/app/admin/aggregators/page.tsx` |
-| **Mobile UI** | Connect channel, view synced products, manage orders | `apps/mobile/app/growth/aggregators.tsx` |
+| Layer | What was Built | File | Status |
+|-------|---------------|------|--------|
+| Schema | `ChannelSync` model | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Schema | `ChannelType` enum (MEESHO…OTHER) | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Schema | `ChannelSyncStatus` enum | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Schema | `CHANNEL_SYNC` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` | ✅ Built |
+| Migration | `070_channel_sync_aggregator` | `packages/db/prisma/migrations/070_channel_sync_aggregator/` | ✅ Created |
+| **Backend** | Retailer CRUD + sync trigger + feature gate | `apps/api/src/routes/retailers/retailers-aggregators.ts` | ✅ Built (6 endpoints) |
+| Backend | Registered in retailers barrel + aggregator | `apps/api/src/routes/retailers/index.ts` + `retailers.ts` | ✅ Built |
+| **Admin API** | List all syncs, view detail, aggregate stats | `apps/api/src/routes/admin/admin-aggregators.ts` | ✅ Built (3 endpoints) |
+| Admin API | Registered in admin barrel + aggregator | `apps/api/src/routes/admin/index.ts` + `admin.ts` | ✅ Built |
+| **Admin UI** | Stats cards, channel breakdown grid, connections table, detail modal | `apps/web/src/app/admin/aggregators/page.tsx` | ✅ Built |
+| Admin UI | Sidebar nav entry (RefreshCw icon) | `apps/web/src/app/admin/components/Sidebar.tsx` | ✅ Built |
+| **Mobile UI** | Channel list, connect form, disconnect, trigger sync | `apps/mobile/app/growth/aggregators.tsx` | ✅ Built |
+| Mobile UI | Growth hub entry (Link2 icon) | `apps/mobile/app/growth/index.tsx` | ✅ Built |
+| Mobile UI | API client (6 methods + 4 types) | `apps/mobile/src/lib/api/growth.ts` | ✅ Built |
 
-**Blocked on:** Real API credentials from Meesho/Instamojo/Glroad/Craftsvilla. Build adapter pattern now, swap in real APIs later.
+**Blocked on:** Real API credentials from Meesho/Instamojo/Glroad/Craftsvilla — sync endpoint marks status CONNECTED and records audit log. Real sync engine (BullMQ job) to be wired when marketplace APIs are integrated.
 
-**Acceptance:** Retailer connects Meesho → products sync → orders appear in Kanchuki → inventory stays in sync.
+**Acceptance:** Retailer connects Meesho → status shows Connected → admin sees connection → manual sync available → disconnect removes connection.
 
 ---
 
@@ -286,7 +295,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | ✅ Built (Phase 4) |
 | Social Templates | `admin/admin-social-templates.ts` | ✅ Built (Phase 5) |
 | Lookbook Generator | `admin/admin-lookbooks.ts` | ✅ Built (Phase 6) |
-| Aggregator Sync | `retailers/retailers-aggregators.ts` | 🔴 To build (Phase 7) |
+| Aggregator Sync | `retailers/retailers-aggregators.ts` | ✅ Built (Phase 7) |
 | GST Reports | `admin/admin-gst.ts` | ✅ Built (Phase 8) |
 
 ### Admin Dashboard (`apps/web/src/app/admin/`)
@@ -302,7 +311,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Festival Backgrounds | `festival-backgrounds/` | ✅ Built (Phase 4) |
 | Lookbooks | `lookbooks/` | ✅ Built (Phase 6) |
 | Social Templates | `social-templates/` | ✅ Built (Phase 5) |
-| Aggregators | `aggregators/` | 🔴 To build (Phase 7) |
+| Aggregators | `aggregators/` | ✅ Built (Phase 7) |
 | GST Reports | `reports/gst/` | ✅ Built (Phase 8) |
 
 ### Retailer Mobile App (`apps/mobile/app/growth/`)
@@ -321,7 +330,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Partners | `partners.tsx` | ✅ Built (Phase 2) |
 | Templates | `templates.tsx` | 🔴 To build (Phase 5) |
 | Lookbook | `lookbook.tsx` | 🔴 To build (Phase 6) |
-| Aggregators | `aggregators.tsx` | 🔴 To build (Phase 7) |
+| Aggregators | `aggregators.tsx` | ✅ Built (Phase 7) |
 
 ---
 

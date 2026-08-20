@@ -51,6 +51,7 @@ import {
   Sparkles,
   Share2,
   Receipt,
+  RefreshCw,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -71,6 +72,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'Discovery', href: '/admin/discovery', icon: MapPin },
   { label: 'Lookbooks', href: '/admin/lookbooks', icon: BookOpen },
   { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
+  { label: 'Aggregators', href: '/admin/aggregators', icon: RefreshCw },
   { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
   { separator: true },
   {

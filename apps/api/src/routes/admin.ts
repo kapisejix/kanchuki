@@ -33,6 +33,7 @@ import {
   adminLookbookRoutes,
   adminSocialTemplateRoutes,
   adminGstRoutes,
+  adminAggregatorRoutes,
 } from './admin/index.js';
 
 export {
@@ -220,4 +221,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminSocialTemplateRoutes);
   // admin-gst — GST report dashboard + transaction list
   await server.register(adminGstRoutes);
+  // admin-aggregators — Aggregator / Marketplace Sync oversight
+  await server.register(adminAggregatorRoutes);
 };
