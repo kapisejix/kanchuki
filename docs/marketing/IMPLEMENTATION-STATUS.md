@@ -38,13 +38,13 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 | # | Feature | Real Code Exists? | API Route | Admin UI | Mobile UI | Plan Gate | Overall |
 |---|---------|-------------------|-----------|----------|-----------|-----------|---------|
-| 1 | Smart Incentive Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 1 | Smart Incentive Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ✅ | **Schema ready** |
 | 2 | Local Discovery Engine | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 3 | GMB Integration | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 4 | AI Social Media Templates | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 5 | Direct Social Publishing | ✅ F-031 exists | ✅ | ❌ | ❌ | ✅ | **Partial** |
 | 6 | Festival Background Library | ❌ Doc-only | ❌ | ❌ | ❌ | ❌ | **Not Built** |
-| 7 | Partner Network Manager | ✅ API route exists | ✅ | ❌ | ❌ | ❌ | **Partial** |
+| 7 | Partner Network Manager | ✅ API route exists | ✅ | ❌ | ❌ | ✅ | **Route fixed, needs UI** |
 | 8 | Aggregator Sync | ⚠️ 1-file orphan | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 9 | Lookbook Generator | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
 | 10 | Facebook Local Awareness Ads | ⚠️ Orphan stub | ❌ | ❌ | ❌ | ❌ | **Not Built** |
@@ -76,34 +76,36 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 
 ## 📋 Development Phases
 
-### Phase 0 — Fix Partner Network Schema (PREREQUISITE)
-> **Why first:** `schema.prisma` has inline enum syntax on `Partner.commission_type` / `PartnerReferral.status` that breaks `npx prisma validate`. This blocks `db:generate` for the entire monorepo.
+### Phase 0 — Fix Partner Network Schema ✅ Completed
+> **Done 2026-08-20.** Commits `b990e64` + `1dc17e1`.
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | Fix inline enums → proper Prisma enums (`PartnerType`, `CommissionType`, `PartnerReferralStatus`) | `packages/db/prisma/schema.prisma` |
-| Schema | Add `PARTNER_NETWORK` to `PlanFeatureKey` enum | `packages/db/prisma/schema.prisma` |
-| Migration | Auto-generated from schema fix | `packages/db/prisma/migrations/NNN_partner_network_fix/` |
+| Layer | What was Built | File |
+|-------|---------------|------|
+| Schema | Added `PARTNER_NETWORK` + `INCENTIVE_ENGINE` to `PlanFeatureKey` enum | `packages/db/prisma/schema.prisma` |
+| Schema | Added missing reverse relation fields (Retailer→CustomerVisit, Customer→visits, Order→partner_referrals, Partner→events) | `packages/db/prisma/schema.prisma` |
+| Route fix | Fixed import paths (`../../` → `../../../`), `amount_paise` → `total_amount`, missing `select` closing brace, unused imports | `apps/api/src/routes/retailers/retailers-partners/index.ts` |
+| Migration | 066 — 5 tables + 5 enums (customer_visits, incentive_rules, partners, partner_referrals, partner_events) | `packages/db/prisma/migrations/066_incentive_engine_and_partner_network/migration.sql` |
 
-**Acceptance:** `npx prisma validate` passes, `npx prisma db generate` succeeds.
+**Verified:** `npx prisma validate` ✅, `npx prisma generate` ✅, partner route typechecks ✅
+**Next:** Apply migration to DB (`npx prisma migrate deploy` or Supabase SQL Editor)
 
 ---
 
 ### Phase 1 — Smart Incentive Engine (Retailer ROI: ₹200-300 uplift/new customer)
 > **Source:** `services/incentive-engine/` (orphan stub with real Prisma CRUD logic to extract)
 
-| Layer | What to Build | File |
-|-------|--------------|------|
-| Schema | `IncentiveRule` model (name, trigger_type, discount_type, discount_value, conditions JSON, starts_at, ends_at, active) | `packages/db/prisma/schema.prisma` |
-| Schema | `CustomerVisit` model (retailer_id, customer_id, visit_at) | `packages/db/prisma/schema.prisma` |
-| Schema | Add `INCETIVE_ENGINE` to `PlanFeatureKey` | `packages/db/prisma/schema.prisma` |
-| Migration | New tables + enum value | `packages/db/prisma/migrations/NNN_incentive_engine/` |
-| **Backend** | Incentive rule CRUD + visit tracking + loyalty check endpoint | `apps/api/src/routes/growth/growth-incentives.ts` |
-| Backend | Register in growth routes barrel | `apps/api/src/routes/growth/index.ts` |
-| **Admin UI** | Rules list, create/edit form, analytics (redemption rate, ROI) | `apps/web/src/app/admin/incentives/page.tsx` |
-| Admin UI | Sidebar nav entry | `apps/web/src/app/admin/components/Sidebar.tsx` |
-| **Mobile UI** | Retailer manages incentive rules, views redemption stats | `apps/mobile/app/growth/incentives.tsx` |
-| Mobile UI | API client function | `apps/mobile/src/lib/api/growth.ts` (extend) |
+| Layer | What to Build | File | Status |
+|-------|--------------|------|--------|
+| Schema | `IncentiveRule` model | `packages/db/prisma/schema.prisma` | ✅ Exists (line 355) |
+| Schema | `CustomerVisit` model | `packages/db/prisma/schema.prisma` | ✅ Exists (line 342) |
+| Schema | `INCENTIVE_ENGINE` in `PlanFeatureKey` | `packages/db/prisma/schema.prisma` | ✅ Exists (line 146) |
+| Migration | 066 — tables + enums | `packages/db/prisma/migrations/066_*` | ✅ Created |
+| **Backend** | Incentive rule CRUD + visit tracking + loyalty check endpoint | `apps/api/src/routes/growth/growth-incentives.ts` | 🔴 To build |
+| Backend | Register in growth routes barrel | `apps/api/src/routes/growth/index.ts` | 🔴 To build |
+| **Admin UI** | Rules list, create/edit form, analytics (redemption rate, ROI) | `apps/web/src/app/admin/incentives/page.tsx` | 🔴 To build |
+| Admin UI | Sidebar nav entry | `apps/web/src/app/admin/components/Sidebar.tsx` | 🔴 To build |
+| **Mobile UI** | Retailer manages incentive rules, views redemption stats | `apps/mobile/app/growth/incentives.tsx` | 🔴 To build |
+| Mobile UI | API client function | `apps/mobile/src/lib/api/growth.ts` (extend) | 🔴 To build |
 
 **Business logic to extract from orphan:**
 - Trigger evaluation: FIRST_VISIT (visitCount === 0), BIRTHDAY (needs customer DOB), LOYALTY_TIER (spend/visit thresholds)
@@ -257,8 +259,9 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Feature | Route File | Status |
 |---------|-----------|--------|
 | Growth Engine (campaigns, referrals, etc.) | `growth/index.ts` + `growth-*.ts` | ✅ Built |
-| Partner Network | `retailers/retailers-partners/index.ts` | ⚠️ Schema broken |
+| Partner Network | `retailers/retailers-partners/index.ts` | ✅ Route fixed (Phase 0) |
 | Smart Incentive Engine | `growth/growth-incentives.ts` | 🔴 To build (Phase 1) |
+| Partner Network | `retailers/retailers-partners/index.ts` | ✅ Built (Phase 0) |
 | Local Discovery | `public/near-me.ts` | 🔴 To build (Phase 3) |
 | Festival Backgrounds | `admin/admin-festival-backgrounds.ts` | 🔴 To build (Phase 4) |
 | Social Templates | `growth/growth-templates.ts` | 🔴 To build (Phase 5) |
@@ -304,11 +307,12 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 | Blocker | Affects | Resolution |
 |---------|---------|-----------|
-| `schema.prisma` broken (inline enums) | Phase 0+ (everything) | Fix in Phase 0 |
+| ~~`schema.prisma` broken~~ | ~~Phase 0+~~ | ✅ Resolved (Phase 0, commit `b990e64`) |
 | No real Meta/Google API creds | GMB (Phase 3b), Facebook Ads, Google Ads | Build adapter pattern, swap creds later |
 | No Meesho/Instamojo API creds | Aggregator Sync (Phase 7) | Build adapter pattern, swap creds later |
 | F-032 AI Studio Shoots status | Social Templates (Phase 5) | Check if FLUX Kontext is live |
-| `PARTNER_NETWORK` missing from PlanFeatureKey | Partner Network (Phase 2) | Fix in Phase 0 |
+| ~~`PARTNER_NETWORK` missing from PlanFeatureKey~~ | ~~Partner Network (Phase 2)~~ | ✅ Resolved (Phase 0, commit `b990e64`) |
+| Migration 066 not applied to DB | All Phase 1+2 features | Apply via `npx prisma migrate deploy` or Supabase SQL Editor |
 
 ---
 
