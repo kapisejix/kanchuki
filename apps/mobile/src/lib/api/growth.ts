@@ -191,6 +191,78 @@ export type PromotionPayload = {
   is_active?: boolean
 }
 
+// ─── Partner Network Manager (Phase 2) ─────────────────────────────
+
+export type PartnerType = 'SALON' | 'TAILOR' | 'STYLIST' | 'MAKEUP_ARTIST' | 'OTHER'
+export type CommissionType = 'FIXED_AMOUNT' | 'PERCENTAGE_OF_SALE'
+export type PartnerReferralStatus = 'PENDING' | 'PAID' | 'CANCELLED'
+
+export type Partner = {
+  id: string
+  name: string
+  type: PartnerType
+  contact_person: string | null
+  phone: string | null
+  email: string | null
+  referral_code: string
+  commission_rate: number
+  commission_type: CommissionType
+  fixed_commission_paise: number | null
+  is_active: boolean
+  created_at: string
+  pending_referrals?: number
+}
+
+export type PartnerPayload = {
+  name: string
+  type: PartnerType
+  contact_person?: string
+  phone?: string
+  email?: string
+  address?: string
+  commission_rate: number
+  commission_type?: CommissionType
+  fixed_commission_paise?: number
+}
+
+export type PartnerReferral = {
+  id: string
+  customer_id: string
+  order_id: string | null
+  commission_paise: number
+  status: PartnerReferralStatus
+  created_at: string
+  customer: { id: string; name: string | null; phone: string }
+  order: { id: string; total_amount: number; status: string } | null
+  commission_formatted: string
+}
+
+export type PartnerEvent = {
+  id: string
+  name: string
+  description: string | null
+  starts_at: string
+  ends_at: string | null
+  location: string | null
+  is_virtual: boolean
+  discount_code: string | null
+  discount_paise: number | null
+  is_active: boolean
+  partner: { id: string; name: string; type: PartnerType }
+}
+
+export type PartnerEventPayload = {
+  partner_id: string
+  name: string
+  description?: string
+  starts_at: string
+  ends_at?: string
+  location?: string
+  is_virtual?: boolean
+  discount_code?: string
+  discount_paise?: number
+}
+
 // ─── Smart Incentive Engine (Phase 1) ─────────────────────────────
 
 export type IncentiveTriggerType = 'FIRST_VISIT' | 'BIRTHDAY' | 'ANNIVERSARY' | 'LOYALTY_TIER'
@@ -641,6 +713,44 @@ export const growthApi = {
       `/v1/growth/analytics/seasonal?period=${period}`,
       { getCacheTtlMs: 60_000 },
     ),
+
+  // ─── Partner Network Manager (Phase 2) ─────────────────────────
+  partners: () =>
+    request<{ data: Partner[] }>('/v1/retailers/me/partners', { getCacheTtlMs: 15_000 }),
+
+  createPartner: (payload: PartnerPayload) =>
+    request<{ data: Partner }>('/v1/retailers/me/partners', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updatePartner: (id: string, payload: Partial<PartnerPayload>) =>
+    request<{ data: Partner }>(`/v1/retailers/me/partners/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deletePartner: (id: string) =>
+    request<void>(`/v1/retailers/me/partners/${id}`, { method: 'DELETE' }),
+
+  partnerReferrals: (partnerId: string) =>
+    request<{ data: PartnerReferral[] }>(`/v1/retailers/me/partners/${partnerId}/referrals`, {
+      getCacheTtlMs: 15_000,
+    }),
+
+  payReferral: (referralId: string) =>
+    request<{ data: { message: string } }>(`/v1/retailers/me/partners/referrals/${referralId}/pay`, {
+      method: 'POST',
+    }),
+
+  partnerEvents: () =>
+    request<{ data: PartnerEvent[] }>('/v1/retailers/me/partners/events', { getCacheTtlMs: 15_000 }),
+
+  createPartnerEvent: (payload: PartnerEventPayload) =>
+    request<{ data: PartnerEvent }>('/v1/retailers/me/partners/events', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // ─── Smart Incentive Engine (Phase 1) ──────────────────────────
   incentiveRules: () =>

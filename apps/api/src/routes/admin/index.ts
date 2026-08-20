@@ -15,4 +15,5 @@ export { adminStorageRoutes } from './admin-storage.js';
 export { adminCommissionRoutes } from './admin-commission.js';
 export { adminFestivalsRoutes } from './admin-festivals.js';
 export { adminIncentiveRoutes } from './admin-incentives.js';
+export { adminPartnerRoutes } from './admin-partners.js';
 export { adminWhatsAppCatalogRoutes } from './admin-whatsapp-catalog.js';
