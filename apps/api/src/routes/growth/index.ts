@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { growthAiCampaignRoutes } from './growth-ai-campaign.js';
 import { growthBookingRoutes } from './growth-bookings.js';
 import { growthCampaignRoutes } from './growth-campaigns.js';
+import { growthIncentiveRoutes } from './growth-incentives.js';
 import { growthInventoryRoutes } from './growth-inventory.js';
 import { growthPromotionRoutes } from './growth-promotions.js';
 import { growthReferralRoutes } from './growth-referrals.js';
@@ -26,6 +27,7 @@ import { growthVideoRoutes } from './growth-videos.js';
 export const growthRoutes: FastifyPluginAsync = async (server) => {
   await server.register(growthAiCampaignRoutes);
   await server.register(growthCampaignRoutes);
+  await server.register(growthIncentiveRoutes);
   await server.register(growthPromotionRoutes);
   await server.register(growthReferralRoutes);
   await server.register(growthSizeRoutes); // N — size & fit recommendation
