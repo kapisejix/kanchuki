@@ -309,6 +309,8 @@ export const R2_PATHS = {
   // retailer can promote to primary, keeping the original one tap away.
   studioShot: (retailerId: string, productId: string, filename: string) =>
     `retailers/${retailerId}/products/${productId}/studio/${filename}`,
+  lookbookOutput: (retailerId: string, lookbookId: string, filename: string) =>
+    `retailers/${retailerId}/lookbooks/${lookbookId}/${filename}`,
 } as const;
 
 // ─── F-032 AI Studio Shoots — template presets (2026-08-13) ───────

@@ -10,6 +10,7 @@ import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { createId } from '@paralleldrive/cuid2';
+import { addLookbookJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
 import { isStudioShootConfigured } from '../../lib/studio-shoot.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
@@ -165,14 +166,11 @@ export const growthLookbookRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Lookbook is already being generated');
     }
 
-    // Mark as generating — in production a BullMQ job would render the
-    // HTML/PDF and update the status to READY with the output_url.
-    const updated = await prisma.lookbook.update({
-      where: { id },
-      data: { status: 'GENERATING' },
-    });
+    // Enqueue lookbook rendering job — generates HTML + PDF on R2,
+    // updates status to READY or FAILED when done.
+    await addLookbookJob({ lookbook_id: id, retailer_id: retailerId });
 
-    return reply.status(202).send({ data: { job_id: updated.id, status: 'generating' } });
+    return reply.status(202).send({ data: { job_id: id, status: 'generating' } });
   });
 
   // ─── PUT /growth/lookbooks/:id ─────────────────────────────────

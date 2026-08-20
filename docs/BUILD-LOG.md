@@ -1182,3 +1182,43 @@ Completes the admin dashboard gap in `docs/marketing/IMPLEMENTATION-STATUS.md` f
 | **Sidebar** | `apps/web/src/app/admin/components/Sidebar.tsx` | Added `Megaphone` import + "Social Publishing" nav entry. |
 
 **Verified:** API `tsc --noEmit` clean (0 new errors); web `tsc --noEmit` clean.
+
+---
+
+## BUILT 2026-08-20: Retailer Self-Service Integrations (GMB, Facebook Ads, Google Ads)
+
+Replaces the 3 "Not Built" features that were blocked on platform API credentials. Instead of requiring platform-level creds, retailers now configure their own API credentials in-app (bring-your-own-key pattern).
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Schema** | `packages/db/prisma/schema.prisma` + migration `071_retailer_integrations` | Added `gmb_configured_at`, `fb_ads_access_token`, `fb_ads_ad_account_id`, `fb_ads_page_id`, `fb_ads_configured_at`, `google_ads_refresh_token`, `google_ads_customer_id`, `google_ads_developer_token`, `google_ads_configured_at` to Retailer model. Migration applies cleanly. |
+| **API** | `apps/api/src/routes/retailers/retailers-integrations.ts` (new) + `retailers/index.ts` + `retailers.ts` | 12 endpoints: list all integrations (masked), GMB (save/test/post/disconnect), Facebook Ads (save/test/create-campaign/disconnect), Google Ads (save/test/disconnect). All credentials encrypted at rest. Facebook Ads create-campaign creates full campaign→adset→creative→ad flow (starts paused). |
+| **Mobile client** | `apps/mobile/src/lib/api/growth.ts` | 10 types (`IntegrationsStatus`, `GmbConfig`, `FbAdsConfig`, `FbAdCampaign`, `GoogleAdsConfig`) + 12 API methods. |
+| **Mobile UI** | `apps/mobile/app/growth/integrations.tsx` (new) | Integrations hub: 3 cards (GMB, Facebook Ads, Google Ads) with configured status, configure/disconnect buttons, confirmation dialogs. |
+| **Mobile UI** | `apps/mobile/app/growth/integrations/gmb.tsx` (new) | GMB config: account ID, location ID, access token, refresh token inputs + test connection + save. |
+| **Mobile UI** | `apps/mobile/app/growth/integrations/fb-ads.tsx` (new) | Facebook Ads config: business token, ad account ID, page ID inputs + test connection + save. |
+| **Mobile UI** | `apps/mobile/app/growth/integrations/google-ads.tsx` (new) | Google Ads config: customer ID, developer token, refresh token inputs + test connection + save. |
+| **Growth Hub** | `apps/mobile/app/growth/index.tsx` | Added `Plug` import + "Integrations" entry to `GROWTH_MODULES`. |
+
+**Verified:** API `tsc --noEmit` clean (0 new errors); mobile `tsc --noEmit` clean; `prisma validate` + `prisma generate` clean.
+
+---
+
+## BUILT 2026-08-20: Lookbook HTML/PDF Rendering Worker
+
+Completes the last remaining coding item in `docs/marketing/IMPLEMENTATION-STATUS.md`. The lookbook generate endpoint previously marked status as GENERATING but had no actual rendering. Now it enqueues a BullMQ job that renders styled HTML + PDF.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **Job handler** | `apps/api/src/jobs/generate-lookbook.ts` (new) | BullMQ job: fetches lookbook products + photos, generates styled HTML (4 format layouts: carousel/grid/editorial/pdf), converts to PDF via pdfkit, uploads both to R2, updates Lookbook record to READY with output_url + share_url. |
+| **Job wiring** | `apps/api/src/jobs/index.ts` | `addLookbookJob()` producer + `generate-lookbook` case in maintenance worker switch. |
+| **Route fix** | `apps/api/src/routes/growth/growth-lookbooks.ts` | Generate endpoint now enqueues `addLookbookJob()` instead of just marking status. |
+| **Shared** | `packages/shared/src/constants/index.ts` | Added `R2_PATHS.lookbookOutput()` for lookbook file storage paths. |
+
+**Format layouts:**
+- **Carousel** — single column, full-width images
+- **Grid** — 2-column product grid
+- **Editorial** — side-by-side image + text (magazine style)
+- **PDF** — A4 document with title page + 2 products per page
+
+**Verified:** API `tsc --noEmit` clean (0 errors); `prisma validate` + `prisma generate` clean.

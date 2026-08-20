@@ -31,6 +31,8 @@ import { handleTagProduct } from './tag-product.js';
 import type { FashionDNAJobData } from './update-fashion-dna.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
+import { handleGenerateLookbook } from './generate-lookbook.js';
+import type { LookbookJobData } from './generate-lookbook.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -241,6 +243,15 @@ export async function addKenBurnsVideoJob(data: KenBurnsVideoJobData): Promise<v
   });
 }
 
+// Lookbook HTML/PDF rendering. Same on-demand maintenance-queue pattern —
+// generates styled HTML + PDF from lookbook product data.
+export async function addLookbookJob(data: LookbookJobData): Promise<void> {
+  await getMaintenanceQueue().add('generate-lookbook', data, {
+    removeOnComplete: { count: 50 },
+    removeOnFail: { count: 20 },
+  });
+}
+
 // F-032 Phase A: AI studio-shoot generation. Own queue + Worker with bounded
 // concurrency (BFL caps active tasks — see STUDIO_SHOOT_CONCURRENCY). No retries:
 // each run burns real BFL credits, so a failed job surfaces as status
@@ -397,6 +408,10 @@ export async function startWorkers(): Promise<void> {
         case 'generate-ken-burns-video': {
           const data = job.data as KenBurnsVideoJobData;
           return handleGenerateKenBurnsVideo(data);
+        }
+        case 'generate-lookbook': {
+          const data = job.data as LookbookJobData;
+          return handleGenerateLookbook(data);
         }
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);

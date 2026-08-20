@@ -237,6 +237,19 @@ model Retailer {
    gmb_access_token String? // Encrypted access token for GMB API
    gmb_refresh_token String? // Encrypted refresh token
    gmb_token_expiry DateTime? // Expiry time of the access token
+   gmb_configured_at DateTime? // When GMB was last configured
+
+   // Facebook Local Awareness Ads (bring-your-own Meta Business creds)
+   fb_ads_access_token  String? // Encrypted long-lived Business token
+   fb_ads_ad_account_id String? // Facebook Ad Account ID (act_XXXX)
+   fb_ads_page_id       String? // Facebook Page ID for ad creative
+   fb_ads_configured_at DateTime?
+
+   // Google Local Service Ads (bring-your-own Google Ads creds)
+   google_ads_refresh_token String? // Encrypted OAuth refresh token
+   google_ads_customer_id   String? // Google Ads customer ID (XXX-XXX-XXXX)
+   google_ads_configured_at DateTime?
+   google_ads_developer_token String? // Encrypted developer token
 
    // WhatsApp Native Catalog Sync (Phase II) — sync product catalog to
    // WhatsApp Business native catalog (in-app product list under business profile).

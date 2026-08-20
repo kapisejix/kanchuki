@@ -45,8 +45,8 @@ async function getInstagramAccountId(accessToken: string): Promise<string> {
   if (!res.ok) {
     throw new MetaApiError('Failed to list accounts', 400, 'ACCOUNTS_LIST_FAILED');
   }
-  const body = await res.json();
-  const account = body.data.find((acc: any) => acc.id && acc.name);
+  const body = (await res.json()) as { data: Array<{ id: string; name: string }> };
+  const account = body.data.find((acc) => acc.id && acc.name);
   if (!account) {
     throw new MetaApiError('No Instagram account found', 404, 'ACCOUNT_NOT_FOUND');
   }
@@ -76,7 +76,7 @@ async function publishInstagramPhoto(
     throw new MetaApiError('Instagram rejected the photo container', 400, 'INSTAGRAM_CONTAINER_FAILED');
   }
 
-  const containerBody = await containerRes.json();
+  const containerBody = (await containerRes.json()) as { id?: string };
   if (!containerBody.id) {
     throw new MetaApiError('No media container ID returned', 500, 'NO_CONTAINER_ID');
   }
@@ -99,7 +99,7 @@ async function publishInstagramPhoto(
     throw new MetaApiError('Instagram rejected the media publish', 400, 'INSTAGRAM_PUBLISH_FAILED');
   }
 
-  const publishBody = await publishRes.json();
+  const publishBody = (await publishRes.json()) as { id?: string };
   if (!publishBody.id) {
     throw new MetaApiError('No post ID returned from publish', 500, 'NO_POST_ID');
   }
@@ -240,7 +240,7 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
         fields: 'id,name',
       })}`);
       if (igRes.ok) {
-        const igBody = await igRes.json();
+        const igBody = (await igRes.json()) as { id?: string; name?: string };
         if (igBody.id && igBody.name) {
           instagramAccounts = [{ id: igBody.id, name: igBody.name }];
         }
@@ -292,7 +292,7 @@ const redis = getStateRedis();
     );
 
     if (fbRes.ok) {
-      const fbPage = await fbRes.json();
+      const fbPage = (await fbRes.json()) as { id?: string; name?: string; access_token?: string };
       if (fbPage.id && fbPage.name && fbPage.access_token) {
         platform = 'FACEBOOK';
         pageInfo = { id: fbPage.id, name: fbPage.name, access_token: fbPage.access_token };
@@ -309,11 +309,11 @@ const redis = getStateRedis();
       );
 
       if (igRes.ok) {
-        const igAccount = await igRes.json();
+        const igAccount = (await igRes.json()) as { id?: string; name?: string };
         if (igAccount.id && igAccount.name) {
           platform = 'INSTAGRAM';
           // For Instagram, we use the same access token (it's valid for both FB and IG)
-          pageInfo = { id: igAccount.id, name: igAccount.name, access_token };
+          pageInfo = { id: igAccount.id, name: igAccount.name, access_token: accessToken };
         }
       }
     }

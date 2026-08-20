@@ -696,6 +696,57 @@ export type GstTransactions = {
   pagination: { page: number; limit: number; total: number; pages: number }
 }
 
+// ─── Integrations (retailer settings) ────────────────────────────
+
+export type IntegrationsStatus = {
+  gmb: {
+    configured: boolean
+    account_id: string | null
+    location_id: string | null
+    configured_at: string | null
+  }
+  facebook_ads: {
+    configured: boolean
+    ad_account_id: string | null
+    page_id: string | null
+    configured_at: string | null
+  }
+  google_ads: {
+    configured: boolean
+    customer_id: string | null
+    configured_at: string | null
+  }
+}
+
+export type GmbConfig = {
+  account_id: string
+  location_id: string
+  access_token: string
+  refresh_token?: string
+}
+
+export type FbAdsConfig = {
+  access_token: string
+  ad_account_id: string
+  page_id: string
+}
+
+export type FbAdCampaign = {
+  name: string
+  daily_budget: number
+  ad_text: string
+  image_url?: string
+  link_url?: string
+  target_radius_km?: number
+  target_cities?: string[]
+}
+
+export type GoogleAdsConfig = {
+  refresh_token: string
+  customer_id: string
+  developer_token: string
+}
+
 export const growthApi = {
   // ─── Referrals (roadmap C) ──────────────────────────────────────
   referralSettings: () =>
@@ -1216,4 +1267,67 @@ export const growthApi = {
       { getCacheTtlMs: 15_000 },
     )
   },
+
+  // ─── Integrations (retailer settings) ──────────────────────────
+  integrations: () =>
+    request<{ data: IntegrationsStatus }>('/v1/retailers/me/integrations', {
+      getCacheTtlMs: 15_000,
+    }),
+
+  configureGmb: (payload: GmbConfig) =>
+    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/gmb', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  disconnectGmb: () =>
+    request<void>('/v1/retailers/me/integrations/gmb', { method: 'DELETE' }),
+
+  testGmb: () =>
+    request<{ data: { connected: boolean; error?: string } }>(
+      '/v1/retailers/me/integrations/gmb/test',
+      { method: 'POST' },
+    ),
+
+  postToGmb: (payload: { summary: string; call_to_action?: string; url?: string }) =>
+    request<{ data: { post_id: string; status: string } }>(
+      '/v1/retailers/me/integrations/gmb/post',
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+
+  configureFbAds: (payload: FbAdsConfig) =>
+    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/fb-ads', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  disconnectFbAds: () =>
+    request<void>('/v1/retailers/me/integrations/fb-ads', { method: 'DELETE' }),
+
+  testFbAds: () =>
+    request<{ data: { connected: boolean; error?: string; account_name?: string } }>(
+      '/v1/retailers/me/integrations/fb-ads/test',
+      { method: 'POST' },
+    ),
+
+  createFbAdCampaign: (payload: FbAdCampaign) =>
+    request<{ data: { campaign_id: string; status: string; message: string } }>(
+      '/v1/retailers/me/integrations/fb-ads/create-campaign',
+      { method: 'POST', body: JSON.stringify(payload) },
+    ),
+
+  configureGoogleAds: (payload: GoogleAdsConfig) =>
+    request<{ data: { configured: boolean } }>('/v1/retailers/me/integrations/google-ads', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  disconnectGoogleAds: () =>
+    request<void>('/v1/retailers/me/integrations/google-ads', { method: 'DELETE' }),
+
+  testGoogleAds: () =>
+    request<{ data: { connected: boolean; error?: string } }>(
+      '/v1/retailers/me/integrations/google-ads/test',
+      { method: 'POST' },
+    ),
 }

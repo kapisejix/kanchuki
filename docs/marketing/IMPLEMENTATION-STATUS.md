@@ -40,15 +40,15 @@ Layer 4 — Retailer Mobile App (React Native Expo)
 |---|---------|-------------------|-----------|----------|-----------|-----------|---------|
 | 1 | Smart Incentive Engine | ✅ Folded into apps/ | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 2 | Local Discovery Engine | ✅ Folded into apps/ | ✅ | ✅ | ❌ | ❌ | **Built** |
-| 3 | GMB Integration | ❌ No code (orphan deleted) | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 3 | GMB Integration | ✅ Full stack | ✅ | ❌ | ✅ | ✅ | **Built** |
 | 4 | AI Social Media Templates | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 5 | Direct Social Publishing | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 6 | Festival Background Library | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 7 | Partner Network Manager | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 8 | Aggregator Sync | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
 | 9 | Lookbook Generator | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
-| 10 | Facebook Local Awareness Ads | ❌ No code (orphan deleted) | ❌ | ❌ | ❌ | ❌ | **Not Built** |
-| 11 | Google Local Service Ads | ❌ No code (orphan deleted) | ❌ | ❌ | ❌ | ❌ | **Not Built** |
+| 10 | Facebook Local Awareness Ads | ✅ Full stack | ✅ | ❌ | ✅ | ✅ | **Built** |
+| 11 | Google Local Service Ads | ✅ Full stack | ✅ | ❌ | ✅ | ✅ | **Built** |
 | 12 | GST Report Generator | ✅ Full stack | ✅ | ✅ | ✅ | ✅ | **Built** |
 
 **Legend:** ✅ = real, wired, reachable | ⚠️ = code exists but unreachable (orphan in `services/`) | ❌ = not built
@@ -309,6 +309,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | GST Reports (admin) | `admin/admin-gst.ts` | ✅ Built (Phase 8) |
 | GST Reports (retailer) | `growth/gst.ts` | ✅ Built (Phase 8 mobile) |
 | Social Publishing (admin) | `admin/admin-social.ts` | ✅ Built |
+| Integrations (retailer) | `retailers/retailers-integrations.ts` | ✅ Built |
 
 ### Admin Dashboard (`apps/web/src/app/admin/`)
 | Feature | Page Directory | Status |
@@ -345,6 +346,7 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 | Lookbook | `lookbook.tsx` | ✅ Built (Phase 6) |
 | Backgrounds | `backgrounds.tsx` | ✅ Built (Phase 4) |
 | GST Report | `gst.tsx` | ✅ Built (Phase 8) |
+| Integrations | `integrations.tsx` + `integrations/*.tsx` | ✅ Built |
 | Aggregators | `aggregators.tsx` | ✅ Built (Phase 7) |
 
 ---
@@ -367,16 +369,12 @@ Phase 9  ←──  Phase 8  ←──  Phase 7  ←──  Phase 6  ←──  
 
 | # | What | Layer | Blocked On | Priority |
 |---|------|-------|-----------|----------|
-| 1 | **GMB Integration** — auto-post new arrivals to Google Business Profile | Full stack | Google API credentials + OAuth setup | Deferred |
-| 2 | **Facebook Local Awareness Ads** — create/manage local ad campaigns | Full stack | Meta Marketing API credentials | Deferred |
-| 3 | **Google Local Service Ads** — manage LSA campaigns | Full stack | Google Ads API credentials | Deferred |
-| 4 | **Apply migrations 066–070 to production DB** | DevOps | `npx prisma migrate deploy` or Supabase SQL Editor | High |
-| 5 | **Lookbook generation backend** — actual HTML/PDF rendering (BullMQ job) | Backend | FLUX or HTML template engine; current code marks as GENERATING but doesn't render | Medium |
+| 1 | **Apply migrations 066–071 to production DB** | DevOps | `npx prisma migrate deploy` or Supabase SQL Editor | High |
 
 **Notes:**
-- Items 1–3 need third-party API credentials before any code can be written.
-- Item 4 is a one-time DB operation, not code.
-- Item 5 is the actual rendering engine for lookbooks — the API shell is built but the BullMQ worker that renders HTML/PDF is a follow-up.
+- Item 1 is a one-time DB operation, not code.
+- GMB, Facebook Ads, and Google Ads are now built with retailer self-service credential configuration (bring-your-own API keys).
+- Lookbook HTML/PDF rendering is now implemented (BullMQ job with pdfkit).
 
 ---
 

@@ -14,6 +14,7 @@ import {
   Share2,
   PackageSearch,
   Percent,
+  Plug,
   Receipt,
   Sparkles,
   Truck,
@@ -53,6 +54,7 @@ const GROWTH_MODULES = [
   { icon: BookOpen, label: 'Lookbooks', hint: 'Curated product collections', href: '/growth/lookbook' as const },
   { icon: Sparkles, label: 'Festival Backgrounds', hint: 'Seasonal product overlays', href: '/growth/backgrounds' as const },
   { icon: Receipt, label: 'GST Report', hint: 'Tax summary & invoices', href: '/growth/gst' as const },
+  { icon: Plug, label: 'Integrations', hint: 'GMB, Facebook & Google Ads', href: '/growth/integrations' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {
