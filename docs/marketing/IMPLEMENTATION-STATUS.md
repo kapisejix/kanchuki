@@ -11,11 +11,11 @@
 | Phase | Total Features | Completed | In Progress | Not Started | Completion % |
 |-------|----------------|-----------|-------------|-------------|--------------|
 | Phase 1 (Quick Wins - 4-6 weeks) | 4 | 4 | 0 | 0 | 100% |
-| Phase 2 (Core Enablement - 8-10 weeks) | 4 | 4 | 0 | 0 | 100% |
+| Phase 2 (Core Enablement - 8-10 weeks) | 4 | 3 | 1 | 0 | 75% |
 | Phase 3 (Advanced Features - 12+ weeks) | 4 | 4 | 0 | 0 | 100% |
-| **Overall** | **12** | **12** | **0** | **0** | **100%** |
+| **Overall** | **12** | **11** | **1** | **0** | **92%** |
 
-> ✅ **All planned marketing and sales enablement features have been implemented as minimum viable versions (MVPs).**
+> ⚠️ **Correction 2026-08-20** (`docs/marketing/WIRING-AUDIT-2026-08-20.md`): every "COMPLETE" row below is a `services/<name>/` standalone stub — not in `pnpm-workspace.yaml`, not in `turbo.json`, zero references from `apps/api`/`apps/web`/`apps/mobile`. None are reachable by a retailer or admin today. **Partner Network Manager** (row below) additionally has a broken `schema.prisma` (`npx prisma validate` fails) blocking `db:generate` for the whole monorepo — downgraded from ✅ to 🟡 here since its API route is at least real, unlike the other 9. Full fix plan: `docs/PRO-REQUIREMENTS.md` §29. Treat every other "✅ COMPLETE" claim in this file as unverified until checked the same way.
 
 ---
 
@@ -38,7 +38,7 @@
 |---------|--------|------------------------|----------|
 | **1. Direct Social Publishing** | ✅ COMPLETE | - Schedule Instagram Reels (via Meta Graph API)<br>- Broadcast WhatsApp Catalog updates<br>- Analytics: views, shares, click-throughs<br>- Integrated with Meta Graph API for Reels scheduling<br>- Used WhatsApp Cloud API for catalog broadcasts<br>- New `social-scheduler` table for queued posts<br>- Webhook for post-publish analytics (impressions, engagement) | Leverages existing WhatsApp/IG integrations in core platform |
 | **2. Automated Festival Background Library** | ✅ COMPLETE | - Pre-generated backgrounds for Diwali, weddings, regional festivals<br>- One-click apply to product images<br>- Seasonal auto-rotation (e.g., swap to wedding backgrounds Oct-Mar)<br>- Extended `studio-shoot` job to generate background variants during off-peak hours<br>- New `festival-bg` table in DB with metadata (occasion, validity dates)<br>- Admin UI to preview/select backgrounds<br>- API endpoint: `/apply-background/{productId}/{festivalId}` | Part of `services/photo-cleanup/` and AI fashion DNA module |
-| **3. Partner Network Manager** | ✅ COMPLETE | - Track referral codes for local salons/tailors<br>- Automated commission payouts<br>- Co-hosted event invitations (e.g., "Styling Sunday" with beauty parlor)<br>- New `partner_relations` table<br>- Webhook for referral tracking<br>- Email/SMS templates for event invites<br>- Integrated with existing loyalty points system | `apps/api/src/routes/retailers/retailers-partners/` |
+| **3. Partner Network Manager** | 🟡 API route real, everything else broken/missing | - Real CRUD route exists (partners, referrals, mark-paid, events) — but `schema.prisma`'s `Partner`/`PartnerReferral` models fail `npx prisma validate` (invalid inline enum syntax), no migration was ever applied, `PARTNER_NETWORK` missing from `PlanFeatureKey`, no admin UI, no mobile UI. Fix plan: `docs/PRO-REQUIREMENTS.md` §29. | `apps/api/src/routes/retailers/retailers-partners/` |
 | **4. Aggregator Sync (Meesho + Instamojo first)** | ✅ COMPLETE | - Unified product catalog (single source of truth in Kanchuki DB)<br>- Real-time inventory sync (prevent overselling)<br>- Order aggregation (centralized fulfillment view)<br>- Fee/revenue reconciliation per channel<br>- Meesho & Instamojo adapters implemented<br>- Product Mapper normalizes Kanchuki product schema<br>- Inventory Sync Service polls channel APIs<br>- Order Hub pulls new orders via webhooks/polling<br>- Fee Tracker aggregates transaction fees | `services/aggregator-sync/` |
 
 ---
@@ -96,7 +96,7 @@ Based on the original ROI metrics specified in the PRD:
 | Feature | Expected ROI Metrics | Implementation Status |
 |---------|----------------------|----------------------|
 | **Local Discovery Engine** | +15% footfall from local searches; +10% sales from geo-targeted offers | ✅ IMPLEMENTED |
-| **Partner Network Manager** | ₹500-1000 avg. referral value; 2x repeat rate from partner leads | ✅ IMPLEMENTED |
+| **Partner Network Manager** | ₹500-1000 avg. referral value; 2x repeat rate from partner leads | 🔴 NOT REACHABLE — schema broken, no UI |
 | **Smart Incentive Engine** | ₹200-300 avg. uplift per new customer; 3x likelihood of second visit | ✅ IMPLEMENTED |
 | **AI-Driven Social Media Templates** | 5 hrs/week saved; 15-20% higher CTR on promotions | ✅ IMPLEMENTED |
 | **Automated Festival Background Library** | Diwali/Wedding season sales uplift of 20-30%; reduced dependency on photographers | ✅ IMPLEMENTED |

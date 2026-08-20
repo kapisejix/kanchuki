@@ -1625,7 +1625,20 @@ Build this as a **generic "connected publishing accounts" module** (one `SocialA
 
 Post-launch feature. Not in locked MVP scope; the launch (Play Store batch, billing, privacy) is the current focus. Slots into Phase 1 (post-MVP) — see `docs/PLAN.md`. Meta app review should be requested well before development starts if this becomes a priority.
 
-## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — 🔴 PLANNED (spec only, no code)
+## 24. F-032 AI Studio Shoots + Product Videos (PhotoRoom-style) — Phase A ✅ BUILT, Phase B/C 🔴 PLANNED
+
+**Correction 2026-08-20:** Phase A (studio backgrounds) was built without a
+doc update — commits `5d5ae44` (2026-08-13) and `d67484d` (2026-08-19),
+found via `docs/photoshoots/photo-feature-audit.md` + verified against the
+real code (`apps/api/src/lib/studio-shoot.ts`, `apps/api/src/jobs/studio-shoot.ts`,
+`apps/api/src/routes/products/products-studio.ts`,
+`apps/mobile/app/product/[id].tsx` template picker + polling). §24.11 below
+said **"do NOT start until the user says go"** — this was never revisited
+when Phase A shipped. Full working-vs-remaining breakdown:
+`docs/photoshoots/photo-feature-audit.md` §1.3, backlog:
+`docs/tasks/photo-feature-implementation-tasks.md`. Phase B (product video)
+and Phase C (AI Fashion Model) — no code found for either, §24.11's
+do-not-start still applies to those.
 
 **Written 2026-08-13** after deep research into PhotoRoom's published tech stack
 and the 2026 image/video model landscape. See `docs/BUILD-LOG.md` (F-032
@@ -1760,11 +1773,13 @@ latency is part of the product.
 Phase A ~2–3 weeks (integration + templates + plan gating). Phase B ~1–2
 weeks after A (API wiring + add-on billing). Phase C unestimated (research).
 
-### 24.11 Why not built yet
+### 24.11 Phase A status (was: "Why not built yet")
 
-Spec written 2026-08-13 on user request; F-031 (social publishing) is the
-current in-flight build and this is explicitly post-MVP scope. Do NOT start
-until the user says go.
+Spec written 2026-08-13 on user request, originally scoped as post-F-031,
+**do NOT start until the user says go.** Phase A shipped anyway (commits
+`5d5ae44`, `d67484d`) — see the correction note at the top of this section.
+**Phase B and Phase C were NOT built — the do-not-start instruction still
+applies to those two.**
 
 ---
 
@@ -2103,3 +2118,120 @@ Facebook should get the more engaging video post instead.
 Half a day: migration (1 column) + job (reuses ffmpeg pattern verbatim) +
 1 route + 1 mobile button (Slice 1); under an hour for Slice 2 (one new
 Graph API function + a 2-line branch in an existing route).
+
+---
+
+## 29. Partner Network Manager (Marketing & Sales Enablement) — 🔴 NOT WIRED (backend exists, schema currently broken)
+
+**Written 2026-08-20** following `docs/marketing/WIRING-AUDIT-2026-08-20.md`, which
+found the 10 features in `docs/marketing/IMPLEMENTATION-STATUS.md` were built as
+disconnected `services/*` stubs, unreachable from `apps/web` (admin) or
+`apps/mobile`. Partner Network Manager was the one exception with a real
+`apps/api` route — this section scopes what's left to actually ship it. Full
+spec source: `docs/marketing/partner-network-manager.md`,
+`docs/marketing/marketing-sales-enablement-overview.md` §1 "Community
+Partnerships".
+
+### 29.1 Problem
+
+Retailers acquire customers through informal partnerships with local salons,
+tailors, and stylists (e.g. a salon refers a bridal-wear customer). Today
+there's no way to track that referral, calculate a commission, or pay it out
+— it's word-of-mouth with no system behind it.
+
+### 29.2 What already exists (backend only, do not rebuild)
+
+`apps/api/src/routes/retailers/retailers-partners/index.ts` — full CRUD,
+already registered in `retailers.ts` (`server.register(retailersPartnersRoutes)`):
+- `GET/POST/PUT/DELETE /retailers/me/partners` — partner CRUD (salon/tailor/
+  stylist/makeup-artist/other), auto-generated referral code, soft-delete
+  (`is_active`).
+- `GET /retailers/me/partners/:id/referrals` — referrals for one partner,
+  with customer + order detail.
+- `POST /retailers/me/partners/referrals/:id/pay` — mark a commission paid.
+- `GET/POST/PUT/DELETE /retailers/me/partners/events` — co-hosted events
+  (e.g. "Styling Sunday"), with discount code/amount.
+- Every write records an `AuditLog` row. Route-level ownership checks
+  (`retailer_id` match) throughout.
+
+`packages/db/prisma/schema.prisma` has `Partner`, `PartnerReferral`,
+`PartnerEvent` models (~line 1944) and a `PartnerType` enum — **but the
+schema is currently invalid** (see 29.3), so none of this has ever been
+migrated or generated.
+
+### 29.3 What's actually broken (found via `npx prisma validate`, not assumed)
+
+1. **Schema doesn't compile.** `Partner.commission_type` and
+   `PartnerReferral.status` are declared as inline `Enum { ... }` blocks
+   inside the model body — not valid Prisma syntax (enums must be top-level
+   `enum` declarations referenced by name, same as `PartnerType` two lines
+   above them). `npx prisma validate` fails at schema.prisma:1967 and
+   :1992. This blocks `prisma generate`/`db:generate` for the **entire**
+   monorepo if anyone runs it against current `main`, not just this feature.
+2. **No migration exists.** `find packages/db/prisma/migrations -iname
+   "*partner*"` returns nothing — `partners`/`partner_referrals`/
+   `partner_events` tables don't exist in the database.
+3. **`PARTNER_NETWORK` is not in the `PlanFeatureKey` enum** (schema.prisma
+   ~line 131). The route calls `hasFeature(retailerId, 'PARTNER_NETWORK')`
+   which won't typecheck against `hasFeature(retailerId: string, featureKey:
+   PlanFeatureKey)` — this route has never successfully typechecked as part
+   of a full build.
+4. No admin UI, no mobile UI (confirmed in the wiring audit — zero matches
+   for `*partner*` under `apps/web/src/app/admin` or `apps/mobile`).
+
+### 29.4 Design — fix path
+
+**Schema fix (must land before anything else, blocks all four remaining
+steps):**
+- Replace the two inline `Enum { }` blocks with top-level enums —
+  `CommissionType { FIXED_AMOUNT PERCENTAGE_OF_SALE }` and
+  `PartnerReferralStatus { PENDING PAID CANCELLED }` — referenced by name,
+  same pattern as the existing `PartnerType`.
+- Fix the stray `\ Optional: track what was purchased` line above
+  `order_id` in `PartnerReferral` (invalid comment syntax, should be `//`).
+- Re-run `npx prisma validate` clean before writing the migration.
+
+**Feature gate (follow the `GROWTH_ENGINE`/`WHATSAPP_CATALOG_SYNC` split
+pattern — PostgreSQL 55P04 forbids using a freshly-added enum value in the
+same transaction it was added in, see migrations 055/056/057):**
+- Migration N: add `PARTNER_NETWORK` to `PlanFeatureKey`.
+- Migration N+1: insert the `partners`/`partner_referrals`/`partner_events`
+  table creation (can ride with the enum-add migration or its own — tables
+  don't have the same-transaction restriction, only the enum value does).
+- Migration N+2: insert `PlanFeature` rows gating `PARTNER_NETWORK` per plan
+  (decide which plans get it — Growth/Pro, consistent with how other B2B
+  growth features are gated, not Starter).
+
+**Admin:** no new admin page needed for MVP — the existing generic
+`apps/web/src/app/admin/plan-features/` grid already handles enabling/
+disabling any `PlanFeatureKey` per plan once the enum value exists. Adding a
+dedicated admin partner-directory view is speculative until a retailer asks
+for cross-retailer partner visibility — skip it.
+
+**Mobile (new, this is the actual gap):** one new screen,
+`apps/mobile/app/growth/partners.tsx`, mirroring the existing
+`apps/mobile/app/growth/videos.tsx` structure — list partners, add/edit
+partner (name, type, contact, commission %), tap into a partner to see its
+referrals + "mark paid" button, plus an Events tab/section for co-hosted
+event CRUD. Add the client functions to `apps/mobile/src/lib/api/growth.ts`
+(same file every other growth screen already uses) — not a new API client
+file.
+
+### 29.5 Acceptance Criteria
+
+- `npx prisma validate` passes clean; `db:generate` succeeds for the whole
+  monorepo.
+- Retailer on a plan with `PARTNER_NETWORK` enabled can add a partner from
+  the mobile app, sees the generated referral code, and can view/mark-paid
+  referrals and manage events — full loop, no direct API calls needed.
+- Retailer on a plan without the feature sees it gated the same way
+  `GROWTH_ENGINE` features are gated elsewhere (not a broken screen).
+- Admin can toggle `PARTNER_NETWORK` per plan from the existing
+  plan-features grid, no code change needed to adjust which plans get it.
+
+### 29.6 Complexity estimate
+
+Schema fix + 3 migrations: under an hour (small, mechanical). Mobile screen
++ API client wiring: half a day, reusing the growth-screen pattern
+end-to-end. No new admin page. No new backend service — the route already
+exists and just needs a working schema under it.

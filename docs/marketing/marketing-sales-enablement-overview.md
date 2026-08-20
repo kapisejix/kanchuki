@@ -117,7 +117,7 @@ All marketing and sales enablement features are gated behind subscription plan f
 **Phase 2 (Core Enablement - 8-10 weeks):**  
 1. Direct Social Publishing (WhatsApp/IG APIs) ✅
 2. Automated Festival Background Library (extends studio-shoot) ✅
-3. Partner Network Manager (new DB schema + workflows) ✅
+3. Partner Network Manager (new DB schema + workflows) 🔴 not built — schema fails `prisma validate`, no migration, no UI (see `docs/PRO-REQUIREMENTS.md` §29)
 4. Aggregator Sync (Meesho + Instamojo first) ✅  
 
 **Phase 3 (Advanced Features - 12+ weeks):**  

@@ -1950,6 +1950,17 @@ enum PartnerType {
    OTHER
 }
 
+enum CommissionType {
+   FIXED_AMOUNT
+   PERCENTAGE_OF_SALE
+}
+
+enum PartnerReferralStatus {
+   PENDING
+   PAID
+   CANCELLED
+}
+
 model Partner {
    id             String   @id @default(cuid())
    retailer_id    String
@@ -1964,10 +1975,7 @@ model Partner {
    is_active      Boolean  @default(true)
    // Commission structure
    commission_rate Int     // percentage (0-100) of referred sale
-   commission_type Enum { // FIXED_AMOUNT or PERCENTAGE_OF_SALE
-     FIXED_AMOUNT
-     PERCENTAGE_OF_SALE
-   } @default(PERCENTAGE_OF_SALE)
+   commission_type CommissionType @default(PERCENTAGE_OF_SALE)
    fixed_commission_paise Int? // if commission_type is FIXED_AMOUNT
    created_at DateTime  @default(now())
    updated_at DateTime  @updatedAt
@@ -1989,11 +1997,7 @@ model PartnerReferral {
    order_id        String?
    // Commission earned
    commission_paise Int
-   status          Enum { // PENDING, PAID, CANCELLED
-     PENDING
-     PAID
-     CANCELLED
-   } @default(PENDING)
+   status          PartnerReferralStatus @default(PENDING)
    created_at DateTime  @default(now())
    updated_at DateTime  @updatedAt
 

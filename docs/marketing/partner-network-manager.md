@@ -1,6 +1,6 @@
 # Partner Network Manager
 
-**Status:** Planned (Phase 2 - Core Enablement)
+**Status:** 🔴 Not built — API route exists but is unreachable: `schema.prisma` fails `npx prisma validate` (invalid inline enum syntax on `Partner.commission_type` / `PartnerReferral.status`), no migration applied, `PARTNER_NETWORK` missing from `PlanFeatureKey`, no admin/mobile UI. Full gap analysis: `docs/marketing/WIRING-AUDIT-2026-08-20.md`. Fix plan + acceptance criteria: `docs/PRO-REQUIREMENTS.md` §29.
 
 **Description:** Track referral codes for local partners, automate commission payouts, and manage co-hosted event invitations to drive acquisition through community partnerships.
 
