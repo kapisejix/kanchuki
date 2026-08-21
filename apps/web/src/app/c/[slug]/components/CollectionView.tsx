@@ -29,6 +29,7 @@ const BookingForm = dynamic(() => import('./BookingForm').then((m) => m.BookingF
 const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
+const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -513,6 +514,12 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           onClose={() => setTryOnProduct(null)}
         />
       )}
+
+      {/* ── AI Stylist FAB + Modal ── */}
+      <AIStylist
+        storeSlug={store ?? slug}
+        storeName={collection.retailer.shop_name}
+      />
 
       {/* ── Booking Form Modal ── */}
       {showBooking && (

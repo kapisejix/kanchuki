@@ -9,6 +9,7 @@ import {
   publicProductsRoutes,
   publicRetailersRoutes,
   publicReviewsRoutes,
+  publicStylistRoutes,
   publicStoresRoutes,
 } from './public/index.js';
 
@@ -29,4 +30,6 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicStoresRoutes);
   // public-reviews — F-021 customer-facing review submission
   await server.register(publicReviewsRoutes);
+  // public-stylist — AI Stylist v1 (LLM outfit recommendations)
+  await server.register(publicStylistRoutes);
 };
