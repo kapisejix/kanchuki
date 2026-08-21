@@ -521,10 +521,11 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ### Phase 1: Core AI Features (Month 5–8)
 
 #### F-101: Fashion DNA — AI Customer Matching
-**Status:** 🔴 **Not started** — requires 3–6 months of behavior data from Phase 0.
+**Status:** 🟡 **Partial — Style Quiz built (2026-08-21)**, matching engine infrastructure exists (CustomerFashionDNA schema, BullMQ job, `update-fashion-dna.ts`), but customer-facing data capture now includes 5-question style quiz (commit `e3f5250`) and AI Stylist v1 (commit `52af9fb`). Full behavior-based learning still requires 3–6 months of MVP data.
 **Description:** AI learns customer preferences from behavior (views, favorites, enquiries, purchases) and automatically suggests matching products.
 
-**Requires:** 3–6 months of MVP behavior data from Phase 0. Can't build yet.
+**Built (2026-08-21):** Style quiz onboarding (occasion/region/budget/fabric/color), AI Stylist v1 (Claude-powered outfit recommendations over tagged catalog + deterministic color/fabric rules from §4).
+**Still requires:** 3–6 months of MVP behavior data for behavior-based learning.
 
 **Matching signals:**
 - Explicit preferences (captured in F-003)
@@ -636,7 +637,7 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 ---
 
 #### F-103: Remote Try-On via WhatsApp
-**Status:** 🔴 **Not started** — Phase 1 scope; requires F-102 (VTO) working first.
+**Status:** 🟡 **Customer-facing VTO enabled (2026-08-21)** — flipped `TRY_ON_ENABLED` gate (commit `6dcf35c`). Backend already live on Hetzner. Customer uploads photo on collection page → TryOnModal → polls for result. WhatsApp channel for try-on still not started.
 **Description:** Retailer sends product via WhatsApp. Customer replies with their photo. AI generates try-on. Retailer sends back result.
 
 ---
@@ -644,6 +645,33 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 #### F-104: Auto-Personalized Collection Building
 **Status:** 🔴 **Not started** — depends on F-101 (Fashion DNA).
 **Description:** AI auto-suggests collection of 10–15 products for a specific customer based on their Fashion DNA. Retailer reviews, edits, sends.
+
+---
+
+### Customer Profile Features (P0-P3, Built 2026-08-21)
+
+**Full spec:** `docs/customer/customer-profile-req.md` §12
+
+| # | Feature | Status | Commit |
+|---|---------|--------|--------|
+| 1 | Customer-facing VTO self-serve | ✅ Built | `6dcf35c` |
+| 2 | Showroom booking form | ✅ Built | `367ba34` |
+| 3 | Reviews/ratings social proof | ✅ Built | `1fa2262` |
+| 4 | Seasonal collections surfacing | ✅ Built | `ea8d81d` |
+| 5 | Mix-and-match lookbooks | ✅ Built | `3bee868` |
+| 6 | Promotion alert banner | ✅ Built | `c4cbec7` |
+| 7 | Fabric glossary + tooltips | ✅ Built | `06a5fcf` |
+| 8 | Recently viewed row | ✅ Built | `d2a7ae7` |
+| 9 | Restock notification | ✅ Built | `3e40d88` |
+| 10 | Saved size capture | ✅ Built | `fb26d03` |
+| 11 | Style quiz onboarding | ✅ Built | `e3f5250` |
+| 12 | AI Stylist v1 | ✅ Built | `52af9fb` |
+| 13 | Unstitched Design Gallery | ✅ Built | `3e695f4` |
+| 14 | Regional weave/style filters | ✅ Built | `f122c19` |
+| 15 | Customer referral rewards | ✅ Built | `504e565` |
+| 16 | Family/gifting mode | ✅ Built | `7ec21c7` |
+
+**⚠️ Pending:** Migration 069 (design_references table) needs `prisma migrate deploy`.
 
 ---
 
