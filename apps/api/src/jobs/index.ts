@@ -15,10 +15,8 @@ import type { SpinFrameJobData } from './extract-spin-frames.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
-// handleGhostMannequin, handleProcessTryOn, handleUpdateFashionDNA: paused, see startWorkers() below.
-// Re-enable: uncomment these 3 imports + the matching Worker block.
-// import { handleGhostMannequin } from './ghost-mannequin.js';
-import type { GhostMannequinJobData } from './ghost-mannequin.js';
+// handleProcessTryOn, handleUpdateFashionDNA: paused, see startWorkers() below.
+// Re-enable: uncomment these imports + the matching Worker block.
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
 // import { handleProcessTryOn } from './process-tryon.js';
 import type { TryOnJobData } from './process-tryon.js';
@@ -57,7 +55,6 @@ let measurementQueue: Queue | null = null;
 let tryOnQueue: Queue | null = null;
 let fashionDNAQueue: Queue | null = null;
 let spinFrameQueue: Queue | null = null;
-let ghostMannequinQueue: Queue | null = null;
 let studioShootQueue: Queue | null = null;
 let catalogSyncQueue: Queue | null = null;
 let maintenanceQueue: Queue | null = null;
@@ -90,11 +87,6 @@ function getFashionDNAQueue(): Queue {
 function getSpinFrameQueue(): Queue {
   spinFrameQueue ??= new Queue(QUEUES.SPIN_FRAME_EXTRACTION, { connection: getRedis() });
   return spinFrameQueue;
-}
-
-function getGhostMannequinQueue(): Queue {
-  ghostMannequinQueue ??= new Queue(QUEUES.GHOST_MANNEQUIN, { connection: getRedis() });
-  return ghostMannequinQueue;
 }
 
 function getStudioShootQueue(): Queue {
@@ -181,15 +173,6 @@ export async function addSpinFrameJob(data: SpinFrameJobData): Promise<void> {
     backoff: { type: 'exponential', delay: 5000 },
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 50 },
-  });
-}
-
-export async function addGhostMannequinJob(data: GhostMannequinJobData): Promise<void> {
-  await getGhostMannequinQueue().add('ghost-mannequin', data, {
-    attempts: 2,
-    backoff: { type: 'exponential', delay: 10_000 },
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 20 },
   });
 }
 
@@ -310,10 +293,10 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   );
 
-  // Try-on, Fashion DNA, Ghost-mannequin workers: PAUSED (not needed yet).
-  // Jobs still queue via addTryOnJob/addFashionDNAJob/addGhostMannequinJob (routes
-  // untouched) but sit unprocessed until re-enabled. To re-enable: uncomment the
-  // 3 handler imports above and the Worker block below.
+  // Try-on, Fashion DNA workers: PAUSED (not needed yet).
+  // Jobs still queue via addTryOnJob/addFashionDNAJob (routes untouched) but
+  // sit unprocessed until re-enabled. To re-enable: uncomment the 2 handler
+  // imports above and the Worker block below.
   // const tryOnWorker = new Worker(
   //   QUEUES.TRY_ON,
   //   async (job) => {
@@ -328,15 +311,6 @@ export async function startWorkers(): Promise<void> {
   //   async (job) => {
   //     const data = job.data as FashionDNAJobData;
   //     await handleUpdateFashionDNA(data);
-  //   },
-  //   { connection: redis, concurrency: 2 },
-  // );
-  //
-  // const ghostMannequinWorker = new Worker(
-  //   QUEUES.GHOST_MANNEQUIN,
-  //   async (job) => {
-  //     const data = job.data as GhostMannequinJobData;
-  //     await handleGhostMannequin(data);
   //   },
   //   { connection: redis, concurrency: 2 },
   // );

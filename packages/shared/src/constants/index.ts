@@ -301,8 +301,6 @@ export const R2_PATHS = {
     `retailers/${retailerId}/categories/${filename}`,
   retailerBanner: (retailerId: string, filename: string) =>
     `retailers/${retailerId}/banner/${filename}`,
-  ghostMannequin: (retailerId: string, productId: string) =>
-    `retailers/${retailerId}/products/${productId}/ghost-mannequin.jpg`,
   photoCleanupTest: (filename: string) => `admin/photo-cleanup-tests/${filename}`,
   // F-032 Phase A: AI studio-shoot results. New KEY per generation (never
   // overwrites the source photo) — the result is a new ProductPhoto row the
@@ -425,11 +423,6 @@ export const INTEGRATION_KEYS = [
     label: 'Groq API Key',
   },
   {
-    key_name: 'SNAPPYIT_API_KEY',
-    category: 'AI',
-    label: 'Snappyit API Key (ghost-mannequin generation, F-001e)',
-  },
-  {
     key_name: 'TOGETHER_API_KEY',
     category: 'AI',
     label: 'Together AI API Key',
@@ -463,7 +456,6 @@ export const INTEGRATION_KEYS = [
   { key_name: 'R2_BUCKET_NAME', category: 'STORAGE', label: 'Cloudflare R2 Bucket Name' },
   { key_name: 'META_APP_SECRET', category: 'WHATSAPP', label: 'Meta App Secret (WhatsApp API)' },
   { key_name: 'META_VERIFY_TOKEN', category: 'WHATSAPP', label: 'Meta Webhook Verify Token' },
-  { key_name: 'SNAPPYIT_API_KEY', category: 'AI', label: 'Snappyit API Key (ghost mannequin generation)' },
 ] as const;
 
 export type IntegrationKeyName = (typeof INTEGRATION_KEYS)[number]['key_name'];
@@ -508,7 +500,6 @@ export const QUEUES = {
   MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
   FASHION_DNA: 'kanchuki-fashion-dna',
   SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
-  GHOST_MANNEQUIN: 'kanchuki-ghost-mannequin',
   // F-032 Phase A: AI studio-shoot generation (FLUX Kontext API). Own queue
   // (not MAINTENANCE) — it's a retailer-facing, potentially concurrent hot
   // path, and BFL caps active tasks (24 for kontext-pro / 6 for kontext-max),

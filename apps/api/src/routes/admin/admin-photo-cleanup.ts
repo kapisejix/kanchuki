@@ -2,9 +2,8 @@
 // product-photo cleanup script, see CLAUDE.md 2026-08-05 entry). Shells out
 // to the existing, already-verified Python script instead of reimplementing
 // bg-removal/shadow/shine in TypeScript — one behavior, one place.
-// The Python discovery + run serialization live in lib/photo-cleanup-runner.ts
-// (sole shared runner — the retailer-facing pro-cleanup route that also used
-// it was removed 2026-08-09 along with the mobile Pro capture mode).
+// The Python discovery + run serialization live in lib/photo-cleanup-runner.ts,
+// shared with the retailer-facing pro-cleanup route (products-pro-cleanup.ts).
 import { randomUUID } from 'node:crypto';
 
 import type { FastifyPluginAsync } from 'fastify';
@@ -100,8 +99,8 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
         .parse(request.body);
 
       // Runs through the shared runner (services/photo-cleanup sidecar in
-      // production, local python in dev) — same path the removed retailer
-      // pro-cleanup route used, one behavior, one place. Ghost mannequin's
+      // production, local python in dev) — same path as the retailer
+      // pro-cleanup route, one behavior, one place. Ghost mannequin's
       // first-ever run also loads the LaMa checkpoint on top of rembg's —
       // give it more room than the default 240s cap.
       const { jpeg } = await runPhotoCleanup(

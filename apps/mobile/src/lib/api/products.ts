@@ -237,4 +237,67 @@ export const productApi = {
       getCacheTtlMs: 0,
       timeoutMs: 15_000,
     }),
+
+  /**
+   * Professional photo pipeline (product-add multi-shot capture flow):
+   * cleans each raw kept shot server-side — background removal + backdrop
+   * composite, optional SAM2 hanger/mannequin removal (best-effort, ₹0),
+   * optional garment tight-crop — and returns the cleaned copies with the
+   * sharpest one flagged primary. Long timeout: SAM2 on CPU takes seconds-to-
+   * a-minute per photo.
+   */
+  proCleanup: (payload: {
+    photos: {
+      r2_key: string;
+      url: string;
+      // Tap-to-fix: normalized (0..1) points the retailer tapped on leftover
+      // hanger/mannequin hardware (SAM2 point prompts) + optional garment
+      // protect points. Omit for auto (remove_hardware) scanning.
+      hardware_points?: [number, number][];
+      garment_points?: [number, number][];
+    }[];
+    remove_hardware?: boolean;
+    tight_crop?: boolean;
+    background_image_id?: string | null;
+  }) =>
+    request<{
+      data: {
+        photos: {
+          r2_key: string;
+          url: string;
+          score: number;
+          is_primary: boolean;
+          hardware_removed: boolean;
+          hardware_skipped: boolean;
+          tap_removed: boolean;
+          error: string | null;
+        }[];
+        primary_url: string | null;
+      };
+    }>('/v1/products/pro-cleanup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      // 10 min: SAM2 hardware removal on CPU is seconds-to-a-minute per
+      // photo; the whole batch runs serially server-side. The processing
+      // screen tells the retailer to keep it open.
+      timeoutMs: 600_000,
+    }),
+
+  /** Availability probe for the Pro capture flow — the Add Product screen
+   * shows the Pro chip disabled up-front when the cleanup environment
+   * (sidecar / local python) is down, instead of letting the retailer shoot
+   * 3-5 photos and only fail at Process. Short client-side cache; pass
+   * { refresh: true } to bypass (chip re-check after the sidecar comes up). */
+  getProCleanupStatus: (opts?: { refresh?: boolean }) =>
+    request<{
+      data: {
+        available: boolean;
+        mode: 'service' | 'local';
+        service_url_set: boolean;
+        service_healthy: boolean | null;
+        local_python_available: boolean;
+      };
+    }>('/v1/products/pro-cleanup/status', {
+      getCacheTtlMs: opts?.refresh ? 0 : 30_000,
+    }),
 };
