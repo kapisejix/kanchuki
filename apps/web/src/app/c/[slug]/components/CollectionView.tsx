@@ -27,6 +27,7 @@ const ProductDetailSheet = dynamic(
 const TryOnModal = dynamic(() => import('./TryOnModal').then((m) => m.TryOnModal), { ssr: false });
 const BookingForm = dynamic(() => import('./BookingForm').then((m) => m.BookingForm), { ssr: false });
 const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
+const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -319,6 +320,12 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             {collection.description}
           </p>
         )}
+
+        {/* Recently viewed products */}
+        <RecentlyViewed
+          storeSlug={store ?? slug}
+          onProductTap={(p) => setSelectedProduct(p as PublicProduct)}
+        />
 
         {/* Always-visible category chip bar (count-bearing, matches the
             reference browse layout) — independent of the filter toggle. */}

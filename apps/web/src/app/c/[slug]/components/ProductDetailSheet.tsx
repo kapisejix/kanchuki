@@ -11,6 +11,7 @@ import { Product360Viewer } from './Product360Viewer'
 import { ReviewForm } from './StarPicker'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
+import { trackRecentlyViewed } from '../lib/recentlyViewed'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -90,6 +91,19 @@ export function ProductDetailSheet({
   }, [product.id])
   const touchStartX = useRef<number | null>(null)
   const prevIndexRef = useRef(photoIndex)
+
+  // Track this product as recently viewed
+  useEffect(() => {
+    trackRecentlyViewed(slug, {
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      primary_color: product.primary_color,
+      price_min: product.price_min,
+      price_max: product.price_max,
+      primary_photo_url: product.primary_photo_url,
+    })
+  }, [product, slug])
 
   // ── Pinch/Zoom state ─────────────────────────────────────────────
   const [isZoomed, setIsZoomed] = useState(false)
