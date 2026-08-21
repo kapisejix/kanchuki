@@ -2,7 +2,7 @@
 
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star, Calendar } from 'lucide-react';
+import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star, Calendar, ChevronRight } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -28,6 +28,7 @@ const TryOnModal = dynamic(() => import('./TryOnModal').then((m) => m.TryOnModal
 const BookingForm = dynamic(() => import('./BookingForm').then((m) => m.BookingForm), { ssr: false });
 const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
+const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -69,6 +70,16 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [showFilters, setShowFilters] = useState(false);
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null);
   const [showBooking, setShowBooking] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizDone, setQuizDone] = useState(false);
+
+  // Check if quiz was already completed for this store
+  useEffect(() => {
+    try {
+      const existing = localStorage.getItem(`kanchuki_quiz_${slug}`)
+      if (existing) setQuizDone(true)
+    } catch {}
+  }, [slug])
 
   // F-302: Check if the retailer has online checkout enabled.
   // Goes through the web proxy (/api/c/[slug]/checkout-status) — a relative
@@ -319,6 +330,29 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           <p className="text-sm text-gray-600 leading-relaxed mb-4 px-1">
             {collection.description}
           </p>
+        )}
+
+        {/* Style quiz — show once if not completed */}
+        {!quizDone && !showQuiz && (
+          <button
+            onClick={() => setShowQuiz(true)}
+            className="w-full bg-gradient-to-r from-cyan-50 to-indigo-50 border border-cyan-100 rounded-2xl p-3 mb-4 flex items-center gap-3 hover:from-cyan-100 hover:to-indigo-100 transition-colors"
+          >
+            <span className="text-xl">✨</span>
+            <div className="text-left">
+              <p className="text-xs font-bold text-gray-900">Take a quick style quiz</p>
+              <p className="text-[10px] text-gray-500">Help us suggest outfits you&apos;ll love</p>
+            </div>
+            <ChevronRight size={16} className="text-cyan-400 ml-auto" />
+          </button>
+        )}
+        {showQuiz && !quizDone && (
+          <div className="mb-4">
+            <StyleQuiz
+              storeSlug={store ?? slug}
+              onComplete={() => { setQuizDone(true); setShowQuiz(false) }}
+            />
+          </div>
         )}
 
         {/* Recently viewed products */}
