@@ -12,6 +12,7 @@ import { ReviewForm } from './StarPicker'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
+import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -821,6 +822,17 @@ export function ProductDetailSheet({
             {isSold ? 'Sold Out' : 'Enquire'}
           </button>
         </div>
+
+        {/* Notify When Available — only for SOLD items */}
+        {isSold && (
+          <div className="px-4 pt-2">
+            <NotifyWhenAvailable
+              productId={product.id}
+              storeSlug={store ?? slug}
+              productName={product.name ?? product.category ?? 'this product'}
+            />
+          </div>
+        )}
 
         {/* Reviews — social proof + submission form */}
         <div className="px-4 pt-2 space-y-3">
