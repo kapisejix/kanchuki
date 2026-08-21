@@ -490,6 +490,83 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
     });
   });
 
+  // ─── GET /public/retailers/:slug/collections ────────────────────
+  // Customer-facing: list active collections for a retailer (seasonal/festival picks,
+  // curated sets). Used to surface "Seasonal Picks" on the categories page.
+  server.get('/retailers/:slug/collections', async (request) => {
+    const { slug } = request.params as { slug: string };
+
+    return withPublicCache(request.url, async () => {
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: slug, deleted_at: null, is_suspended: false },
+        select: { id: true },
+      });
+      if (!retailer) throw notFound('Retailer');
+
+      const collections = await prisma.collection.findMany({
+        where: {
+          retailer_id: retailer.id,
+          status: 'ACTIVE',
+          deleted_at: null,
+        },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          slug: true,
+          view_count: true,
+          favorite_count: true,
+          products: {
+            where: { product: { deleted_at: null } },
+            select: {
+              product: {
+                select: {
+                  id: true,
+                  name: true,
+                  category: true,
+                  primary_color: true,
+                  price_min: true,
+                  price_max: true,
+                  photos: {
+                    orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }],
+                    take: 1,
+                    select: { url: true },
+                  },
+                },
+              },
+            },
+            orderBy: { sort_order: 'asc' },
+            take: 6,
+          },
+          _count: { select: { products: true } },
+        },
+        orderBy: { updated_at: 'desc' },
+        take: 10,
+      });
+
+      return {
+        data: collections.map((c) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          slug: c.slug,
+          view_count: c.view_count,
+          favorite_count: c.favorite_count,
+          product_count: c._count.products,
+          preview_products: c.products.map((cp) => ({
+            id: cp.product.id,
+            name: cp.product.name,
+            category: cp.product.category,
+            primary_color: cp.product.primary_color,
+            price_min: cp.product.price_min,
+            price_max: cp.product.price_max,
+            photo_url: cp.product.photos[0]?.url ?? null,
+          })),
+        })),
+      };
+    });
+  });
+
   // ─── POST /public/retailers/:slug/leads ──────────────────────────
   // QR profile contact gate: Name, Phone, Gender, mandatory consent.
   // Upserts a Customer row under this retailer, same as retailer-manual-entry.
