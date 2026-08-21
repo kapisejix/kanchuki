@@ -30,6 +30,7 @@ const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
+const RegionalFilters = dynamic(() => import('./RegionalFilters').then((m) => m.RegionalFilters), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -68,6 +69,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
   const [filterColor, setFilterColor] = useState<string | null>(null);
+  const [filterRegional, setFilterRegional] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null);
   const [showBooking, setShowBooking] = useState(false);
@@ -129,6 +131,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       if (filters.category) qs.set('category', filters.category);
       if (filters.price) qs.set('price', filters.price);
       if (filters.color) qs.set('color', filters.color);
+      if ((filters as { regional?: string }).regional) qs.set('regional', (filters as { regional?: string }).regional!);
       try {
         const res = await fetch(`${productsApiPath}?${qs}`);
         if (!res.ok) return;
@@ -152,13 +155,13 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     if (isFirstRun.current) {
       isFirstRun.current = false;
       return;
-    }
-    void fetchProducts(1, {
-      category: filterCategory,
-      price: filterPrice,
-      color: filterColor,
-    });
-  }, [filterCategory, filterPrice, filterColor, fetchProducts]);
+    }      void fetchProducts(1, {
+        category: filterCategory,
+        price: filterPrice,
+        color: filterColor,
+        regional: filterRegional,
+      } as Parameters<typeof fetchProducts>[1]);
+  }, [filterCategory, filterPrice, filterColor, filterRegional, fetchProducts]);
 
   const goToPage = useCallback(
     (nextPage: number) => {
@@ -166,9 +169,10 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         category: filterCategory,
         price: filterPrice,
         color: filterColor,
-      });
+        regional: filterRegional,
+      } as Parameters<typeof fetchProducts>[1]);
     },
-    [fetchProducts, filterCategory, filterPrice, filterColor],
+    [fetchProducts, filterCategory, filterPrice, filterColor, filterRegional],
   );
 
   const toggleFavorite = useCallback(
@@ -333,6 +337,12 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           </p>
         )}
 
+        {/* Regional weave/style filters */}
+        <RegionalFilters
+          activeFilter={filterRegional}
+          onFilterChange={setFilterRegional}
+        />
+
         {/* Style quiz — show once if not completed */}
         {!quizDone && !showQuiz && (
           <button
@@ -389,6 +399,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 setFilterCategory(null);
                 setFilterPrice(null);
                 setFilterColor(null);
+                setFilterRegional(null);
               }}
               className="text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
             >
