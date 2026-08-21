@@ -107,6 +107,9 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
+        <span className="sr-only" aria-live="polite">
+          {slideCount > 1 ? `Photo ${index + 1} of ${slideCount}${current?.color ? `, ${current.color}` : ''}` : ''}
+        </span>
 {current ? (
              <>
                {/* The photo layer is a real button — tap/click opens the

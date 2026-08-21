@@ -79,19 +79,11 @@
 - **Blocked on:** Nothing
 - **Estimate:** ~2 hours
 
-### 13. Photo Audit — Product Gallery Lazy Loading
+### 13. ~~Photo Audit — Product Gallery Lazy Loading~~ ✅ DONE
+- **Status:** Already implemented — `loading="lazy"` on non-priority slide images + all thumbnails (`ProductGallery.tsx`). Audit was stale.
 
-- **What:** All images in `ProductGallery.tsx` load at once. Add `loading="lazy"` on non-priority images or IntersectionObserver to preload when slide becomes active. Reduces initial page load.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.4`
-- **Blocked on:** Nothing
-- **Estimate:** ~1 hour
-
-### 14. Photo Audit — Color Chip Disabled State for SOLD Variants
-
-- **What:** When a variant is SOLD, the color chip in `ProductGallery.tsx` still looks interactive. Gray it out or add "Sold" badge to indicate unavailability.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.4`
-- **Blocked on:** Nothing
-- **Estimate:** ~30 minutes
+### 14. ~~Photo Audit — Color Chip Disabled State for SOLD Variants~~ ✅ DONE
+- **Status:** Already implemented — SOLD chips get `disabled`, `opacity-50 cursor-not-allowed`, and a "(Sold)" label (`ProductGallery.tsx`). Audit was stale.
 
 ### 15. Auto-Built Per-Variant Collection Links (A/B Testing)
 
@@ -232,11 +224,8 @@
 - **Source:** `docs/photoshoots/photo-feature-audit.md §4.4`
 - **Estimate:** ~1 hour
 
-### 34. Photo Audit — ARIA Live Region for Gallery Status Changes
-
-- **What:** When slide changes, announce new slide index for screen readers.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.4`
-- **Estimate:** ~30 minutes
+### 34. ~~Photo Audit — ARIA Live Region for Gallery Status Changes~~ ✅ DONE
+- **Status:** `sr-only aria-live="polite"` span added to `ProductGallery.tsx` — announces "Photo N of M, {color}" on slide change.
 
 ---
 

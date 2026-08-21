@@ -325,11 +325,11 @@ This pattern ensures the original is always one tap away while edited versions c
 **Current Kanchuki Implementation Analysis:**
 - ✅ **Swipe threshold: 50px** — reasonable, prevents accidental swipes
 - ✅ **Swipe debounce: 350ms** — prevents click-after-swipe from opening fullscreen
-- ✅ **Color chips** — rounded pills with color swatches, sold indicator (red text)
+- ✅ **Color chips** — rounded pills with color swatches, sold indicator (red text), SOLD chips disabled + greyed (fixed 2026-08-21)
 - ✅ **Fullscreen lightbox** — Escape key close, arrow navigation, touch swipe, black overlay
 - ✅ **Sold/reserved ribbons** — clear visual indicators (red/amber badges)
 - ✅ **Counter display** — current/total slide numbers
-- ⚠️ **No lazy loading** — all images load via `next/image` with `priority` only on first slide. Other images may load above the fold.
+- ✅ **Lazy loading** (fixed 2026-08-21) — `loading="lazy"` on non-priority slide images + all thumbnails.
 - ⚠️ **No intersectional preloading** — variant photos could preload when near current slide.
 - ⚠️ **Aspect ratio fixed** — 3:4 ratio may not suit all product types (square products, long garments).
 - ⚠️ **No loading state** for variant photos when tapping color chips (though skeleton spinners could be added).
@@ -378,12 +378,12 @@ This pattern ensures the original is always one tap away while edited versions c
 
 | Priority | Recommendation | Rationale |
 |----------|----------------|-----------|
-| **High** | Add lazy loading for variant photos | Use `loading="lazy"` on non-priority images, or IntersectionObserver to preload when slide becomes active. Reduces initial page load time. |
-| **High** | Add color chip disabled state | When variant is SOLD, gray out or add "Sold" badge to color chip. Currently shows sold text but chip remains interactive. |
+| ~~High~~ ✅ | ~~Add lazy loading for variant photos~~ | Done 2026-08-21 — `loading="lazy"` on non-priority images + thumbnails. |
+| ~~High~~ ✅ | ~~Add color chip disabled state~~ | Done 2026-08-21 — SOLD chips get `disabled` + `opacity-50 cursor-not-allowed`. |
 | **Medium** | Add intersectional preloading | When user swipes near next/prev photos, preload those images. Improves perceived performance. |
 | **Medium** | Make aspect ratio responsive | Instead of fixed 3:4, use `aspect-ratio: 3/4 min(640px / var(width), 1fr)` or allow per-product aspect ratio. |
 | **Low** | Add loading skeleton for fullscreen | Show spinner or placeholder during image load in lightbox, especially on slow connections. |
-| **Low** | Add ARIA live region for status changes | When slide changes, announce new slide index for screen readers. |
+| ~~Low~~ ✅ | ~~Add ARIA live region for status changes~~ | Done 2026-08-21 — `sr-only aria-live="polite"` span announces slide index + color. |
 
 ---
 
