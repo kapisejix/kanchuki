@@ -13,6 +13,7 @@ import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
+import { SavedSize } from './SavedSize'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -675,6 +676,9 @@ export function ProductDetailSheet({
               )}
             </div>
           </div>
+
+          {/* Save your size */}
+          <SavedSize storeSlug={store ?? slug} />
 
           {/* Sizes */}
           {sizes.length > 0 && (
