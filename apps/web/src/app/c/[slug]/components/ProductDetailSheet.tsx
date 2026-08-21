@@ -15,6 +15,7 @@ import { trackRecentlyViewed } from '../lib/recentlyViewed'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 import { SavedSize } from './SavedSize'
 import { DesignGallery } from './DesignGallery'
+import { FamilyProfiles } from './FamilyProfiles'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -677,6 +678,13 @@ export function ProductDetailSheet({
               )}
             </div>
           </div>
+
+          {/* Family/gifting profiles */}
+          <FamilyProfiles
+            storeSlug={store ?? slug}
+            activeProfile={null}
+            onSelectProfile={() => {}}
+          />
 
           {/* Save your size */}
           <SavedSize storeSlug={store ?? slug} />
