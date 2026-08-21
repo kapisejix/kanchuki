@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { CollectionView } from '../../c/[slug]/components/CollectionView';
+import { SuspendedNotice } from '../../c/[slug]/components/SuspendedNotice';
 import { fetchCollection } from '../../c/[slug]/lib/fetchCollection';
 
 interface Props {
@@ -45,6 +46,12 @@ export default async function CollectionPage({ params }: Props) {
   const { store, collection } = await params;
   const data = await fetchCollection(collection, { page: 1, pageSize: 12 });
   if (!data) notFound();
+
+  // F-015: suspended retailer — retailer/products fields aren't populated,
+  // show a notice instead of rendering CollectionView against missing data.
+  if (data.suspended) {
+    return <SuspendedNotice shopName={data.retailer.shop_name} />;
+  }
 
   // Canonical URL enforcement: the store segment in the URL must be this
   // retailer's public_slug. A retailer without a store slug lives at the

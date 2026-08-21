@@ -70,6 +70,7 @@ export default function AddColorVariantScreen() {
       const colorResult = await productApi.detectColor(info.public_url)
       const detected = colorResult.data.color
       if (detected) {
+        setColor(detected)
         await saveVariant(detected)
       } else {
         setStep('manual')
@@ -186,7 +187,11 @@ export default function AddColorVariantScreen() {
 
       <View className="absolute left-4" style={{ top: insets.top + 8 }}>
         <AnimatedPressable
-          onPress={() => setStep('camera')}
+          onPress={() => {
+            uploadInfoRef.current = null
+            setPhotoUri(null)
+            setStep('camera')
+          }}
           disabled={step === 'saving'}
           className="w-10 h-10 bg-black/50 rounded-full items-center justify-center"
           accessibilityLabel="Retake photo"

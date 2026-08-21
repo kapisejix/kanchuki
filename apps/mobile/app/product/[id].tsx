@@ -487,7 +487,7 @@ export default function ProductDetailScreen() {
     }
     if (!firstHydrate && isDirty) return
 
-    setPrice(product.price_min ? String(product.price_min / 100) : '')
+    setPrice(product.price_min != null ? String(product.price_min / 100) : '')
     setLocation(product.location_notes ?? '')
     setNotes(product.notes ?? '')
     setSelectedStyles(product.styles ?? [])

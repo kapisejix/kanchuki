@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { SIZE_OPTIONS } from '@kanchuki/shared'
 import {
   View,
@@ -273,19 +273,18 @@ export default function CatalogImportScreen() {
     }
   }, [])
 
-  // If source URL passed via params (from catalog screen), run detection
-  // We use a ref-like pattern via a counter to avoid re-triggering on re-renders
-  const [runCount, setRunCount] = useState(0)
-  if (params.sourceUrl && runCount === 0) {
-    setRunCount(1)
-    // Defer to next microtask so state updates are batched
-    queueMicrotask(() => {
-      setSourceUrl(params.sourceUrl!)
-      setSourceR2Key(params.sourceR2Key ?? '')
-      setStep('detecting')
-      runDetection(params.sourceUrl!).catch(() => {})
-    })
-  }
+  // If source URL passed via params (from catalog screen), run detection once.
+  // detectionStartedRef (not state) guards this — a state-only guard can still
+  // let a re-render before the state update commits schedule runDetection twice.
+  const detectionStartedRef = useRef(false)
+  useEffect(() => {
+    if (!params.sourceUrl || detectionStartedRef.current) return
+    detectionStartedRef.current = true
+    setSourceUrl(params.sourceUrl)
+    setSourceR2Key(params.sourceR2Key ?? '')
+    setStep('detecting')
+    runDetection(params.sourceUrl).catch(() => {})
+  }, [params.sourceUrl, params.sourceR2Key, runDetection])
 
   // ── Toggle approval ───────────────────────────────────────────
 
@@ -345,12 +344,19 @@ export default function CatalogImportScreen() {
 
   // ── Save selected items ───────────────────────────────────────
 
+  // Synchronous double-tap guard — the Save button's disabled state only
+  // reflects step==='saving' after a render commits, same class of bug as
+  // add.tsx's saveRunningRef.
+  const saveRunningRef = useRef(false)
+
   const handleSaveSelected = useCallback(async () => {
     const approved = items.filter((item) => item.approved)
     if (approved.length === 0) {
       Alert.alert('No items selected', 'Approve at least one item to import.')
       return
     }
+    if (saveRunningRef.current) return
+    saveRunningRef.current = true
 
     setStep('saving')
 
@@ -392,6 +398,8 @@ export default function CatalogImportScreen() {
     } catch (err) {
       setStep('reviewing')
       showError(err, 'Could not save products.', 'Save failed')
+    } finally {
+      saveRunningRef.current = false
     }
   }, [items, queryClient, wantSizes])
 

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { CollectionView } from './components/CollectionView'
+import { SuspendedNotice } from './components/SuspendedNotice'
 import { fetchCollection } from './lib/fetchCollection'
 
 interface Props {
@@ -29,6 +30,12 @@ export default async function LegacyCollectionPage({ params }: Props) {
   const { slug } = await params
   const collection = await fetchCollection(slug, { page: 1, pageSize: 12 })
   if (!collection) notFound()
+
+  // F-015: suspended retailer — retailer/products fields aren't populated,
+  // show a notice instead of rendering CollectionView against missing data.
+  if (collection.suspended) {
+    return <SuspendedNotice shopName={collection.retailer.shop_name} />
+  }
 
   // Legacy /c/{slug} link: redirect to the canonical /{public_slug}/{slug}
   // when the retailer has a store slug (shared links sent before the 2026-08-09

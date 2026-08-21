@@ -181,6 +181,9 @@ export interface CollectionEnquiryItem {
 // ─── Public Collection (customer-facing, no auth) ────────────────
 
 export interface PublicCollection {
+  // F-015: set when the retailer is suspended — retailer/products fields
+  // below are not populated in that case, render a notice instead.
+  suspended?: boolean
   retailer: {
     id: string
     shop_name: string

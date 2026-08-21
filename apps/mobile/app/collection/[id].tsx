@@ -78,11 +78,16 @@ function EditModal({
 
   const handleSave = async () => {
     if (!collection || !title.trim()) return
+    const parsedExpiryDays = expiryDays ? parseInt(expiryDays, 10) : undefined
+    if (expiryDays && (!Number.isFinite(parsedExpiryDays) || (parsedExpiryDays as number) < 1)) {
+      Alert.alert('Invalid expiry', 'Enter a whole number of days (1 or more).')
+      return
+    }
     setSaving(true)
     try {
       await collectionApi.update(collection.id, {
         title: title.trim(),
-        ...(expiryDays ? { expires_days: parseInt(expiryDays, 10) } : {}),
+        ...(parsedExpiryDays !== undefined ? { expires_days: parsedExpiryDays } : {}),
       })
       onSaved()
       onClose()

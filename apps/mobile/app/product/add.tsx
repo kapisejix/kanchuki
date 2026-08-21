@@ -78,6 +78,10 @@ export default function AddProductScreen() {
   const [proProcessing, setProProcessing] = useState(false)
   const proRunningRef = useRef(false)
   const proRunRef = useRef(0)
+  // Same synchronous double-tap guard as proRunningRef, for the Save button —
+  // GradientButton's `disabled` prop only reflects step==='saving' after a
+  // render commits, so a fast double-tap can fire productApi.create() twice.
+  const saveRunningRef = useRef(false)
   // Shutter guard: takePictureAsync while the previous capture is still
   // being processed throws a camera-busy error on device — dedupe taps.
   const capturingRef = useRef(false)
@@ -420,6 +424,8 @@ export default function AddProductScreen() {
   // ── Save product ────────────────────────────────────────────────
 
   const handleSave = async () => {
+    if (saveRunningRef.current) return
+    saveRunningRef.current = true
     setStep('saving')
 
     // Photo/scan path: the photo uploads at save time — no blocking upload
@@ -435,12 +441,16 @@ export default function AddProductScreen() {
         setUploadInfo(info)
         primary = { r2_key: info.r2_key, url: info.public_url }
       } catch (err) {
+        saveRunningRef.current = false
         setStep('edit')
         showError(err, 'Failed to upload photo. Please try again.')
         return
       }
     }
-    if (!primary) return
+    if (!primary) {
+      saveRunningRef.current = false
+      return
+    }
 
     const priceInPaise = price ? Math.round(parseFloat(price) * 100) : undefined
 
@@ -505,6 +515,7 @@ export default function AddProductScreen() {
         ],
       )
     } catch (err) {
+      saveRunningRef.current = false
       setStep('edit')
       showError(err, 'Failed to save product')
     }
