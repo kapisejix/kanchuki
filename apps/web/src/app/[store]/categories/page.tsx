@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { buildStoreDescription, localBusinessLd, storeOgImage } from '../lib/store-seo';
 import { SeasonalPicks } from '../components/SeasonalPicks';
+import { CustomerLookbooks } from '../components/CustomerLookbooks';
 
 interface PublicCategory {
   id: string;
@@ -131,6 +132,9 @@ export default async function StoreCategoriesPage({ params }: Props) {
       <main className="max-w-md mx-auto px-4 py-5">
         {/* Seasonal / curated collections */}
         <SeasonalPicks storeSlug={store} />
+
+        {/* Style lookbooks */}
+        <CustomerLookbooks storeSlug={store} />
 
         <div className="grid grid-cols-2 gap-3">
         {/* All Products tile — always first so the full catalog (including

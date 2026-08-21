@@ -490,6 +490,57 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
     });
   });
 
+  // ─── GET /public/retailers/:slug/lookbooks ─────────────────────
+  // Customer-facing: list ready lookbooks for a retailer. Used to surface
+  // mix-and-match lookbooks on the categories/collection page.
+  server.get('/retailers/:slug/lookbooks', async (request) => {
+    const { slug } = request.params as { slug: string };
+
+    return withPublicCache(request.url, async () => {
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: slug, deleted_at: null, is_suspended: false },
+        select: { id: true },
+      });
+      if (!retailer) throw notFound('Retailer');
+
+      const lookbooks = await prisma.lookbook.findMany({
+        where: {
+          retailer_id: retailer.id,
+          status: 'READY',
+        },
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          format: true,
+          cover_url: true,
+          output_url: true,
+          share_url: true,
+          view_count: true,
+          share_count: true,
+          created_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+        take: 10,
+      });
+
+      return {
+        data: lookbooks.map((lb) => ({
+          id: lb.id,
+          name: lb.name,
+          description: lb.description,
+          format: lb.format,
+          cover_url: lb.cover_url,
+          output_url: lb.output_url,
+          share_url: lb.share_url,
+          view_count: lb.view_count,
+          share_count: lb.share_count,
+          created_at: lb.created_at.toISOString(),
+        })),
+      };
+    });
+  });
+
   // ─── GET /public/retailers/:slug/collections ────────────────────
   // Customer-facing: list active collections for a retailer (seasonal/festival picks,
   // curated sets). Used to surface "Seasonal Picks" on the categories page.
