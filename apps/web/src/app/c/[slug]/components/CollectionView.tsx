@@ -31,6 +31,7 @@ const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
 const RegionalFilters = dynamic(() => import('./RegionalFilters').then((m) => m.RegionalFilters), { ssr: false });
+const CustomerReferral = dynamic(() => import('./CustomerReferral').then((m) => m.CustomerReferral), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -540,6 +541,14 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           onClose={() => setShowBooking(false)}
         />
       )}
+
+      {/* Referral program */}
+      <div className="max-w-md mx-auto px-3 mb-4">
+        <CustomerReferral
+          storeSlug={store ?? slug}
+          storeName={collection.retailer.shop_name}
+        />
+      </div>
 
       {/* Bottom padding for sticky bar */}
       <div className="h-20" />
