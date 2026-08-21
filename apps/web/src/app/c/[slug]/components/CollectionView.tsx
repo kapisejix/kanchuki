@@ -26,6 +26,7 @@ const ProductDetailSheet = dynamic(
 );
 const TryOnModal = dynamic(() => import('./TryOnModal').then((m) => m.TryOnModal), { ssr: false });
 const BookingForm = dynamic(() => import('./BookingForm').then((m) => m.BookingForm), { ssr: false });
+const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -305,6 +306,11 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           )}
         </div>
       </header>
+
+      {/* ── Promotion Banner ── */}
+      <div className="max-w-md mx-auto px-3 pt-3">
+        <PromotionBanner storeSlug={store ?? slug} />
+      </div>
 
       {/* ── Product Grid ── */}
       <main className="max-w-md mx-auto px-3 py-4">

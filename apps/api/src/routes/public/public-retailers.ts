@@ -490,6 +490,56 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
     });
   });
 
+  // ─── GET /public/retailers/:slug/promotions ────────────────────
+  // Customer-facing: list active promotions/discount codes for a retailer.
+  // Surfaces as a banner on the collection page.
+  server.get('/retailers/:slug/promotions', async (request) => {
+    const { slug } = request.params as { slug: string };
+
+    return withPublicCache(request.url, async () => {
+      const retailer = await prisma.retailer.findFirst({
+        where: { public_slug: slug, deleted_at: null, is_suspended: false },
+        select: { id: true },
+      });
+      if (!retailer) throw notFound('Retailer');
+
+      const now = new Date();
+      const promotions = await prisma.promotion.findMany({
+        where: {
+          retailer_id: retailer.id,
+          is_active: true,
+          OR: [
+            { starts_at: null, ends_at: null },
+            { starts_at: null, ends_at: { gte: now } },
+            { starts_at: { lte: now }, ends_at: null },
+            { starts_at: { lte: now }, ends_at: { gte: now } },
+          ],
+        },
+        select: {
+          id: true,
+          code: true,
+          discount_type: true,
+          discount_value: true,
+          min_order_paise: true,
+          ends_at: true,
+        },
+        orderBy: { created_at: 'desc' },
+        take: 5,
+      });
+
+      return {
+        data: promotions.map((p) => ({
+          id: p.id,
+          code: p.code,
+          discount_type: p.discount_type,
+          discount_value: p.discount_value,
+          min_order_paise: p.min_order_paise,
+          ends_at: p.ends_at?.toISOString() ?? null,
+        })),
+      };
+    });
+  });
+
   // ─── GET /public/retailers/:slug/lookbooks ─────────────────────
   // Customer-facing: list ready lookbooks for a retailer. Used to surface
   // mix-and-match lookbooks on the categories/collection page.
