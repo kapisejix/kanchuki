@@ -30,6 +30,7 @@ vi.mock('@kanchuki/db', () => ({
   maskSecret: (plaintext: string) => `masked:${plaintext.slice(-4)}`,
   invalidateSecret: vi.fn(),
   getSecret: vi.fn(),
+  withRetry: (fn: () => Promise<unknown>) => fn(),
   // Import-chain requirement only: admin/checkout route graphs pull purge
   // modules (purge-retailer-now, purge-soft-deleted) that call getPurgePrisma()
   // at module top-level. Never exercised by this suite.

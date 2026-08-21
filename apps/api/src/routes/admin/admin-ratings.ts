@@ -2,9 +2,7 @@
 // Admin can list, flag, hide, and delete reviews across all retailers
 
 import type { FastifyPluginAsync } from 'fastify'
-import { PrismaClient } from '@kanchuki/db'
-
-const prisma = new PrismaClient()
+import { prisma } from '@kanchuki/db'
 
 export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /admin/reviews — list all reviews (product + store) with filters ───

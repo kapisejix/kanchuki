@@ -3,9 +3,7 @@
 
 import type { FastifyPluginAsync } from 'fastify'
 import { z } from 'zod'
-import { PrismaClient } from '@kanchuki/db'
-
-const prisma = new PrismaClient()
+import { prisma } from '@kanchuki/db'
 
 // ─── Schemas ─────────────────────────────────────────────────────
 
