@@ -2432,3 +2432,34 @@ model StoreReview {
   @@index([rating])
   @@map("store_reviews")
 }
+
+// ─── UNSTITCHED DESIGN GALLERY ──────────────────────────────────
+// Admin-curated reference designs for unstitched suits.
+// Customers browse by category (neckline, sleeve, etc.) and share
+// design images to their tailor via WhatsApp.
+enum DesignCategory {
+  NECKLINE
+  BLOUSE_BACK
+  SLEEVE
+  SALWAR
+  SILHOUETTE
+}
+
+model DesignReference {
+  id          String  @id @default(cuid())
+  category    DesignCategory
+  option      String  // e.g. "V-shape", "bell", "anarkali"
+  name        String  // display name, e.g. "Boat Neck"
+  image_url   String  // R2 URL
+  r2_key      String  // R2 object key for deletion
+  description String?
+  sort_order  Int     @default(0)
+  is_active   Boolean @default(true)
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([category])
+  @@index([category, is_active])
+  @@map("design_references")
+}

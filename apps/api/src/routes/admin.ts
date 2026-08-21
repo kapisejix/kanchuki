@@ -36,6 +36,7 @@ import {
   adminAggregatorRoutes,
   adminSocialRoutes,
   adminRatingsRoutes,
+  adminDesignReferenceRoutes,
 } from './admin/index.js';
 
 export {
@@ -229,4 +230,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminSocialRoutes);
   // admin-ratings — F-021 Product & Store Reviews moderation
   await server.register(adminRatingsRoutes);
+  // admin-design-references — Unstitched Design Gallery management
+  await server.register(adminDesignReferenceRoutes);
 };

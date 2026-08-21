@@ -14,6 +14,7 @@ import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
 import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 import { SavedSize } from './SavedSize'
+import { DesignGallery } from './DesignGallery'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -834,6 +835,16 @@ export function ProductDetailSheet({
               productId={product.id}
               storeSlug={store ?? slug}
               productName={product.name ?? product.category ?? 'this product'}
+            />
+          </div>
+        )}
+
+        {/* Design Gallery — only for unstitched products */}
+        {detail?.is_unstitched && (
+          <div className="px-4 pt-2">
+            <DesignGallery
+              retailerPhone={retailer.phone}
+              retailerName={retailer.shop_name}
             />
           </div>
         )}

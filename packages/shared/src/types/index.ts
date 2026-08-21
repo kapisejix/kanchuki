@@ -239,6 +239,7 @@ export interface PublicProductDetail extends PublicProduct {
   photos: string[]
   spin_frames: string[]
   variants: { color: string; photo_url: string | null; status: ProductStatus }[]
+  is_unstitched?: boolean
 }
 
 // ─── Search ──────────────────────────────────────────────────────
