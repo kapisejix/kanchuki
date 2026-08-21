@@ -220,7 +220,7 @@ export default function PlanLimitsPage() {
         </div>
         <p className="text-xs text-gray-500 mb-4">
           ₹ per month/year. Changing this does not re-price existing Razorpay subscription
-          plans — re-run "Setup Razorpay Plans" and update the RAZORPAY_PLAN_* env vars after
+          plans — re-run &quot;Setup Razorpay Plans&quot; and update the RAZORPAY_PLAN_* env vars after
           editing.
         </p>
         <table className="w-full text-sm mb-2">
