@@ -1,6 +1,6 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { createHash } from 'node:crypto';
-import { prisma } from '@kanchuki/db';
+import { prisma, withRetry } from '@kanchuki/db';
 import { buildEnquiryMessage } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -36,7 +36,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       );
 
       // Redis-cached with single-flight stampede protection (see lib/public-cache.ts).
-      return withPublicCache(request.url, async () => {
+      return withPublicCache(request.url, () => withRetry(async () => {
         // HIDDEN collections (Roadmap S — A/B variant links) are accessible
         // via direct slug link but excluded from storefront listings.
         const collection = await prisma.collection.findFirst({
@@ -147,11 +147,10 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
             products: publicProducts,
             total,
             page: query.page ?? 1,
-            page_size: take ?? total,
-            filters: buildFacets(facetRows),
-          },
+            page_size: take ?? total,          filters: buildFacets(facetRows),
+        },
         };
-      });
+      }, { label: 'collection-listing' }));
     },
   );
 

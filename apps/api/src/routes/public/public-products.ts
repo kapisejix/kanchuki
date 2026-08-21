@@ -1,5 +1,5 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
-import { prisma } from '@kanchuki/db';
+import { prisma, withRetry } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
@@ -29,7 +29,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
       );
 
       // Redis-cached with single-flight stampede protection (lib/public-cache.ts).
-      return withPublicCache(request.url, async () => {
+      return withPublicCache(request.url, () => withRetry(async () => {
         const p = await prisma.product.findFirst({
           where: {
             id: productId,
@@ -98,7 +98,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             })),
           },
         };
-      });
+      }, { label: 'product-detail' }));
     },
   );
 
@@ -121,7 +121,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
       );
 
       // Redis-cached with single-flight stampede protection (lib/public-cache.ts).
-      return withPublicCache(request.url, async () => {
+      return withPublicCache(request.url, () => withRetry(async () => {
         const product = await prisma.product.findFirst({
           where: { id: productId, deleted_at: null, retailer: { is_suspended: false } },
           select: { category: true, retailer_id: true },
@@ -148,7 +148,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
         const publicProducts = await Promise.all(related.map((r) => toPublicProductSummary(r)));
 
         return { data: publicProducts };
-      });
+      }, { label: 'related-products' }));
     },
   );
 };

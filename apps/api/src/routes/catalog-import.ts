@@ -8,7 +8,7 @@ import {
   publicUrl,
   reserveAiCredits,
 } from '@kanchuki/ai';
-import { prisma } from '@kanchuki/db';
+import { prisma, withRetry } from '@kanchuki/db';
 import { PLAN_LIMITS, SIZE_OPTIONS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -374,41 +374,42 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
 
     const { items, default_section_id } = parsed.data;
 
-    // F-001d: resolve rack/shelf location — verify any section_id (per-item
-    // override or the once-per-photo default) actually belongs to this
-    // retailer, silently drop anything that doesn't rather than failing the
-    // whole batch over a stale/bad location hint.
-    const requestedSectionIds = [
-      ...new Set(
-        [default_section_id, ...items.map((i) => i.section_id)].filter((id): id is string => !!id),
-      ),
-    ];
-    const validSectionIds = new Set(
-      requestedSectionIds.length
-        ? (
-            await prisma.storeSection.findMany({
-              where: { retailer_id: retailerId, id: { in: requestedSectionIds } },
-              select: { id: true },
-            })
-          ).map((s) => s.id)
-        : [],
-    );
+    // F-001d: resolve rack/shelf location + plan limits (retry on transient DB errors)
+    const { validSectionIds, retailer } = await withRetry(async () => {
+      const requestedSectionIds = [
+        ...new Set(
+          [default_section_id, ...items.map((i) => i.section_id)].filter((id): id is string => !!id),
+        ),
+      ];
+      const validSectionIds = new Set(
+        requestedSectionIds.length
+          ? (
+              await prisma.storeSection.findMany({
+                where: { retailer_id: retailerId, id: { in: requestedSectionIds } },
+                select: { id: true },
+              })
+            ).map((s) => s.id)
+          : [],
+      );
+
+      const retailer = await prisma.retailer.findUnique({
+        where: { id: retailerId },
+        select: {
+          plan: true,
+          plan_status: true,
+          _count: { select: { products: true } },
+        },
+      });
+
+      if (!retailer) throw notFound('Retailer');
+
+      return { validSectionIds, retailer };
+    }, { label: 'catalog-import-validate' });
+
     const resolveSectionId = (itemSectionId: string | null | undefined): string | undefined => {
       const candidate = itemSectionId ?? default_section_id;
       return candidate && validSectionIds.has(candidate) ? candidate : undefined;
     };
-
-    // Check plan limits
-    const retailer = await prisma.retailer.findUnique({
-      where: { id: retailerId },
-      select: {
-        plan: true,
-        plan_status: true,
-        _count: { select: { products: true } },
-      },
-    });
-
-    if (!retailer) throw notFound('Retailer');
 
     const limits = PLAN_LIMITS[retailer.plan as keyof typeof PLAN_LIMITS];
     if (limits) {

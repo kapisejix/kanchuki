@@ -1,5 +1,5 @@
 ﻿import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { decryptSecret, encryptSecret, maskSecret, prisma } from '@kanchuki/db';
+import { decryptSecret, encryptSecret, maskSecret, prisma, withRetry } from '@kanchuki/db';
 // Auto-split from checkout.ts (scripts/split-checkout-routes.mjs) — route bodies verbatim.
 import { isValidIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
@@ -49,50 +49,55 @@ export const checkoutFlowRoutes: FastifyPluginAsync = async (server) => {
       const firstItem = items[0];
       if (!firstItem) throw validationError('No items in order');
 
-      // 1. Find the retailer via the first product
-      const firstProduct = await prisma.product.findUnique({
-        where: { id: firstItem.product_id },
-        select: { retailer_id: true, name: true, price_min: true, status: true },
-      });
-      if (!firstProduct) throw notFound('Product');
-      const retailerId = firstProduct.retailer_id;
+      // 1-4: Product lookup + validation + payment account (retry on transient DB errors)
+      const { retailerId, products, paymentAccount } = await withRetry(async () => {
+        // 1. Find the retailer via the first product
+        const firstProduct = await prisma.product.findUnique({
+          where: { id: firstItem.product_id },
+          select: { retailer_id: true, name: true, price_min: true, status: true },
+        });
+        if (!firstProduct) throw notFound('Product');
+        const retailerId = firstProduct.retailer_id;
 
-      // 2. Validate all products belong to the same retailer and are AVAILABLE
-      const productIds = items.map((i) => i.product_id);
-      const products = await prisma.product.findMany({
-        where: { id: { in: productIds }, retailer_id: retailerId },
-        select: { id: true, name: true, price_min: true, status: true },
-      });
+        // 2. Validate all products belong to the same retailer and are AVAILABLE
+        const productIds = items.map((i) => i.product_id);
+        const products = await prisma.product.findMany({
+          where: { id: { in: productIds }, retailer_id: retailerId },
+          select: { id: true, name: true, price_min: true, status: true },
+        });
 
-      if (products.length !== items.length) {
-        throw validationError('One or more products not found');
-      }
+        if (products.length !== items.length) {
+          throw validationError('One or more products not found');
+        }
 
-      const unavailable = products.filter((p) => p.status !== 'AVAILABLE');
-      if (unavailable.length > 0) {
-        throw validationError(
-          `Product(s) no longer available: ${unavailable.map((p) => p.name ?? p.id).join(', ')}`,
-        );
-      }
+        const unavailable = products.filter((p) => p.status !== 'AVAILABLE');
+        if (unavailable.length > 0) {
+          throw validationError(
+            `Product(s) no longer available: ${unavailable.map((p) => p.name ?? p.id).join(', ')}`,
+          );
+        }
 
-      // 3. F-013: Check CHECKOUT_CART feature is enabled for the retailer
-      if (!(await hasFeature(retailerId, 'CHECKOUT_CART'))) {
-        throw validationError('This retailer does not accept online payments yet');
-      }
+        // 3. F-013: Check CHECKOUT_CART feature is enabled for the retailer
+        if (!(await hasFeature(retailerId, 'CHECKOUT_CART'))) {
+          throw validationError('This retailer does not accept online payments yet');
+        }
 
-      // 4. Check retailer has an active payment account (L2 tier gate)
-      const paymentAccount = await prisma.retailerPaymentAccount.findUnique({
-        where: { retailer_id: retailerId, is_active: true },
-        select: {
-          id: true,
-          payment_mode: true,
-          razorpay_key_id: true,
-          razorpay_key_secret_encrypted: true,
-        },
-      });
-      if (!paymentAccount) {
-        throw validationError('This retailer does not accept online payments yet');
-      }
+        // 4. Check retailer has an active payment account (L2 tier gate)
+        const paymentAccount = await prisma.retailerPaymentAccount.findUnique({
+          where: { retailer_id: retailerId, is_active: true },
+          select: {
+            id: true,
+            payment_mode: true,
+            razorpay_key_id: true,
+            razorpay_key_secret_encrypted: true,
+          },
+        });
+        if (!paymentAccount) {
+          throw validationError('This retailer does not accept online payments yet');
+        }
+
+        return { retailerId, products, paymentAccount };
+      }, { label: 'checkout-validate' });
 
       // 4. Server-side amount computation (SECURITY §11.6 — never trust client)
       let subtotal = 0;
@@ -267,23 +272,27 @@ export const checkoutFlowRoutes: FastifyPluginAsync = async (server) => {
 
       const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = body;
 
-      // Look up the order to find which retailer's credentials to use
-      const ord = await prisma.order.findUnique({
-        where: { razorpay_order_id },
-        select: { id: true, retailer_id: true, status: true },
-      });
-      if (!ord) throw notFound('Order');
+      // Look up the order + payment account (retry on transient DB errors)
+      const { ord, payAcct } = await withRetry(async () => {
+        const ord = await prisma.order.findUnique({
+          where: { razorpay_order_id },
+          select: { id: true, retailer_id: true, status: true },
+        });
+        if (!ord) throw notFound('Order');
 
-      // Get the retailer's payment account to retrieve the key secret for verification
-      const payAcct = await prisma.retailerPaymentAccount.findUnique({
-        where: { retailer_id: ord.retailer_id, is_active: true },
-        select: { razorpay_key_secret_encrypted: true },
-      });
-      if (!payAcct || !payAcct.razorpay_key_secret_encrypted) {
-        throw validationError('Retailer payment account not found');
-      }
+        const payAcct = await prisma.retailerPaymentAccount.findUnique({
+          where: { retailer_id: ord.retailer_id, is_active: true },
+          select: { razorpay_key_secret_encrypted: true },
+        });
+        if (!payAcct || !payAcct.razorpay_key_secret_encrypted) {
+          throw validationError('Retailer payment account not found');
+        }
 
-      const keySecret = decryptSecret(payAcct.razorpay_key_secret_encrypted);
+        return { ord, payAcct };
+      }, { label: 'checkout-verify-lookup' });
+
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- validated inside withRetry above
+      const keySecret = decryptSecret(payAcct.razorpay_key_secret_encrypted!);
 
       // HMAC-SHA256(order_id + "|" + payment_id, key_secret)
       const expected = createHmac('sha256', keySecret)
@@ -349,7 +358,7 @@ export const checkoutFlowRoutes: FastifyPluginAsync = async (server) => {
         throw validationError('Phone number is required to look up an order');
       }
 
-      const order = await prisma.order.findUnique({
+      const order = await withRetry(() => prisma.order.findUnique({
         where: { id },
         select: {
           id: true,
@@ -372,7 +381,7 @@ export const checkoutFlowRoutes: FastifyPluginAsync = async (server) => {
           },
           collection_id: true,
         },
-      });
+      }), { label: 'order-status' });
       if (!order) throw notFound('Order');
 
       // SECURITY §11.10: Verify phone number — use timing-safe comparison
