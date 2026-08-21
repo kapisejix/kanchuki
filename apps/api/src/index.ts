@@ -1,4 +1,5 @@
 import { createHmac } from 'node:crypto';
+import { dbHealthCheck } from '@kanchuki/db';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
@@ -168,8 +169,36 @@ await server.register(checkoutRoutes, { prefix: '/v1' });  await server.register
   await server.register(whatsappCatalogWebhookRoutes, { prefix: '/v1' });
 
 // ─── Health Check ─────────────────────────────────────────────────
+// Deep health: verifies DB + Redis connectivity. Returns 503 if any
+// critical dependency is down — Railway / load-balancer uses this for
+// routing (unhealthy instances get pulled from the pool).
+server.get('/health', async (_request, reply) => {
+  const [db, redis] = await Promise.allSettled([
+    dbHealthCheck(),
+    (async () => {
+      const start = Date.now();
+      try {
+        await getRedis().ping();
+        return { ok: true as const, latencyMs: Date.now() - start };
+      } catch (err) {
+        return { ok: false as const, latencyMs: Date.now() - start, error: err instanceof Error ? err.message : String(err) };
+      }
+    })(),
+  ]);
 
-server.get('/health', async () => ({ status: 'ok', ts: Date.now() }));
+  const dbResult = db.status === 'fulfilled' ? db.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
+  const redisResult = redis.status === 'fulfilled' ? redis.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
+
+  const healthy = dbResult.ok && redisResult.ok;
+  reply.code(healthy ? 200 : 503);
+
+  return {
+    status: healthy ? 'ok' : 'degraded',
+    ts: Date.now(),
+    db: dbResult,
+    redis: redisResult,
+  };
+});
 
 // ─── Start ────────────────────────────────────────────────────────
 
