@@ -218,6 +218,8 @@ Supersedes §11 for near-term scope. Selected: items 1–13 below (P0/P1/P2). It
 | 12 | AI Stylist v1 (§3–4) | M — LLM + static rules, no training | 🟢 P2 ✅ Built | Commit `52af9fb` — Claude-powered chat + deterministic pre-filter 2026-08-21 |
 | 13 | Unstitched Design Gallery (§9) | M/L — new `DesignReference` entity + admin CRUD | 🟢 P2 ✅ Built | Commit `3e695f4` — schema + migration 069 + admin CRUD + customer gallery 2026-08-21 |
 
-**Deferred (not in this scope):** items 14–20 (P3 — easy reorder, regional filters, referral rewards customer-side, family/gifting mode, occasion collections, AI Stylist Chat, full Hindi UI toggle), item 21 (Customer login + cross-store identity / Option C — XL, foundation for items 22–24), items 22–24 (blocked on 21: wishlist cross-store, personalized home feed, "similar from other stores"), item 25 (order tracking + GST invoice download — blocked on Phase I invoicing), item 26 (rental/exchange — explicitly out of scope, logistics complexity).
+**P3 Built (2026-08-21):** ✅ Regional filters (`f122c19`), ✅ Referral rewards customer-side (`504e565`), ✅ Family/gifting mode (`7ec21c7`).
+
+**Still deferred:** easy reorder, occasion collections, AI Stylist Chat, full Hindi UI toggle, item 21 (Customer login + cross-store identity / Option C — XL, foundation for items 22–24), items 22–24 (blocked on 21: wishlist cross-store, personalized home feed, "similar from other stores"), item 25 (order tracking + GST invoice download — blocked on Phase I invoicing), item 26 (rental/exchange — explicitly out of scope, logistics complexity).
 
 **Consequence of deferring Option C (item 21):** items 1–13 above stay same-store-scoped where identity would otherwise matter (#8 recently-viewed, #9 restock-notify) — cross-store versions follow once/if item 21 is later approved.

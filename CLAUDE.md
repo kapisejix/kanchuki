@@ -193,6 +193,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 49 | DB-driven Plan Pricing (admin-editable ₹, replaces hardcoded `PLAN_PRICING`) + FLUX Kontext (F-032 Studio Shoot) per-plan-tier quota via `STUDIO_SHOOT` `QuotaResourceType` (F-010 pattern reused, no per-retailer override) | ✅ Built | 2026-08-21 | BUILD-LOG §51 |
 | 50 | Customer Profile P0-P1 — VTO self-serve enabled, showroom booking form, product review list (social proof), seasonal collections + lookbooks surfacing, promotion/discount alert banner | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
 | 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style quiz, AI Stylist v1 (Claude-powered chat), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
+| 52 | Customer Profile P3 — regional weave/style filters (12 Indian regions), customer referral rewards (code + WhatsApp share), family/gifting mode (save sizes for family members) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` |
  
 ---
 
