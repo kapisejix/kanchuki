@@ -434,7 +434,24 @@ function PricingSection() {
   const [period, setPeriod] = useState<Period>('monthly')
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
-  const pricing = PLAN_PRICING as Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: number; annual: number }>
+  const [pricing, setPricing] = useState(
+    PLAN_PRICING as Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: number; annual: number }>,
+  )
+
+  useEffect(() => {
+    const apiUrl = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+    fetch(`${apiUrl}/v1/public/pricing`)
+      .then((r) => r.json())
+      .then((res) => {
+        const rows: { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly: number; annual: number }[] = res?.data ?? []
+        if (rows.length === 0) return
+        setPricing(Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly, annual: r.annual }])) as Record<
+          'STARTER' | 'GROWTH' | 'PRO',
+          { monthly: number; annual: number }
+        >)
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <Section id="pricing" className="bg-white">

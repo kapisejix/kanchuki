@@ -1,5 +1,25 @@
 import type { Metadata } from 'next'
 import { PLAN_PRICING, ADDON_PRICING } from '@kanchuki/shared'
+
+const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
+
+type Plan = 'STARTER' | 'GROWTH' | 'PRO'
+
+async function getPlanPricing(): Promise<Record<Plan, { monthly: number; annual: number }>> {
+  try {
+    const res = await fetch(`${API_URL}/v1/public/pricing`, { next: { revalidate: 60 } })
+    if (!res.ok) return PLAN_PRICING
+    const json = await res.json()
+    const rows: { plan: Plan; monthly: number; annual: number }[] = json.data ?? []
+    if (rows.length === 0) return PLAN_PRICING
+    return Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly, annual: r.annual }])) as Record<
+      Plan,
+      { monthly: number; annual: number }
+    >
+  } catch {
+    return PLAN_PRICING
+  }
+}
 import { Navbar, Footer, Section, SectionHeader, AnimatedSection, FinalCta, PageHero } from '@/components/site/Chrome'
 import { PricingTable } from './PricingTable'
 
@@ -50,7 +70,8 @@ const jsonLd = {
   })),
 }
 
-export default function PricingPage() {
+export default async function PricingPage() {
+  const pricing = await getPlanPricing()
   const addons = ADDON_PRICING as Record<string, { label: string; price_paise: number }[]>
   const addonLines = Object.values(addons).flat()
 
@@ -72,7 +93,7 @@ export default function PricingPage() {
           <AnimatedSection>
             <SectionHeader tag="Choose your plan" title="Every plan starts free for 14 days" />
           </AnimatedSection>
-          <PricingTable pricing={PLAN_PRICING} rows={ROWS} />
+          <PricingTable pricing={pricing} rows={ROWS} />
           <p className="text-center text-sm text-carbon/40 mt-8">14-day free trial · no credit card · UPI (GPay/PhonePe/PayTM), cards, netbanking · INR only · GST invoices.</p>
         </div>
       </Section>

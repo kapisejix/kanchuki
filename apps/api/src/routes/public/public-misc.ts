@@ -1,9 +1,13 @@
 // Auto-split from public.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma } from '@kanchuki/db';
+import { PLAN_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { validationError } from '../../plugins/error-handler.js';
 import { getTheme } from '../admin-settings.js';
+
+type Plan = 'STARTER' | 'GROWTH' | 'PRO';
+const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO'];
 
 const CONTACT_TOPICS = [
   'Getting started',
@@ -28,6 +32,35 @@ export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
     },
     async () => {
       const data = await getTheme();
+      return { data };
+    },
+  );
+
+  // ─── GET /public/pricing ────────────────────────────────────────
+  // Admin-configurable plan pricing (plan_pricing table). No auth — read
+  // by the marketing site (pricing page + homepage pricing section) so a
+  // price change is live without a redeploy. Falls back to the hardcoded
+  // PLAN_PRICING constant for any plan an admin hasn't edited yet.
+  server.get(
+    '/pricing',
+    {
+      config: {
+        cacheControl: 'public, max-age=60, s-maxage=60, stale-while-revalidate=600',
+      },
+    },
+    async () => {
+      const rows = await prisma.planPricing.findMany();
+      const byPlan = new Map(rows.map((r) => [r.plan, r]));
+
+      const data = PLANS.map((plan) => {
+        const row = byPlan.get(plan);
+        return {
+          plan,
+          monthly: row?.monthly_paise ?? PLAN_PRICING[plan].monthly,
+          annual: row?.annual_paise ?? PLAN_PRICING[plan].annual,
+        };
+      });
+
       return { data };
     },
   );
