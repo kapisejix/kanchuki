@@ -357,6 +357,8 @@ function buildAdapter(row: AiProviderConfigRow): ProviderAdapter {
       return { ...base, extract: openaiExtract(row), ask: openaiAsk(row) }
     case 'GEMINI':
       return { ...base, extract: geminiExtract(row), ask: geminiAsk(row) }
+    default:
+      throw new Error(`Unsupported AI provider type: ${row.provider_type}`)
   }
 }
 
