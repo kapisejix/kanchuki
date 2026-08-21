@@ -2,6 +2,30 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-08-21 — Customer Profile P0-P3 (16 features)
+
+**User ask:** review `docs/customer/customer-profile-req.md` §12 and build P0 through P2 (13 items), then P3 (3 items). Each committed individually.
+
+**Done (16 features, 18 commits):**
+- **P0:** VTO self-serve enabled (flipped `TRY_ON_ENABLED` gate)
+- **P1:** Showroom booking form + API proxy, Reviews/Ratings social proof (ReviewList), Seasonal collections surfacing (SeasonalPicks + public collections endpoint), Lookbooks surfacing (CustomerLookbooks + public lookbooks endpoint), Promotion alert banner (PromotionBanner + public promotions endpoint)
+- **P2:** Fabric glossary (25+ Indian fabrics), Recently viewed row (localStorage), Restock notify (sold-out products), Saved size capture (XS-8XL), Style quiz onboarding (5 questions), AI Stylist v1 (Claude-powered chat + deterministic pre-filter), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery)
+- **P3:** Regional weave/style filters (12 Indian regions), Customer referral rewards (phone-based code + WhatsApp share), Family/gifting mode (save sizes for family members)
+
+**New API endpoints:**
+- POST /v1/public/stylist — AI outfit recommendations
+- GET /v1/public/designs — design gallery browsing
+- GET /v1/public/retailers/:slug/collections — retailer collections
+- GET /v1/public/retailers/:slug/lookbooks — retailer lookbooks
+- GET /v1/public/retailers/:slug/promotions — active promotions
+- POST /v1/public/retailers/:slug/bookings — showroom booking
+
+**New admin routes:** GET/POST/PUT/DELETE /admin/design-references (CRUD for design gallery)
+
+**Schema changes:** DesignReference model + DesignCategory enum (migration 069)
+
+**⚠️ Pending:** Migration 069 needs `prisma migrate deploy` in production.
+
 ## 2026-08-18 — Phase II migrations 060–062 APPLIED + VERIFIED in prod
 
 **User ask:** apply the Phase II migrations and verify the catalog tables exist; audit remaining growth-roadmap tasks; update docs.

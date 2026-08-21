@@ -19,6 +19,7 @@ incident, migration, and decision recorded after 2026-07-26.
 | 7 | [Product-Level WhatsApp Share + Ratings Reviewed](#built-product-level-whatsapp-share-button-f-006-gap--ratings-reviewed) | Built | 2026-07-30 |
 | 8 | [F-023 AI Provider Registry](#built-f-023-ai-provider-registry--admin-configurable-tagging-models--per-provider-usage) | Built | 2026-08-01 |
 | 52 | [F-021 Product & Store Ratings](#built-f-021-product--store-ratings) | Built | 2026-08-20 |
+| 53 | [Customer Profile P0-P3 — 16 Features](#built-2026-08-21-customer-profile-p0-p3--all-16-features-shipped) | Built | 2026-08-21 |
 | 9 | [F-022 Auto-Post New Arrivals to Google Business Profile](#planned--not-started-f-022-auto-post-new-arrivals-to-google-business-profile) | Planned | — |
 | 10 | [Mobile Accessibility Audit + Harden Pass](#built-mobile-accessibility-audit--harden-pass-appsmobile) | Built | 2026-07-31 |
 | 11 | [Production DB Outage Fix + Purge-Cron Scoped Role](#built-2026-08-02--production-db-outage-fix-pooler-suffix--purge-cron-scoped-role--adminweb-hardening) | Built | 2026-08-02 |
@@ -1336,3 +1337,71 @@ User asked for the pricing table (Starter/Growth/Pro monthly + annual + products
 **Verified:** `apps/api` `tsc --noEmit` clean, `apps/web` `tsc --noEmit` clean, `prisma generate` succeeded. `products-studio.test.ts` 13/13, `products.test.ts` 29/29, `billing.test.ts` 16/16. Confirmed `admin.test.ts`/`admin.login.test.ts`/`security.test.ts` failures are pre-existing on `main` (unrelated `admin-ratings.ts` `new PrismaClient()` mock gap — reproduced via `git stash` before touching any files) — not caused by this change.
 
 **Remaining:** customer-facing star display on `ProductDetailSheet` (P2 item), wiring reviews into the public collection page (customer submits review after purchase).
+
+---
+
+## BUILT 2026-08-21: Customer Profile P0-P3 — All 16 Features Shipped
+
+**User ask:** review `docs/customer/customer-profile-req.md` §12 and build P0 through P2 (13 items), then P3 (3 items). Each committed individually.
+
+### P0 — VTO Self-Serve (Commit `6dcf35c`)
+| Layer | Files | Summary |
+|---|---|---|
+| **Web** | `apps/web/src/app/c/[slug]/components/CollectionView.tsx`, `ProductDetailSheet.tsx` | Flipped `TRY_ON_ENABLED` from `false` to `true` in both files. VTO backend already live on Hetzner (BUILD-LOG §27/§23); TryOnModal and API proxy routes were fully built but gated. |
+
+### P1 — 5 Features (Commits `367ba34`–`c4cbec7`)
+| # | Feature | Commit | Files Created |
+|---|---|---|---|
+| 1 | Showroom Booking | `367ba34` | `BookingForm.tsx`, `api/[store]/bookings/route.ts` |
+| 2 | Reviews/Ratings Social Proof | `1fa2262` | `ReviewList.tsx` |
+| 3 | Seasonal Collections | `ea8d81d` | `SeasonalPicks.tsx`, `api/[store]/collections/route.ts`, `public-retailers.ts` (GET collections endpoint) |
+| 4 | Mix-and-Match Lookbooks | `3bee868` | `CustomerLookbooks.tsx`, `api/[store]/lookbooks/route.ts`, `public-retailers.ts` (GET lookbooks endpoint) |
+| 5 | Promotion Alert Banner | `c4cbec7` | `PromotionBanner.tsx`, `api/[store]/promotions/route.ts`, `public-retailers.ts` (GET promotions endpoint) |
+
+**Bottom bar change:** CollectionView bottom bar changed from 3-column flex to 4-column grid to accommodate the new "Book Visit" button. All buttons slightly smaller (size 15→15, text 11px→10px).
+
+### P2 — 7 Features (Commits `06a5fcf`–`3e695f4`)
+| # | Feature | Commit | Files Created |
+|---|---|---|---|
+| 1 | Fabric Glossary | `06a5fcf` | `FabricGlossary.tsx` — 25+ Indian fabrics with descriptions, care tips, best-for |
+| 2 | Recently Viewed | `d2a7ae7` | `RecentlyViewedRow.tsx`, `recentlyViewed.ts` (localStorage tracker) |
+| 3 | Restock Notify | `3e40d88` | `NotifyWhenAvailable.tsx` — sold-out products |
+| 4 | Saved Measurements | `fb26d03` | `SavedSize.tsx` — XS-8XL localStorage capture |
+| 5 | Style Quiz | `e3f5250` | `StyleQuiz.tsx` — 5 questions (occasion, region, budget, fabric, color) |
+| 6 | AI Stylist v1 | `52af9fb` | `AIStylist.tsx`, `public-stylist.ts` (Claude-powered), `api/stylist/route.ts` |
+| 7 | Design Gallery | `3e695f4` | `DesignGallery.tsx`, `admin-design-references.ts`, `public-designs.ts`, `migration 069` |
+
+**AI Stylist architecture:** POST /public/stylist takes free-text query + store slug, fetches retailer's tagged catalog (max 200 products), applies deterministic pre-filtering (color/fabric/budget), sends top 60 to Claude with outfit-matching rules from §4 of customer-profile-req.md. Falls back to top-6 products when Claude is unavailable.
+
+**Design Gallery schema:** new `DesignReference` model with `DesignCategory` enum (NECKLINE, BLOUSE_BACK, SLEEVE, SALWAR, SILHOUETTE). Migration 069 created. Admin CRUD at `/admin/design-references`. Public endpoint at GET /public/designs returns grouped-by-category results. Customer gallery shows on unstitched product detail pages.
+
+### P3 — 3 Features (Commits `f122c19`–`7ec21c7`)
+| # | Feature | Commit | Files Created |
+|---|---|---|---|
+| 1 | Regional Filters | `f122c19` | `RegionalFilters.tsx` — 12 Indian regional weave/style chips |
+| 2 | Referral Rewards | `504e565` | `CustomerReferral.tsx` — phone-based code generation + WhatsApp share |
+| 3 | Family/Gifting | `7ec21c7` | `FamilyProfiles.tsx` — save sizes for family members (Mom/Sister/Daughter/etc.) |
+
+### Migration 069 — Design Gallery
+
+```sql
+CREATE TYPE "DesignCategory" AS ENUM ('NECKLINE', 'BLOUSE_BACK', 'SLEEVE', 'SALWAR', 'SILHOUETTE');
+CREATE TABLE "design_references" (
+    "id" TEXT NOT NULL,
+    "category" "DesignCategory" NOT NULL,
+    "option" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "image_url" TEXT NOT NULL,
+    "r2_key" TEXT NOT NULL,
+    "description" TEXT,
+    "sort_order" INTEGER NOT NULL DEFAULT 0,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+    CONSTRAINT "design_references_pkey" PRIMARY KEY ("")
+);
+```
+
+**⚠️ Pending:** Migration 069 needs `prisma migrate deploy` in production.
+
+**Verified:** `apps/api` tsc clean, `apps/web` tsc clean, `prisma generate` succeeded.
