@@ -10,6 +10,7 @@ import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
 import { ReviewForm } from './StarPicker'
 import { ReviewList } from './ReviewList'
+import { FabricGlossary } from './FabricGlossary'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -650,7 +651,13 @@ export function ProductDetailSheet({
             <div className="space-y-1.5">
               {product.name && <InfoRow label="Name" value={product.name} />}
               {product.subtype && <InfoRow label="Type" value={product.subtype} />}
-              {fabricEstimate && <InfoRow label="Fabric" value={fabricEstimate} />}
+              {fabricEstimate && (
+                <div className="flex items-baseline gap-2 text-sm">
+                  <span className="text-gray-400 w-16 flex-shrink-0">Fabric</span>
+                  <span className="text-gray-800 font-medium">{fabricEstimate}</span>
+                  <FabricGlossary fabric={fabricEstimate} />
+                </div>
+              )}
             </div>
           </div>
 
