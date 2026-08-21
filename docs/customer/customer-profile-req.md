@@ -210,13 +210,13 @@ Supersedes §11 for near-term scope. Selected: items 1–13 below (P0/P1/P2). It
 | 4 | Festival/seasonal collections — surface | S — engine already built | 🟡 P1 ✅ Built | Commit `ea8d81d` — SeasonalPicks + public collections endpoint 2026-08-21 |
 | 5 | Mix-and-match lookbooks — surface | S — Lookbook Generator already built | 🟡 P1 ✅ Built | Commit `3bee868` — CustomerLookbooks + public lookbooks endpoint 2026-08-21 |
 | 6 | Price-drop/promotion alert | S — Smart Promotion Engine already built | 🟡 P1 ✅ Built | Commit `c4cbec7` — PromotionBanner + public promotions endpoint 2026-08-21 |
-| 7 | Fabric glossary + tooltip | S — fabric already tagged by AI | 🟢 P2 | Static content, trust-building |
-| 8 | Recently viewed (same-store scope) | S — no identity dependency | 🟢 P2 | Cheap retention hook |
-| 9 | Restock/new-arrival notify | M — needs favorite-trigger wiring | 🟢 P2 | WhatsApp channel exists |
-| 10 | Saved measurements | S once migration 058 applied | 🟢 P2 | Blocked only on applying existing migration |
-| 11 | Style quiz onboarding (§5) | M — needs new region field | 🟢 P2 | Unblocks Fashion DNA cold-start |
-| 12 | AI Stylist v1 (§3–4) | M — LLM + static rules, no training | 🟢 P2 | Reuses Claude Vision infra |
-| 13 | Unstitched Design Gallery (§9) | M/L — new `DesignReference` entity + admin CRUD | 🟢 P2 | No AI dep, all infra reused |
+| 7 | Fabric glossary + tooltip | S — fabric already tagged by AI | 🟢 P2 ✅ Built | Commit `06a5fcf` — FabricGlossary +25 fabrics 2026-08-21 |
+| 8 | Recently viewed (same-store scope) | S — no identity dependency | 🟢 P2 ✅ Built | Commit `d2a7ae7` — localStorage tracker + horizontal row 2026-08-21 |
+| 9 | Restock/new-arrival notify | M — needs favorite-trigger wiring | 🟢 P2 ✅ Built | Commit `3e40d88` — NotifyWhenAvailable on sold-out products 2026-08-21 |
+| 10 | Saved measurements | S once migration 058 applied | 🟢 P2 ✅ Built | Commit `fb26d03` — SavedSize localStorage capture XS-8XL 2026-08-21 |
+| 11 | Style quiz onboarding (§5) | M — needs new region field | 🟢 P2 ✅ Built | Commit `e3f5250` — 5-question quiz with skip 2026-08-21 |
+| 12 | AI Stylist v1 (§3–4) | M — LLM + static rules, no training | 🟢 P2 ✅ Built | Commit `52af9fb` — Claude-powered chat + deterministic pre-filter 2026-08-21 |
+| 13 | Unstitched Design Gallery (§9) | M/L — new `DesignReference` entity + admin CRUD | 🟢 P2 ✅ Built | Commit `3e695f4` — schema + migration 069 + admin CRUD + customer gallery 2026-08-21 |
 
 **Deferred (not in this scope):** items 14–20 (P3 — easy reorder, regional filters, referral rewards customer-side, family/gifting mode, occasion collections, AI Stylist Chat, full Hindi UI toggle), item 21 (Customer login + cross-store identity / Option C — XL, foundation for items 22–24), items 22–24 (blocked on 21: wishlist cross-store, personalized home feed, "similar from other stores"), item 25 (order tracking + GST invoice download — blocked on Phase I invoicing), item 26 (rental/exchange — explicitly out of scope, logistics complexity).
 
