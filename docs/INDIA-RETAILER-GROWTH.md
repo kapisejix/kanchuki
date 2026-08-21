@@ -356,7 +356,7 @@ These four gaps are where the next wave of features must land.
 
 ---
 
-#### S. A/B Testing for Collections — ✅ Built (two-variant split with per-variant product sets, send stagger, per-variant sent/opened stats and a two-proportion z-test winner callout). **Not built:** auto-generated per-variant collection links (needs a hidden-collection status so A/B links don't hijack the ACTIVE storefront)
+#### S. A/B Testing for Collections — ✅ Built (two-variant split with per-variant product sets, send stagger, per-variant sent/opened stats, a two-proportion z-test winner callout, and auto-generated per-variant HIDDEN collection links — `growth-campaigns.ts` `syncVariantCollections`)
 
 **What:** Test two product orderings, two message templates, or two send times → see which performs better.
 

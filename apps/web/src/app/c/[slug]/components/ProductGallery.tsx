@@ -3,7 +3,7 @@
 import { resolveFashionColor } from '@kanchuki/shared';
 import { ChevronLeft, ChevronRight, Palette, ShoppingBag, X } from 'lucide-react';
 import Image from 'next/image';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 interface Variant {
   color: string;
@@ -51,12 +51,18 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
 
   const [index, setIndex] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
+  const [lightboxLoaded, setLightboxLoaded] = useState(false);
   const touchStartX = useRef<number | null>(null);
   // Set briefly after a swipe so the click that can follow a fast swipe doesn't
   // bounce the user into the fullscreen viewer.
   const swipedRef = useRef(false);
 
   const current = slides[index] ?? null;
+
+  // Reset lightbox skeleton each time the fullscreen slide changes.
+  useEffect(() => {
+    setLightboxLoaded(false);
+  }, [current?.url]);
 
   const goTo = useCallback(
     (i: number) => {
@@ -103,7 +109,7 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
     <div>
       {/* ── Carousel ── */}
       <div
-        className="relative w-full aspect-[3/4] rounded-3xl overflow-hidden bg-gray-100 shadow-soft border border-gray-100 select-none"
+        className="relative w-full aspect-[3/4] max-h-[75vh] rounded-3xl overflow-hidden bg-gray-100 shadow-soft border border-gray-100 select-none"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
@@ -335,9 +341,13 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
              onTouchStart={handleTouchStart}
              onTouchEnd={handleTouchEnd}
            >
-             <Image src={current.url} alt={alt} fill sizes="100vw" 
+             {!lightboxLoaded && (
+               <div className="absolute inset-0 animate-pulse bg-white/10 rounded-lg" />
+             )}
+             <Image key={current.url} src={current.url} alt={alt} fill sizes="100vw"
                     priority={index === 0} // Only first slide gets priority for LCP
                     loading={index === 0 ? undefined : 'lazy'} // Lazy load non-priority images
+                    onLoad={() => setLightboxLoaded(true)}
                     className="object-contain" />
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs font-medium px-2.5 py-1 rounded-full">
               {index + 1} / {slideCount}

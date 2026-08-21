@@ -85,12 +85,8 @@
 ### 14. ~~Photo Audit — Color Chip Disabled State for SOLD Variants~~ ✅ DONE
 - **Status:** Already implemented — SOLD chips get `disabled`, `opacity-50 cursor-not-allowed`, and a "(Sold)" label (`ProductGallery.tsx`). Audit was stale.
 
-### 15. Auto-Built Per-Variant Collection Links (A/B Testing)
-
-- **What:** Currently A/B testing creates two separate collection links manually. Auto-generate per-variant collection links with a `HIDDEN` status so they don't hijack the ACTIVE storefront.
-- **Source:** `docs/INDIA-RETAILER-GROWTH.md S`
-- **Blocked on:** Need a hidden collection status in the schema
-- **Estimate:** ~3 hours
+### 15. ~~Auto-Built Per-Variant Collection Links (A/B Testing)~~ ✅ DONE
+- **Status:** Already implemented — `CollectionStatus.HIDDEN` in schema (line 45), auto-sync in `growth-campaigns.ts` (`syncVariantCollections`, L99-169) creates/updates one HIDDEN collection per A/B variant on campaign create/edit.
 
 ---
 
@@ -145,12 +141,8 @@
 - **Blocked on:** No i18n framework installed (react-i18next or similar)
 - **Estimate:** ~1 week (infrastructure + translation + wiring)
 
-### 24. F-025 Scan-to-Sell — Print-Ready QR/SKU Tag Surface
-
-- **What:** Scan-to-sell works but there's no way for the retailer to print a QR/SKU tag to stick on the rack. Add a print-friendly view of SKU + QR code at product-tagging time.
-- **Source:** `docs/PRO-REQUIREMENTS.md §15`
-- **Blocked on:** Nothing, but low urgency (physical sticker printing is a retailer choice)
-- **Estimate:** ~2 hours
+### 24. ~~F-025 Scan-to-Sell — Print-Ready QR/SKU Tag Surface~~ ✅ DONE
+- **Status:** Already implemented — `SkuTagModal.tsx` (white, print/screenshot-friendly QR + SKU + name view).
 
 ### 25. Customer-Facing "Usual Size" Self-Capture on PWA - Not Required DONT CODE
 
@@ -212,17 +204,11 @@
 - **Blocked on:** Phase 2 scope decision
 - **Estimate:** 4–6 weeks total
 
-### 32. Photo Audit — Responsive Aspect Ratio in Product Gallery
+### 32. ~~Photo Audit — Responsive Aspect Ratio in Product Gallery~~ ✅ DONE
+- **Status:** Carousel container capped with `max-h-[75vh]` alongside `aspect-[3/4]` — prevents excessive height on narrow/tall viewports. Per-product aspect ratio skipped, no image-dimension data in schema to key off (would need new migration — out of scope for this pass).
 
-- **What:** Fixed 3:4 ratio may not suit all product types. Use responsive aspect ratio or per-product aspect ratio.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.4`
-- **Estimate:** ~2 hours
-
-### 33. Photo Audit — Loading Skeleton for Fullscreen Lightbox
-
-- **What:** Show spinner or placeholder during image load in lightbox, especially on slow connections.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.4`
-- **Estimate:** ~1 hour
+### 33. ~~Photo Audit — Loading Skeleton for Fullscreen Lightbox~~ ✅ DONE
+- **Status:** Pulse skeleton shown behind lightbox image until `onLoad` fires, resets per slide.
 
 ### 34. ~~Photo Audit — ARIA Live Region for Gallery Status Changes~~ ✅ DONE
 - **Status:** `sr-only aria-live="polite"` span added to `ProductGallery.tsx` — announces "Photo N of M, {color}" on slide change.

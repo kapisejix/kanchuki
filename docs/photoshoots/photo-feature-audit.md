@@ -381,8 +381,8 @@ This pattern ensures the original is always one tap away while edited versions c
 | ~~High~~ ✅ | ~~Add lazy loading for variant photos~~ | Done 2026-08-21 — `loading="lazy"` on non-priority images + thumbnails. |
 | ~~High~~ ✅ | ~~Add color chip disabled state~~ | Done 2026-08-21 — SOLD chips get `disabled` + `opacity-50 cursor-not-allowed`. |
 | **Medium** | Add intersectional preloading | When user swipes near next/prev photos, preload those images. Improves perceived performance. |
-| **Medium** | Make aspect ratio responsive | Instead of fixed 3:4, use `aspect-ratio: 3/4 min(640px / var(width), 1fr)` or allow per-product aspect ratio. |
-| **Low** | Add loading skeleton for fullscreen | Show spinner or placeholder during image load in lightbox, especially on slow connections. |
+| ~~Medium~~ ✅ | ~~Make aspect ratio responsive~~ | Done 2026-08-21 — `max-h-[75vh]` cap added alongside fixed 3:4. Per-product aspect ratio skipped (no image-dimension data in schema). |
+| ~~Low~~ ✅ | ~~Add loading skeleton for fullscreen~~ | Done 2026-08-21 — pulse skeleton behind lightbox image until `onLoad`. |
 | ~~Low~~ ✅ | ~~Add ARIA live region for status changes~~ | Done 2026-08-21 — `sr-only aria-live="polite"` span announces slide index + color. |
 
 ---
