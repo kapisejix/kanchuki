@@ -26,8 +26,8 @@ const ProductDetailSheet = dynamic(
 );
 const TryOnModal = dynamic(() => import('./TryOnModal').then((m) => m.TryOnModal), { ssr: false });
 
-// ponytail: Try-On feature not finished yet — flip to true when ready.
-const TRY_ON_ENABLED = false;
+// VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
+const TRY_ON_ENABLED = true;
 
 const PAGE_SIZE = 12;
 

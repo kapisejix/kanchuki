@@ -10,8 +10,8 @@ import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
 import { ReviewForm } from './StarPicker'
 
-// ponytail: Try-On feature not finished yet — flip to true when ready.
-const TRY_ON_ENABLED = false
+// VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
+const TRY_ON_ENABLED = true
 
 // Alias map lookup (shared with mobile) first; anything unmapped is checked
 // against the browser's own color parser before falling back to neutral grey.
