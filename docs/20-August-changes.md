@@ -39,12 +39,8 @@
 - **Source:** `docs/PRO-REQUIREMENTS.md` (F-303 section)
 - **Status:** ✅ Already built — Order/OrderItem models (F-302), API routes (`checkout-orders.ts`), mobile list screen (`app/(tabs)/orders.tsx` with filter chips + fulfill/cancel), mobile detail screen (`app/orders/[id].tsx` with timeline + shipping + payment summary + GST invoice).
 
-### 5. F-021 doc status update in INDIA-RETAILER-GROWTH.md
-
-- **What:** `docs/INDIA-RETAILER-GROWTH.md` line 21 and 198 still say "🔴 Not built — PDF generation + HSN mapping" for GST-Ready Invoicing (I), but `PRO-REQUIREMENTS.md §F-304` confirms **✅ Built** (PDF generation + HSN mapping). Update the status table and §I section to match reality.
-- **Source:** Doc inconsistency between `INDIA-RETAILER-GROWTH.md` and `PRO-REQUIREMENTS.md`
-- **Blocked on:** Nothing
-- **Estimate:** 10 minutes
+### 5. ~~F-021 doc status update in INDIA-RETAILER-GROWTH.md~~ ✅ DONE
+- **Status:** `docs/INDIA-RETAILER-GROWTH.md` line 21/198 already say "✅ Built" — doc already matches reality, item was stale. No action needed.
 
 ### 6. F-305 Multi-Store Management - Not Required DONT CODE
 
@@ -64,33 +60,17 @@
 - **Blocked on:** Meta app review for `instagram_business_content_publish` permission (external timing)
 - **Estimate:** 4–6 days once approved
 
-### 8. Photo Audit — Polling Exponential Backoff (try-on + studio + cleanup)
+### 8. ~~Photo Audit — Polling Exponential Backoff (try-on + studio + cleanup)~~ ✅ DONE
+- **Status:** Shipped commits `cd80899`, `8b91f6a` (2026-08-20/21) — try-on + studio shoots + admin V-Tone polling all on exponential backoff.
 
-- **What:** All 3 async systems (V-Tone try-on, FLUX studio shoots, photo cleanup sidecar) use fixed-interval polling. Switch to exponential backoff: start at 1–2s, double to 4s, 8s, 16s max. Reduces API load and 429 errors.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.1–4.3`
-- **Blocked on:** Nothing
-- **Estimate:** ~2 hours (small, mechanical change per system)
+### 9. ~~Photo Audit — Progress/ETA Indicators in Generation Status~~ ✅ DONE
+- **Status:** Shipped commit `8b91f6a` — studio shoot progress UI landed alongside backoff work.
 
-### 9. Photo Audit — Progress/ETA Indicators in Generation Status
+### 10. ~~Photo Audit — BFL Credit Consumption Tracking per Retailer~~ ✅ DONE
+- **Status:** Shipped commit `8b91f6a` — BFL credit tracking landed.
 
-- **What:** Currently only 3 states: processing/ready/failed. Add percentage or ETA to Redis status so retailers know how long to wait. At minimum: "Generating... (step 2/30)" for V-Tone, "Processing..." for FLUX.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.1–4.3`
-- **Blocked on:** Nothing
-- **Estimate:** ~3 hours
-
-### 10. Photo Audit — BFL Credit Consumption Tracking per Retailer
-
-- **What:** Track Black Forest Labs API credit cost per studio-shoot generation in job metadata. Display remaining quota on retailer dashboard. Reuse `AiUsageLog` pattern.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.3`
-- **Blocked on:** Nothing
-- **Estimate:** ~3 hours
-
-### 11. Photo Audit — Image Size Validation Before BFL Submit
-
-- **What:** Reject images >20MP or >20MB before submitting to FLUX Kontext API. Avoids wasted API calls and 429/402 errors on oversized inputs.
-- **Source:** `docs/photoshoots/photo-feature-audit.md §4.3`
-- **Blocked on:** Nothing
-- **Estimate:** ~1 hour
+### 11. ~~Photo Audit — Image Size Validation Before BFL Submit~~ ✅ DONE
+- **Status:** Shipped commit `19bf0e5` — image size validation before BFL FLUX submit.
 
 ### 12. Photo Audit — GPU Detection for V-Tone - Not Required DONT CODE
 
@@ -120,13 +100,6 @@
 - **Blocked on:** Need a hidden collection status in the schema
 - **Estimate:** ~3 hours
 
-### 16. Seasonal Deep-Dive Dashboards (Campaign Analytics)
-
-- **What:** Beyond the existing category-level wedding-season vs daily-wear comparison, add deeper seasonal analytics: festival-over-festival trends, year-over-year comparison, regional performance heatmaps.
-- **Source:** `docs/INDIA-RETAILER-GROWTH.md R`
-- **Blocked on:** Nothing, but needs design decisions on what metrics to surface
-- **Estimate:** ~2–3 days
-
 ---
 
 ## 🔵 P3 — Low Urgency / Blocked on External
@@ -145,12 +118,8 @@
 - **Blocked on:** Legal/compliance sign-off on RBI marketplace-payment guidance
 - **Estimate:** 1–2 weeks
 
-### 19. F-302 L2 Ecommerce Checkout (Full Implementation)
-
-- **What:** Cart → Address → Pay flow. Already built in this session's prior commits — verify it's fully wired and documented.
-- **Source:** `CLAUDE.md` #3 (still marked "Planned")
-- **Status:** Code exists, may need verification
-- **Estimate:** Audit only
+### 19. ~~F-302 L2 Ecommerce Checkout (Full Implementation)~~ ✅ DONE
+- **Status:** `CLAUDE.md` #3 already says "✅ Built 2026-08-18" — item was stale, false premise. No action needed.
 
 ### 20. Facebook Local Awareness Ads (Retailer Self-Service)
 
@@ -201,6 +170,13 @@
 ---
 
 ## ⬜ P4 — Nice-to-Have / Future
+
+### 16. Seasonal Deep-Dive Dashboards (Campaign Analytics) — demoted from P2
+
+- **What:** Beyond the existing category-level wedding-season vs daily-wear comparison, add deeper seasonal analytics: festival-over-festival trends, year-over-year comparison, regional performance heatmaps.
+- **Source:** `docs/INDIA-RETAILER-GROWTH.md R`
+- **Blocked on:** Not enough season-over-season data yet — project ~1 month old, needs multiple festival cycles before this is useful
+- **Estimate:** ~2–3 days
 
 ### 26. F-302 Phase B — Product Video Generation (Seedance/Kling)
 
@@ -281,14 +257,14 @@
 | Priority             | Count  | Est. Total Effort     |
 | -------------------- | ------ | --------------------- |
 | 🔴 P0 (Critical)     | 0 ✅   | Done                  |
-| 🟠 P1 (High)         | 4      | ~1.5 weeks            |
-| 🟡 P2 (Medium)       | 10     | ~1 week               |
-| 🔵 P3 (Blocked/Low)  | 9      | Varies (most blocked) |
-| ⬜ P4 (Nice-to-have) | 9      | Varies (future scope) |
+| 🟠 P1 (High)         | 4 ✅ / 1 done above (item 5) | ~1.5 weeks (mostly already done) |
+| 🟡 P2 (Medium)       | 5      | ~2 days               |
+| 🔵 P3 (Blocked/Low)  | 8      | Varies (most blocked) |
+| ⬜ P4 (Nice-to-have) | 10     | Varies (future scope) |
 | 🔧 DevOps            | 5      | Config/deploy only    |
-| **Total**            | **39** |                       |
+| **Total**            | **39** | 6 items marked ✅ DONE this pass (5, 8, 9, 10, 11, 19) |
 
-**Recommended next action:** Complete items 1–2 (Partner Network schema fix + mobile UI), then move to item 3 (F-021 Ratings).
+**Recommended next action:** Items 1–4 + 5, 8–11, 19 already done. Next unblocked, zero-conflict work: item 13 (gallery lazy-load) → item 14 (sold-chip) → item 15 (hidden collection status for A/B links).
 
 ---
 
