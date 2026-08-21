@@ -9,6 +9,7 @@ import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolv
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
 import { ReviewForm } from './StarPicker'
+import { ReviewList } from './ReviewList'
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true
@@ -800,8 +801,13 @@ export function ProductDetailSheet({
           </button>
         </div>
 
-        {/* Review Form */}
-        <div className="px-4 pt-2">
+        {/* Reviews — social proof + submission form */}
+        <div className="px-4 pt-2 space-y-3">
+          <ReviewList
+            productId={product.id}
+            avgRating={product.avg_rating}
+            ratingCount={product.rating_count}
+          />
           <ReviewForm
             productName={product.name ?? product.category ?? 'this product'}
             retailerId={retailer.id}
