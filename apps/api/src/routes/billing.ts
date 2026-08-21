@@ -64,6 +64,15 @@ function periodEnd(start: Date, period: Period): Date {
   return end;
 }
 
+// Admin-editable via PUT /admin/plan-pricing (plan_pricing table). Missing
+// row (nothing edited yet) falls back to the shared-package default so
+// pricing never breaks before an admin touches the new table.
+async function getPlanPricing(plan: Plan): Promise<{ monthly: number; annual: number }> {
+  const row = await prisma.planPricing.findUnique({ where: { plan } });
+  if (row) return { monthly: row.monthly_paise, annual: row.annual_paise };
+  return PLAN_PRICING[plan];
+}
+
 function jsonLimits(plan: Plan) {
   const limits = PLAN_LIMITS[plan];
   // Infinity is not valid JSON — serialize unlimited as null
@@ -113,11 +122,13 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
 
   // ─── GET /billing/plans ─────────────────────────────────────────
   server.get('/plans', async () => ({
-    data: (Object.keys(PLAN_PRICING) as Plan[]).map((plan) => ({
-      plan,
-      pricing: PLAN_PRICING[plan],
-      limits: jsonLimits(plan),
-    })),
+    data: await Promise.all(
+      (Object.keys(PLAN_PRICING) as Plan[]).map(async (plan) => ({
+        plan,
+        pricing: await getPlanPricing(plan),
+        limits: jsonLimits(plan),
+      })),
+    ),
   }));
 
   // ─── GET /billing/subscription ──────────────────────────────────
@@ -179,6 +190,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     });
 
     const now = new Date();
+    const pricing = await getPlanPricing(plan);
     await prisma.$transaction([
       prisma.subscription.create({
         data: {
@@ -186,7 +198,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
           plan,
           status: 'TRIAL',
           billing_period,
-          amount_inr: PLAN_PRICING[plan][billing_period],
+          amount_inr: pricing[billing_period],
           razorpay_subscription_id: rzpSub.id,
           razorpay_plan_id: planId,
           current_period_start: now,

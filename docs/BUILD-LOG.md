@@ -1314,4 +1314,25 @@ Completes the last remaining coding item in `docs/marketing/IMPLEMENTATION-STATU
 - `apps/api` `tsc --noEmit` — 0 errors ✅
 - `apps/mobile` `tsc --noEmit` — 0 errors ✅
 
+---
+
+## BUILT 2026-08-21: DB-driven Plan Pricing + FLUX Kontext (Studio Shoot) per-plan quota
+
+User asked for the pricing table (Starter/Growth/Pro monthly + annual + products + try-ons) to be fully admin-editable, plus a per-retailer-visible cap on FLUX Kontext (F-032 Studio Shoot) usage, set per plan tier from the admin dashboard. Products/try-ons limits were already admin-editable via the existing F-010 `PlanLimit` table (`/admin/plan-limits`); price was hardcoded, and Studio Shoot had no quota at all (usage was logged but never enforced — the old comment in `products-studio.ts` said a metered resource "would need a QuotaResourceType enum migration"). Both gaps closed by reusing the existing F-010 pattern, no new subsystem.
+
+| Layer | Files | Summary |
+|---|---|---|
+| **DB** | `packages/db/prisma/schema.prisma` + `migrations/074_studio_shoot_quota_and_plan_pricing/migration.sql` | Added `STUDIO_SHOOT` to `QuotaResourceType` enum (no seed `PlanLimit` rows — fails open/unlimited until an admin sets a cap, same convention as the other unseeded resource types). New `PlanPricing` model/table (`plan` unique, `monthly_paise`, `annual_paise`), seeded with the prior hardcoded ₹999/₹2499/₹4999 defaults so nothing changes until an admin edits a row. **Migration applied to production** (2026-08-21). |
+| **API — admin routes** | `apps/api/src/routes/admin/admin-plans.ts` | `STUDIO_SHOOT` added to the `PUT /admin/plan-limits` zod enum (reuses the existing endpoint/UI). New `GET`/`PUT /admin/plan-pricing` (same upsert + `AuditLog` pattern as `plan-limits`/`plan-features`). `POST /admin/billing/setup-plans` now reads `PlanPricing` first (falls back to the shared-package constant) so re-running it after a price edit creates correctly-priced Razorpay plan objects. |
+| **API — enforcement** | `apps/api/src/routes/products/products-studio.ts`, `apps/api/src/jobs/studio-shoot.ts` | `checkQuota(retailerId, 'STUDIO_SHOOT')` gates the enqueue (after the Growth/Pro plan check, before the BullMQ job is created). `incrementUsage(retailerId, 'STUDIO_SHOOT')` fires in the job on success, alongside the existing `recordBflStudioUsage()` credit-log call — quota only counts generations that actually completed. |
+| **API — billing** | `apps/api/src/routes/billing.ts` | New `getPlanPricing(plan)` helper reads `PlanPricing` (falls back to the hardcoded `PLAN_PRICING` constant if no row exists). `GET /billing/plans` and the `POST /billing/subscription` `amount_inr` both switched to it. |
+| **Admin web** | `apps/web/src/app/admin/plan-limits/page.tsx` | `STUDIO_SHOOT` added to the resource-type table (reuses existing UI). New "Plan Pricing" table above it — ₹ monthly/annual inputs per plan, same save-per-row pattern as the limits table below. Page renamed "Plan Limits & Pricing". |
+| **Tests** | `apps/api/src/routes/products-studio.test.ts` | Added `checkQuota` mock (3 pre-existing tests started 500ing once the real gate was wired in) + one new test for the `PLAN_LIMIT_EXCEEDED` rejection path. |
+
+**Known gap, not fixed this pass (flagged to user):** Razorpay subscriptions are billed against pre-created Razorpay **Plan objects** with their own fixed price, referenced by `RAZORPAY_PLAN_*` env vars — editing `plan_pricing` changes what Kanchuki *records* (`GET /billing/plans`, `Subscription.amount_inr`) and what `setup-plans` *would create*, but does not retroactively re-price an already-created Razorpay plan. An admin must re-run `POST /admin/billing/setup-plans` and update the `RAZORPAY_PLAN_*` env vars after a price edit for the actual Razorpay charge to change. A UI warning was added to the admin page; a real fix would mean moving off fixed Razorpay Plan objects to per-charge dynamic Orders — out of scope here.
+
+**Also not built (out of scope per user's explicit answer — "no per-retailer override for now"):** a `RetailerLimitOverride` row for `STUDIO_SHOOT` — the table/mechanism already exists (F-010) and needs no schema change if this is revisited later.
+
+**Verified:** `apps/api` `tsc --noEmit` clean, `apps/web` `tsc --noEmit` clean, `prisma generate` succeeded. `products-studio.test.ts` 13/13, `products.test.ts` 29/29, `billing.test.ts` 16/16. Confirmed `admin.test.ts`/`admin.login.test.ts`/`security.test.ts` failures are pre-existing on `main` (unrelated `admin-ratings.ts` `new PrismaClient()` mock gap — reproduced via `git stash` before touching any files) — not caused by this change.
+
 **Remaining:** customer-facing star display on `ProductDetailSheet` (P2 item), wiring reviews into the public collection page (customer submits review after purchase).

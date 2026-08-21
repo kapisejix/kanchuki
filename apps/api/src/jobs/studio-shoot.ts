@@ -32,6 +32,7 @@ import { prisma } from '@kanchuki/db';
 import { R2_PATHS, type StudioTemplateId } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
+import { incrementUsage } from '../lib/quota.js';
 import {
   downloadCompressAndUpload,
   generateStudioImage,
@@ -162,8 +163,12 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
        etaMs: 0,
      });
 
-     // 6. Record BFL credit consumption for the Admin → AI Usage dashboard.
+     // 6. Record BFL credit consumption for the Admin → AI Usage dashboard,
+     // and count it against the retailer's STUDIO_SHOOT plan quota (F-010).
      recordBflStudioUsage(retailer_id, template);
+     incrementUsage(retailer_id, 'STUDIO_SHOOT').catch((err) => {
+       console.error(`[studio-shoot] failed to record quota usage for ${retailer_id}:`, err);
+     });
    } catch (err) {
      const message = err instanceof Error ? err.message : String(err);
      console.error(`[studio-shoot] job ${job_id} failed:`, err);

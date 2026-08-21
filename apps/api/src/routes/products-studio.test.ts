@@ -7,7 +7,7 @@
 // src/lib/studio-shoot.test.ts with a mocked fetch.
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { errorHandler } from '../plugins/error-handler.js';
+import { errorHandler, planLimitExceeded } from '../plugins/error-handler.js';
 import { productsStudioRoutes } from './products/products-studio.js';
 
 const {
@@ -17,6 +17,7 @@ const {
   mockAddStudioShootJob,
   mockGetStudioJobStatus,
   mockIsStudioShootConfigured,
+  mockCheckQuota,
 } = vi.hoisted(() => ({
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockPhotoFindFirst: vi.fn(),
@@ -24,6 +25,7 @@ const {
   mockAddStudioShootJob: vi.fn(),
   mockGetStudioJobStatus: vi.fn(),
   mockIsStudioShootConfigured: vi.fn(),
+  mockCheckQuota: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -45,6 +47,10 @@ vi.mock('../lib/studio-shoot.js', () => ({
   isStudioShootConfigured: mockIsStudioShootConfigured,
 }));
 
+vi.mock('../lib/quota.js', () => ({
+  checkQuota: mockCheckQuota,
+}));
+
 const RETAILER_ID = 'retailer_1';
 
 async function buildApp() {
@@ -64,6 +70,7 @@ beforeEach(() => {
   mockIsStudioShootConfigured.mockReturnValue(true);
   mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'GROWTH' });
   mockPhotoFindFirst.mockResolvedValue({ id: 'photo_1' });
+  mockCheckQuota.mockResolvedValue(undefined);
 });
 
 describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
@@ -102,6 +109,21 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
 
     expect(res.statusCode).toBe(402);
     expect(res.json().error.code).toBe('FEATURE_UNAVAILABLE');
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('402 PLAN_LIMIT_EXCEEDED when the STUDIO_SHOOT quota is used up', async () => {
+    mockCheckQuota.mockRejectedValue(planLimitExceeded('studio shoot'));
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'white_studio' },
+    });
+
+    expect(res.statusCode).toBe(402);
+    expect(res.json().error.code).toBe('PLAN_LIMIT_EXCEEDED');
     expect(mockAddStudioShootJob).not.toHaveBeenCalled();
     await app.close();
   });

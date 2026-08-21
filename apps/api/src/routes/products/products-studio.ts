@@ -12,9 +12,9 @@
 //
 // Plan gate: Growth/Pro only (spec §24.7 — studio shoots are included in
 // those plans' AI cost budget). STARTER → 402 FEATURE_UNAVAILABLE.
-// Quota: generation cost is tracked via the job's AuditLog-style status +
-// the ProductPhoto metadata; a dedicated metered quota resource is a
-// follow-up (would need a QuotaResourceType enum migration).
+// Quota: STUDIO_SHOOT is a metered QuotaResourceType (F-010) — checkQuota
+// gates the enqueue here, incrementUsage fires in the job on success
+// (jobs/studio-shoot.ts). Admin sets the per-plan cap at /admin/plan-limits.
 import { prisma } from '@kanchuki/db';
 import { getStudioTemplate, type StudioTemplateId } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
@@ -22,6 +22,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
 import { getStudioJobStatus, isStudioShootConfigured } from '../../lib/studio-shoot.js';
+import { checkQuota } from '../../lib/quota.js';
 import { featureUnavailable, notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const StudioShootBodySchema = z.object({
@@ -47,6 +48,8 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     if (!isStudioShootConfigured()) {
       throw serviceUnavailable('AI Studio Shoots are not configured yet. Please try again later.');
     }
+
+    await checkQuota(request.retailerId, 'STUDIO_SHOOT');
 
     const body = StudioShootBodySchema.safeParse(request.body ?? {});
     if (!body.success) {

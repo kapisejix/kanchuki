@@ -190,6 +190,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 46 | Marketing & Sales Enablement — Smart Incentive Engine, Local Discovery Engine, AI Social Media Templates, Festival Backgrounds, Lookbook Generator, Aggregator Sync, GST Reports, Partner Network, GMB/Facebook/Google Ads (retailer self-service credentials) | ✅ Built (Phases 0–9; all mobile screens + integrations settings added 2026-08-20; GMB/FB/Google Ads built with bring-your-own-key pattern) | 2026-08-20 | BUILD-LOG, `docs/marketing/IMPLEMENTATION-STATUS.md` |
 | 47 | Partner Network Manager (Marketing & Sales Enablement) — full stack (retailer CRUD + admin API + admin UI + mobile UI + schema + migration 066) | ✅ Built (schema fixed, mobile screen complete) | 2026-08-20 | BUILD-LOG, `docs/marketing/IMPLEMENTATION-STATUS.md` |
 | 48 | Remaining Work Audit — 31 prioritized coding items + 5 devOps tasks across PRO-REQUIREMENTS, INDIA-RETAILER-GROWTH, photo-feature-audit, PHASE-II-WHATSAPP-CATALOG-BREAKDOWN | 📋 Task list | 2026-08-20 | `docs/20-August-changes.md` |
+| 49 | DB-driven Plan Pricing (admin-editable ₹, replaces hardcoded `PLAN_PRICING`) + FLUX Kontext (F-032 Studio Shoot) per-plan-tier quota via `STUDIO_SHOOT` `QuotaResourceType` (F-010 pattern reused, no per-retailer override) | ✅ Built | 2026-08-21 | BUILD-LOG §51 |
  
 ---
 

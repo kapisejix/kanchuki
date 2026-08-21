@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Gauge, Save, Loader2 } from 'lucide-react'
+import { Gauge, IndianRupee, Save, Loader2 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -15,6 +15,7 @@ type ResourceType =
   | 'IMAGE_CROP'
   | 'BG_REMOVAL'
   | 'API_REQUEST'
+  | 'STUDIO_SHOOT'
 type Period = 'DAY' | 'MONTH' | 'LIFETIME'
 
 type PlanLimit = {
@@ -25,6 +26,13 @@ type PlanLimit = {
   period: Period
 }
 
+type PlanPricing = {
+  id: string
+  plan: Plan
+  monthly_paise: number
+  annual_paise: number
+}
+
 const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
 const RESOURCE_TYPES: ResourceType[] = [
   'PRODUCT_UPLOAD',
@@ -33,12 +41,18 @@ const RESOURCE_TYPES: ResourceType[] = [
   'IMAGE_CROP',
   'BG_REMOVAL',
   'API_REQUEST',
+  'STUDIO_SHOOT',
 ]
 const PERIODS: Period[] = ['DAY', 'MONTH', 'LIFETIME']
 
 // One editable cell per (plan, resource_type) pair. A missing row means
 // "unlimited" (checkQuota fails open) — shown as blank, not zero.
 type CellState = { limit_per_period: string; period: Period }
+
+// Rupees as strings while editing — paise only at the API boundary.
+type PriceCellState = { monthly: string; annual: string }
+const paiseToRupees = (paise: number) => String(paise / 100)
+const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100)
 
 export default function PlanLimitsPage() {
   const [rows, setRows] = useState<PlanLimit[]>([])
@@ -47,13 +61,23 @@ export default function PlanLimitsPage() {
   const [status, setStatus] = useState<string>('')
   const [loading, setLoading] = useState(true)
 
+  const [priceCells, setPriceCells] = useState<Record<Plan, PriceCellState>>({
+    STARTER: { monthly: '', annual: '' },
+    GROWTH: { monthly: '', annual: '' },
+    PRO: { monthly: '', annual: '' },
+  })
+  const [savingPrice, setSavingPrice] = useState<Plan | null>(null)
+
   const key = (plan: Plan, resourceType: ResourceType) => `${plan}:${resourceType}`
 
   useEffect(() => {
     async function load() {
-      const res = await fetch(`${API_URL}/v1/admin/plan-limits`, adminGetOptions())
-      const json = await res.json()
-      const data: PlanLimit[] = json.data ?? []
+      const [limitsRes, pricingRes] = await Promise.all([
+        fetch(`${API_URL}/v1/admin/plan-limits`, adminGetOptions()),
+        fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions()),
+      ])
+      const limitsJson = await limitsRes.json()
+      const data: PlanLimit[] = limitsJson.data ?? []
       setRows(data)
 
       const next: Record<string, CellState> = {}
@@ -64,10 +88,51 @@ export default function PlanLimitsPage() {
         }
       }
       setCells(next)
+
+      const pricingJson = await pricingRes.json()
+      const pricingData: PlanPricing[] = pricingJson.data ?? []
+      setPriceCells((prev) => {
+        const next: Record<Plan, PriceCellState> = { ...prev }
+        for (const row of pricingData) {
+          next[row.plan] = {
+            monthly: paiseToRupees(row.monthly_paise),
+            annual: paiseToRupees(row.annual_paise),
+          }
+        }
+        return next
+      })
+
       setLoading(false)
     }
     load()
   }, [])
+
+  const savePrice = async (plan: Plan) => {
+    const cell = priceCells[plan]
+    if (cell.monthly.trim() === '' || cell.annual.trim() === '') {
+      setStatus('❌ Enter both monthly and annual price')
+      return
+    }
+    setSavingPrice(plan)
+    setStatus('')
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/plan-pricing`, {
+        ...(await adminMutateOptions()),
+        method: 'PUT',
+        body: JSON.stringify({
+          plan,
+          monthly_paise: rupeesToPaise(cell.monthly),
+          annual_paise: rupeesToPaise(cell.annual),
+        }),
+      })
+      if (!res.ok) throw new Error('Save failed')
+      setStatus(`✅ ${plan} pricing saved`)
+    } catch (err) {
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Save failed'}`)
+    } finally {
+      setSavingPrice(null)
+    }
+  }
 
   const cellFor = (plan: Plan, resourceType: ResourceType): CellState =>
     cells[key(plan, resourceType)] ?? { limit_per_period: '', period: 'MONTH' }
@@ -127,7 +192,7 @@ export default function PlanLimitsPage() {
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl">
       <div>
         <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-2xl font-bold text-gray-900">Plan Limits</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Plan Limits &amp; Pricing</h1>
           <Gauge size={20} className="text-cyan-500" />
         </div>
         <p className="text-sm text-gray-500">
@@ -147,6 +212,65 @@ export default function PlanLimitsPage() {
           {status}
         </div>
       )}
+
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
+        <div className="flex items-center gap-2 mb-4">
+          <IndianRupee size={16} className="text-cyan-500" />
+          <h2 className="text-sm font-semibold text-gray-900">Plan Pricing</h2>
+        </div>
+        <p className="text-xs text-gray-500 mb-4">
+          ₹ per month/year. Changing this does not re-price existing Razorpay subscription
+          plans — re-run "Setup Razorpay Plans" and update the RAZORPAY_PLAN_* env vars after
+          editing.
+        </p>
+        <table className="w-full text-sm mb-2">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Plan</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Monthly (₹)</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Annual (₹)</th>
+              <th className="px-3 py-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {PLANS.map((plan) => (
+              <tr key={plan} className="border-b border-gray-50">
+                <td className="px-3 py-3 font-mono text-xs text-gray-600 whitespace-nowrap">{plan}</td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    value={priceCells[plan].monthly}
+                    onChange={(e) =>
+                      setPriceCells((prev) => ({ ...prev, [plan]: { ...prev[plan], monthly: e.target.value } }))
+                    }
+                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <input
+                    type="number"
+                    value={priceCells[plan].annual}
+                    onChange={(e) =>
+                      setPriceCells((prev) => ({ ...prev, [plan]: { ...prev[plan], annual: e.target.value } }))
+                    }
+                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                  />
+                </td>
+                <td className="px-3 py-2">
+                  <button
+                    onClick={() => savePrice(plan)}
+                    disabled={savingPrice === plan}
+                    className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
+                    aria-label={`Save ${plan} pricing`}
+                  >
+                    {savingPrice === plan ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
 
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 overflow-x-auto">
         <table className="w-full text-sm">

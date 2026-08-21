@@ -468,11 +468,12 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - `retailer_limit_overrides` table: per-retailer bespoke limits without inventing new plan tiers
 - `usage_counters` table: `(retailer_id, resource_type, period_start, count)` — upserted by shared `incrementUsage()`
 - `quota_addon_purchases` table: self-serve overage purchase for any resource_type via Razorpay
-- `QuotaResourceType` enum: `PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST`
+- `QuotaResourceType` enum: `PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST, STUDIO_SHOOT` (STUDIO_SHOOT added 2026-08-21, no seed rows — fails open until an admin sets a cap)
 - `apps/api/src/lib/quota.ts` — `checkQuota()` fails open when no `plan_limits` row exists (graceful for unconfigured resources); `periodStart()` calculates DAY/MONTH/LIFETIME boundaries
 - `effectiveLimit()` checks `retailer_limit_overrides` first, falls back to `plan_limits` via retailer's plan
+- `plan_pricing` table (added 2026-08-21): `(plan, monthly_paise, annual_paise)` — admin-editable ₹ pricing, replaces the hardcoded `PLAN_PRICING` shared constant (which remains as the fallback when a plan has no row yet)
 
-**Wired into routes:** `products.ts` (PRODUCT_UPLOAD, BG_REMOVAL), `tag-product.ts` (AI_TAGGING_CALL, BG_REMOVAL), `tryon.ts` (TRY_ON), `catalog-import.ts` (IMAGE_CROP, AI_TAGGING_CALL, PRODUCT_UPLOAD)
+**Wired into routes:** `products.ts` (PRODUCT_UPLOAD, BG_REMOVAL), `tag-product.ts` (AI_TAGGING_CALL, BG_REMOVAL), `tryon.ts` (TRY_ON), `catalog-import.ts` (IMAGE_CROP, AI_TAGGING_CALL, PRODUCT_UPLOAD), `products-studio.ts` (STUDIO_SHOOT — F-032 FLUX Kontext studio shoots, added 2026-08-21)
 
 **Admin surface:**
 - `GET/PUT /admin/plan-limits` — list and update per-plan limits (`apps/web/src/app/admin/plan-limits/page.tsx`)

@@ -29,8 +29,13 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     const razorpayKeySecret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
 
     for (const planKey of ['STARTER', 'GROWTH', 'PRO'] as const) {
+      const pricingRow = await prisma.planPricing.findUnique({ where: { plan: planKey } });
       for (const period of ['monthly', 'annual'] as const) {
-        const amountPaise = PLAN_PRICING[planKey][period];
+        const amountPaise = pricingRow
+          ? period === 'monthly'
+            ? pricingRow.monthly_paise
+            : pricingRow.annual_paise
+          : PLAN_PRICING[planKey][period];
         const name = `${planKey} ${period === 'monthly' ? 'Monthly' : 'Annual'}`;
 
         const res = await fetch('https://api.razorpay.com/v1/plans', {
@@ -119,6 +124,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
           'IMAGE_CROP',
           'BG_REMOVAL',
           'API_REQUEST',
+          'STUDIO_SHOOT',
         ]),
         limit_per_period: z.number().int().min(-1),
         period: z.enum(['DAY', 'MONTH', 'LIFETIME']),
@@ -153,6 +159,51 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     });
 
     request.log.info({ plan: body.plan, resource_type: body.resource_type }, 'Plan limit updated');
+
+    return { data: row };
+  });
+
+  // ─── GET /admin/plan-pricing ─────────────────────────────────────
+  // Admin-editable ₹/plan pricing, replaces the hardcoded PLAN_PRICING
+  // constant. Missing row falls back to that constant (see billing.ts).
+  server.get('/plan-pricing', async () => {
+    const rows = await prisma.planPricing.findMany({ orderBy: { plan: 'asc' } });
+    return { data: rows };
+  });
+
+  // ─── PUT /admin/plan-pricing ─────────────────────────────────────
+  server.put('/plan-pricing', async (request) => {
+    const body = z
+      .object({
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
+        monthly_paise: z.number().int().min(0),
+        annual_paise: z.number().int().min(0),
+      })
+      .parse(request.body);
+
+    const prev = await prisma.planPricing.findUnique({ where: { plan: body.plan } });
+
+    const row = await prisma.planPricing.upsert({
+      where: { plan: body.plan },
+      create: body,
+      update: { monthly_paise: body.monthly_paise, annual_paise: body.annual_paise },
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: prev ? 'UPDATE' : 'CREATE',
+        resource_type: 'PlanPricing',
+        resource_id: body.plan,
+        metadata: {
+          before: prev ? { monthly_paise: prev.monthly_paise, annual_paise: prev.annual_paise } : null,
+          after: { monthly_paise: body.monthly_paise, annual_paise: body.annual_paise },
+        },
+        ip_address: request.ip,
+      },
+    });
+
+    request.log.info({ plan: body.plan }, 'Plan pricing updated');
 
     return { data: row };
   });

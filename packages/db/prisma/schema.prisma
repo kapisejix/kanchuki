@@ -161,6 +161,7 @@ enum QuotaResourceType {
   IMAGE_CROP
   BG_REMOVAL
   API_REQUEST
+  STUDIO_SHOOT
 }
 
 enum QuotaPeriod {
@@ -1318,6 +1319,21 @@ model PlanLimit {
 
   @@unique([plan, resource_type])
   @@map("plan_limits")
+}
+
+// ─── PLAN PRICING (admin-editable, replaces hardcoded PLAN_PRICING) ──
+// Same live-edit convention as plan_limits/plan_features. Missing row
+// falls back to the shared-package PLAN_PRICING default (see billing.ts).
+
+model PlanPricing {
+  id            String           @id @default(cuid())
+  plan          SubscriptionPlan @unique
+  monthly_paise Int
+  annual_paise  Int
+
+  updated_at DateTime @updatedAt
+
+  @@map("plan_pricing")
 }
 
 // ─── PLAN FEATURE MATRIX (F-013) ─────────────────────────────────
