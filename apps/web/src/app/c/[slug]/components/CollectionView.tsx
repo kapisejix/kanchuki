@@ -2,7 +2,7 @@
 
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star, Calendar } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ const ProductDetailSheet = dynamic(
   { ssr: false },
 );
 const TryOnModal = dynamic(() => import('./TryOnModal').then((m) => m.TryOnModal), { ssr: false });
+const BookingForm = dynamic(() => import('./BookingForm').then((m) => m.BookingForm), { ssr: false });
 
 // VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
 const TRY_ON_ENABLED = true;
@@ -65,6 +66,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null);
+  const [showBooking, setShowBooking] = useState(false);
 
   // F-302: Check if the retailer has online checkout enabled.
   // Goes through the web proxy (/api/c/[slug]/checkout-status) — a relative
@@ -389,43 +391,52 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         )}
       </main>
 
-      {/* ── Sticky Bottom Bar — 3 buttons in one row: Buy Now / Selected / Enquire ── */}
+      {/* ── Sticky Bottom Bar — 4 buttons: Buy Now / Selected / Enquire / Book Visit ── */}
       <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 safe-area-inset-bottom shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
-        <div className="max-w-md mx-auto px-3 py-3 flex items-center gap-2">
+        <div className="max-w-md mx-auto px-3 py-3 grid grid-cols-4 gap-1.5">
           {/* Buy Now only exists once the retailer connects a payment gateway
               — no disabled placeholder for stores without checkout. */}
           {checkoutEnabled && (
             <Link
               href={`${basePath}/cart`}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-cyan-600 hover:bg-cyan-700 text-white
+              className="flex flex-col items-center justify-center gap-0.5 bg-cyan-600 hover:bg-cyan-700 text-white
                          font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
             >
-              <ShoppingBag size={17} />
-              <span className="text-[11px] leading-tight">Buy Now</span>
+              <ShoppingBag size={15} />
+              <span className="text-[10px] leading-tight">Buy Now</span>
             </Link>
           )}
           <Link
             href={`${basePath}/wishlist`}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 text-gray-700 font-semibold
+            className="flex flex-col items-center justify-center gap-0.5 text-gray-700 font-semibold
                        bg-gray-50 border border-gray-100 rounded-2xl py-2.5 hover:bg-rose-50 hover:border-rose-200
                        transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
           >
-            <Heart size={17} className="text-rose-500 fill-rose-500" />
-            <span className="text-[11px] leading-tight">
+            <Heart size={15} className="text-rose-500 fill-rose-500" />
+            <span className="text-[10px] leading-tight">
               Selected{favorites.size > 0 && ` (${favorites.size})`}
             </span>
           </Link>
           <button
             onClick={handleEnquireAll}
-            className="flex-1 flex flex-col items-center justify-center gap-0.5 bg-green-500 hover:bg-green-600 text-white
+            className="flex flex-col items-center justify-center gap-0.5 bg-green-500 hover:bg-green-600 text-white
                        font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
           >
-            <MessageCircle size={17} />
-            <span className="text-[11px] leading-tight">
+            <MessageCircle size={15} />
+            <span className="text-[10px] leading-tight">
               Enquire{favorites.size > 0 && ` (${favorites.size})`}
             </span>
+          </button>
+          <button
+            onClick={() => setShowBooking(true)}
+            className="flex flex-col items-center justify-center gap-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700
+                       font-semibold py-2.5 rounded-2xl border border-purple-100 transition-all active:scale-[0.98]
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+          >
+            <Calendar size={15} />
+            <span className="text-[10px] leading-tight">Book Visit</span>
           </button>
         </div>
       </div>
@@ -453,6 +464,15 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           collectionSlug={slug}
           productId={tryOnProduct.id}
           onClose={() => setTryOnProduct(null)}
+        />
+      )}
+
+      {/* ── Booking Form Modal ── */}
+      {showBooking && (
+        <BookingForm
+          storeSlug={store ?? slug}
+          storeName={collection.retailer.shop_name}
+          onClose={() => setShowBooking(false)}
         />
       )}
 
