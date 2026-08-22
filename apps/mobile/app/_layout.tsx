@@ -18,6 +18,7 @@ import { getToken } from '../src/lib/api'
 import { CatalogDelegateBanner } from '../src/components/CatalogDelegateBanner'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { NetworkBanner } from '../src/components/NetworkBanner'
+import { SplashScreen } from '../src/components/SplashScreen'
 import { useSyncQueue } from '../src/hooks/useSyncQueue'
 import { persistQueryCache, restoreQueryCache } from '../src/lib/offline-persister'
 import { getItem } from '../src/lib/storage'
@@ -105,6 +106,8 @@ function AppShell() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="auth/phone" options={{ headerShown: false }} />
         <Stack.Screen name="auth/otp" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="staff" options={{ headerShown: false }} />
         <Stack.Screen name="product/add" options={{ presentation: 'modal' }} />
         <Stack.Screen name="product/scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="product/bulk" options={{ presentation: 'modal' }} />
@@ -237,6 +240,11 @@ export default function RootLayout() {
   // never painted. Never block first paint on an unreliable native call —
   // render immediately with defaults, theme/fonts apply once ready.
   void fontsLoaded
+
+  // Show custom splash screen while loading
+  if (!fontsLoaded || !paletteReady) {
+    return <SplashScreen />
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
