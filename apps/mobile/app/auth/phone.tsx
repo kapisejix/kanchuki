@@ -100,7 +100,7 @@ export default function PhoneScreen() {
           {/* Logo — K icon with padding */}
           <View className="items-center mb-6">
             <Image
-              source={require('../../assets/splash-icon.png')}
+              source={require('../../assets/k-icon.png')}
               style={{ width: 100, height: 100, padding: 16 }}
               resizeMode="contain"
             />

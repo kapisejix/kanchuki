@@ -12,13 +12,17 @@ import { Stack, router, useRootNavigationState } from 'expo-router'
 import { vars } from 'nativewind'
 import { useEffect, useRef, useState } from 'react'
 import { AppState, Platform, Text, TextInput, View } from 'react-native'
+import * as ExpoSplashScreen from 'expo-splash-screen'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+
+// Keep the native splash screen visible until fonts + palette are loaded.
+// Must be called at module level (before any component renders).
+ExpoSplashScreen.preventAutoHideAsync()
 import { getToken } from '../src/lib/api'
 import { CatalogDelegateBanner } from '../src/components/CatalogDelegateBanner'
 import { ErrorBoundary } from '../src/components/ErrorBoundary'
 import { NetworkBanner } from '../src/components/NetworkBanner'
-import { SplashScreen } from '../src/components/SplashScreen'
 import { useSyncQueue } from '../src/hooks/useSyncQueue'
 import { persistQueryCache, restoreQueryCache } from '../src/lib/offline-persister'
 import { getItem } from '../src/lib/storage'
@@ -239,12 +243,15 @@ export default function RootLayout() {
   // setTimeout-based race above never got a chance to fire and the app
   // never painted. Never block first paint on an unreliable native call —
   // render immediately with defaults, theme/fonts apply once ready.
-  void fontsLoaded
-
-  // Show custom splash screen while loading
-  if (!fontsLoaded || !paletteReady) {
-    return <SplashScreen />
-  }
+  //
+  // Use expo-splash-screen to keep the native splash visible until both
+  // fonts AND palette are ready, then hide it so the themed UI appears
+  // without a flash.
+  useEffect(() => {
+    if (fontsLoaded && paletteReady) {
+      ExpoSplashScreen.hideAsync()
+    }
+  }, [fontsLoaded, paletteReady])
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
