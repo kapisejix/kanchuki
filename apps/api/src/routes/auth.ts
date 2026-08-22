@@ -67,10 +67,16 @@ const RefreshSchema = z.object({
 async function findSupabaseUserByPhone(phone: string) {
   // No admin filter-by-phone in supabase-js — paginate. Kanchuki's auth user
   // count is small at MVP scale, so this is typically a single page.
+  // Supabase stores phone without the leading '+' (confirmed via auth logs:
+  // signup wrote user_phone "918872101879" for input "+918872101879") — strip
+  // it from both sides before comparing (stored data may or may not carry
+  // one), or a lookup with only one call (ensureSupabaseSession) misses an
+  // existing user and createUser gets retried into a 422 phone_exists.
+  const target = phone.replace(/^\+/, '');
   for (let page = 1; page <= 200; page += 1) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
     if (error || !data?.users?.length) return null;
-    const hit = data.users.find((u) => u.phone === phone);
+    const hit = data.users.find((u) => (u.phone ?? '').replace(/^\+/, '') === target);
     if (hit) return hit;
     if (data.users.length < 1000) return null; // last page
   }
