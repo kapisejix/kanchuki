@@ -163,6 +163,8 @@ export async function sendOtpViaMsg91(
         'EX',
         OTP_TTL_SEC,
       );
+      // biome-ignore lint/suspicious/noConsoleLog: developer debugging — visible in Railway logs only
+      console.log(`[otp] Generated OTP for +91${phone}: ${otp}`);
     } catch {
       // Store failed — release the cooldown guard so a retry isn't blocked by
       // a send that never happened.

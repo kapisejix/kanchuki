@@ -87,47 +87,6 @@ function sessionIssuanceError() {
   return new AppError('OTP_VERIFY_FAILED', 'Could not complete sign-in. Please try again.', 500);
 }
 
-// ─── TEST BYPASS (pre-production only) ─────────────────────────────
-// With OTP_TEST_BYPASS=1, phones that ALREADY EXIST as Supabase auth users
-// skip the real MSG91 OTP send + verify entirely — any code the tester types
-// is accepted. This lets testers log in with their own numbers before the
-// MSG91 sender's DLT registration lands (the API path currently returns
-// "success" while the carrier silently drops the SMS).
-//
-// The whitelist is the Supabase auth.users table: the operator pre-creates a
-// user with the tester's phone (E.164 like +919898989898, or bare digits) via
-// the Supabase dashboard, and that number becomes test-login-enabled.
-//
-// ⚠️ SECURITY: this is a full auth bypass for whitelisted phones. NEVER set
-// OTP_TEST_BYPASS on a real deployment — when the app goes live with real
-// MSG91 OTP, simply leave the flag unset and the real flow below applies to
-// the very same phone numbers (ensureSupabaseSession already find-or-creates
-// the auth user, so no data migration is needed).
-function otpTestBypassEnabled(): boolean {
-  // Tolerant parse — operators may set 1 / true / yes / on in the dashboard.
-  return ['1', 'true', 'yes', 'on'].includes((process.env.OTP_TEST_BYPASS ?? '').trim().toLowerCase());
-}
-
-async function supabaseUserExistsForBypass(phone: string): Promise<boolean> {
-  if (!otpTestBypassEnabled()) return false;
-  // Accept users stored as E.164 (+91...) or bare 10 digits — the dashboard
-  // may have either format.
-  const e164 = `+91${phone}`;
-  const hit =
-    (await findSupabaseUserByPhone(e164)) ||
-    (e164 !== phone ? await findSupabaseUserByPhone(phone) : null);
-  // Self-diagnosing: with the flag ON the bypass fails SILENTLY if the phone
-  // isn't whitelisted (not in Supabase auth.users) — the tester just sees
-  // "Invalid or expired OTP" with no hint which condition failed. Log which
-  // case we're in so the Railway logs say it outright. Only logs when the
-  // flag is set, so production (flag off) stays silent.
-  // biome-ignore lint/suspicious/noConsoleLog: operator-facing test-channel diagnostics
-  console.log(
-    `[auth] OTP test bypass: phone ${e164} ${hit ? 'whitelisted → bypass active' : 'NOT whitelisted — create this phone in Supabase auth.users (E.164 or bare 10 digits) to enable bypass'}`,
-  );
-  return Boolean(hit);
-}
-
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
   const e164 = `+91${phone}`;
   const password = randomBytes(24).toString('base64url');
@@ -138,7 +97,11 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
     const existing = await findSupabaseUserByPhone(e164);
     if (existing) {
       const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
-      if (error) throw sessionIssuanceError();
+      if (error) {
+        // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
+        console.error(`[auth] ensureSupabaseSession: updateUserById failed for ${e164}:`, error.message);
+        throw sessionIssuanceError();
+      }
     } else {
       const { error } = await supabase.auth.admin.createUser({
         phone: e164,
@@ -147,6 +110,8 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
       });
       if (error) {
         if (attempt === 0 && /already/i.test(error.message ?? '')) continue;
+        // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
+        console.error(`[auth] ensureSupabaseSession: createUser failed for ${e164}:`, error.message);
         throw sessionIssuanceError();
       }
     }
@@ -154,7 +119,11 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
   }
 
   const { data, error } = await supabase.auth.signInWithPassword({ phone: e164, password });
-  if (error || !data.session || !data.user) throw sessionIssuanceError();
+  if (error || !data.session || !data.user) {
+    // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
+    console.error(`[auth] ensureSupabaseSession: signInWithPassword failed for ${e164}:`, error?.message);
+    throw sessionIssuanceError();
+  }
   return { user: data.user, session: data.session };
 }
 
@@ -168,24 +137,23 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     const phone = body.data.phone;
     const e164 = `+91${phone}`; // Indian numbers only for MVP
 
-    // TEST BYPASS: whitelisted phones skip the real send — no MSG91 call, no
-    // DLT-dropped SMS, no rate-limit exposure. Verification is bypassed on
-    // the same whitelist in /otp/verify.
-    if (await supabaseUserExistsForBypass(phone)) {
-      return reply.status(200).send({
-        data: { message: 'OTP sent', phone: `****${phone.slice(-4)}` },
-      });
-    }
-
     if (isMsg91OtpConfigured()) {
       // Real OTP configuration: MSG91 generates + sends the SMS directly and
       // the API stores the code in Redis for server-side verification.
       // sendOtpViaMsg91 throws 429 RATE_LIMITED / 400 OTP_SEND_FAILED.
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/send phone=${phone} path=msg91 purpose=${body.data.purpose}`);
       await sendOtpViaMsg91(phone, body.data.purpose);
+      // NOTE: we do NOT also send via Supabase here. Supabase generates a
+      // DIFFERENT random OTP, so if the user enters the MSG91 OTP and Redis
+      // returns 'absent' (expired/TTL), falling to Supabase verifyOtp would
+      // check against the wrong code and always fail.
     } else {
       // Legacy Supabase path — only used in environments without MSG91 keys
       // on the API (local dev). The Supabase send-sms-hook Edge Function is
       // the SMS carrier there.
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/send phone=${phone} path=supabase`);
       const { error } = await supabase.auth.signInWithOtp({
         phone: e164,
         options: { channel: 'sms' },
@@ -221,50 +189,56 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     const { phone, otp, msg91_token } = body.data;
     const e164 = `+91${phone}`;
 
-    // TEST BYPASS: whitelisted phones skip all OTP verification — any code
-    // they type is accepted (see supabaseUserExistsForBypass).
-    const bypassActive = await supabaseUserExistsForBypass(phone);
-
     // ── 1. Verify the OTP (three channels, all server-side) ──────────
     //  - msg91_token: the widget verified the code client-side; re-confirm the
     //    access token with MSG91 before trusting it.
     //  - otp + Redis entry: /otp/send issued this OTP via MSG91; check the
     //    stored code (one-time use).
-    //  - otp without a Redis entry ('absent'): legacy Supabase-issued OTP
-    //    (old installs, scripts, environments without MSG91 keys).
+    //  - otp without a Redis entry ('absent'): falls through to Supabase
+    //    verification (legacy path for local dev / environments without MSG91).
     let user: User;
     let session: Session;
     let msg91Verified = false;
 
-    if (bypassActive) {
-      msg91Verified = true; // test mode — accept without checking anything
-    } else if (msg91_token) {
+    if (msg91_token) {
       await verifyMsg91WidgetToken(msg91_token, phone); // throws 401 on failure
       msg91Verified = true;
     } else if (otp) {
       const result = await verifyStoredOtp(phone, otp);
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/verify phone=${phone} storedOtpResult=${result} msg91Configured=${isMsg91OtpConfigured()}`);
       if (result === 'verified') {
         msg91Verified = true;
       } else if (result === 'invalid' || result === 'locked') {
         throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
+      } else if (isMsg91OtpConfigured()) {
+        // 'absent' with MSG91 configured means the Redis entry expired or was
+        // never stored. Falling to Supabase verifyOtp would check against a
+        // DIFFERENT random OTP (Supabase's own) and always fail. Throw a
+        // clear error so the operator knows to re-send.
+        throw new AppError(
+          'OTP_EXPIRED',
+          'OTP has expired or was not found. Please request a new one.',
+          401,
+        );
       }
-      // 'absent' (no Redis entry — SMS dropped, expired, or never sent):
-      // fall through to the legacy Supabase verification path below.
-      // This allows demo/test numbers (Supabase OTP) and real numbers
-      // (MSG91) to coexist — real SMS OTPs are verified via Redis when
-      // present; demo numbers that never received SMS fall through to
-      // Supabase's own OTP verification.
+      // 'absent' WITHOUT MSG91 configured: legacy Supabase path (local dev).
+      // Fall through to supabase.auth.verifyOtp below.
     }
 
     if (msg91Verified) {
       // MSG91 verified the phone — mint a Supabase session for it (see
       // ensureSupabaseSession: find-or-create the auth user with a rotated
       // random password, then phone+password sign-in to obtain a session).
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/verify phone=${phone} msg91Verified=true → minting Supabase session`);
       const created = await ensureSupabaseSession(phone);
       user = created.user;
       session = created.session;
     } else {
       // Legacy: verify the OTP with Supabase (auto-creates the auth user).
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/verify phone=${phone} falling through to Supabase verifyOtp`);
       const { data: authData, error: authError } = await supabase.auth.verifyOtp({
         phone: e164,
         token: otp ?? '',
@@ -362,15 +336,6 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     // Supabase user existed yet. Link it by phone instead of creating a
     // second, duplicate row keyed on the now-real auth_user_id.
     let pending = await prisma.retailer.findUnique({ where: { phone } });
-    if (pending?.deleted_at && bypassActive) {
-      // TEST BYPASS: revive a soft-deleted account instead of 409-ing —
-      // testers commonly reuse numbers that were deleted during testing.
-      await prisma.retailer.update({
-        where: { id: pending.id },
-        data: { deleted_at: null, auth_user_id: user.id },
-      });
-      pending = await prisma.retailer.findUnique({ where: { phone } });
-    }
     if (pending) {
       // Soft-deleted account still owns the unique phone. Until the row is
       // purged (admin/SQL-editor path — role separation blocks the app role's

@@ -351,6 +351,26 @@ describe('POST /auth/otp/verify — server-issued MSG91 OTP (Redis) path', () =>
     expect(mockCreateUser).not.toHaveBeenCalled(); // Supabase issued the session
     await app.close();
   });
+
+  it('rejects with OTP_EXPIRED when MSG91 is configured but Redis entry is absent', async () => {
+    // When MSG91 is configured, 'absent' means the Redis entry expired or was
+    // never stored. Falling to Supabase verifyOtp would check against a
+    // DIFFERENT random OTP and always fail. Throw a clear error instead.
+    mockIsMsg91Configured.mockReturnValue(true);
+    // verifyStoredOtp defaults to 'absent' in beforeEach.
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/auth/otp/verify',
+      payload: { phone: '9876543210', otp: '123456' },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe('OTP_EXPIRED');
+    expect(mockVerifyOtp).not.toHaveBeenCalled(); // must NOT fall to Supabase
+    expect(mockStaffFindFirst).not.toHaveBeenCalled();
+    await app.close();
+  });
 });
 
 describe('POST /auth/otp/verify — validation', () => {
