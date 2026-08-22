@@ -247,15 +247,13 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
         msg91Verified = true;
       } else if (result === 'invalid' || result === 'locked') {
         throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
-      } else if (isMsg91OtpConfigured()) {
-        // 'absent' + MSG91 configured: the code was never issued (or expired).
-        // Never fall back to a second verification oracle in production —
-        // Supabase never issues OTPs once MSG91 is configured, so a fallback
-        // here could only ever fail while keeping a dead path alive.
-        throw new AppError('INVALID_OTP', 'Invalid or expired OTP. Try again.', 401);
       }
-      // else: 'absent' + MSG91 unconfigured → legacy Supabase path below
-      // (local dev, scripts, old installs).
+      // 'absent' (no Redis entry — SMS dropped, expired, or never sent):
+      // fall through to the legacy Supabase verification path below.
+      // This allows demo/test numbers (Supabase OTP) and real numbers
+      // (MSG91) to coexist — real SMS OTPs are verified via Redis when
+      // present; demo numbers that never received SMS fall through to
+      // Supabase's own OTP verification.
     }
 
     if (msg91Verified) {
