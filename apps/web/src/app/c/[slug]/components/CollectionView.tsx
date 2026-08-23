@@ -2,7 +2,7 @@
 
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star, Calendar, ChevronRight } from 'lucide-react';
+import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star, Calendar, ChevronRight, LayoutGrid } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -564,8 +564,28 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         />
       </div>
 
-      {/* Bottom padding for sticky bar */}
+      {/* Bottom padding for sticky nav */}
       <div className="h-20" />
+
+      {/* ── Bottom Nav Bar ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100">
+        <div className="max-w-md mx-auto flex items-center justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+          <Link
+            href={basePath}
+            className="flex flex-col items-center gap-0.5 px-4 py-1 text-cyan-600"
+          >
+            <LayoutGrid size={20} />
+            <span className="text-[10px] font-semibold">Catalog</span>
+          </Link>
+          <Link
+            href={`${basePath}/wishlist`}
+            className="flex flex-col items-center gap-0.5 px-4 py-1 text-gray-400 hover:text-rose-500 transition-colors"
+          >
+            <Heart size={20} />
+            <span className="text-[10px] font-semibold">Saved</span>
+          </Link>
+        </div>
+      </nav>
     </div>
     </PageTransitionWrapper>
   );

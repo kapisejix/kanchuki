@@ -73,11 +73,40 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
     }
   }, [storeSlug])
 
+  // Push a history entry when the overlay opens so the phone/browser Back
+  // button closes the modal instead of exiting the entire store page.
+  // Mirrors the pattern already used by ProductDetailSheet.
+  const openOverlay = useCallback(() => {
+    setOpen(true)
+    window.history.pushState({ kanchukiAiStylist: true }, '')
+  }, [])
+
+  const closeOverlay = useCallback(() => {
+    setOpen(false)
+    window.history.back()
+  }, [])
+
+  useEffect(() => {
+    if (!open) return
+    let poppedByUser = false
+    const handlePopState = () => {
+      poppedByUser = true
+      setOpen(false)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => {
+      window.removeEventListener('popstate', handlePopState)
+      // If the component unmounts without a popstate (e.g. parent re-renders),
+      // clean up the history entry we pushed.
+      if (!poppedByUser) window.history.back()
+    }
+  }, [open])
+
   // Floating button
   if (!open) {
     return (
       <button
-        onClick={() => setOpen(true)}
+        onClick={openOverlay}
         className="fixed bottom-24 right-4 z-40 w-14 h-14 bg-gradient-to-br from-cyan-500 to-indigo-600 text-white rounded-full shadow-lg hover:shadow-xl flex items-center justify-center transition-all active:scale-90 hover:-translate-y-0.5"
         aria-label="Open AI Stylist"
       >
@@ -87,7 +116,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col" onClick={() => setOpen(false)}>
+    <div className="fixed inset-0 z-50 flex flex-col" onClick={closeOverlay}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
 
       <div
@@ -106,7 +135,7 @@ export function AIStylist({ storeSlug, storeName, onProductTap }: Props) {
             </div>
           </div>
           <button
-            onClick={() => setOpen(false)}
+            onClick={closeOverlay}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
           >
             <X size={14} className="text-gray-500" />

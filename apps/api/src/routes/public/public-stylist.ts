@@ -118,8 +118,39 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         orderBy: { created_at: 'desc' },
       });
 
-      // Deterministic pre-filter: extract color/fabric hints from query
+      // Deterministic pre-filter: extract category/subtype/color/fabric hints from query
       const queryLower = query.toLowerCase()
+
+      // Category/subtype keywords — common Indian fashion terms
+      const CATEGORY_KEYWORDS: Record<string, string[]> = {
+        'saree': ['saree', 'sari'],
+        'lehenga': ['lehenga', 'lehenga choli'],
+        'kurta': ['kurta', 'kurti', 'kurta set'],
+        'suit': ['suit', 'salwar', 'churidar', 'anarkali'],
+        'sherwani': ['sherwani', 'bandhgala'],
+        'gown': ['gown', 'evening gown'],
+        'dupatta': ['dupatta', 'stole'],
+        'blouse': ['blouse', 'choli'],
+        'palazzo': ['palazzo', 'plazzo'],
+        'sharara': ['sharara', 'sharara set'],
+        'kaftan': ['kaftan'],
+        'jumpsuit': ['jumpsuit'],
+        'dress': ['dress', 'frock'],
+      }
+
+      const categoryHints: string[] = []
+      const subtypeHints: string[] = []
+      for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+        if (keywords.some((kw) => queryLower.includes(kw))) {
+          categoryHints.push(cat)
+        }
+      }
+      // Also check product subtype fields directly (e.g. "kurti" matches subtype "Kurti")
+      const SUBTYPE_KEYWORDS = ['kurta', 'kurti', 'saree', 'lehenga', 'sherwani', 'gown', 'anarkali', 'salwar', 'churidar', 'palazzo', 'sharara', 'kaftan']
+      for (const st of SUBTYPE_KEYWORDS) {
+        if (queryLower.includes(st)) subtypeHints.push(st)
+      }
+
       const colorHints = Object.keys(COMPLEMENTARY_COLORS).filter((c) => queryLower.includes(c))
       const fabricHints = ['cotton', 'silk', 'georgette', 'chiffon', 'velvet', 'linen', 'rayon'].filter((f) => queryLower.includes(f))
 
@@ -140,6 +171,19 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       // Budget filter
       if (budget_min != null) candidates = candidates.filter((p) => p.price_max == null || p.price_max >= budget_min)
       if (budget_max != null) candidates = candidates.filter((p) => p.price_min == null || p.price_min <= budget_max)
+
+      // Category/subtype filter — scope results to matching product types
+      if (categoryHints.length > 0 || subtypeHints.length > 0) {
+        const filtered = candidates.filter((p) => {
+          const cat = (p.category ?? '').toLowerCase()
+          const sub = (p.subtype ?? '').toLowerCase()
+          return categoryHints.some((c) => cat.includes(c)) ||
+                 subtypeHints.some((s) => sub.includes(s) || cat.includes(s))
+        })
+        // Only apply if we have enough matches — otherwise fall through to
+        // unfiltered candidates so the LLM can still suggest alternatives.
+        if (filtered.length >= 2) candidates = filtered
+      }
 
       // Fabric filter
       if (fabricHints.length > 0) {
@@ -162,7 +206,8 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       // Call Claude for recommendations
       const anthropicKey = process.env['ANTHROPIC_API_KEY']
       if (!anthropicKey) {
-        // Fallback: return top products by relevance without LLM
+        // Fallback: return top products by relevance without LLM.
+        // Already filtered by category/subtype/color/fabric above.
         return reply.status(200).send({
           data: {
             recommendations: candidates.slice(0, 6).map((p) => ({
@@ -174,7 +219,9 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
               photo_url: p.photo_url,
               rationale: `Great choice from ${retailer.shop_name}'s collection.`,
             })),
-            stylist_note: 'AI stylist is warming up. Showing top picks for now.',
+            stylist_note: categoryHints.length > 0
+              ? `AI stylist is warming up. Showing top ${categoryHints[0]} picks.`
+              : 'AI stylist is warming up. Showing top picks for now.',
           },
         })
       }
@@ -242,7 +289,8 @@ RULES:
           },
         })
       } catch (err) {
-        // Fallback on Claude failure
+        // Fallback on Claude failure.
+        // Already filtered by category/subtype/color/fabric above.
         return reply.status(200).send({
           data: {
             recommendations: candidates.slice(0, 6).map((p) => ({
@@ -254,7 +302,9 @@ RULES:
               photo_url: p.photo_url,
               rationale: `A great pick from ${retailer.shop_name}'s collection.`,
             })),
-            stylist_note: 'AI stylist is temporarily busy. Showing top picks.',
+            stylist_note: categoryHints.length > 0
+              ? `AI stylist is temporarily busy. Showing top ${categoryHints[0]} picks.`
+              : 'AI stylist is temporarily busy. Showing top picks.',
           },
         })
       }
