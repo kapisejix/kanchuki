@@ -74,8 +74,24 @@ export function ReviewForm({
 }: ReviewFormProps) {
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState('')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  // Prefill name/phone from ContactGate localStorage if available
+  const [name, setName] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      // Extract store slug from the current URL path: /{store}/{slug}/... or /c/{slug}/...
+      const parts = window.location.pathname.split('/').filter(Boolean)
+      const slug = parts[0] === 'c' ? parts[1] : parts[0]
+      return slug ? localStorage.getItem(`kanchuki_lead_name_${slug}`) ?? '' : ''
+    } catch { return '' }
+  })
+  const [phone, setPhone] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try {
+      const parts = window.location.pathname.split('/').filter(Boolean)
+      const slug = parts[0] === 'c' ? parts[1] : parts[0]
+      return slug ? localStorage.getItem(`kanchuki_lead_phone_${slug}`) ?? '' : ''
+    } catch { return '' }
+  })
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

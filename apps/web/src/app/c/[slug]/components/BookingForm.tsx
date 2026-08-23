@@ -45,8 +45,15 @@ function getAvailableSlots(): Array<{ date: string; label: string; slots: Array<
 
 export function BookingForm({ storeSlug, storeName, onClose }: Props) {
   const [step, setStep] = useState<Step>('form')
-  const [name, setName] = useState('')
-  const [phone, setPhone] = useState('')
+  // Prefill name/phone from ContactGate localStorage if available
+  const [name, setName] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try { return localStorage.getItem(`kanchuki_lead_name_${storeSlug}`) ?? '' } catch { return '' }
+  })
+  const [phone, setPhone] = useState(() => {
+    if (typeof window === 'undefined') return ''
+    try { return localStorage.getItem(`kanchuki_lead_phone_${storeSlug}`) ?? '' } catch { return '' }
+  })
   const [selectedSlot, setSelectedSlot] = useState<{ starts_at: string; ends_at: string } | null>(null)
   const [note, setNote] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)

@@ -17,8 +17,8 @@ import { SavedSize } from './SavedSize'
 import { DesignGallery } from './DesignGallery'
 import { FamilyProfiles } from './FamilyProfiles'
 
-// VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
-const TRY_ON_ENABLED = true
+// VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
+const TRY_ON_ENABLED = false
 
 // Alias map lookup (shared with mobile) first; anything unmapped is checked
 // against the browser's own color parser before falling back to neutral grey.
@@ -376,33 +376,35 @@ export function ProductDetailSheet({
 
       {/* Sheet */}
       <div
-        className="relative mt-auto bg-white rounded-t-3xl max-h-[92vh] overflow-y-auto"
+        className="relative mt-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle */}
-        <div className="flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-200 rounded-full" />
+        {/* Sticky top bar: drag handle + back/close buttons — stays fixed as
+            the content below scrolls. */}
+        <div className="sticky top-0 z-20 bg-white rounded-t-3xl">
+          <div className="flex justify-center pt-3 pb-1">
+            <div className="w-10 h-1 bg-gray-200 rounded-full" />
+          </div>
+          <button
+            onClick={closeSheet}
+            className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
+                       transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            aria-label="Back to catalog"
+          >
+            <ArrowLeft size={17} className="text-gray-600" />
+          </button>
+          <button
+            onClick={closeSheet}
+            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
+                       transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            aria-label="Close"
+          >
+            <X size={17} className="text-gray-600" />
+          </button>
         </div>
 
-        {/* Back button */}
-        <button
-          onClick={closeSheet}
-          className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
-                     transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-          aria-label="Back to catalog"
-        >
-          <ArrowLeft size={17} className="text-gray-600" />
-        </button>
-
-        {/* Close button */}
-        <button
-          onClick={closeSheet}
-          className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
-                     transition-transform active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-          aria-label="Close"
-        >
-          <X size={17} className="text-gray-600" />
-        </button>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto">
 
         {/* Photo carousel with crossfade transition + pinch-to-zoom, or 360 viewer */}
         <div
@@ -925,6 +927,7 @@ export function ProductDetailSheet({
         )}
 
         <div className="pb-6" />
+        </div>
       </div>
 
       {/* Fullscreen 360 spin popup */}

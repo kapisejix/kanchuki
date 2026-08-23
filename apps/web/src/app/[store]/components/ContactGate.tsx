@@ -16,6 +16,8 @@ interface Props {
 type Gender = 'MALE' | 'FEMALE';
 
 const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
+const leadNameKey = (slug: string) => `kanchuki_lead_name_${slug}`;
+const leadPhoneKey = (slug: string) => `kanchuki_lead_phone_${slug}`;
 
 export function ContactGate({ slug, profile }: Props) {
   const router = useRouter();
@@ -57,6 +59,8 @@ export function ContactGate({ slug, profile }: Props) {
         throw new Error(json.error?.message ?? 'Could not submit your details');
       }
       localStorage.setItem(leadKey(slug), '1');
+      localStorage.setItem(leadNameKey(slug), name.trim());
+      localStorage.setItem(leadPhoneKey(slug), phone.trim());
       // Replace (not push) so the back button never lands back on this form —
       // it skips straight past this history entry to the catalog.
       router.replace(`/${slug}/categories`);
@@ -184,7 +188,7 @@ export function ContactGate({ slug, profile }: Props) {
             className="mt-0.5"
           />
           <span className="text-xs text-gray-500">
-            I agree to share my details with {profile.shop_name} and be contacted about products.
+            I agree to share my details with {profile.shop_name} and Kanchuki, and be contacted about products, offers, and AI styling features.
           </span>
         </label>
 

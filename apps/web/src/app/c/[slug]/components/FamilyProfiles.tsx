@@ -155,7 +155,7 @@ export function FamilyProfiles({ storeSlug, onSelectProfile, activeProfile }: Pr
             {RELATION_OPTIONS.map((rel) => (
               <button
                 key={rel}
-                onClick={() => setNewRelation(rel)}
+                onClick={() => { setNewRelation(rel); if (!newName) setNewName(rel) }}
                 className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${
                   newRelation === rel
                     ? 'bg-indigo-600 text-white'

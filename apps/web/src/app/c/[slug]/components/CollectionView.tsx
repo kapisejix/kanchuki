@@ -33,8 +33,8 @@ const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), 
 const RegionalFilters = dynamic(() => import('./RegionalFilters').then((m) => m.RegionalFilters), { ssr: false });
 const CustomerReferral = dynamic(() => import('./CustomerReferral').then((m) => m.CustomerReferral), { ssr: false });
 
-// VTO self-serve enabled — backend live on Hetzner (BUILD-LOG §27/§23).
-const TRY_ON_ENABLED = true;
+// VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
+const TRY_ON_ENABLED = false;
 
 const PAGE_SIZE = 12;
 
@@ -98,6 +98,16 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       })
       .catch(() => undefined);
   }, [apiBasePath]);
+
+  // Fire-and-forget view tracking so the retailer's dashboard "Views" stat
+  // increments. The /view endpoint writes a CollectionView row server-side.
+  useEffect(() => {
+    void fetch(`${apiBasePath}/view`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    }).catch(() => undefined)
+  }, [apiBasePath])
 
   // Product list, pagination, and loading are now server-driven — the initial
   // page comes from SSR (`collection`), further pages/filter changes refetch
@@ -531,6 +541,10 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       <AIStylist
         storeSlug={store ?? slug}
         storeName={collection.retailer.shop_name}
+        onProductTap={(id) => {
+          const p = products.find((x) => x.id === id)
+          if (p) setSelectedProduct(p)
+        }}
       />
 
       {/* ── Booking Form Modal ── */}

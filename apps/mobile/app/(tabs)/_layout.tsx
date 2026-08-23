@@ -11,6 +11,7 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets()
   const { primaryColor, colors } = useTheme()
   const [pendingCount, setPendingCount] = useState(0)
+  const [checkoutEnabled, setCheckoutEnabled] = useState(false)
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
@@ -73,6 +74,16 @@ export default function TabsLayout() {
     }
   }, [meLoading, meFetching, onboardingCompleted])
 
+  // Gate: hide Orders tab if retailer's plan doesn't include checkout.
+  // Server-side CHECKOUT_CART feature is the authority; this is a client-side
+  // shortcut to avoid showing a tab that would 403 on every action.
+  useEffect(() => {
+    const plan = (meData?.data as { plan?: string } | undefined)?.plan
+    // CHECKOUT_CART is enabled for GROWTH and PRO plans (admin-configurable
+    // via PlanFeature table — if a new plan is added, update this check).
+    setCheckoutEnabled(plan === 'GROWTH' || plan === 'PRO')
+  }, [meData])
+
   if (meLoading || onboardingCompleted === false) {
     return (
       <View className="flex-1 items-center justify-center bg-cotton">
@@ -121,6 +132,7 @@ export default function TabsLayout() {
           title: 'Orders',
           tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size} />,
           tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
+          tabBarButton: checkoutEnabled ? undefined : () => null,
         }}
       />
       <Tabs.Screen
