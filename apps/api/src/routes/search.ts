@@ -140,9 +140,9 @@ export const searchRoutes: FastifyPluginAsync = async (server) => {
           ...(filters?.category ? { category: filters.category } : {}),
           ...(priceMax !== null ? { price_min: { lte: priceMax } } : {}),
           ...(priceMin !== null ? { price_min: { gte: priceMin } } : {}),
-          OR: queryWords.map((word) => ({
-            search_tags: { has: word },
-          })),
+          ...(queryWords.length > 0
+            ? { OR: queryWords.map((word) => ({ search_tags: { has: word } })) }
+            : {}),
         },
         include: {
           photos: { where: { is_primary: true }, take: 1 },

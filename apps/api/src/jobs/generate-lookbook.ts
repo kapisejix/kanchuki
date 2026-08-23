@@ -220,7 +220,7 @@ async function generateLookbookPdf(
         const p = products[i]!;
         const isLeft = i % 2 === 0;
 
-        if (!isLeft && i > 0) {
+        if (isLeft && i > 0) {
           doc.addPage();
         }
 

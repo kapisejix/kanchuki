@@ -49,6 +49,9 @@ const OtpVerifySchema = z
     // SDK's verifyOTP after the widget verified the code client-side. The
     // API re-verifies it with MSG91's Verify Access Token API server-side.
     msg91_token: z.string().min(10, 'msg91_token must be a valid access token').optional(),
+    // Must match the purpose passed to /otp/send so verify checks the same
+    // Redis slot the code was issued into (see SendOtpSchema).
+    purpose: z.enum(['login', 'stepup']).optional().default('login'),
   })
   .refine((d) => d.otp || d.msg91_token, 'Provide an OTP or a verified MSG91 token');
 
@@ -221,7 +224,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     const body = OtpVerifySchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid', 'otp');
 
-    const { phone, otp, msg91_token } = body.data;
+    const { phone, otp, msg91_token, purpose } = body.data;
     const e164 = `+91${phone}`;
 
     // ── 1. Verify the OTP (three channels, all server-side) ──────────
@@ -245,7 +248,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       await verifyMsg91WidgetToken(msg91_token, phone); // throws 401 on failure
       msg91Verified = true;
     } else if (otp) {
-      const result = await verifyStoredOtp(phone, otp);
+      const result = await verifyStoredOtp(phone, otp, purpose);
       // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
       console.log(`[auth] /otp/verify phone=${phone} storedOtpResult=${result} msg91Configured=${isMsg91OtpConfigured()}`);
       if (result === 'verified') {

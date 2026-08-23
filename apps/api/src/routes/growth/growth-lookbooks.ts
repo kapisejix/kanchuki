@@ -68,10 +68,11 @@ export const growthLookbookRoutes: FastifyPluginAsync = async (server) => {
     const retailerId = request.retailerId;
     await guard(retailerId);
 
-    const [total, ready, generating, totalViews, totalShares] = await Promise.all([
+    const [total, ready, generating, failed, totalViews, totalShares] = await Promise.all([
       prisma.lookbook.count({ where: { retailer_id: retailerId } }),
       prisma.lookbook.count({ where: { retailer_id: retailerId, status: 'READY' } }),
       prisma.lookbook.count({ where: { retailer_id: retailerId, status: 'GENERATING' } }),
+      prisma.lookbook.count({ where: { retailer_id: retailerId, status: 'FAILED' } }),
       prisma.lookbook.aggregate({
         where: { retailer_id: retailerId },
         _sum: { view_count: true },
@@ -87,7 +88,7 @@ export const growthLookbookRoutes: FastifyPluginAsync = async (server) => {
         total,
         ready,
         generating,
-        failed: total - ready - generating,
+        failed,
         total_views: totalViews._sum.view_count ?? 0,
         total_shares: totalShares._sum.share_count ?? 0,
       },
