@@ -287,6 +287,17 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
 
       {/* ── Header ── */}
       <header className={`sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 ${bannerUrl ? '' : ''}`}>
+        {/* Kanchuki branding bar */}
+        <div className="max-w-md mx-auto px-4 pt-2 pb-1 flex justify-center">
+          <Image
+            src="/kanchuki-logo.png"
+            alt="Kanchuki"
+            width={100}
+            height={20}
+            className="h-4 w-auto opacity-60"
+            priority
+          />
+        </div>
         <div className="max-w-md mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="min-w-0">
