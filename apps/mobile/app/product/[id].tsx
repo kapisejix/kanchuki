@@ -32,6 +32,7 @@ import {
   productAttributeApi,
   uploadImageToR2,
   readLocalImage,
+  ApiError,
 } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
@@ -131,6 +132,7 @@ export default function ProductDetailScreen() {
   const [studioJob, setStudioJob] = useState<{ jobId: string; photoId: string } | null>(null)
   const [studioStatus, setStudioStatus] = useState<'processing' | 'ready' | 'failed' | null>(null)
   const [studioError, setStudioError] = useState<string | null>(null)
+  const [studioUpgradeRequired, setStudioUpgradeRequired] = useState(false)
   const [studioResult, setStudioResult] = useState<{ photoId: string; url: string } | null>(null)
   const [studioProgress, setStudioProgress] = useState<number>(0)
   const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
@@ -750,14 +752,24 @@ export default function ProductDetailScreen() {
     setStudioModalOpen(false)
     setStudioStarting(true)
     setStudioError(null)
+    setStudioUpgradeRequired(false)
     setStudioResult(null)
     try {
       const res = await productApi.startStudioShoot(product.id, photo.id, template)
       setStudioJob({ jobId: res.data.job_id, photoId: photo.id })
       setStudioStatus('processing')
     } catch (err) {
-      showError(err, 'Could not start the studio shoot')
-      setStudioStatus(null)
+      if (err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE') {
+        // Plan gate, not a real failure — show the reason inline with an
+        // upgrade path instead of a dead-end native Alert (matches the
+        // growth-hub FEATURE_UNAVAILABLE pattern).
+        setStudioStatus('failed')
+        setStudioError(err.message)
+        setStudioUpgradeRequired(true)
+      } else {
+        showError(err, 'Could not start the studio shoot')
+        setStudioStatus(null)
+      }
     } finally {
       setStudioStarting(false)
     }
@@ -1349,7 +1361,27 @@ export default function ProductDetailScreen() {
               )}
             </View>
           )}
-          {studioStatus === 'failed' && (
+          {studioStatus === 'failed' && studioUpgradeRequired && (
+            <View className="mt-3 bg-ink-900 rounded-2xl p-4">
+              <View className="flex-row items-center gap-1.5 mb-1">
+                <Sparkles size={13} color={colors.rust[400]} />
+                <Text className="text-[10px] font-semibold text-rust-400 uppercase tracking-wide">
+                  Plan upgrade needed
+                </Text>
+              </View>
+              <Text className="text-xs text-white/80 leading-4">
+                {studioError}
+              </Text>
+              <View className="mt-3">
+                <GradientButton
+                  label="View Plans"
+                  onPress={() => router.push('/billing')}
+                  colors={[colors.rust[500], colors.rust[700]]}
+                />
+              </View>
+            </View>
+          )}
+          {studioStatus === 'failed' && !studioUpgradeRequired && (
             <View className="mt-3 bg-turmeric-50 border border-turmeric-100 rounded-xl px-3 py-2">
               <Text className="text-xs text-turmeric-700">
                 {studioError ?? 'The studio shoot failed. Please try again.'}
