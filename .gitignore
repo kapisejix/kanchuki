@@ -90,3 +90,6 @@ VibeSec-Skill/
 .backups/
 
 .superpowers/
+
+# Strix security-scan run state (SQLite state + logs, not source)
+strix_runs/

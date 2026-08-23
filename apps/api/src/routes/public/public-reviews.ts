@@ -116,6 +116,7 @@ async function checkProductReviewEligibility(
   customerId: string,
   retailerId: string,
   productId: string,
+  customerPhone: string,
 ): Promise<{ eligible: boolean; reason?: string }> {
   // Check for prior interaction with this specific product
   const productInteraction = await prisma.customerInteraction.findFirst({
@@ -134,9 +135,14 @@ async function checkProductReviewEligibility(
   })
   if (retailerInteraction) return { eligible: true }
 
-  // Check for prior order with this retailer
+  // Check for prior order from THIS customer (Order has no customer_id — an
+  // anonymous checkout snapshots customer_phone as free-form input, not
+  // normalized like Customer.phone — so match on the bare 10-digit tail via
+  // `contains` rather than an exact string, or a +91/leading-0 variant of the
+  // same number would wrongly look ineligible). Not just retailer_id, or any
+  // phone becomes "eligible" once the store has one order from anyone.
   const order = await prisma.order.findFirst({
-    where: { retailer_id: retailerId },
+    where: { retailer_id: retailerId, customer_phone: { contains: customerPhone } },
   })
   if (order) return { eligible: true }
 
@@ -149,6 +155,7 @@ async function checkProductReviewEligibility(
 async function checkStoreReviewEligibility(
   customerId: string,
   retailerId: string,
+  customerPhone: string,
 ): Promise<{ eligible: boolean; reason?: string }> {
   const interaction = await prisma.customerInteraction.findFirst({
     where: { customer_id: customerId, retailer_id: retailerId },
@@ -156,7 +163,7 @@ async function checkStoreReviewEligibility(
   if (interaction) return { eligible: true }
 
   const order = await prisma.order.findFirst({
-    where: { retailer_id: retailerId },
+    where: { retailer_id: retailerId, customer_phone: { contains: customerPhone } },
   })
   if (order) return { eligible: true }
 
@@ -210,6 +217,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
         customer.id,
         product.retailer_id,
         body.product_id,
+        normalizeIndianPhone(body.phone),
       )
       if (!eligibility.eligible) {
         return reply.status(403).send({ error: eligibility.reason })
@@ -298,6 +306,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       const eligibility = await checkStoreReviewEligibility(
         customer.id,
         body.retailer_id,
+        normalizeIndianPhone(body.phone),
       )
       if (!eligibility.eligible) {
         return reply.status(403).send({ error: eligibility.reason })

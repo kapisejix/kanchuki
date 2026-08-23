@@ -13,7 +13,7 @@
 //   - API credentials are stored encrypted at rest (AES-256-GCM)
 //   - Every action records an audit log
 
-import { prisma } from '@kanchuki/db';
+import { encryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
@@ -89,14 +89,15 @@ export const retailersAggregatorRoutes: FastifyPluginAsync = async (server) => {
         is_active: true,
         created_at: true,
         updated_at: true,
+        api_key_encrypted: true,
       },
     });
 
     return {
-      data: syncs.map((s) => ({
+      data: syncs.map(({ api_key_encrypted, ...s }) => ({
         ...s,
         channel_label: CHANNEL_LABELS[s.channel] ?? s.channel,
-        credentials_configured: !!(s as any).api_key_encrypted,
+        credentials_configured: !!api_key_encrypted,
       })),
     };
   });
@@ -119,18 +120,16 @@ export const retailersAggregatorRoutes: FastifyPluginAsync = async (server) => {
       );
     }
 
-    // Create connection — credentials are stored encrypted at the app layer.
-    // For now, store plaintext placeholders; real encryption via
-    // packages/db/src/secrets.ts encryptSecret() should wrap before persisting.
+    // Credentials are stored encrypted at rest — never persist plaintext.
     const sync = await prisma.channelSync.create({
       data: {
         retailer_id: retailerId,
         channel: body.data.channel,
         status: 'CONNECTED',
-        api_key_encrypted: body.data.api_key,
-        api_secret_encrypted: body.data.api_secret,
-        auth_token_encrypted: body.data.auth_token,
-        webhook_secret: body.data.webhook_secret,
+        api_key_encrypted: encryptSecret(body.data.api_key),
+        api_secret_encrypted: body.data.api_secret ? encryptSecret(body.data.api_secret) : undefined,
+        auth_token_encrypted: body.data.auth_token ? encryptSecret(body.data.auth_token) : undefined,
+        webhook_secret: body.data.webhook_secret ? encryptSecret(body.data.webhook_secret) : undefined,
         channel_shop_id: body.data.channel_shop_id,
         channel_shop_url: body.data.channel_shop_url,
       },
@@ -208,10 +207,10 @@ export const retailersAggregatorRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const updateData: Record<string, unknown> = {};
-    if (body.data.api_key !== undefined) updateData.api_key_encrypted = body.data.api_key;
-    if (body.data.api_secret !== undefined) updateData.api_secret_encrypted = body.data.api_secret;
-    if (body.data.auth_token !== undefined) updateData.auth_token_encrypted = body.data.auth_token;
-    if (body.data.webhook_secret !== undefined) updateData.webhook_secret = body.data.webhook_secret;
+    if (body.data.api_key !== undefined) updateData.api_key_encrypted = encryptSecret(body.data.api_key);
+    if (body.data.api_secret !== undefined) updateData.api_secret_encrypted = encryptSecret(body.data.api_secret);
+    if (body.data.auth_token !== undefined) updateData.auth_token_encrypted = encryptSecret(body.data.auth_token);
+    if (body.data.webhook_secret !== undefined) updateData.webhook_secret = encryptSecret(body.data.webhook_secret);
     if (body.data.channel_shop_id !== undefined) updateData.channel_shop_id = body.data.channel_shop_id;
     if (body.data.channel_shop_url !== undefined) updateData.channel_shop_url = body.data.channel_shop_url;
     if (body.data.is_active !== undefined) updateData.is_active = body.data.is_active;

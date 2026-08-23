@@ -456,19 +456,40 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       );
     }
 
-    // Fetch payment details from Razorpay to verify amount matches
+    // Fetch payment details from Razorpay to verify amount + capture status
+    // before crediting anything — a mismatch or uncaptured payment must not
+    // fall through to the credit step below.
     try {
       const payment = await razorpay<{ amount: number; status: string }>(
         `/payments/${razorpay_payment_id}`,
       );
-      if (payment.amount !== purchase.amount_inr) {
+      if (payment.amount !== purchase.amount_inr || payment.status !== 'captured') {
         request.log.error(
-          { razorpay_payment_id, expected: purchase.amount_inr, actual: payment.amount },
-          'Payment amount mismatch on addon callback',
+          {
+            razorpay_payment_id,
+            expected: purchase.amount_inr,
+            actual: payment.amount,
+            status: payment.status,
+          },
+          'Payment amount/status mismatch on addon callback — not crediting',
+        );
+        await prisma.quotaAddonPurchase.update({
+          where: { id: purchase.id },
+          data: { status: 'FAILED', razorpay_payment_id },
+        });
+        return reply.redirect(
+          `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=failed`,
         );
       }
     } catch (err) {
       request.log.error({ razorpay_payment_id, err }, 'Failed to fetch payment details');
+      await prisma.quotaAddonPurchase.update({
+        where: { id: purchase.id },
+        data: { status: 'FAILED', razorpay_payment_id },
+      });
+      return reply.redirect(
+        `${process.env.WEB_URL ?? 'http://localhost:3000'}/billing/addon-success?status=failed`,
+      );
     }
 
     // Credit the addon to the retailer's usage counter

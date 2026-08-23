@@ -506,6 +506,28 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       throw new AppError('REFRESH_FAILED', 'Session expired. Please log in again.', 401);
     }
 
+    // F-015: a suspension must also stop token refresh, not just fresh login —
+    // otherwise a suspended retailer stays logged in indefinitely by refreshing.
+    const authUserId = data.session.user.id;
+    const [suspendedRetailer, suspendedStaff] = await Promise.all([
+      prisma.retailer.findUnique({
+        where: { auth_user_id: authUserId },
+        select: { is_suspended: true },
+      }),
+      prisma.staff.findFirst({
+        where: { auth_user_id: authUserId, is_active: true },
+        select: { retailer: { select: { is_suspended: true } } },
+      }),
+    ]);
+    if (suspendedRetailer?.is_suspended || suspendedStaff?.retailer.is_suspended) {
+      await supabase.auth.admin.signOut(data.session.access_token).catch(() => undefined);
+      throw new AppError(
+        'ACCOUNT_SUSPENDED',
+        'This account has been suspended. Please contact support for assistance.',
+        403,
+      );
+    }
+
     return reply.status(200).send({
       data: {
         access_token: data.session.access_token,

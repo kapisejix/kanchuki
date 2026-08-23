@@ -56,12 +56,14 @@ export default function SocialSettingsScreen() {
   const [postCaption, setPostCaption] = useState('');
   const [showComposer, setShowComposer] = useState<SocialAccountInfo | null>(null);
   const [historyAccount, setHistoryAccount] = useState<SocialAccountInfo | null>(null);
+  const [connecting, setConnecting] = useState(false);
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['social', 'accounts'] });
   };
 
   const openConnect = async () => {
+    setConnecting(true);
     try {
       // The web page handles OTP login + Meta OAuth + Page picker entirely;
       // the app just opens it. No pre-flight API call here — that used to
@@ -78,6 +80,8 @@ export default function SocialSettingsScreen() {
       }, 2000);
     } catch (err) {
       showError(err, 'Could not open Facebook connect');
+    } finally {
+      setConnecting(false);
     }
   };
 
@@ -164,7 +168,11 @@ export default function SocialSettingsScreen() {
                 <Text className="text-xs text-sand-400 text-center mb-4">
                   Connect your Facebook Page to start posting your products.
                 </Text>
-                <GradientButton label="Connect Facebook Page" onPress={() => void openConnect()} />
+                <GradientButton
+                  label="Connect Facebook Page"
+                  loading={connecting}
+                  onPress={() => void openConnect()}
+                />
               </View>
             ) : (
               <>
@@ -213,10 +221,17 @@ export default function SocialSettingsScreen() {
 
                 <AnimatedPressable
                   onPress={() => void openConnect()}
+                  disabled={connecting}
                   className="flex-row items-center justify-center gap-2 bg-white rounded-2xl py-3.5 border border-dashed border-sand-300 mb-5"
                 >
-                  <Facebook size={16} color="#1877F2" />
-                  <Text className="text-sm font-semibold text-sand-700">Connect another Page</Text>
+                  {connecting ? (
+                    <ActivityIndicator size="small" color="#1877F2" />
+                  ) : (
+                    <Facebook size={16} color="#1877F2" />
+                  )}
+                  <Text className="text-sm font-semibold text-sand-700">
+                    {connecting ? 'Opening browser…' : 'Connect another Page'}
+                  </Text>
                 </AnimatedPressable>
               </>
             )}

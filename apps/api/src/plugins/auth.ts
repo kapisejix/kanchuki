@@ -337,11 +337,22 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
     // Load retailer from DB (staff and owners both need retailer context)
     const retailer = await prisma.retailer.findUnique({
       where: { auth_user_id: claims.sub, deleted_at: null },
-      select: { id: true, auth_user_id: true, plan_status: true },
+      select: { id: true, auth_user_id: true, plan_status: true, is_suspended: true },
     });
 
     if (retailer) {
       // Retailer owner — standard flow
+      // F-015: a suspension made after login must also stop the existing
+      // session — not just block a fresh OTP login (auth.ts checks that path).
+      if (retailer.is_suspended) {
+        return reply.status(403).send({
+          error: {
+            code: 'ACCOUNT_SUSPENDED',
+            message: 'This account has been suspended. Please contact support for assistance.',
+            status: 403,
+          },
+        });
+      }
       request.retailerId = retailer.id;
       request.retailerAuthUserId = claims.sub;
       request.staffRole = null;
@@ -349,7 +360,12 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
       // Not a retailer — check if this is a staff member
       const staff = await prisma.staff.findFirst({
         where: { auth_user_id: claims.sub, is_active: true },
-        select: { id: true, role: true, retailer_id: true },
+        select: {
+          id: true,
+          role: true,
+          retailer_id: true,
+          retailer: { select: { is_suspended: true } },
+        },
       });
 
       if (!staff) {
@@ -357,6 +373,16 @@ export const authPlugin: FastifyPluginAsync = fp(async (server) => {
           error: {
             code: 'RETAILER_NOT_FOUND',
             message: 'Account not found. Please complete registration.',
+            status: 403,
+          },
+        });
+      }
+
+      if (staff.retailer.is_suspended) {
+        return reply.status(403).send({
+          error: {
+            code: 'ACCOUNT_SUSPENDED',
+            message: 'This account has been suspended. Please contact support for assistance.',
             status: 403,
           },
         });
