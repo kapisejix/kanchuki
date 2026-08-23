@@ -16,7 +16,7 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 | 1 | Try-on hidden on web | ✅ Done |
 | 2 | Dashboard views tracking | ✅ Done |
 | 3 | Orders tab gated on plan | ✅ Done |
-| 4 | Category image picker | 🔲 TODO |
+| 4 | Category image picker | ✅ Done |
 | 5 | Consent text includes Kanchuki | ✅ Done |
 | 6 | Family tag autofill name | ✅ Done |
 | 7 | Select/Enquire restyle | 🔲 TODO |
@@ -99,9 +99,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #4 — Pick category image from a product's photo (especially AI Studio Shoot images)
-
-**Your point:** let a category thumbnail be chosen from an existing product photo instead of a fresh upload.
+## #4 — Pick category image from a product's photo (especially AI Studio Shoot images) ✅ DONE
 
 **Answer:** 🟢 DB-compatible today, no schema change needed — this is UI-only.
 
@@ -321,6 +319,6 @@ Both already frame Kanchuki as the platform operator:
 
 ## ✅ All actionable items complete
 
-**Done:** #1, #2, #3, #5, #6, #8, #9, #10, #11, #12, #15, #16, #17
-**Remaining TODO:** #4 (category image picker), #7-redesign (Select/Enquire restyle)
+**Done:** #1, #2, #3, #4, #5, #6, #8, #9, #10, #11, #12, #15, #16, #17
+**Remaining TODO:** #7-redesign (Select/Enquire restyle)
 **Deferred:** #13 (automated referral payout — ship manual version as-is)
