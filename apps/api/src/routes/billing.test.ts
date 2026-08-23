@@ -339,6 +339,7 @@ describe('GET /v1/billing/addon-callback', () => {
       retailer_id: RETAILER_ID,
       resource_type: 'AI_TAGGING_CALL',
       quantity: 100,
+      amount_inr: 14900,
     });
     // No override, so falls back to plan limit
     mockRetailerLimitOverrideFindUnique.mockResolvedValue(null);
@@ -404,6 +405,7 @@ describe('GET /v1/billing/addon-callback', () => {
       retailer_id: RETAILER_ID,
       resource_type: 'PRODUCT_UPLOAD',
       quantity: 500,
+      amount_inr: 39900,
     });
     // No override and no plan limit row = unlimited
     mockRetailerLimitOverrideFindUnique.mockResolvedValue(null);
@@ -494,6 +496,7 @@ describe('GET /v1/billing/addon-callback', () => {
       retailer_id: RETAILER_ID,
       resource_type: 'TRY_ON',
       quantity: 10,
+      amount_inr: 9900,
     });
     // Override exists — should be used instead of plan limit
     mockRetailerLimitOverrideFindUnique.mockResolvedValue({

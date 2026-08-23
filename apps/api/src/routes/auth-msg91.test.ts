@@ -305,7 +305,7 @@ describe('POST /auth/otp/verify — server-issued MSG91 OTP (Redis) path', () =>
     });
 
     expect(res.statusCode).toBe(200);
-    expect(mockVerifyStoredOtp).toHaveBeenCalledWith('9876543210', '123456');
+    expect(mockVerifyStoredOtp).toHaveBeenCalledWith('9876543210', '123456', 'login');
     // Supabase did not verify this code — the admin-minted session is used.
     expect(mockVerifyOtp).not.toHaveBeenCalled();
     expect(mockCreateUser).toHaveBeenCalled();
