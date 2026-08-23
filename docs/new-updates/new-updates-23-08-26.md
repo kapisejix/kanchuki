@@ -7,9 +7,32 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 
 ---
 
-## #1 — Completely hide Try-on feature from retailers and customers (buttons only)
+## Status
 
-**Your point:** Hide Try-on everywhere, just the buttons, not a redesign.
+**Commit:** `9c0231c` — 8 items fixed in one pass.
+
+| # | Item | Status |
+|---|------|--------|
+| 1 | Try-on hidden on web | ✅ Done |
+| 2 | Dashboard views tracking | ✅ Done |
+| 3 | Orders tab gated on plan | ✅ Done |
+| 4 | Category image picker | 🔲 TODO |
+| 5 | Consent text includes Kanchuki | ✅ Done |
+| 6 | Family tag autofill name | ✅ Done |
+| 7 | Select/Enquire restyle | 🔲 TODO |
+| 8 | ReviewForm prefills name/phone | ✅ Done |
+| 9 | Back button + bottom nav | 🔲 TODO |
+| 10 | Sticky back/close buttons | ✅ Done |
+| 11 | AI Stylist category filter | 🔲 TODO |
+| 12 | AI Stylist product tap | ✅ Done |
+| 13 | Automated referral payout | 🔴 Defer |
+| 15 | BookingForm prefills name/phone | ✅ Done |
+| 16 | Categorized dashboard grid | 🔲 TODO |
+| 17 | Kanchuki logo everywhere | 🔲 TODO |
+
+---
+
+## #1 — Completely hide Try-on feature from retailers and customers (buttons only) ✅ DONE
 
 **Answer:** 🟢 Mostly already done — this is a 2-line flip, not new work.
 
@@ -31,6 +54,8 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 
 **Your point:** same hide as #1, plus restyle Select and Enquire.
 
+**✅ Try-on hide: DONE** (flipped both web flags to `false` in same commit as #1). **Redesign: TODO.**
+
 **Answer:** 🟢 Hide = same fix as #1 (only applies to web; mobile has no customer-facing Select/Enquire).
 
 Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/ProductDetailSheet.tsx`:
@@ -44,9 +69,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #2 — Retailer dashboard views not showing up
-
-**Your point:** dashboard "Views" stat is broken.
+## #2 — Retailer dashboard views not showing up ✅ DONE
 
 **Answer:** 🟡 Root cause found — it's a missing wire, not a display bug, and fixing the real cause needs one new API call added to the customer web app.
 
@@ -62,9 +85,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #3 — Hide Orders from retailers and customers until cart is active
-
-**Your point:** cart isn't live yet, so Orders shouldn't be visible.
+## #3 — Hide Orders from retailers and customers until cart is active ✅ DONE
 
 **Answer:** 🟢 — reuse an existing flag, don't build a new one. Also: cart/checkout is **not a stub**, it's real and already gated correctly on the web side — the gap is only on mobile.
 
@@ -94,9 +115,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #5 — Add "Kanchuki" alongside store name in the phone-number consent text
-
-**Your point:** customers should know Kanchuki (not just the store) uses their number for promotions/AI stylist/AI purposes.
+## #5 — Add "Kanchuki" alongside store name in the phone-number consent text ✅ DONE
 
 **Answer:** 🟢 One-line copy change, and it's legally the more correct version of what exists.
 
@@ -112,9 +131,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #6 — Family/gifting relation tags should auto-fill the name textbox
-
-**Your point:** selecting "Mom"/"Sister" tag should populate the textbox, not require manual typing.
+## #6 — Family/gifting relation tags should auto-fill the name textbox ✅ DONE
 
 **Answer:** 🟢 Confirmed bug exactly as reported, trivial fix.
 
@@ -129,9 +146,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #8 — "Rate this product" shouldn't re-ask for name/phone if already saved
-
-**Your point:** phone/name already captured once — don't ask again on the review form.
+## #8 — "Rate this product" shouldn't re-ask for name/phone if already saved ✅ DONE
 
 **Answer:** 🟡 This is a genuine gap, not just a "reuse it" bug — the value was never kept anywhere to reuse.
 
@@ -162,9 +177,7 @@ Routing is Next.js App Router with **real routes** for top-level flows (`/cart`,
 
 ---
 
-## #10 — Back/close buttons not sticky, wrong position, need animation
-
-**Your point:** these buttons should stay fixed on screen with animated highlight as the page scrolls.
+## #10 — Back/close buttons not sticky, wrong position, need animation ✅ DONE
 
 **Answer:** 🟢 Confirmed and there's already a correct pattern elsewhere in the same codebase to copy.
 
@@ -196,9 +209,7 @@ Customer-facing AI Stylist: `apps/api/src/routes/public/public-stylist.ts`. **No
 
 ---
 
-## #12 — AI Stylist result click doesn't open product detail
-
-**Your point:** clicking a product from AI Stylist results should open its detail page, currently it's stuck.
+## #12 — AI Stylist result click doesn't open product detail ✅ DONE
 
 **Answer:** 🟢 One-line wiring fix, root cause fully confirmed.
 
@@ -235,9 +246,7 @@ Customer-facing AI Stylist: `apps/api/src/routes/public/public-stylist.ts`. **No
 
 ---
 
-## #15 — Book Visit screen re-asks name/phone for known customers
-
-**Your point:** don't ask again once name+phone are already saved.
+## #15 — Book Visit screen re-asks name/phone for known customers ✅ DONE
 
 **Answer:** 🟡 Same root cause as #8 — fix them together as one piece of shared plumbing, not two patches.
 
@@ -306,10 +315,10 @@ Both already frame Kanchuki as the platform operator:
 ## Summary — what to actually do in 3 days
 
 **🟢 Do first (small, safe, high confidence — roughly 1 day total):**
-#1 (try-on flags), #7-hide (same flags), #3 (Orders gate), #4 (category image picker), #5 (consent copy), #6 (family tag autofill), #10 (sticky buttons), #12 (AI Stylist click fix).
+#1 (try-on flags) ✅, #7-hide (same flags) ✅, #3 (Orders gate) ✅, #4 (category image picker), #5 (consent copy) ✅, #6 (family tag autofill) ✅, #10 (sticky buttons) ✅, #12 (AI Stylist click fix) ✅.
 
 **🟡 Do if time allows after the above (needs more care/testing — roughly 1-1.5 days):**
-#7-redesign (Select/Enquire styling), #2 (dashboard views wiring), #8+#15 (shared name/phone persistence), #9 (partial: AIStylist history fix + basic bottom nav, not full nav-stack rewrite), #11 (AI Stylist category filtering), #16 (categorized dashboard layout, no drag-reorder), #17 (storefront logo only, not full header unification).
+#7-redesign (Select/Enquire styling), #2 (dashboard views wiring) ✅, #8+#15 (shared name/phone persistence) ✅, #9 (partial: AIStylist history fix + basic bottom nav, not full nav-stack rewrite), #11 (AI Stylist category filtering), #16 (categorized dashboard layout, no drag-reorder), #17 (storefront logo only, not full header unification).
 
 **🔴 Explicitly defer past launch (real multi-day work, risk of breaking something under time pressure):**
 #13 full automated referral payout (ship the existing manual-credit version as-is), #9 full cross-overlay history-stack rewrite, #16 drag-to-arrange, #17 mobile-wide header refactor + new dark-logo asset production.
