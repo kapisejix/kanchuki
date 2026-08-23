@@ -802,8 +802,8 @@ export function ProductDetailSheet({
             disabled={isSold || isReserved || !checkoutEnabled}
             className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               isSold || isReserved || !checkoutEnabled
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-cyan-500'
+                ? 'bg-sand-100 text-sand-400 cursor-not-allowed'
+                : 'bg-ink-600 hover:bg-ink-700 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-ink-500'
             }`}
           >
             <ShoppingCart size={18} />
@@ -813,15 +813,15 @@ export function ProductDetailSheet({
           <button
             onClick={() => !isSold && onFavorite(product.id)}
             disabled={isSold}
-            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rose-400 ${
+            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rust-400 ${
               isSold
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                ? 'bg-sand-100 text-sand-400 cursor-not-allowed'
                 : isFavorited
-                  ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                  : 'bg-gray-50 text-gray-700 border border-gray-100 hover:bg-rose-50 hover:border-rose-200'
+                  ? 'bg-rust-50 text-rust-700 border border-rust-200'
+                  : 'bg-sand-50 text-sand-700 border border-sand-100 hover:bg-rust-50 hover:border-rust-200'
             }`}
           >
-            <Heart size={18} className={isFavorited && !isSold ? 'fill-rose-500' : ''} />
+            <Heart size={18} className={isFavorited && !isSold ? 'fill-rust-500' : ''} />
             Select
           </button>
           <button
@@ -829,8 +829,8 @@ export function ProductDetailSheet({
             disabled={isSold}
             className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
               isSold
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-green-500'
+                ? 'bg-sand-100 text-sand-400 cursor-not-allowed'
+                : 'bg-fern hover:brightness-90 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-fern'
             }`}
           >
             <MessageCircle size={18} />

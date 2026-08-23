@@ -452,7 +452,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 <button
                   onClick={() => goToPage(Math.max(1, page - 1))}
                   disabled={page === 1 || loading}
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
                 >
                   Prev
                 </button>
@@ -462,7 +462,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 <button
                   onClick={() => goToPage(Math.min(totalPages, page + 1))}
                   disabled={page === totalPages || loading}
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-gray-100 text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                  className="px-4 py-2 rounded-full text-sm font-semibold bg-white border border-sand-100 text-sand-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-sand-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500"
                 >
                   Next
                 </button>
@@ -480,9 +480,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           {checkoutEnabled && (
             <Link
               href={`${basePath}/cart`}
-              className="flex flex-col items-center justify-center gap-0.5 bg-cyan-600 hover:bg-cyan-700 text-white
+              className="flex flex-col items-center justify-center gap-0.5 bg-ink-600 hover:bg-ink-700 text-white
                          font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500 focus-visible:ring-offset-2"
             >
               <ShoppingBag size={15} />
               <span className="text-[10px] leading-tight">Buy Now</span>
@@ -490,20 +490,20 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           )}
           <Link
             href={`${basePath}/wishlist`}
-            className="flex flex-col items-center justify-center gap-0.5 text-gray-700 font-semibold
-                       bg-gray-50 border border-gray-100 rounded-2xl py-2.5 hover:bg-rose-50 hover:border-rose-200
-                       transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            className="flex flex-col items-center justify-center gap-0.5 text-sand-700 font-semibold
+                       bg-sand-50 border border-sand-100 rounded-2xl py-2.5 hover:bg-rust-50 hover:border-rust-200
+                       transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rust-400"
           >
-            <Heart size={15} className="text-rose-500 fill-rose-500" />
+            <Heart size={15} className="text-rust-500 fill-rust-500" />
             <span className="text-[10px] leading-tight">
               Selected{favorites.size > 0 && ` (${favorites.size})`}
             </span>
           </Link>
           <button
             onClick={handleEnquireAll}
-            className="flex flex-col items-center justify-center gap-0.5 bg-green-500 hover:bg-green-600 text-white
+            className="flex flex-col items-center justify-center gap-0.5 bg-fern hover:brightness-90 text-white
                        font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-500 focus-visible:ring-offset-2"
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fern focus-visible:ring-offset-2"
           >
             <MessageCircle size={15} />
             <span className="text-[10px] leading-tight">
@@ -512,9 +512,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           </button>
           <button
             onClick={() => setShowBooking(true)}
-            className="flex flex-col items-center justify-center gap-0.5 bg-purple-50 hover:bg-purple-100 text-purple-700
-                       font-semibold py-2.5 rounded-2xl border border-purple-100 transition-all active:scale-[0.98]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+            className="flex flex-col items-center justify-center gap-0.5 bg-turmeric-50 hover:bg-turmeric-100 text-turmeric-700
+                       font-semibold py-2.5 rounded-2xl border border-turmeric-100 transition-all active:scale-[0.98]
+                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-turmeric-500 focus-visible:ring-offset-2"
           >
             <Calendar size={15} />
             <span className="text-[10px] leading-tight">Book Visit</span>
