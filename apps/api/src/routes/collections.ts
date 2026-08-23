@@ -119,13 +119,13 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
         retailer_id: request.retailerId,
         deleted_at: null,
         ...(status ? { status } : {}),
-        ...(cursor ? { id: { gt: cursor } } : {}),
       },
       include: {
         _count: { select: { products: true } },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
       take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
     const hasMore = collections.length > limit;

@@ -140,7 +140,7 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
     for (let i = 0; i < months; i++) {
       periods.push(periodKey(new Date(now.getFullYear(), now.getMonth() - i, 1)));
     }
-    const { start } = monthRange(periods[0]!);
+    const { start } = monthRange(periods[periods.length - 1]!); // oldest period's start
 
     const [payments, expenseGroups] = await Promise.all([
       prisma.subscriptionPayment.findMany({

@@ -3,8 +3,12 @@
 
 import type { FastifyPluginAsync } from 'fastify'
 import { prisma } from '@kanchuki/db'
+import { notFound } from '../../plugins/error-handler.js'
+import { adminAuthPreHandler } from '../admin-auth.js'
 
 export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
+  server.addHook('preHandler', adminAuthPreHandler)
+
   // ─── GET /admin/reviews — list all reviews (product + store) with filters ───
   server.get(
     '/reviews',
@@ -177,9 +181,10 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         const review = await prisma.productReview.update({
           where: { id },
           data: { is_flagged: true },
-        })
+        }).catch(() => null)
+        if (!review) throw notFound('Review')
 
-        const adminId = (request as any).adminId ?? 'system'
+        const adminId = request.adminId ?? 'system'
         await prisma.auditLog.create({
           data: {
             actor_type: 'admin',
@@ -197,9 +202,10 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
       const review = await prisma.storeReview.update({
         where: { id },
         data: { is_flagged: true },
-      })
+      }).catch(() => null)
+      if (!review) throw notFound('Review')
 
-      const adminId = (request as any).adminId ?? 'system'
+      const adminId = request.adminId ?? 'system'
       await prisma.auditLog.create({
         data: {
           actor_type: 'admin',
@@ -236,7 +242,8 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         const review = await prisma.productReview.update({
           where: { id },
           data: { is_hidden: true },
-        })
+        }).catch(() => null)
+        if (!review) throw notFound('Review')
 
         // Recompute denormalized rating
         const agg = await prisma.productReview.aggregate({
@@ -249,7 +256,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
           data: { avg_rating: agg._avg.rating ?? 0, rating_count: agg._count.rating },
         })
 
-        const adminId = (request as any).adminId ?? 'system'
+        const adminId = request.adminId ?? 'system'
         await prisma.auditLog.create({
           data: {
             actor_type: 'admin',
@@ -267,7 +274,8 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
       const review = await prisma.storeReview.update({
         where: { id },
         data: { is_hidden: true },
-      })
+      }).catch(() => null)
+      if (!review) throw notFound('Review')
 
       // Recompute denormalized store rating
       const agg = await prisma.storeReview.aggregate({
@@ -280,7 +288,7 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         data: { avg_rating: agg._avg.rating ?? 0, rating_count: agg._count.rating },
       })
 
-      const adminId = (request as any).adminId ?? 'system'
+      const adminId = request.adminId ?? 'system'
       await prisma.auditLog.create({
         data: {
           actor_type: 'admin',
@@ -317,7 +325,8 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
         const review = await prisma.productReview.update({
           where: { id },
           data: { is_hidden: false, is_flagged: false },
-        })
+        }).catch(() => null)
+        if (!review) throw notFound('Review')
 
         const agg = await prisma.productReview.aggregate({
           where: { product_id: review.product_id, is_hidden: false },
@@ -335,7 +344,8 @@ export const adminRatingsRoutes: FastifyPluginAsync = async (server) => {
       const review = await prisma.storeReview.update({
         where: { id },
         data: { is_hidden: false, is_flagged: false },
-      })
+      }).catch(() => null)
+      if (!review) throw notFound('Review')
 
       const agg = await prisma.storeReview.aggregate({
         where: { retailer_id: review.retailer_id, is_hidden: false },

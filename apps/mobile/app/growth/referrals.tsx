@@ -29,6 +29,7 @@ export default function ReferralsScreen() {
   const [showCustomerPicker, setShowCustomerPicker] = useState(false)
   const [customerSearch, setCustomerSearch] = useState('')
   const [pickedCustomer, setPickedCustomer] = useState<{ id: string; name: string | null } | null>(null)
+  const [creditingReferral, setCreditingReferral] = useState<Referral | null>(null)
 
   const settingsQuery = useQuery({
     queryKey: ['growth', 'referral-settings'],
@@ -91,10 +92,15 @@ export default function ReferralsScreen() {
   })
 
   const credit = useMutation({
-    mutationFn: (id: string) => growthApi.creditReferral(id),
+    mutationFn: ({ id, friendCustomerId }: { id: string; friendCustomerId: string }) =>
+      growthApi.creditReferral(id, friendCustomerId),
     onSuccess: (res) => {
       void queryClient.invalidateQueries({ queryKey: ['growth', 'referrals'] })
-      Alert.alert('Reward credited', res.data.message ?? 'Discount applied to the friend\u2019s first order.')
+      setShowCustomerPicker(false)
+      setCreditingReferral(null)
+      setPickedCustomer(null)
+      setCustomerSearch('')
+      Alert.alert('Reward credited', res.data.message ?? 'Discount applied to both parties.')
     },
     onError: (err) => showError(err, 'Could not credit this referral'),
   })
@@ -108,22 +114,18 @@ export default function ReferralsScreen() {
   }
 
   const handleCredit = (r: Referral) => {
-    Alert.alert(
-      'Mark as converted?',
-      `Create the ${inr(r.reward_paise)} PENDING reward credit for this referral's customer.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Credit', onPress: () => credit.mutate(r.id) },
-      ],
-    )
+    setCreditingReferral(r)
+    setShowCustomerPicker(true)
   }
 
-  const filteredCustomers = customers.filter(
-    (c) =>
-      !c.name ||
-      !referrals.some((r) => r.customer_id === c.id) ||
-      (customerSearch.trim().length > 0 && referrals.some((r) => r.customer_id === c.id)),
-  )
+  const filteredCustomers = creditingReferral
+    ? customers.filter((c) => c.id !== creditingReferral.customer_id)
+    : customers.filter(
+        (c) =>
+          !c.name ||
+          !referrals.some((r) => r.customer_id === c.id) ||
+          (customerSearch.trim().length > 0 && referrals.some((r) => r.customer_id === c.id)),
+      )
 
   return (
     <View className="flex-1 bg-ink-50">
@@ -212,7 +214,22 @@ export default function ReferralsScreen() {
 
         {showCustomerPicker && (
           <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-            <Text className="text-sm font-bold text-sand-900 mb-2">Pick a customer</Text>
+            <View className="flex-row items-center justify-between mb-2">
+              <Text className="text-sm font-bold text-sand-900">
+                {creditingReferral ? 'Who converted?' : 'Pick a customer'}
+              </Text>
+              {creditingReferral && (
+                <AnimatedPressable
+                  onPress={() => {
+                    setShowCustomerPicker(false)
+                    setCreditingReferral(null)
+                  }}
+                  accessibilityRole="button"
+                >
+                  <Text className="text-xs font-semibold text-sand-400">Cancel</Text>
+                </AnimatedPressable>
+              )}
+            </View>
             <TextInput
               value={customerSearch}
               onChangeText={setCustomerSearch}
@@ -238,6 +255,10 @@ export default function ReferralsScreen() {
                         key={c.id}
                         onPress={() => {
                           setPickedCustomer(c)
+                          if (creditingReferral) {
+                            credit.mutate({ id: creditingReferral.id, friendCustomerId: c.id })
+                            return
+                          }
                           if (!enabled) {
                             Alert.alert('Referrals off', 'Enable the referral program first.')
                             return
@@ -253,11 +274,11 @@ export default function ReferralsScreen() {
                           </Text>
                           {c.phone ? <Text className="text-xs text-sand-400">{c.phone}</Text> : null}
                         </View>
-                        {createCode.isPending && pickedCustomer?.id === c.id ? (
+                        {(createCode.isPending || credit.isPending) && pickedCustomer?.id === c.id ? (
                           <ActivityIndicator size="small" color={primaryColor} />
                         ) : (
                           <Text className="text-[11px] font-semibold" style={{ color: primaryColor }}>
-                            Generate
+                            {creditingReferral ? 'Select' : 'Generate'}
                           </Text>
                         )}
                       </AnimatedPressable>

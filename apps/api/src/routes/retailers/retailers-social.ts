@@ -253,7 +253,12 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
     // Hold the token for the follow-up connect call (retailer picks a Page or Instagram account).
     // Store under the same state key so the choice endpoint can fetch it.
     const redis = getStateRedis();
-    await redis.set(`social:tokens:${body.data.state}`, accessToken, 'EX', STATE_TTL_SEC);
+    await redis.set(
+      `social:tokens:${body.data.state}`,
+      JSON.stringify({ accessToken, retailerId: request.retailerId }),
+      'EX',
+      STATE_TTL_SEC,
+    );
 
     return {
       data: {
@@ -274,9 +279,16 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError('platform_account_id and state are required');
 
 const redis = getStateRedis();
-    const accessToken = await redis.getdel(`social:tokens:${body.data.state}`);
-    if (!accessToken) {
+    const raw = await redis.getdel(`social:tokens:${body.data.state}`);
+    if (!raw) {
       throw validationError('OAuth session expired — please connect again');
+    }
+    const { accessToken, retailerId: boundRetailerId } = JSON.parse(raw) as {
+      accessToken: string;
+      retailerId: string;
+    };
+    if (boundRetailerId !== request.retailerId) {
+      throw validationError('Invalid or expired OAuth state');
     }
 
     // Determine if the platform_account_id is a Facebook Page or Instagram Account

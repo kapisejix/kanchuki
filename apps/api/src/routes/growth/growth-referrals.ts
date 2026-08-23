@@ -113,6 +113,9 @@ export const growthReferralRoutes: FastifyPluginAsync = async (server) => {
     const retailerId = request.retailerId;
     await guard(retailerId);
     const { id } = request.params as { id: string };
+    const body = z.object({ friend_customer_id: z.string().min(1) }).safeParse(request.body);
+    if (!body.success) throw validationError('friend_customer_id is required — pick who converted');
+
     const referral = await prisma.referral.findFirst({ where: { id, retailer_id: retailerId } });
     if (!referral) throw notFound('Referral');
 
@@ -120,9 +123,15 @@ export const growthReferralRoutes: FastifyPluginAsync = async (server) => {
     const existing = await prisma.referralCredit.findFirst({ where: { referral_id: id } });
     if (existing) throw validationError('This referral was already credited');
 
-    const friendCustomerId = referral.customer_id; // referrer
-    // Friend: the signup captured via the referral landing page, if any.
-    // MVP: credits both the referrer and (when known) the referred customer.
+    if (body.data.friend_customer_id === referral.customer_id) {
+      throw validationError('The friend must be a different customer than the referrer');
+    }
+    const friend = await prisma.customer.findFirst({
+      where: { id: body.data.friend_customer_id, retailer_id: retailerId, deleted_at: null },
+    });
+    if (!friend) throw notFound('Customer');
+
+    // Credits BOTH parties on the friend's first purchase — referrer and friend.
     const credits = await prisma.$transaction(async (tx) => {
       await tx.referral.update({ where: { id }, data: { signups: { increment: 1 } } });
       const created = await tx.referralCredit.createMany({
@@ -130,7 +139,14 @@ export const growthReferralRoutes: FastifyPluginAsync = async (server) => {
           {
             retailer_id: retailerId,
             referral_id: id,
-            customer_id: friendCustomerId,
+            customer_id: referral.customer_id,
+            amount_paise: referral.reward_paise,
+            status: 'PENDING',
+          },
+          {
+            retailer_id: retailerId,
+            referral_id: id,
+            customer_id: friend.id,
             amount_paise: referral.reward_paise,
             status: 'PENDING',
           },
@@ -138,6 +154,11 @@ export const growthReferralRoutes: FastifyPluginAsync = async (server) => {
       });
       return { count: created.count };
     });
-    return reply.send({ data: { ...credits, message: 'Reward credited — apply the ₹' + (referral.reward_paise / 100).toFixed(0) + ' discount to the friend\'s first order' } });
+    return reply.send({
+      data: {
+        ...credits,
+        message: `Reward credited to both — apply the ₹${(referral.reward_paise / 100).toFixed(0)} discount to each on their next order`,
+      },
+    });
   });
 };

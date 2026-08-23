@@ -123,10 +123,10 @@ export const customerRoutes: FastifyPluginAsync = async (server) => {
               ],
             }
           : {}),
-        ...(cursor ? { id: { gt: cursor } } : {}),
       },
-      orderBy: { name: 'asc' },
+      orderBy: [{ name: 'asc' }, { id: 'asc' }],
       take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
     const hasMore = customers.length > limit;

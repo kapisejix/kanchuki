@@ -20,9 +20,11 @@ function monthToDateRange(
   year: number,
 ): { start: Date; end: Date; label: string } {
   // Handle cross-year ranges (Oct–Feb spans two calendar years).
-  const startDate = new Date(year, months[0]! >= 10 ? year : year - 1, 1);
+  const firstMonth = months[0]!;
+  const startYear = firstMonth >= 10 ? year - 1 : year;
+  const startDate = new Date(startYear, firstMonth - 1, 1);
   const lastMonth = months[months.length - 1]!;
-  const endDate = new Date(year, lastMonth + 1, 0, 23, 59, 59, 999); // last day of month
+  const endDate = new Date(year, lastMonth, 0, 23, 59, 59, 999); // last day of month
   const label = `${months[0]! >= 10 ? 'Wedding' : 'Daily'} ${year}`;
   return { start: startDate, end: endDate, label };
 }

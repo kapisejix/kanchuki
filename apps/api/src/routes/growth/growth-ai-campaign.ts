@@ -104,11 +104,11 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
         { fabric_estimate: { in: criteria.fabrics, mode: 'insensitive' } },
       ];
     }
-    if (criteria.max_price_paise) {
-      productWhere['price_min'] = { lte: criteria.max_price_paise };
-    }
-    if (criteria.min_price_paise) {
-      productWhere['price_min'] = { gte: criteria.min_price_paise };
+    if (criteria.max_price_paise || criteria.min_price_paise) {
+      productWhere['price_min'] = {
+        ...(criteria.max_price_paise ? { lte: criteria.max_price_paise } : {}),
+        ...(criteria.min_price_paise ? { gte: criteria.min_price_paise } : {}),
+      };
     }
 
     const matchedProducts = await prisma.product.findMany({

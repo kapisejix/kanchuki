@@ -75,6 +75,9 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       if (!allowedRole || body.data.role !== allowedRole) {
         throw forbidden('Managers may only create their own agent role');
       }
+      if (body.data.territory_ids?.some((id) => !tm.territoryIds.includes(id))) {
+        throw forbidden('Cannot assign territories outside your own scope');
+      }
     }
 
     const existing = await prisma.teamMember.findUnique({

@@ -823,10 +823,11 @@ export const growthApi = {
       body: JSON.stringify({ customer_id }),
     }),
 
-  /** Mark a referral as converted and create the PENDING reward credits. */
-  creditReferral: (id: string) =>
+  /** Mark a referral as converted and create the PENDING reward credits for both parties. */
+  creditReferral: (id: string, friendCustomerId: string) =>
     request<{ data: { count: number; message: string } }>(`/v1/growth/referrals/${id}/credit`, {
       method: 'POST',
+      body: JSON.stringify({ friend_customer_id: friendCustomerId }),
     }),
 
   // ─── Promotions (roadmap F) ─────────────────────────────────────

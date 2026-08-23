@@ -161,14 +161,14 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         ...(arrivalCutoff ? { created_at: { gte: arrivalCutoff } } : {}),
         // SKUs are stored uppercase — normalize what the scanner read
         ...(sku ? { sku: sku.toUpperCase() } : {}),
-        ...(cursor ? { id: { gt: cursor } } : {}),
       },
       include: {
         photos: { where: { is_primary: true }, take: 1 },
         section: { select: { name: true } },
       },
-      orderBy: { created_at: 'desc' },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
       take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
 
     const hasMore = products.length > limit;

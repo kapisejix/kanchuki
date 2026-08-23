@@ -162,7 +162,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError('Invalid body');
 
     const collection = await prisma.collection.findFirst({
-      where: { slug, status: 'ACTIVE', deleted_at: null },
+      where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null },
       select: { id: true, retailer_id: true },
     });
     if (!collection) return reply.status(204).send();
@@ -224,7 +224,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const collection = await prisma.collection.findFirst({
-      where: { slug, status: 'ACTIVE', deleted_at: null, retailer: { is_suspended: false } },
+      where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null, retailer: { is_suspended: false } },
       select: {
         id: true,
         retailer_id: true,
@@ -278,7 +278,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError('Invalid body');
 
     const collection = await prisma.collection.findFirst({
-      where: { slug, status: 'ACTIVE', deleted_at: null },
+      where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null },
       select: { id: true },
     });
     if (!collection) return reply.status(204).send();

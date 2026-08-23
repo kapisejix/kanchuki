@@ -22,6 +22,15 @@ import { verifySync } from 'otplib';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
 import { verifyPassword } from '../plugins/team-auth.js';
+
+declare module 'fastify' {
+  interface FastifyRequest {
+    // Set by adminAuthPreHandler: the session's email, or 'admin-key' when
+    // authenticated with the shared static ADMIN_API_KEY (no individual identity).
+    adminId?: string;
+  }
+}
+
 export function validAdminKey(provided: string | undefined): boolean {
   const expected = process.env.ADMIN_API_KEY ?? '';
   if (!expected || !provided) return false;
@@ -130,9 +139,14 @@ export async function adminAuthPreHandler(
   if (request.url === '/v1/admin/login') return;
 
   const key = request.headers['x-admin-key'] as string | undefined;
-  if (!key || !(validAdminKey(key) || (await verifyAdminSession(key)))) {
+  if (!key) throw forbidden('Invalid admin key');
+  const sessionEmail = await adminSessionEmail(key);
+  if (!validAdminKey(key) && !sessionEmail) {
     throw forbidden('Invalid admin key');
   }
+  // Session login carries the admin's email (per-admin audit attribution);
+  // the shared static key has no individual identity to attach.
+  request.adminId = sessionEmail ?? 'admin-key';
 
   // CSRF protection (SECURITY §4):
   // The admin uses header-based auth (x-admin-key), which is inherently

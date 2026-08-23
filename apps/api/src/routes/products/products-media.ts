@@ -286,15 +286,18 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       bgUrl = bg.image_url;
     }
 
+    const photo = product.photos[0];
+    if (photo) {
+      await checkQuota(request.retailerId, 'BG_REMOVAL');
+    }
+
     await prisma.product.update({
       where: { id },
       data: { background_image_id: body.background_image_id },
     });
 
-    const photo = product.photos[0];
     let photoUrl = photo?.url ?? null;
     if (photo) {
-      await checkQuota(request.retailerId, 'BG_REMOVAL');
       const raw = await fetchImageBuffer(photo.url);
       await preserveOriginalPhoto(photo.id, photo.r2_key, photo.metadata, raw);
       // F-030: honor the product-level shadow setting when re-cleaning after
