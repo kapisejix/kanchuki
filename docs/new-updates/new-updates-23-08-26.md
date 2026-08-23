@@ -21,9 +21,9 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 | 6 | Family tag autofill name | ✅ Done |
 | 7 | Select/Enquire restyle | 🔲 TODO |
 | 8 | ReviewForm prefills name/phone | ✅ Done |
-| 9 | Back button + bottom nav | 🔲 TODO |
+| 9 | Back button + bottom nav | ✅ Done |
 | 10 | Sticky back/close buttons | ✅ Done |
-| 11 | AI Stylist category filter | 🔲 TODO |
+| 11 | AI Stylist category filter | ✅ Done |
 | 12 | AI Stylist product tap | ✅ Done |
 | 13 | Automated referral payout | 🔴 Defer |
 | 15 | BookingForm prefills name/phone | ✅ Done |
@@ -159,9 +159,7 @@ Both buttons live in **one file**: `apps/web/src/app/c/[slug]/components/Product
 
 ---
 
-## #9 — Mobile back button exits the store link instead of going back / add bottom nav
-
-**Your point:** back button loses browsing state, forces restart from the beginning. Add a bottom nav (category/catalog/saved) like the retailer app, or make back go to catalog only.
+## #9 — Mobile back button exits the store link instead of going back / add bottom nav ✅ DONE
 
 **Answer:** 🟡 Root cause identified precisely — it's a routing-architecture gap, already half-patched once before.
 
@@ -191,9 +189,7 @@ Routing is Next.js App Router with **real routes** for top-level flows (`/cart`,
 
 ---
 
-## #11 — AI Stylist search inaccurate (e.g. "Kurti for office" returns sarees too)
-
-**Your point:** results should be scoped to the searched category, not the whole catalog.
+## #11 — AI Stylist search inaccurate (e.g. "Kurti for office" returns sarees too) ✅ DONE
 
 **Answer:** 🟡 Root cause is precise and fixable, but touches the AI prompt/filter pipeline — test carefully before launch.
 
@@ -318,7 +314,7 @@ Both already frame Kanchuki as the platform operator:
 #1 (try-on flags) ✅, #7-hide (same flags) ✅, #3 (Orders gate) ✅, #4 (category image picker), #5 (consent copy) ✅, #6 (family tag autofill) ✅, #10 (sticky buttons) ✅, #12 (AI Stylist click fix) ✅.
 
 **🟡 Do if time allows after the above (needs more care/testing — roughly 1-1.5 days):**
-#7-redesign (Select/Enquire styling), #2 (dashboard views wiring) ✅, #8+#15 (shared name/phone persistence) ✅, #9 (partial: AIStylist history fix + basic bottom nav, not full nav-stack rewrite), #11 (AI Stylist category filtering), #16 (categorized dashboard layout, no drag-reorder), #17 (storefront logo only, not full header unification).
+#7-redesign (Select/Enquire styling), #2 (dashboard views wiring) ✅, #8+#15 (shared name/phone persistence) ✅, #9 (AIStylist history fix + basic bottom nav) ✅, #11 (AI Stylist category filtering) ✅, #16 (categorized dashboard layout, no drag-reorder), #17 (storefront logo only, not full header unification).
 
 **🔴 Explicitly defer past launch (real multi-day work, risk of breaking something under time pressure):**
 #13 full automated referral payout (ship the existing manual-credit version as-is), #9 full cross-overlay history-stack rewrite, #16 drag-to-arrange, #17 mobile-wide header refactor + new dark-logo asset production.
