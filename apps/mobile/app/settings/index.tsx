@@ -1,9 +1,10 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as ImagePicker from 'expo-image-picker';
-import { router } from 'expo-router';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImagePicker from "expo-image-picker";
+import { router } from "expo-router";
 import {
   AlertTriangle,
   BarChart2,
+  Bug,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -23,8 +24,8 @@ import {
   User,
   Users,
   X,
-} from 'lucide-react-native';
-import { useEffect, useState } from 'react';
+} from "lucide-react-native";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -37,25 +38,26 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AnimatedPressable } from '../../src/components/AnimatedPressable';
-import { GradientButton } from '../../src/components/GradientButton';
-import { SettingsSkeleton } from '../../src/components/Skeleton';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { AnimatedPressable } from "../../src/components/AnimatedPressable";
+import { GradientButton } from "../../src/components/GradientButton";
+import { SettingsSkeleton } from "../../src/components/Skeleton";
 import {
   clearRequestCache,
   clearToken,
   readLocalImage,
   retailerApi,
   uploadImageToR2,
-} from '../../src/lib/api';
-import { showError } from '../../src/lib/errors';
-import { clearPersistedCache } from '../../src/lib/offline-persister';
-import { deleteItem, getItem } from '../../src/lib/storage';
-import { useTheme } from '../../src/lib/theme';
-import { WEB_URL } from '../../src/lib/web-url';
+} from "../../src/lib/api";
+import { showError } from "../../src/lib/errors";
+import { clearPersistedCache } from "../../src/lib/offline-persister";
+import { deleteItem, getItem } from "../../src/lib/storage";
+import { useTheme } from "../../src/lib/theme";
+import { WEB_URL } from "../../src/lib/web-url";
+import { ReportProblem } from "../../src/components/ReportProblem";
 
-type KycDocType = 'gst' | 'aadhar_front' | 'aadhar_back';
+type KycDocType = "gst" | "aadhar_front" | "aadhar_back";
 
 // ─── Profile Edit Modal ────────────────────────────────────────────
 
@@ -73,12 +75,12 @@ function ProfileEditModal({
   onStoreUrlChanged: (newSlug: string) => void;
 }) {
   const { primaryColor, colors } = useTheme();
-  const [shopName, setShopName] = useState('');
-  const [ownerName, setOwnerName] = useState('');
-  const [city, setCity] = useState('');
-  const [stateVal, setStateVal] = useState('');
-  const [addressLine1, setAddressLine1] = useState('');
-  const [gstin, setGstin] = useState('');
+  const [shopName, setShopName] = useState("");
+  const [ownerName, setOwnerName] = useState("");
+  const [city, setCity] = useState("");
+  const [stateVal, setStateVal] = useState("");
+  const [addressLine1, setAddressLine1] = useState("");
+  const [gstin, setGstin] = useState("");
   const [saving, setSaving] = useState(false);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoR2Key, setLogoR2Key] = useState<string | null>(null);
@@ -89,12 +91,12 @@ function ProfileEditModal({
 
   useEffect(() => {
     if (retailer) {
-      setShopName(retailer.shop_name ?? '');
-      setOwnerName(retailer.owner_name ?? '');
-      setCity(retailer.city ?? '');
-      setStateVal(retailer.state ?? '');
-      setAddressLine1(retailer.address_line1 ?? '');
-      setGstin(retailer.gstin ?? '');
+      setShopName(retailer.shop_name ?? "");
+      setOwnerName(retailer.owner_name ?? "");
+      setCity(retailer.city ?? "");
+      setStateVal(retailer.state ?? "");
+      setAddressLine1(retailer.address_line1 ?? "");
+      setGstin(retailer.gstin ?? "");
       setLogoUrl(retailer.logo_url ?? null);
       setLogoR2Key(retailer.logo_r2_key ?? null);
       setBannerUrl(retailer.banner_url ?? null);
@@ -106,7 +108,7 @@ function ProfileEditModal({
 
   const handlePickLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       quality: 0.85,
       allowsEditing: true,
       aspect: [1, 1],
@@ -117,13 +119,16 @@ function ProfileEditModal({
     try {
       const uri = result.assets[0].uri;
       const blob = await readLocalImage(uri);
-      const uploadResult = await retailerApi.getLogoUploadUrl('image/jpeg', blob.size);
+      const uploadResult = await retailerApi.getLogoUploadUrl(
+        "image/jpeg",
+        blob.size,
+      );
       const info = uploadResult.data;
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg');
+      await uploadImageToR2(uri, info.upload_url, "image/jpeg");
       setLogoUrl(info.public_url);
       setLogoR2Key(info.r2_key);
     } catch (err) {
-      showError(err, 'Failed to upload logo');
+      showError(err, "Failed to upload logo");
     } finally {
       setUploadingLogo(false);
     }
@@ -131,7 +136,7 @@ function ProfileEditModal({
 
   const handlePickBanner = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       quality: 0.85,
       allowsEditing: true,
       aspect: [16, 5],
@@ -142,13 +147,16 @@ function ProfileEditModal({
     try {
       const uri = result.assets[0].uri;
       const blob = await readLocalImage(uri);
-      const uploadResult = await retailerApi.getBannerUploadUrl('image/jpeg', blob.size);
+      const uploadResult = await retailerApi.getBannerUploadUrl(
+        "image/jpeg",
+        blob.size,
+      );
       const info = uploadResult.data;
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg');
+      await uploadImageToR2(uri, info.upload_url, "image/jpeg");
       setBannerUrl(info.public_url);
       setBannerR2Key(info.r2_key);
     } catch (err) {
-      showError(err, 'Failed to upload banner');
+      showError(err, "Failed to upload banner");
     } finally {
       setUploadingBanner(false);
     }
@@ -174,27 +182,36 @@ function ProfileEditModal({
       // The backend regenerates the store URL (public_slug) whenever the shop
       // name changes AND a QR slug already exists — surface that here so old
       // links / printed QRs are never a surprise to the retailer.
-      const updatedSlug = (res as { data?: { public_slug?: string | null } }).data?.public_slug;
+      const updatedSlug = (res as { data?: { public_slug?: string | null } })
+        .data?.public_slug;
       const previousSlug = retailer?.public_slug as string | null | undefined;
-      if (updatedSlug && updatedSlug !== previousSlug) onStoreUrlChanged(updatedSlug);
+      if (updatedSlug && updatedSlug !== previousSlug)
+        onStoreUrlChanged(updatedSlug);
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, 'Failed to update profile');
+      showError(err, "Failed to update profile");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1 bg-black/50 justify-center px-6"
       >
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[80%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">Edit Profile</Text>
+            <Text className="text-lg font-bold text-sand-900">
+              Edit Profile
+            </Text>
             <AnimatedPressable
               onPress={onClose}
               accessibilityLabel="Close"
@@ -225,7 +242,7 @@ function ProfileEditModal({
                 )}
               </AnimatedPressable>
               <Text className="text-[10px] text-sand-400 mt-1.5">
-                {logoUrl ? 'Tap to change logo' : 'Add store logo (optional)'}
+                {logoUrl ? "Tap to change logo" : "Add store logo (optional)"}
               </Text>
             </View>
 
@@ -241,13 +258,15 @@ function ProfileEditModal({
                 ) : bannerUrl ? (
                   <Image
                     source={{ uri: bannerUrl }}
-                    style={{ width: '100%', height: 112 }}
+                    style={{ width: "100%", height: 112 }}
                     resizeMode="cover"
                   />
                 ) : (
                   <View className="items-center">
                     <ImagePlus size={22} color={colors.sand[400]} />
-                    <Text className="text-[10px] text-sand-400 mt-1">Tap to add store banner</Text>
+                    <Text className="text-[10px] text-sand-400 mt-1">
+                      Tap to add store banner
+                    </Text>
                   </View>
                 )}
               </AnimatedPressable>
@@ -259,13 +278,23 @@ function ProfileEditModal({
                   }}
                   className="mt-1"
                 >
-                  <Text className="text-[10px] text-rust-500">Remove banner</Text>
+                  <Text className="text-[10px] text-rust-500">
+                    Remove banner
+                  </Text>
                 </AnimatedPressable>
               )}
             </View>
 
-            <Field label="Shop Name *" value={shopName} onChange={setShopName} />
-            <Field label="Owner Name" value={ownerName} onChange={setOwnerName} />
+            <Field
+              label="Shop Name *"
+              value={shopName}
+              onChange={setShopName}
+            />
+            <Field
+              label="Owner Name"
+              value={ownerName}
+              onChange={setOwnerName}
+            />
             <Field
               label="Address *"
               value={addressLine1}
@@ -274,7 +303,12 @@ function ProfileEditModal({
             />
             <Field label="City" value={city} onChange={setCity} />
             <Field label="State" value={stateVal} onChange={setStateVal} />
-            <Field label="GSTIN" value={gstin} onChange={setGstin} placeholder="22AAAAA0000A1Z5" />
+            <Field
+              label="GSTIN"
+              value={gstin}
+              onChange={setGstin}
+              placeholder="22AAAAA0000A1Z5"
+            />
 
             <Text className="text-[10px] text-sand-400 mt-1">
               GSTIN format: 22AAAAA0000A1Z5 (15 characters)
@@ -318,7 +352,7 @@ function Field({
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
-  keyboardType?: 'default' | 'numeric';
+  keyboardType?: "default" | "numeric";
 }) {
   const { colors } = useTheme();
   return (
@@ -359,9 +393,12 @@ function WhatsAppModal({
   }, [current, visible]);
 
   const handleSave = async () => {
-    const digits = number.replace(/\D/g, '');
+    const digits = number.replace(/\D/g, "");
     if (digits.length !== 10) {
-      Alert.alert('Invalid Number', 'Please enter a valid 10-digit Indian mobile number');
+      Alert.alert(
+        "Invalid Number",
+        "Please enter a valid 10-digit Indian mobile number",
+      );
       return;
     }
     setSaving(true);
@@ -370,20 +407,27 @@ function WhatsAppModal({
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, 'Failed to update');
+      showError(err, "Failed to update");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-sand-900">WhatsApp Number</Text>
+          <Text className="text-lg font-bold text-sand-900">
+            WhatsApp Number
+          </Text>
           <Text className="text-xs text-sand-500">
-            Used for collection link enquiries and remote try-on. Leave empty to use your account
-            phone number.
+            Used for collection link enquiries and remote try-on. Leave empty to
+            use your account phone number.
           </Text>
           <Field
             label="WhatsApp Number"
@@ -401,7 +445,11 @@ function WhatsAppModal({
               <Text className="text-sand-700 font-semibold">Cancel</Text>
             </AnimatedPressable>
             <View className="flex-1">
-              <GradientButton label="Save" onPress={() => void handleSave()} loading={saving} />
+              <GradientButton
+                label="Save"
+                onPress={() => void handleSave()}
+                loading={saving}
+              />
             </View>
           </View>
         </View>
@@ -413,9 +461,21 @@ function WhatsAppModal({
 // ─── KYC Verification Modal ─────────────────────────────────────────
 
 const KYC_DOCS: { type: KycDocType; label: string; hint: string }[] = [
-  { type: 'gst', label: 'GST Certificate', hint: 'Photo of your GST registration' },
-  { type: 'aadhar_front', label: 'Aadhar Card (Front)', hint: 'Photo of the front side' },
-  { type: 'aadhar_back', label: 'Aadhar Card (Back)', hint: 'Photo of the back side' },
+  {
+    type: "gst",
+    label: "GST Certificate",
+    hint: "Photo of your GST registration",
+  },
+  {
+    type: "aadhar_front",
+    label: "Aadhar Card (Front)",
+    hint: "Photo of the front side",
+  },
+  {
+    type: "aadhar_back",
+    label: "Aadhar Card (Back)",
+    hint: "Photo of the back side",
+  },
 ];
 
 function KycDocRow({
@@ -436,7 +496,7 @@ function KycDocRow({
 
   const handlePick = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ["images"],
       quality: 0.85,
     });
     if (result.canceled || !result.assets[0]) return;
@@ -445,17 +505,28 @@ function KycDocRow({
     try {
       const uri = result.assets[0].uri;
       const blob = await readLocalImage(uri);
-      const uploadResult = await retailerApi.getKycUploadUrl(type, 'image/jpeg', blob.size);
+      const uploadResult = await retailerApi.getKycUploadUrl(
+        type,
+        "image/jpeg",
+        blob.size,
+      );
       const info = uploadResult.data;
       // compress:false — KYC document legibility first (same exclusion as the
       // server-side batch compressor, scripts/compress-r2-images.ts).
-      await uploadImageToR2(uri, info.upload_url, 'image/jpeg', undefined, undefined, {
-        compress: false,
-      });
+      await uploadImageToR2(
+        uri,
+        info.upload_url,
+        "image/jpeg",
+        undefined,
+        undefined,
+        {
+          compress: false,
+        },
+      );
       await retailerApi.submitKycDoc(type, info.r2_key, info.public_url);
       onUploaded();
     } catch (err) {
-      showError(err, 'Failed to upload document');
+      showError(err, "Failed to upload document");
     } finally {
       setUploading(false);
     }
@@ -471,7 +542,11 @@ function KycDocRow({
         {uploading ? (
           <ActivityIndicator size="small" color={primaryColor} />
         ) : url ? (
-          <Image source={{ uri: url }} style={{ width: 44, height: 44 }} resizeMode="cover" />
+          <Image
+            source={{ uri: url }}
+            style={{ width: 44, height: 44 }}
+            resizeMode="cover"
+          />
         ) : (
           <FileText size={18} color={colors.sand[400]} />
         )}
@@ -479,7 +554,7 @@ function KycDocRow({
       <View className="flex-1">
         <Text className="text-sm font-semibold text-sand-900">{label}</Text>
         <Text className="text-xs text-sand-400 mt-0.5">
-          {url ? 'Uploaded — tap to replace' : hint}
+          {url ? "Uploaded — tap to replace" : hint}
         </Text>
       </View>
       {url && <Check size={16} color={colors.turmeric[500]} />}
@@ -490,23 +565,39 @@ function KycDocRow({
 // Label-only map at module scope (no colors — those come from useTheme() so
 // the status chip repaints when the admin palette changes).
 const KYC_STATUS_LABEL: Record<string, { label: string }> = {
-  NOT_SUBMITTED: { label: 'Not Submitted' },
-  PENDING: { label: 'Pending Review' },
-  VERIFIED: { label: 'Verified' },
-  REJECTED: { label: 'Rejected' },
+  NOT_SUBMITTED: { label: "Not Submitted" },
+  PENDING: { label: "Pending Review" },
+  VERIFIED: { label: "Verified" },
+  REJECTED: { label: "Rejected" },
 };
 
 function kycStatusInfo(
   status: string,
-  colors: ReturnType<typeof useTheme>['colors'],
+  colors: ReturnType<typeof useTheme>["colors"],
 ): { label: string; color: string; bg: string } {
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    NOT_SUBMITTED: { label: 'Not Submitted', color: colors.sand[600], bg: colors.sand[100] },
-    PENDING: { label: 'Pending Review', color: colors.turmeric[600], bg: colors.turmeric[100] },
-    VERIFIED: { label: 'Verified', color: colors.turmeric[600], bg: colors.turmeric[100] },
-    REJECTED: { label: 'Rejected', color: colors.rust[600], bg: colors.rust[100] },
+    NOT_SUBMITTED: {
+      label: "Not Submitted",
+      color: colors.sand[600],
+      bg: colors.sand[100],
+    },
+    PENDING: {
+      label: "Pending Review",
+      color: colors.turmeric[600],
+      bg: colors.turmeric[100],
+    },
+    VERIFIED: {
+      label: "Verified",
+      color: colors.turmeric[600],
+      bg: colors.turmeric[100],
+    },
+    REJECTED: {
+      label: "Rejected",
+      color: colors.rust[600],
+      bg: colors.rust[100],
+    },
   };
-  return map[status] ?? map['NOT_SUBMITTED']!;
+  return map[status] ?? map["NOT_SUBMITTED"]!;
 }
 
 function KycModal({
@@ -521,15 +612,22 @@ function KycModal({
   onSaved: () => void;
 }) {
   const { colors } = useTheme();
-  const status = retailer?.kyc_status ?? 'NOT_SUBMITTED';
+  const status = retailer?.kyc_status ?? "NOT_SUBMITTED";
   const statusInfo = kycStatusInfo(status, colors);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">Identity Verification</Text>
+            <Text className="text-lg font-bold text-sand-900">
+              Identity Verification
+            </Text>
             <AnimatedPressable
               onPress={onClose}
               accessibilityLabel="Close"
@@ -543,18 +641,23 @@ function KycModal({
             className="self-start px-3 py-1 rounded-full"
             style={{ backgroundColor: statusInfo.bg }}
           >
-            <Text className="text-xs font-semibold" style={{ color: statusInfo.color }}>
+            <Text
+              className="text-xs font-semibold"
+              style={{ color: statusInfo.color }}
+            >
               {statusInfo.label}
             </Text>
           </View>
 
-          {status === 'REJECTED' && retailer?.kyc_rejection_reason && (
-            <Text className="text-xs text-rust-600">{retailer.kyc_rejection_reason}</Text>
+          {status === "REJECTED" && retailer?.kyc_rejection_reason && (
+            <Text className="text-xs text-rust-600">
+              {retailer.kyc_rejection_reason}
+            </Text>
           )}
 
           <Text className="text-xs text-sand-500">
-            Upload GST certificate and Aadhar card (front + back) for KYC. Submitted for review once
-            all three are uploaded.
+            Upload GST certificate and Aadhar card (front + back) for KYC.
+            Submitted for review once all three are uploaded.
           </Text>
 
           <ScrollView className="gap-2.5">
@@ -595,10 +698,10 @@ function WhatsAppApiModal({
   onSaved: () => void;
 }) {
   const { primaryColor, colors } = useTheme();
-  const [phoneNumberId, setPhoneNumberId] = useState('');
-  const [accessToken, setAccessToken] = useState('');
-  const [templateName, setTemplateName] = useState('');
-  const [templateLang, setTemplateLang] = useState('en_US');
+  const [phoneNumberId, setPhoneNumberId] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [templateName, setTemplateName] = useState("");
+  const [templateLang, setTemplateLang] = useState("en_US");
   const [configured, setConfigured] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -610,9 +713,9 @@ function WhatsAppApiModal({
       .getWhatsAppApiConfig()
       .then((res) => {
         setConfigured(res.data?.configured ?? false);
-        setPhoneNumberId(res.data?.whatsapp_api_phone_number_id ?? '');
-        setTemplateName(res.data?.whatsapp_api_template_name ?? '');
-        setTemplateLang(res.data?.whatsapp_api_template_lang ?? 'en_US');
+        setPhoneNumberId(res.data?.whatsapp_api_phone_number_id ?? "");
+        setTemplateName(res.data?.whatsapp_api_template_name ?? "");
+        setTemplateLang(res.data?.whatsapp_api_template_lang ?? "en_US");
       })
       .finally(() => setLoading(false));
   }, [visible]);
@@ -629,12 +732,12 @@ function WhatsAppApiModal({
         phone_number_id: phoneNumberId.trim(),
         ...(accessToken.trim() ? { access_token: accessToken.trim() } : {}),
         template_name: templateName.trim(),
-        template_lang: templateLang.trim() || 'en_US',
+        template_lang: templateLang.trim() || "en_US",
       });
       onSaved();
       onClose();
     } catch (err) {
-      showError(err, 'Failed to save WhatsApp API config');
+      showError(err, "Failed to save WhatsApp API config");
     } finally {
       setSaving(false);
     }
@@ -642,13 +745,13 @@ function WhatsAppApiModal({
 
   const handleDisconnect = () => {
     Alert.alert(
-      'Disconnect WhatsApp Business API',
-      'Collections will fall back to one-by-one sharing.',
+      "Disconnect WhatsApp Business API",
+      "Collections will fall back to one-by-one sharing.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Disconnect',
-          style: 'destructive',
+          text: "Disconnect",
+          style: "destructive",
           onPress: async () => {
             await retailerApi.disconnectWhatsAppApi();
             onSaved();
@@ -660,14 +763,21 @@ function WhatsAppApiModal({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1 bg-black/50 justify-center px-6"
       >
         <View className="bg-white rounded-3xl w-full p-6 gap-4 max-h-[85%]">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">WhatsApp Business API</Text>
+            <Text className="text-lg font-bold text-sand-900">
+              WhatsApp Business API
+            </Text>
             <AnimatedPressable
               onPress={onClose}
               accessibilityLabel="Close"
@@ -682,9 +792,10 @@ function WhatsAppApiModal({
           ) : (
             <ScrollView className="gap-3">
               <Text className="text-xs text-sand-500 mb-1">
-                Optional — connect your own Meta WhatsApp Business API to send collection links to
-                many customers in one tap. Without this, sharing works one-by-one via WhatsApp.
-                Requires a pre-approved message template with a single body variable.
+                Optional — connect your own Meta WhatsApp Business API to send
+                collection links to many customers in one tap. Without this,
+                sharing works one-by-one via WhatsApp. Requires a pre-approved
+                message template with a single body variable.
               </Text>
 
               <Field
@@ -694,7 +805,11 @@ function WhatsAppApiModal({
                 placeholder="From Meta Business dashboard"
               />
               <Field
-                label={configured ? 'Access Token (leave blank to keep current)' : 'Access Token'}
+                label={
+                  configured
+                    ? "Access Token (leave blank to keep current)"
+                    : "Access Token"
+                }
                 value={accessToken}
                 onChange={setAccessToken}
                 placeholder="Permanent access token"
@@ -731,8 +846,13 @@ function WhatsAppApiModal({
               </View>
 
               {configured && (
-                <AnimatedPressable onPress={handleDisconnect} className="items-center py-2">
-                  <Text className="text-rust-500 text-xs font-semibold">Disconnect</Text>
+                <AnimatedPressable
+                  onPress={handleDisconnect}
+                  className="items-center py-2"
+                >
+                  <Text className="text-rust-500 text-xs font-semibold">
+                    Disconnect
+                  </Text>
                 </AnimatedPressable>
               )}
             </ScrollView>
@@ -755,29 +875,38 @@ function DeleteAccountModal({
   onDeleted: () => void;
 }) {
   const { colors } = useTheme();
-  const [confirm, setConfirm] = useState('');
+  const [confirm, setConfirm] = useState("");
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (confirm !== 'DELETE') return;
+    if (confirm !== "DELETE") return;
     setDeleting(true);
     try {
       await retailerApi.delete();
       onDeleted();
     } catch (err) {
-      showError(err, 'Failed to delete account');
+      showError(err, "Failed to delete account");
       setDeleting(false);
     }
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View className="flex-1 bg-black/50 justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-rust-600">Delete Account</Text>
+          <Text className="text-lg font-bold text-rust-600">
+            Delete Account
+          </Text>
           <Text className="text-sm text-sand-600 leading-relaxed">
-            This will deactivate your account and archive all collections.{'\n\n'}
-            Products, customers, and billing records are retained for audit purposes.{'\n\n'}
+            This will deactivate your account and archive all collections.
+            {"\n\n"}
+            Products, customers, and billing records are retained for audit
+            purposes.{"\n\n"}
             Type DELETE to confirm.
           </Text>
           <TextInput
@@ -798,8 +927,8 @@ function DeleteAccountModal({
             </AnimatedPressable>
             <AnimatedPressable
               onPress={() => void handleDelete()}
-              disabled={confirm !== 'DELETE' || deleting}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${confirm === 'DELETE' ? 'bg-rust-600' : 'bg-rust-200'}`}
+              disabled={confirm !== "DELETE" || deleting}
+              className={`flex-1 py-3.5 rounded-2xl items-center ${confirm === "DELETE" ? "bg-rust-600" : "bg-rust-200"}`}
             >
               {deleting ? (
                 <ActivityIndicator size="small" color="white" />
@@ -840,11 +969,13 @@ function SettingsRow({
       </View>
       <View className="flex-1">
         <Text
-          className={`text-sm font-semibold ${destructive ? 'text-rust-600' : 'text-sand-900'}`}
+          className={`text-sm font-semibold ${destructive ? "text-rust-600" : "text-sand-900"}`}
         >
           {label}
         </Text>
-        {subtitle && <Text className="text-xs text-sand-400 mt-0.5">{subtitle}</Text>}
+        {subtitle && (
+          <Text className="text-xs text-sand-400 mt-0.5">{subtitle}</Text>
+        )}
       </View>
       <ChevronRight size={18} color={colors.sand[400]} />
     </AnimatedPressable>
@@ -856,7 +987,7 @@ function SettingsRow({
 function UsageSection() {
   const { primaryColor, colors } = useTheme();
   const { data: usageData, isLoading } = useQuery({
-    queryKey: ['retailer', 'usage'],
+    queryKey: ["retailer", "usage"],
     queryFn: () => retailerApi.getUsage(),
   });
 
@@ -878,15 +1009,17 @@ function UsageSection() {
   if (isLoading || resources.length === 0) return null;
 
   const labelMap: Record<string, string> = {
-    PRODUCT_UPLOAD: 'Product Uploads',
-    AI_TAGGING_CALL: 'AI Tagging',
-    TRY_ON: 'Try-Ons',
-    IMAGE_CROP: 'Image Crops',
-    BG_REMOVAL: 'Bg Removals',
-    API_REQUEST: 'API Calls',
+    PRODUCT_UPLOAD: "Product Uploads",
+    AI_TAGGING_CALL: "AI Tagging",
+    TRY_ON: "Try-Ons",
+    IMAGE_CROP: "Image Crops",
+    BG_REMOVAL: "Bg Removals",
+    API_REQUEST: "API Calls",
   };
 
-  const activeResources = resources.filter((r) => r.limit !== -1 && r.limit > 0);
+  const activeResources = resources.filter(
+    (r) => r.limit !== -1 && r.limit > 0,
+  );
   if (activeResources.length === 0) return null;
 
   return (
@@ -898,15 +1031,22 @@ function UsageSection() {
       {activeResources.map((r) => {
         const pct = Math.min(Math.round((r.used / r.limit) * 100), 100);
         const isOver = r.used >= r.limit;
-        const barColor = isOver ? colors.rust[600] : pct > 80 ? colors.turmeric[600] : primaryColor;
+        const barColor = isOver
+          ? colors.rust[600]
+          : pct > 80
+            ? colors.turmeric[600]
+            : primaryColor;
         return (
           <View key={r.resource_type} className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1">
               <Text className="text-xs text-sand-600">
                 {labelMap[r.resource_type] ?? r.resource_type}
               </Text>
-              <Text className={`text-xs font-medium ${isOver ? 'text-rust-600' : 'text-sand-700'}`}>
-                {r.used}/{r.limit} {r.period === 'MONTH' ? 'mo' : r.period === 'DAY' ? 'day' : ''}
+              <Text
+                className={`text-xs font-medium ${isOver ? "text-rust-600" : "text-sand-700"}`}
+              >
+                {r.used}/{r.limit}{" "}
+                {r.period === "MONTH" ? "mo" : r.period === "DAY" ? "day" : ""}
               </Text>
             </View>
             <View className="h-2 bg-sand-100 rounded-full overflow-hidden">
@@ -941,19 +1081,18 @@ export default function SettingsScreen() {
   const queryClient = useQueryClient();
 
   const { data: meData, isLoading } = useQuery({
-    queryKey: ['retailer', 'me'],
+    queryKey: ["retailer", "me"],
     queryFn: () => retailerApi.getMe(),
   });
-  const retailer = (meData as { data: Record<string, any> } | undefined)?.data as
-    | Record<string, any>
-    | undefined;
+  const retailer = (meData as { data: Record<string, any> } | undefined)
+    ?.data as Record<string, any> | undefined;
 
   // Team members (Staff rows added by the owner) only get product/category/
   // collection/size-chart/QR access server-side (see apps/api plugins/auth.ts
   // staffCanAccess) — hide owner-only rows here so staff don't tap into a 403.
   const [isStaff, setIsStaff] = useState(false);
   useEffect(() => {
-    void getItem('staff_role').then((role) => setIsStaff(!!role));
+    void getItem("staff_role").then((role) => setIsStaff(!!role));
   }, []);
 
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -964,42 +1103,43 @@ export default function SettingsScreen() {
   const [showKyc, setShowKyc] = useState(false);
   const [showWhatsAppApi, setShowWhatsAppApi] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
+  const [showReportProblem, setShowReportProblem] = useState(false);
   // Set after a profile save that renamed the shop (the backend regenerated
   // the store URL) — shows a one-shot banner with the new link.
   const [storeUrlNotice, setStoreUrlNotice] = useState<string | null>(null);
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
       {
-        text: 'Logout',
-        style: 'destructive',
+        text: "Logout",
+        style: "destructive",
         onPress: async () => {
           await clearToken();
           // Clear staff context too — otherwise the next login on this device
           // (e.g. the owner, on a shared shop tablet) would inherit a stale
           // staff_role and get incorrectly restricted.
           await Promise.all([
-            deleteItem('refresh_token'),
-            deleteItem('retailer_id'),
-            deleteItem('staff_role'),
-            deleteItem('staff_name'),
-            deleteItem('staff_retailer_id'),
+            deleteItem("refresh_token"),
+            deleteItem("retailer_id"),
+            deleteItem("staff_role"),
+            deleteItem("staff_name"),
+            deleteItem("staff_retailer_id"),
           ]);
           clearRequestCache();
           queryClient.clear();
           await clearPersistedCache();
-          router.replace('/auth/phone');
+          router.replace("/auth/phone");
         },
       },
     ]);
   };
 
   const handleProfileSaved = () => {
-    void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
+    void queryClient.invalidateQueries({ queryKey: ["retailer", "me"] });
   };
 
-  const phone = retailer?.phone ?? '';
+  const phone = retailer?.phone ?? "";
   const whatsapp = retailer?.whatsapp_number ?? phone;
 
   if (isLoading) {
@@ -1026,14 +1166,17 @@ export default function SettingsScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         {/* Shop Card */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
           <Text className="text-base font-bold text-sand-900">
-            {retailer?.shop_name ?? 'My Store'}
+            {retailer?.shop_name ?? "My Store"}
           </Text>
           <Text className="text-sm text-sand-500 mt-0.5">
-            {retailer?.city ?? ''} · {retailer?.plan ?? 'STARTER'}
+            {retailer?.city ?? ""} · {retailer?.plan ?? "STARTER"}
           </Text>
         </View>
 
@@ -1062,7 +1205,9 @@ export default function SettingsScreen() {
                 Renaming your shop updated your store URL. Your new link is:
               </Text>
               <AnimatedPressable
-                onPress={() => void Linking.openURL(`${WEB_URL}/${storeUrlNotice}`)}
+                onPress={() =>
+                  void Linking.openURL(`${WEB_URL}/${storeUrlNotice}`)
+                }
                 hitSlop={6}
               >
                 <Text className="text-xs text-ink-700 underline mt-1">
@@ -1073,12 +1218,14 @@ export default function SettingsScreen() {
                 <AnimatedPressable
                   onPress={() => {
                     setStoreUrlNotice(null);
-                    router.push('/store-profile');
+                    router.push("/store-profile");
                   }}
                   accessibilityRole="button"
                   className="bg-ink-600 px-4 py-2.5 rounded-xl items-center"
                 >
-                  <Text className="text-white text-xs font-semibold">View QR Code</Text>
+                  <Text className="text-white text-xs font-semibold">
+                    View QR Code
+                  </Text>
                 </AnimatedPressable>
                 <AnimatedPressable
                   onPress={() => setStoreUrlNotice(null)}
@@ -1087,7 +1234,9 @@ export default function SettingsScreen() {
                   accessibilityRole="button"
                   className="py-1.5"
                 >
-                  <Text className="text-sand-500 text-xs font-semibold">Dismiss</Text>
+                  <Text className="text-sand-500 text-xs font-semibold">
+                    Dismiss
+                  </Text>
                 </AnimatedPressable>
               </View>
             </View>
@@ -1112,15 +1261,17 @@ export default function SettingsScreen() {
                     <FileText size={18} color={colors.turmeric[600]} />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-sand-900">Add your GST number</Text>
+                    <Text className="text-sm font-bold text-sand-900">
+                      Add your GST number
+                    </Text>
                     <Text className="text-xs text-sand-600 mt-0.5">
                       Needed for GST invoices on customer orders
                     </Text>
                   </View>
                 </View>
                 <Text className="text-xs text-sand-600 leading-4 mt-3">
-                  You skipped this during onboarding. Add your GSTIN now so every sale can be billed
-                  correctly — it takes a minute.
+                  You skipped this during onboarding. Add your GSTIN now so
+                  every sale can be billed correctly — it takes a minute.
                 </Text>
                 <View className="flex-row items-center gap-4 mt-3.5">
                   <AnimatedPressable
@@ -1128,7 +1279,9 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     className="bg-ink-600 px-4 py-2.5 rounded-xl items-center"
                   >
-                    <Text className="text-white text-xs font-semibold">Add GSTIN</Text>
+                    <Text className="text-white text-xs font-semibold">
+                      Add GSTIN
+                    </Text>
                   </AnimatedPressable>
                   <AnimatedPressable
                     onPress={() => setGstReminderDismissed(true)}
@@ -1137,7 +1290,9 @@ export default function SettingsScreen() {
                     accessibilityRole="button"
                     className="py-1.5"
                   >
-                    <Text className="text-sand-500 text-xs font-semibold">Not now</Text>
+                    <Text className="text-sand-500 text-xs font-semibold">
+                      Not now
+                    </Text>
                   </AnimatedPressable>
                 </View>
               </View>
@@ -1158,15 +1313,15 @@ export default function SettingsScreen() {
               <SettingsRow
                 icon={<User size={18} color={colors.danger} />}
                 label="Edit Profile"
-                subtitle={retailer?.shop_name ?? ''}
+                subtitle={retailer?.shop_name ?? ""}
                 onPress={() => setShowProfileEdit(true)}
               />
 
               <SettingsRow
                 icon={<CreditCard size={18} color={colors.turmeric[500]} />}
                 label="Plans & Billing"
-                subtitle={`${retailer?.plan ?? 'STARTER'} · ${retailer?.plan_status ?? 'TRIAL'}`}
-                onPress={() => router.push('/billing')}
+                subtitle={`${retailer?.plan ?? "STARTER"} · ${retailer?.plan_status ?? "TRIAL"}`}
+                onPress={() => router.push("/billing")}
               />
 
               <SettingsRow
@@ -1180,8 +1335,8 @@ export default function SettingsScreen() {
                 icon={<ShieldCheck size={18} color={primaryColor} />}
                 label="Identity Verification (KYC)"
                 subtitle={
-                  (KYC_STATUS_LABEL[retailer?.kyc_status ?? 'NOT_SUBMITTED'] ??
-                    KYC_STATUS_LABEL['NOT_SUBMITTED'])!.label
+                  (KYC_STATUS_LABEL[retailer?.kyc_status ?? "NOT_SUBMITTED"] ??
+                    KYC_STATUS_LABEL["NOT_SUBMITTED"])!.label
                 }
                 onPress={() => setShowKyc(true)}
               />
@@ -1191,8 +1346,8 @@ export default function SettingsScreen() {
                 label="WhatsApp Business API"
                 subtitle={
                   retailer?.whatsapp_api_configured
-                    ? 'Connected — bulk send enabled'
-                    : 'Not connected — one-by-one only'
+                    ? "Connected — bulk send enabled"
+                    : "Not connected — one-by-one only"
                 }
                 onPress={() => setShowWhatsAppApi(true)}
               />
@@ -1201,7 +1356,7 @@ export default function SettingsScreen() {
                 icon={<MessageCircle size={18} color={primaryColor} />}
                 label="WhatsApp Native Catalog"
                 subtitle="Sync products into WhatsApp Business"
-                onPress={() => router.push('/settings/whatsapp-catalog')}
+                onPress={() => router.push("/settings/whatsapp-catalog")}
               />
 
               <View className="h-2" />
@@ -1216,7 +1371,7 @@ export default function SettingsScreen() {
             icon={<FolderKanban size={18} color={primaryColor} />}
             label="Product Categories"
             subtitle="Group products for customer browsing"
-            onPress={() => router.push('/category')}
+            onPress={() => router.push("/category")}
           />
 
           {!isStaff && (
@@ -1224,7 +1379,7 @@ export default function SettingsScreen() {
               icon={<Users size={18} color={colors.turmeric[500]} />}
               label="Team Members"
               subtitle="Manage shop staff"
-              onPress={() => router.push('/settings/staff')}
+              onPress={() => router.push("/settings/staff")}
             />
           )}
 
@@ -1232,14 +1387,14 @@ export default function SettingsScreen() {
             icon={<Share2 size={18} color={primaryColor} />}
             label="Social Media"
             subtitle="Post products to your Facebook Page"
-            onPress={() => router.push('/settings/social')}
+            onPress={() => router.push("/settings/social")}
           />
 
           <SettingsRow
             icon={<QrCode size={18} color={primaryColor} />}
             label="Store QR Code"
             subtitle="QR profile & storefront"
-            onPress={() => router.push('/store-profile')}
+            onPress={() => router.push("/store-profile")}
           />
 
           {!isStaff && (
@@ -1247,7 +1402,7 @@ export default function SettingsScreen() {
               icon={<Truck size={18} color={primaryColor} />}
               label="Catalog Upload Help"
               subtitle="Get a team member to add your catalog for you"
-              onPress={() => router.push('/settings/catalog-upload')}
+              onPress={() => router.push("/settings/catalog-upload")}
             />
           )}
 
@@ -1256,7 +1411,7 @@ export default function SettingsScreen() {
               icon={<Trash2 size={18} color={colors.rust[600]} />}
               label="Recently Deleted"
               subtitle="Restore or permanently remove products"
-              onPress={() => router.push('/settings/deleted-products')}
+              onPress={() => router.push("/settings/deleted-products")}
             />
           )}
 
@@ -1283,6 +1438,13 @@ export default function SettingsScreen() {
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-0.5">
             Actions
           </Text>
+
+          <SettingsRow
+            icon={<Bug size={18} color={colors.rust[500]} />}
+            label="Report a Problem"
+            subtitle="Send feedback or report an issue"
+            onPress={() => setShowReportProblem(true)}
+          />
 
           <SettingsRow
             icon={<LogOut size={18} color={colors.sand[600]} />}
@@ -1334,8 +1496,14 @@ export default function SettingsScreen() {
         onClose={() => setShowDelete(false)}
         onDeleted={async () => {
           await clearToken();
-          router.replace('/auth/phone');
+          router.replace("/auth/phone");
         }}
+      />
+
+      <ReportProblem
+        visible={showReportProblem}
+        onClose={() => setShowReportProblem(false)}
+        screenName="Settings"
       />
     </View>
   );

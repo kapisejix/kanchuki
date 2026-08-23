@@ -50,7 +50,15 @@
         }
       ],
       "expo-secure-store",
-      "expo-font"
+      "expo-font",
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "kanchuki",
+          "project": "kanchuki-retailer",
+          "dryRun": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -357,6 +357,7 @@ model Retailer {
   channel_syncs         ChannelSync[]
   product_reviews       ProductReview[]
   store_reviews         StoreReview[]
+  bug_reports         BugReport[]
 
   @@index([phone])
   @@index([city])
@@ -2462,4 +2463,63 @@ model DesignReference {
   @@index([category])
   @@index([category, is_active])
   @@map("design_references")
+}
+
+// ─── RETAILER BUG REPORTS ────────────────────────────────────────
+// Retailer-submitted bug reports / feature requests from the mobile app.
+// Auto-captures device info + screen context. Visible to admin only.
+
+enum BugReportSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum BugReportStatus {
+  NEW
+  REVIEWED
+  IN_PROGRESS
+  RESOLVED
+  DISMISSED
+}
+
+model BugReport {
+  id          String            @id @default(cuid())
+  retailer_id String
+  description String
+  severity    BugReportSeverity @default(MEDIUM)
+  status      BugReportStatus   @default(NEW)
+
+  // Auto-captured device context
+  app_version     String?  // e.g. "1.0.0"
+  os_version      String?  // e.g. "Android 14"
+  device_model    String?  // e.g. "Samsung Galaxy A14"
+  screen_name     String?  // which screen the user was on
+  last_screen     String?  // previous screen (navigation trail)
+  error_message   String?  // if triggered from an ErrorBoundary, the JS error
+  error_stack     String?  // component stack from ErrorBoundary
+
+  // Optional screenshot (R2 URL)
+  screenshot_url  String?
+  screenshot_r2_key String?
+
+  // Retailer's own words about the issue
+  notes           String?
+
+  // Admin response
+  admin_note      String?
+  resolved_by_id  String? // TeamMember.id
+
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  resolved_at     DateTime?
+
+  retailer        Retailer  @relation(fields: [retailer_id], references: [id])
+
+  @@index([retailer_id])
+  @@index([status])
+  @@index([severity])
+  @@index([created_at])
+  @@map("bug_reports")
 }
