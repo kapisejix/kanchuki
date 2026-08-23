@@ -27,7 +27,7 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 | 12 | AI Stylist product tap | ✅ Done |
 | 13 | Automated referral payout | 🔴 Defer |
 | 15 | BookingForm prefills name/phone | ✅ Done |
-| 16 | Categorized dashboard grid | 🔲 TODO |
+| 16 | Categorized dashboard grid | ✅ Done |
 | 17 | Kanchuki logo everywhere | 🔲 TODO |
 
 ---
@@ -254,9 +254,7 @@ Customer-facing AI Stylist: `apps/api/src/routes/public/public-stylist.ts`. **No
 
 ---
 
-## #16 — Redesign retailer dashboard: categorized colorful icon grid, real data where available, arrangeable
-
-**Your point:** consolidate Marketing/Growth/Settings/Analytics/Support into small colorful icon blocks, grouped by category, arrangeable by the retailer.
+## #16 — Redesign retailer dashboard: categorized colorful icon grid, real data where available, arrangeable ✅ DONE
 
 **Answer:** 🟡 The screen inventory to build this from is fully mapped below — but "arrangeable" (drag-to-reorder) has zero existing pattern in this codebase, so scope that part down for launch.
 
@@ -314,7 +312,7 @@ Both already frame Kanchuki as the platform operator:
 #1 (try-on flags) ✅, #7-hide (same flags) ✅, #3 (Orders gate) ✅, #4 (category image picker), #5 (consent copy) ✅, #6 (family tag autofill) ✅, #10 (sticky buttons) ✅, #12 (AI Stylist click fix) ✅.
 
 **🟡 Do if time allows after the above (needs more care/testing — roughly 1-1.5 days):**
-#7-redesign (Select/Enquire styling), #2 (dashboard views wiring) ✅, #8+#15 (shared name/phone persistence) ✅, #9 (AIStylist history fix + basic bottom nav) ✅, #11 (AI Stylist category filtering) ✅, #16 (categorized dashboard layout, no drag-reorder), #17 (storefront logo only, not full header unification).
+#7-redesign (Select/Enquire styling), #2 (dashboard views wiring) ✅, #8+#15 (shared name/phone persistence) ✅, #9 (AIStylist history fix + basic bottom nav) ✅, #11 (AI Stylist category filtering) ✅, #16 (categorized dashboard layout) ✅, #17 (storefront logo only, not full header unification).
 
 **🔴 Explicitly defer past launch (real multi-day work, risk of breaking something under time pressure):**
 #13 full automated referral payout (ship the existing manual-credit version as-is), #9 full cross-overlay history-stack rewrite, #16 drag-to-arrange, #17 mobile-wide header refactor + new dark-logo asset production.
