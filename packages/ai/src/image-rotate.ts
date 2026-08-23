@@ -23,7 +23,9 @@ export async function rotateImage(
   const s = await getSharp()
   const { data, info } = await s(input)
     .rotate(degrees)
-    .jpeg({ quality: 90, mozjpeg: true })
+    // Baseline JPEG — see image-compress.ts for why mozjpeg/progressive is
+    // off (blanks out in expo-image's grid-thumbnail disk cache).
+    .jpeg({ quality: 90 })
     .toBuffer({ resolveWithObject: true })
   return { buffer: data, width: info.width, height: info.height }
 }

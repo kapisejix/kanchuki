@@ -78,7 +78,11 @@ export async function compressImageToTarget(
     s(input)
       .resize(w, h, { fit: 'inside', withoutEnlargement: true })
       .flatten({ background: '#ffffff' })
-      .jpeg({ quality: q, mozjpeg: true })
+      // Baseline JPEG only — mozjpeg's progressive scan blanks out in
+      // expo-image's disk-cache thumbnail path (grid-size renders, full-size
+      // decode is unaffected) on some devices. Every other photo path in the
+      // app (mobile-side compressImageForUpload) is baseline-only already.
+      .jpeg({ quality: q })
       .toBuffer()
 
   let best: { buffer: Buffer; w: number; h: number; q: number } | null = null

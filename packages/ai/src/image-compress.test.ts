@@ -45,9 +45,10 @@ describe('compressImageToTarget', () => {
     const r = await compressImageToTarget(big)
     expect(r.unchanged).toBe(false)
     expect(r.buffer.length).toBeLessThanOrEqual(80 * 1024)
-    // Should not need to resize for realistic content
-    expect(r.width).toBe(1600)
-    expect(r.height).toBe(1200)
+    // Baseline JPEG (no mozjpeg — see image-compress.ts) needs one dimension
+    // step down from the source size to hit budget on this synthetic photo.
+    expect(r.width).toBe(1360)
+    expect(r.height).toBe(1020)
   })
 
   it('produces a strictly smaller output for oversized images', async () => {
