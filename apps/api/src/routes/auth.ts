@@ -87,6 +87,32 @@ function sessionIssuanceError() {
   return new AppError('OTP_VERIFY_FAILED', 'Could not complete sign-in. Please try again.', 500);
 }
 
+// ─── TEST BYPASS (pre-production only) ─────────────────────────────
+// With OTP_TEST_BYPASS=1, phones listed in OTP_TEST_PHONES skip the real
+// MSG91 OTP send + verify entirely — any 6-digit code the tester types is
+// accepted. Lets a solo dev demo the app to retailers/team/photographers on
+// dummy numbers without owning 12-21 real SIMs, and without depending on
+// MSG91's DLT-registered SMS delivery.
+//
+// OTP_TEST_PHONES is a comma-separated list of bare 10-digit numbers, e.g.
+// "9000000001,9000000002,...". Flag OFF (production default) never engages
+// the bypass — unset OTP_TEST_BYPASS once real users are live; the same
+// phones then flow through the real OTP path with no data migration
+// (ensureSupabaseSession already find-or-creates the auth user).
+function otpTestPhones(): Set<string> {
+  return new Set(
+    (process.env.OTP_TEST_PHONES ?? '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => normalizeIndianPhone(p)),
+  );
+}
+
+function otpTestBypassActive(phone: string): boolean {
+  return process.env.OTP_TEST_BYPASS === '1' && otpTestPhones().has(phone);
+}
+
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
   const e164 = `+91${phone}`;
   const password = randomBytes(24).toString('base64url');
@@ -136,6 +162,15 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
 
     const phone = body.data.phone;
     const e164 = `+91${phone}`; // Indian numbers only for MVP
+
+    if (otpTestBypassActive(phone)) {
+      // TEST BYPASS: whitelisted phone — no MSG91 call, no DLT-dropped SMS.
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/send phone=${phone} path=test-bypass`);
+      return reply.status(200).send({
+        data: { message: 'OTP sent', phone: `****${phone.slice(-4)}` },
+      });
+    }
 
     if (isMsg91OtpConfigured()) {
       // Real OTP configuration: MSG91 generates + sends the SMS directly and
@@ -199,8 +234,14 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     let user: User;
     let session: Session;
     let msg91Verified = false;
+    const bypassActive = otpTestBypassActive(phone);
 
-    if (msg91_token) {
+    if (bypassActive) {
+      // TEST BYPASS: any code the tester types is accepted.
+      // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
+      console.log(`[auth] /otp/verify phone=${phone} path=test-bypass`);
+      msg91Verified = true;
+    } else if (msg91_token) {
       await verifyMsg91WidgetToken(msg91_token, phone); // throws 401 on failure
       msg91Verified = true;
     } else if (otp) {
@@ -336,6 +377,15 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     // Supabase user existed yet. Link it by phone instead of creating a
     // second, duplicate row keyed on the now-real auth_user_id.
     let pending = await prisma.retailer.findUnique({ where: { phone } });
+    if (pending?.deleted_at && bypassActive) {
+      // TEST BYPASS: revive a soft-deleted account instead of 409-ing —
+      // testers commonly reuse the same dummy numbers across sessions.
+      await prisma.retailer.update({
+        where: { id: pending.id },
+        data: { deleted_at: null, auth_user_id: user.id },
+      });
+      pending = await prisma.retailer.findUnique({ where: { phone } });
+    }
     if (pending) {
       // Soft-deleted account still owns the unique phone. Until the row is
       // purged (admin/SQL-editor path — role separation blocks the app role's
