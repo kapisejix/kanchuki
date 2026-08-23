@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { PRODUCT_CATEGORIES, COLORS } from '@kanchuki/shared'
-import { View, Text, TextInput, ActivityIndicator, Image } from 'react-native'
+import { View, Text, TextInput, ActivityIndicator, Image, Modal, FlatList, Pressable } from 'react-native'
 import { Stack, router } from 'expo-router'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as ImagePicker from 'expo-image-picker'
-import { ImagePlus, Check } from 'lucide-react-native'
-import { categoryApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
+import { ImagePlus, Check, X, Package } from 'lucide-react-native'
+import { categoryApi, productApi, readLocalImage, uploadImageToR2 } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -18,6 +18,27 @@ export default function NewCategoryScreen() {
   const [imageR2Key, setImageR2Key] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const queryClient = useQueryClient()
+
+  // Product photo picker state
+  const [showProductPicker, setShowProductPicker] = useState(false)
+  const [showPhotoPicker, setShowPhotoPicker] = useState(false)
+  const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [selectedProductName, setSelectedProductName] = useState<string>('')
+
+  const { data: productsData, isLoading: productsLoading } = useQuery({
+    queryKey: ['products', 'list-for-category'],
+    queryFn: () => productApi.list({ limit: 50 }),
+    enabled: showProductPicker,
+  })
+
+  const { data: productDetail, isLoading: detailLoading } = useQuery({
+    queryKey: ['product', 'detail-for-category', selectedProductId],
+    queryFn: () => productApi.get(selectedProductId!),
+    enabled: !!selectedProductId && showPhotoPicker,
+  })
+
+  const products = (productsData as { data: Array<{ id: string; name: string | null; category: string | null; primary_photo_url: string | null }> } | undefined)?.data ?? []
+  const productPhotos = (productDetail as { data?: { photos?: Array<{ id: string; url: string; r2_key: string }> } } | undefined)?.data?.photos ?? []
 
   const handlePickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -82,6 +103,111 @@ export default function NewCategoryScreen() {
             {imageUrl ? 'Tap to change photo' : 'Add a cover photo (optional)'}
           </Text>
         </View>
+
+        {/* Choose from product photos */}
+        {!imageUrl && (
+          <AnimatedPressable
+            onPress={() => setShowProductPicker(true)}
+            className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-xl border border-sand-100"
+          >
+            <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: `${primaryColor}1A` }}>
+              <Package size={18} color={primaryColor} />
+            </View>
+            <View className="flex-1">
+              <Text className="text-sm font-semibold text-sand-900">Choose from product photos</Text>
+              <Text className="text-xs text-sand-400">Reuse an existing product&apos;s image as the category cover</Text>
+            </View>
+          </AnimatedPressable>
+        )}
+
+        {/* ── Product Picker Modal ── */}
+        <Modal visible={showProductPicker} animationType="slide" presentationStyle="pageSheet">
+          <View className="flex-1 bg-ink-50">
+            <View className="flex-row items-center justify-between px-4 py-3 border-b border-sand-100 bg-white">
+              <Text className="text-base font-bold text-sand-900">Select a Product</Text>
+              <Pressable onPress={() => { setShowProductPicker(false); setSelectedProductId(null) }} className="p-2">
+                <X size={20} color={colors.sand[500]} />
+              </Pressable>
+            </View>
+            {productsLoading ? (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator color={primaryColor} />
+              </View>
+            ) : (
+              <FlatList
+                data={products}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={{ padding: 12 }}
+                renderItem={({ item }) => (
+                  <AnimatedPressable
+                    onPress={() => {
+                      setSelectedProductId(item.id)
+                      setSelectedProductName(item.name ?? item.category ?? 'Product')
+                      setShowProductPicker(false)
+                      setShowPhotoPicker(true)
+                    }}
+                    className="flex-row items-center gap-3 bg-white rounded-xl p-3 mb-2 border border-sand-100"
+                  >
+                    {item.primary_photo_url ? (
+                      <Image source={{ uri: item.primary_photo_url }} style={{ width: 48, height: 48, borderRadius: 10 }} resizeMode="cover" />
+                    ) : (
+                      <View className="w-12 h-12 rounded-xl bg-sand-100 items-center justify-center">
+                        <Package size={18} color={colors.sand[400]} />
+                      </View>
+                    )}
+                    <View className="flex-1 min-w-0">
+                      <Text className="text-sm font-semibold text-sand-900 truncate" numberOfLines={1}>{item.name ?? 'Unnamed'}</Text>
+                      <Text className="text-xs text-sand-400 truncate" numberOfLines={1}>{item.category ?? 'No category'}</Text>
+                    </View>
+                  </AnimatedPressable>
+                )}
+              />
+            )}
+          </View>
+        </Modal>
+
+        {/* ── Photo Picker Modal ── */}
+        <Modal visible={showPhotoPicker} animationType="slide" presentationStyle="pageSheet">
+          <View className="flex-1 bg-ink-50">
+            <View className="flex-row items-center justify-between px-4 py-3 border-b border-sand-100 bg-white">
+              <Text className="text-base font-bold text-sand-900 truncate flex-1" numberOfLines={1}>{selectedProductName}</Text>
+              <Pressable onPress={() => { setShowPhotoPicker(false); setSelectedProductId(null) }} className="p-2">
+                <X size={20} color={colors.sand[500]} />
+              </Pressable>
+            </View>
+            {detailLoading ? (
+              <View className="flex-1 items-center justify-center">
+                <ActivityIndicator color={primaryColor} />
+              </View>
+            ) : productPhotos.length === 0 ? (
+              <View className="flex-1 items-center justify-center px-6">
+                <Package size={32} color={colors.sand[300]} />
+                <Text className="text-sm text-sand-400 mt-2">No photos on this product</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={productPhotos}
+                keyExtractor={(item) => item.id}
+                numColumns={3}
+                contentContainerStyle={{ padding: 12 }}
+                columnWrapperStyle={{ gap: 8 }}
+                renderItem={({ item }) => (
+                  <AnimatedPressable
+                    onPress={() => {
+                      setImageUrl(item.url)
+                      setImageR2Key(item.r2_key)
+                      setShowPhotoPicker(false)
+                      setSelectedProductId(null)
+                    }}
+                    className="flex-1 aspect-square rounded-xl overflow-hidden border-2 border-transparent"
+                  >
+                    <Image source={{ uri: item.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                  </AnimatedPressable>
+                )}
+              />
+            )}
+          </View>
+        </Modal>
 
         <View>
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
