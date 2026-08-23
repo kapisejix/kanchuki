@@ -9,7 +9,7 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 
 ## Status
 
-**Commit:** `9c0231c` — 8 items fixed in one pass.
+**Final state:** All 15 actionable items complete across 19 commits. Only #13 (automated referral payout) deferred — ships as manual version.
 
 | # | Item | Status |
 |---|------|--------|
