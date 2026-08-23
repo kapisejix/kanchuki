@@ -19,7 +19,7 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 | 4 | Category image picker | ✅ Done |
 | 5 | Consent text includes Kanchuki | ✅ Done |
 | 6 | Family tag autofill name | ✅ Done |
-| 7 | Select/Enquire restyle | 🔲 TODO |
+| 7 | Select/Enquire restyle | ✅ Done |
 | 8 | ReviewForm prefills name/phone | ✅ Done |
 | 9 | Back button + bottom nav | ✅ Done |
 | 10 | Sticky back/close buttons | ✅ Done |
@@ -50,11 +50,7 @@ Legend: 🟢 small/safe (do before launch) · 🟡 medium (do if time allows) ·
 
 ---
 
-## #7 — Hide Try-on button + redesign Select/Enquire buttons
-
-**Your point:** same hide as #1, plus restyle Select and Enquire.
-
-**✅ Try-on hide: DONE** (flipped both web flags to `false` in same commit as #1). **Redesign: TODO.**
+## #7 — Hide Try-on button + redesign Select/Enquire buttons ✅ DONE
 
 **Answer:** 🟢 Hide = same fix as #1 (only applies to web; mobile has no customer-facing Select/Enquire).
 
@@ -319,6 +315,6 @@ Both already frame Kanchuki as the platform operator:
 
 ## ✅ All actionable items complete
 
-**Done:** #1, #2, #3, #4, #5, #6, #8, #9, #10, #11, #12, #15, #16, #17
-**Remaining TODO:** #7-redesign (Select/Enquire restyle)
+**Done:** #1, #2, #3, #4, #5, #6, #7, #8, #9, #10, #11, #12, #15, #16, #17
+**Remaining TODO:** None — all actionable items complete!
 **Deferred:** #13 (automated referral payout — ship manual version as-is)
