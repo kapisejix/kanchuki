@@ -182,11 +182,16 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Quick Actions */}
-      <View className="px-4 py-2">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-          Quick Actions
-        </Text>
+      {/* ── Catalog & Products ── */}
+      <View className="px-4 pt-4">
+        <View className="flex-row items-center gap-2 mb-3">
+          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${primaryColor}1A` }}>
+            <Package size={14} color={primaryColor} />
+          </View>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+            Catalog & Products
+          </Text>
+        </View>
         <View className="flex-row flex-wrap gap-3">
           <QuickAction
             icon={<Camera size={22} color={primaryColor} />}
@@ -198,7 +203,7 @@ export default function HomeScreen() {
           <QuickAction
             icon={<FolderKanban size={22} color={primaryColor} />}
             label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
-            sublabel="Add Category"
+            sublabel="Manage categories"
             onPress={() => router.push('/category')}
             accent={colors.ink[50]}
           />
@@ -209,6 +214,34 @@ export default function HomeScreen() {
             onPress={() => router.push('/product/bulk-onboard')}
             accent={colors.rust[50]}
           />
+          <QuickAction
+            icon={<Ruler size={22} color={colors.danger} />}
+            label="Size Charts"
+            sublabel="S–10XL per category"
+            onPress={() => router.push('/size-chart')}
+            accent={colors.dangerSurface}
+          />
+          <QuickAction
+            icon={<QrCode size={22} color={colors.rust[600]} />}
+            label="Store QR Code"
+            sublabel="Scan to view your catalog"
+            onPress={() => router.push('/store-profile')}
+            accent={colors.rust[50]}
+          />
+        </View>
+      </View>
+
+      {/* ── Customers & Sales ── */}
+      <View className="px-4 pt-5">
+        <View className="flex-row items-center gap-2 mb-3">
+          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${colors.turmeric[500]}1A` }}>
+            <Users size={14} color={colors.turmeric[500]} />
+          </View>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+            Customers & Sales
+          </Text>
+        </View>
+        <View className="flex-row flex-wrap gap-3">
           <QuickAction
             icon={<Users size={22} color={colors.turmeric[500]} />}
             label="Add Customer"
@@ -226,24 +259,24 @@ export default function HomeScreen() {
           <QuickAction
             icon={<ShoppingBag size={22} color={colors.turmeric[500]} />}
             label="Orders"
-            sublabel={`${pendingOrders} pending · Manage fulfillment`}
+            sublabel={pendingOrders > 0 ? `${pendingOrders} pending` : 'Manage fulfillment'}
             onPress={() => router.push('/(tabs)/orders')}
             accent={colors.turmeric[50]}
           />
-          <QuickAction
-            icon={<Ruler size={22} color={colors.danger} />}
-            label="Size Charts"
-            sublabel="S–10XL per category"
-            onPress={() => router.push('/size-chart')}
-            accent={colors.dangerSurface}
-          />
-          <QuickAction
-            icon={<QrCode size={22} color={colors.rust[600]} />}
-            label="Store QR Code"
-            sublabel="Scan to view your catalog"
-            onPress={() => router.push('/store-profile')}
-            accent={colors.rust[50]}
-          />
+        </View>
+      </View>
+
+      {/* ── Growth & Marketing ── */}
+      <View className="px-4 pt-5">
+        <View className="flex-row items-center gap-2 mb-3">
+          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${colors.rust[600]}1A` }}>
+            <Megaphone size={14} color={colors.rust[600]} />
+          </View>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+            Growth & Marketing
+          </Text>
+        </View>
+        <View className="flex-row flex-wrap gap-3">
           <QuickAction
             icon={<Megaphone size={22} color={colors.turmeric[500]} />}
             label="Growth Tools"
@@ -265,6 +298,20 @@ export default function HomeScreen() {
             onPress={() => router.push('/analytics')}
             accent={colors.ink[50]}
           />
+        </View>
+      </View>
+
+      {/* ── Settings ── */}
+      <View className="px-4 pt-5 pb-2">
+        <View className="flex-row items-center gap-2 mb-3">
+          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${colors.sand[600]}1A` }}>
+            <Settings size={14} color={colors.sand[600]} />
+          </View>
+          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+            Settings
+          </Text>
+        </View>
+        <View className="flex-row flex-wrap gap-3">
           <QuickAction
             icon={<Settings size={22} color={colors.sand[600]} />}
             label="Settings"
