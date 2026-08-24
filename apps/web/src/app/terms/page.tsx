@@ -49,7 +49,8 @@ export default function TermsOfServicePage() {
               limited licence to store, process, and display that content solely to operate the
               service (including sending it to AI providers for auto-tagging). You confirm you have
               the rights to upload the content you publish, including customer photos taken with
-              their consent.
+              their consent. If a customer submits a product review, they grant Kanchuki and the
+              relevant retailer a licence to display that review publicly on the product page.
             </p>
           </section>
 

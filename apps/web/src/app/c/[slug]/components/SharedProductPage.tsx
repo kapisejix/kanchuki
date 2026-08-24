@@ -1,7 +1,13 @@
+'use client';
+
 import type { PublicCollection, PublicProductDetail } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
 import { ArrowLeft, Info, MapPin, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { ContactGate } from '@/app/[store]/components/ContactGate';
+import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { ProductGallery } from './ProductGallery';
 import { ReviewForm } from './StarPicker';
 
@@ -13,15 +19,42 @@ interface Props {
   collectionPath: string;
 }
 
+const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
+
 // Shared product link page body — the URL customers forward on WhatsApp. The
 // OG image is the product's own photo (set by the route's generateMetadata)
 // so the WhatsApp preview shows the product, and the primary CTA takes the
 // recipient back into the full catalog.
 export function SharedProductPage({ collection, product, collectionPath }: Props) {
+  const router = useRouter();
   const shop = collection.retailer.shop_name;
   const city = collection.retailer.city;
   const isSold = product.status === 'SOLD';
   const isReserved = product.status === 'RESERVED';
+
+  // Gate new visitors behind a name/phone form before showing the product —
+  // same lead capture the store's root page uses (ContactGate), keyed off
+  // the retailer's store slug so it's shared with that flow. Retailers
+  // without a store slug (legacy /c/[slug] only) have no /api/{slug}/leads
+  // route, so they skip gating entirely, same as everywhere else in the app.
+  const storeSlug = collection.retailer.public_slug;
+  const [needsLead, setNeedsLead] = useState(() => Boolean(storeSlug));
+  useEffect(() => {
+    if (!storeSlug) return;
+    setNeedsLead(!localStorage.getItem(leadKey(storeSlug)));
+  }, [storeSlug]);
+
+  // This page is usually the FIRST page in the tab's history — opened
+  // straight from a WhatsApp link, not navigated to from within the site —
+  // so the native/browser back button has nothing to go back to and exits
+  // with a blank screen. Push a synthetic history entry so the first back
+  // press instead lands on the store's catalog.
+  useEffect(() => {
+    window.history.pushState({ kanchukiSharedEntry: true }, '', window.location.href);
+    const onPopState = () => router.push(collectionPath);
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [collectionPath, router]);
 
   // Server-built WhatsApp enquiry deep link — the recipient can message the
   // shop about this exact product without any client-side logic.
@@ -34,10 +67,25 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
 
   const galleryAlt = product.name ?? product.subtype ?? product.category ?? 'Product';
 
+  if (needsLead && storeSlug) {
+    return (
+      <ContactGate
+        slug={storeSlug}
+        profile={{
+          shop_name: shop,
+          city,
+          logo_url: collection.retailer.logo_url,
+        }}
+        onSuccess={() => setNeedsLead(false)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       {/* ── Header — back to the catalog ── */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
+        <KanchukiBrandBar />
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link
             href={collectionPath}

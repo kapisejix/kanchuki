@@ -12,11 +12,9 @@ import {
   Text,
   TextInput,
   ScrollView,
-  FlatList,
   Alert,
   ActivityIndicator,
   Dimensions,
-  Animated,
   Modal,
   Switch,
 } from 'react-native'
@@ -26,6 +24,7 @@ import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
+import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, Camera, X, Tag, Star, Video, Languages } from 'lucide-react-native'
 import {
   productApi,
@@ -202,34 +201,11 @@ export default function ProductDetailScreen() {
   // insets, split-screen, tablet), scrollTo's computed x lands on the wrong
   // page and paging silently stops working.
   const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- displayPhotos'
-  // element type is an inline intersection computed below, not a named export.
-  const carouselRef = useRef<FlatList<any>>(null)
+  const galleryRef = useRef<GalleryRef>(null)
   const displayPhotosRef = useRef(0)
-
-  // ── Pinch/zoom state ─────────────────────────────────────────────
-  const [isZoomed, setIsZoomed] = useState(false)
-  const [carouselScrollEnabled, setCarouselScrollEnabled] = useState(true)
-  const scaleAnim = useRef(new Animated.Value(1)).current
-  const panXAnim = useRef(new Animated.Value(0)).current
-  const panYAnim = useRef(new Animated.Value(0)).current
-  const lastPinchDistRef = useRef(0)
-  const lastTapRef = useRef(0)
-  const currentScaleRef = useRef(1)
-  const isPinchingRef = useRef(false)
-  const isPanningRef = useRef(false)
-  const panStartRef = useRef({ x: 0, y: 0 })
-  const panStartOffsetRef = useRef({ x: 0, y: 0 })
 
   // ── Fullscreen image viewer ──────────────────────────────────────
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
-  const fullscreenRef = useRef<ScrollView>(null)
-  const singleTapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  useEffect(() => {
-    return () => {
-      if (singleTapTimeoutRef.current) clearTimeout(singleTapTimeoutRef.current)
-    }
-  }, [])
 
   // F-025: printable SKU/QR tag modal — the sticker a retailer prints once
   // per design and sticks on the rack card, then scans to mark sold.
@@ -330,35 +306,11 @@ export default function ProductDetailScreen() {
     const clamped = Math.max(0, Math.min(index, count - 1))
     // State update first: the thumbnail/dot highlight and the arrow
     // visibility all read from selectedPhotoIndex, so they must switch even
-    // if the imperative scrollTo below silently no-ops (e.g. ref not yet
-    // attached, or fires before the ScrollView has measured its layout).
+    // if the imperative setIndex below silently no-ops (e.g. ref not yet
+    // attached).
     setSelectedPhotoIndex(clamped)
-    carouselRef.current?.scrollToOffset({ offset: clamped * carouselWidth, animated: true })
-  }, [carouselWidth])
-
-  // Sync the fullscreen viewer's scroll position to whichever photo is
-  // currently selected every time it opens.
-  useEffect(() => {
-    if (fullscreenOpen) {
-      requestAnimationFrame(() => {
-        fullscreenRef.current?.scrollTo({ x: selectedPhotoIndex * SCREEN_WIDTH, animated: false })
-      })
-    }
-  }, [fullscreenOpen]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Reset zoom when carousel navigates to a different photo
-  useEffect(() => {
-    if (isZoomed) {
-      Animated.parallel([
-        Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 7 }),
-        Animated.spring(panXAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
-        Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
-      ]).start()
-      setIsZoomed(false)
-      setCarouselScrollEnabled(true)
-      currentScaleRef.current = 1
-    }
-  }, [selectedPhotoIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+    galleryRef.current?.setIndex(clamped, true)
+  }, [])
 
   // A detected color belongs to the photo it was detected on — clear the chip
   // when the user swipes to another photo.
@@ -366,126 +318,6 @@ export default function ProductDetailScreen() {
     setDetectedColor(null)
     setColorDetectError(null)
   }, [selectedPhotoIndex])
-
-  // Keep mutable refs in sync with Animated values for pan start offset
-  const latestPanX = useRef(0)
-  const latestPanY = useRef(0)
-  useEffect(() => {
-    const subX = panXAnim.addListener((v: { value: number }) => { latestPanX.current = v.value })
-    const subY = panYAnim.addListener((v: { value: number }) => { latestPanY.current = v.value })
-    return () => {
-      panXAnim.removeListener(subX)
-      panYAnim.removeListener(subY)
-    }
-  }, [panXAnim, panYAnim])
-
-  // ── Touch handlers for pinch/zoom + double-tap ──────────────────
-  const handlePhotoTouchStart = useCallback((e: { nativeEvent: { touches?: { pageX: number; pageY: number }[] } }) => {
-    const touches = e.nativeEvent.touches
-    if (touches && touches.length >= 2) {
-      // Pinch start — store initial distance
-      const dx = touches[0].pageX - touches[1].pageX
-      const dy = touches[0].pageY - touches[1].pageY
-      lastPinchDistRef.current = Math.sqrt(dx * dx + dy * dy)
-      isPinchingRef.current = true
-      setIsZoomed(true)
-      setCarouselScrollEnabled(false)
-      return
-    }
-    if (touches && touches.length === 1 && isZoomed && currentScaleRef.current > 1) {
-      // Pan start when zoomed
-      isPanningRef.current = true
-      panStartRef.current = { x: touches[0].pageX, y: touches[0].pageY }
-      panStartOffsetRef.current = { x: latestPanX.current, y: latestPanY.current }
-      setCarouselScrollEnabled(false)
-    }
-  }, [isZoomed])
-
-  const handlePhotoTouchMove = useCallback((e: { nativeEvent: { touches?: { pageX: number; pageY: number }[] } }) => {
-    const touches = e.nativeEvent.touches
-    if (isPinchingRef.current && touches && touches.length >= 2) {
-      const dx = touches[0].pageX - touches[1].pageX
-      const dy = touches[0].pageY - touches[1].pageY
-      const dist = Math.sqrt(dx * dx + dy * dy)
-      const ratio = dist / lastPinchDistRef.current
-      const newScale = Math.max(1, Math.min(currentScaleRef.current * ratio, 6))
-      currentScaleRef.current = newScale
-      lastPinchDistRef.current = dist
-      scaleAnim.setValue(newScale)
-      return
-    }
-    if (isPanningRef.current && touches && touches.length === 1) {
-      const dx = touches[0].pageX - panStartRef.current.x
-      const dy = touches[0].pageY - panStartRef.current.y
-      panXAnim.setValue(panStartOffsetRef.current.x + dx)
-      panYAnim.setValue(panStartOffsetRef.current.y + dy)
-    }
-  }, [scaleAnim, panXAnim, panYAnim])
-
-  const handlePhotoTouchEnd = useCallback((e: { nativeEvent: { changedTouches?: { pageX: number; pageY: number }[] } }) => {
-    // End pinch
-    if (isPinchingRef.current) {
-      isPinchingRef.current = false
-      if (currentScaleRef.current < 1.15) {
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-          friction: 7,
-        }).start()
-        setIsZoomed(false)
-        setCarouselScrollEnabled(true)
-        currentScaleRef.current = 1
-      }
-      return
-    }
-    // End pan
-    if (isPanningRef.current) {
-      isPanningRef.current = false
-      return
-    }
-    // Quick tap — detect double-tap
-    const changed = e.nativeEvent.changedTouches
-    if (changed && changed.length === 1) {
-      const now = Date.now()
-      if (now - lastTapRef.current < 300) {
-        // Double-tap detected — cancel the pending single-tap fullscreen open
-        if (singleTapTimeoutRef.current) {
-          clearTimeout(singleTapTimeoutRef.current)
-          singleTapTimeoutRef.current = null
-        }
-        lastTapRef.current = 0
-        if (currentScaleRef.current > 1) {
-          // Zoom out
-          Animated.parallel([
-            Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, friction: 7 }),
-            Animated.spring(panXAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
-            Animated.spring(panYAnim, { toValue: 0, useNativeDriver: true, friction: 7 }),
-          ]).start()
-          setIsZoomed(false)
-          setCarouselScrollEnabled(true)
-          currentScaleRef.current = 1
-        } else {
-          // Zoom in to 2.5x
-          Animated.spring(scaleAnim, {
-            toValue: 2.5,
-            useNativeDriver: true,
-            friction: 7,
-          }).start()
-          setIsZoomed(true)
-          setCarouselScrollEnabled(false)
-          currentScaleRef.current = 2.5
-        }
-        return
-      }
-      lastTapRef.current = now
-      // Single tap — wait to see if a second tap turns this into a double-tap
-      // zoom before opening the fullscreen viewer.
-      singleTapTimeoutRef.current = setTimeout(() => {
-        singleTapTimeoutRef.current = null
-        if (currentScaleRef.current <= 1) setFullscreenOpen(true)
-      }, 300)
-    }
-  }, [scaleAnim, panXAnim, panYAnim])
 
   // Hydrate the editable fields from the server. The 3s AI-tagging poll
   // returns a fresh product object on every tick; once the retailer has
@@ -921,58 +753,30 @@ export default function ProductDetailScreen() {
           }}
         >
           {displayPhotos.length > 0 ? (
-            <FlatList
-              ref={carouselRef}
+            <Gallery
+              ref={galleryRef}
               data={displayPhotos}
               keyExtractor={(photo) => photo.id}
-              horizontal
-              pagingEnabled
-              nestedScrollEnabled
-              scrollEnabled={carouselScrollEnabled}
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              disableIntervalMomentum
-              scrollEventThrottle={16}
-              removeClippedSubviews
-              initialNumToRender={2}
-              windowSize={3}
-              maxToRenderPerBatch={2}
-              getItemLayout={(_, index) => ({ length: carouselWidth, offset: carouselWidth * index, index })}
-              onMomentumScrollEnd={(e) => {
-                const index = Math.round(e.nativeEvent.contentOffset.x / carouselWidth)
-                setSelectedPhotoIndex(index)
-              }}
-              style={{ flex: 1 }}
-              renderItem={({ item: photo }) => (
-                <Animated.View
-                  style={{
-                    width: carouselWidth,
-                    height: 380,
-                    transform: [
-                      { scale: scaleAnim },
-                      { translateX: panXAnim },
-                      { translateY: panYAnim },
-                    ],
-                  }}
-                  onTouchStart={handlePhotoTouchStart}
-                  onTouchMove={handlePhotoTouchMove}
-                  onTouchEnd={handlePhotoTouchEnd}
-                >
-                  {!imageErrors.has(photo.url) ? (
-                    <Image
-                      source={{ uri: displayUrl(photo) }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="contain"
-                      onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
-                    />
-                  ) : (
-                    <View className="w-full h-full bg-sand-100 items-center justify-center">
-                      <Text className="text-sand-300 text-5xl mb-2">👗</Text>
-                      <Text className="text-sand-400 text-xs">Image unavailable</Text>
-                    </View>
-                  )}
-                </Animated.View>
-              )}
+              initialIndex={selectedPhotoIndex}
+              onIndexChange={setSelectedPhotoIndex}
+              onTap={() => setFullscreenOpen(true)}
+              containerDimensions={{ width: carouselWidth, height: 380 }}
+              style={{ width: carouselWidth, height: 380 }}
+              renderItem={({ item: photo }) =>
+                !imageErrors.has(photo.url) ? (
+                  <Image
+                    source={{ uri: displayUrl(photo) }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="contain"
+                    onError={() => setImageErrors((prev) => new Set(prev).add(photo.url))}
+                  />
+                ) : (
+                  <View className="w-full h-full bg-sand-100 items-center justify-center">
+                    <Text className="text-sand-300 text-5xl mb-2">👗</Text>
+                    <Text className="text-sand-400 text-xs">Image unavailable</Text>
+                  </View>
+                )
+              }
             />
           ) : (
             <View className="w-full h-full bg-sand-100 items-center justify-center">
@@ -981,8 +785,8 @@ export default function ProductDetailScreen() {
             </View>
           )}
 
-          {/* Left arrow — hidden when zoomed */}
-          {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
+          {/* Left arrow */}
+          {displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
             <AnimatedPressable
               onPress={() => goToPhoto(selectedPhotoIndex - 1)}
               accessibilityLabel="Previous photo"
@@ -994,8 +798,8 @@ export default function ProductDetailScreen() {
             </AnimatedPressable>
           )}
 
-          {/* Right arrow — hidden when zoomed */}
-          {!isZoomed && displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
+          {/* Right arrow */}
+          {displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
             <AnimatedPressable
               onPress={() => goToPhoto(selectedPhotoIndex + 1)}
               accessibilityLabel="Next photo"
@@ -1032,22 +836,20 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Detect color from the current photo */}
-          {!isZoomed && (
-            <AnimatedPressable
-              onPress={() => void handleDetectColor()}
-              disabled={detectingColor}
-              accessibilityLabel="Detect color from photo"
-              accessibilityRole="button"
-              className="absolute right-3 top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
-              style={{ elevation: 3, zIndex: 10 }}
-            >
-              {detectingColor ? (
-                <ActivityIndicator size="small" color={colors.sand[700]} />
-              ) : (
-                <Palette size={16} color={colors.sand[700]} />
-              )}
-            </AnimatedPressable>
-          )}
+          <AnimatedPressable
+            onPress={() => void handleDetectColor()}
+            disabled={detectingColor}
+            accessibilityLabel="Detect color from photo"
+            accessibilityRole="button"
+            className="absolute right-3 top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
+            style={{ elevation: 3, zIndex: 10 }}
+          >
+            {detectingColor ? (
+              <ActivityIndicator size="small" color={colors.sand[700]} />
+            ) : (
+              <Palette size={16} color={colors.sand[700]} />
+            )}
+          </AnimatedPressable>
 
           {/* Detected-color confirm chip */}
           {detectedColor && (
@@ -1162,27 +964,27 @@ export default function ProductDetailScreen() {
               router.push(`/product/${product.id}/add-photos?existingCount=${product.photos.length}`)
             }
             disabled={product.photos.length >= 10}
-            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl"
           >
-            <Camera size={14} color={primaryColor} />
+            <Camera size={20} color={primaryColor} />
             <Text className="text-ink-700 text-xs font-semibold">Add Photo</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => router.push(`/product/${product.id}/add-color`)}
-            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl"
           >
-            <Palette size={14} color={primaryColor} />
+            <Palette size={20} color={primaryColor} />
             <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={handleGenerateVideo}
             disabled={generateVideo.isPending}
-            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl"
           >
             {generateVideo.isPending ? (
               <ActivityIndicator size="small" color={primaryColor} />
             ) : (
-              <Video size={14} color={primaryColor} />
+              <Video size={20} color={primaryColor} />
             )}
             <Text className="text-ink-700 text-xs font-semibold">Product Video</Text>
           </AnimatedPressable>
@@ -1192,12 +994,12 @@ export default function ProductDetailScreen() {
               !currentPhoto || currentPhotoIsVariant || currentPhotoIsOriginal ||
               studioStarting || studioStatus === 'processing'
             }
-            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl"
           >
             {studioStarting || studioStatus === 'processing' ? (
               <ActivityIndicator size="small" color={primaryColor} />
             ) : (
-              <Sparkles size={14} color={primaryColor} />
+              <Sparkles size={20} color={primaryColor} />
             )}
             <Text className="text-ink-700 text-xs font-semibold">AI Studio</Text>
           </AnimatedPressable>
@@ -2031,8 +1833,13 @@ export default function ProductDetailScreen() {
         })()}
       </Modal>
 
-      {/* Fullscreen image viewer — tap main photo to open, swipe left/right
-          between photos (no arrow buttons), back arrow to close. */}
+      {/* Fullscreen image viewer — tap main photo to open, pinch/double-tap to
+          zoom, swipe left/right between photos, swipe down or X to close.
+          Reuses Gallery (not react-native-image-viewing): that lib probes
+          remote image size via RN's core Image.getSizeWithHeaders before it
+          will render anything, which was failing for these URLs and left a
+          0×0 (blank) image — Gallery's expo-image renderItem has no such
+          dependency and already works for the main carousel above. */}
       <Modal
         visible={fullscreenOpen}
         transparent
@@ -2061,57 +1868,21 @@ export default function ProductDetailScreen() {
             <ChevronLeft size={26} color="white" />
           </AnimatedPressable>
 
-          <ScrollView
-            ref={fullscreenRef}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            decelerationRate="fast"
-            style={{ flex: 1 }}
-            onMomentumScrollEnd={(e) => {
-              const idx = Math.round(e.nativeEvent.contentOffset.x / SCREEN_WIDTH)
-              const clamped = Math.max(0, Math.min(idx, displayPhotos.length - 1))
-              setSelectedPhotoIndex(clamped)
-            }}
-          >
-            {displayPhotos.map((photo) => (
-              <View
-                key={`fs-${photo.id}`}
-                style={{ width: SCREEN_WIDTH, height: '100%', alignItems: 'center', justifyContent: 'center' }}
-              >
+          {fullscreenOpen && (
+            <Gallery
+              data={displayPhotos}
+              keyExtractor={(photo) => photo.id}
+              initialIndex={selectedPhotoIndex}
+              onIndexChange={setSelectedPhotoIndex}
+              onSwipeToClose={() => setFullscreenOpen(false)}
+              renderItem={({ item: photo }) => (
                 <Image
                   source={{ uri: displayUrl(photo) }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="contain"
                 />
-              </View>
-            ))}
-          </ScrollView>
-
-          {displayPhotos.length > 1 && (
-            <View
-              style={{
-                position: 'absolute',
-                bottom: insets.bottom + 20,
-                left: 0,
-                right: 0,
-                flexDirection: 'row',
-                justifyContent: 'center',
-                gap: 6,
-              }}
-            >
-              {displayPhotos.map((_, idx) => (
-                <View
-                  key={idx}
-                  style={{
-                    width: idx === selectedPhotoIndex ? 16 : 6,
-                    height: 6,
-                    borderRadius: 3,
-                    backgroundColor: idx === selectedPhotoIndex ? 'white' : 'rgba(255,255,255,0.4)',
-                  }}
-                />
-              ))}
-            </View>
+              )}
+            />
           )}
         </View>
       </Modal>

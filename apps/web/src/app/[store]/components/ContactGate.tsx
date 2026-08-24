@@ -5,12 +5,25 @@ import { Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import type { RetailerProfile } from '../page';
+import { useCallback, useEffect, useState } from 'react';
+
+// Narrowed to just the fields this form actually renders — [store]/page.tsx's
+// full RetailerProfile satisfies this structurally, and callers with a
+// lighter shape (e.g. a PublicCollection's retailer) don't need to fake one.
+interface GateProfile {
+  shop_name: string;
+  city?: string | null;
+  logo_url?: string | null;
+}
 
 interface Props {
   slug: string;
-  profile: RetailerProfile;
+  profile: GateProfile;
+  // Called after the lead is captured (or was already captured on a prior
+  // visit) instead of the default redirect to /{slug}/categories — lets a
+  // caller keep showing its own screen (e.g. a shared product page) rather
+  // than being sent to the catalog.
+  onSuccess?: () => void;
 }
 
 type Gender = 'MALE' | 'FEMALE';
@@ -19,7 +32,7 @@ const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
 const leadNameKey = (slug: string) => `kanchuki_lead_name_${slug}`;
 const leadPhoneKey = (slug: string) => `kanchuki_lead_phone_${slug}`;
 
-export function ContactGate({ slug, profile }: Props) {
+export function ContactGate({ slug, profile, onSuccess }: Props) {
   const router = useRouter();
   const [checkingReturningVisitor, setCheckingReturningVisitor] = useState(true);
   const [name, setName] = useState('');
@@ -29,16 +42,21 @@ export function ContactGate({ slug, profile }: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const proceed = useCallback(() => {
+    if (onSuccess) onSuccess();
+    else router.replace(`/${slug}/categories`);
+  }, [onSuccess, router, slug]);
+
   // Already submitted details for this store before — skip the form and
   // go straight to the catalog instead of asking again.
   useEffect(() => {
     const alreadySubmitted = localStorage.getItem(leadKey(slug));
     if (alreadySubmitted) {
-      router.replace(`/${slug}/categories`);
+      proceed();
       return;
     }
     setCheckingReturningVisitor(false);
-  }, [slug, router]);
+  }, [slug, proceed]);
 
   const canSubmit =
     name.trim().length > 0 && phone.trim().length >= 10 && gender !== null && consent;
@@ -61,9 +79,9 @@ export function ContactGate({ slug, profile }: Props) {
       localStorage.setItem(leadKey(slug), '1');
       localStorage.setItem(leadNameKey(slug), name.trim());
       localStorage.setItem(leadPhoneKey(slug), phone.trim());
-      // Replace (not push) so the back button never lands back on this form —
-      // it skips straight past this history entry to the catalog.
-      router.replace(`/${slug}/categories`);
+      // proceed() replaces (not pushes) when it redirects, so the back button
+      // never lands back on this form — it skips past this history entry.
+      proceed();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
       setSubmitting(false);

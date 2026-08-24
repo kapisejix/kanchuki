@@ -47,6 +47,22 @@ export function buildProductFilterWhere(query: PublicProductQuery): Prisma.Produ
   return where;
 }
 
+// A raw retailer upload carries neither marker — hide it from the customer
+// catalog, keep it for the retailer. `original_r2_key` is set the first time
+// background-cleanup runs (photo-cleanup.ts, now automatic on every add —
+// see tag-product.ts), `studio` marks an AI Studio Shoot row (studio-shoot.ts).
+function isCustomerVisiblePhoto(metadata: unknown): boolean {
+  const meta = metadata as Record<string, unknown> | null;
+  return !!(meta?.studio || meta?.original_r2_key);
+}
+
+// Falls back to the full list when nothing has been processed yet, so a
+// product isn't left with an empty customer gallery.
+export function customerVisiblePhotos<T extends { metadata: unknown }>(photos: T[]): T[] {
+  const visible = photos.filter((p) => isCustomerVisiblePhoto(p.metadata));
+  return visible.length > 0 ? visible : photos;
+}
+
 // Thin product shape for grid/list views — one presigned URL (primary photo)
 // per product instead of every photo + every spin frame + every variant.
 export async function toPublicProductSummary(p: {
@@ -62,12 +78,12 @@ export async function toPublicProductSummary(p: {
   primary_color: string | null;
   location_notes: string | null;
   section: { name: string | null } | null;
-  photos: { url: string; r2_key: string }[];
+  photos: { url: string; r2_key: string; metadata: unknown }[];
   _count: { spin_frames: number };
   avg_rating?: number;
   rating_count?: number;
 }) {
-  const photo = p.photos[0];
+  const photo = customerVisiblePhotos(p.photos)[0];
   return {
     id: p.id,
     name: p.name,

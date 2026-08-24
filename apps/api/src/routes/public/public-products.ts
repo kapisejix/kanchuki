@@ -4,7 +4,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { isNewArrival, isOnSale } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound } from '../../plugins/error-handler.js';
-import { displayUrl, toPublicProductSummary } from './public-helpers.js';
+import { customerVisiblePhotos, displayUrl, toPublicProductSummary } from './public-helpers.js';
 
 export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/products/:productId ───────────────────────────
@@ -47,7 +47,10 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
         if (!p) throw notFound('Product');
 
         const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE');
-        const primaryPhoto = p.photos[0];
+        // Raw retailer uploads hidden from the customer catalog (see
+        // customerVisiblePhotos) — only AI Studio + background-cleaned shots show.
+        const visiblePhotos = customerVisiblePhotos(p.photos);
+        const primaryPhoto = visiblePhotos[0];
 
         return {
           data: {
@@ -77,7 +80,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             avg_rating: p.avg_rating,
             rating_count: p.rating_count,
             photos: await Promise.all(
-              p.photos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
+              visiblePhotos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
             ),
             spin_frames: await Promise.all(
               p.spin_frames.map(async (f) => await displayUrl(f.url, f.r2_key)),

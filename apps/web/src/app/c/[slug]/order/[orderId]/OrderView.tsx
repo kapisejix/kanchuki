@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, CheckCircle, Clock, CreditCard, Package } from 'lucide-react'
 import { formatPriceRange } from '@kanchuki/shared'
+import { KanchukiBrandBar } from '../../components/KanchukiBrandBar'
 import { loadOrderPhone } from '../../lib/order'
 
 interface Props {
@@ -97,6 +98,7 @@ export function OrderView({ slug, store, orderId, backHref }: Props) {
     return (
       <div className="min-h-screen bg-gray-50 font-sans">
         <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
+          <KanchukiBrandBar />
           <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
             <Link href={browseHref} className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors" aria-label="Back"><ArrowLeft size={20} /></Link>
             <h1 className="font-display text-lg font-bold text-gray-900">Order Status</h1>

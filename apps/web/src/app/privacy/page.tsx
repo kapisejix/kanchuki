@@ -71,6 +71,17 @@ export default function PrivacyPolicyPage() {
                 <strong>Payment data:</strong> processed directly by Razorpay; Kanchuki does not
                 store card or UPI credentials.
               </li>
+              <li>
+                <strong>AI Stylist conversations:</strong> messages you type to the AI Stylist chat
+                are sent to Anthropic Claude to generate product recommendations. They are used only
+                to answer that conversation and are not linked to your name unless you&apos;ve shared
+                it with the store.
+              </li>
+              <li>
+                <strong>Reviews:</strong> a review you submit, including your name if you provide
+                one, is displayed publicly on that product&apos;s page. Your phone number is never
+                shown publicly.
+              </li>
             </ul>
           </section>
 
@@ -79,7 +90,35 @@ export default function PrivacyPolicyPage() {
             <p>
               To operate the catalog, customer CRM, WhatsApp collection links, checkout, and virtual
               try-on features a retailer has enabled — and nothing beyond that. We do not sell
-              personal data.
+              personal data. Some AI processing (photo tagging, image generation, the AI Stylist
+              chat) is performed by providers located outside India; we only send what&apos;s needed
+              for that specific feature.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              Cookies &amp; local storage
+            </h2>
+            <p>
+              We use your browser&apos;s local storage (not tracking cookies) to remember that
+              you&apos;ve already shared your details with a store, so you&apos;re not asked again,
+              and to prefill forms like reviews and bookings. Clearing your browser data resets this.
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">Your rights</h2>
+            <p>
+              You can ask us to access, correct, or delete the personal data we hold about you by
+              emailing{' '}
+              <a href="mailto:privacy@kanchuki.app" className="text-cobalt-600 hover:underline">
+                privacy@kanchuki.app
+              </a>
+              . We will respond within a reasonable time, subject to the retention obligations
+              described below. Kanchuki is intended for users 18 and older; if a minor&apos;s details
+              were shared without a parent or guardian&apos;s consent, contact us to have them
+              removed.
             </p>
           </section>
 
