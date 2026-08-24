@@ -15,7 +15,7 @@ export default function PrivacyPolicyPage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: August 10, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: August 24, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -28,13 +28,15 @@ export default function PrivacyPolicyPage() {
             <h2 className="font-display text-xl font-semibold text-carbon">What we collect</h2>
             <ul className="list-disc space-y-1 pl-5">
               <li>
-                <strong>Retailer account data:</strong> phone number (for OTP login), business name,
-                address, and GST details (for invoicing).
+                <strong>Retailer account data:</strong> phone number (for OTP login, verified via our
+                SMS provider MSG91), business name, address, and GST details (for invoicing).
               </li>
               <li>
                 <strong>Product photos:</strong> uploaded by retailers to build their catalog.
                 Photos are processed by AI vision providers (e.g. Anthropic Claude, OpenAI, Google
-                Gemini) to auto-tag category, color, and fabric.
+                Gemini) to auto-tag category, color, and fabric, and by AI image-generation providers
+                to remove backgrounds, generate ghost-mannequin/studio-shoot images, and power virtual
+                try-on.
               </li>
               <li>
                 <strong>KYC documents:</strong> GST certificates and Aadhaar card images you upload
@@ -48,7 +50,14 @@ export default function PrivacyPolicyPage() {
               </li>
               <li>
                 <strong>Customer data:</strong> name, phone number, and style/budget preferences
-                captured by a retailer when adding a customer to their CRM.
+                captured by a retailer when adding a customer to their CRM, or when you share your
+                details, book a visit, submit a review, or request a referral code on a store&apos;s
+                Kanchuki catalog page.
+              </li>
+              <li>
+                <strong>WhatsApp messages:</strong> if a retailer enables WhatsApp catalog sync or
+                messaging, product and order updates are sent to you via Meta&apos;s WhatsApp Business
+                Cloud API.
               </li>
               <li>
                 <strong>Try-on photos:</strong> only collected with your explicit consent, used to
@@ -79,10 +88,17 @@ export default function PrivacyPolicyPage() {
               Third parties we share data with
             </h2>
             <ul className="list-disc space-y-1 pl-5">
-              <li>AI vision providers, to tag product photos and extract body measurements.</li>
+              <li>AI vision and image-generation providers, to tag product photos, extract body
+                measurements, and generate studio/try-on images.</li>
               <li>Cloudflare R2, to store product, KYC, and try-on images.</li>
               <li>Razorpay, to process payments.</li>
               <li>Supabase, for authentication and database hosting.</li>
+              <li>MSG91, to send OTP and transactional SMS.</li>
+              <li>Meta (WhatsApp Business Cloud API), where a retailer enables WhatsApp catalog
+                sync or messaging.</li>
+              <li>Where a retailer connects their own Google Business Profile, Facebook, or Google
+                Ads account, product data may be sent to those platforms using the retailer&apos;s
+                own credentials.</li>
             </ul>
           </section>
 

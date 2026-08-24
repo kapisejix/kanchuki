@@ -15,7 +15,7 @@ export default function TermsOfServicePage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Terms of Service</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: August 8, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: August 24, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
@@ -73,7 +73,24 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">6. Acceptable use</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">
+              6. Customer communications
+            </h2>
+            <p>
+              When a customer shares their name and phone number on a retailer&apos;s Kanchuki
+              catalog page — to view a collection, submit a review, book a visit, or request a
+              referral code — they consent to Kanchuki and that retailer contacting them by phone,
+              SMS, or WhatsApp about products, offers, orders, and AI styling features, as described
+              in our{' '}
+              <Link href="/privacy" className="text-cobalt-600 hover:underline">
+                Privacy Policy
+              </Link>
+              .
+            </p>
+          </section>
+
+          <section>
+            <h2 className="font-display text-xl font-semibold text-carbon">7. Acceptable use</h2>
             <p>
               Do not misuse the platform: don&apos;t upload unlawful, infringing, or deceptive
               content, don&apos;t attempt to access another retailer&apos;s data, and don&apos;t
@@ -83,7 +100,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">7. Availability &amp; liability</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">8. Availability &amp; liability</h2>
             <p>
               We work to keep the service available, but provide it &quot;as is&quot; without
               warranties of uninterrupted availability. To the maximum extent permitted by law,
@@ -93,7 +110,7 @@ export default function TermsOfServicePage() {
           </section>
 
           <section>
-            <h2 className="font-display text-xl font-semibold text-carbon">8. Changes to these terms</h2>
+            <h2 className="font-display text-xl font-semibold text-carbon">9. Changes to these terms</h2>
             <p>
               We may update these terms from time to time. Continued use of Kanchuki after changes
               are posted constitutes acceptance of the updated terms.

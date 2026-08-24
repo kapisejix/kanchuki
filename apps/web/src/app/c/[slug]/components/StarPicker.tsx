@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Star } from 'lucide-react'
+import { ConsentCheckbox } from '@/components/ConsentCheckbox'
 
 interface StarPickerProps {
   value: number
@@ -95,6 +96,7 @@ export function ReviewForm({
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [consent, setConsent] = useState(false)
   const [routing, setRouting] = useState<{
     action: string
     message?: string
@@ -103,7 +105,7 @@ export function ReviewForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (rating === 0 || !phone) return
+    if (rating === 0 || !phone || !consent) return
 
     setLoading(true)
     setError(null)
@@ -253,13 +255,15 @@ export function ReviewForm({
         </p>
       )}
 
+      <ConsentCheckbox checked={consent} onChange={setConsent} />
+
       {/* Submit */}
       <button
         type="submit"
-        disabled={rating === 0 || !phone || loading}
+        disabled={rating === 0 || !phone || !consent || loading}
         className={`w-full font-semibold py-3 rounded-xl text-sm transition-all active:scale-[0.98]
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2
-          ${rating > 0 && phone
+          ${rating > 0 && phone && consent
             ? 'bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft'
             : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}

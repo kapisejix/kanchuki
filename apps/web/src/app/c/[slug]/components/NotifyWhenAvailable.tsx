@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Bell, BellOff, Check, Loader2 } from 'lucide-react'
+import { ConsentCheckbox } from '@/components/ConsentCheckbox'
 
 interface Props {
   productId: string
@@ -11,13 +12,14 @@ interface Props {
 
 export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props) {
   const [phone, setPhone] = useState('')
+  const [consent, setConsent] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState(false)
 
   const handleSubmit = useCallback(async () => {
-    if (phone.trim().length < 10) return
+    if (phone.trim().length < 10 || !consent) return
     setLoading(true)
     setError(null)
 
@@ -29,7 +31,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
           name: 'Customer',
           phone: phone.trim(),
           gender: 'FEMALE',
-          consent: true,
+          consent,
         }),
       })
 
@@ -49,7 +51,7 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
     } finally {
       setLoading(false)
     }
-  }, [phone, productId, storeSlug])
+  }, [phone, consent, productId, storeSlug])
 
   // Already submitted or stored locally
   if (submitted) {
@@ -107,13 +109,14 @@ export function NotifyWhenAvailable({ productId, storeSlug, productName }: Props
         />
         <button
           onClick={() => void handleSubmit()}
-          disabled={phone.trim().length < 10 || loading}
+          disabled={phone.trim().length < 10 || !consent || loading}
           className="bg-amber-600 disabled:bg-amber-300 text-white text-xs font-semibold px-4 py-2 rounded-lg flex items-center gap-1 transition-colors"
         >
           {loading ? <Loader2 size={12} className="animate-spin" /> : <Bell size={12} />}
           Notify
         </button>
       </div>
+      <ConsentCheckbox checked={consent} onChange={setConsent} />
       {error && (
         <p className="text-[10px] text-red-500">{error}</p>
       )}

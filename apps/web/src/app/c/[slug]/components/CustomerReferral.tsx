@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { Gift, Share2, Copy, Check, Phone, Loader2 } from 'lucide-react'
+import { ConsentCheckbox } from '@/components/ConsentCheckbox'
 
 interface ReferralData {
   code: string
@@ -25,6 +26,7 @@ interface Props {
 
 export function CustomerReferral({ storeSlug, storeName }: Props) {
   const [phone, setPhone] = useState('')
+  const [consent, setConsent] = useState(false)
   const [referral, setReferral] = useState<ReferralData | null>(null)
   const [credits, setCredits] = useState<CreditsData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -33,7 +35,7 @@ export function CustomerReferral({ storeSlug, storeName }: Props) {
   const [step, setStep] = useState<'phone' | 'referral'>('phone')
 
   const handleGetCode = useCallback(async () => {
-    if (phone.trim().length < 10) return
+    if (phone.trim().length < 10 || !consent) return
     setLoading(true)
     setError(null)
 
@@ -46,7 +48,7 @@ export function CustomerReferral({ storeSlug, storeName }: Props) {
           name: 'Customer',
           phone: phone.trim(),
           gender: 'FEMALE',
-          consent: true,
+          consent,
         }),
       })
       if (!leadRes.ok) throw new Error('Could not verify your phone')
@@ -64,7 +66,7 @@ export function CustomerReferral({ storeSlug, storeName }: Props) {
     } finally {
       setLoading(false)
     }
-  }, [phone, storeSlug])
+  }, [phone, consent, storeSlug])
 
   const handleShare = useCallback(() => {
     if (!referral) return
@@ -104,13 +106,14 @@ export function CustomerReferral({ storeSlug, storeName }: Props) {
             />
             <button
               onClick={() => void handleGetCode()}
-              disabled={phone.trim().length < 10 || loading}
+              disabled={phone.trim().length < 10 || !consent || loading}
               className="bg-purple-600 disabled:bg-purple-300 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center gap-1 transition-colors"
             >
               {loading ? <Loader2 size={12} className="animate-spin" /> : <Phone size={12} />}
               Get Code
             </button>
           </div>
+          <ConsentCheckbox checked={consent} onChange={setConsent} className="mb-2" />
           {error && <p className="text-[10px] text-red-500">{error}</p>}
         </>
       )}

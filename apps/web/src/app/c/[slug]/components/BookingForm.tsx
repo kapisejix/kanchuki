@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { X, Calendar, Clock, Loader2, Check, AlertTriangle } from 'lucide-react'
+import { ConsentCheckbox } from '@/components/ConsentCheckbox'
 
 interface Props {
   storeSlug: string
@@ -57,11 +58,12 @@ export function BookingForm({ storeSlug, storeName, onClose }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<{ starts_at: string; ends_at: string } | null>(null)
   const [note, setNote] = useState('')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [consent, setConsent] = useState(false)
 
   const slots = getAvailableSlots()
 
   const handleSubmit = useCallback(async () => {
-    if (!name.trim() || !phone.trim() || !selectedSlot) return
+    if (!name.trim() || !phone.trim() || !selectedSlot || !consent) return
     setStep('submitting')
     setErrorMessage(null)
 
@@ -92,9 +94,9 @@ export function BookingForm({ storeSlug, storeName, onClose }: Props) {
       setErrorMessage(err instanceof Error ? err.message : 'Something went wrong')
       setStep('error')
     }
-  }, [name, phone, selectedSlot, note, storeSlug])
+  }, [name, phone, selectedSlot, note, storeSlug, consent])
 
-  const canSubmit = name.trim().length > 0 && phone.trim().length >= 10 && selectedSlot !== null
+  const canSubmit = name.trim().length > 0 && phone.trim().length >= 10 && selectedSlot !== null && consent
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col" onClick={onClose}>
@@ -199,6 +201,8 @@ export function BookingForm({ storeSlug, storeName, onClose }: Props) {
               rows={2}
               placeholder="e.g. Looking for wedding sarees"
             />
+
+            <ConsentCheckbox checked={consent} onChange={setConsent} className="mb-4" />
 
             {/* Submit */}
             <button

@@ -188,7 +188,15 @@ export function ContactGate({ slug, profile }: Props) {
             className="mt-0.5"
           />
           <span className="text-xs text-gray-500">
-            I agree to share my details with {profile.shop_name} and Kanchuki, and be contacted about products, offers, and AI styling features.
+            I agree to share my details with {profile.shop_name} and Kanchuki, per the{' '}
+            <Link href="/privacy" target="_blank" className="underline hover:text-gray-700">
+              Privacy Policy
+            </Link>{' '}
+            and{' '}
+            <Link href="/terms" target="_blank" className="underline hover:text-gray-700">
+              Terms
+            </Link>
+            , and be contacted about products, offers, and AI styling features.
           </span>
         </label>
 
