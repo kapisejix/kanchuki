@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import {
   Check,
   ChevronLeft,
@@ -28,12 +28,29 @@ export default function TranslateScreen() {
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
-  const [mode, setMode] = useState<Mode>('description')
+  // Deep-linked from a product's or campaign's detail page — skip straight to
+  // the language picker instead of the pick-an-item list.
+  const params = useLocalSearchParams<{
+    mode?: string
+    productId?: string
+    productName?: string
+    campaignId?: string
+    campaignName?: string
+    message?: string
+  }>()
+  const deepLinked = !!(params.productId || params.campaignId)
+  const [mode, setMode] = useState<Mode>(params.campaignId ? 'message' : 'description')
   const [search, setSearch] = useState('')
-  const [picked, setPicked] = useState<PickedItem | null>(null)
+  const [picked, setPicked] = useState<PickedItem | null>(
+    params.productId
+      ? { id: params.productId, name: params.productName ?? null }
+      : params.campaignId
+        ? { id: params.campaignId, name: params.campaignName ?? null, message: params.message ?? null }
+        : null,
+  )
   const [language, setLanguage] = useState<TranslateLanguage>('hindi')
   // Editable message source for campaign-message mode (prefilled from the campaign).
-  const [messageInput, setMessageInput] = useState('')
+  const [messageInput, setMessageInput] = useState(params.message ?? '')
   const [copied, setCopied] = useState(false)
 
   const productsQuery = useQuery({
@@ -108,7 +125,7 @@ export default function TranslateScreen() {
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
-            onPress={() => (picked ? (mode === 'description' ? setPicked(null) : setPicked(null)) : router.back())}
+            onPress={() => (picked && !deepLinked ? setPicked(null) : router.back())}
             hitSlop={8}
             accessibilityLabel={picked ? 'Back to list' : 'Go back'}
             accessibilityRole="button"

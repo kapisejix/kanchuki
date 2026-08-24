@@ -111,7 +111,7 @@ export function buildWhatsAppDeepLink(phone: string, message: string): string {
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no I/L/O/0/1 ambiguity
 
 export function generateReferralCode(prefix = 'KAN'): string {
-  const rand = randomBytes(5);
+  const rand = randomBytes(6);
   let suffix = '';
   for (let i = 0; i < 6; i++) suffix += CODE_ALPHABET[rand[i]! % CODE_ALPHABET.length];
   return `${prefix}-${suffix}`;

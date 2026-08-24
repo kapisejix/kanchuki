@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ChevronLeft, X } from 'lucide-react-native'
-import { useEffect, useState } from 'react'
+import { ChevronLeft, Languages, X } from 'lucide-react-native'
+import { useEffect, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   Alert,
@@ -50,14 +50,46 @@ const PLACEHOLDERS: { token: string; hint: string }[] = [
   { token: '{{offer}}', hint: 'offer text' },
 ]
 
-const MESSAGE_EXAMPLES: Record<CampaignType, string> = {
-  FESTIVAL:
-    'Happy {{festival}} {{name}}! 🪔 Our new festive collection is here. Browse at {{link}} — exclusive styles for you.',
-  REACTIVATION:
-    'Hi {{name}}, we miss you at {{shop}}! Fresh arrivals just landed. Take a look: {{link}}',
-  PROMOTION:
-    'Special offer for you {{name}}! {{offer}} at {{shop}}. Shop now: {{link}}',
-  AB_TEST: 'Hi {{name}}, new styles just arrived at {{shop}}: {{link}}',
+// Pre-built message templates, picked by campaign type/occasion — retailer
+// taps one to populate the textarea, then edits from there.
+const MESSAGE_TEMPLATES: Record<CampaignType, { label: string; text: string }[]> = {
+  FESTIVAL: [
+    {
+      label: 'Festive collection',
+      text: 'Happy {{festival}} {{name}}! 🪔 Our new festive collection is here. Browse at {{link}} — exclusive styles for you.',
+    },
+    {
+      label: 'Festive offer',
+      text: '{{festival}} special for you, {{name}}! 🎉 {{offer}} at {{shop}}. Shop the collection: {{link}}',
+    },
+    {
+      label: 'Festive invite',
+      text: '{{name}}, {{festival}} is here! ✨ Visit {{shop}} or browse online: {{link}}',
+    },
+  ],
+  REACTIVATION: [
+    {
+      label: 'We miss you',
+      text: 'Hi {{name}}, we miss you at {{shop}}! Fresh arrivals just landed. Take a look: {{link}}',
+    },
+    {
+      label: 'Welcome back offer',
+      text: '{{name}}, it\'s been a while! Come back to {{shop}} — {{offer}} waiting for you: {{link}}',
+    },
+  ],
+  PROMOTION: [
+    {
+      label: 'Offer blast',
+      text: 'Special offer for you {{name}}! {{offer}} at {{shop}}. Shop now: {{link}}',
+    },
+    {
+      label: 'Limited time',
+      text: '{{name}}, don\'t miss out! {{offer}} at {{shop}} — for a limited time only. {{link}}',
+    },
+  ],
+  AB_TEST: [
+    { label: 'New arrivals', text: 'Hi {{name}}, new styles just arrived at {{shop}}: {{link}}' },
+  ],
 }
 
 function Section({
@@ -165,6 +197,9 @@ export default function CampaignFormScreen() {
   )
   const [name, setName] = useState('')
   const [message, setMessage] = useState('')
+  // Cursor tracking so placeholder taps insert at the cursor, not just append.
+  const messageSelectionRef = useRef({ start: 0, end: 0 })
+  const [messageSelection, setMessageSelection] = useState<{ start: number; end: number } | undefined>(undefined)
   // Numeric auto-increment festival id (admin-managed calendar).
   const [festivalId, setFestivalId] = useState<number | null>(null)
   const [saving, setSaving] = useState(false)
@@ -288,7 +323,11 @@ export default function CampaignFormScreen() {
   }
 
   const insertPlaceholder = (token: string) => {
-    setMessage((prev) => prev + token)
+    const { start, end } = messageSelectionRef.current
+    setMessage((prev) => prev.slice(0, start) + token + prev.slice(end))
+    const pos = start + token.length
+    messageSelectionRef.current = { start: pos, end: pos }
+    setMessageSelection({ start: pos, end: pos })
   }
 
   const handleSave = async () => {
@@ -441,7 +480,10 @@ export default function CampaignFormScreen() {
                       key={f.id}
                       label={`${f.name}${f.region !== 'PAN_INDIA' ? ` · ${f.region}` : ''}`}
                       active={festivalId === f.id}
-                      onPress={() => setFestivalId(f.id)}
+                      onPress={() => {
+                        setFestivalId(f.id)
+                        setName(f.name)
+                      }}
                     />
                   ))}
                 </View>
@@ -464,9 +506,36 @@ export default function CampaignFormScreen() {
           {/* Message template */}
           {type !== 'AB_TEST' && (
             <Section title="Message template">
+              <Text className="text-[11px] font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+                Templates
+              </Text>
+              <View className="flex-row flex-wrap gap-1.5 mb-3">
+                {MESSAGE_TEMPLATES[type].map((t) => (
+                  <AnimatedPressable
+                    key={t.label}
+                    onPress={() => {
+                      setMessage(t.text)
+                      messageSelectionRef.current = { start: t.text.length, end: t.text.length }
+                      setMessageSelection(undefined)
+                    }}
+                    accessibilityRole="button"
+                    className="px-3 py-1.5 rounded-lg border border-sand-200 bg-white"
+                  >
+                    <Text className="text-xs font-semibold text-sand-700">{t.label}</Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
               <TextInput
                 value={message}
-                onChangeText={setMessage}
+                onChangeText={(t) => {
+                  setMessage(t)
+                  setMessageSelection(undefined)
+                }}
+                onSelectionChange={(e) => {
+                  messageSelectionRef.current = e.nativeEvent.selection
+                  setMessageSelection(undefined)
+                }}
+                selection={messageSelection}
                 placeholder="Write the WhatsApp message…"
                 placeholderTextColor={colors.sand[400]}
                 className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3 min-h-[96px]"
@@ -474,6 +543,9 @@ export default function CampaignFormScreen() {
                 maxLength={2000}
                 textAlignVertical="top"
               />
+              <Text className="text-[11px] text-sand-400 mt-1.5">
+                Place your cursor where you want it, then tap a tag below to insert it there.
+              </Text>
               <View className="flex-row flex-wrap gap-1.5 mt-2.5">
                 {PLACEHOLDERS.map((p) => (
                   <AnimatedPressable
@@ -506,13 +578,16 @@ export default function CampaignFormScreen() {
                 </Text>
               </View>
               <AnimatedPressable
-                onPress={() => setMessage(MESSAGE_EXAMPLES[type])}
+                onPress={() =>
+                  router.push(
+                    `/growth/translate?mode=message&campaignId=new&campaignName=${encodeURIComponent(name || 'New campaign')}&message=${encodeURIComponent(message)}`,
+                  )
+                }
                 accessibilityRole="button"
-                className="mt-2.5"
+                className="flex-row items-center justify-center gap-1.5 mt-2.5 border border-dashed border-ink-300 rounded-xl py-2"
               >
-                <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
-                  Use example for {TYPE_OPTIONS.find((t) => t.key === type)?.label.toLowerCase()} campaigns
-                </Text>
+                <Languages size={14} color={primaryColor} />
+                <Text className="text-ink-700 text-xs font-medium">AI Translate</Text>
               </AnimatedPressable>
             </Section>
           )}

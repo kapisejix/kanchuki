@@ -3,7 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import {
+  Check,
   ChevronLeft,
+  ChevronRight,
   Share2,
   Plus,
   Trash2,
@@ -19,6 +21,7 @@ import {
 import {
   ActivityIndicator,
   Alert,
+  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -29,6 +32,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
+import { productApi } from '../../src/lib/api'
 import {
   growthApi,
   type SocialTemplate,
@@ -393,11 +397,23 @@ function CreateTemplateModal({
   const [templateType, setTemplateType] = useState<SocialTemplateType>('INSTAGRAM_POST')
   const [occasion, setOccasion] = useState('')
   const [studioTemplate, setStudioTemplate] = useState('gold_festive')
-  const [productId, setProductId] = useState('')
+  const [pickedProducts, setPickedProducts] = useState<{ id: string; name: string | null; primary_photo_url: string | null }[]>([])
+  const [productPickerOpen, setProductPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  const canSubmit = name.trim() && productId.trim() && !saving
+  const canSubmit = name.trim() && pickedProducts.length > 0 && !saving
+
+  const productsQuery = useQuery({
+    queryKey: ['products', 'list', 'social-template-picker'],
+    queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 50 }),
+    enabled: productPickerOpen,
+  })
+  const pickerProducts = (productsQuery.data?.data ?? []) as {
+    id: string
+    name: string | null
+    primary_photo_url: string | null
+  }[]
 
   const submit = async () => {
     if (!canSubmit) return
@@ -408,7 +424,7 @@ function CreateTemplateModal({
         name: name.trim(),
         template_type: templateType,
         occasion: occasion || undefined,
-        product_id: productId.trim(),
+        product_ids: pickedProducts.map((p) => p.id),
         studio_template: studioTemplate,
       })
       onSaved()
@@ -516,17 +532,50 @@ function CreateTemplateModal({
             ))}
           </View>
 
-          {/* Product ID */}
-          <Label text="Product ID" />
-          <Input
-            value={productId}
-            onChangeText={setProductId}
-            placeholder="Paste product ID from your catalog"
-            colors={colors}
-          />
-          <Text className="text-[10px] text-sand-400 mb-4 -mt-2 px-1">
-            Find it on your product detail screen → Copy ID
-          </Text>
+          {/* Products */}
+          <Label text="Products" />
+          <AnimatedPressable
+            onPress={() => setProductPickerOpen(true)}
+            className="flex-row items-center border border-sand-200 rounded-xl px-3 py-2.5 mb-4"
+          >
+            {pickedProducts.length > 0 ? (
+              <View className="flex-row" style={{ marginLeft: 4 }}>
+                {pickedProducts.slice(0, 3).map((p, i) => (
+                  <View key={p.id} style={{ marginLeft: -4, zIndex: 3 - i }}>
+                    {p.primary_photo_url ? (
+                      <Image
+                        source={{ uri: p.primary_photo_url }}
+                        style={{ width: 32, height: 32, borderRadius: 8, borderWidth: 2, borderColor: 'white' }}
+                        contentFit="cover"
+                      />
+                    ) : (
+                      <View
+                        className="w-8 h-8 rounded-lg items-center justify-center bg-sand-100"
+                        style={{ borderWidth: 2, borderColor: 'white' }}
+                      >
+                        <ImageIcon size={16} color={colors.sand[400]} />
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <View className="w-8 h-8 rounded-lg items-center justify-center bg-sand-100">
+                <ImageIcon size={16} color={colors.sand[400]} />
+              </View>
+            )}
+            <Text
+              className={`flex-1 ml-2.5 text-sm ${pickedProducts.length > 0 ? 'text-sand-900 font-semibold' : 'text-sand-400'}`}
+              numberOfLines={1}
+            >
+              {pickedProducts.length === 0
+                ? 'Select products'
+                : pickedProducts.length === 1
+                  ? pickedProducts[0].name ?? 'Unnamed product'
+                  : `${pickedProducts.length} products selected`}
+            </Text>
+            <ChevronRight size={16} color={colors.sand[300]} />
+          </AnimatedPressable>
 
           {error ? (
             <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
@@ -551,6 +600,86 @@ function CreateTemplateModal({
           </View>
         </ScrollView>
       </View>
+
+      {/* Product picker — thumbnail grid so the retailer never needs to find
+          or copy a product ID by hand. */}
+      <Modal
+        visible={productPickerOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setProductPickerOpen(false)}
+      >
+        <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top + 12 }}>
+          <View className="flex-row items-center justify-between px-4 pb-3 bg-white border-b border-sand-100">
+            <Text className="text-base font-bold text-sand-900">
+              Select products{pickedProducts.length > 0 ? ` (${pickedProducts.length})` : ''}
+            </Text>
+            <AnimatedPressable
+              onPress={() => setProductPickerOpen(false)}
+              hitSlop={8}
+              accessibilityLabel="Done"
+              accessibilityRole="button"
+            >
+              <Text className="text-sm font-semibold" style={{ color: primaryColor }}>Done</Text>
+            </AnimatedPressable>
+          </View>
+          <ScrollView className="flex-1 px-4 pt-3" contentContainerStyle={{ paddingBottom: 32 }}>
+            {productsQuery.isLoading ? (
+              <View className="items-center py-10">
+                <ActivityIndicator color={primaryColor} />
+              </View>
+            ) : pickerProducts.length === 0 ? (
+              <Text className="text-sm text-sand-400 text-center py-10">
+                No available products. Add products first.
+              </Text>
+            ) : (
+              <View className="gap-2">
+                {pickerProducts.map((p) => {
+                  const selected = pickedProducts.some((x) => x.id === p.id)
+                  return (
+                    <AnimatedPressable
+                      key={p.id}
+                      onPress={() => {
+                        setPickedProducts((prev) =>
+                          selected ? prev.filter((x) => x.id !== p.id) : [...prev, p],
+                        )
+                      }}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      className="flex-row items-center bg-white rounded-xl p-2.5 border"
+                      style={{ borderColor: selected ? primaryColor : colors.sand[100] }}
+                    >
+                      {p.primary_photo_url ? (
+                        <Image
+                          source={{ uri: p.primary_photo_url }}
+                          style={{ width: 40, height: 40, borderRadius: 8 }}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <View className="w-10 h-10 rounded-lg items-center justify-center bg-sand-100">
+                          <ImageIcon size={18} color={colors.sand[400]} />
+                        </View>
+                      )}
+                      <Text className="flex-1 ml-3 text-sm text-sand-800" numberOfLines={1}>
+                        {p.name ?? 'Unnamed product'}
+                      </Text>
+                      <View
+                        className="w-5 h-5 rounded-full items-center justify-center border"
+                        style={{
+                          backgroundColor: selected ? primaryColor : 'transparent',
+                          borderColor: selected ? primaryColor : colors.sand[300],
+                        }}
+                      >
+                        {selected && <Check size={12} color="white" />}
+                      </View>
+                    </AnimatedPressable>
+                  )
+                })}
+              </View>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   )
 }

@@ -12,6 +12,7 @@ import {
   Text,
   TextInput,
   ScrollView,
+  FlatList,
   Alert,
   ActivityIndicator,
   Dimensions,
@@ -20,12 +21,12 @@ import {
   Switch,
 } from 'react-native'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, RotateCw, Camera, X, Tag, Star } from 'lucide-react-native'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, Camera, X, Tag, Star, Video, Languages } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -34,6 +35,7 @@ import {
   readLocalImage,
   ApiError,
 } from '../../src/lib/api'
+import { growthApi } from '../../src/lib/api/growth'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -89,17 +91,10 @@ export default function ProductDetailScreen() {
   const [retagging, setRetagging] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  // Manual crop + white-background cleanup for a photo already on the
-  // product. Cache-bust the displayed uri per photo since cleanup overwrites
-  // the same r2_key/url — expo-image/CDN would otherwise keep showing the
-  // old cached bytes at an unchanged URL.
-  const [cleaningPhotoId, setCleaningPhotoId] = useState<string | null>(null)
+  // Cache-bust the displayed uri per photo since cleanup/background changes
+  // overwrite the same r2_key/url — expo-image/CDN would otherwise keep
+  // showing the old cached bytes at an unchanged URL.
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
-  // Rotate busy-state + per-photo label (client-only feedback — the server
-  // has no absolute-rotation column, so the label just cycles 90/180/270/360
-  // per tap and is never persisted).
-  const [rotatingPhotoId, setRotatingPhotoId] = useState<string | null>(null)
-  const [rotationLabels, setRotationLabels] = useState<Record<string, 90 | 180 | 270 | 360>>({})
   // Post-save background picker — admin-curated backdrop library, same
   // endpoint add.tsx uses. Empty when the admin library has zero active
   // backdrops. useQuery (not a bare effect+catch) so a transient fetch
@@ -136,6 +131,22 @@ export default function ProductDetailScreen() {
   const [studioResult, setStudioResult] = useState<{ photoId: string; url: string } | null>(null)
   const [studioProgress, setStudioProgress] = useState<number>(0)
   const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
+
+  // F-033: Ken Burns product video generated from the product's own photos.
+  const generateVideo = useMutation({
+    mutationFn: () => growthApi.generateVideo(product!.id),
+    onSuccess: () =>
+      Alert.alert('Generating video', 'Building a video from your product photos — check back in a minute.'),
+    onError: (err) => showError(err, 'Could not start video generation'),
+  })
+  const handleGenerateVideo = () => {
+    if (!product) return
+    if (product.photos.length < 2) {
+      Alert.alert('Add more photos', 'Add at least 2 photos before generating a video.')
+      return
+    }
+    generateVideo.mutate()
+  }
 
   // Editable AI fields
   const [editedName, setEditedName] = useState('')
@@ -191,7 +202,9 @@ export default function ProductDetailScreen() {
   // insets, split-screen, tablet), scrollTo's computed x lands on the wrong
   // page and paging silently stops working.
   const [carouselWidth, setCarouselWidth] = useState(SCREEN_WIDTH)
-  const carouselRef = useRef<ScrollView>(null)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- displayPhotos'
+  // element type is an inline intersection computed below, not a named export.
+  const carouselRef = useRef<FlatList<any>>(null)
   const displayPhotosRef = useRef(0)
 
   // ── Pinch/zoom state ─────────────────────────────────────────────
@@ -320,7 +333,7 @@ export default function ProductDetailScreen() {
     // if the imperative scrollTo below silently no-ops (e.g. ref not yet
     // attached, or fires before the ScrollView has measured its layout).
     setSelectedPhotoIndex(clamped)
-    carouselRef.current?.scrollTo({ x: clamped * carouselWidth, animated: true })
+    carouselRef.current?.scrollToOffset({ offset: clamped * carouselWidth, animated: true })
   }, [carouselWidth])
 
   // Sync the fullscreen viewer's scroll position to whichever photo is
@@ -634,48 +647,6 @@ export default function ProductDetailScreen() {
   const shadowFor = (photoId: string): boolean =>
     photoShadows[photoId] ?? product?.add_shadow ?? false
 
-  const handleCleanupPhoto = async (photoId: string) => {
-    if (!product) return
-    setCleaningPhotoId(photoId)
-    try {
-      // Respect the current shadow preference for this photo — a fresh
-      // cleanup after the toggle was flipped keeps the setting.
-      await productApi.cleanupPhoto(product.id, photoId, undefined, shadowFor(photoId))
-      setPhotoCacheBust((prev) => ({ ...prev, [photoId]: Date.now() }))
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-    } catch (err) {
-      showError(err, 'Failed to clean up photo')
-    } finally {
-      setCleaningPhotoId(null)
-    }
-  }
-
-  // Rotate the currently viewed photo 90° clockwise server-side (primary or
-  // preserved pre-cleanup original). Cache-bust the displayed uri since
-  // rotate overwrites the same r2_key/url — same mechanism cleanup uses.
-  const handleRotatePhoto = async (photo: { id: string }, isOriginal: boolean) => {
-    if (!product) return
-    setRotatingPhotoId(photo.id)
-    try {
-      // photo.id for the original slide is the synthetic `${realId}-original`
-      // (see displayPhotos above) — strip the suffix for the API call, which
-      // takes the real ProductPhoto id plus a target selector.
-      const realId = isOriginal ? photo.id.replace(/-original$/, '') : photo.id
-      await productApi.rotatePhoto(product.id, realId, isOriginal ? 'original' : 'primary')
-      setPhotoCacheBust((prev) => ({ ...prev, [photo.id]: Date.now() }))
-      setRotationLabels((prev) => {
-        const current = prev[photo.id] ?? 360
-        const next = current === 360 ? 90 : ((current + 90) as 90 | 180 | 270 | 360)
-        return { ...prev, [photo.id]: next }
-      })
-      void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-    } catch (err) {
-      showError(err, 'Failed to rotate photo')
-    } finally {
-      setRotatingPhotoId(null)
-    }
-  }
-
   // Apply the chosen backdrop to the currently-viewed photo (per-photo, not
   // the product primary): recomposites THAT photo onto the backdrop via the
   // cleanup pipeline, so "remove background → pick background" is one flow on
@@ -950,24 +921,30 @@ export default function ProductDetailScreen() {
           }}
         >
           {displayPhotos.length > 0 ? (
-            <ScrollView
+            <FlatList
               ref={carouselRef}
+              data={displayPhotos}
+              keyExtractor={(photo) => photo.id}
               horizontal
               pagingEnabled
               nestedScrollEnabled
               scrollEnabled={carouselScrollEnabled}
               showsHorizontalScrollIndicator={false}
               decelerationRate="fast"
+              disableIntervalMomentum
               scrollEventThrottle={16}
+              removeClippedSubviews
+              initialNumToRender={2}
+              windowSize={3}
+              maxToRenderPerBatch={2}
+              getItemLayout={(_, index) => ({ length: carouselWidth, offset: carouselWidth * index, index })}
               onMomentumScrollEnd={(e) => {
                 const index = Math.round(e.nativeEvent.contentOffset.x / carouselWidth)
                 setSelectedPhotoIndex(index)
               }}
               style={{ flex: 1 }}
-            >
-              {displayPhotos.map((photo) => (
+              renderItem={({ item: photo }) => (
                 <Animated.View
-                  key={photo.id}
                   style={{
                     width: carouselWidth,
                     height: 380,
@@ -995,8 +972,8 @@ export default function ProductDetailScreen() {
                     </View>
                   )}
                 </Animated.View>
-              ))}
-            </ScrollView>
+              )}
+            />
           ) : (
             <View className="w-full h-full bg-sand-100 items-center justify-center">
               <Text className="text-sand-300 text-5xl mb-2">👗</Text>
@@ -1131,22 +1108,6 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
-        {/* 360° spin icon — opens the same frames fullscreen, drag to rotate */}
-        {product.spin_status === 'ready' && product.spin_frames.length > 0 && (
-          <View className="px-4 pt-3">
-            <AnimatedPressable
-              onPress={() => {
-                setSpinFrameIndex(0)
-                setSpinViewerOpen(true)
-              }}
-              className="flex-row items-center justify-center gap-2 bg-ink-50 py-2.5 rounded-xl"
-            >
-              <RotateCw size={16} color={primaryColor} />
-              <Text className="text-ink-700 text-sm font-semibold">View 360°</Text>
-            </AnimatedPressable>
-          </View>
-        )}
-
         {/* Thumbnail strip — synced with carousel */}
         {displayPhotos.length > 0 && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-3 pb-2 pt-2 bg-white">
@@ -1214,14 +1175,31 @@ export default function ProductDetailScreen() {
             <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
           </AnimatedPressable>
           <AnimatedPressable
-            onPress={() => router.push(`/product/${product.id}/spin-video`)}
-            disabled={product.spin_status === 'processing'}
+            onPress={handleGenerateVideo}
+            disabled={generateVideo.isPending}
             className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
           >
-            <RotateCw size={14} color={primaryColor} />
-            <Text className="text-ink-700 text-xs font-semibold">
-              {product.spin_status === 'ready' ? 'Retake 360°' : 'Add 360°'}
-            </Text>
+            {generateVideo.isPending ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Video size={14} color={primaryColor} />
+            )}
+            <Text className="text-ink-700 text-xs font-semibold">Product Video</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => setStudioModalOpen(true)}
+            disabled={
+              !currentPhoto || currentPhotoIsVariant || currentPhotoIsOriginal ||
+              studioStarting || studioStatus === 'processing'
+            }
+            className="flex-1 flex-row items-center justify-center gap-1.5 bg-ink-50 py-2.5 rounded-xl"
+          >
+            {studioStarting || studioStatus === 'processing' ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Sparkles size={14} color={primaryColor} />
+            )}
+            <Text className="text-ink-700 text-xs font-semibold">AI Studio</Text>
           </AnimatedPressable>
         </View>
 
@@ -1255,81 +1233,12 @@ export default function ProductDetailScreen() {
         </View>
       )}
 
-      {/* Manual crop + white-background cleanup for the currently viewed photo,
-          plus rotate — rotate works on both the primary and the original slide,
-          cleanup only makes sense on the primary. */}
-      {displayPhotos[selectedPhotoIndex] && !currentPhotoIsVariant && (
-        <View className="mx-4 mt-2 flex-row gap-2">
-          {!currentPhotoIsOriginal && (
-            <AnimatedPressable
-              onPress={() => void handleCleanupPhoto(displayPhotos[selectedPhotoIndex]!.id)}
-              disabled={cleaningPhotoId !== null}
-              className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
-            >
-              {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
-                <ActivityIndicator size="small" color={primaryColor} />
-              ) : (
-                <Wand2 size={14} color={primaryColor} />
-              )}
-              <Text className="text-ink-700 text-xs font-medium">
-                {cleaningPhotoId === displayPhotos[selectedPhotoIndex]?.id
-                  ? 'Cleaning up...'
-                  : 'Crop & remove background'}
-              </Text>
-            </AnimatedPressable>
-          )}
-          <AnimatedPressable
-            onPress={() =>
-              void handleRotatePhoto(displayPhotos[selectedPhotoIndex]!, currentPhotoIsOriginal)
-            }
-            disabled={rotatingPhotoId !== null}
-            className="flex-1 flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
-            accessibilityLabel="Rotate photo 90 degrees"
-            accessibilityRole="button"
-          >
-            {rotatingPhotoId === displayPhotos[selectedPhotoIndex]?.id ? (
-              <ActivityIndicator size="small" color={primaryColor} />
-            ) : (
-              <RotateCw size={14} color={primaryColor} />
-            )}
-            <Text className="text-ink-700 text-xs font-medium">
-              {rotatingPhotoId === displayPhotos[selectedPhotoIndex]?.id
-                ? 'Rotating...'
-                : rotationLabels[displayPhotos[selectedPhotoIndex]!.id]
-                  ? `Rotate (${rotationLabels[displayPhotos[selectedPhotoIndex]!.id]}°)`
-                  : 'Rotate'}
-            </Text>
-          </AnimatedPressable>
-        </View>
-      )}
-
-      {/* F-032: AI Studio Shoot — generate a professional studio backdrop
-          for the currently-viewed photo (FLUX Kontext, async 10–60s). Hidden
-          on variant / original slides — those aren't real ProductPhoto rows. */}
-      {currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+      {/* F-032: AI Studio Shoot inline status/preview — trigger button lives in
+          the top action row now; this block just shows progress/result once
+          started. Hidden on variant / original slides — those aren't real
+          ProductPhoto rows. */}
+      {currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && studioStatus && (
         <View className="mx-4 mt-2">
-          <AnimatedPressable
-            onPress={() => setStudioModalOpen(true)}
-            disabled={studioStarting || studioStatus === 'processing'}
-            accessibilityLabel="AI Studio Shoot — generate a professional studio background"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: studioStarting || studioStatus === 'processing' }}
-            className="flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2"
-          >
-            {studioStarting || studioStatus === 'processing' ? (
-              <ActivityIndicator size="small" color={primaryColor} />
-            ) : (
-              <Sparkles size={14} color={primaryColor} />
-            )}
-            <Text className="text-ink-700 text-xs font-medium">
-              {studioStatus === 'processing'
-                ? 'Creating studio shot...'
-                : studioStatus === 'ready'
-                  ? 'AI Studio Shoot ✓'
-                  : 'AI Studio Shoot'}
-            </Text>
-          </AnimatedPressable>
-
           {/* Inline status — spinner while generating, error on failure,
               preview + set-as-main once the new photo is ready. */}
           {studioStatus === 'processing' && (
@@ -1749,6 +1658,18 @@ export default function ProductDetailScreen() {
               placeholderTextColor={colors.sand[400]}
             />
           </View>
+          <AnimatedPressable
+            onPress={() =>
+              router.push(
+                `/growth/translate?productId=${product.id}&productName=${encodeURIComponent(product.name ?? '')}`,
+              )
+            }
+            accessibilityRole="button"
+            className="flex-row items-center justify-center gap-1.5 border border-dashed border-ink-300 rounded-xl py-2 mt-1"
+          >
+            <Languages size={14} color={primaryColor} />
+            <Text className="text-ink-700 text-xs font-medium">AI Translate</Text>
+          </AnimatedPressable>
         </View>
 
         {/* Merchandising category (retailer-curated catalog group — the AI

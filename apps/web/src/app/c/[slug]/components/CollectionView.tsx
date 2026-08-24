@@ -35,6 +35,7 @@ const CustomerReferral = dynamic(() => import('./CustomerReferral').then((m) => 
 
 // VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
 const TRY_ON_ENABLED = false;
+const REFER_EARN_ENABLED = false;
 
 const PAGE_SIZE = 12;
 
@@ -568,12 +569,14 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       )}
 
       {/* Referral program */}
-      <div className="max-w-md mx-auto px-3 mb-4">
-        <CustomerReferral
-          storeSlug={store ?? slug}
-          storeName={collection.retailer.shop_name}
-        />
-      </div>
+      {REFER_EARN_ENABLED && (
+        <div className="max-w-md mx-auto px-3 mb-4">
+          <CustomerReferral
+            storeSlug={store ?? slug}
+            storeName={collection.retailer.shop_name}
+          />
+        </div>
+      )}
 
       {/* Bottom padding for sticky nav */}
       <div className="h-20" />

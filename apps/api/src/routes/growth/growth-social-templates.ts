@@ -38,7 +38,7 @@ const CreateTemplateSchema = z.object({
   description: z.string().max(500).optional(),
   template_type: z.enum(TEMPLATE_TYPES).default('INSTAGRAM_POST'),
   occasion: z.string().max(80).optional(),
-  product_id: z.string().min(1),
+  product_ids: z.array(z.string().min(1)).min(1).max(10),
   studio_template: z.string().min(1), // e.g. "gold_festive", "white_studio"
 });
 
@@ -130,12 +130,12 @@ export const growthSocialTemplateRoutes: FastifyPluginAsync = async (server) => 
     const body = CreateTemplateSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    // Verify product belongs to retailer
-    const product = await prisma.product.findFirst({
-      where: { id: body.data.product_id, retailer_id: retailerId, deleted_at: null },
-      select: { id: true, name: true, photos: { select: { id: true, url: true }, take: 1 } },
+    // Verify every product belongs to retailer
+    const products = await prisma.product.findMany({
+      where: { id: { in: body.data.product_ids }, retailer_id: retailerId, deleted_at: null },
+      select: { id: true },
     });
-    if (!product) throw notFound('Product');
+    if (products.length !== body.data.product_ids.length) throw notFound('Product');
 
     const template = await prisma.socialTemplate.create({
       data: {
@@ -145,7 +145,7 @@ export const growthSocialTemplateRoutes: FastifyPluginAsync = async (server) => 
         template_type: body.data.template_type,
         occasion: body.data.occasion,
         background_style: body.data.studio_template,
-        product_ids: [body.data.product_id],
+        product_ids: body.data.product_ids,
       },
     });
 

@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   ChevronLeft,
   ExternalLink,
+  Languages,
   Link2,
   Megaphone,
   Pencil,
@@ -360,6 +361,18 @@ export default function CampaignDetailScreen() {
             </Text>
             <Text className="text-xs text-sand-700 leading-4">{sampleMessage}</Text>
           </View>
+          <AnimatedPressable
+            onPress={() =>
+              router.push(
+                `/growth/translate?mode=message&campaignId=${campaign.id}&campaignName=${encodeURIComponent(campaign.name)}&message=${encodeURIComponent(sampleMessage)}`,
+              )
+            }
+            accessibilityRole="button"
+            className="flex-row items-center justify-center gap-1.5 mt-2.5 border border-dashed border-ink-300 rounded-xl py-2"
+          >
+            <Languages size={14} color={primaryColor} />
+            <Text className="text-ink-700 text-xs font-medium">AI Translate</Text>
+          </AnimatedPressable>
           {campaign.ab_variants && campaign.ab_variants.length === 2 && (
             <View className="mt-2.5 gap-1.5">
               {campaign.ab_variants.map((v) => (

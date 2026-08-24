@@ -563,7 +563,7 @@ export type SocialTemplateCreatePayload = {
   description?: string
   template_type: SocialTemplateType
   occasion?: string
-  product_id: string
+  product_ids: string[]
   studio_template: string
 }
 
