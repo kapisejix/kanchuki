@@ -52,6 +52,17 @@ const CROP_PIECE_ENABLED = false
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 
+// ponytail: bundled gradient swatches stand in for real backdrop photos
+// (none exist yet) — swap for actual sample shots per template when available.
+const STUDIO_TEMPLATE_THUMBNAILS: Record<string, number> = {
+  white_studio: require('../../assets/studio-templates/white_studio.png'),
+  warm_luxury: require('../../assets/studio-templates/warm_luxury.png'),
+  gold_festive: require('../../assets/studio-templates/gold_festive.png'),
+  diwali_lights: require('../../assets/studio-templates/diwali_lights.png'),
+  wedding_elegant: require('../../assets/studio-templates/wedding_elegant.png'),
+  flat_lay: require('../../assets/studio-templates/flat_lay.png'),
+}
+
 export default function ProductDetailScreen() {
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
@@ -1982,13 +1993,20 @@ export default function ProductDetailScreen() {
                   disabled={studioStarting}
                   accessibilityLabel={`${t.label} — ${t.description}`}
                   accessibilityRole="button"
-                  className="mb-3 border border-sand-200 rounded-2xl p-4"
+                  className="mb-3 border border-sand-200 rounded-2xl p-3 flex-row items-center gap-3"
                 >
-                  <View className="flex-row items-center gap-2">
-                    <Sparkles size={14} color={primaryColor} />
-                    <Text className="text-sm font-semibold text-ink-800">{t.label}</Text>
+                  <Image
+                    source={STUDIO_TEMPLATE_THUMBNAILS[t.id]}
+                    style={{ width: 48, height: 48, borderRadius: 12 }}
+                    contentFit="cover"
+                  />
+                  <View className="flex-1">
+                    <View className="flex-row items-center gap-2">
+                      <Sparkles size={14} color={primaryColor} />
+                      <Text className="text-sm font-semibold text-ink-800">{t.label}</Text>
+                    </View>
+                    <Text className="text-xs text-sand-500 mt-1">{t.description}</Text>
                   </View>
-                  <Text className="text-xs text-sand-500 mt-1">{t.description}</Text>
                 </AnimatedPressable>
               ))}
             </ScrollView>

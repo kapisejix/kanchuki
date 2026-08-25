@@ -64,7 +64,21 @@
       "brace-expansion@<1.1.16": ">=1.1.16 <2.0.0",
       "sharp@<0.35.0": ">=0.35.0",
       "find-my-way@<=9.6.0": ">=9.7.0",
-      "tar@<=7.5.20": ">=7.5.21"
+      "tar@<=7.5.20": ">=7.5.21",
+      "metro": "0.83.3",
+      "metro-babel-transformer": "0.83.3",
+      "metro-cache": "0.83.3",
+      "metro-cache-key": "0.83.3",
+      "metro-config": "0.83.3",
+      "metro-core": "0.83.3",
+      "metro-file-map": "0.83.3",
+      "metro-minify-terser": "0.83.3",
+      "metro-resolver": "0.83.3",
+      "metro-runtime": "0.83.3",
+      "metro-source-map": "0.83.3",
+      "metro-symbolicate": "0.83.3",
+      "metro-transform-plugins": "0.83.3",
+      "metro-transform-worker": "0.83.3"
     }
   },
   "dependencies": {

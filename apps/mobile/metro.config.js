@@ -1,9 +1,14 @@
 const path = require('node:path')
-const { getDefaultConfig } = require('expo/metro-config')
 const { withNativeWind } = require('nativewind/metro')
-const { withSentryConfig } = require('@sentry/react-native/metro')
+const { getSentryExpoConfig } = require('@sentry/react-native/metro')
 
-const config = getDefaultConfig(__dirname)
+// getSentryExpoConfig (not getDefaultConfig + withSentryConfig) wires Sentry's
+// debug-id injection through Expo's own unstable_beforeAssetSerializationPlugins
+// hook. withSentryConfig's generic customSerializer wrap shallow-clones the
+// config, which breaks Expo's self-recursion guard in its own serializer and
+// makes `expo export` crash with "Cannot read properties of undefined (reading
+// 'match')" — bundleCode comes back undefined.
+const config = getSentryExpoConfig(__dirname)
 
 // shamefully-hoist=true (root .npmrc) can land react@18 (pulled in by
 // apps/web/next) at the hoisted root node_modules/react. Packages that only
@@ -32,4 +37,4 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return resolve(context, moduleName, platform)
 }
 
-module.exports = withSentryConfig(withNativeWind(config, { input: './global.css' }))
+module.exports = withNativeWind(config, { input: './global.css' })
