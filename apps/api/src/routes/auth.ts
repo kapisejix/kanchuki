@@ -171,7 +171,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
       console.log(`[auth] /otp/send phone=${phone} path=test-bypass`);
       return reply.status(200).send({
-        data: { message: 'OTP sent', phone: `****${phone.slice(-4)}` },
+        data: { message: 'OTP sent', phone: `****${phone.slice(-4)}`, bypass: true },
       });
     }
 

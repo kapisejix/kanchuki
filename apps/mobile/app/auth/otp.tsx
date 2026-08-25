@@ -78,10 +78,11 @@ async function verifyWithMsg91Token(phone: string, accessToken: string) {
 
 export default function OtpScreen() {
   const insets = useSafeAreaInsets()
-  const { phone, reqId, token } = useLocalSearchParams<{
+  const { phone, reqId, token, bypass } = useLocalSearchParams<{
     phone: string
     reqId?: string
     token?: string
+    bypass?: string
   }>()
   const [otp, setOtp] = useState('')
   const [loading, setLoading] = useState(false)
@@ -99,13 +100,20 @@ export default function OtpScreen() {
     return () => clearInterval(timer)
   }, [resendTimer])
 
-  const msg91 = isMsg91OtpConfigured() && Boolean(reqId || token)
+  const msg91 = isMsg91OtpConfigured() && Boolean(reqId || token) && bypass !== 'true'
 
   const handleVerify = async (code: string) => {
     if (code.length !== 6 || !phone || loading) return
     setLoading(true)
     let verified = false
     try {
+      if (bypass === 'true') {
+        // Railway Demo / Test Phone Bypass: verify directly with backend API
+        const { data: result } = await authApi.verifyOtp(phone, code)
+        await completeLogin(result)
+        return
+      }
+
       if (msg91 && reqId) {
         // Real OTP flow: the widget verifies the code client-side and returns
         // an access token; the API re-confirms it with MSG91 server-side.

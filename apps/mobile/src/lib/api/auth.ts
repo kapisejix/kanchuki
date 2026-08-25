@@ -37,7 +37,7 @@ export const authApi = {
    * slow on a cold start.
    */
   sendOtp: (phone: string) =>
-    request<{ data: { message: string; phone: string } }>('/v1/auth/otp/send', {
+    request<{ data: { message: string; phone: string; bypass?: boolean } }>('/v1/auth/otp/send', {
       method: 'POST',
       body: JSON.stringify({ phone }),
       timeoutMs: 30_000,

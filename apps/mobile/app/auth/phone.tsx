@@ -40,34 +40,31 @@ export default function PhoneScreen() {
     setLoading(true);
     try {
       const digits = normalizeIndianPhone(phone);
-      let routed = false;
+
+      // 1. Check with backend API (handles Railway OTP_TEST_BYPASS test phones)
+      const apiRes = await authApi.sendOtp(phone);
+      if (apiRes.data?.bypass === true) {
+        router.push({ pathname: '/auth/otp', params: { phone, bypass: 'true' } });
+        return;
+      }
+
+      // 2. Real phone number: use native MSG91 widget when configured
       if (isMsg91OtpConfigured()) {
         try {
-          // Real OTP flow: the MSG91 widget sends the SMS itself. It returns a
-          // reqId the OTP screen uses to verify; in invisible mode it may return
-          // the verified access token right here — pass it through so the OTP
-          // screen can skip the code entry.
           const response = await sendMsg91Otp(digits);
           const reqId = extractMsg91ReqId(response) ?? '';
           const token = extractMsg91AccessToken(response) ?? '';
           if (reqId || token) {
-            routed = true;
             router.push({ pathname: '/auth/otp', params: { phone, reqId, token } });
             return;
           }
         } catch (widgetErr) {
-          // Widget failed (e.g. test phone number, cellular network failure, widget error)
-          // Fall through to backend API OTP route
-          console.warn('[auth] MSG91 widget send error, falling back to API:', widgetErr);
+          console.warn('[auth] MSG91 widget send error, using API OTP:', widgetErr);
         }
       }
 
-      // Backend API OTP route: handles demo/test phones (OTP_TEST_BYPASS),
-      // server-side MSG91 delivery, and environments where widget is unavailable.
-      if (!routed) {
-        await authApi.sendOtp(phone);
-        router.push({ pathname: '/auth/otp', params: { phone } });
-      }
+      // 3. Fallback: backend already dispatched the OTP
+      router.push({ pathname: '/auth/otp', params: { phone } });
     } catch (err) {
       // Surface the backend's actionable message (rate limit, send failure)
       // instead of a generic fallback.
