@@ -83,12 +83,12 @@ export default function RetailerOnboardScreen() {
     }
   }
 
-  const inputClass = 'bg-sand-50 border border-sand-200 rounded-xl px-4 py-3.5 text-sm text-sand-900'
-  const labelClass = 'text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5'
+  const inputClass = 'bg-white border border-sand-300 rounded-xl px-4 py-3.5 text-sm text-sand-900'
+  const labelClass = 'text-xs font-semibold text-sand-700 uppercase tracking-wide mb-1.5'
 
   if (success) {
     return (
-      <View className="flex-1 bg-ink-50 items-center justify-center px-6">
+      <View className="flex-1 bg-slate-50 items-center justify-center px-6">
         <View className="w-20 h-20 bg-turmeric-100 rounded-full items-center justify-center mb-4">
           <CheckCircle2 size={40} color={colors.turmeric[500]} />
         </View>
@@ -98,7 +98,7 @@ export default function RetailerOnboardScreen() {
         </Text>
         <AnimatedPressable
           onPress={() => router.back()}
-          className="mt-8 bg-ink-600 px-8 py-3.5 rounded-2xl"
+          className="mt-8 bg-rust-500 px-8 py-3.5 rounded-2xl shadow-sm"
         >
           <Text className="text-white font-semibold">Back to Dashboard</Text>
         </AnimatedPressable>
@@ -109,7 +109,7 @@ export default function RetailerOnboardScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-slate-50"
     >
       {/* Header */}
       <View
@@ -235,8 +235,8 @@ export default function RetailerOnboardScreen() {
           </View>
 
           {/* Info note */}
-          <View className="bg-ink-50 border border-ink-200 rounded-2xl px-4 py-3.5">
-            <Text className="text-xs text-ink-800">
+          <View className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3.5">
+            <Text className="text-xs text-amber-900">
               The retailer will receive a 14-day free trial and can log in via OTP on their own phone.
               A placeholder account is created now; it links to their phone number on first login.
             </Text>
