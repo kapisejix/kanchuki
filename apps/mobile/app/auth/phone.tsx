@@ -40,28 +40,31 @@ export default function PhoneScreen() {
     setLoading(true);
     try {
       const digits = normalizeIndianPhone(phone);
+      let routed = false;
       if (isMsg91OtpConfigured()) {
-        // Real OTP flow: the MSG91 widget sends the SMS itself. It returns a
-        // reqId the OTP screen uses to verify; in invisible mode it may return
-        // the verified access token right here — pass it through so the OTP
-        // screen can skip the code entry.
-        const response = await sendMsg91Otp(digits);
-        const reqId = extractMsg91ReqId(response) ?? ''
-        const token = extractMsg91AccessToken(response) ?? ''
-        if (!reqId && !token) {
-          // No verification session from the widget (misconfigured widget,
-          // send failure surfaced as a response) — don't navigate into a
-          // screen that would silently fall back to the legacy API OTP flow
-          // with no SMS behind it.
-          showError(
-            new Error('MSG91_WIDGET_NO_SESSION'),
-            'Could not start OTP verification. Check the MSG91 widget configuration and try again.',
-            'Could not send OTP',
-          )
-          return
+        try {
+          // Real OTP flow: the MSG91 widget sends the SMS itself. It returns a
+          // reqId the OTP screen uses to verify; in invisible mode it may return
+          // the verified access token right here — pass it through so the OTP
+          // screen can skip the code entry.
+          const response = await sendMsg91Otp(digits);
+          const reqId = extractMsg91ReqId(response) ?? '';
+          const token = extractMsg91AccessToken(response) ?? '';
+          if (reqId || token) {
+            routed = true;
+            router.push({ pathname: '/auth/otp', params: { phone, reqId, token } });
+            return;
+          }
+        } catch (widgetErr) {
+          // Widget failed (e.g. test phone number, cellular network failure, widget error)
+          // Fall through to backend API OTP route
+          console.warn('[auth] MSG91 widget send error, falling back to API:', widgetErr);
         }
-        router.push({ pathname: '/auth/otp', params: { phone, reqId, token } })
-      } else {
+      }
+
+      // Backend API OTP route: handles demo/test phones (OTP_TEST_BYPASS),
+      // server-side MSG91 delivery, and environments where widget is unavailable.
+      if (!routed) {
         await authApi.sendOtp(phone);
         router.push({ pathname: '/auth/otp', params: { phone } });
       }

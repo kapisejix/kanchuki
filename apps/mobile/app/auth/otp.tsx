@@ -104,21 +104,23 @@ export default function OtpScreen() {
   const handleVerify = async (code: string) => {
     if (code.length !== 6 || !phone || loading) return
     setLoading(true)
+    let verified = false
     try {
       if (msg91 && reqId) {
         // Real OTP flow: the widget verifies the code client-side and returns
         // an access token; the API re-confirms it with MSG91 server-side.
-        const response = await verifyMsg91Otp(reqId, code)
-        const accessToken = extractMsg91AccessToken(response)
-        if (!accessToken) {
-          throw new ApiError(
-            'MSG91_VERIFY_FAILED',
-            'Verification did not return a token. Try again.',
-            400,
-          )
+        try {
+          const response = await verifyMsg91Otp(reqId, code)
+          const accessToken = extractMsg91AccessToken(response)
+          if (accessToken) {
+            await verifyWithMsg91Token(phone, accessToken)
+            verified = true
+          }
+        } catch (widgetErr) {
+          console.warn('[auth] MSG91 widget verify failed, trying API verify:', widgetErr)
         }
-        await verifyWithMsg91Token(phone, accessToken)
-      } else {
+      }
+      if (!verified) {
         const { data: result } = await authApi.verifyOtp(phone, code)
         await completeLogin(result)
       }
@@ -198,9 +200,16 @@ export default function OtpScreen() {
     if (!phone || resendTimer > 0) return
     setResending(true)
     try {
+      let resent = false
       if (msg91 && reqId) {
-        await retryMsg91Otp(reqId)
-      } else {
+        try {
+          await retryMsg91Otp(reqId)
+          resent = true
+        } catch (widgetRetryErr) {
+          console.warn('[auth] MSG91 widget retry failed, falling back to API:', widgetRetryErr)
+        }
+      }
+      if (!resent) {
         await authApi.sendOtp(phone)
       }
       setResendTimer(30)

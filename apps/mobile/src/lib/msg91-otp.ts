@@ -33,8 +33,8 @@ function getSdk(): Msg91Sdk {
 // EXPO_PUBLIC_* vars are statically inlined at build time (dot access keeps
 // expo lint's no-dynamic-env-var rule happy — the API_URL client uses the
 // same pattern).
-const WIDGET_ID = process.env.EXPO_PUBLIC_MSG91_WIDGET_ID
-const TOKEN_AUTH = process.env.EXPO_PUBLIC_MSG91_TOKEN_AUTH
+const WIDGET_ID = process.env.EXPO_PUBLIC_MSG91_WIDGET_ID || '366871673575383335383835'
+const TOKEN_AUTH = process.env.EXPO_PUBLIC_MSG91_TOKEN_AUTH || '505769TIAaX1pQa6a649a52P1'
 
 let initialized = false
 

@@ -11,7 +11,7 @@
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app",
-        "EXPO_PUBLIC_MSG91_WIDGET_ID": "36686c6f6679343135333631",
+        "EXPO_PUBLIC_MSG91_WIDGET_ID": "366871673575383335383835",
         "EXPO_PUBLIC_MSG91_TOKEN_AUTH": "505769TIAaX1pQa6a649a52P1",
         "EXPO_PUBLIC_SENTRY_DSN": "https://1cf3b3ac98fe5853c643c2a7cb22ab96@o4511960130387968.ingest.de.sentry.io/4511960286494800"
       }
@@ -20,7 +20,7 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.kanchuki.app",
-        "EXPO_PUBLIC_MSG91_WIDGET_ID": "36686c6f6679343135333631",
+        "EXPO_PUBLIC_MSG91_WIDGET_ID": "366871673575383335383835",
         "EXPO_PUBLIC_MSG91_TOKEN_AUTH": "505769TIAaX1pQa6a649a52P1",
         "EXPO_PUBLIC_SENTRY_DSN": "https://1cf3b3ac98fe5853c643c2a7cb22ab96@o4511960130387968.ingest.de.sentry.io/4511960286494800"
       }
