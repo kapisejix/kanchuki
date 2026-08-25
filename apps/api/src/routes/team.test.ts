@@ -44,55 +44,56 @@ const {
   mockAuditLogCreate: vi.fn(),
 }));
 
-vi.mock('@kanchuki/db', () => ({
-  // Import-chain requirement only: team route graph pulls purge modules that
-  // call getPurgePrisma() at module top-level. Never exercised by this suite.
-  getPurgePrisma: () => ({
-    $executeRawUnsafe: vi.fn(),
-    $queryRawUnsafe: vi.fn(),
-    $transaction: (ops: unknown) =>
-      Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
-    retailer: { findUnique: vi.fn() },
-  }),
-  prisma: {
-    // F-024/F-027 seed helpers run on agent-created retailer onboarding and
-    // degrade best-effort when the template tables aren't mocked — stub them
-    // so the tests don't log a spurious "Failed to seed ..." error per run.
-    defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
-    defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
-    teamMember: {
-      findUnique: mockTeamMemberFindUnique,
-      findMany: mockTeamMemberFindMany,
-      create: mockTeamMemberCreate,
-      update: mockTeamMemberUpdate,
+vi.mock('@kanchuki/db', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@kanchuki/db')>();
+  return {
+    ...actual,
+    getPurgePrisma: () => ({
+      $executeRawUnsafe: vi.fn(),
+      $queryRawUnsafe: vi.fn(),
+      $transaction: (ops: unknown) =>
+        Array.isArray(ops) ? Promise.all(ops as Promise<unknown>[]) : Promise.resolve(),
+      retailer: { findUnique: vi.fn() },
+    }),
+    prisma: {
+      ...actual.prisma,
+      defaultProductCategory: { findMany: vi.fn().mockResolvedValue([]) },
+      defaultProductAttribute: { findMany: vi.fn().mockResolvedValue([]) },
+      teamMember: {
+        findUnique: mockTeamMemberFindUnique,
+        findMany: mockTeamMemberFindMany,
+        findFirst: vi.fn(),
+        create: mockTeamMemberCreate,
+        update: mockTeamMemberUpdate,
+      },
+      teamMemberTerritory: { findMany: mockTeamMemberTerritoryFindMany },
+      territory: {
+        findFirst: mockTerritoryFindFirst,
+        findMany: mockTerritoryFindMany,
+        findUnique: mockTerritoryFindUnique,
+        create: vi.fn(),
+        update: vi.fn(),
+      },
+      retailer: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        upsert: mockRetailerUpsert,
+        count: mockRetailerCount,
+        findMany: mockRetailerFindMany,
+        findUnique: mockRetailerFindUnique,
+      },
+      supportTicket: {
+        create: mockSupportTicketCreate,
+        findMany: mockSupportTicketFindMany,
+        findUnique: mockSupportTicketFindUnique,
+        update: mockSupportTicketUpdate,
+        count: mockSupportTicketCount,
+      },
+      auditLog: {
+        create: mockAuditLogCreate,
+      },
     },
-    teamMemberTerritory: { findMany: mockTeamMemberTerritoryFindMany },
-    territory: {
-      findFirst: mockTerritoryFindFirst,
-      findMany: mockTerritoryFindMany,
-      findUnique: mockTerritoryFindUnique,
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    retailer: {
-      upsert: mockRetailerUpsert,
-      count: mockRetailerCount,
-      findMany: mockRetailerFindMany,
-      findUnique: mockRetailerFindUnique,
-    },
-    supportTicket: {
-      create: mockSupportTicketCreate,
-      findMany: mockSupportTicketFindMany,
-      findUnique: mockSupportTicketFindUnique,
-      update: mockSupportTicketUpdate,
-      count: mockSupportTicketCount,
-    },
-    auditLog: {
-      create: mockAuditLogCreate,
-    },
-  },
-  Prisma: {},
-}));
+  };
+});
 
 async function buildApp() {
   const app = Fastify();
@@ -873,3 +874,136 @@ describe('POST /team/tickets/:id/catalog-session', () => {
     await app.close();
   });
 });
+
+describe('POST /team/members — passwordless creation & email', () => {
+  it('creates member with auto-generated temporary password when password is omitted', async () => {
+    mockTeamMemberFindUnique.mockResolvedValueOnce(null); // email uniqueness check
+    mockTeamMemberCreate.mockResolvedValueOnce({
+      id: 'tm_new',
+      name: 'Rohan Verma',
+      email: 'rohan@kanchuki.app',
+      phone: '9876543210',
+      role: 'MARKETING_AGENT',
+      is_active: true,
+      max_retailers: 100,
+      referral_code: 'ROHAN1',
+    });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/team/members',
+      headers: { 'x-admin-key': 'test-admin-key', 'content-type': 'application/json' },
+      payload: {
+        name: 'Rohan Verma',
+        email: 'rohan@kanchuki.app',
+        phone: '9876543210',
+        role: 'MARKETING_AGENT',
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockTeamMemberCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          name: 'Rohan Verma',
+          email: 'rohan@kanchuki.app',
+          password_hash: expect.any(String),
+        }),
+      }),
+    );
+    await app.close();
+  });
+});
+
+describe('POST /team/otp/send & POST /team/otp/verify', () => {
+  it('sends OTP and verifies successfully issuing a team JWT token', async () => {
+    mockTeamMemberFindUnique.mockResolvedValueOnce(null);
+    mockTeamMemberFindMany.mockResolvedValue([]);
+
+    const mockMember = {
+      id: 'tm_otp_user',
+      name: 'Priya Sharma',
+      email: 'priya@kanchuki.app',
+      phone: '9876543211',
+      role: 'SUPPORT_AGENT',
+      is_active: true,
+    };
+
+    // Mock prisma.teamMember.findFirst
+    // @ts-ignore
+    const { prisma } = await import('@kanchuki/db');
+    prisma.teamMember.findFirst = vi.fn().mockResolvedValue(mockMember);
+
+    const app = await buildApp();
+
+    // 1. Send OTP
+    const sendRes = await app.inject({
+      method: 'POST',
+      url: '/v1/team/otp/send',
+      payload: { identifier: '9876543211' },
+    });
+    expect(sendRes.statusCode).toBe(200);
+    expect(sendRes.json().data.message).toBeDefined();
+
+    // 2. Verify OTP (using dev test code 123456)
+    const verifyRes = await app.inject({
+      method: 'POST',
+      url: '/v1/team/otp/verify',
+      payload: { identifier: '9876543211', otp: '123456' },
+    });
+    expect(verifyRes.statusCode).toBe(200);
+    expect(verifyRes.json().data.token).toBeDefined();
+    expect(verifyRes.json().data.team_member.name).toBe('Priya Sharma');
+
+    await app.close();
+  });
+});
+
+describe('POST /team/forgot-password & POST /team/reset-password', () => {
+  it('sends password reset code and resets password successfully', async () => {
+    const mockMember = {
+      id: 'tm_reset_user',
+      name: 'Vikram Singh',
+      email: 'vikram@kanchuki.app',
+      password_hash: 'old_hash',
+      is_active: true,
+    };
+
+    mockTeamMemberFindUnique.mockResolvedValue(mockMember);
+    mockTeamMemberUpdate.mockResolvedValue({ ...mockMember, password_hash: 'new_hash' });
+
+    const app = await buildApp();
+
+    // 1. Request forgot password
+    const forgotRes = await app.inject({
+      method: 'POST',
+      url: '/v1/team/forgot-password',
+      payload: { email: 'vikram@kanchuki.app' },
+    });
+    expect(forgotRes.statusCode).toBe(200);
+    expect(forgotRes.json().data.message).toBeDefined();
+
+    // 2. Reset password (using dev test code 123456)
+    const resetRes = await app.inject({
+      method: 'POST',
+      url: '/v1/team/reset-password',
+      payload: {
+        email: 'vikram@kanchuki.app',
+        reset_code: '123456',
+        new_password: 'brand-new-secure-password',
+      },
+    });
+    expect(resetRes.statusCode).toBe(200);
+    expect(resetRes.json().data.message).toContain('Password reset successfully');
+    expect(mockTeamMemberUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'tm_reset_user' },
+        data: expect.objectContaining({ password_hash: expect.any(String) }),
+      }),
+    );
+
+    await app.close();
+  });
+});
+

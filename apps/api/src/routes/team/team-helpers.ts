@@ -52,7 +52,14 @@ export async function deriveTerritoryFromPincode(
 // Extracted so each domain module can independently register it (matches the
 // admin.ts/admin/*.ts split convention: adminAuthPreHandler re-added per module).
 export async function teamAuthPreHandler(request: FastifyRequest, reply: FastifyReply) {
-  if (request.url === '/v1/team/login') return;
+  const publicTeamPaths = [
+    '/v1/team/login',
+    '/v1/team/otp/send',
+    '/v1/team/otp/verify',
+    '/v1/team/forgot-password',
+    '/v1/team/reset-password',
+  ];
+  if (publicTeamPaths.some((p) => request.url.startsWith(p))) return;
 
   // Bootstrap: the existing shared admin key acts as an unscoped Super Admin,
   // since team_members starts empty and needs a way to create the first one.

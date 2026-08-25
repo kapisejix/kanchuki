@@ -91,7 +91,6 @@ function MemberModal({
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
-  const [password, setPassword] = useState('')
   const [role, setRole] = useState<TeamRole>('MARKETING_AGENT')
   const [maxRetailers, setMaxRetailers] = useState('100')
   const [selectedTerritories, setSelectedTerritories] = useState<string[]>([])
@@ -104,7 +103,6 @@ function MemberModal({
       setName(editMember.name)
       setEmail(editMember.email)
       setPhone(editMember.phone ?? '')
-      setPassword('')
       setRole(editMember.role)
       setMaxRetailers(String(editMember.max_retailers ?? ''))
       setSelectedTerritories(editMember.territories.map((t) => t.id))
@@ -112,7 +110,6 @@ function MemberModal({
       setName('')
       setEmail('')
       setPhone('')
-      setPassword('')
       setRole('MARKETING_AGENT')
       setMaxRetailers('100')
       setSelectedTerritories([])
@@ -145,7 +142,6 @@ function MemberModal({
           body: JSON.stringify({
             name,
             email,
-            password,
             role,
             max_retailers: Number(maxRetailers) || undefined,
             territory_ids: selectedTerritories,
@@ -242,17 +238,10 @@ function MemberModal({
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-500 mb-1.5">Password</label>
-                    <div className="relative">
-                      <KeyRound size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                      <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Min 8 characters"
-                        className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-400 transition-all"
-                      />
+                  <div className="bg-cyan-50 border border-cyan-200/70 rounded-xl p-3.5 flex items-start gap-2.5">
+                    <Sparkles size={16} className="text-cyan-600 mt-0.5 shrink-0" />
+                    <div className="text-xs text-cyan-950 leading-relaxed">
+                      <span className="font-semibold text-cyan-900">Automated Credentials &amp; OTP:</span> A secure temporary password and login instructions will be sent automatically to this email. The member can also log in directly using mobile OTP.
                     </div>
                   </div>
                 </>

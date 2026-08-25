@@ -1,8 +1,9 @@
-// Auto-split from team.ts (scripts/check-route-size.sh) — route bodies verbatim.
+import { randomBytes } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { sendTeamMemberWelcomeEmail } from '../../lib/email.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { hashPassword } from '../../plugins/team-auth.js';
 import {
@@ -28,7 +29,7 @@ const CreateMemberSchema = z.object({
       'Enter a valid 10-digit Indian mobile number',
     )
     .transform((v) => (v ? normalizeIndianPhone(v) : undefined)),
-  password: z.string().min(8).max(128),
+  password: z.string().min(8).max(128).optional(),
   role: z.enum([
     'SUPER_ADMIN',
     'MARKETING_MANAGER',
@@ -106,12 +107,15 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       body.data.referral_code ??
       (body.data.role === 'MARKETING_AGENT' ? generateReferralCode() : undefined);
 
+    const rawPassword =
+      body.data.password || `Kanchuki-${randomBytes(6).toString('hex')}!`;
+
     const member = await prisma.teamMember.create({
       data: {
         name: body.data.name,
         email: body.data.email.toLowerCase(),
         phone: body.data.phone,
-        password_hash: hashPassword(body.data.password),
+        password_hash: hashPassword(rawPassword),
         role: body.data.role,
         max_retailers: body.data.max_retailers,
         referral_code: referralCode,
@@ -123,12 +127,25 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
         id: true,
         name: true,
         email: true,
+        phone: true,
         role: true,
         max_retailers: true,
         is_active: true,
         referral_code: true,
       },
     });
+
+    // Asynchronously dispatch welcome email with credentials & OTP instructions
+    sendTeamMemberWelcomeEmail({
+      name: member.name,
+      email: member.email,
+      tempPassword: body.data.password ? undefined : rawPassword,
+      role: member.role,
+      phone: member.phone,
+    }).catch((err) => {
+      console.error('[team] Failed to send welcome email:', err);
+    });
+
     return { data: member };
   });
 
