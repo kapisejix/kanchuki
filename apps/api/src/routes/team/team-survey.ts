@@ -9,6 +9,7 @@ import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { forbidden, validationError } from '../../plugins/error-handler.js';
+import { teamAuthPreHandler } from './team-helpers.js';
 
 const surveySchema = z.object({
   locale: z.enum(['en', 'hi', 'pa']).default('en'),
@@ -58,6 +59,8 @@ const surveySchema = z.object({
 });
 
 export const teamSurveyRoutes: FastifyPluginAsync = async (server) => {
+  server.addHook('preHandler', teamAuthPreHandler);
+
   // ─── POST /team/survey ───────────────────────────────────────────
   server.post('/survey', async (request, reply) => {
     const tm = request.teamMember;
