@@ -108,7 +108,7 @@ export function SurveyForm({ token, staffName, onLogout }: { token: string; staf
     const checkboxNames = new Set(
       SECTIONS.flatMap((s) => s.questions).filter((q) => q.type === 'checkbox').map((q) => q.name),
     )
-    for (const key of new Set(data.keys())) {
+    for (const key of Array.from(new Set(data.keys()))) {
       const values = data.getAll(key).map(String).filter(Boolean)
       if (values.length === 0) continue
       payload[key] = checkboxNames.has(key) ? values : (values[0] ?? '')
