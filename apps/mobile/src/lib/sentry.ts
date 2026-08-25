@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
 // DSN from Sentry wizard / config
 const DSN =
   process.env['EXPO_PUBLIC_SENTRY_DSN'] ??
-  'https://00b667de666711845ef98265a9a9f0c8@o4511960130387968.ingest.de.sentry.io/4511960168988752';
+  'https://1cf3b3ac98fe5853c643c2a7cb22ab96@o4511960130387968.ingest.de.sentry.io/4511960286494800';
 
 /** Initialize Sentry — call once before any component renders. */
 export function initSentry(): void {
