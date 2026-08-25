@@ -36,6 +36,23 @@ type Usage = {
   try_on_cost_usd: number
 }
 
+type PlanLimit = { plan: 'STARTER' | 'GROWTH' | 'PRO'; resource_type: string; limit_per_period: number }
+type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number; annual_paise: number }
+
+// Same fallback convention as billing.ts: a missing plan-pricing/plan-limit
+// row means the DB hasn't been seeded for that plan yet, so show the
+// documented default instead of blank.
+const PRICING_FALLBACK: Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: string; annual: string; products: string; tryons: string }> = {
+  STARTER: { monthly: '₹999/mo', annual: '₹9,999/yr', products: '500', tryons: '0' },
+  GROWTH: { monthly: '₹2,499/mo', annual: '₹24,999/yr', products: '2,000', tryons: '100' },
+  PRO: { monthly: '₹4,999/mo', annual: '₹49,999/yr', products: '∞', tryons: '500' },
+}
+const PLAN_LABEL: Record<'STARTER' | 'GROWTH' | 'PRO', string> = {
+  STARTER: 'Starter',
+  GROWTH: 'Growth',
+  PRO: 'Pro',
+}
+
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.1 } },
@@ -49,21 +66,43 @@ const itemVariants = {
 export default function BillingPage() {
   const [stats, setStats] = useState<Stats | null>(null)
   const [usage, setUsage] = useState<Usage | null>(null)
+  const [planLimits, setPlanLimits] = useState<PlanLimit[]>([])
+  const [planPricing, setPlanPricing] = useState<PlanPricing[]>([])
   const [setupStatus, setSetupStatus] = useState('')
   const [setupLoading, setSetupLoading] = useState(false)
 
   useEffect(() => {
     async function load() {
       const opts = adminGetOptions()
-      const [s, u] = await Promise.all([
+      const [s, u, pl, pp] = await Promise.all([
         fetch(`${API_URL}/v1/admin/stats`, opts).then((r) => r.json()),
         fetch(`${API_URL}/v1/admin/usage`, opts).then((r) => r.json()),
+        fetch(`${API_URL}/v1/admin/plan-limits`, opts).then((r) => r.json()),
+        fetch(`${API_URL}/v1/admin/plan-pricing`, opts).then((r) => r.json()),
       ])
       setStats(s.data)
       setUsage(u.data)
+      setPlanLimits(pl.data ?? [])
+      setPlanPricing(pp.data ?? [])
     }
     load()
   }, [])
+
+  const paise = (n: number) => `₹${(n / 100).toLocaleString('en-IN')}`
+  const pricingRows = (['STARTER', 'GROWTH', 'PRO'] as const).map((plan) => {
+    const pricing = planPricing.find((p) => p.plan === plan)
+    const products = planLimits.find((l) => l.plan === plan && l.resource_type === 'PRODUCT_UPLOAD')
+    const tryons = planLimits.find((l) => l.plan === plan && l.resource_type === 'TRY_ON')
+    const fallback = PRICING_FALLBACK[plan]
+    return {
+      plan: PLAN_LABEL[plan],
+      monthly: pricing ? `${paise(pricing.monthly_paise)}/mo` : fallback.monthly,
+      annual: pricing ? `${paise(pricing.annual_paise)}/yr` : fallback.annual,
+      // -1 means unlimited (same convention as plan-limits.tsx) — no row also means unlimited.
+      products: products ? (products.limit_per_period === -1 ? '∞' : products.limit_per_period.toLocaleString('en-IN')) : fallback.products,
+      tryons: tryons ? (tryons.limit_per_period === -1 ? '∞' : tryons.limit_per_period.toLocaleString('en-IN')) : fallback.tryons,
+    }
+  })
 
   const setupRazorpayPlans = async () => {
     setSetupLoading(true)
@@ -237,11 +276,7 @@ export default function BillingPage() {
               </tr>
             </thead>
             <tbody>
-              {[
-                { plan: 'Starter', monthly: '₹999/mo', annual: '₹9,999/yr', products: '500', tryons: '0' },
-                { plan: 'Growth', monthly: '₹2,499/mo', annual: '₹24,999/yr', products: '2,000', tryons: '100' },
-                { plan: 'Pro', monthly: '₹4,999/mo', annual: '₹49,999/yr', products: '∞', tryons: '500' },
-              ].map((row, i) => (
+              {pricingRows.map((row, i) => (
                 <motion.tr
                   key={row.plan}
                   initial={{ opacity: 0, x: -10 }}
