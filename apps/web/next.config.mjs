@@ -52,27 +52,6 @@ const nextConfig = {
       },
     ],
   },
-  // Packages with no declared react peer dep (e.g. swiper) resolve a bare
-  // `import 'react'` via Node's directory walk-up, which can land on the
-  // react@19 hoisted at the workspace root (pulled in by a stray
-  // @sentry/react-native dep there) instead of this app's react@18 —
-  // pin the exact specifiers so the client bundle shares one React instance.
-  //
-  // isServer-gated: aliasing this unconditionally also clobbers Next's own
-  // RSC/server-layer react resolution (which needs its internal build with
-  // React.cache()), breaking every Route Handler on a dynamic segment at
-  // build time with "n.cache is not a function" (buildAppStaticPaths ->
-  // patchFetch -> createDedupeFetch). Client-only keeps that layer intact.
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      config.resolve.alias = {
-        ...config.resolve.alias,
-        react: path.resolve(__dirname, 'node_modules/react'),
-        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
-      }
-    }
-    return config
-  },
   // PWA manifest & service worker served from /public
   async headers() {
     return [
