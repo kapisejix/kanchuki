@@ -114,7 +114,6 @@ export default function RetailerOnboardScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
@@ -242,8 +241,6 @@ export default function RetailerOnboardScreen() {
             </Text>
           </View>
         </View>
-
-        {/* Bottom padding */}
         <View className="h-24" />
       </ScrollView>
 
