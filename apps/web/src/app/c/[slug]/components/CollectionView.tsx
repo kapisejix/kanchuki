@@ -60,6 +60,14 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   // their API proxies. store=null ⇒ legacy /c/{slug} form.
   const basePath = store ? `/${store}/${slug}` : `/c/${slug}`;
   const apiBasePath = store ? `/api/${store}/${slug}` : `/api/c/${slug}`;
+  // Direct route for "Catalog" navigation — canonical browse page when on a pseudo-slug
+  const catalogPath = store
+    ? slug.startsWith('all-') || slug === 'all'
+      ? `/${store}/all`
+      : slug.startsWith('cat-')
+        ? `/${store}/categories/${slug.slice(4)}`
+        : `/${store}/${slug}`
+    : `/c/${slug}`;
   // Start EMPTY and hydrate from localStorage in an effect — reading
   // localStorage during render (useState initializer) makes the client's
   // first render differ from SSR HTML (server always renders an empty Map),
@@ -531,7 +539,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
         <div className="max-w-md mx-auto grid grid-cols-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Link
-            href={basePath}
+            href={catalogPath}
             className="flex flex-col items-center justify-center gap-0.5 py-1 text-cyan-600 hover:text-cyan-700 transition-colors"
           >
             <LayoutGrid size={20} />

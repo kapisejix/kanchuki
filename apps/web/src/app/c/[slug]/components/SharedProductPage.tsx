@@ -38,6 +38,14 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   // without a store slug (legacy /c/[slug] only) have no /api/{slug}/leads
   // route, so they skip gating entirely, same as everywhere else in the app.
   const storeSlug = collection.retailer.public_slug;
+  const catalogTarget = storeSlug
+    ? collectionPath.includes(`/all-`) || collectionPath.endsWith('/all')
+      ? `/${storeSlug}/all`
+      : collectionPath.includes(`/cat-`)
+        ? `/${storeSlug}/categories/${collectionPath.split('/cat-')[1]}`
+        : collectionPath
+    : collectionPath;
+
   const [needsLead, setNeedsLead] = useState(() => Boolean(storeSlug));
   useEffect(() => {
     if (!storeSlug) return;
@@ -51,10 +59,10 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   // press instead lands on the store's catalog.
   useEffect(() => {
     window.history.pushState({ kanchukiSharedEntry: true }, '', window.location.href);
-    const onPopState = () => router.push(collectionPath);
+    const onPopState = () => router.push(catalogTarget);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [collectionPath, router]);
+  }, [catalogTarget, router]);
 
   // Server-built WhatsApp enquiry deep link — the recipient can message the
   // shop about this exact product without any client-side logic.
@@ -88,7 +96,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         <KanchukiBrandBar />
         <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
           <Link
-            href={collectionPath}
+            href={catalogTarget}
             className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
             aria-label="Back to catalog"
           >
@@ -221,7 +229,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         )}
 
         <Link
-          href={collectionPath}
+          href={catalogTarget}
           className="mt-2.5 flex items-center justify-center gap-2 w-full font-semibold py-3.5 rounded-2xl
                      bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg
                      transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2
