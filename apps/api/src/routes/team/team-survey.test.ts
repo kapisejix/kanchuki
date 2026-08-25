@@ -111,7 +111,7 @@ describe('POST /v1/team/survey', () => {
     expect(res.json()).toEqual({ data: { received: true } });
 
     expect(mockAuditLogCreate).toHaveBeenCalledTimes(1);
-    const call = mockAuditLogCreate.mock.calls[0][0];
+    const call = mockAuditLogCreate.mock.calls[0]![0];
     expect(call.data).toMatchObject({
       actor_id: 'tm_ash',
       actor_type: 'team_member',
@@ -143,7 +143,7 @@ describe('POST /v1/team/survey', () => {
     });
 
     expect(res.statusCode).toBe(201);
-    const call = mockAuditLogCreate.mock.calls[0][0];
+    const call = mockAuditLogCreate.mock.calls[0]![0];
     expect(call.data.metadata.locale).toBe('en');
     await app.close();
   });
