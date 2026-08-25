@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { AppState, View, ActivityIndicator } from 'react-native'
+import { AppState, View, ActivityIndicator, Image } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Home, Grid3X3, Users, Link2, ShoppingBag } from 'lucide-react-native'
@@ -115,7 +115,14 @@ export default function TabsLayout() {
           title: 'Home',
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
-          headerTitle: 'Kanchuki',
+          headerTitleAlign: 'center',
+          headerTitle: () => (
+            <Image
+              source={require('../../assets/kanchuki-full-logo.png')}
+              style={{ width: 140, height: 28 }}
+              resizeMode="contain"
+            />
+          ),
         }}
       />
       <Tabs.Screen

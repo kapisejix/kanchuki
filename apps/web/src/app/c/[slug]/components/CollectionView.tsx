@@ -34,9 +34,10 @@ const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), 
 const RegionalFilters = dynamic(() => import('./RegionalFilters').then((m) => m.RegionalFilters), { ssr: false });
 const CustomerReferral = dynamic(() => import('./CustomerReferral').then((m) => m.CustomerReferral), { ssr: false });
 
-// VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
+// Feature flags for customer catalog screen
 const TRY_ON_ENABLED = false;
 const REFER_EARN_ENABLED = false;
+const REGIONAL_FILTERS_ENABLED = false;
 
 const PAGE_SIZE = 12;
 
@@ -351,11 +352,13 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           </p>
         )}
 
-        {/* Regional weave/style filters */}
-        <RegionalFilters
-          activeFilter={filterRegional}
-          onFilterChange={setFilterRegional}
-        />
+        {/* Regional weave/style filters (hidden for now, will display later) */}
+        {REGIONAL_FILTERS_ENABLED && (
+          <RegionalFilters
+            activeFilter={filterRegional}
+            onFilterChange={setFilterRegional}
+          />
+        )}
 
         {/* Style quiz — show once if not completed */}
         {!quizDone && !showQuiz && (
@@ -464,55 +467,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         )}
       </main>
 
-      {/* ── Sticky Bottom Bar — 4 buttons: Buy Now / Selected / Enquire / Book Visit ── */}
-      <div className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 safe-area-inset-bottom shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
-        <div className="max-w-md mx-auto px-3 py-3 grid grid-cols-4 gap-1.5">
-          {/* Buy Now only exists once the retailer connects a payment gateway
-              — no disabled placeholder for stores without checkout. */}
-          {checkoutEnabled && (
-            <Link
-              href={`${basePath}/cart`}
-              className="flex flex-col items-center justify-center gap-0.5 bg-ink-600 hover:bg-ink-700 text-white
-                         font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink-500 focus-visible:ring-offset-2"
-            >
-              <ShoppingBag size={15} />
-              <span className="text-[10px] leading-tight">Buy Now</span>
-            </Link>
-          )}
-          <Link
-            href={`${basePath}/wishlist`}
-            className="flex flex-col items-center justify-center gap-0.5 text-sand-700 font-semibold
-                       bg-sand-50 border border-sand-100 rounded-2xl py-2.5 hover:bg-rust-50 hover:border-rust-200
-                       transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rust-400"
-          >
-            <Heart size={15} className="text-rust-500 fill-rust-500" />
-            <span className="text-[10px] leading-tight">
-              Selected{favorites.size > 0 && ` (${favorites.size})`}
-            </span>
-          </Link>
-          <button
-            onClick={handleEnquireAll}
-            className="flex flex-col items-center justify-center gap-0.5 bg-fern hover:brightness-90 text-white
-                       font-semibold py-2.5 rounded-2xl shadow-soft-lg transition-all active:scale-[0.98]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fern focus-visible:ring-offset-2"
-          >
-            <MessageCircle size={15} />
-            <span className="text-[10px] leading-tight">
-              Enquire{favorites.size > 0 && ` (${favorites.size})`}
-            </span>
-          </button>
-          <button
-            onClick={() => setShowBooking(true)}
-            className="flex flex-col items-center justify-center gap-0.5 bg-turmeric-50 hover:bg-turmeric-100 text-turmeric-700
-                       font-semibold py-2.5 rounded-2xl border border-turmeric-100 transition-all active:scale-[0.98]
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-turmeric-500 focus-visible:ring-offset-2"
-          >
-            <Calendar size={15} />
-            <span className="text-[10px] leading-tight">Book Visit</span>
-          </button>
-        </div>
-      </div>
+
 
       {/* ── Product Detail Sheet ── */}
       {selectedProduct && (          <ProductDetailSheet
@@ -572,23 +527,40 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       {/* Bottom padding for sticky nav */}
       <div className="h-20" />
 
-      {/* ── Bottom Nav Bar ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100">
-        <div className="max-w-md mx-auto flex items-center justify-around py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+      {/* ── Fixed Bottom Overlay Nav: Catalog, Saved, Enquire ── */}
+      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
+        <div className="max-w-md mx-auto grid grid-cols-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Link
             href={basePath}
-            className="flex flex-col items-center gap-0.5 px-4 py-1 text-cyan-600"
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-cyan-600 hover:text-cyan-700 transition-colors"
           >
             <LayoutGrid size={20} />
             <span className="text-[10px] font-semibold">Catalog</span>
           </Link>
           <Link
             href={`${basePath}/wishlist`}
-            className="flex flex-col items-center gap-0.5 px-4 py-1 text-gray-400 hover:text-rose-500 transition-colors"
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-gray-500 hover:text-rose-500 transition-colors relative"
           >
-            <Heart size={20} />
+            <div className="relative">
+              <Heart
+                size={20}
+                className={favorites.size > 0 ? 'text-rose-500 fill-rose-500' : ''}
+              />
+              {favorites.size > 0 && (
+                <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {favorites.size}
+                </span>
+              )}
+            </div>
             <span className="text-[10px] font-semibold">Saved</span>
           </Link>
+          <button
+            onClick={handleEnquireAll}
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-emerald-600 hover:text-emerald-700 active:scale-95 transition-all"
+          >
+            <MessageCircle size={20} />
+            <span className="text-[10px] font-semibold">Enquire</span>
+          </button>
         </div>
       </nav>
     </div>

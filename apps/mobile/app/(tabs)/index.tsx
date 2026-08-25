@@ -12,7 +12,6 @@ import {
   Package,
   PackagePlus,
   QrCode,
-  Ruler,
   Search,
   Settings,
   ShoppingBag,
@@ -213,13 +212,6 @@ export default function HomeScreen() {
             sublabel="Rack-by-rack batch upload"
             onPress={() => router.push('/product/bulk-onboard')}
             accent={colors.rust[50]}
-          />
-          <QuickAction
-            icon={<Ruler size={22} color={colors.danger} />}
-            label="Size Charts"
-            sublabel="S–10XL per category"
-            onPress={() => router.push('/size-chart')}
-            accent={colors.dangerSurface}
           />
           <QuickAction
             icon={<QrCode size={22} color={colors.rust[600]} />}
