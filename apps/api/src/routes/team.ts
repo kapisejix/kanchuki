@@ -6,6 +6,7 @@ import {
   teamReportingRoutes,
   teamRetailersRoutes,
   teamSessionRoutes,
+  teamSurveyRoutes,
   teamTerritoriesRoutes,
   teamTicketsRoutes,
 } from './team/index.js';
@@ -25,4 +26,6 @@ export const teamRoutes: FastifyPluginAsync = async (server) => {
   await server.register(teamTicketsRoutes);
   // team-reporting — auto-split module
   await server.register(teamReportingRoutes);
+  // team-survey — staff-only retailer discovery survey submissions
+  await server.register(teamSurveyRoutes);
 };

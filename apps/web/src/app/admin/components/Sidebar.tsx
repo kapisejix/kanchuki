@@ -46,6 +46,7 @@ import {
   MessageCircle,
   Gift,
   Handshake,
+  ClipboardList,
   MapPin,
   Star,
   Megaphone,
@@ -117,6 +118,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Support Tickets', href: '/admin/support-tickets', icon: Ticket },
       { label: 'Bug Reports', href: '/admin/bug-reports', icon: Bug },
       { label: 'Contact Submissions', href: '/admin/contact-submissions', icon: Mail },
+      { label: 'Survey Submissions', href: '/admin/survey', icon: ClipboardList },
     ],
   },
   {

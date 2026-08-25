@@ -47,6 +47,7 @@ import {
   adminRatingsRoutes,
   adminDesignReferenceRoutes,
   adminBugReportRoutes,
+  adminSurveyRoutes,
 } from "./admin/index.js";
 
 export {
@@ -210,6 +211,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminActivityRoutes);
   // admin-contact — public /contact form messages (ContactSubmission audit entries)
   await server.register(adminContactRoutes);
+  // admin-survey — retailer discovery survey submissions (RetailerSurvey audit entries)
+  await server.register(adminSurveyRoutes);
   // admin-media — auto-split module
   await server.register(adminMediaRoutes);
   // admin-data — auto-split module

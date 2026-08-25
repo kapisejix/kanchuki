@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Retailer Pain-Point Survey — Kanchuki</title>
+<style>
+  :root {
+    --ink: #1a1a1a;
+    --muted: #6b6b6b;
+    --line: #ddd;
+    --accent: #b8860b;
+    --bg-soft: #faf9f6;
+  }
+  html { -webkit-text-size-adjust: 100%; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    color: var(--ink);
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+    line-height: 1.5;
+    background: #fff;
+    overflow-x: hidden;
+  }
+  header {
+    border-bottom: 3px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 24px;
+  }
+  h1 { font-size: 1.6rem; margin: 0 0 6px; }
+  header p { color: var(--muted); margin: 4px 0 0; font-size: 0.95rem; }
+  fieldset {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px 20px 20px;
+    margin: 0 0 20px;
+    background: var(--bg-soft);
+  }
+  legend {
+    font-weight: 600;
+    font-size: 1.05rem;
+    padding: 0 8px;
+    color: var(--accent);
+  }
+  .q { margin: 14px 0; }
+  .q > label.qtext { display: block; font-weight: 600; margin-bottom: 6px; }
+  .hint { color: var(--muted); font-weight: 400; font-size: 0.85rem; display: block; margin-top: 2px; }
+  .opt { display: block; margin: 2px 0; padding: 8px 4px; font-weight: 400; }
+  .opt input { margin-right: 10px; width: 18px; height: 18px; vertical-align: middle; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; }
+  .row .q { flex: 1; min-width: 200px; }
+  input[type=text], input[type=tel], input[type=number], input[type=email], textarea, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    /* 16px min — iOS Safari auto-zooms on focus below that, breaking the layout on a phone */
+    font-size: 16px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 60px; }
+  .likert { display: flex; justify-content: space-between; gap: 4px; margin-top: 6px; }
+  .likert-col { flex: 1; text-align: center; font-size: 0.78rem; color: var(--muted); padding: 4px 0; }
+  .likert-col input { display: block; margin: 0 auto 4px; width: 20px; height: 20px; }
+  .other-field { margin-top: 6px; margin-left: 24px; }
+  .other-field input { max-width: 320px; }
+  .inline-other { width: 200px; display: inline-block; }
+  footer { margin-top: 30px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+  @media print {
+    body { padding: 0; }
+    fieldset { break-inside: avoid; background: #fff; }
+  }
+  @media (max-width: 600px) {
+    body { padding: 16px 14px 60px; font-size: 0.95rem; }
+    h1 { font-size: 1.3rem; }
+    header p { font-size: 0.85rem; }
+    fieldset { padding: 14px 14px 16px; }
+    legend { font-size: 0.95rem; }
+    .row { flex-direction: column; gap: 0; }
+    .row .q { min-width: 0; }
+    .other-field { margin-left: 4px; }
+    .other-field input { max-width: 100%; width: 100%; margin-top: 6px; }
+    .inline-other { width: 100%; display: block; margin-top: 6px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Retailer Business & Pain-Point Survey</h1>
+  <p>10–12 min. Answers help us confirm real problems before building — be as honest as possible, there are no wrong answers.</p>
+</header>
+
+<form>
+
+  <fieldset>
+    <legend>1. About Your Store</legend>
+    <div class="row">
+      <div class="q">
+        <label class="qtext" for="storeName">Store name</label>
+        <input type="text" id="storeName" name="storeName">
+      </div>
+      <div class="q">
+        <label class="qtext" for="ownerName">Owner / manager name</label>
+        <input type="text" id="ownerName" name="ownerName">
+      </div>
+    </div>
+    <div class="row">
+      <div class="q">
+        <label class="qtext" for="city">City / area</label>
+        <input type="text" id="city" name="city">
+      </div>
+      <div class="q">
+        <label class="qtext" for="years">Years in business</label>
+        <select id="years" name="years">
+          <option>&lt; 1 year</option>
+          <option>1–3 years</option>
+          <option>3–10 years</option>
+          <option>10+ years</option>
+        </select>
+      </div>
+    </div>
+    <div class="q">
+      <label class="qtext">What does your store mainly sell?</label>
+      <span class="opt"><input type="checkbox" name="category" value="mens"> Men's wear</span>
+      <span class="opt"><input type="checkbox" name="category" value="womens"> Women's wear</span>
+      <span class="opt"><input type="checkbox" name="category" value="kids"> Kids wear</span>
+      <span class="opt"><input type="checkbox" name="category" value="ethnic"> Ethnic / sarees / suits</span>
+      <span class="opt"><input type="checkbox" name="category" value="footwear"> Footwear / accessories</span>
+      <span class="opt"><input type="checkbox" name="category" value="other"> Other: <input type="text" name="categoryOther" class="inline-other"></span>
+    </div>
+    <div class="row">
+      <div class="q">
+        <label class="qtext" for="skuCount">Roughly how many products (SKUs/designs) do you stock?</label>
+        <select id="skuCount" name="skuCount">
+          <option>Under 100</option>
+          <option>100–500</option>
+          <option>500–2000</option>
+          <option>2000+</option>
+        </select>
+      </div>
+      <div class="q">
+        <label class="qtext" for="staffCount">Number of staff (excluding owner)</label>
+        <select id="staffCount" name="staffCount">
+          <option>0 (just me)</option>
+          <option>1–2</option>
+          <option>3–5</option>
+          <option>6+</option>
+        </select>
+      </div>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>2. Showing Products &amp; Going Online — Your Real Pain Points</legend>
+    <div class="q">
+      <label class="qtext" for="manualShowCount">On average, how many items do you show a customer manually (in-hand/rack) per visit?</label>
+      <select id="manualShowCount" name="manualShowCount">
+        <option value="">—</option>
+        <option value="under5">Under 5</option>
+        <option value="5to10">5–10</option>
+        <option value="10to20">10–20</option>
+        <option value="20plus">20+</option>
+      </select>
+    </div>
+    <div class="q">
+      <label class="qtext" for="timePerCustomer">How much time do you spend with ONE customer showing products?</label>
+      <select id="timePerCustomer" name="timePerCustomer">
+        <option value="">—</option>
+        <option value="under10">Under 10 minutes</option>
+        <option value="10to20">10–20 minutes</option>
+        <option value="20to40">20–40 minutes</option>
+        <option value="40plus">40+ minutes</option>
+      </select>
+    </div>
+    <div class="q">
+      <label class="qtext">Out of the items you show, how many does the customer actually buy?</label>
+      <span class="opt"><input type="radio" name="purchaseRate" value="1item"> Usually just 1 item</span>
+      <span class="opt"><input type="radio" name="purchaseRate" value="fewItems"> A few (2–3) out of what's shown</span>
+      <span class="opt"><input type="radio" name="purchaseRate" value="mostShown"> Most of what's shown</span>
+      <span class="opt"><input type="radio" name="purchaseRate" value="oftenNothing"> Often nothing at all</span>
+    </div>
+    <div class="q">
+      <label class="qtext">How irritating/tiring is it when a customer checks 10–15 items and still doesn't buy?</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="irritationLevel" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="irritationLevel" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="irritationLevel" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="irritationLevel" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="irritationLevel" value="5"></span>
+      </div>
+    </div>
+    <div class="q">
+      <label class="qtext">Do customers ask you to show products by price range, color, or "what's trending now"?</label>
+      <span class="opt"><input type="radio" name="rateColorTrendAsk" value="often"> Yes, very often</span>
+      <span class="opt"><input type="radio" name="rateColorTrendAsk" value="sometimes"> Sometimes</span>
+      <span class="opt"><input type="radio" name="rateColorTrendAsk" value="rarely"> Rarely</span>
+      <span class="opt"><input type="radio" name="rateColorTrendAsk" value="never"> Never</span>
+    </div>
+    <div class="q">
+      <label class="qtext">If you could show ALL your products on the customer's own phone — without physically showing each item — how valuable would that be?</label>
+      <span class="opt"><input type="radio" name="mobileCatalogValue" value="veryValuable"> Very valuable</span>
+      <span class="opt"><input type="radio" name="mobileCatalogValue" value="somewhatValuable"> Somewhat valuable</span>
+      <span class="opt"><input type="radio" name="mobileCatalogValue" value="notNeeded"> Not needed</span>
+      <span class="opt"><input type="radio" name="mobileCatalogValue" value="notSure"> Not sure</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Do you think showing all items on the customer's mobile would reduce your/your staff's work?</label>
+      <span class="opt"><input type="radio" name="staffWorkReduction" value="yesDefinitely"> Yes, definitely</span>
+      <span class="opt"><input type="radio" name="staffWorkReduction" value="maybe"> Maybe, not sure how much</span>
+      <span class="opt"><input type="radio" name="staffWorkReduction" value="no"> No</span>
+    </div>
+    <div class="q">
+      <label class="qtext">How has online shopping (Myntra/Meesho/Instagram sellers) affected your business?</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="onlineShoppingEffect" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="onlineShoppingEffect" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="onlineShoppingEffect" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="onlineShoppingEffect" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="onlineShoppingEffect" value="5"></span>
+      </div>
+    </div>
+    <div class="q">
+      <label class="qtext">Why haven't you made your store online yet? <span class="hint">(check all that apply)</span></label>
+      <span class="opt"><input type="checkbox" name="whyNotOnline" value="tooExpensive"> Too expensive</span>
+      <span class="opt"><input type="checkbox" name="whyNotOnline" value="dontKnowHow"> Don't know how / not tech-savvy</span>
+      <span class="opt"><input type="checkbox" name="whyNotOnline" value="noTime"> No time to manage it</span>
+      <span class="opt"><input type="checkbox" name="whyNotOnline" value="triedComplicated"> Tried before, too complicated</span>
+      <span class="opt"><input type="checkbox" name="whyNotOnline" value="notNeeded"> Don't think it's needed for my store</span>
+      <span class="opt"><input type="checkbox" name="whyNotOnline" value="other"> Other: <input type="text" name="whyNotOnlineOther" class="inline-other"></span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>3. Online Presence Today</legend>
+    <div class="q">
+      <label class="qtext">Do you have a website?</label>
+      <span class="opt"><input type="radio" name="hasWebsite" value="yes"> Yes, and I update it myself</span>
+      <span class="opt"><input type="radio" name="hasWebsite" value="yes_other"> Yes, but someone else updates it</span>
+      <span class="opt"><input type="radio" name="hasWebsite" value="had"> Had one, not maintained anymore</span>
+      <span class="opt"><input type="radio" name="hasWebsite" value="no"> No</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Which social media do you actively use for the store? <span class="hint">(check all that apply)</span></label>
+      <span class="opt"><input type="checkbox" name="social" value="instagram"> Instagram</span>
+      <span class="opt"><input type="checkbox" name="social" value="facebook"> Facebook Page</span>
+      <span class="opt"><input type="checkbox" name="social" value="whatsappBusiness"> WhatsApp Business (broadcast/status)</span>
+      <span class="opt"><input type="checkbox" name="social" value="youtube"> YouTube</span>
+      <span class="opt"><input type="checkbox" name="social" value="none"> None of these</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Who posts on social media for the store?</label>
+      <span class="opt"><input type="radio" name="whoPosts" value="me"> I do it myself</span>
+      <span class="opt"><input type="radio" name="whoPosts" value="staff"> A staff member</span>
+      <span class="opt"><input type="radio" name="whoPosts" value="agency"> Paid agency / freelancer</span>
+      <span class="opt"><input type="radio" name="whoPosts" value="nobody"> Nobody, it's not kept updated</span>
+    </div>
+    <div class="q">
+      <label class="qtext">How often is new stock actually posted online (social media or WhatsApp)?</label>
+      <span class="opt"><input type="radio" name="postFreq" value="daily"> Daily</span>
+      <span class="opt"><input type="radio" name="postFreq" value="weekly"> A few times a week</span>
+      <span class="opt"><input type="radio" name="postFreq" value="monthly"> A few times a month</span>
+      <span class="opt"><input type="radio" name="postFreq" value="rarely"> Rarely / never</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Is your store listed on Google (Google Business Profile / Maps)?</label>
+      <span class="opt"><input type="radio" name="gmb" value="claimed_active"> Yes, claimed and I update it (photos, offers, hours)</span>
+      <span class="opt"><input type="radio" name="gmb" value="claimed_inactive"> Yes, claimed but never touched since</span>
+      <span class="opt"><input type="radio" name="gmb" value="unclaimed"> Listed but not claimed by me</span>
+      <span class="opt"><input type="radio" name="gmb" value="none"> Not listed at all / don't know</span>
+    </div>
+    <div class="row">
+      <div class="q">
+        <label class="qtext" for="gRating">Approx. Google rating (if known)</label>
+        <input type="text" id="gRating" name="gRating" placeholder="e.g. 4.2 stars, 30 reviews">
+      </div>
+      <div class="q">
+        <label class="qtext">Do you ask customers for reviews / respond to reviews?</label>
+        <span class="opt"><input type="radio" name="reviewHabit" value="yes"> Yes, regularly</span>
+        <span class="opt"><input type="radio" name="reviewHabit" value="sometimes"> Sometimes</span>
+        <span class="opt"><input type="radio" name="reviewHabit" value="never"> Never</span>
+      </div>
+    </div>
+    <div class="q">
+      <label class="qtext">Do you currently use any software/app to manage your store (billing, inventory, catalog, CRM)?</label>
+      <span class="opt"><input type="radio" name="usesSoftware" value="yes"> Yes — which one(s)?
+        <span class="other-field"><input type="text" name="softwareName" placeholder="App / software name"></span>
+      </span>
+      <span class="opt"><input type="radio" name="usesSoftware" value="tried"> Tried something before, stopped using it</span>
+      <span class="opt"><input type="radio" name="usesSoftware" value="no"> No, everything is manual / paper register</span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>4. Reaching & Remembering Customers</legend>
+    <div class="q">
+      <label class="qtext">How do customers usually find out about new arrivals?</label>
+      <span class="opt"><input type="checkbox" name="notifyMethod" value="walkin"> They have to walk in and see</span>
+      <span class="opt"><input type="checkbox" name="notifyMethod" value="whatsappPersonal"> Personal WhatsApp message/call</span>
+      <span class="opt"><input type="checkbox" name="notifyMethod" value="whatsappBroadcast"> WhatsApp broadcast/group</span>
+      <span class="opt"><input type="checkbox" name="notifyMethod" value="socialPost"> Social media post</span>
+      <span class="opt"><input type="checkbox" name="notifyMethod" value="none"> They mostly don't find out</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Do you keep a record of customers (phone number, sizes, what they like/bought before)?</label>
+      <span class="opt"><input type="radio" name="custRecord" value="digital"> Yes, in an app/software</span>
+      <span class="opt"><input type="radio" name="custRecord" value="register"> Yes, in a notebook/register or Excel</span>
+      <span class="opt"><input type="radio" name="custRecord" value="memory"> No, I just remember regulars</span>
+      <span class="opt"><input type="radio" name="custRecord" value="none"> No record at all</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Roughly what % of your sales are repeat customers?</label>
+      <span class="opt"><input type="radio" name="repeatPct" value="under20"> Under 20%</span>
+      <span class="opt"><input type="radio" name="repeatPct" value="20to50"> 20–50%</span>
+      <span class="opt"><input type="radio" name="repeatPct" value="50plus"> Over 50%</span>
+      <span class="opt"><input type="radio" name="repeatPct" value="dontknow"> Don't know</span>
+    </div>
+    <div class="q">
+      <label class="qtext">How do you currently share a "collection" of items with a specific customer (e.g. sending 5–6 suits a customer asked for)?</label>
+      <span class="opt"><input type="radio" name="shareMethod" value="photos"> Send individual photos one by one on WhatsApp</span>
+      <span class="opt"><input type="radio" name="shareMethod" value="video"> Video call / video walkthrough</span>
+      <span class="opt"><input type="radio" name="shareMethod" value="instore"> Ask them to come to the store</span>
+      <span class="opt"><input type="radio" name="shareMethod" value="link"> Send a link/catalog</span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>5. Selling, Payments & Compliance</legend>
+    <div class="q">
+      <label class="qtext">Where do you currently take orders from?</label>
+      <span class="opt"><input type="checkbox" name="orderChannel" value="instore"> In-store only</span>
+      <span class="opt"><input type="checkbox" name="orderChannel" value="whatsapp"> WhatsApp orders</span>
+      <span class="opt"><input type="checkbox" name="orderChannel" value="instagramDm"> Instagram/Facebook DM</span>
+      <span class="opt"><input type="checkbox" name="orderChannel" value="website"> Own website/online store</span>
+      <span class="opt"><input type="checkbox" name="orderChannel" value="marketplace"> Meesho / Amazon / other marketplace</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Do you run festival/seasonal promotions (Diwali, Navratri, EOSS, etc.)?</label>
+      <span class="opt"><input type="radio" name="festivalPromo" value="planned"> Yes, planned in advance</span>
+      <span class="opt"><input type="radio" name="festivalPromo" value="lastMinute"> Yes, but last-minute/ad-hoc</span>
+      <span class="opt"><input type="radio" name="festivalPromo" value="no"> No</span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>6. Where It Actually Hurts</legend>
+    <p class="hint" style="margin:-6px 0 12px;">Rate how much of a problem each is for your store today. 1 = not a problem, 5 = major daily problem.</p>
+
+    <div class="q">
+      <label class="qtext">Uploading/photographing new stock online takes too much time</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="pain_photoTime" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="pain_photoTime" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="pain_photoTime" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="pain_photoTime" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="pain_photoTime" value="5"></span>
+      </div>
+    </div>
+
+    <div class="q">
+      <label class="qtext">Losing customers because they can't see new stock unless they visit</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="pain_visibility" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="pain_visibility" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="pain_visibility" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="pain_visibility" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="pain_visibility" value="5"></span>
+      </div>
+    </div>
+
+    <div class="q">
+      <label class="qtext">Managing WhatsApp orders/enquiries manually is chaotic (lost messages, no tracking)</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="pain_whatsappChaos" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="pain_whatsappChaos" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="pain_whatsappChaos" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="pain_whatsappChaos" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="pain_whatsappChaos" value="5"></span>
+      </div>
+    </div>
+
+    <div class="q">
+      <label class="qtext">No system to remember what a regular customer likes/their size/history</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="pain_noCrm" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="pain_noCrm" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="pain_noCrm" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="pain_noCrm" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="pain_noCrm" value="5"></span>
+      </div>
+    </div>
+
+    <div class="q">
+      <label class="qtext">Losing business to online platforms (Myntra/Meesho/Instagram sellers)</label>
+      <div class="likert">
+        <span class="likert-col">1<br><input type="radio" name="pain_onlineCompetition" value="1"></span>
+        <span class="likert-col">2<br><input type="radio" name="pain_onlineCompetition" value="2"></span>
+        <span class="likert-col">3<br><input type="radio" name="pain_onlineCompetition" value="3"></span>
+        <span class="likert-col">4<br><input type="radio" name="pain_onlineCompetition" value="4"></span>
+        <span class="likert-col">5<br><input type="radio" name="pain_onlineCompetition" value="5"></span>
+      </div>
+    </div>
+
+    <div class="q">
+      <label class="qtext" for="biggestFrustration">In your own words — what's the single biggest daily frustration in running this store?</label>
+      <textarea id="biggestFrustration" name="biggestFrustration"></textarea>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>7. Interest in an All-in-One Solution</legend>
+    <div class="q">
+      <label class="qtext">Which of these would matter MOST to you? <span class="hint">(pick up to 3)</span></label>
+      <span class="opt"><input type="checkbox" name="wantedFeature" value="aiCatalog"> Photo → auto-tagged catalog in seconds (no manual data entry)</span>
+      <span class="opt"><input type="checkbox" name="wantedFeature" value="whatsappCollections"> One-tap WhatsApp collection links for customers</span>
+      <span class="opt"><input type="checkbox" name="wantedFeature" value="customerCrm"> Automatic customer preference/size memory</span>
+      <span class="opt"><input type="checkbox" name="wantedFeature" value="socialAutoPost"> Auto-posting new arrivals to Instagram/Facebook/Google</span>
+      <span class="opt"><input type="checkbox" name="wantedFeature" value="onlineStore"> Own online store/checkout for customers</span>
+      <span class="opt"><input type="checkbox" name="wantedFeature" value="marketingCampaigns"> Ready-made festival marketing campaigns</span>
+    </div>
+    <div class="q">
+      <label class="qtext">Would you be open to a free trial with our team helping you set it up in person?</label>
+      <span class="opt"><input type="radio" name="trialInterest" value="yes"> Yes</span>
+      <span class="opt"><input type="radio" name="trialInterest" value="maybe"> Maybe, need more info</span>
+      <span class="opt"><input type="radio" name="trialInterest" value="no"> No</span>
+    </div>
+  </fieldset>
+
+  <fieldset>
+    <legend>8. Contact for Follow-up</legend>
+    <div class="row">
+      <div class="q">
+        <label class="qtext" for="contactPhone">Phone / WhatsApp number</label>
+        <input type="tel" id="contactPhone" name="contactPhone">
+      </div>
+      <div class="q">
+        <label class="qtext" for="contactTime">Best time to reach you</label>
+        <input type="text" id="contactTime" name="contactTime" placeholder="e.g. weekday evenings">
+      </div>
+    </div>
+  </fieldset>
+
+</form>
+
+<footer>Kanchuki — Retailer Discovery Survey. Thank you for your time.</footer>
+
+</body>
+</html>
