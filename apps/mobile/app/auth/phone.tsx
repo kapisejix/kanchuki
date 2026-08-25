@@ -88,6 +88,9 @@ export default function PhoneScreen() {
         className="flex-1 px-6"
         contentContainerStyle={{
           flexGrow: 1,
+          maxWidth: 540,
+          width: '100%',
+          alignSelf: 'center',
           justifyContent: 'space-between',
           paddingTop: insets.top + 40,
           paddingBottom: insets.bottom + 24,

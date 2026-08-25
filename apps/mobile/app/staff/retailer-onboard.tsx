@@ -127,7 +127,11 @@ export default function RetailerOnboardScreen() {
         </View>
       </View>
 
-      <ScrollView className="flex-1 px-4 pt-4" keyboardShouldPersistTaps="handled">
+      <ScrollView
+        className="flex-1 px-4 pt-4"
+        contentContainerStyle={{ maxWidth: 540, width: '100%', alignSelf: 'center' }}
+        keyboardShouldPersistTaps="handled"
+      >
         <View className="gap-4">
           {/* Shop name */}
           <View className="bg-white rounded-2xl p-4 border border-sand-100">

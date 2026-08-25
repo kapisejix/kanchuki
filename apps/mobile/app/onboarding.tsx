@@ -51,8 +51,6 @@ function ConfettiOverlay({ visible }: { visible: boolean }) {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
-    // Reduce Motion: skip the decorative particle animation — the "Done" step's
-    // own text already carries the completion state, confetti is decoration only
     if (!visible || reduceMotion) {
       setParticles([]);
       return;
@@ -144,7 +142,7 @@ function ConfettiOverlay({ visible }: { visible: boolean }) {
   );
 }
 
-// ─── Step Indicator (fixed row — never scrolls off-screen) ───────
+// ─── Step Indicator (Fixed Light Header) ───────────────────────────
 function StepIndicator({
   currentStep,
   onPress,
@@ -154,7 +152,7 @@ function StepIndicator({
 }) {
   const { colors } = useTheme();
   return (
-    <View className="flex-row items-start justify-center px-8 pt-3 pb-4">
+    <View className="flex-row items-start justify-center px-6 pt-3 pb-3">
       {([1, 2, 3, 4] as Step[]).map((s, i) => {
         const isActive = s === currentStep;
         const isPast = s < currentStep;
@@ -163,9 +161,9 @@ function StepIndicator({
             {/* Connector line between circles */}
             {i > 0 && (
               <View
-                className="h-0.5 w-6 rounded-full mt-[17px]"
+                className="h-0.5 w-6 sm:w-8 rounded-full mt-[16px]"
                 style={{
-                  backgroundColor: s <= currentStep ? colors.rust[400] : 'rgba(255,255,255,0.25)',
+                  backgroundColor: isPast || isActive ? colors.rust[500] : colors.sand[200],
                 }}
               />
             )}
@@ -177,25 +175,25 @@ function StepIndicator({
               className="items-center gap-1.5 px-0.5"
             >
               <View
-                className={`w-9 h-9 rounded-full items-center justify-center border-2 ${
+                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full items-center justify-center border-2 ${
                   isActive
-                    ? 'bg-rust-500 border-rust-300'
+                    ? 'bg-rust-500 border-rust-600 shadow-sm'
                     : isPast
-                      ? 'bg-white/15 border-rust-300/70'
-                      : 'bg-transparent border-white/40'
+                      ? 'bg-rust-100 border-rust-400'
+                      : 'bg-white border-sand-300'
                 }`}
               >
                 <Text
-                  className={`text-sm font-bold ${
-                    isActive ? 'text-ink-900' : isPast ? 'text-white' : 'text-white/70'
+                  className={`text-xs sm:text-sm font-bold ${
+                    isActive ? 'text-white' : isPast ? 'text-rust-700' : 'text-sand-400'
                   }`}
                 >
                   {isPast ? '✓' : s}
                 </Text>
               </View>
               <Text
-                className={`text-[10px] font-medium ${
-                  isActive ? 'text-white' : isPast ? 'text-white/80' : 'text-white/50'
+                className={`text-[10px] sm:text-xs font-semibold ${
+                  isActive ? 'text-sand-900' : isPast ? 'text-sand-700' : 'text-sand-400'
                 }`}
               >
                 {STEP_META[s].label}
@@ -208,18 +206,13 @@ function StepIndicator({
   );
 }
 
-// ─── Form field wrapper ─────────────────────────────────────────────
-// Light label above a white input. The drop shadow lives on a wrapper View
-// (not the TextInput) so every field shares one definition — white field on
-// the dark body, soft shadow, light border line (the border itself stays on
-// the input via `inputClass` below). iOS rounds the shadow with the
-// wrapper's rounded-2xl; Android renders it square-ish — acceptable.
+// ─── Form field wrapper (Light Mode) ────────────────────────────────
 const fieldShadow: ViewStyle = {
   shadowColor: '#000000',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.35,
-  shadowRadius: 10,
-  elevation: 5,
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.04,
+  shadowRadius: 3,
+  elevation: 1,
 };
 
 function Field({
@@ -235,26 +228,25 @@ function Field({
 }) {
   const { colors } = useTheme();
   return (
-    <View className="mt-4">
-      <Text className="text-sm font-semibold text-sand-100 mb-2">
+    <View className="mt-4 w-full">
+      <Text className="text-sm font-semibold text-sand-800 mb-1.5">
         {label}
-        {required && <Text style={{ color: colors.rust[500] }}> *</Text>}
-        {optional && <Text className="text-sand-300 font-normal"> (optional)</Text>}
+        {required && <Text style={{ color: colors.rust[600] }}> *</Text>}
+        {optional && <Text className="text-sand-400 font-normal"> (optional)</Text>}
       </Text>
-      <View className="rounded-2xl" style={fieldShadow}>
+      <View className="rounded-2xl w-full" style={fieldShadow}>
         {children}
       </View>
     </View>
   );
 }
 
-// White field + light outer border line, over the dark body (shadow applied
-// by the Field wrapper).
-const inputClass = 'bg-white border border-sand-200 rounded-2xl px-4 py-4 text-base text-sand-900';
+const inputClass =
+  'bg-white border border-sand-300 focus:border-rust-500 rounded-2xl px-4 py-3.5 text-base text-sand-900 w-full';
 
 // ─── Main Screen ──────────────────────────────────────────────────
 export default function OnboardingScreen() {
-  const { colors, primaryColor } = useTheme();
+  const { colors } = useTheme();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const reduceMotion = useReduceMotion();
@@ -262,12 +254,9 @@ export default function OnboardingScreen() {
   const [saving, setSaving] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  // ── Animated values for transitions ──
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  // ── Animated values for transitions (Clean Fade & Settle) ──
   const fadeAnim = useRef(new Animated.Value(1)).current;
-  // single choke point for the "stuck off-screen" race (see goToStep below) —
-  // every step-change path (Continue, back arrow, step dots) routes through
-  // goToStep, so guarding there covers all of them.
+  const translateYAnim = useRef(new Animated.Value(0)).current;
   const transitioningRef = useRef(false);
 
   // ── Form state ──
@@ -289,49 +278,47 @@ export default function OnboardingScreen() {
   }, [step, shopName, shopAddress]);
 
   const animateTransition = useCallback(
-    (direction: 'forward' | 'back', onComplete: () => void) => {
-      // Reduce Motion: crossfade only, no horizontal slide (HIG/Material guidance)
-      const toValue = reduceMotion ? 0 : direction === 'forward' ? -1 : 1;
-      slideAnim.setValue(0);
-      fadeAnim.setValue(1);
+    (_direction: 'forward' | 'back', onComplete: () => void) => {
+      if (reduceMotion) {
+        onComplete();
+        transitioningRef.current = false;
+        return;
+      }
+
+      // Smooth vertical crossfade without horizontal shifts to prevent screen cutoff
       Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue,
-          duration: 200,
-          useNativeDriver: true,
-        }),
         Animated.timing(fadeAnim, {
           toValue: 0,
-          duration: 150,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+        Animated.timing(translateYAnim, {
+          toValue: -8,
+          duration: 120,
           useNativeDriver: true,
         }),
       ]).start(() => {
         onComplete();
-        slideAnim.setValue(reduceMotion ? 0 : direction === 'forward' ? 1 : -1);
-        fadeAnim.setValue(0.5);
+        translateYAnim.setValue(8);
         Animated.parallel([
-          Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 200,
-            useNativeDriver: true,
-          }),
           Animated.timing(fadeAnim, {
             toValue: 1,
-            duration: 150,
+            duration: 160,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateYAnim, {
+            toValue: 0,
+            duration: 160,
             useNativeDriver: true,
           }),
         ]).start(() => {
-          // force the rest state instead of trusting the animation finished
-          // cleanly — an interrupted/dropped return-phase (e.g. two transitions
-          // racing) otherwise leaves slideAnim stuck off-zero, permanently
-          // shifting that step's content off-screen.
-          slideAnim.setValue(0);
           fadeAnim.setValue(1);
+          translateYAnim.setValue(0);
           transitioningRef.current = false;
         });
       });
     },
-    [slideAnim, fadeAnim, reduceMotion],
+    [fadeAnim, translateYAnim, reduceMotion],
   );
 
   const goToStep = useCallback(
@@ -344,8 +331,6 @@ export default function OnboardingScreen() {
     [step, animateTransition],
   );
 
-  // Android hardware back steps to the previous step instead of popping the
-  // whole onboarding screen (the header arrow is the only on-screen back).
   useEffect(() => {
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
       if (step > 1 && step < TOTAL_STEPS && !saving) {
@@ -358,17 +343,9 @@ export default function OnboardingScreen() {
   }, [step, saving, goToStep]);
 
   const handleNext = async () => {
-    // Continue wasn't disabled during steps' network calls — a slow/double tap
-    // could fire goToStep() twice concurrently, and two overlapping slide
-    // animations can leave the Animated.Value stuck off-zero, permanently
-    // shifting that step's content off-screen. Gating every step on `saving`
-    // (not just the final one) blocks the re-entry. `showConfetti` also guards
-    // the step-4 in-content buttons during the 2.5s confetti window (the
-    // bottom GradientButton is already disabled via props).
     if (saving || showConfetti) return;
     setSaving(true);
     try {
-      // Save step progress to server
       const nextStep = (step + 1) as Step;
 
       if (step === 1) {
@@ -401,14 +378,6 @@ export default function OnboardingScreen() {
     }
   };
 
-  // Completes the profile + onboarding flags, and mirrors the fresh state
-  // into the ['retailer', 'me'] query cache. The (tabs) dashboard gate reads
-  // onboarding_completed from that cache — without this write, a stale
-  // cached `false` (an earlier gate fetch during a dropped-off signup, or the
-  // persisted offline cache from a previous session) is still within the 60s
-  // staleTime when router.replace('/') lands, so the gate never refetches and
-  // bounces the user straight back to onboarding step 1 — even though the DB
-  // has the correct values.
   const saveFinalStep = async () => {
     await retailerApi.update({
       shop_name: shopName.trim(),
@@ -431,13 +400,9 @@ export default function OnboardingScreen() {
         },
       };
     });
-    // Background refetch so the dashboard also gets the fresh profile fields.
     void queryClient.invalidateQueries({ queryKey: ['retailer', 'me'] });
   };
 
-  // "Get help adding your catalog" — same final save (onboarding completes, so
-  // no gate bounce can follow), then the F-019 paid catalog-upload flow
-  // instead of a bare router.replace('/') that bounced back to step 1.
   const handleGetCatalogHelp = async () => {
     if (saving || showConfetti) return;
     setSaving(true);
@@ -454,10 +419,6 @@ export default function OnboardingScreen() {
     }
   };
 
-  // QR nudge on the final step — same final save (onboarding completes, so no
-  // gate bounce can follow), then the Store QR screen instead of the dashboard:
-  // the retailer generates their store QR code right after setup (public_slug
-  // is null there until they tap "Generate QR Code", so the button shows).
   const handleCreateStoreQr = async () => {
     if (saving || showConfetti) return;
     setSaving(true);
@@ -478,8 +439,8 @@ export default function OnboardingScreen() {
     switch (step) {
       case 1:
         return (
-          <View>
-            <Text className="text-sand-300 text-sm leading-5">
+          <View className="w-full">
+            <Text className="text-sand-600 text-sm leading-5 mb-2">
               Create your digital store in minutes — AI catalogs your products and shares them with
               customers on WhatsApp.
             </Text>
@@ -491,7 +452,6 @@ export default function OnboardingScreen() {
                 placeholder="e.g. Priya Fashion House"
                 className={inputClass}
                 placeholderTextColor={colors.sand[400]}
-                autoFocus
                 maxLength={200}
               />
             </Field>
@@ -500,7 +460,7 @@ export default function OnboardingScreen() {
               <TextInput
                 value={ownerName}
                 onChangeText={setOwnerName}
-                placeholder="e.g. Priya Sharma (optional)"
+                placeholder="e.g. Priya Sharma"
                 className={inputClass}
                 placeholderTextColor={colors.sand[400]}
                 maxLength={200}
@@ -519,27 +479,21 @@ export default function OnboardingScreen() {
               />
             </Field>
 
-            <GradientBorderCard
-              fill={colors.sand[100]}
-              colors={[`${colors.sand[200]}00`, `${colors.ink[400]}66`, `${colors.sand[200]}00`]}
-              style={{ marginTop: 24 }}
-            >
-              <View className="p-4">
-                <Text className="text-ink-700 text-sm font-medium">✨ What happens next?</Text>
-                <Text className="text-ink-600 text-sm mt-1 leading-5">
-                  Add your shop details, then take a photo of any product — AI will automatically
-                  tag it with category, color & fabric.
-                </Text>
-              </View>
-            </GradientBorderCard>
+            <View className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 mt-6 w-full">
+              <Text className="text-amber-900 text-sm font-semibold">✨ What happens next?</Text>
+              <Text className="text-amber-800 text-xs sm:text-sm mt-1 leading-5">
+                Add your shop details, then take a photo of any product — AI will automatically tag
+                it with category, color & fabric.
+              </Text>
+            </View>
           </View>
         );
 
       case 2:
         return (
-          <View>
-            <Text className="text-sand-300 text-sm leading-5">
-              Customers use this to find your store
+          <View className="w-full">
+            <Text className="text-sand-600 text-sm leading-5 mb-2">
+              Customers use your shop address and location to discover your store.
             </Text>
 
             <Field label="Shop address" required>
@@ -550,7 +504,6 @@ export default function OnboardingScreen() {
                 className={inputClass}
                 style={{ minHeight: 96, textAlignVertical: 'top' }}
                 placeholderTextColor={colors.sand[400]}
-                autoFocus
                 multiline
                 maxLength={300}
               />
@@ -589,7 +542,7 @@ export default function OnboardingScreen() {
               />
             </Field>
 
-            <Field label="Zipcode">
+            <Field label="Zipcode / Pincode">
               <TextInput
                 value={pincode}
                 onChangeText={(t) => setPincode(t.replace(/[^0-9]/g, ''))}
@@ -605,9 +558,9 @@ export default function OnboardingScreen() {
 
       case 3:
         return (
-          <View>
-            <Text className="text-sand-300 text-sm leading-5">
-              Required for generating GST invoices for your customers
+          <View className="w-full">
+            <Text className="text-sand-600 text-sm leading-5 mb-2">
+              Required for generating GST invoices for your customers.
             </Text>
 
             <Field label="GSTIN">
@@ -619,71 +572,65 @@ export default function OnboardingScreen() {
                 placeholderTextColor={colors.sand[400]}
                 autoCapitalize="characters"
                 maxLength={15}
-                autoFocus
               />
             </Field>
-            <Text className="text-xs text-sand-300 mt-2 px-1">
-              Format: 22AAAAA0000A1Z5 · You can add this later
+            <Text className="text-xs text-sand-500 mt-2 px-1">
+              Format: 22AAAAA0000A1Z5 · You can also add or update this later
             </Text>
 
-            <GradientBorderCard
-              fill={colors.turmeric[50]}
-              colors={[
-                `${colors.turmeric[100]}00`,
-                `${colors.rust[600]}66`,
-                `${colors.turmeric[100]}00`,
-              ]}
-              style={{ marginTop: 24 }}
-            >
-              <View className="p-4">
-                <Text className="text-turmeric-800 text-sm font-medium">💡 GST invoice tip</Text>
-                <Text className="text-turmeric-700 text-sm mt-1 leading-5">
-                  When a customer enquires about a product, Kanchuki can generate a GST invoice
-                  automatically. Add your GSTIN now or skip and do it later from Settings.
-                </Text>
-              </View>
-            </GradientBorderCard>
+            <View className="bg-amber-50/70 border border-amber-200/80 rounded-2xl p-4 mt-6 w-full">
+              <Text className="text-amber-900 text-sm font-semibold">💡 GST invoice tip</Text>
+              <Text className="text-amber-800 text-xs sm:text-sm mt-1 leading-5">
+                When a customer enquires about a product, Kanchuki can generate a GST invoice
+                automatically. Add your GSTIN now or skip and do it later from Settings.
+              </Text>
+            </View>
           </View>
         );
 
       case 4:
         return (
-          <View className="pt-4 items-center">
-            {/* Big celebration emoji — signature gradient moment */}
+          <View className="pt-2 items-center w-full">
+            {/* Big celebration emoji */}
             <LinearGradient
-              colors={[colors.rust[400], colors.rust[700]]}
+              colors={[colors.rust[400], colors.rust[600]]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={{
-                width: 128,
-                height: 128,
-                borderRadius: 32,
+                width: 110,
+                height: 110,
+                borderRadius: 28,
                 alignItems: 'center',
                 justifyContent: 'center',
-                marginBottom: 24,
+                marginBottom: 20,
+                shadowColor: '#000000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 10,
+                elevation: 4,
               }}
             >
-              <Text className="text-6xl">🎉</Text>
+              <Text className="text-5xl">🎉</Text>
             </LinearGradient>
 
-            <Text className="text-2xl font-bold text-white text-center">Congratulations!</Text>
-            <Text className="text-sand-300 text-base mt-2 text-center">
-              Your store has been built.
+            <Text className="text-2xl font-bold text-sand-900 text-center">Congratulations!</Text>
+            <Text className="text-sand-600 text-sm sm:text-base mt-1.5 text-center">
+              Your store has been set up successfully.
             </Text>
 
-            <View className="mt-8 w-full gap-3">
+            <View className="mt-7 w-full gap-3">
               <AnimatedPressable
                 onPress={() => void handleNext()}
-                className="bg-rust-500 rounded-2xl p-4 items-center"
+                className="bg-rust-500 rounded-2xl p-4 items-center shadow-sm active:bg-rust-600"
               >
-                <Text className="text-ink-900 text-sm font-bold">Go to Dashboard</Text>
+                <Text className="text-white text-base font-bold">Go to Dashboard</Text>
               </AnimatedPressable>
 
               <AnimatedPressable
                 onPress={() => void handleCreateStoreQr()}
-                className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
+                className="flex-row items-center gap-3 bg-white border border-sand-300 rounded-2xl p-4 shadow-sm"
               >
-                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-sand-100 items-center justify-center">
                   <Text className="text-xl">🔳</Text>
                 </View>
                 <View className="flex-1">
@@ -697,9 +644,9 @@ export default function OnboardingScreen() {
 
               <AnimatedPressable
                 onPress={() => void handleGetCatalogHelp()}
-                className="flex-row items-center gap-3 bg-white border-2 border-sand-200 rounded-2xl p-4"
+                className="flex-row items-center gap-3 bg-white border border-sand-300 rounded-2xl p-4 shadow-sm"
               >
-                <View className="w-10 h-10 rounded-xl bg-ink-50 items-center justify-center">
+                <View className="w-10 h-10 rounded-xl bg-sand-100 items-center justify-center">
                   <Text className="text-xl">🧑‍💼</Text>
                 </View>
                 <View className="flex-1">
@@ -721,144 +668,147 @@ export default function OnboardingScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-ink-900"
+      className="flex-1 bg-sand-50"
     >
       {/* Confetti overlay */}
       <ConfettiOverlay visible={showConfetti} />
 
-      {/* ── Gradient header: back + title + progress + step circles ── */}
-      <LinearGradient
-        colors={[primaryColor, colors.ink[800]]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{ paddingTop: insets.top + 8 }}
+      {/* ── Fixed Light Header: back + title + progress + step circles ── */}
+      <View
+        className="bg-white border-b border-sand-200"
+        style={{
+          paddingTop: insets.top + 6,
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 4,
+          elevation: 2,
+        }}
       >
-        {/* Top row */}
-        <View className="flex-row items-center px-4 pt-2 pb-1">
+        {/* Top bar */}
+        <View className="flex-row items-center px-4 pt-1 pb-1">
           <View className="w-10 items-start">
             {step > 1 && step < TOTAL_STEPS && (
               <AnimatedPressable
                 onPress={() => goToStep((step - 1) as Step)}
                 accessibilityLabel="Back"
                 accessibilityRole="button"
-                className="w-10 h-10 rounded-full bg-white/10 items-center justify-center active:bg-white/20"
+                className="w-9 h-9 rounded-full bg-sand-100 items-center justify-center border border-sand-200 active:bg-sand-200"
               >
-                <Text className="text-white text-xl font-medium">‹</Text>
+                <Text className="text-sand-800 text-lg font-bold">‹</Text>
               </AnimatedPressable>
             )}
           </View>
-          <Text className="flex-1 text-center text-white text-lg font-bold">
+          <Text className="flex-1 text-center text-sand-900 text-base sm:text-lg font-bold">
             {STEP_META[step].title}
           </Text>
           <View className="w-10" />
         </View>
 
-        {/* Progress line */}
-        <View className="h-1 bg-white/20 mx-6 mt-1 rounded-full overflow-hidden">
+        {/* Progress bar */}
+        <View className="h-1 bg-sand-200 mx-6 mt-1 rounded-full overflow-hidden">
           <View
-            className="h-full bg-rust-400 rounded-full"
+            className="h-full bg-rust-500 rounded-full"
             style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
           />
         </View>
 
         {/* Step circles */}
         <StepIndicator currentStep={step} onPress={goToStep} />
-      </LinearGradient>
-
-      {/* ── Dark card overlapping the header ──
-          Shadow lives on the outer wrapper; rounded-t + overflow-hidden on the
-          inner view. RN clips a View's own shadow when overflow: 'hidden' is on
-          the same node (iOS masksToBounds), so splitting the two layers is what
-          actually renders the drop shadow the design calls for. */}
-      <View
-        className="flex-1 -mt-4"
-        style={{
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -4 },
-          shadowOpacity: 0.12,
-          shadowRadius: 16,
-          elevation: 8,
-        }}
-      >
-        <View className="flex-1 bg-ink-800 rounded-t-3xl overflow-hidden">
-          {/* Content with animated transitions */}
-          <Animated.View
-            className="flex-1 px-6 pt-6"
-            style={{
-              opacity: fadeAnim,
-              transform: [
-                {
-                  translateX: slideAnim.interpolate({
-                    inputRange: [-1, 0, 1],
-                    outputRange: [-60, 0, 60],
-                  }),
-                },
-              ],
-            }}
-          >
-            <ScrollView
-              className="flex-1"
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
-            >
-              {renderContent()}
-              <View className="h-10" />
-            </ScrollView>
-          </Animated.View>
-        </View>
       </View>
 
-      {/* ── Bottom action bar ── */}
-      <View
-        className="bg-ink-900 border-t border-white/10 px-6 pt-4"
-        style={{ paddingBottom: 12 + insets.bottom }}
-      >
-        <GradientButton
-          label={
-            showConfetti ? "🎉 You're in!" : step === TOTAL_STEPS ? 'Go to Dashboard' : 'Continue →'
-          }
-          onPress={() => void handleNext()}
-          disabled={!canProceed() || showConfetti || saving}
-          loading={saving}
-        />
-
-        {/* GST step — explicit skip affordance. GSTIN is already optional
-            (Continue advances with an empty field); this makes it clear a
-            retailer without a GST number can move on and add it later from
-            Settings. Same handleNext path, so progress still saves. */}
-        {step === 3 && (
-          <AnimatedPressable
-            onPress={() => void handleNext()}
-            disabled={saving || showConfetti}
-            accessibilityLabel="Skip — continue without a GST number"
-            accessibilityRole="button"
-            className="items-center justify-center py-2.5 mt-1"
+      {/* ── Main Form Body (Light & Perfectly Centered) ── */}
+      <View className="flex-1 bg-sand-50">
+        <ScrollView
+          className="flex-1 w-full"
+          contentContainerStyle={{
+            flexGrow: 1,
+            maxWidth: 540,
+            width: '100%',
+            alignSelf: 'center',
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: 28,
+          }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Animated Form Content */}
+          <Animated.View
+            className="w-full"
+            style={{
+              opacity: fadeAnim,
+              transform: [{ translateY: translateYAnim }],
+            }}
           >
-            <Text className="text-sm font-semibold text-rust-400">
-              Skip — I don&apos;t have a GST number
-            </Text>
-          </AnimatedPressable>
-        )}
+            <View className="bg-white border border-sand-200/90 rounded-3xl p-5 sm:p-7 shadow-sm w-full">
+              {renderContent()}
+            </View>
+          </Animated.View>
+        </ScrollView>
+      </View>
 
-        {/* Legal consent line */}
-        {step < TOTAL_STEPS && (
-          <Text className="text-center text-xs text-sand-300 mt-3 px-2 leading-4">
-            By continuing, you agree to our{' '}
-            <Text
-              className="font-semibold text-rust-400"
-              onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
+      {/* ── Bottom action bar (Light Mode) ── */}
+      <View
+        className="bg-white border-t border-sand-200 px-6 pt-3.5"
+        style={{
+          paddingBottom: Math.max(12, insets.bottom + 8),
+          shadowColor: '#000000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.04,
+          shadowRadius: 4,
+          elevation: 4,
+        }}
+      >
+        <View className="max-w-[540px] w-full self-center">
+          <GradientButton
+            label={
+              showConfetti
+                ? "🎉 You're in!"
+                : step === TOTAL_STEPS
+                  ? 'Go to Dashboard'
+                  : 'Continue →'
+            }
+            onPress={() => void handleNext()}
+            disabled={!canProceed() || showConfetti || saving}
+            loading={saving}
+          />
+
+          {/* GST step skip affordance */}
+          {step === 3 && (
+            <AnimatedPressable
+              onPress={() => void handleNext()}
+              disabled={saving || showConfetti}
+              accessibilityLabel="Skip — continue without a GST number"
+              accessibilityRole="button"
+              className="items-center justify-center py-2.5 mt-1"
             >
-              Terms of Service
-            </Text>{' '}
-            and{' '}
-            <Text
-              className="font-semibold text-rust-400"
-              onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
-            >
-              Privacy Policy
+              <Text className="text-sm font-semibold text-rust-600">
+                Skip — I don&apos;t have a GST number
+              </Text>
+            </AnimatedPressable>
+          )}
+
+          {/* Legal consent line */}
+          {step < TOTAL_STEPS && (
+            <Text className="text-center text-xs text-sand-500 mt-2.5 px-2 leading-4">
+              By continuing, you agree to our{' '}
+              <Text
+                className="font-semibold text-rust-600"
+                onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
+              >
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text
+                className="font-semibold text-rust-600"
+                onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
+              >
+                Privacy Policy
+              </Text>
             </Text>
-          </Text>
-        )}
+          )}
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
