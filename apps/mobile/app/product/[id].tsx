@@ -507,11 +507,10 @@ export default function ProductDetailScreen() {
   // Apply the chosen backdrop to the currently-viewed photo (per-photo, not
   // the product primary): recomposites THAT photo onto the backdrop via the
   // cleanup pipeline, so "remove background → pick background" is one flow on
-  // the image being edited. Auto (null) → white / product-level backdrop.
   const handleSetBackground = async (backgroundId: string | null) => {
     const photo = currentPhoto
     if (!product || !photo || backgroundSaving) return
-    if (photo.is_variant_preview || photo.is_original_preview) return
+    if (photo.is_original_preview) return
     setBackgroundSaving(true)
     try {
       // F-030: a background change re-runs cleanup — carry the current shadow
@@ -534,7 +533,7 @@ export default function ProductDetailScreen() {
   const handleSetShadow = async (value: boolean) => {
     const photo = currentPhoto
     if (!product || !photo || shadowSaving) return
-    if (photo.is_variant_preview || photo.is_original_preview) return
+    if (photo.is_original_preview) return
     setShadowSaving(true)
     try {
       await productApi.cleanupPhoto(
@@ -571,13 +570,12 @@ export default function ProductDetailScreen() {
     }
   }
 
-  // F-032: start a studio-shoot generation for the product's primary original photo.
-  // ALWAYS applies on the original product photo, never on an already-generated studio photo or secondary preview.
+  // F-032: start a studio-shoot generation for the currently viewed photo or primary photo.
   const handleStartStudioShoot = async (
     template: string,
     options?: { engine?: string; model_id?: string },
   ) => {
-    const photo = originalPhoto;
+    const photo = currentPhoto && !currentPhotoIsOriginal ? currentPhoto : originalPhoto;
     if (!product || !photo) return;
     setStudioModalOpen(false);
     setStudioStarting(true);
@@ -1067,9 +1065,9 @@ export default function ProductDetailScreen() {
 
       {/* F-032: AI Studio Shoot inline status/preview — trigger button lives in
           the top action row now; this block just shows progress/result once
-          started. Hidden on variant / original slides — those aren't real
+          started. Hidden on original slides — those aren't real
           ProductPhoto rows. */}
-      {currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && studioStatus && (
+      {currentPhoto && !currentPhotoIsOriginal && studioStatus && (
         <View className="mx-4 mt-2">
           {/* Inline status — spinner while generating, error on failure,
               preview + set-as-main once the new photo is ready. */}
@@ -1161,9 +1159,9 @@ export default function ProductDetailScreen() {
 
       {/* F-030: Shadow toggle — single on/off, next to the background row
           (same pattern: tap → re-runs cleanup on the currently-viewed photo
-          with the new setting baked in). Hidden on variant / original
+          with the new setting baked in). Hidden on original
           slides — those aren't real ProductPhoto rows to recomposite. */}
-      {currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+      {currentPhoto && !currentPhotoIsOriginal && (
         <View className="mx-4 mt-3 bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between">
             <View className="flex-1 pr-3">
@@ -1231,9 +1229,8 @@ export default function ProductDetailScreen() {
 
       {/* Post-save background picker — admin-curated backdrop library. Applies
           to the currently-viewed photo (not the product primary): each chip
-          recomposites that photo onto the chosen backdrop. Hidden on variant /
-          original slides — those aren't real ProductPhoto rows to recomposite. */}
-      {backgroundImages.length > 0 && currentPhoto && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+          recomposites that photo onto the chosen backdrop. */}
+      {backgroundImages.length > 0 && currentPhoto && !currentPhotoIsOriginal && (
         <View className="mx-4 mt-3 bg-white rounded-2xl p-4 border border-sand-100">
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
             Background

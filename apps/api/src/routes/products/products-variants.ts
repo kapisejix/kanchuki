@@ -39,6 +39,24 @@ export const productsVariantsRoutes: FastifyPluginAsync = async (server) => {
         is_ai_preview: false,
       },
     });
+
+    // Ensure this variant photo is also recorded as a ProductPhoto so background cleanup,
+    // shadow toggle, and AI Studio work seamlessly for color variants
+    const existingPhoto = await prisma.productPhoto.findFirst({
+      where: { product_id: id, r2_key: body.data.r2_key },
+    });
+    if (!existingPhoto) {
+      await prisma.productPhoto.create({
+        data: {
+          product_id: id,
+          retailer_id: request.retailerId,
+          url: body.data.url,
+          r2_key: body.data.r2_key,
+          is_primary: false,
+        },
+      });
+    }
+
     await prisma.auditLog.create({
       data: {
         actor_type: 'retailer',

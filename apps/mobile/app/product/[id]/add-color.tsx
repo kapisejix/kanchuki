@@ -109,7 +109,7 @@ export default function AddColorVariantScreen() {
       }
 
       // Invalidate queries so product detail and catalog refresh immediately
-      await queryClient.invalidateQueries({ queryKey: ['product', id] })
+      await queryClient.invalidateQueries({ queryKey: ['products', id] })
       await queryClient.invalidateQueries({ queryKey: ['products'] })
 
       router.back()

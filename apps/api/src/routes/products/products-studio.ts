@@ -63,10 +63,38 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Photo must belong to this retailer's product.
-    const photo = await prisma.productPhoto.findFirst({
-      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+    const isVariant = photoId.startsWith('variant-');
+    const realPhotoId = isVariant ? photoId.replace('variant-', '') : photoId;
+
+    let photo = await prisma.productPhoto.findFirst({
+      where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
       select: { id: true, width: true, height: true, size_bytes: true },
     });
+
+    if (!photo && isVariant) {
+      const variant = await prisma.productVariant.findFirst({
+        where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
+      });
+      if (variant && variant.photo_url && variant.r2_key) {
+        let variantPhoto = await prisma.productPhoto.findFirst({
+          where: { product_id: id, r2_key: variant.r2_key },
+          select: { id: true, width: true, height: true, size_bytes: true },
+        });
+        if (!variantPhoto) {
+          variantPhoto = await prisma.productPhoto.create({
+            data: {
+              product_id: id,
+              retailer_id: request.retailerId,
+              url: variant.photo_url,
+              r2_key: variant.r2_key,
+              is_primary: false,
+            },
+            select: { id: true, width: true, height: true, size_bytes: true },
+          });
+        }
+        photo = variantPhoto;
+      }
+    }
     if (!photo) throw notFound('Product photo');
 
     // BFL/Fal accepts ≤20MP (megapixels) and ≤20MB.

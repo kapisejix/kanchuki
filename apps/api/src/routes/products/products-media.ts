@@ -123,10 +123,41 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   server.post('/:id/photos/:photoId/cleanup', async (request, reply) => {
     const { id, photoId } = request.params as { id: string; photoId: string };
 
-    const photo = await prisma.productPhoto.findFirst({
-      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+    const isVariant = photoId.startsWith('variant-');
+    const realPhotoId = isVariant ? photoId.replace('variant-', '') : photoId;
+
+    let photo = await prisma.productPhoto.findFirst({
+      where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
       include: { product: { include: { background_image: true } } },
     });
+
+    let variant = null;
+    if (!photo) {
+      variant = await prisma.productVariant.findFirst({
+        where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
+        include: { product: { include: { background_image: true } } },
+      });
+      if (variant && variant.photo_url && variant.r2_key) {
+        // Find or create product photo for this variant
+        let variantPhoto = await prisma.productPhoto.findFirst({
+          where: { product_id: id, r2_key: variant.r2_key },
+          include: { product: { include: { background_image: true } } },
+        });
+        if (!variantPhoto) {
+          variantPhoto = await prisma.productPhoto.create({
+            data: {
+              product_id: id,
+              retailer_id: request.retailerId,
+              url: variant.photo_url,
+              r2_key: variant.r2_key,
+              is_primary: false,
+            },
+            include: { product: { include: { background_image: true } } },
+          });
+        }
+        photo = variantPhoto;
+      }
+    }
     if (!photo) throw notFound('Product photo');
 
     await checkQuota(request.retailerId, 'BG_REMOVAL');

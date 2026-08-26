@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { AppState, View, ActivityIndicator, Image } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Home, Grid3X3, Users, Link2, ShoppingBag } from 'lucide-react-native'
+import { Home, Grid3X3, Plus, TrendingUp, Link2 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { ordersApi, retailerApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
 
@@ -134,19 +135,45 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
-        name="orders"
+        name="add"
         options={{
-          title: 'Orders',
-          tabBarIcon: ({ color, size }) => <ShoppingBag color={color} size={size} />,
-          tabBarBadge: pendingCount > 0 ? pendingCount : undefined,
-          tabBarButton: checkoutEnabled ? undefined : () => null,
+          title: 'Add',
+          tabBarLabel: () => null,
+          tabBarIcon: () => (
+            <View
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 24,
+                backgroundColor: primaryColor,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginBottom: 10,
+                shadowColor: primaryColor,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.35,
+                shadowRadius: 6,
+                elevation: 6,
+              }}
+            >
+              <Plus color="#ffffff" size={26} strokeWidth={2.5} />
+            </View>
+          ),
+          tabBarButton: (props) => (
+            <AnimatedPressable
+              {...props}
+              onPress={() => router.push('/product/add')}
+            />
+          ),
+          headerShown: false,
         }}
       />
       <Tabs.Screen
-        name="customers"
+        name="growth"
         options={{
-          title: 'Customers',
-          tabBarIcon: ({ color, size }) => <Users color={color} size={size} />,
+          title: 'Growth',
+          tabBarIcon: ({ color, size }) => <TrendingUp color={color} size={size} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
@@ -154,6 +181,19 @@ export default function TabsLayout() {
         options={{
           title: 'Collections',
           tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
+        }}
+      />
+      {/* Hidden tabs — accessible via direct link / router.push, but omitted from footer bar */}
+      <Tabs.Screen
+        name="orders"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="customers"
+        options={{
+          href: null,
         }}
       />
     </Tabs>

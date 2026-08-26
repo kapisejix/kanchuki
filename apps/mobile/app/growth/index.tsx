@@ -63,7 +63,7 @@ function isFeatureUnavailable(err: unknown): boolean {
   return err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE'
 }
 
-export default function GrowthHubScreen() {
+export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
@@ -99,22 +99,24 @@ export default function GrowthHubScreen() {
   return (
     <View className="flex-1 bg-ink-50">
       {/* Header */}
-      <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: insets.top + 12 }}
-      >
-        <View className="flex-row items-center gap-3">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Growth Tools</Text>
+      {!isTab && (
+        <View
+          className="bg-white border-b border-sand-100 px-4 pb-4"
+          style={{ paddingTop: insets.top + 12 }}
+        >
+          <View className="flex-row items-center gap-3">
+            <AnimatedPressable
+              onPress={() => router.back()}
+              hitSlop={8}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+            >
+              <ChevronLeft size={24} color={colors.sand[700]} />
+            </AnimatedPressable>
+            <Text className="text-base font-bold text-sand-900">Growth Tools</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Hero */}
