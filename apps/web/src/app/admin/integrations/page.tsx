@@ -215,7 +215,7 @@ export default function IntegrationsPage() {
 
       {displayedCategories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-sm text-gray-500">
-          No integration keys found matching "{searchQuery}".
+          No integration keys found matching &ldquo;{searchQuery}&rdquo;.
         </div>
       ) : (
         displayedCategories.map((category) => (
