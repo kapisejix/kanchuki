@@ -25,7 +25,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   PAYMENT: 'Payment Gateway (Razorpay)',
   STORAGE: 'Storage (Cloudflare R2)',
   WHATSAPP: 'WhatsApp Business API',
-};
+}
 
 export default function IntegrationsPage() {
   const [rows, setRows] = useState<IntegrationRow[]>([])
@@ -54,7 +54,7 @@ export default function IntegrationsPage() {
   }, [])
 
   useEffect(() => {
-    load()
+    void load()
   }, [load])
 
   const save = async (row: IntegrationRow) => {
@@ -168,7 +168,7 @@ export default function IntegrationsPage() {
         <button
           onClick={() => {
             setLoading(true)
-            load()
+            void load()
           }}
           className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-xs"
         >

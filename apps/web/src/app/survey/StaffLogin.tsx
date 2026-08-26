@@ -1,13 +1,6 @@
-'use client'
-
-// Staff-only phone+OTP gate for the survey tool. Reuses the existing
-// POST /v1/auth/otp/send + /v1/auth/otp/verify endpoints (apps/api/src/
-// routes/auth.ts) — verify() already resolves the phone against TeamMember
-// and mints a TEAM_JWT (signTeamToken) when it matches, so no new backend
-// auth code is needed here. A phone that isn't an active TeamMember gets no
-// access_token back and the login just fails.
-import { useState, type FormEvent } from 'react'
-import { Lock, Send } from 'lucide-react'
+import { useState, useEffect, type FormEvent } from 'react'
+import { Lock, Send, Sparkles, ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -20,12 +13,22 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
   const [phone, setPhone] = useState('')
   const [otp, setOtp] = useState('')
   const [stage, setStage] = useState<'phone' | 'otp'>('phone')
-  const [status, setStatus] = useState<'idle' | 'busy' | 'error'>('idle')
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [resendTimer, setResendTimer] = useState(0)
 
-  async function sendOtp(e: FormEvent) {
-    e.preventDefault()
-    setStatus('busy')
+  useEffect(() => {
+    if (resendTimer <= 0) return
+    const interval = setInterval(() => {
+      setResendTimer((t) => (t > 0 ? t - 1 : 0))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [resendTimer])
+
+  async function sendOtp(e?: FormEvent) {
+    if (e) e.preventDefault()
+    if (phone.length !== 10) return
+    setBusy(true)
     setError('')
     try {
       const res = await fetch(`${API_URL}/v1/auth/otp/send`, {
@@ -33,18 +36,23 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       })
-      if (!res.ok) throw new Error()
+      if (!res.ok) {
+        const json = await res.json().catch(() => null)
+        throw new Error(json?.error?.message ?? 'Could not send OTP')
+      }
       setStage('otp')
-      setStatus('idle')
-    } catch {
-      setError('Could not send OTP — check the number and try again.')
-      setStatus('idle')
+      setResendTimer(30)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send OTP — check number and try again.')
+    } finally {
+      setBusy(false)
     }
   }
 
   async function verifyOtp(e: FormEvent) {
     e.preventDefault()
-    setStatus('busy')
+    if (otp.length < 4) return
+    setBusy(true)
     setError('')
     try {
       const res = await fetch(`${API_URL}/v1/auth/otp/verify`, {
@@ -56,76 +64,178 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
       const token = json?.data?.access_token
       const isStaff = json?.data?.is_staff
       if (!res.ok || !token || !isStaff) {
-        throw new Error()
+        throw new Error(json?.error?.message ?? 'Invalid OTP code or this number is not a registered staff member.')
       }
-      onLogin({ token, name: json.data.team_member?.name ?? 'Staff' })
-    } catch {
-      setError('Invalid code, or this number is not a registered staff member.')
-      setStatus('idle')
+      onLogin({
+        token,
+        name: json.data.team_member?.name ?? 'Staff Member',
+      })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid code or unregistered staff member.')
+    } finally {
+      setBusy(false)
     }
   }
 
   return (
-    <div className="staff-login">
-      <style>{STAFF_LOGIN_CSS}</style>
-      <div className="staff-login-icon"><Lock size={20} strokeWidth={1.5} /></div>
-      <h2>Staff Login</h2>
-      <p className="staff-login-hint">This survey is for Kanchuki field staff only. Log in with the phone number your admin registered.</p>
+    <div className="min-h-[70vh] flex items-center justify-center px-4 py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md bg-white/90 backdrop-blur-xl border border-amber-200/60 rounded-3xl shadow-xl shadow-amber-900/5 p-8 text-center"
+      >
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-yellow-500/20 border border-amber-300/40 text-amber-700 flex items-center justify-center mx-auto mb-5 shadow-xs">
+          <Lock size={24} strokeWidth={1.75} />
+        </div>
 
-      {stage === 'phone' ? (
-        <form onSubmit={sendOtp}>
-          <label htmlFor="staffPhone">Phone number</label>
-          <input
-            id="staffPhone"
-            type="tel"
-            inputMode="numeric"
-            required
-            maxLength={10}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-            placeholder="10-digit mobile number"
-          />
-          {error && <p className="staff-login-error">{error}</p>}
-          <button type="submit" disabled={status === 'busy' || phone.length !== 10}>
-            {status === 'busy' ? 'Sending…' : 'Send OTP'} <Send size={15} strokeWidth={1.5} />
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={verifyOtp}>
-          <label htmlFor="staffOtp">Enter the OTP sent to {phone}</label>
-          <input
-            id="staffOtp"
-            type="text"
-            inputMode="numeric"
-            required
-            maxLength={6}
-            value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-            placeholder="6-digit code"
-          />
-          {error && <p className="staff-login-error">{error}</p>}
-          <button type="submit" disabled={status === 'busy' || otp.length < 4}>
-            {status === 'busy' ? 'Verifying…' : 'Verify & Continue'}
-          </button>
-          <button type="button" className="staff-login-back" onClick={() => { setStage('phone'); setOtp(''); setError('') }}>
-            Change number
-          </button>
-        </form>
-      )}
+        <h1 className="text-xl font-bold text-gray-900 mb-1.5 flex items-center justify-center gap-2">
+          Field Staff Portal
+          <Sparkles size={16} className="text-amber-500" />
+        </h1>
+        <p className="text-xs text-gray-500 mb-6 leading-relaxed">
+          Log in with your registered staff phone number to access the Retailer Discovery & Market Survey tool.
+        </p>
+
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-5 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs text-left"
+          >
+            {error}
+          </motion.div>
+        )}
+
+        <AnimatePresence mode="wait">
+          {stage === 'phone' ? (
+            <motion.form
+              key="phone-stage"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              onSubmit={sendOtp}
+              className="space-y-4 text-left"
+            >
+              <div>
+                <label htmlFor="staffPhone" className="block text-xs font-semibold text-gray-700 mb-1.5">
+                  Mobile Number
+                </label>
+                <div className="relative flex items-center">
+                  <span className="absolute left-3.5 text-xs font-semibold text-gray-400 select-none">
+                    +91
+                  </span>
+                  <input
+                    id="staffPhone"
+                    type="tel"
+                    inputMode="numeric"
+                    required
+                    autoFocus
+                    maxLength={10}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 10-digit number"
+                    className="w-full pl-12 pr-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={busy || phone.length !== 10}
+                className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-amber-600/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Sending OTP…
+                  </>
+                ) : (
+                  <>
+                    <span>Send Login Code</span>
+                    <Send size={15} />
+                  </>
+                )}
+              </button>
+            </motion.form>
+          ) : (
+            <motion.form
+              key="otp-stage"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              onSubmit={verifyOtp}
+              className="space-y-4 text-left"
+            >
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="staffOtp" className="text-xs font-semibold text-gray-700">
+                    Enter OTP Code
+                  </label>
+                  <span className="text-[11px] text-gray-400 font-mono">+91 {phone}</span>
+                </div>
+                <input
+                  id="staffOtp"
+                  type="text"
+                  inputMode="numeric"
+                  required
+                  autoFocus
+                  maxLength={6}
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                  placeholder="Enter 6-digit OTP"
+                  className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200 rounded-xl text-center text-lg font-mono tracking-widest focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-400 transition-all"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={busy || otp.length < 4}
+                className="w-full py-3 px-4 bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-amber-600/20 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Verifying…
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 size={16} />
+                    <span>Verify & Open Survey</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStage('phone')
+                    setOtp('')
+                    setError('')
+                  }}
+                  className="text-xs text-gray-500 hover:text-gray-800 flex items-center gap-1 transition-colors"
+                >
+                  <ArrowLeft size={12} />
+                  Change number
+                </button>
+
+                {resendTimer > 0 ? (
+                  <span className="text-xs text-gray-400 font-medium">Resend in {resendTimer}s</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => void sendOtp()}
+                    disabled={busy}
+                    className="text-xs text-amber-700 hover:text-amber-800 font-semibold transition-colors disabled:opacity-50"
+                  >
+                    Resend OTP
+                  </button>
+                )}
+              </div>
+            </motion.form>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </div>
   )
 }
-
-const STAFF_LOGIN_CSS = `
-.staff-login { max-width: 380px; margin: 40px auto; text-align: center; }
-.staff-login-icon { width: 44px; height: 44px; border-radius: 999px; background: #faf0d9; color: #b8860b; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
-.staff-login h2 { font-size: 1.2rem; margin: 0 0 6px; }
-.staff-login-hint { color: #6b6b6b; font-size: 0.85rem; margin: 0 0 20px; }
-.staff-login form { text-align: left; }
-.staff-login label { display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 6px; }
-.staff-login input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 16px; margin-bottom: 12px; }
-.staff-login-error { color: #dc2626; font-size: 0.85rem; margin: -4px 0 12px; }
-.staff-login button[type=submit] { width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; background: #b8860b; color: #fff; font-weight: 600; padding: 12px; border-radius: 999px; border: none; cursor: pointer; }
-.staff-login button[type=submit]:disabled { opacity: 0.5; }
-.staff-login-back { display: block; width: 100%; margin-top: 10px; background: none; border: none; color: #6b6b6b; font-size: 0.85rem; cursor: pointer; }
-`
