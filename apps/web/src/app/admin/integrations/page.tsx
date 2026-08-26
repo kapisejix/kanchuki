@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { KeyRound, Save, Trash2, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Save, Trash2, Loader2, ShieldCheck, ShieldOff } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
@@ -20,7 +20,7 @@ type IntegrationRow = {
   configured: boolean
 }
 
-const CATEGORY_LABELS: Record<Category, string> = {
+const CATEGORY_LABELS: Record<string, string> = {
   AI: 'AI Models & Generation (Fal.ai Flux / IDM-VTON, Google Imagen 3, Gemini, Claude, OpenAI)',
   PAYMENT: 'Payment Gateway (Razorpay)',
   STORAGE: 'Storage (Cloudflare R2)',
@@ -31,6 +31,7 @@ export default function IntegrationsPage() {
   const [rows, setRows] = useState<IntegrationRow[]>([])
   const [loading, setLoading] = useState(true)
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [showValues, setShowValues] = useState<Record<string, boolean>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [status, setStatus] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -39,10 +40,14 @@ export default function IntegrationsPage() {
   const load = useCallback(async () => {
     try {
       const res = await fetch(`${API_URL}/v1/admin/integrations`, adminGetOptions())
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => null)
+        throw new Error(errorJson?.error?.message ?? `HTTP ${res.status}`)
+      }
       const json = await res.json()
       setRows(json.data ?? [])
-    } catch {
-      setStatus('❌ Failed to load integrations')
+    } catch (err) {
+      setStatus(`❌ Failed to load integrations: ${err instanceof Error ? err.message : 'Unknown error'}`)
     } finally {
       setLoading(false)
     }
@@ -109,13 +114,21 @@ export default function IntegrationsPage() {
   const toggleActive = async (row: IntegrationRow) => {
     if (!row.id) return
     setBusy(row.key_name)
+    setStatus('')
     try {
-      await fetch(`${API_URL}/v1/admin/integrations/${row.id}`, {
+      const res = await fetch(`${API_URL}/v1/admin/integrations/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'PATCH',
         body: JSON.stringify({ is_active: !row.is_active }),
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        throw new Error(body?.error?.message ?? `Update failed (${res.status})`)
+      }
+      setStatus(`✅ ${row.label} ${!row.is_active ? 'activated' : 'deactivated'}`)
       await load()
+    } catch (err) {
+      setStatus(`❌ ${err instanceof Error ? err.message : 'Toggle failed'}`)
     } finally {
       setBusy(null)
     }
@@ -215,12 +228,14 @@ export default function IntegrationsPage() {
 
       {displayedCategories.length === 0 ? (
         <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-sm text-gray-500">
-          No integration keys found matching &ldquo;{searchQuery}&rdquo;.
+          {searchQuery
+            ? `No integration keys found matching \u201C${searchQuery}\u201D.`
+            : 'No integration keys found.'}
         </div>
       ) : (
         displayedCategories.map((category) => (
           <div key={category} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">{CATEGORY_LABELS[category]}</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">{CATEGORY_LABELS[category] ?? category}</h2>
             <div className="space-y-3">
               {filteredRows
                 .filter((r) => r.category === category)
@@ -248,7 +263,7 @@ export default function IntegrationsPage() {
                     </span>
                     {row.configured && (
                       <button
-                        onClick={() => toggleActive(row)}
+                        onClick={() => void toggleActive(row)}
                         disabled={busy === row.key_name}
                         className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50"
                         aria-label={row.is_active ? 'Deactivate' : 'Activate'}
@@ -260,15 +275,32 @@ export default function IntegrationsPage() {
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    <input
-                      type="password"
-                      value={drafts[row.key_name] ?? ''}
-                      onChange={(e) => setDrafts((d) => ({ ...d, [row.key_name]: e.target.value }))}
-                      placeholder={row.configured ? 'Rotate value…' : 'Paste value…'}
-                      className="w-48 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showValues[row.key_name] ? 'text' : 'password'}
+                        value={drafts[row.key_name] ?? ''}
+                        onChange={(e) => setDrafts((d) => ({ ...d, [row.key_name]: e.target.value }))}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void save(row)
+                        }}
+                        placeholder={row.configured ? 'Rotate value…' : 'Paste value…'}
+                        className="w-52 px-2.5 py-1.5 pr-8 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                      />
+                      {drafts[row.key_name] ? (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setShowValues((prev) => ({ ...prev, [row.key_name]: !prev[row.key_name] }))
+                          }
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          aria-label={showValues[row.key_name] ? 'Hide password' : 'Show password'}
+                        >
+                          {showValues[row.key_name] ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                      ) : null}
+                    </div>
                     <button
-                      onClick={() => save(row)}
+                      onClick={() => void save(row)}
                       disabled={busy === row.key_name}
                       className="p-1.5 text-gray-400 hover:text-cyan-600 disabled:opacity-50 transition-colors"
                       aria-label={`Save ${row.label}`}
@@ -277,7 +309,7 @@ export default function IntegrationsPage() {
                     </button>
                     {row.configured && (
                       <button
-                        onClick={() => remove(row)}
+                        onClick={() => void remove(row)}
                         disabled={busy === row.key_name}
                         className="p-1.5 text-gray-400 hover:text-red-600 disabled:opacity-50 transition-colors"
                         aria-label={`Remove ${row.label}`}
