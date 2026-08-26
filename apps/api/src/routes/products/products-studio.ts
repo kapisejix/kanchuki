@@ -22,7 +22,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
 import { getStudioJobStatus, isStudioShootConfigured } from '../../lib/studio-shoot.js';
-import { checkQuota } from '../../lib/quota.js';
+import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
 import { featureUnavailable, notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const StudioShootBodySchema = z.object({
@@ -140,5 +140,22 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     // Nothing yet — still processing (or the job failed and the Redis TTL
     // expired; the retailer retries and the next status read decides).
     return { data: { status: 'processing' } };
+  });
+
+  // ─── GET /products/:id/photos/:photoId/studio-shoot/quota ────────
+  // Return current retailer quota status (used, limit, remaining, plan)
+  server.get('/:id/photos/:photoId/studio-shoot/quota', async (request) => {
+    const retailer = await prisma.retailer.findUniqueOrThrow({
+      where: { id: request.retailerId },
+      select: { plan: true },
+    });
+
+    const quota = await getQuotaStatus(request.retailerId, 'STUDIO_SHOOT');
+    return {
+      data: {
+        plan: retailer.plan,
+        ...quota,
+      },
+    };
   });
 };

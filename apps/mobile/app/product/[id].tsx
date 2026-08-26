@@ -144,6 +144,18 @@ export default function ProductDetailScreen() {
   const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
   const [studioTab, setStudioTab] = useState<'scenes' | 'models'>('scenes')
 
+  // The true original / primary photo of the product (never an already-generated studio photo or variant preview)
+  const originalPhoto = (product?.photos ?? []).find((p) => p.is_primary && !p.metadata?.studio) ||
+    (product?.photos ?? []).find((p) => !p.metadata?.studio) ||
+    product?.photos?.[0];
+
+  const { data: studioQuotaData, refetch: refetchStudioQuota } = useQuery({
+    queryKey: ['studio-quota', product?.id, originalPhoto?.id],
+    queryFn: () => (product && originalPhoto ? productApi.getStudioShootQuota(product.id, originalPhoto.id) : null),
+    enabled: Boolean(product && originalPhoto),
+  });
+  const studioQuota = studioQuotaData?.data;
+
   // F-033: Ken Burns product video generated from the product's own photos.
   const generateVideo = useMutation({
     mutationFn: () => growthApi.generateVideo(product!.id),
@@ -559,72 +571,69 @@ export default function ProductDetailScreen() {
     }
   }
 
-  // F-032: start a studio-shoot generation for the currently-viewed photo.
-  // POST returns a job_id immediately; polling below picks up the result.
+  // F-032: start a studio-shoot generation for the product's primary original photo.
+  // ALWAYS applies on the original product photo, never on an already-generated studio photo or secondary preview.
   const handleStartStudioShoot = async (
     template: string,
     options?: { engine?: string; model_id?: string },
   ) => {
-    const photo = currentPhoto
-    if (!product || !photo) return
-    if (photo.is_variant_preview || photo.is_original_preview) return
-    setStudioModalOpen(false)
-    setStudioStarting(true)
-    setStudioError(null)
-    setStudioUpgradeRequired(false)
-    setStudioResult(null)
+    const photo = originalPhoto;
+    if (!product || !photo) return;
+    setStudioModalOpen(false);
+    setStudioStarting(true);
+    setStudioError(null);
+    setStudioUpgradeRequired(false);
+    setStudioResult(null);
     try {
-      const res = await productApi.startStudioShoot(product.id, photo.id, template, options)
-      setStudioJob({ jobId: res.data.job_id, photoId: photo.id })
-      setStudioStatus('processing')
+      const res = await productApi.startStudioShoot(product.id, photo.id, template, options);
+      setStudioJob({ jobId: res.data.job_id, photoId: photo.id });
+      setStudioStatus('processing');
     } catch (err) {
-      if (err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE') {
-        // Plan gate, not a real failure — show the reason inline with an
-        // upgrade path instead of a dead-end native Alert (matches the
-        // growth-hub FEATURE_UNAVAILABLE pattern).
-        setStudioStatus('failed')
-        setStudioError(err.message)
-        setStudioUpgradeRequired(true)
+      if (err instanceof ApiError && (err.code === 'FEATURE_UNAVAILABLE' || err.code === 'PLAN_LIMIT_EXCEEDED')) {
+        setStudioStatus('failed');
+        setStudioError(err.message);
+        setStudioUpgradeRequired(true);
       } else {
-        showError(err, 'Could not start the studio shoot')
-        setStudioStatus(null)
+        showError(err, 'Could not start the studio shoot');
+        setStudioStatus(null);
       }
     } finally {
-      setStudioStarting(false)
+      setStudioStarting(false);
     }
-  }
+  };
 
   // Poll the studio-shoot job with exponential backoff (2s → 4s → 8s → 16s max).
   useEffect(() => {
-    if (!product || !studioJob || studioStatus !== 'processing') return
+    if (!product || !studioJob || studioStatus !== 'processing') return;
     const stopPolling = pollWithBackoff({
       initialMs: 2000,
       maxMs: 16_000,
       maxAttempts: 60,
       onPoll: async () => {
-        const res = await productApi.getStudioShootStatus(product.id, studioJob.photoId, studioJob.jobId)
-        const s = res.data
+        const res = await productApi.getStudioShootStatus(product.id, studioJob.photoId, studioJob.jobId);
+        const s = res.data;
         if (s.status === 'ready' && s.photo_id && s.url) {
-          setStudioStatus('ready')
-          setStudioResult({ photoId: s.photo_id, url: s.url })
-          setStudioProgress(100)
-          setStudioEtaMs(0)
-          // New photo row — refresh the product so it appears in the carousel.
-          void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
-          return true
+          setStudioStatus('ready');
+          setStudioResult({ photoId: s.photo_id, url: s.url });
+          setStudioProgress(100);
+          setStudioEtaMs(0);
+          // New photo row — refresh the product and quota so it appears in the carousel.
+          void queryClient.invalidateQueries({ queryKey: ['products', product.id] });
+          void refetchStudioQuota();
+          return true;
         } else if (s.status === 'failed') {
-          setStudioStatus('failed')
-          setStudioError(s.error ?? 'The studio shoot failed. Please try again.')
-          return true
+          setStudioStatus('failed');
+          setStudioError(s.error ?? 'The studio shoot failed. Please try again.');
+          return true;
         }
         // Update progress/eta from server
-        if (s.progress != null) setStudioProgress(s.progress)
-        if (s.etaMs != null) setStudioEtaMs(s.etaMs)
-        return false
+        if (s.progress != null) setStudioProgress(s.progress);
+        if (s.etaMs != null) setStudioEtaMs(s.etaMs);
+        return false;
       },
-    })
-    return stopPolling
-  }, [product, studioJob, studioStatus, queryClient])
+    });
+    return stopPolling;
+  }, [product, studioJob, studioStatus, queryClient, refetchStudioQuota]);
 
   // Many vendor "set" shots (kameez+dupatta draped on a mannequin, with the
   // folded bottom piece sitting on a stand in the same frame — see
@@ -1007,10 +1016,10 @@ export default function ProductDetailScreen() {
           <AnimatedPressable
             onPress={() => setStudioModalOpen(true)}
             disabled={
-              !currentPhoto || currentPhotoIsVariant || currentPhotoIsOriginal ||
+              !originalPhoto ||
               studioStarting || studioStatus === 'processing'
             }
-            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl"
+            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl relative"
           >
             {studioStarting || studioStatus === 'processing' ? (
               <ActivityIndicator size="small" color={primaryColor} />
@@ -1018,6 +1027,11 @@ export default function ProductDetailScreen() {
               <Sparkles size={20} color={primaryColor} />
             )}
             <Text className="text-ink-700 text-xs font-semibold">AI Studio</Text>
+            {studioQuota && !studioQuota.unlimited && (
+              <View className="absolute -top-1.5 -right-1 bg-amber-500 px-1.5 py-0.5 rounded-full shadow-xs">
+                <Text className="text-[9px] font-bold text-white">{studioQuota.remaining}</Text>
+              </View>
+            )}
           </AnimatedPressable>
         </View>
 
@@ -2008,13 +2022,36 @@ export default function ProductDetailScreen() {
               </View>
             </View>
 
-            <Text className="text-xs text-sand-500 mb-4">
+            <Text className="text-xs text-sand-500 mb-3">
               {studioTab === 'scenes'
                 ? 'Transform backdrop and lighting — garment stays 100% authentic.'
                 : 'Pick a professional Indian model to wear and drape this garment.'}
             </Text>
 
-            <ScrollView bounces={false} style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+            {/* Quota & Credits banner with Buy Credits button */}
+            <View className="flex-row items-center justify-between bg-amber-50/90 border border-amber-200/80 rounded-xl px-3 py-2 mb-3">
+              <View className="flex-row items-center gap-1.5 flex-1 pr-2">
+                <Sparkles size={14} color="#b45309" />
+                <Text className="text-xs font-semibold text-amber-900">
+                  {studioQuota?.unlimited
+                    ? 'Unlimited AI Studio Credits'
+                    : studioQuota
+                      ? `${studioQuota.remaining} of ${studioQuota.limit} credits remaining`
+                      : 'AI Studio Credits Active'}
+                </Text>
+              </View>
+              <AnimatedPressable
+                onPress={() => {
+                  setStudioModalOpen(false);
+                  router.push('/(tabs)/settings');
+                }}
+                className="bg-amber-600 px-2.5 py-1 rounded-lg active:opacity-80"
+              >
+                <Text className="text-[11px] font-bold text-white">Buy Credits</Text>
+              </AnimatedPressable>
+            </View>
+
+            <ScrollView bounces={false} style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
               <View className="flex-row flex-wrap justify-between pb-3">
                 {studioTab === 'scenes' ? (
                   STUDIO_TEMPLATES.map((t) => {

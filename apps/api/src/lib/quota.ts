@@ -88,3 +88,52 @@ export async function incrementUsage(
     update: { count: { increment: amount } },
   });
 }
+
+export interface QuotaStatusResult {
+  used: number;
+  limit: number;
+  remaining: number;
+  period: QuotaPeriod;
+  unlimited: boolean;
+}
+
+export async function getQuotaStatus(
+  retailerId: string,
+  resourceType: QuotaResourceType,
+): Promise<QuotaStatusResult> {
+  const effective = await effectiveLimit(retailerId, resourceType);
+  if (!effective || effective.limit === -1) {
+    // If not explicitly configured yet, default to standard tier limits (Growth: 30, Pro: 100)
+    const retailer = await prisma.retailer.findUnique({
+      where: { id: retailerId },
+      select: { plan: true },
+    });
+    const defaultLimit = retailer?.plan === 'PRO' ? 100 : retailer?.plan === 'GROWTH' ? 30 : 0;
+    return {
+      used: 0,
+      limit: defaultLimit,
+      remaining: defaultLimit,
+      period: 'MONTH',
+      unlimited: defaultLimit === 0 && retailer?.plan !== 'STARTER',
+    };
+  }
+
+  const counter = await prisma.usageCounter.findUnique({
+    where: {
+      retailer_id_resource_type_period_start: {
+        retailer_id: retailerId,
+        resource_type: resourceType,
+        period_start: periodStart(effective.period),
+      },
+    },
+  });
+  const used = counter?.count ?? 0;
+  const remaining = Math.max(0, effective.limit - used);
+  return {
+    used,
+    limit: effective.limit,
+    remaining,
+    period: effective.period,
+    unlimited: false,
+  };
+}

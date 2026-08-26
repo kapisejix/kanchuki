@@ -243,6 +243,22 @@ export const productApi = {
       timeoutMs: 15_000,
     }),
 
+  /** Fetch AI Studio quota credits left for the current retailer. */
+  getStudioShootQuota: (productId: string, photoId: string) =>
+    request<{
+      data: {
+        plan: string;
+        used: number;
+        limit: number;
+        remaining: number;
+        period: string;
+        unlimited: boolean;
+      };
+    }>(`/v1/products/${productId}/photos/${photoId}/studio-shoot/quota`, {
+      getCacheTtlMs: 30_000,
+      timeoutMs: 10_000,
+    }),
+
   /**
    * Professional photo pipeline (product-add multi-shot capture flow):
    * cleans each raw kept shot server-side — background removal + backdrop

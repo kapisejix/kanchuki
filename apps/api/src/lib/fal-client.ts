@@ -105,12 +105,36 @@ export async function runFalTask(
 }
 
 /**
+ * Run Flux Image-to-Image transformation to preserve exact garment colors and structure.
+ */
+export async function generateFluxImageToImage(
+  prompt: string,
+  inputImageUrl: string,
+  options?: { strength?: number; onProgress?: (p: { progress: number; etaMs: number }) => void },
+): Promise<{ sampleUrl: string }> {
+  const input: Record<string, unknown> = {
+    prompt,
+    image_url: inputImageUrl,
+    strength: options?.strength ?? 0.65,
+    guidance_scale: 3.5,
+    num_inference_steps: 28,
+    enable_safety_checker: true,
+  };
+
+  return runFalTask('fal-ai/flux/dev/image-to-image', input, options?.onProgress);
+}
+
+/**
  * Run Flux 1.1 Pro image generation.
  */
 export async function generateFluxProImage(
   prompt: string,
   options?: { inputImageUrl?: string; onProgress?: (p: { progress: number; etaMs: number }) => void },
 ): Promise<{ sampleUrl: string }> {
+  if (options?.inputImageUrl) {
+    return generateFluxImageToImage(prompt, options.inputImageUrl, { onProgress: options.onProgress });
+  }
+
   const input: Record<string, unknown> = {
     prompt,
     negative_prompt:
@@ -120,10 +144,6 @@ export async function generateFluxProImage(
     guidance_scale: 3.5,
     enable_safety_checker: true,
   };
-
-  if (options?.inputImageUrl) {
-    input.image_url = options.inputImageUrl;
-  }
 
   return runFalTask('fal-ai/flux-pro/v1.1', input, options?.onProgress);
 }
@@ -135,6 +155,10 @@ export async function generateFluxSchnellImage(
   prompt: string,
   options?: { inputImageUrl?: string; onProgress?: (p: { progress: number; etaMs: number }) => void },
 ): Promise<{ sampleUrl: string }> {
+  if (options?.inputImageUrl) {
+    return generateFluxImageToImage(prompt, options.inputImageUrl, { strength: 0.7, onProgress: options?.onProgress });
+  }
+
   const input: Record<string, unknown> = {
     prompt,
     negative_prompt:
@@ -143,10 +167,6 @@ export async function generateFluxSchnellImage(
     num_inference_steps: 4,
     enable_safety_checker: true,
   };
-
-  if (options?.inputImageUrl) {
-    input.image_url = options.inputImageUrl;
-  }
 
   return runFalTask('fal-ai/flux/schnell', input, options?.onProgress);
 }
