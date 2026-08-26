@@ -66,6 +66,10 @@ vi.mock('@kanchuki/db', () => ({
       updateMany: mockPhotoUpdateMany,
       findUnique: mockPhotoFindUnique,
     },
+    productVariant: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn(),
+    },
     backgroundImage: { findFirst: mockBackgroundImageFindFirst },
     $transaction: mockTransaction,
     retailer: { findUniqueOrThrow: vi.fn() },

@@ -21,8 +21,7 @@ import { SignJWT, jwtVerify } from 'jose';
 import { verifySync } from 'otplib';
 import { z } from 'zod';
 import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
-import { verifyPassword } from '../plugins/team-auth.js';
-
+import { verifyPassword, verifyTeamToken } from '../plugins/team-auth.js';
 declare module 'fastify' {
   interface FastifyRequest {
     // Set by adminAuthPreHandler: the session's email, or 'admin-key' when
@@ -48,11 +47,9 @@ function sessionSecret(): Uint8Array {
   return new TextEncoder().encode(`admin-session:${key}`);
 }
 
-export async function signAdminSession(email: string): Promise<string> {
-  return new SignJWT({ email })
+export async function signAdminSession(email: string, role = 'SUPER_ADMIN'): Promise<string> {
+  return new SignJWT({ email, role })
     .setProtectedHeader({ alg: 'HS256' })
-    .setSubject('admin')
-    .setIssuedAt()
     .setExpirationTime('12h')
     .sign(sessionSecret());
 }
@@ -63,25 +60,25 @@ export async function verifyAdminSession(token: string): Promise<boolean> {
     return true;
   } catch {
     const teamClaims = await verifyTeamToken(token);
+    return teamClaims !== null && (teamClaims.role === 'SUPER_ADMIN' || teamClaims.role === 'ADMIN');
+  }
 }
-
-// Decode the admin email and role from a session JWT or team token.
 // Used by GET /admin/session and adminAuthPreHandler for RBAC.
 export async function adminSessionInfo(
   token: string | undefined,
 ): Promise<{ email?: string; role: string } | null> {
-    const { payload } = await jwtVerify(token, sessionSecret());
-    };
-  } catch {
-    const teamClaims = await verifyTeamToken(token);
-      };
-// the admin panel's refresh gate never depends on database health.
-export async function adminSessionEmail(token: string | undefined): Promise<string | null> {
-  const info = await adminSessionInfo(token);
+  if (!token) return null;
+
+  if (validAdminKey(token)) {
+      role: typeof payload.role === 'string' ? payload.role : 'SUPER_ADMIN',
+    if (teamClaims) {
+      return {
+        email: teamClaims.sub,
+  }
   return info?.email ?? null;
+}
+
 // CIDR ranges ("103.45.67.0/24"). Does NOT support IPv6 — office networks in
-// India overwhelmingly use IPv4, and IPv6 requests will safely fail-closed.
-export function ipInCidr(ip: string, cidr: string): boolean {
   try {
     const ipInt = ip.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
     if (cidr.includes('/')) {
@@ -142,15 +139,15 @@ export async function adminAuthPreHandler(
 
   // Field staff / surveyors have NO admin dashboard access
   if (info.role === 'MARKETING_AGENT' || info.role === 'SUPPORT_AGENT') {
-  // Standard Admin accounts (not Super Admin) are restricted from sensitive endpoints
-  if (info.role !== 'SUPER_ADMIN') {
-    const path = request.url.toLowerCase();
+    throw forbidden('Access denied — staff accounts cannot access the admin panel');
+  }
+
     const isSuperAdminOnly =
       path.startsWith('/v1/admin/integrations') ||
       path.startsWith('/v1/admin/ai-providers') ||
-    if (!csrfCookie || !csrfHeader) {
-      throw forbidden(
-        'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
+      path.startsWith('/v1/admin/settings') ||
+      path.startsWith('/v1/admin/payments') ||
+      path.startsWith('/v1/admin/billing') ||
       );
     }
     // Timing-safe comparison (S-004) — prevent oracle attacks via response-time variance

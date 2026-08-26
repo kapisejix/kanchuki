@@ -378,7 +378,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     // created by the OTP verify is simply never linked to this TeamMember.
     const teamMember = await prisma.teamMember.findFirst({
       where: { phone, is_active: true },
-      select: { id: true, name: true, email: true, role: true },
+      select: { id: true, name: true, email: true, role: true, referral_code: true },
     });
 
     if (teamMember) {
@@ -392,6 +392,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
             name: teamMember.name,
             email: teamMember.email,
             role: teamMember.role,
+            referral_code: teamMember.referral_code,
           },
         },
       });

@@ -7,6 +7,8 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 export interface TeamSession {
   token: string
   name: string
+  referralCode?: string
+  teamMemberId?: string
 }
 
 export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => void }) {
@@ -69,6 +71,8 @@ export function StaffLogin({ onLogin }: { onLogin: (session: TeamSession) => voi
       onLogin({
         token,
         name: json.data.team_member?.name ?? 'Staff Member',
+        referralCode: json.data.team_member?.referral_code ?? '',
+        teamMemberId: json.data.team_member?.id ?? '',
       })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code or unregistered staff member.')

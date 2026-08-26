@@ -10,7 +10,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { ClipboardList, RefreshCw, ArrowLeft, ArrowRight, X, Phone, Clock, Monitor } from 'lucide-react'
 import { adminGetOptions } from '@/lib/admin-fetch'
-import { SECTIONS, type Question } from '../../survey/translations'
+import { SECTIONS, LIKERT_LEVELS, type Question } from '../../survey/translations'
 
 const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
@@ -30,7 +30,10 @@ function fieldDisplay(q: Question, raw: unknown): string {
   if (raw == null || raw === '') return '—'
   if (Array.isArray(raw)) return raw.map((v) => optionLabel(q, String(v))).join(', ')
   if (q.type === 'radio' || q.type === 'select') return optionLabel(q, String(raw))
-  if (q.type === 'likert') return `${raw} / 5`
+  if (q.type === 'likert') {
+    const found = LIKERT_LEVELS.find((l) => l.value === String(raw))
+    return found ? found.label.en : `${raw} / 5`
+  }
   return String(raw)
 }
 

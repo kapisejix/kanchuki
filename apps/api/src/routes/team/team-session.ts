@@ -81,7 +81,13 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         token,
-        team_member: { id: member.id, name: member.name, email: member.email, role: member.role },
+        team_member: {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          referral_code: member.referral_code,
+        },
       },
     };
   });
@@ -245,7 +251,13 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         token,
-        team_member: { id: member.id, name: member.name, email: member.email, role: member.role },
+        team_member: {
+          id: member.id,
+          name: member.name,
+          email: member.email,
+          role: member.role,
+          referral_code: member.referral_code,
+        },
       },
     };
   });

@@ -108,7 +108,7 @@ describe('POST /v1/team/survey', () => {
     });
 
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ data: { received: true } });
+    expect(res.json().data).toMatchObject({ received: true });
 
     expect(mockAuditLogCreate).toHaveBeenCalledTimes(1);
     const call = mockAuditLogCreate.mock.calls[0]![0];

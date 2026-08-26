@@ -33,24 +33,24 @@ const t = (en: string, hi: string, pa: string): Text => ({ en, hi, pa })
 
 export const UI = {
   pageTitle: t(
-    'Retailer Business & Pain-Point Survey',
-    'रिटेलर बिज़नेस और समस्या सर्वे',
-    'ਰਿਟੇਲਰ ਬਿਜ਼ਨਸ ਅਤੇ ਸਮੱਸਿਆ ਸਰਵੇ',
+    'Retailer Discovery & Sales Form',
+    'दुकान खोज और सेल्स फॉर्म',
+    'ਦੁਕਾਨ ਖੋਜ ਅਤੇ ਸੇਲਜ਼ ਫਾਰਮ',
   ),
   pageLead: t(
-    '10–12 min. Answers help us confirm real problems before building — be as honest as possible.',
-    '10–12 मिनट। जवाब हमें असली समस्याएं समझने में मदद करेंगे — जितना हो सके सही जवाब दें।',
-    '10–12 ਮਿੰਟ। ਜਵਾਬ ਸਾਨੂੰ ਅਸਲੀ ਸਮੱਸਿਆਵਾਂ ਸਮਝਣ ਵਿੱਚ ਮਦਦ ਕਰਨਗੇ — ਜਿੰਨਾ ਹੋ ਸਕੇ ਸਹੀ ਜਵਾਬ ਦਿਓ।',
+    'Field sales form — collect retailer store details, pain points & generate instant referral onboarding ID.',
+    'फील्ड सेल्स फॉर्म — रिटेलर स्टोर विवरण, समस्याएं दर्ज करें और तुरंत रेफरल आईडी बनाएं।',
+    'ਫੀਲਡ ਸੇਲਜ਼ ਫਾਰਮ — ਰਿਟੇਲਰ ਸਟੋਰ ਵੇਰਵੇ, ਸਮੱਸਿਆਵਾਂ ਦਰਜ ਕਰੋ ਅਤੇ ਤੁਰੰਤ ਰੈਫਰਲ ਆਈਡੀ ਬਣਾਓ।',
   ),
-  submit: t('Submit Survey', 'सर्वे भेजें', 'ਸਰਵੇ ਭੇਜੋ'),
-  sending: t('Sending…', 'भेजा जा रहा है…', 'ਭੇਜਿਆ ਜਾ ਰਿਹਾ ਹੈ…'),
-  sentTitle: t('Saved!', 'सेव हो गया!', 'ਸੇਵ ਹੋ ਗਿਆ!'),
+  submit: t('Submit Sales Form', 'सेल्स फॉर्म जमा करें', 'ਸੇਲਜ਼ ਫਾਰਮ ਜਮ੍ਹਾ ਕਰੋ'),
+  sending: t('Saving & Generating Referral ID…', 'सेव और रेफरल आईडी बन रहा है…', 'ਸੇਵ ਅਤੇ ਰੈਫਰਲ ਆਈਡੀ ਬਣ ਰਿਹਾ ਹੈ…'),
+  sentTitle: t('Sales Form Recorded!', 'सेल्स फॉर्म सेव हो गया!', 'ਸੇਲਜ਼ ਫਾਰਮ ਸੇਵ ਹੋ ਗਿਆ!'),
   sentBody: t(
-    'This submission was recorded against your staff account.',
-    'यह सर्वे आपके स्टाफ अकाउंट के नाम दर्ज हो गया है।',
-    'ਇਹ ਸਰਵੇ ਤੁਹਾਡੇ ਸਟਾਫ ਖਾਤੇ ਦੇ ਨਾਮ ਦਰਜ ਹੋ ਗਿਆ ਹੈ।',
+    'Retailer survey and lead recorded successfully under your sales ID.',
+    'रिटेलर प्रोफाइल और सर्वे आपकी सेल्स आईडी के तहत दर्ज हो गया है।',
+    'ਰਿਟੇਲਰ ਪ੍ਰੋਫਾਈਲ ਅਤੇ ਸਰਵੇ ਤੁਹਾਡੀ ਸੇਲਜ਼ ਆਈਡੀ ਦੇ ਤਹਿਤ ਦਰਜ ਹੋ ਗਿਆ ਹੈ।',
   ),
-  submitAnother: t('Submit another', 'एक और भरें', 'ਇੱਕ ਹੋਰ ਭਰੋ'),
+  submitAnother: t('Submit Another Sales Form', 'एक और सेल्स फॉर्म भरें', 'ਇੱਕ ਹੋਰ ਸੇਲਜ਼ ਫਾਰਮ ਭਰੋ'),
   errorMsg: t(
     'Something went wrong — please try again.',
     'कुछ गड़बड़ हो गई — कृपया दोबारा कोशिश करें।',
@@ -59,9 +59,17 @@ export const UI = {
   otherLabel: t('Other:', 'अन्य:', 'ਹੋਰ:'),
   pickUpTo3: t('(pick up to 3)', '(अधिकतम 3 चुनें)', '(ਵੱਧ ਤੋਂ ਵੱਧ 3 ਚੁਣੋ)'),
   checkAll: t('(check all that apply)', '(जो लागू हो सब चुनें)', '(ਜੋ ਲਾਗੂ ਹੋਵੇ ਸਭ ਚੁਣੋ)'),
-  likertNotProblem: t('Not a problem', 'कोई समस्या नहीं', 'ਕੋਈ ਸਮੱਸਿਆ ਨਹੀਂ'),
+  likertNotProblem: t('No problem', 'कोई समस्या नहीं', 'ਕੋਈ ਸਮੱਸਿਆ ਨਹੀਂ'),
   likertMajor: t('Major daily problem', 'रोज़ की बड़ी समस्या', 'ਰੋਜ਼ ਦੀ ਵੱਡੀ ਸਮੱਸਿਆ'),
 }
+
+export const LIKERT_LEVELS = [
+  { value: '1', label: t('1 · No Problem', '1 · कोई समस्या नहीं', '1 · ਕੋਈ ਸਮੱਸਿਆ ਨਹੀਂ') },
+  { value: '2', label: t('2 · Minor', '2 · मामूली', '2 · ਮਾਮੂਲੀ') },
+  { value: '3', label: t('3 · Moderate', '3 · मध्यम', '3 · ਮੱਧਮ') },
+  { value: '4', label: t('4 · High Frustration', '4 · काफ़ी परेशानी', '4 · ਕਾਫ਼ੀ ਪਰੇਸ਼ਾਨੀ') },
+  { value: '5', label: t('5 · Major Daily Pain', '5 · रोज़ की बड़ी समस्या', '5 · ਰੋਜ਼ ਦੀ ਵੱਡੀ ਮੁਸ਼ਕਲ') },
+]
 
 export const SECTIONS: Section[] = [
   {
@@ -161,14 +169,21 @@ export const SECTIONS: Section[] = [
       { name: 'irritationLevel', type: 'likert', label: t("How irritating/tiring is it when a customer checks 10–15 items and still doesn't buy?", 'ग्राहक 10–15 आइटम देखकर भी न खरीदे तो कितना थका देने वाला लगता है?', 'ਗਾਹਕ 10–15 ਆਈਟਮ ਵੇਖ ਕੇ ਵੀ ਨਾ ਖਰੀਦੇ ਤਾਂ ਕਿੰਨਾ ਥਕਾ ਦੇਣ ਵਾਲਾ ਲੱਗਦਾ ਹੈ?') },
       {
         name: 'rateColorTrendAsk',
-        type: 'radio',
-        label: t('Do customers ask you to show products by price range, color, or "what\'s trending now"?', 'क्या ग्राहक कीमत, रंग, या "नया ट्रेंड" के हिसाब से प्रोडक्ट माँगते हैं?', 'ਕੀ ਗਾਹਕ ਕੀਮਤ, ਰੰਗ, ਜਾਂ "ਨਵਾਂ ਟ੍ਰੈਂਡ" ਦੇ ਹਿਸਾਬ ਨਾਲ ਪ੍ਰੋਡਕਟ ਮੰਗਦੇ ਹਨ?'),
+        type: 'checkbox',
+        label: t(
+          'Do customers ask you to show products by?',
+          'क्या ग्राहक आपसे प्रोडक्ट इसके हिसाब से दिखाने को कहते हैं?',
+          'ਕੀ ਗਾਹਕ ਤੁਹਾਨੂੰ ਇਹਨਾਂ ਦੇ ਹਿਸਾਬ ਨਾਲ ਪ੍ਰੋਡਕਟ ਦਿਖਾਉਣ ਲਈ ਕਹਿੰਦੇ ਹਨ?'
+        ),
+        hint: UI.checkAll,
         options: [
-          { value: 'often', label: t('Yes, very often', 'हाँ, अक्सर', 'ਹਾਂ, ਅਕਸਰ') },
-          { value: 'sometimes', label: t('Sometimes', 'कभी-कभी', 'ਕਦੇ-ਕਦੇ') },
-          { value: 'rarely', label: t('Rarely', 'शायद ही कभी', 'ਸ਼ਾਇਦ ਹੀ ਕਦੇ') },
-          { value: 'never', label: t('Never', 'कभी नहीं', 'ਕਦੇ ਨਹੀਂ') },
+          { value: 'priceRange', label: t('Price range (budget)', 'कीमत सीमा (बजट)', 'ਕੀਮਤ ਸੀਮਾ (ਬਜਟ)') },
+          { value: 'color', label: t('Color / shade', 'रंग / शेड', 'ਰੰਗ / ਸ਼ੇਡ') },
+          { value: 'trendingNow', label: t("What's trending now / new arrivals", 'नया ट्रेंड / नया स्टॉक', 'ਨਵਾਂ ਟ੍ਰੈਂਡ / ਨਵਾਂ ਸਟਾਕ') },
+          { value: 'occasion', label: t('Occasion / festival / wedding wear', 'त्योहार / शादी के कपड़े', 'ਤਿਉਹਾਰ / ਵਿਆਹ ਦੇ ਕੱਪੜੇ') },
+          { value: 'fabric', label: t('Fabric / material quality', 'कपड़े की क्वालिटी / फैब्रिक', 'ਕੱਪੜੇ ਦੀ ਕੁਆਲਿਟੀ / ਫੈਬਰਿਕ') },
         ],
+        otherField: { name: 'rateColorTrendAskOther', placeholder: t('Other request', 'अन्य मांग', 'ਹੋਰ ਮੰਗ') },
       },
       {
         name: 'mobileCatalogValue',

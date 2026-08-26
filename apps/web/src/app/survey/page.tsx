@@ -5,7 +5,7 @@ import { SurveyGate } from './SurveyGate'
 // Kanchuki agent fills this in while standing in a retailer's shop.
 // robots: noindex since this must not surface in search results either.
 export const metadata: Metadata = {
-  title: 'Staff Survey — Kanchuki',
+  title: 'Retailer Sales Form — Kanchuki',
   robots: { index: false, follow: false },
 }
 

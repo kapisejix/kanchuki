@@ -85,5 +85,13 @@ export function SurveyGate() {
 
   if (session === undefined) return null // avoid a login-flash before session is read
   if (!session) return <StaffLogin onLogin={handleLogin} />
-  return <SurveyForm token={session.token} staffName={session.name} onLogout={handleLogout} />
+  return (
+    <SurveyForm
+      token={session.token}
+      staffName={session.name}
+      referralCode={session.referralCode}
+      teamMemberId={session.teamMemberId}
+      onLogout={handleLogout}
+    />
+  )
 }

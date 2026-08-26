@@ -25,7 +25,8 @@ const surveySchema = z.object({
   timePerCustomer: z.string().trim().max(50).optional(),
   purchaseRate: z.string().trim().max(50).optional(),
   irritationLevel: z.string().trim().max(5).optional(),
-  rateColorTrendAsk: z.string().trim().max(50).optional(),
+  rateColorTrendAsk: z.union([z.string().trim().max(100), z.array(z.string().max(100))]).optional(),
+  rateColorTrendAskOther: z.string().trim().max(200).optional(),
   mobileCatalogValue: z.string().trim().max(50).optional(),
   staffWorkReduction: z.string().trim().max(50).optional(),
   onlineShoppingEffect: z.string().trim().max(5).optional(),
@@ -69,7 +70,12 @@ export const teamSurveyRoutes: FastifyPluginAsync = async (server) => {
     const body = surveySchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    await prisma.auditLog.create({
+    const member = await prisma.teamMember.findUnique({
+      where: { id: tm.id },
+      select: { id: true, name: true, referral_code: true },
+    });
+
+    const entry = await prisma.auditLog.create({
       data: {
         actor_id: tm.id,
         actor_type: 'team_member',
@@ -80,6 +86,16 @@ export const teamSurveyRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    return reply.status(201).send({ data: { received: true } });
+    const refCode = member?.referral_code ?? tm.id;
+    return reply.status(201).send({
+      data: {
+        received: true,
+        submission_id: entry.id,
+        team_member_id: tm.id,
+        staff_name: member?.name ?? 'Staff Member',
+        referral_code: refCode,
+        onboarding_url: `https://kanchuki.com/for-retailers?ref=${refCode}`,
+      },
+    });
   });
 };

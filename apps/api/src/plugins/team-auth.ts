@@ -41,7 +41,9 @@ export async function signTeamToken(claims: TeamTokenClaims): Promise<string> {
 
 export async function verifyTeamToken(token: string): Promise<TeamTokenClaims | null> {
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const s = process.env.TEAM_JWT_SECRET;
+    if (!s) return null;
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(s));
     if (!payload.sub || typeof payload.role !== 'string') return null;
     return { sub: payload.sub, role: payload.role };
   } catch {
