@@ -29,93 +29,140 @@
 // V-Tone admin tool / spin-frame extraction).
 import { Redis } from 'ioredis';
 import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
-import { getStudioTemplate, type StudioTemplateId } from '@kanchuki/shared';
+import { getStudioModel, getStudioTemplate, type StudioModelId, type StudioTemplateId } from '@kanchuki/shared';
+import { getSecret } from '@kanchuki/db';
 import { AppError } from '../plugins/error-handler.js';
+import { generateFluxProImage, generateFluxSchnellImage, generateIdmVtonTryon, isFalConfigured, resolveFalKey } from './fal-client.js';
+import { generateGoogleImagen, isImagenConfigured, resolveGeminiKey } from './imagen-client.js';
 
 const BFL_BASE = 'https://api.bfl.ai/v1';
-// 24 active tasks is the BFL cap for flux-kontext-pro; stay well under it
-// per Worker so a burst of studio shoots can't 429 the whole API key.
 export const STUDIO_SHOOT_CONCURRENCY = 3;
 
+export async function resolveBflKey(): Promise<string | null> {
+  const secret = await getSecret('BFL_API_KEY').catch(() => null);
+  return secret || process.env.BFL_API_KEY || null;
+}
+
 export function isStudioShootConfigured(): boolean {
-  return Boolean(process.env.BFL_API_KEY);
+  return isFalConfigured() || isImagenConfigured() || Boolean(process.env.BFL_API_KEY);
 }
 
-function bflKey(): string {
-  const key = process.env.BFL_API_KEY;
-  if (!key) throw new AppError('STUDIO_SHOOT_FAILED', 'AI Studio Shoots are not configured', 503);
-  return key;
-}
-
-// ─── BFL submit + poll ─────────────────────────────────────────────
+export type StudioEngine =
+  | 'flux_pro'
+  | 'imagen_3'
+  | 'idm_vton'
+  | 'flux_schnell'
+  | 'imagen_3_fast'
+  | 'bfl_kontext';
 
 export interface StudioGenerationResult {
   status: 'ready' | 'failed';
-  /** Present when ready — a signed URL valid only 10 minutes. */
+  /** Present when ready — a signed URL or base64 payload */
   sampleUrl?: string;
+  base64Data?: string;
   error?: string;
 }
 
 /** How long to poll for a single generation before giving up. */
-const POLL_TIMEOUT_MS = 180_000; // Increased to 3 minutes to match BFL expectations
-// Adaptive polling intervals: start frequent, then back off
+const POLL_TIMEOUT_MS = 180_000;
 const POLL_INTERVALS_MS = [1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 3_000, 3_000, 5_000, 5_000, 10_000, 10_000, 15_000, 15_000];
 
 /**
- * Run one FLUX Kontext generation: submit the photo URL + template prompt,
- * poll until Ready, and return the signed result URL (must be downloaded
- * and re-served from R2 within 10 minutes). Throws AppError on hard
- * failures (unconfigured key, submit rejected, out of credits).
- * 
- * @param onProgress Optional callback to report progress during polling
+ * Generate studio product photo or AI fashion model draping using the requested or optimal engine.
  */
 export async function generateStudioImage(
-   templateId: StudioTemplateId,
-   inputImageUrl: string,
-   onProgress?: (progress: { progress: number; etaMs: number }) => void,
-   inputImageMeta?: { width?: number | null; height?: number | null; sizeBytes?: number | null },
+  templateId: StudioTemplateId | string,
+  inputImageUrl: string,
+  onProgress?: (progress: { progress: number; etaMs: number }) => void,
+  inputImageMeta?: { width?: number | null; height?: number | null; sizeBytes?: number | null },
+  options?: {
+    engine?: StudioEngine;
+    modelId?: StudioModelId | string;
+  },
 ): Promise<StudioGenerationResult> {
-  const template = getStudioTemplate(templateId);
-  if (!template) {
+  const falKey = await resolveFalKey();
+  const geminiKey = await resolveGeminiKey();
+  const bflAuthKey = await resolveBflKey();
+
+  // If engine is IDM-VTON (Virtual Fashion Model)
+  if (options?.engine === 'idm_vton' || options?.modelId) {
+    const selectedModel = getStudioModel(options?.modelId ?? 'priya_bridal') ?? {
+      model_image_url: 'https://assets.kanchuki.app/models/priya_bridal.jpg',
+      name: 'Priya',
+    };
+
+    if (falKey) {
+      const vtonRes = await generateIdmVtonTryon(
+        selectedModel.model_image_url,
+        inputImageUrl,
+        'Indian ethnic wear garment',
+        onProgress,
+      );
+      return { status: 'ready', sampleUrl: vtonRes.sampleUrl };
+    }
+  }
+
+  const template = getStudioTemplate(templateId as string);
+  if (!template && !options?.modelId) {
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
   }
 
-  // BFL FLUX Kontext accepts ≤20MP and ≤20MB. Validate early to avoid
-  // wasting API credits on inputs that will be rejected.
-  const MAX_MP = 20_000_000;
-  const MAX_BYTES = 20 * 1024 * 1024;
-  if (inputImageMeta?.width && inputImageMeta?.height) {
-    const mp = inputImageMeta.width * inputImageMeta.height;
-    if (mp > MAX_MP) {
-      throw new AppError(
-        'STUDIO_SHOOT_FAILED',
-        `Image is too large (${(mp / 1_000_000).toFixed(1)}MP). Maximum is 20MP.`,
-        422,
-      );
+  // 1. Try Fal.ai Flux 1.1 Pro (Top realism)
+  if ((options?.engine === 'flux_pro' || !options?.engine) && falKey) {
+    try {
+      const res = await generateFluxProImage(template?.prompt ?? templateId, {
+        inputImageUrl,
+        onProgress,
+      });
+      return { status: 'ready', sampleUrl: res.sampleUrl };
+    } catch (err) {
+      if (options?.engine === 'flux_pro') throw err;
+      // Fallback to next provider if auto
     }
   }
-  if (inputImageMeta?.sizeBytes && inputImageMeta.sizeBytes > MAX_BYTES) {
+
+  // 2. Try Google Imagen 3 (Fast & crisp lighting)
+  if ((options?.engine === 'imagen_3' || options?.engine === 'imagen_3_fast' || !options?.engine) && geminiKey) {
+    try {
+      const res = await generateGoogleImagen(template?.prompt ?? templateId, {
+        model: options?.engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
+        onProgress,
+      });
+      return { status: 'ready', base64Data: res.base64Data };
+    } catch (err) {
+      if (options?.engine === 'imagen_3' || options?.engine === 'imagen_3_fast') throw err;
+    }
+  }
+
+  // 3. Try Fal.ai Flux Schnell (Budget / Quick draft)
+  if (options?.engine === 'flux_schnell' && falKey) {
+    const res = await generateFluxSchnellImage(template?.prompt ?? templateId, {
+      inputImageUrl,
+      onProgress,
+    });
+    return { status: 'ready', sampleUrl: res.sampleUrl };
+  }
+
+  // 4. Fallback to Black Forest Labs FLUX Kontext Pro
+  if (!bflAuthKey) {
     throw new AppError(
       'STUDIO_SHOOT_FAILED',
-      `Image file is too large (${(inputImageMeta.sizeBytes / 1024 / 1024).toFixed(1)}MB). Maximum is 20MB.`,
-      422,
+      'AI Studio Shoots are not configured. Please add an API key in Admin → Integrations.',
+      503,
     );
   }
 
-  const auth = bflKey();
   let submit: { id?: string; polling_url?: string };
   try {
     const res = await fetch(`${BFL_BASE}/flux-kontext-pro`, {
       method: 'POST',
       headers: {
         accept: 'application/json',
-        'x-key': auth,
+        'x-key': bflAuthKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: template.prompt,
-        // URL form is accepted (≤20MB) — no base64 round-trip needed for
-        // photos already on R2. aspect_ratio omitted → matches input dims.
+        prompt: template?.prompt ?? templateId,
         input_image: inputImageUrl,
       }),
       signal: AbortSignal.timeout(30_000),
@@ -132,11 +179,7 @@ export async function generateStudioImage(
     }
   } catch (err) {
     if (err instanceof AppError) throw err;
-    throw new AppError(
-      'STUDIO_SHOOT_FAILED',
-      'AI Studio Shoots could not be started. Please try again.',
-      503,
-    );
+    throw new AppError('STUDIO_SHOOT_FAILED', 'AI Studio Shoots could not be started. Please try again.', 503);
   }
 
 const pollingUrl = submit.polling_url;
@@ -151,7 +194,7 @@ const pollingUrl = submit.polling_url;
      let poll: { status?: string; result?: { sample?: string }; error?: string };
      try {
        const res = await fetch(pollingUrl, {
-         headers: { accept: 'application/json', 'x-key': auth },
+         headers: { accept: 'application/json', 'x-key': bflAuthKey },
          signal: AbortSignal.timeout(10_000),
        });
        poll = (await res.json()) as { status?: string; result?: { sample?: string }; error?: string };
@@ -224,12 +267,18 @@ export interface StudioR2Output {
  * Uses the SSRF-safe downloader — the URL comes from a third party.
  */
 export async function downloadCompressAndUpload(
-  sampleUrl: string,
+  sampleUrlOrBase64: string,
   r2Key: string,
+  isBase64 = false,
 ): Promise<StudioR2Output> {
-  const res = await ssrfSafeFetch(sampleUrl);
-  if (!res.ok) throw new Error(`Failed to fetch studio result: ${res.status}`);
-  const raw = await readCappedBuffer(res);
+  let raw: Buffer;
+  if (isBase64) {
+    raw = Buffer.from(sampleUrlOrBase64, 'base64');
+  } else {
+    const res = await ssrfSafeFetch(sampleUrlOrBase64);
+    if (!res.ok) throw new Error(`Failed to fetch studio result: ${res.status}`);
+    raw = await readCappedBuffer(res);
+  }
   const { buffer, width, height } = await compressImageToTarget(raw);
   await uploadBuffer(r2Key, buffer, 'image/jpeg');
   return { key: r2Key, url: publicUrl(r2Key), width, height };

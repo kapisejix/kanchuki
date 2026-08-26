@@ -13,6 +13,10 @@ const { mockFetch, mockCompress, mockUpload, mockPublicUrl } = vi.hoisted(() => 
   mockPublicUrl: vi.fn(),
 }));
 
+vi.mock('@kanchuki/db', () => ({
+  getSecret: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('@kanchuki/ai', () => ({
   compressImageToTarget: mockCompress,
   readCappedBuffer: async (res: { ok: boolean; body: unknown }) => Buffer.from('img'),

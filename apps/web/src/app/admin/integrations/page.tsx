@@ -21,11 +21,11 @@ type IntegrationRow = {
 }
 
 const CATEGORY_LABELS: Record<Category, string> = {
-  AI: 'AI (Claude, OpenAI, V-Tone)',
+  AI: 'AI Models & Generation (Fal.ai Flux / IDM-VTON, Google Imagen 3, Gemini, Claude, OpenAI)',
   PAYMENT: 'Payment Gateway (Razorpay)',
   STORAGE: 'Storage (Cloudflare R2)',
   WHATSAPP: 'WhatsApp Business API',
-}
+};
 
 export default function IntegrationsPage() {
   const [rows, setRows] = useState<IntegrationRow[]>([])

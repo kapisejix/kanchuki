@@ -62,32 +62,25 @@ export interface StudioShootJobData {
   retailer_id: string;
   product_id: string;
   photo_id: string;
-  template: StudioTemplateId;
-}
+  template: StudioTemplateId | string;
 
 export async function handleStudioShoot(data: StudioShootJobData): Promise<void> {
-   const { job_id, retailer_id, product_id, photo_id, template } = data;
+   const { job_id, retailer_id, product_id, photo_id, template, engine, model_id } = data;
    const startedAt = new Date();
-   const START_TIME = startedAt.getTime();
 
-   // Estimated total time for studio shoot generation (based on BFL docs and observed performance)
-   const ESTIMATED_TOTAL_TIME_MS = 30_000; // 30 seconds average
+   // Estimated total time for studio shoot generation (based on BFL/Fal/Gemini docs)
+   const ESTIMATED_TOTAL_TIME_MS = 25_000;
 
    // Set initial status
-   await setStudioJobStatus(job_id, {
-     status: 'processing',
      progress: 0,
      etaMs: ESTIMATED_TOTAL_TIME_MS,
-   }).catch(() => {
-     // Ignore errors in initial status setting - job will still proceed
-   });
+   }).catch(() => {});
 
    try {
      // Re-verify ownership at execution time (queue = trust boundary).
      const photo = await prisma.productPhoto.findFirst({
        where: { id: photo_id, product_id, retailer_id },
      });
-     if (!photo) {
        await setStudioJobStatus(job_id, {
          status: 'failed',
          error: 'Product photo not found. It may have been deleted.',
@@ -109,33 +102,24 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
      }
 
      // 2. Generate (async submit + poll inside generateStudioImage).
-     const result = await generateStudioImage(template, displayUrl, (progressInfo) => {
-       // Update Redis with progress information (best-effort)
-       setStudioJobStatus(job_id, {
-         status: 'processing',
-         progress: progressInfo.progress,
-         etaMs: progressInfo.etaMs,
-       }).catch(() => {
-         // Ignore errors in progress updates - they're best effort
-       });
-     });
-     if (result.status !== 'ready' || !result.sampleUrl) {
-       await setStudioJobStatus(job_id, {
-         status: 'failed',
-         error: result.error ?? 'The studio shoot could not be generated. Please try again.',
-         progress: 0,
-         etaMs: 0,
-       });
-       return;
-     }
+     const result = await generateStudioImage(
+       template,
+       displayUrl,
+       (progressInfo) => {
+         setStudioJobStatus(job_id, {
+           status: 'processing',
+           progress: progressInfo.progress,
+           etaMs: progressInfo.etaMs,
+         }).catch(() => {});
+       },
+       undefined,
+       {
+         engine,
+         modelId: model_id,
+       },
+     );
 
-     // 3–4. Download → compress → upload to a NEW key → create a new photo row.
-     const filename = `studio-${photo.id}-${createId()}.jpg`;
-     const r2Key = R2_PATHS.studioShot(retailer_id, product_id, filename);
-     const uploaded = await downloadCompressAndUpload(result.sampleUrl, r2Key);
-
-     const newPhoto = await prisma.productPhoto.create({
-       data: {
+     if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
          product_id,
          retailer_id,
          r2_key: uploaded.key,
@@ -146,11 +130,9 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
          metadata: {
            studio: {
              job_id,
-             template,
+             engine: engine ?? 'auto',
+             model_id: model_id ?? null,
              source_photo_id: photo.id,
-             generated_at: startedAt.toISOString(),
-           },
-         },
        },
      });
 
@@ -165,8 +147,6 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
 
      // 6. Record BFL credit consumption for the Admin → AI Usage dashboard,
      // and count it against the retailer's STUDIO_SHOOT plan quota (F-010).
-     recordBflStudioUsage(retailer_id, template);
-     incrementUsage(retailer_id, 'STUDIO_SHOOT').catch((err) => {
        console.error(`[studio-shoot] failed to record quota usage for ${retailer_id}:`, err);
      });
    } catch (err) {

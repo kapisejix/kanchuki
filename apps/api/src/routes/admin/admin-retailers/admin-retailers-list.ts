@@ -114,7 +114,6 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         },
       },
       orderBy: { created_at: 'desc' },
-      take: limit + 1,
     });
 
     const hasMore = retailers.length > limit;

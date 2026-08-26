@@ -4,6 +4,7 @@ import {
   PIECE_TAGGABLE_CATEGORIES,
   SIZE_OPTIONS,
   STUDIO_TEMPLATES,
+  STUDIO_MODELS,
   resolveFashionColor,
   COLORS,
 } from '@kanchuki/shared'
@@ -141,6 +142,7 @@ export default function ProductDetailScreen() {
   const [studioResult, setStudioResult] = useState<{ photoId: string; url: string } | null>(null)
   const [studioProgress, setStudioProgress] = useState<number>(0)
   const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
+  const [studioTab, setStudioTab] = useState<'scenes' | 'models'>('scenes')
 
   // F-033: Ken Burns product video generated from the product's own photos.
   const generateVideo = useMutation({
@@ -559,7 +561,10 @@ export default function ProductDetailScreen() {
 
   // F-032: start a studio-shoot generation for the currently-viewed photo.
   // POST returns a job_id immediately; polling below picks up the result.
-  const handleStartStudioShoot = async (template: string) => {
+  const handleStartStudioShoot = async (
+    template: string,
+    options?: { engine?: string; model_id?: string },
+  ) => {
     const photo = currentPhoto
     if (!product || !photo) return
     if (photo.is_variant_preview || photo.is_original_preview) return
@@ -569,7 +574,7 @@ export default function ProductDetailScreen() {
     setStudioUpgradeRequired(false)
     setStudioResult(null)
     try {
-      const res = await productApi.startStudioShoot(product.id, photo.id, template)
+      const res = await productApi.startStudioShoot(product.id, photo.id, template, options)
       setStudioJob({ jobId: res.data.job_id, photoId: photo.id })
       setStudioStatus('processing')
     } catch (err) {
@@ -1981,34 +1986,81 @@ export default function ProductDetailScreen() {
             className="bg-white rounded-t-3xl px-5 pt-5"
             style={{ paddingBottom: Math.max(insets.bottom, 20) }}
           >
-            <Text className="text-base font-semibold text-ink-800 mb-1">AI Studio Shoot</Text>
-            <Text className="text-xs text-sand-500 mb-4">
-              Pick a backdrop — the product stays exactly the same, lighting blends in. Takes under a minute.
-            </Text>
-            <ScrollView bounces={false} style={{ maxHeight: 380 }}>
-              {STUDIO_TEMPLATES.map((t) => (
+            <View className="flex-row items-center justify-between mb-1">
+              <Text className="text-base font-semibold text-ink-800">AI Studio Shoot</Text>
+              <View className="flex-row bg-sand-100 p-1 rounded-xl">
                 <AnimatedPressable
-                  key={t.id}
-                  onPress={() => void handleStartStudioShoot(t.id)}
-                  disabled={studioStarting}
-                  accessibilityLabel={`${t.label} — ${t.description}`}
-                  accessibilityRole="button"
-                  className="mb-3 border border-sand-200 rounded-2xl p-3 flex-row items-center gap-3"
+                  onPress={() => setStudioTab('scenes')}
+                  className={`px-3 py-1 rounded-lg ${studioTab === 'scenes' ? 'bg-white shadow-xs' : ''}`}
                 >
-                  <Image
-                    source={STUDIO_TEMPLATE_THUMBNAILS[t.id]}
-                    style={{ width: 48, height: 48, borderRadius: 12 }}
-                    contentFit="cover"
-                  />
-                  <View className="flex-1">
-                    <View className="flex-row items-center gap-2">
-                      <Sparkles size={14} color={primaryColor} />
-                      <Text className="text-sm font-semibold text-ink-800">{t.label}</Text>
-                    </View>
-                    <Text className="text-xs text-sand-500 mt-1">{t.description}</Text>
-                  </View>
+                  <Text className={`text-xs font-semibold ${studioTab === 'scenes' ? 'text-rust-700' : 'text-sand-600'}`}>
+                    Scenes
+                  </Text>
                 </AnimatedPressable>
-              ))}
+                <AnimatedPressable
+                  onPress={() => setStudioTab('models')}
+                  className={`px-3 py-1 rounded-lg ${studioTab === 'models' ? 'bg-white shadow-xs' : ''}`}
+                >
+                  <Text className={`text-xs font-semibold ${studioTab === 'models' ? 'text-rust-700' : 'text-sand-600'}`}>
+                    AI Models
+                  </Text>
+                </AnimatedPressable>
+              </View>
+            </View>
+
+            <Text className="text-xs text-sand-500 mb-4">
+              {studioTab === 'scenes'
+                ? 'Transform backdrop and lighting — garment stays 100% authentic.'
+                : 'Pick a professional Indian model to wear and drape this garment.'}
+            </Text>
+
+            <ScrollView bounces={false} style={{ maxHeight: 380 }}>
+              {studioTab === 'scenes' ? (
+                STUDIO_TEMPLATES.map((t) => (
+                  <AnimatedPressable
+                    key={t.id}
+                    onPress={() => void handleStartStudioShoot(t.id, { engine: 'flux_pro' })}
+                    disabled={studioStarting}
+                    accessibilityLabel={`${t.label} — ${t.description}`}
+                    accessibilityRole="button"
+                    className="mb-3 border border-sand-200 rounded-2xl p-3 flex-row items-center gap-3"
+                  >
+                    <View className="w-12 h-12 rounded-xl bg-rust-50 items-center justify-center border border-rust-100">
+                      <Sparkles size={20} color={primaryColor} />
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-sm font-semibold text-ink-800">{t.label}</Text>
+                        {t.command && (
+                          <Text className="text-[10px] font-mono text-rust-600 bg-rust-50 px-1.5 py-0.5 rounded">
+                            {t.command}
+                          </Text>
+                        )}
+                      </View>
+                      <Text className="text-xs text-sand-500 mt-1">{t.description}</Text>
+                    </View>
+                  </AnimatedPressable>
+                ))
+              ) : (
+                STUDIO_MODELS.map((m) => (
+                  <AnimatedPressable
+                    key={m.id}
+                    onPress={() => void handleStartStudioShoot('studiomodel', { engine: 'idm_vton', model_id: m.id })}
+                    disabled={studioStarting}
+                    accessibilityLabel={`${m.name} — ${m.description}`}
+                    accessibilityRole="button"
+                    className="mb-3 border border-sand-200 rounded-2xl p-3 flex-row items-center gap-3"
+                  >
+                    <View className="w-12 h-12 rounded-xl bg-sand-100 items-center justify-center border border-sand-200">
+                      <Text className="text-xs font-bold text-sand-700">{m.name.slice(0, 2).toUpperCase()}</Text>
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-semibold text-ink-800">{m.name}</Text>
+                      <Text className="text-xs text-sand-500 mt-1">{m.description}</Text>
+                    </View>
+                  </AnimatedPressable>
+                ))
+              )}
             </ScrollView>
             <AnimatedPressable
               onPress={() => setStudioModalOpen(false)}

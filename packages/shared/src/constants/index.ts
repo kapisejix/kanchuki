@@ -321,7 +321,48 @@ export const R2_PATHS = {
 
 export const STUDIO_TEMPLATES = [
   {
+    id: 'studiomodel',
+    command: '/studiomodel',
+    label: 'Studio Editorial Model',
+    description: 'High-fashion Indian studio model wearing the outfit with softbox lighting',
+    prompt:
+      'Place this garment naturally onto a professional Indian fashion model in a clean editorial studio. The model has an elegant posture and natural expression. The product shape, color, pattern, and fabric details are completely preserved with realistic draping and soft grounding shadows. Professional studio lighting.',
+  },
+  {
+    id: 'bridalwear',
+    command: '/bridalwear',
+    label: 'Royal Bridal Heritage',
+    description: 'Royal wedding palace courtyard setting with warm golden illumination',
+    prompt:
+      'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with warm golden hour lighting, intricate carved arches in soft bokeh, and celebratory royal ambiance. The garment embroidery, zari work, texture, and colors are 100% preserved with realistic fabric physics.',
+  },
+  {
+    id: 'seasoncollection',
+    command: '/seasoncollection',
+    label: 'Festive Celebration',
+    description: 'Festive Diwali / wedding celebration backdrop with warm marigold & light bokeh',
+    prompt:
+      'Place this ethnic garment in a warm festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details with rich celebratory lighting.',
+  },
+  {
+    id: 'clothingdetail',
+    command: '/clothingdetail',
+    label: 'Macro Fabric Detail',
+    description: 'Ultra-sharp macro close-up highlighting fine embroidery and weave',
+    prompt:
+      'An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on the intricate details with natural soft depth of field and premium directional studio lighting.',
+  },
+  {
+    id: 'runway',
+    command: '/runway',
+    label: 'Fashion Runway Ramp',
+    description: 'High-fashion catwalk runway setting with dramatic overhead spotlights',
+    prompt:
+      'Place this outfit in a high-fashion catwalk runway show with dramatic overhead spotlights and soft blurred audience bokeh in the background. The model is walking gracefully. Garment shape, drape, color, and texture are completely preserved.',
+  },
+  {
     id: 'white_studio',
+    command: '/white_studio',
     label: 'White Studio',
     description: 'Clean white backdrop, soft even lighting — marketplace ready',
     prompt:
@@ -329,6 +370,7 @@ export const STUDIO_TEMPLATES = [
   },
   {
     id: 'warm_luxury',
+    command: '/warm_luxury',
     label: 'Warm Luxury',
     description: 'Rich warm beige backdrop with premium lighting',
     prompt:
@@ -336,6 +378,7 @@ export const STUDIO_TEMPLATES = [
   },
   {
     id: 'gold_festive',
+    command: '/gold_festive',
     label: 'Gold Festive',
     description: 'Festive gold-tone backdrop (Diwali/wedding ready)',
     prompt:
@@ -343,6 +386,7 @@ export const STUDIO_TEMPLATES = [
   },
   {
     id: 'diwali_lights',
+    command: '/diwali_lights',
     label: 'Diwali Lights',
     description: 'Diwali-specific backdrop with diyas and rangoli patterns',
     prompt:
@@ -350,6 +394,7 @@ export const STUDIO_TEMPLATES = [
   },
   {
     id: 'wedding_elegant',
+    command: '/wedding_elegant',
     label: 'Wedding Elegant',
     description: 'Elegant wedding backdrop with floral arrangements and draping',
     prompt:
@@ -357,6 +402,7 @@ export const STUDIO_TEMPLATES = [
   },
   {
     id: 'flat_lay',
+    command: '/flat_lay',
     label: 'Flat-Lay Casual',
     description: 'Casual flat-lay style on a neutral textured surface',
     prompt:
@@ -364,6 +410,7 @@ export const STUDIO_TEMPLATES = [
   },
 ] as const satisfies readonly {
   id: string;
+  command?: string;
   label: string;
   description: string;
   prompt: string;
@@ -372,7 +419,50 @@ export const STUDIO_TEMPLATES = [
 export type StudioTemplateId = (typeof STUDIO_TEMPLATES)[number]['id'];
 
 export function getStudioTemplate(id: string): (typeof STUDIO_TEMPLATES)[number] | undefined {
-  return STUDIO_TEMPLATES.find((t) => t.id === id);
+  const normalized = id.startsWith('/') ? id.slice(1) : id;
+  return STUDIO_TEMPLATES.find((t) => t.id === normalized || t.command === `/${normalized}`);
+}
+
+// ─── AI Fashion Models (Virtual Try-On / IDM-VTON) ───────────────
+export const STUDIO_MODELS = [
+  {
+    id: 'priya_bridal',
+    name: 'Priya (Bridal & Heavy Ethnic)',
+    description: 'Royal bridal posture with traditional jewelry and lehenga/saree drape',
+    gender: 'female',
+    pose: 'standing_royal',
+    model_image_url: 'https://assets.kanchuki.app/models/priya_bridal.jpg',
+  },
+  {
+    id: 'ananya_saree',
+    name: 'Ananya (Saree & Kurti)',
+    description: 'Graceful modern Indian model pose for sarees, suits, and daily ethnic wear',
+    gender: 'female',
+    pose: 'standing_graceful',
+    model_image_url: 'https://assets.kanchuki.app/models/ananya_saree.jpg',
+  },
+  {
+    id: 'meera_festive',
+    name: 'Meera (Festive Anarkali & Indo-Western)',
+    description: 'Vibrant festive pose for Anarkalis, gowns, and fusion wear',
+    gender: 'female',
+    pose: 'standing_festive',
+    model_image_url: 'https://assets.kanchuki.app/models/meera_festive.jpg',
+  },
+  {
+    id: 'kabir_menswear',
+    name: 'Kabir (Men\'s Kurta & Sherwani)',
+    description: 'Dignified male model pose for Kurtas, Sherwanis, and Nehru jackets',
+    gender: 'male',
+    pose: 'standing_confident',
+    model_image_url: 'https://assets.kanchuki.app/models/kabir_menswear.jpg',
+  },
+] as const;
+
+export type StudioModelId = (typeof STUDIO_MODELS)[number]['id'];
+
+export function getStudioModel(id: string): (typeof STUDIO_MODELS)[number] | undefined {
+  return STUDIO_MODELS.find((m) => m.id === id);
 }
 
 // ─── Integration Settings (F-012) ──────────────────────────────────
@@ -383,6 +473,16 @@ export function getStudioTemplate(id: string): (typeof STUDIO_TEMPLATES)[number]
 // docs/SECURITY.md.
 
 export const INTEGRATION_KEYS = [
+  {
+    key_name: 'FAL_API_KEY',
+    category: 'AI',
+    label: 'Fal.ai API Key (Flux 1.1 Pro, Flux Schnell, IDM-VTON / CatVTON)',
+  },
+  {
+    key_name: 'BFL_API_KEY',
+    category: 'AI',
+    label: 'Black Forest Labs Key (FLUX Kontext Pro)',
+  },
   {
     key_name: 'ANTHROPIC_API_KEY',
     category: 'AI',
@@ -396,7 +496,7 @@ export const INTEGRATION_KEYS = [
   {
     key_name: 'GEMINI_API_KEY',
     category: 'AI',
-    label: 'Google Gemini API Key (AI tagging failover)',
+    label: 'Google Gemini / Imagen 3 API Key (AI tagging & Imagen generation)',
   },
   // Generic OpenAI-protocol providers — same key mechanism, used via the
   // Admin → AI Providers registry (provider_type OPENAI_COMPAT + base_url).

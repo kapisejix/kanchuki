@@ -27,6 +27,8 @@ import { featureUnavailable, notFound, serviceUnavailable, validationError } fro
 
 const StudioShootBodySchema = z.object({
   template: z.string().min(1),
+  engine: z.enum(['flux_pro', 'imagen_3', 'idm_vton', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext']).optional(),
+  model_id: z.string().optional(),
 });
 
 export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
@@ -46,7 +48,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     }
 
     if (!isStudioShootConfigured()) {
-      throw serviceUnavailable('AI Studio Shoots are not configured yet. Please try again later.');
+      throw serviceUnavailable('AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.');
     }
 
     await checkQuota(request.retailerId, 'STUDIO_SHOOT');
@@ -56,7 +58,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       throw validationError(body.error.issues[0]?.message ?? 'Invalid studio template', 'template');
     }
     const template = getStudioTemplate(body.data.template);
-    if (!template) {
+    if (!template && !body.data.model_id) {
       throw validationError('Unknown studio template. Choose one of the available presets.', 'template');
     }
 
@@ -67,8 +69,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!photo) throw notFound('Product photo');
 
-    // BFL FLUX Kontext accepts ≤20MP (megapixels) and ≤20MB.
-    // Reject early to avoid wasting API credits on oversized inputs.
+    // BFL/Fal accepts ≤20MP (megapixels) and ≤20MB.
     const MAX_MP = 20_000_000 // 20 megapixels
     const MAX_BYTES = 20 * 1024 * 1024 // 20 MB
     if (photo.width && photo.height) {
@@ -93,7 +94,9 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       retailer_id: request.retailerId,
       product_id: id,
       photo_id: photo.id,
-      template: body.data.template as StudioTemplateId,
+      template: (template?.id ?? body.data.template) as StudioTemplateId,
+      engine: body.data.engine,
+      model_id: body.data.model_id,
     });
 
     return reply.status(202).send({ data: { job_id: jobId, status: 'processing' } });

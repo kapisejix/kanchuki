@@ -210,12 +210,17 @@ export const productApi = {
   // ─── F-032: AI Studio Shoots (FLUX Kontext, async job) ─────────────
   /** Enqueue a studio-shoot generation for a photo. Returns 202 immediately
    * with a job_id — poll getStudioShootStatus until ready/failed. */
-  startStudioShoot: (productId: string, photoId: string, template: string) =>
+  startStudioShoot: (
+    productId: string,
+    photoId: string,
+    template: string,
+    options?: { engine?: string; model_id?: string },
+  ) =>
     request<{ data: { job_id: string; status: string } }>(
       `/v1/products/${productId}/photos/${photoId}/studio-shoot`,
       {
         method: 'POST',
-        body: JSON.stringify({ template }),
+        body: JSON.stringify({ template, ...options }),
         timeoutMs: 15_000,
       },
     ),

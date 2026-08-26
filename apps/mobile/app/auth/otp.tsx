@@ -10,6 +10,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
+import { normalizeIndianPhone } from '@kanchuki/shared'
 import { authApi, setToken, ApiError, type VerifyOtpResult } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
