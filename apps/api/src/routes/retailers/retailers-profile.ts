@@ -1,5 +1,5 @@
 // Auto-split from retailers.ts (scripts/check-route-size.sh) — route bodies verbatim.
-import { prisma } from '@kanchuki/db';
+import { prisma, type Prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -7,30 +7,36 @@ import { notFound, validationError } from '../../plugins/error-handler.js';
 
 const UpdateRetailerSchema = z.object({
   shop_name: z.string().min(1).max(200).optional(),
-  owner_name: z.string().max(200).optional(),
+  owner_name: z.string().max(200).nullable().optional(),
   city: z.string().max(100).optional(),
-  state: z.string().max(100).optional(),
-  address_line1: z.string().max(200).optional(),
-  address_line2: z.string().max(200).optional(),
-  pincode: z.string().max(10).optional(),
+  state: z.string().max(100).nullable().optional(),
+  address_line1: z.string().max(200).nullable().optional(),
+  address_line2: z.string().max(200).nullable().optional(),
+  pincode: z.string().max(10).nullable().optional(),
   logo_url: z.string().max(500).nullable().optional(),
   logo_r2_key: z.string().max(500).nullable().optional(),
   banner_url: z.string().max(500).nullable().optional(),
   banner_r2_key: z.string().max(500).nullable().optional(),
   gstin: z
-    .string()
-    .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format')
+    .union([
+      z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format'),
+      z.literal(''),
+    ])
+    .nullable()
     .optional(),
   categories: z.array(z.string().max(50)).max(10).optional(),
   // F-009: separate WhatsApp business number (falls back to phone if unset)
   whatsapp_number: z
-    .string()
-    .regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number')
+    .union([
+      z.string().regex(/^[6-9]\d{9}$/, 'Must be a valid 10-digit Indian mobile number'),
+      z.literal(''),
+    ])
+    .nullable()
     .optional(),
   // F-018: optional, skippable — a salesperson's referral code entered at self-serve signup
-  referral_code: z.string().max(20).optional(),
+  referral_code: z.string().max(20).nullable().optional(),
   // Roadmap M — preferred locale for the retailer app UI (ISO 639-1 + region, e.g. 'en-IN', 'hi-IN')
-  preferred_locale: z.string().max(10).optional(),
+  preferred_locale: z.string().max(10).nullable().optional(),
 });
 
 export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
@@ -119,13 +125,29 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       regeneratedSlug = slug;
     }
 
+    const updateData: Prisma.RetailerUncheckedUpdateInput = {
+      ...(profileFields.shop_name !== undefined ? { shop_name: profileFields.shop_name } : {}),
+      ...(profileFields.owner_name !== undefined ? { owner_name: profileFields.owner_name } : {}),
+      ...(profileFields.city !== undefined ? { city: profileFields.city } : {}),
+      ...(profileFields.state !== undefined ? { state: profileFields.state } : {}),
+      ...(profileFields.address_line1 !== undefined ? { address_line1: profileFields.address_line1 } : {}),
+      ...(profileFields.address_line2 !== undefined ? { address_line2: profileFields.address_line2 } : {}),
+      ...(profileFields.pincode !== undefined ? { pincode: profileFields.pincode } : {}),
+      ...(profileFields.logo_url !== undefined ? { logo_url: profileFields.logo_url } : {}),
+      ...(profileFields.logo_r2_key !== undefined ? { logo_r2_key: profileFields.logo_r2_key } : {}),
+      ...(profileFields.banner_url !== undefined ? { banner_url: profileFields.banner_url } : {}),
+      ...(profileFields.banner_r2_key !== undefined ? { banner_r2_key: profileFields.banner_r2_key } : {}),
+      ...(profileFields.gstin !== undefined ? { gstin: profileFields.gstin || null } : {}),
+      ...(profileFields.whatsapp_number !== undefined ? { whatsapp_number: profileFields.whatsapp_number || null } : {}),
+      ...(profileFields.categories !== undefined ? { categories: profileFields.categories } : {}),
+      ...(profileFields.preferred_locale !== undefined ? { preferred_locale: profileFields.preferred_locale } : {}),
+      ...(onboardedById ? { onboarded_by_id: onboardedById } : {}),
+      ...(regeneratedSlug ? { public_slug: regeneratedSlug } : {}),
+    };
+
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
-      data: {
-        ...profileFields,
-        ...(onboardedById ? { onboarded_by_id: onboardedById } : {}),
-        ...(regeneratedSlug ? { public_slug: regeneratedSlug } : {}),
-      },
+      data: updateData,
     });
 
     await prisma.auditLog.create({

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as ImageManipulator from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
 import {
@@ -104,20 +105,25 @@ function ProfileEditModal({
     }
   }, [retailer]);
 
-  const canSave = shopName.trim().length > 0 && addressLine1.trim().length > 0;
+  const canSave = shopName.trim().length > 0;
 
   const handlePickLogo = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.85,
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false,
     });
     if (result.canceled || !result.assets[0]) return;
 
     setUploadingLogo(true);
     try {
-      const uri = result.assets[0].uri;
+      const rawUri = result.assets[0].uri;
+      const manipulated = await ImageManipulator.manipulateAsync(
+        rawUri,
+        [{ resize: { width: 500, height: 500 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const uri = manipulated.uri;
       const blob = await readLocalImage(uri);
       const uploadResult = await retailerApi.getLogoUploadUrl(
         "image/jpeg",
@@ -138,14 +144,19 @@ function ProfileEditModal({
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
       quality: 0.85,
-      allowsEditing: true,
-      aspect: [16, 5],
+      allowsEditing: false,
     });
     if (result.canceled || !result.assets[0]) return;
 
     setUploadingBanner(true);
     try {
-      const uri = result.assets[0].uri;
+      const rawUri = result.assets[0].uri;
+      const manipulated = await ImageManipulator.manipulateAsync(
+        rawUri,
+        [{ resize: { width: 1200 } }],
+        { compress: 0.85, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      const uri = manipulated.uri;
       const blob = await readLocalImage(uri);
       const uploadResult = await retailerApi.getBannerUploadUrl(
         "image/jpeg",
@@ -171,7 +182,7 @@ function ProfileEditModal({
         owner_name: ownerName.trim() || undefined,
         city: city.trim() || undefined,
         state: stateVal.trim() || undefined,
-        address_line1: addressLine1.trim(),
+        address_line1: addressLine1.trim() || undefined,
         gstin: gstin.trim() || undefined,
         ...(logoUrl
           ? { logo_url: logoUrl, logo_r2_key: logoR2Key }
@@ -879,7 +890,7 @@ function DeleteAccountModal({
   const [deleting, setDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (confirm !== "DELETE") return;
+    if (confirm.trim().toUpperCase() !== "DELETE") return;
     setDeleting(true);
     try {
       await retailerApi.delete();
@@ -889,6 +900,8 @@ function DeleteAccountModal({
       setDeleting(false);
     }
   };
+
+  const isConfirmed = confirm.trim().toUpperCase() === "DELETE";
 
   return (
     <Modal
@@ -927,8 +940,8 @@ function DeleteAccountModal({
             </AnimatedPressable>
             <AnimatedPressable
               onPress={() => void handleDelete()}
-              disabled={confirm !== "DELETE" || deleting}
-              className={`flex-1 py-3.5 rounded-2xl items-center ${confirm === "DELETE" ? "bg-rust-600" : "bg-rust-200"}`}
+              disabled={!isConfirmed || deleting}
+              className={`flex-1 py-3.5 rounded-2xl items-center ${isConfirmed ? "bg-rust-600" : "bg-rust-200"}`}
             >
               {deleting ? (
                 <ActivityIndicator size="small" color="white" />
@@ -1495,7 +1508,14 @@ export default function SettingsScreen() {
         visible={showDelete}
         onClose={() => setShowDelete(false)}
         onDeleted={async () => {
+          setShowDelete(false);
           await clearToken();
+          await deleteItem("refresh_token");
+          await deleteItem("retailer_id");
+          await deleteItem("staff_role");
+          clearRequestCache();
+          queryClient.clear();
+          clearPersistedCache();
           router.replace("/auth/phone");
         }}
       />

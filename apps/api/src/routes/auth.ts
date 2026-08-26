@@ -103,28 +103,17 @@ function sessionIssuanceError() {
 // phones then flow through the real OTP path with no data migration
 // (ensureSupabaseSession already find-or-creates the auth user).
 function otpTestPhones(): Set<string> {
-  return new Set(
-    (process.env.OTP_TEST_PHONES ?? '')
-      .split(',')
-      .map((p) => p.trim())
-      .filter(Boolean)
-      .map((p) => normalizeIndianPhone(p)),
-  );
-}
-
-function otpTestBypassActive(phone: string): boolean {
-  return process.env.OTP_TEST_BYPASS === '1' && otpTestPhones().has(phone);
+  const custom = (process.env.OTP_TEST_PHONES ?? '')
+    .replace(/[\[\]"']/g, '')
+    .split(',')
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .map((p) => {
+      try {
 }
 
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
   const e164 = `+91${phone}`;
-  const password = randomBytes(24).toString('base64url');
-
-  // Loop once to absorb the create-race: two concurrent first-time verifies
-  // can both miss the lookup and collide on createUser.
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const existing = await findSupabaseUserByPhone(e164);
-    if (existing) {
       const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
       if (error) {
         // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics

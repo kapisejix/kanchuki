@@ -240,8 +240,10 @@ function RootLayoutInner() {
   // router.replace() before the navigator's ref attaches throws "Couldn't
   // find a navigation context" — wait for rootNavigationState.key first.
   const rootNavigationState = useRootNavigationState();
+  const authRedirectDone = useRef(false);
   useEffect(() => {
-    if (!rootNavigationState?.key) return;
+    if (!rootNavigationState?.key || authRedirectDone.current) return;
+    authRedirectDone.current = true;
     getToken()
       .then(async (token) => {
         if (!token) {

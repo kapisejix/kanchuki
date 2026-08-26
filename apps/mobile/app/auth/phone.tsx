@@ -42,9 +42,9 @@ export default function PhoneScreen() {
       const digits = normalizeIndianPhone(phone);
 
       // 1. Check with backend API (handles Railway OTP_TEST_BYPASS test phones)
-      const apiRes = await authApi.sendOtp(phone);
+      const apiRes = await authApi.sendOtp(digits);
       if (apiRes.data?.bypass === true) {
-        router.push({ pathname: '/auth/otp', params: { phone, bypass: 'true' } });
+        router.push({ pathname: '/auth/otp', params: { phone: digits, bypass: 'true' } });
         return;
       }
 
@@ -55,7 +55,7 @@ export default function PhoneScreen() {
           const reqId = extractMsg91ReqId(response) ?? '';
           const token = extractMsg91AccessToken(response) ?? '';
           if (reqId || token) {
-            router.push({ pathname: '/auth/otp', params: { phone, reqId, token } });
+            router.push({ pathname: '/auth/otp', params: { phone: digits, reqId, token } });
             return;
           }
         } catch (widgetErr) {
@@ -64,7 +64,7 @@ export default function PhoneScreen() {
       }
 
       // 3. Fallback: backend already dispatched the OTP
-      router.push({ pathname: '/auth/otp', params: { phone } });
+      router.push({ pathname: '/auth/otp', params: { phone: digits } });
     } catch (err) {
       // Surface the backend's actionable message (rate limit, send failure)
       // instead of a generic fallback.
@@ -100,20 +100,11 @@ export default function PhoneScreen() {
       >
         {/* Top */}
         <View>
-          {/* Logo — K icon with padding */}
-          <View className="items-center mb-6">
-            <Image
-              source={require('../../assets/k-icon.png')}
-              style={{ width: 100, height: 100, padding: 16 }}
-              resizeMode="contain"
-            />
-          </View>
-
-          {/* Full Kanchuki wordmark logo */}
-          <View className="items-center mb-8">
+          {/* Full Kanchuki wordmark logo (single logo, no duplicate icon) */}
+          <View className="items-center mb-10 mt-2">
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
-              style={{ width: 220, height: 40 }}
+              style={{ width: 240, height: 44 }}
               resizeMode="contain"
             />
           </View>

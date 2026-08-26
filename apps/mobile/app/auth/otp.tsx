@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { normalizeIndianPhone } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -105,11 +106,12 @@ export default function OtpScreen() {
   const handleVerify = async (code: string) => {
     if (code.length !== 6 || !phone || loading) return
     setLoading(true)
+    const digits = normalizeIndianPhone(phone)
     let verified = false
     try {
       if (bypass === 'true') {
         // Railway Demo / Test Phone Bypass: verify directly with backend API
-        const { data: result } = await authApi.verifyOtp(phone, code)
+        const { data: result } = await authApi.verifyOtp(digits, code)
         await completeLogin(result)
         return
       }
@@ -121,7 +123,7 @@ export default function OtpScreen() {
           const response = await verifyMsg91Otp(reqId, code)
           const accessToken = extractMsg91AccessToken(response)
           if (accessToken) {
-            await verifyWithMsg91Token(phone, accessToken)
+            await verifyWithMsg91Token(digits, accessToken)
             verified = true
           }
         } catch (widgetErr) {
@@ -129,7 +131,7 @@ export default function OtpScreen() {
         }
       }
       if (!verified) {
-        const { data: result } = await authApi.verifyOtp(phone, code)
+        const { data: result } = await authApi.verifyOtp(digits, code)
         await completeLogin(result)
       }
     } catch (err) {

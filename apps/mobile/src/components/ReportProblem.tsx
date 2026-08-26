@@ -158,18 +158,18 @@ export function ReportProblem({
         "unknown";
 
       await bugReportApi.submit({
-        description: description.trim(),
+        description: description.trim().slice(0, 4000),
         severity,
-        app_version: appVersion,
-        os_version: osVersion,
-        device_model: `${Platform.OS} ${Platform.Version} (${Platform.OS === "android" ? (Constants.expoConfig?.android?.package ?? "unknown") : (Constants.expoConfig?.ios?.bundleIdentifier ?? "unknown")})`,
-        screen_name: screenName,
-        last_screen: lastScreen,
-        error_message: errorContext?.errorMessage,
-        error_stack: errorContext?.errorStack,
+        app_version: appVersion.slice(0, 100),
+        os_version: osVersion.slice(0, 100),
+        device_model: `${Platform.OS} ${Platform.Version} (${Platform.OS === "android" ? (Constants.expoConfig?.android?.package ?? "unknown") : (Constants.expoConfig?.ios?.bundleIdentifier ?? "unknown")})`.slice(0, 300),
+        screen_name: screenName?.slice(0, 100),
+        last_screen: lastScreen?.slice(0, 100),
+        error_message: errorContext?.errorMessage?.slice(0, 2000),
+        error_stack: errorContext?.errorStack?.slice(0, 10000),
         screenshot_url: undefined, // R2 key is enough; admin can build URL
         screenshot_r2_key: screenshotR2Key ?? undefined,
-        notes: notes.trim() || undefined,
+        notes: notes.trim() ? notes.trim().slice(0, 3000) : undefined,
       });
 
       setSubmitted(true);
