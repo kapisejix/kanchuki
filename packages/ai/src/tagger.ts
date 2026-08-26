@@ -1,4 +1,5 @@
 import { createHash } from 'crypto'
+import sharp from 'sharp'
 import type { AiTagResult } from '@kanchuki/shared'
 import { runVisionAsk, runVisionExtract } from './providers.js'
 import type { AiJsonSchema, ProviderUsedInfo } from './providers.js'
@@ -278,19 +279,171 @@ const COLOR_SYSTEM_PROMPT =
  * name, intended for the "Add Color Variant" screen to pre-fill the color
  * field instead of requiring manual entry.
  */
+export async function extractDominantColorFromBuffer(buffer: Buffer): Promise<string> {
+  try {
+    const { data, info } = await sharp(buffer)
+      .resize(64, 64, { fit: 'cover' })
+      .removeAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true })
+
+    const pixelCount = info.width * info.height
+    let totalR = 0
+    let totalG = 0
+    let totalB = 0
+    let counted = 0
+
+    // Sample pixels, ignoring near-white studio background (R,G,B > 235) and near-black borders (R,G,B < 20)
+    for (let i = 0; i < pixelCount; i++) {
+      const offset = i * 3
+      const r = data[offset]!
+      const g = data[offset + 1]!
+      const b = data[offset + 2]!
+
+      const isNearWhite = r > 235 && g > 235 && b > 235
+      const isNearBlack = r < 20 && g < 20 && b < 20
+      if (isNearWhite || isNearBlack) continue
+
+      totalR += r
+      totalG += g
+      totalB += b
+      counted++
+    }
+
+    if (counted === 0) {
+      for (let i = 0; i < pixelCount; i++) {
+        const offset = i * 3
+        totalR += data[offset]!
+        totalG += data[offset + 1]!
+        totalB += data[offset + 2]!
+        counted++
+      }
+    }
+
+    const avgR = totalR / counted
+    const avgG = totalG / counted
+    const avgB = totalB / counted
+
+    // RGB to HSL
+    const rNorm = avgR / 255
+    const gNorm = avgG / 255
+    const bNorm = avgB / 255
+    const max = Math.max(rNorm, gNorm, bNorm)
+    const min = Math.min(rNorm, gNorm, bNorm)
+    const delta = max - min
+
+    let h = 0
+    if (delta !== 0) {
+      if (max === rNorm) {
+        h = ((gNorm - bNorm) / delta) % 6
+      } else if (max === gNorm) {
+        h = (bNorm - rNorm) / delta + 2
+      } else {
+        h = (rNorm - gNorm) / delta + 4
+      }
+      h = Math.round(h * 60)
+      if (h < 0) h += 360
+    }
+
+    const l = (max + min) / 2
+    const s = delta === 0 ? 0 : delta / (1 - Math.abs(2 * l - 1))
+
+    const lPct = l * 100
+    const sPct = s * 100
+
+    // Indian Ethnic Fashion Palette Mapping
+    if (lPct < 15) return 'Black'
+    if (lPct > 90 && sPct < 15) return 'White'
+    if (sPct < 15) {
+      if (lPct > 75) return 'Ivory'
+      if (lPct > 45) return 'Silver Grey'
+      return 'Charcoal'
+    }
+
+    if (h < 15 || h >= 345) {
+      if (lPct < 35) return 'Maroon'
+      if (sPct < 45) return 'Dusty Rose'
+      if (lPct > 65) return 'Pink'
+      return 'Red'
+    }
+    if (h >= 15 && h < 40) {
+      if (lPct < 35) return 'Rust'
+      if (lPct > 70) return 'Peach'
+      return 'Orange'
+    }
+    if (h >= 40 && h < 65) {
+      if (lPct < 45) return 'Mustard Yellow'
+      if (lPct > 75) return 'Lemon Yellow'
+      return 'Yellow'
+    }
+    if (h >= 65 && h < 165) {
+      if (lPct < 30) return 'Bottle Green'
+      if (h < 100) return 'Olive Green'
+      if (lPct > 70) return 'Mint Green'
+      return 'Green'
+    }
+    if (h >= 165 && h < 195) {
+      return 'Teal'
+    }
+    if (h >= 195 && h < 255) {
+      if (lPct < 30) return 'Navy Blue'
+      if (lPct > 70) return 'Sky Blue'
+      if (sPct > 60) return 'Royal Blue'
+      return 'Blue'
+    }
+    if (h >= 255 && h < 290) {
+      if (lPct > 65) return 'Lavender'
+      if (lPct < 35) return 'Deep Purple'
+      return 'Purple'
+    }
+    if (h >= 290 && h < 345) {
+      if (lPct > 60) return 'Rani Pink'
+      if (lPct < 40) return 'Wine'
+      return 'Magenta'
+    }
+
+    return 'Multi-color'
+  } catch {
+    return 'Multi-color'
+  }
+}
+
+/**
+ * Quick color-only detection with multi-provider failover and image-buffer fallback.
+ * Always returns a valid color name so the color variant can be saved automatically.
+ */
 export async function detectColor(
   imageUrl: string,
   opts?: TaggingCallOpts,
-): Promise<string | null> {
-  const image = await fetchTaggableImage(imageUrl)
+): Promise<string> {
+  let image: TaggableImage | null = null
+  try {
+    image = await fetchTaggableImage(imageUrl)
+  } catch {
+    // If fetching fails, return fallback
+    return 'Multi-color'
+  }
 
-  const text = await runVisionAsk({
-    images: [image],
-    systemPrompt: COLOR_SYSTEM_PROMPT,
-    userPrompt: 'What is the dominant color of this garment?',
-    maxTokens: 50,
-    ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
-  })
+  try {
+    const text = await runVisionAsk({
+      images: [image],
+      systemPrompt: COLOR_SYSTEM_PROMPT,
+      userPrompt: 'What is the dominant color of this garment? Return ONLY the specific color name (e.g. Rani Pink, Bottle Green, Navy Blue, Mustard Yellow, Maroon, Teal, Red, Peach, etc.).',
+      maxTokens: 50,
+      ...(opts?.onProviderUsed ? { onProviderUsed: opts.onProviderUsed } : {}),
+    })
 
-  return text.trim() || null
+    const clean = text
+      .replace(/^(the\s+dominant\s+color\s+(is|of\s+this\s+garment\s+is)|color\s*:|the\s+color\s+is)\s*/i, '')
+      .replace(/[."']/g, '')
+      .trim()
+
+    if (clean && clean.length > 0 && !/error|unknown|none|null/i.test(clean)) {
+      return clean
+    }
+  } catch {
+    // AI provider failed/unavailable — fallback to sharp image analysis
+  }
+
+  return extractDominantColorFromBuffer(image.buffer)
 }

@@ -69,10 +69,10 @@ export const productsAiRoutes: FastifyPluginAsync = async (server) => {
       const color = await detectColor(body.data.image_url, {
         onProviderUsed: recordAiUsage(request.retailerId),
       });
-      return reply.status(200).send({ data: { color } });
+      return reply.status(200).send({ data: { color: color || 'Multi-color' } });
     } catch (err) {
       request.log.error({ err, image_url: body.data.image_url }, 'Color detection failed');
-      return reply.status(200).send({ data: { color: null } });
+      return reply.status(200).send({ data: { color: 'Multi-color' } });
     }
   });
 };
