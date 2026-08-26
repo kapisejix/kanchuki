@@ -323,16 +323,18 @@ export const STUDIO_TEMPLATES = [
   {
     id: 'studiomodel',
     command: '/studiomodel',
-    label: 'Studio Editorial Model',
+    label: 'Studio Editorial',
     description: 'High-fashion Indian studio model wearing the outfit with softbox lighting',
+    preview_image_url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Place this garment naturally onto a professional Indian fashion model in a clean editorial studio. The model has an elegant posture and natural expression. The garment shape, exact original color, dye, pattern, and embroidery are 100% preserved with realistic draping. Color-true 5500K neutral studio softbox lighting with soft grounding shadows. No color shifts.',
   },
   {
     id: 'bridalwear',
     command: '/bridalwear',
-    label: 'Royal Bridal Heritage',
+    label: 'Royal Bridal Palace',
     description: 'Royal wedding palace courtyard setting with warm ambient background',
+    preview_image_url: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with carved arches and gentle ambient evening light in the background bokeh. The garment itself is lit with neutral 5500K color-true key lighting to 100% preserve its exact original fabric color, embroidery, zari work, and hue without amber tinting or color shifts.',
   },
@@ -341,6 +343,7 @@ export const STUDIO_TEMPLATES = [
     command: '/seasoncollection',
     label: 'Festive Celebration',
     description: 'Festive celebration backdrop with warm background marigolds & light bokeh',
+    preview_image_url: 'https://images.unsplash.com/photo-1606293926075-69a00dbfde81?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Place this ethnic garment in a festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents strictly in the background. The garment itself is illuminated with neutral daylight studio lighting, keeping the product shape, exact original color, pattern, and fabric details 100% unaltered.',
   },
@@ -349,14 +352,16 @@ export const STUDIO_TEMPLATES = [
     command: '/clothingdetail',
     label: 'Macro Fabric Detail',
     description: 'Ultra-sharp macro close-up highlighting fine embroidery and weave',
+    preview_image_url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
     prompt:
       'An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on the intricate details with natural soft depth of field and 100% color-true, neutral daylight studio lighting.',
   },
   {
     id: 'runway',
     command: '/runway',
-    label: 'Fashion Runway Ramp',
+    label: 'Catwalk Runway',
     description: 'High-fashion catwalk runway setting with dramatic spotlights',
+    preview_image_url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. The model is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
   },
@@ -365,6 +370,7 @@ export const STUDIO_TEMPLATES = [
     command: '/white_studio',
     label: 'White Studio',
     description: 'Clean white backdrop, soft even lighting — marketplace ready',
+    preview_image_url: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Replace the background of this product photo with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting. Keep the product itself completely unchanged — exact same color, hue, saturation, pattern, and fabric details with soft natural grounding shadow.',
   },
@@ -373,6 +379,7 @@ export const STUDIO_TEMPLATES = [
     command: '/warm_luxury',
     label: 'Warm Luxury',
     description: 'Rich warm beige backdrop with color-true subject lighting',
+    preview_image_url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Replace the background of this product photo with a warm, luxurious beige studio backdrop with subtle depth. The product itself is lit with neutral, color-true 5500K studio light so the garment fabric color, dye, and embroidery remain 100% faithful to the original photo with natural grounding shadow.',
   },
@@ -381,6 +388,7 @@ export const STUDIO_TEMPLATES = [
     command: '/gold_festive',
     label: 'Gold Festive',
     description: 'Festive gold-tone backdrop (Diwali/wedding ready)',
+    preview_image_url: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Replace the background of this product photo with an elegant festive gold-toned backdrop with soft depth. The product itself is illuminated with neutral daylight studio lighting so the exact garment color, fabric shade, and embroidery remain completely unchanged and true to life.',
   },
@@ -389,22 +397,25 @@ export const STUDIO_TEMPLATES = [
     command: '/diwali_lights',
     label: 'Diwali Lights',
     description: 'Diwali-specific backdrop with diyas and rangoli patterns',
+    preview_image_url: 'https://images.unsplash.com/photo-1514517521153-1be72277b32f?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Replace the background of this product photo with a vibrant Diwali backdrop featuring glowing diyas and rangoli patterns strictly in the background. The garment itself is lit with neutral 5500K color-true studio lighting, keeping the product shape, exact color, pattern, and fabric details 100% unaltered.',
   },
   {
     id: 'wedding_elegant',
     command: '/wedding_elegant',
-    label: 'Wedding Elegant',
+    label: 'Wedding Florals',
     description: 'Elegant wedding backdrop with floral arrangements and draping',
+    preview_image_url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Replace the background of this product photo with an elegant wedding backdrop featuring soft floral arrangements and pastel draping in the background. The garment itself is lit with neutral daylight studio lighting, keeping its original fabric color, embroidery, and textures 100% faithful to the original photo.',
   },
   {
     id: 'flat_lay',
     command: '/flat_lay',
-    label: 'Flat-Lay Casual',
+    label: 'Flat-Lay Linen',
     description: 'Casual flat-lay style on a neutral textured surface',
+    preview_image_url: 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=600&auto=format&fit=crop&q=80',
     prompt:
       'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, exact original color, pattern, and fabric details. Soft, even, neutral 5500K lighting.',
   },
@@ -413,6 +424,7 @@ export const STUDIO_TEMPLATES = [
   command?: string;
   label: string;
   description: string;
+  preview_image_url?: string;
   prompt: string;
 }[];
 
@@ -427,35 +439,39 @@ export function getStudioTemplate(id: string): (typeof STUDIO_TEMPLATES)[number]
 export const STUDIO_MODELS = [
   {
     id: 'priya_bridal',
-    name: 'Priya (Bridal & Heavy Ethnic)',
+    name: 'Priya',
+    title: 'Royal Bridal',
     description: 'Royal bridal posture with traditional jewelry and lehenga/saree drape',
     gender: 'female',
     pose: 'standing_royal',
-    model_image_url: 'https://assets.kanchuki.app/models/priya_bridal.jpg',
+    model_image_url: 'https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'ananya_saree',
-    name: 'Ananya (Saree & Kurti)',
+    name: 'Ananya',
+    title: 'Saree & Kurti',
     description: 'Graceful modern Indian model pose for sarees, suits, and daily ethnic wear',
     gender: 'female',
     pose: 'standing_graceful',
-    model_image_url: 'https://assets.kanchuki.app/models/ananya_saree.jpg',
+    model_image_url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'meera_festive',
-    name: 'Meera (Festive Anarkali & Indo-Western)',
+    name: 'Meera',
+    title: 'Festive & Gown',
     description: 'Vibrant festive pose for Anarkalis, gowns, and fusion wear',
     gender: 'female',
     pose: 'standing_festive',
-    model_image_url: 'https://assets.kanchuki.app/models/meera_festive.jpg',
+    model_image_url: 'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=600&auto=format&fit=crop&q=80',
   },
   {
     id: 'kabir_menswear',
-    name: 'Kabir (Men\'s Kurta & Sherwani)',
+    name: 'Kabir',
+    title: "Men's Ethnic",
     description: 'Dignified male model pose for Kurtas, Sherwanis, and Nehru jackets',
     gender: 'male',
     pose: 'standing_confident',
-    model_image_url: 'https://assets.kanchuki.app/models/kabir_menswear.jpg',
+    model_image_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&auto=format&fit=crop&q=80',
   },
 ] as const;
 

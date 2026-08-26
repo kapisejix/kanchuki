@@ -2014,53 +2014,72 @@ export default function ProductDetailScreen() {
                 : 'Pick a professional Indian model to wear and drape this garment.'}
             </Text>
 
-            <ScrollView bounces={false} style={{ maxHeight: 380 }}>
-              {studioTab === 'scenes' ? (
-                STUDIO_TEMPLATES.map((t) => (
-                  <AnimatedPressable
-                    key={t.id}
-                    onPress={() => void handleStartStudioShoot(t.id, { engine: 'flux_pro' })}
-                    disabled={studioStarting}
-                    accessibilityLabel={`${t.label} — ${t.description}`}
-                    accessibilityRole="button"
-                    className="mb-3 border border-sand-200 rounded-2xl p-3 flex-row items-center gap-3"
-                  >
-                    <View className="w-12 h-12 rounded-xl bg-rust-50 items-center justify-center border border-rust-100">
-                      <Sparkles size={20} color={primaryColor} />
-                    </View>
-                    <View className="flex-1">
-                      <View className="flex-row items-center gap-2">
-                        <Text className="text-sm font-semibold text-ink-800">{t.label}</Text>
-                        {t.command && (
-                          <Text className="text-[10px] font-mono text-rust-600 bg-rust-50 px-1.5 py-0.5 rounded">
-                            {t.command}
+            <ScrollView bounces={false} style={{ maxHeight: 440 }} showsVerticalScrollIndicator={false}>
+              <View className="flex-row flex-wrap justify-between pb-3">
+                {studioTab === 'scenes' ? (
+                  STUDIO_TEMPLATES.map((t) => {
+                    const localImg = STUDIO_TEMPLATE_THUMBNAILS[t.id];
+                    const imageSource = t.preview_image_url
+                      ? { uri: t.preview_image_url }
+                      : localImg
+                        ? localImg
+                        : { uri: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600' };
+
+                    return (
+                      <AnimatedPressable
+                        key={t.id}
+                        onPress={() => void handleStartStudioShoot(t.id, { engine: 'flux_pro' })}
+                        disabled={studioStarting}
+                        accessibilityLabel={t.label}
+                        accessibilityRole="button"
+                        style={{ width: '48%' }}
+                        className="mb-3 border border-sand-200 rounded-2xl overflow-hidden bg-sand-50 active:opacity-90 shadow-2xs"
+                      >
+                        <Image
+                          source={imageSource}
+                          style={{ width: '100%', height: 115 }}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                        <View className="p-2.5 bg-white items-center">
+                          <Text className="text-xs font-bold text-ink-800 text-center" numberOfLines={1}>
+                            {t.label}
                           </Text>
-                        )}
+                        </View>
+                      </AnimatedPressable>
+                    );
+                  })
+                ) : (
+                  STUDIO_MODELS.map((m) => (
+                    <AnimatedPressable
+                      key={m.id}
+                      onPress={() => void handleStartStudioShoot('studiomodel', { engine: 'idm_vton', model_id: m.id })}
+                      disabled={studioStarting}
+                      accessibilityLabel={`${m.name} — ${'title' in m ? m.title : ''}`}
+                      accessibilityRole="button"
+                      style={{ width: '48%' }}
+                      className="mb-3 border border-sand-200 rounded-2xl overflow-hidden bg-sand-50 active:opacity-90 shadow-2xs"
+                    >
+                      <Image
+                        source={{ uri: m.model_image_url }}
+                        style={{ width: '100%', height: 135 }}
+                        contentFit="cover"
+                        transition={200}
+                      />
+                      <View className="p-2.5 bg-white items-center">
+                        <Text className="text-xs font-bold text-ink-800 text-center" numberOfLines={1}>
+                          {m.name}
+                        </Text>
+                        {'title' in m && m.title ? (
+                          <Text className="text-[10px] font-medium text-rust-600 mt-0.5" numberOfLines={1}>
+                            {m.title as string}
+                          </Text>
+                        ) : null}
                       </View>
-                      <Text className="text-xs text-sand-500 mt-1">{t.description}</Text>
-                    </View>
-                  </AnimatedPressable>
-                ))
-              ) : (
-                STUDIO_MODELS.map((m) => (
-                  <AnimatedPressable
-                    key={m.id}
-                    onPress={() => void handleStartStudioShoot('studiomodel', { engine: 'idm_vton', model_id: m.id })}
-                    disabled={studioStarting}
-                    accessibilityLabel={`${m.name} — ${m.description}`}
-                    accessibilityRole="button"
-                    className="mb-3 border border-sand-200 rounded-2xl p-3 flex-row items-center gap-3"
-                  >
-                    <View className="w-12 h-12 rounded-xl bg-sand-100 items-center justify-center border border-sand-200">
-                      <Text className="text-xs font-bold text-sand-700">{m.name.slice(0, 2).toUpperCase()}</Text>
-                    </View>
-                    <View className="flex-1">
-                      <Text className="text-sm font-semibold text-ink-800">{m.name}</Text>
-                      <Text className="text-xs text-sand-500 mt-1">{m.description}</Text>
-                    </View>
-                  </AnimatedPressable>
-                ))
-              )}
+                    </AnimatedPressable>
+                  ))
+                )}
+              </View>
             </ScrollView>
             <AnimatedPressable
               onPress={() => setStudioModalOpen(false)}
