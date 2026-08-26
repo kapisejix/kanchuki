@@ -37,6 +37,7 @@ import {
   downloadCompressAndUpload,
   generateStudioImage,
   setStudioJobStatus,
+  type StudioEngine,
 } from '../lib/studio-shoot.js';
 
 /** Same fallback as routes/products/products-helpers.ts photoUrlToDisplay —
@@ -63,103 +64,133 @@ export interface StudioShootJobData {
   product_id: string;
   photo_id: string;
   template: StudioTemplateId | string;
+  engine?: StudioEngine;
+  model_id?: string;
+}
 
 export async function handleStudioShoot(data: StudioShootJobData): Promise<void> {
-   const { job_id, retailer_id, product_id, photo_id, template, engine, model_id } = data;
-   const startedAt = new Date();
+  const { job_id, retailer_id, product_id, photo_id, template, engine, model_id } = data;
+  const startedAt = new Date();
 
-   // Estimated total time for studio shoot generation (based on BFL/Fal/Gemini docs)
-   const ESTIMATED_TOTAL_TIME_MS = 25_000;
+  // Estimated total time for studio shoot generation (based on BFL/Fal/Gemini docs)
+  const ESTIMATED_TOTAL_TIME_MS = 25_000;
 
-   // Set initial status
-     progress: 0,
-     etaMs: ESTIMATED_TOTAL_TIME_MS,
-   }).catch(() => {});
+  // Set initial status
+  await setStudioJobStatus(job_id, {
+    status: 'processing',
+    progress: 0,
+    etaMs: ESTIMATED_TOTAL_TIME_MS,
+  }).catch(() => {});
 
-   try {
-     // Re-verify ownership at execution time (queue = trust boundary).
-     const photo = await prisma.productPhoto.findFirst({
-       where: { id: photo_id, product_id, retailer_id },
-     });
-       await setStudioJobStatus(job_id, {
-         status: 'failed',
-         error: 'Product photo not found. It may have been deleted.',
-         progress: 0,
-         etaMs: 0,
-       });
-       return;
-     }
+  try {
+    // Re-verify ownership at execution time (queue = trust boundary).
+    const photo = await prisma.productPhoto.findFirst({
+      where: { id: photo_id, product_id, retailer_id },
+    });
+    if (!photo) {
+      await setStudioJobStatus(job_id, {
+        status: 'failed',
+        error: 'Product photo not found. It may have been deleted.',
+        progress: 0,
+        etaMs: 0,
+      });
+      return;
+    }
 
-     const displayUrl = await studioSourceUrl(photo);
-     if (!displayUrl) {
-       await setStudioJobStatus(job_id, {
-         status: 'failed',
-         error: 'Could not resolve the source photo URL.',
-         progress: 0,
-         etaMs: 0,
-       });
-       return;
-     }
+    const displayUrl = await studioSourceUrl(photo);
+    if (!displayUrl) {
+      await setStudioJobStatus(job_id, {
+        status: 'failed',
+        error: 'Could not resolve the source photo URL.',
+        progress: 0,
+        etaMs: 0,
+      });
+      return;
+    }
 
-     // 2. Generate (async submit + poll inside generateStudioImage).
-     const result = await generateStudioImage(
-       template,
-       displayUrl,
-       (progressInfo) => {
-         setStudioJobStatus(job_id, {
-           status: 'processing',
-           progress: progressInfo.progress,
-           etaMs: progressInfo.etaMs,
-         }).catch(() => {});
-       },
-       undefined,
-       {
-         engine,
-         modelId: model_id,
-       },
-     );
+    // 2. Generate (async submit + poll inside generateStudioImage).
+    const result = await generateStudioImage(
+      template,
+      displayUrl,
+      (progressInfo) => {
+        setStudioJobStatus(job_id, {
+          status: 'processing',
+          progress: progressInfo.progress,
+          etaMs: progressInfo.etaMs,
+        }).catch(() => {});
+      },
+      undefined,
+      {
+        engine,
+        modelId: model_id,
+      },
+    );
 
-     if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
-         product_id,
-         retailer_id,
-         r2_key: uploaded.key,
-         url: uploaded.url,
-         is_primary: false,
-         width: uploaded.width,
-         height: uploaded.height,
-         metadata: {
-           studio: {
-             job_id,
-             engine: engine ?? 'auto',
-             model_id: model_id ?? null,
-             source_photo_id: photo.id,
-       },
-     });
+    if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
+      await setStudioJobStatus(job_id, {
+        status: 'failed',
+        error: result.error ?? 'The studio shoot could not be generated. Please try again.',
+        progress: 0,
+        etaMs: 0,
+      });
+      return;
+    }
 
-     // 5. Status AFTER the DB row exists — ready means the photo is live.
-     await setStudioJobStatus(job_id, {
-       status: 'ready',
-       photo_id: newPhoto.id,
-       url: newPhoto.url,
-       progress: 100,
-       etaMs: 0,
-     });
+    // 3–4. Download / decode → compress → upload to a NEW key → create a new photo row.
+    const filename = `studio-${photo.id}-${createId()}.jpg`;
+    const r2Key = R2_PATHS.studioShot(retailer_id, product_id, filename);
+    const isBase64 = Boolean(result.base64Data);
+    const payload = result.base64Data || result.sampleUrl!;
+    const uploaded = await downloadCompressAndUpload(payload, r2Key, isBase64);
 
-     // 6. Record BFL credit consumption for the Admin → AI Usage dashboard,
-     // and count it against the retailer's STUDIO_SHOOT plan quota (F-010).
-       console.error(`[studio-shoot] failed to record quota usage for ${retailer_id}:`, err);
-     });
-   } catch (err) {
-     const message = err instanceof Error ? err.message : String(err);
-     console.error(`[studio-shoot] job ${job_id} failed:`, err);
-     await setStudioJobStatus(job_id, {
-       status: 'failed',
-       error: 'The studio shoot failed. Please try again.',
-       progress: 0,
-       etaMs: 0,
-     });
-     // Mark the job failed for BullMQ visibility (no auto-retry by default —
-     // each generation costs real BFL credits, so don't burn credits on retry).
-     throw new Error(message);
-   }
- }
+    const newPhoto = await prisma.productPhoto.create({
+      data: {
+        product_id,
+        retailer_id,
+        r2_key: uploaded.key,
+        url: uploaded.url,
+        is_primary: false,
+        width: uploaded.width,
+        height: uploaded.height,
+        metadata: {
+          studio: {
+            job_id,
+            template,
+            engine: engine ?? 'auto',
+            model_id: model_id ?? null,
+            source_photo_id: photo.id,
+            generated_at: startedAt.toISOString(),
+          },
+        },
+      },
+    });
+
+    // 5. Status AFTER the DB row exists — ready means the photo is live.
+    await setStudioJobStatus(job_id, {
+      status: 'ready',
+      photo_id: newPhoto.id,
+      url: newPhoto.url,
+      progress: 100,
+      etaMs: 0,
+    });
+
+    // 6. Record BFL credit consumption for the Admin → AI Usage dashboard,
+    // and count it against the retailer's STUDIO_SHOOT plan quota (F-010).
+    recordBflStudioUsage(retailer_id, template);
+    incrementUsage(retailer_id, 'STUDIO_SHOOT').catch((err) => {
+      console.error(`[studio-shoot] failed to record quota usage for ${retailer_id}:`, err);
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[studio-shoot] job ${job_id} failed:`, err);
+    await setStudioJobStatus(job_id, {
+      status: 'failed',
+      error: 'The studio shoot failed. Please try again.',
+      progress: 0,
+      etaMs: 0,
+    });
+    // Mark the job failed for BullMQ visibility (no auto-retry by default —
+    // each generation costs real BFL credits, so don't burn credits on retry).
+    throw new Error(message);
+  }
+}
