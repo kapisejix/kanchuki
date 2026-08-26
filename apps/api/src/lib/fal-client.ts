@@ -113,6 +113,8 @@ export async function generateFluxProImage(
 ): Promise<{ sampleUrl: string }> {
   const input: Record<string, unknown> = {
     prompt,
+    negative_prompt:
+      'color shift, hue change, altered fabric color, color bleed, recoloring, washed out colors, oversaturated, tinted fabric, distorted embroidery, mismatched patterns, altered texture, color cast',
     image_size: 'portrait_4_3',
     num_inference_steps: 28,
     guidance_scale: 3.5,
@@ -135,6 +137,8 @@ export async function generateFluxSchnellImage(
 ): Promise<{ sampleUrl: string }> {
   const input: Record<string, unknown> = {
     prompt,
+    negative_prompt:
+      'color shift, hue change, altered fabric color, color bleed, recoloring, washed out colors, oversaturated, tinted fabric, distorted embroidery, mismatched patterns, altered texture, color cast',
     image_size: 'portrait_4_3',
     num_inference_steps: 4,
     enable_safety_checker: true,

@@ -326,23 +326,23 @@ export const STUDIO_TEMPLATES = [
     label: 'Studio Editorial Model',
     description: 'High-fashion Indian studio model wearing the outfit with softbox lighting',
     prompt:
-      'Place this garment naturally onto a professional Indian fashion model in a clean editorial studio. The model has an elegant posture and natural expression. The product shape, color, pattern, and fabric details are completely preserved with realistic draping and soft grounding shadows. Professional studio lighting.',
+      'Place this garment naturally onto a professional Indian fashion model in a clean editorial studio. The model has an elegant posture and natural expression. The garment shape, exact original color, dye, pattern, and embroidery are 100% preserved with realistic draping. Color-true 5500K neutral studio softbox lighting with soft grounding shadows. No color shifts.',
   },
   {
     id: 'bridalwear',
     command: '/bridalwear',
     label: 'Royal Bridal Heritage',
-    description: 'Royal wedding palace courtyard setting with warm golden illumination',
+    description: 'Royal wedding palace courtyard setting with warm ambient background',
     prompt:
-      'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with warm golden hour lighting, intricate carved arches in soft bokeh, and celebratory royal ambiance. The garment embroidery, zari work, texture, and colors are 100% preserved with realistic fabric physics.',
+      'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with carved arches and gentle ambient evening light in the background bokeh. The garment itself is lit with neutral 5500K color-true key lighting to 100% preserve its exact original fabric color, embroidery, zari work, and hue without amber tinting or color shifts.',
   },
   {
     id: 'seasoncollection',
     command: '/seasoncollection',
     label: 'Festive Celebration',
-    description: 'Festive Diwali / wedding celebration backdrop with warm marigold & light bokeh',
+    description: 'Festive celebration backdrop with warm background marigolds & light bokeh',
     prompt:
-      'Place this ethnic garment in a warm festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details with rich celebratory lighting.',
+      'Place this ethnic garment in a festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents strictly in the background. The garment itself is illuminated with neutral daylight studio lighting, keeping the product shape, exact original color, pattern, and fabric details 100% unaltered.',
   },
   {
     id: 'clothingdetail',
@@ -350,15 +350,15 @@ export const STUDIO_TEMPLATES = [
     label: 'Macro Fabric Detail',
     description: 'Ultra-sharp macro close-up highlighting fine embroidery and weave',
     prompt:
-      'An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on the intricate details with natural soft depth of field and premium directional studio lighting.',
+      'An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on the intricate details with natural soft depth of field and 100% color-true, neutral daylight studio lighting.',
   },
   {
     id: 'runway',
     command: '/runway',
     label: 'Fashion Runway Ramp',
-    description: 'High-fashion catwalk runway setting with dramatic overhead spotlights',
+    description: 'High-fashion catwalk runway setting with dramatic spotlights',
     prompt:
-      'Place this outfit in a high-fashion catwalk runway show with dramatic overhead spotlights and soft blurred audience bokeh in the background. The model is walking gracefully. Garment shape, drape, color, and texture are completely preserved.',
+      'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. The model is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
   },
   {
     id: 'white_studio',
@@ -366,15 +366,15 @@ export const STUDIO_TEMPLATES = [
     label: 'White Studio',
     description: 'Clean white backdrop, soft even lighting — marketplace ready',
     prompt:
-      'Replace the background of this product photo with a clean, seamless white studio backdrop. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Add a soft, natural shadow under the product for grounding. Bright, even, professional lighting.',
+      'Replace the background of this product photo with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting. Keep the product itself completely unchanged — exact same color, hue, saturation, pattern, and fabric details with soft natural grounding shadow.',
   },
   {
     id: 'warm_luxury',
     command: '/warm_luxury',
     label: 'Warm Luxury',
-    description: 'Rich warm beige backdrop with premium lighting',
+    description: 'Rich warm beige backdrop with color-true subject lighting',
     prompt:
-      'Replace the background of this product photo with a warm, luxurious beige studio backdrop with subtle depth. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Premium soft lighting with warm tones and a natural grounding shadow.',
+      'Replace the background of this product photo with a warm, luxurious beige studio backdrop with subtle depth. The product itself is lit with neutral, color-true 5500K studio light so the garment fabric color, dye, and embroidery remain 100% faithful to the original photo with natural grounding shadow.',
   },
   {
     id: 'gold_festive',
@@ -382,7 +382,7 @@ export const STUDIO_TEMPLATES = [
     label: 'Gold Festive',
     description: 'Festive gold-tone backdrop (Diwali/wedding ready)',
     prompt:
-      'Replace the background of this product photo with a festive, elegant gold-tone backdrop suitable for Diwali and wedding catalogues. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Rich celebratory lighting with warm glow and a natural grounding shadow.',
+      'Replace the background of this product photo with an elegant festive gold-toned backdrop with soft depth. The product itself is illuminated with neutral daylight studio lighting so the exact garment color, fabric shade, and embroidery remain completely unchanged and true to life.',
   },
   {
     id: 'diwali_lights',
@@ -390,7 +390,7 @@ export const STUDIO_TEMPLATES = [
     label: 'Diwali Lights',
     description: 'Diwali-specific backdrop with diyas and rangoli patterns',
     prompt:
-      'Replace the background of this product photo with a vibrant Diwali backdrop featuring glowing diyas (oil lamps), colorful rangoli patterns, and festive lighting. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Warm, festive illumination with golden highlights.',
+      'Replace the background of this product photo with a vibrant Diwali backdrop featuring glowing diyas and rangoli patterns strictly in the background. The garment itself is lit with neutral 5500K color-true studio lighting, keeping the product shape, exact color, pattern, and fabric details 100% unaltered.',
   },
   {
     id: 'wedding_elegant',
@@ -398,7 +398,7 @@ export const STUDIO_TEMPLATES = [
     label: 'Wedding Elegant',
     description: 'Elegant wedding backdrop with floral arrangements and draping',
     prompt:
-      'Replace the background of this product photo with an elegant wedding backdrop featuring soft floral arrangements, delicate draping, and subtle bokeh lights. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Soft, romantic lighting with pastel tones.',
+      'Replace the background of this product photo with an elegant wedding backdrop featuring soft floral arrangements and pastel draping in the background. The garment itself is lit with neutral daylight studio lighting, keeping its original fabric color, embroidery, and textures 100% faithful to the original photo.',
   },
   {
     id: 'flat_lay',
@@ -406,7 +406,7 @@ export const STUDIO_TEMPLATES = [
     label: 'Flat-Lay Casual',
     description: 'Casual flat-lay style on a neutral textured surface',
     prompt:
-      'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, color, pattern, and fabric details. Soft, even, natural lighting.',
+      'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, exact original color, pattern, and fabric details. Soft, even, neutral 5500K lighting.',
   },
 ] as const satisfies readonly {
   id: string;

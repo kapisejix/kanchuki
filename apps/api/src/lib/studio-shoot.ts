@@ -84,6 +84,15 @@ export async function generateStudioImage(
   options?: {
     engine?: StudioEngine;
     modelId?: StudioModelId | string;
+    product?: {
+      name?: string | null;
+      category?: string | null;
+      primary_color?: string | null;
+      secondary_colors?: string[];
+      fabric?: string | null;
+      pattern?: string | null;
+      embellishments?: string[];
+    };
   },
 ): Promise<StudioGenerationResult> {
   const falKey = await resolveFalKey();
@@ -98,6 +107,17 @@ export async function generateStudioImage(
     );
   }
 
+  const product = options?.product;
+  const colorSpec = [
+    product?.primary_color ? `exact primary color is ${product.primary_color}` : '',
+    product?.secondary_colors?.length ? `secondary colors are ${product.secondary_colors.join(', ')}` : '',
+    product?.fabric ? `fabric: ${product.fabric}` : '',
+    product?.pattern ? `pattern: ${product.pattern}` : '',
+    product?.embellishments?.length ? `embellishments: ${product.embellishments.join(', ')}` : '',
+  ]
+    .filter(Boolean)
+    .join(', ');
+
   // If engine is IDM-VTON (Virtual Fashion Model) or modelId is specified
   if (options?.engine === 'idm_vton' || options?.modelId) {
     const selectedModel = getStudioModel(options?.modelId ?? 'priya_bridal') ?? {
@@ -107,10 +127,14 @@ export async function generateStudioImage(
 
     if (falKey) {
       try {
+        const garmentDescription = product?.primary_color
+          ? `Authentic ${product.primary_color} ${product.category || 'ethnic garment'} with exact original color and embroidery preserved`
+          : 'Authentic Indian ethnic wear garment with exact original colors and embroidery preserved';
+
         const vtonRes = await generateIdmVtonTryon(
           selectedModel.model_image_url,
           inputImageUrl,
-          'Indian ethnic wear garment',
+          garmentDescription,
           onProgress,
         );
         return { status: 'ready', sampleUrl: vtonRes.sampleUrl };
@@ -125,11 +149,17 @@ export async function generateStudioImage(
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
   }
 
-  const promptText = template?.prompt ?? (
+  const basePrompt = template?.prompt ?? (
     options?.modelId
-      ? `A professional Indian studio fashion model wearing this exact garment. High resolution, 8k, photorealistic fabric textures, soft lighting.`
+      ? `A professional Indian studio fashion model wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`
       : `Place this product photo in a professional studio setting with clean lighting: ${templateId}`
   );
+
+  const colorEnforcement = colorSpec
+    ? ` The garment has ${colorSpec}. CRITICAL COLOR ACCURACY: Absolutely preserve the garment's exact fabric dye, color tone, embroidery, and saturation without any tinting, hue shift, or color alteration. Use neutral 5500K daylight-balanced CRI-98 key lighting on the garment.`
+    : ` CRITICAL COLOR ACCURACY: Preserve the garment's exact original color, hue, dye, saturation, and embroidery 100% faithfully to the input photo without color shifting or tinting. Use neutral 5500K daylight-balanced key lighting on the garment.`;
+
+  const promptText = `${basePrompt} ${colorEnforcement}`;
 
   // 1. Try Fal.ai Flux 1.1 Pro (Top photorealism)
   if (falKey && (options?.engine === 'flux_pro' || !options?.engine || !geminiKey)) {

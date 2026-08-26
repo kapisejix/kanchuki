@@ -97,6 +97,21 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       return;
     }
 
+    const product = await prisma.product.findFirst({
+      where: { id: product_id, retailer_id },
+      select: {
+        id: true,
+        name: true,
+        category: true,
+        subtype: true,
+        primary_color: true,
+        secondary_colors: true,
+        fabric_estimate: true,
+        pattern: true,
+        embellishments: true,
+      },
+    });
+
     const displayUrl = await studioSourceUrl(photo);
     if (!displayUrl) {
       await setStudioJobStatus(job_id, {
@@ -123,6 +138,17 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
       {
         engine,
         modelId: model_id,
+        product: product
+          ? {
+              name: product.name,
+              category: product.category,
+              primary_color: product.primary_color,
+              secondary_colors: product.secondary_colors,
+              fabric: product.fabric_estimate,
+              pattern: product.pattern,
+              embellishments: product.embellishments,
+            }
+          : undefined,
       },
     );
 
