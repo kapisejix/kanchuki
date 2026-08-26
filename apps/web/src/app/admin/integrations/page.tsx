@@ -33,12 +33,19 @@ export default function IntegrationsPage() {
   const [drafts, setDrafts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
   const [status, setStatus] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL')
 
   const load = useCallback(async () => {
-    const res = await fetch(`${API_URL}/v1/admin/integrations`, adminGetOptions())
-    const json = await res.json()
-    setRows(json.data ?? [])
-    setLoading(false)
+    try {
+      const res = await fetch(`${API_URL}/v1/admin/integrations`, adminGetOptions())
+      const json = await res.json()
+      setRows(json.data ?? [])
+    } catch {
+      setStatus('❌ Failed to load integrations')
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
@@ -122,20 +129,76 @@ export default function IntegrationsPage() {
     )
   }
 
-  const categories = Array.from(new Set(rows.map((r) => r.category))) as Category[]
+  const filteredRows = rows.filter((r) => {
+    const matchesCat = selectedCategory === 'ALL' || r.category === selectedCategory
+    const q = searchQuery.toLowerCase().trim()
+    const matchesSearch = !q || r.key_name.toLowerCase().includes(q) || r.label.toLowerCase().includes(q)
+    return matchesCat && matchesSearch
+  })
+
+  const availableCategories = Array.from(new Set(rows.map((r) => r.category))) as Category[]
+  const displayedCategories = Array.from(new Set(filteredRows.map((r) => r.category))) as Category[]
 
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-4xl">
-      <div>
-        <div className="flex items-center gap-3 mb-1">
-          <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
-          <KeyRound size={20} className="text-cyan-500" />
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900">Integrations</h1>
+            <KeyRound size={20} className="text-cyan-500" />
+          </div>
+          <p className="text-sm text-gray-500">
+            Third-party API keys and secrets, encrypted at rest (AES-256-GCM). Super admin only.
+            Values are never shown again after saving — paste a new value to rotate.
+          </p>
         </div>
-        <p className="text-sm text-gray-500">
-          Third-party API keys and secrets, encrypted at rest (AES-256-GCM). Super admin only.
-          Values are never shown again after saving — paste a new value to rotate. Leave a key
-          unconfigured to keep using its <span className="font-mono">.env</span> value.
-        </p>
+        <button
+          onClick={() => {
+            setLoading(true)
+            load()
+          }}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 shadow-xs"
+        >
+          Refresh Keys
+        </button>
+      </div>
+
+      {/* Category Pills & Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+          <button
+            onClick={() => setSelectedCategory('ALL')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+              selectedCategory === 'ALL'
+                ? 'bg-cyan-500 text-white shadow-xs'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All ({rows.length})
+          </button>
+          {availableCategories.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setSelectedCategory(cat)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                selectedCategory === cat
+                  ? 'bg-cyan-500 text-white shadow-xs'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {cat} ({rows.filter((r) => r.category === cat).length})
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 sm:max-w-xs ml-auto">
+          <input
+            type="text"
+            placeholder="Search keys (e.g. FAL, Gemini, Flux)..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full px-3 py-1.5 text-xs border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50 bg-white"
+          />
+        </div>
       </div>
 
       {status && (
@@ -150,13 +213,18 @@ export default function IntegrationsPage() {
         </div>
       )}
 
-      {categories.map((category) => (
-        <div key={category} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-4">{CATEGORY_LABELS[category]}</h2>
-          <div className="space-y-3">
-            {rows
-              .filter((r) => r.category === category)
-              .map((row) => (
+      {displayedCategories.length === 0 ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center text-sm text-gray-500">
+          No integration keys found matching "{searchQuery}".
+        </div>
+      ) : (
+        displayedCategories.map((category) => (
+          <div key={category} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">{CATEGORY_LABELS[category]}</h2>
+            <div className="space-y-3">
+              {filteredRows
+                .filter((r) => r.category === category)
+                .map((row) => (
                 <div
                   key={row.key_name}
                   className="flex flex-col sm:flex-row sm:items-center gap-2 border-b border-gray-50 pb-3 last:border-0 last:pb-0"
@@ -220,9 +288,10 @@ export default function IntegrationsPage() {
                   </div>
                 </div>
               ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))
+      )}
     </motion.div>
   )
 }
