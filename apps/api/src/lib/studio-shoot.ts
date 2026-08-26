@@ -43,8 +43,14 @@ export async function resolveBflKey(): Promise<string | null> {
   return secret || process.env.BFL_API_KEY || null;
 }
 
-export function isStudioShootConfigured(): boolean {
-  return isFalConfigured() || isImagenConfigured() || Boolean(process.env.BFL_API_KEY);
+export async function isStudioShootConfigured(): Promise<boolean> {
+  const fal = await resolveFalKey();
+  if (fal) return true;
+  const gemini = await resolveGeminiKey();
+  if (gemini) return true;
+  const bfl = await resolveBflKey();
+  if (bfl) return true;
+  return false;
 }
 
 export type StudioEngine =
@@ -84,7 +90,15 @@ export async function generateStudioImage(
   const geminiKey = await resolveGeminiKey();
   const bflAuthKey = await resolveBflKey();
 
-  // If engine is IDM-VTON (Virtual Fashion Model)
+  if (!falKey && !geminiKey && !bflAuthKey) {
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      'AI Studio Shoots are not configured. Please add an API key in Admin → Integrations.',
+      503,
+    );
+  }
+
+  // If engine is IDM-VTON (Virtual Fashion Model) or modelId is specified
   if (options?.engine === 'idm_vton' || options?.modelId) {
     const selectedModel = getStudioModel(options?.modelId ?? 'priya_bridal') ?? {
       model_image_url: 'https://assets.kanchuki.app/models/priya_bridal.jpg',
@@ -92,55 +106,70 @@ export async function generateStudioImage(
     };
 
     if (falKey) {
-      const vtonRes = await generateIdmVtonTryon(
-        selectedModel.model_image_url,
-        inputImageUrl,
-        'Indian ethnic wear garment',
-        onProgress,
-      );
-      return { status: 'ready', sampleUrl: vtonRes.sampleUrl };
+      try {
+        const vtonRes = await generateIdmVtonTryon(
+          selectedModel.model_image_url,
+          inputImageUrl,
+          'Indian ethnic wear garment',
+          onProgress,
+        );
+        return { status: 'ready', sampleUrl: vtonRes.sampleUrl };
+      } catch (err) {
+        console.error('[studio-shoot] IDM-VTON failed, attempting prompt model fallback:', err);
+      }
     }
   }
 
   const template = getStudioTemplate(templateId as string);
-  if (!template && !options?.modelId) {
+  if (!template && !options?.modelId && !templateId.startsWith('/')) {
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
   }
 
-  // 1. Try Fal.ai Flux 1.1 Pro (Top realism)
-  if ((options?.engine === 'flux_pro' || !options?.engine) && falKey) {
+  const promptText = template?.prompt ?? (
+    options?.modelId
+      ? `A professional Indian studio fashion model wearing this exact garment. High resolution, 8k, photorealistic fabric textures, soft lighting.`
+      : `Place this product photo in a professional studio setting with clean lighting: ${templateId}`
+  );
+
+  // 1. Try Fal.ai Flux 1.1 Pro (Top photorealism)
+  if (falKey && (options?.engine === 'flux_pro' || !options?.engine || !geminiKey)) {
     try {
-      const res = await generateFluxProImage(template?.prompt ?? templateId, {
+      const res = await generateFluxProImage(promptText, {
         inputImageUrl,
         onProgress,
       });
       return { status: 'ready', sampleUrl: res.sampleUrl };
     } catch (err) {
-      if (options?.engine === 'flux_pro') throw err;
-      // Fallback to next provider if auto
+      console.error('[studio-shoot] Flux Pro failed, trying next provider:', err);
+      if (!geminiKey && !bflAuthKey) throw err;
     }
   }
 
-  // 2. Try Google Imagen 3 (Fast & crisp lighting)
-  if ((options?.engine === 'imagen_3' || options?.engine === 'imagen_3_fast' || !options?.engine) && geminiKey) {
+  // 2. Try Google Imagen 3 (Fast, high-fidelity lighting)
+  if (geminiKey) {
     try {
-      const res = await generateGoogleImagen(template?.prompt ?? templateId, {
+      const res = await generateGoogleImagen(promptText, {
         model: options?.engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
         onProgress,
       });
       return { status: 'ready', base64Data: res.base64Data };
     } catch (err) {
-      if (options?.engine === 'imagen_3' || options?.engine === 'imagen_3_fast') throw err;
+      console.error('[studio-shoot] Google Imagen 3 failed:', err);
+      if (!falKey && !bflAuthKey) throw err;
     }
   }
 
-  // 3. Try Fal.ai Flux Schnell (Budget / Quick draft)
+  // 3. Try Fal.ai Flux Schnell (Budget / Fast preview)
   if (options?.engine === 'flux_schnell' && falKey) {
-    const res = await generateFluxSchnellImage(template?.prompt ?? templateId, {
-      inputImageUrl,
-      onProgress,
-    });
-    return { status: 'ready', sampleUrl: res.sampleUrl };
+    try {
+      const res = await generateFluxSchnellImage(promptText, {
+        inputImageUrl,
+        onProgress,
+      });
+      return { status: 'ready', sampleUrl: res.sampleUrl };
+    } catch (err) {
+      console.error('[studio-shoot] Flux Schnell failed:', err);
+    }
   }
 
   // 4. Fallback to Black Forest Labs FLUX Kontext Pro

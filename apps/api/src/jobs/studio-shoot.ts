@@ -185,7 +185,7 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     console.error(`[studio-shoot] job ${job_id} failed:`, err);
     await setStudioJobStatus(job_id, {
       status: 'failed',
-      error: 'The studio shoot failed. Please try again.',
+      error: message || 'The studio shoot failed. Please try again.',
       progress: 0,
       etaMs: 0,
     });

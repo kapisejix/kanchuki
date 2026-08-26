@@ -47,7 +47,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       throw featureUnavailable('AI Studio Shoots');
     }
 
-    if (!isStudioShootConfigured()) {
+    if (!(await isStudioShootConfigured())) {
       throw serviceUnavailable('AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.');
     }
 

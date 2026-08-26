@@ -113,7 +113,7 @@ describe('generateStudioImage', () => {
 
   it('throws 503 when BFL_API_KEY is unset', async () => {
     vi.stubEnv('BFL_API_KEY', '');
-    expect(isStudioShootConfigured()).toBe(false);
+    expect(await isStudioShootConfigured()).toBe(false);
     await expect(generateStudioImage('white_studio', 'https://r2.example/p.jpg')).rejects.toThrow(
       /not configured/i,
     );
