@@ -1,28 +1,35 @@
 'use client'
 
 import { useState, useEffect, Suspense, type ReactNode } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import nextDynamic from 'next/dynamic'
 import { motion } from 'framer-motion'
-import { Menu, Shield } from 'lucide-react'
+import { Menu, Shield, ShieldAlert, ArrowLeft } from 'lucide-react'
 import { PageLoader } from '@/components/PageLoader'
 import { RouteProgress } from '@/components/RouteProgress'
 import { FloatingOrbs } from './components/FloatingOrbs'
 import { NotificationBell } from './components/NotificationBell'
 import { Sidebar } from './components/Sidebar'
 
-// ── Lazy-loaded admin components ──────────────────────────────────
-// LoginScreen is the only genuinely lazy shell piece (it only renders
-// pre-auth, so its mount cost is irrelevant to navigation). The sidebar /
-// top-bar chrome (Sidebar, NotificationBell, FloatingOrbs) is imported
-// statically on purpose: `next/dynamic({ ssr: false })` re-resolves the
-// dynamic boundary on every App Router navigation, which REMOUNTS the
-// sidebar/header on each route change — visible as the whole shell
-// reloading instead of just the content area (user issue #1). All three are
-// 'use client' and SSR-safe (no window/document access at render time), so
-// static imports keep them mounted across navigations; only the keyed
-// motion.main below swaps.
+// ── Super Admin Restricted Route Prefixes ──────────────────────────
+const SUPER_ADMIN_RESTRICTED_PREFIXES = [
+  '/admin/integrations',
+  '/admin/ai-providers',
+  '/admin/ai-usage',
+  '/admin/billing',
+  '/admin/commission',
+  '/admin/plan-limits',
+  '/admin/plan-features',
+  '/admin/addon-purchases',
+  '/admin/settings',
+  '/admin/operations',
+  '/admin/database',
+  '/admin/audit-log',
+  '/admin/storage-report',
+]
 
+// ── Lazy-loaded admin components ──────────────────────────────────
 const LoginScreen = nextDynamic(() => import('./components/LoginScreen'), {
   ssr: false,
   loading: () => (
@@ -38,25 +45,18 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 // ── Main Layout ──────────────────────────────────────────────────
 
-// Force dynamic rendering — framer-motion client components can't be statically prerendered
 export const dynamic = 'force-dynamic'
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const [authed, setAuthed] = useState(false)
+  const [adminRole, setAdminRole] = useState<string>('SUPER_ADMIN')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
 
   // Check for existing session on mount.
-  //
-  // The check deliberately hits GET /v1/admin/session — a DB-free endpoint
-  // that only verifies the stored key — NOT /v1/admin/stats (DB-backed).
-  // Previously any database hiccup made stats return 500, the check treated
-  // that as "logged out", wiped admin_key, and the panel bounced to the
-  // login screen on every refresh; every admin API call then went out with
-  // an empty x-admin-key and 403'd ("CSRF token fetch failed: HTTP 403").
-  // Only a definitive 401/403 means the key itself is invalid.
   useEffect(() => {
     const saved = sessionStorage.getItem('admin_key')
     if (!saved) {
@@ -66,33 +66,45 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     fetch(`${API_URL}/v1/admin/session`, {
       headers: { 'x-admin-key': saved },
     })
-      .then((r) => {
+      .then(async (r) => {
         if (r.status === 401 || r.status === 403) {
-          // Key is genuinely invalid/expired — clear it and log in again.
           sessionStorage.removeItem('admin_key')
+          sessionStorage.removeItem('admin_role')
           setAuthed(false)
         } else {
-          // 2xx = valid session. 5xx (DB hiccup in a dependency) or any
-          // other status is NOT a session failure — keep the key and show
-          // the panel; page-level errors surface on their own.
+          const json = (await r.json().catch(() => null)) as {
+            data?: { authenticated?: boolean; role?: string }
+          } | null
+          const role = json?.data?.role ?? sessionStorage.getItem('admin_role') ?? 'SUPER_ADMIN'
+          setAdminRole(role)
+          sessionStorage.setItem('admin_role', role)
+
+          // If role is a field staff / salesperson, redirect them to /survey
+          if (role === 'MARKETING_AGENT' || role === 'SUPPORT_AGENT') {
+            router.replace('/survey')
+            return
+          }
           setAuthed(true)
         }
       })
       .catch(() => {
-        // Network failure — keep the key and show the panel optimistically.
-        // Wiping the session here locked the admin out whenever the API was
-        // briefly unreachable.
         setAuthed(true)
       })
       .finally(() => setCheckingSession(false))
-  }, [])
+  }, [router])
 
   // Close mobile sidebar on route change
   useEffect(() => {
     setMobileSidebarOpen(false)
   }, [pathname])
 
-  const handleLogin = (token: string) => {
+  const handleLogin = (token: string, role?: string) => {
+    const userRole = role ?? sessionStorage.getItem('admin_role') ?? 'SUPER_ADMIN'
+    setAdminRole(userRole)
+    if (userRole === 'MARKETING_AGENT' || userRole === 'SUPPORT_AGENT') {
+      router.replace('/survey')
+      return
+    }
     setAuthed(true)
   }
 
@@ -120,6 +132,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     )
   }
 
+  const isRestrictedForStandardAdmin =
+    adminRole !== 'SUPER_ADMIN' &&
+    SUPER_ADMIN_RESTRICTED_PREFIXES.some(
+      (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    )
+
   return (
     <div className="min-h-screen bg-gray-50">
       <RouteProgress />
@@ -131,6 +149,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         mobileOpen={mobileSidebarOpen}
         onMobileClose={() => setMobileSidebarOpen(false)}
         onLogout={() => setAuthed(false)}
+        role={adminRole}
       />
 
       {/* Main content area */}
@@ -162,20 +181,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="flex items-center gap-3">
             <NotificationBell />
-            <span className="text-xs text-gray-400 hidden sm:inline">Admin</span>
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 hidden sm:inline">
+              {adminRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Admin'}
+            </span>
             <div className="w-8 h-8 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center shadow-sm">
               <Shield size={15} className="text-white" />
             </div>
           </div>
         </header>
 
-        {/* Page content — keyed remount on route change, entrance animation
-            only. AnimatePresence mode="wait" + Suspense + App Router streaming
-            got stuck after navigation (the exit had to finish before the new
-            page's RSC payload could mount), leaving a blank content area until
-            a hard refresh. Removing the exit gate means the new page mounts
-            immediately and only the content area swaps — sidebar/top bar stay
-            mounted. */}
+        {/* Page content */}
         <motion.main
           key={pathname}
           initial={{ opacity: 0, y: 16, scale: 0.99 }}
@@ -183,19 +198,38 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
           className="p-4 sm:p-6 lg:p-8 relative z-10"
         >
-          <Suspense
-            fallback={
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="flex items-center justify-center min-h-[40vh]"
+          {isRestrictedForStandardAdmin ? (
+            <div className="max-w-xl mx-auto mt-16 p-8 bg-white border border-red-100 rounded-3xl shadow-xl shadow-red-500/5 text-center">
+              <div className="w-14 h-14 bg-red-50 border border-red-200 rounded-2xl flex items-center justify-center mx-auto mb-5 text-red-500">
+                <ShieldAlert size={28} />
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 mb-2">Access Restricted</h2>
+              <p className="text-sm text-gray-500 leading-relaxed mb-6">
+                This section is restricted to <span className="font-semibold text-gray-700">Super Admins</span>. Standard Admin accounts do not have access to API integrations, Payment, Billing, Settings, and Operations.
+              </p>
+              <Link
+                href="/admin"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-900 hover:bg-gray-800 text-white rounded-xl text-xs font-semibold shadow-md transition-all"
               >
-                <PageLoader variant="card" text="Loading page..." />
-              </motion.div>
-            }
-          >
-            {children}
-          </Suspense>
+                <ArrowLeft size={14} />
+                Back to Dashboard
+              </Link>
+            </div>
+          ) : (
+            <Suspense
+              fallback={
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="flex items-center justify-center min-h-[40vh]"
+                >
+                  <PageLoader variant="card" text="Loading page..." />
+                </motion.div>
+              }
+            >
+              {children}
+            </Suspense>
+          )}
         </motion.main>
       </motion.div>
     </div>

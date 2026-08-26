@@ -23,7 +23,7 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 type LoginTab = 'password' | 'otp'
 type FlowState = 'login' | 'forgot_password' | 'reset_password'
 
-export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
+export function LoginScreen({ onLogin }: { onLogin: (token: string, role?: string) => void }) {
   const [tab, setTab] = useState<LoginTab>('password')
   const [flow, setFlow] = useState<FlowState>('login')
 
@@ -81,7 +81,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
           body: JSON.stringify({ email, password }),
         })
         const teamJson = (await teamRes.json().catch(() => null)) as
-          | { error?: { message?: string }; data?: { token?: string } }
+          | { error?: { message?: string }; data?: { token?: string; team_member?: { name?: string; role?: string } } }
           | null
 
         if (teamRes.ok && teamJson?.data?.token) {
@@ -95,9 +95,31 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
       const token = json?.data?.token
       if (!token) throw new Error('No token returned')
 
+      const role =
+        (json?.data as { team_member?: { role?: string } } | undefined)?.team_member?.role ??
+        'SUPER_ADMIN'
+
       resetAdminFetchCache()
       sessionStorage.setItem('admin_key', token)
-      onLogin(token)
+      sessionStorage.setItem('admin_role', role)
+
+      if (role === 'MARKETING_AGENT' || role === 'SUPPORT_AGENT') {
+        try {
+          localStorage.setItem(
+            'kanchuki_survey_staff_session',
+            JSON.stringify({
+              token,
+              name: (json?.data as { team_member?: { name?: string } } | undefined)?.team_member?.name ?? 'Staff',
+            }),
+          )
+        } catch {
+          // Ignore localStorage errors
+        }
+        window.location.href = '/survey'
+        return
+      }
+
+      onLogin(token, role)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
       setShakeKey((k) => k + 1)
@@ -152,7 +174,7 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
       })
 
       const json = (await res.json().catch(() => null)) as
-        | { error?: { message?: string }; data?: { token?: string } }
+        | { error?: { message?: string }; data?: { token?: string; team_member?: { name?: string; role?: string } } }
         | null
 
       if (!res.ok) {
@@ -162,9 +184,29 @@ export function LoginScreen({ onLogin }: { onLogin: (token: string) => void }) {
       const token = json?.data?.token
       if (!token) throw new Error('No token returned')
 
+      const role = json?.data?.team_member?.role ?? 'SUPER_ADMIN'
+
       resetAdminFetchCache()
       sessionStorage.setItem('admin_key', token)
-      onLogin(token)
+      sessionStorage.setItem('admin_role', role)
+
+      if (role === 'MARKETING_AGENT' || role === 'SUPPORT_AGENT') {
+        try {
+          localStorage.setItem(
+            'kanchuki_survey_staff_session',
+            JSON.stringify({
+              token,
+              name: json?.data?.team_member?.name ?? 'Staff',
+            }),
+          )
+        } catch {
+          // Ignore localStorage errors
+        }
+        window.location.href = '/survey'
+        return
+      }
+
+      onLogin(token, role)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code')
       setShakeKey((k) => k + 1)

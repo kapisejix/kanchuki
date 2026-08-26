@@ -48,11 +48,19 @@ type TeamMember = {
 }
 
 const ROLE_LABELS: Record<TeamRole, string> = {
-  SUPER_ADMIN: 'Super Admin',
-  MARKETING_MANAGER: 'Marketing Manager',
-  MARKETING_AGENT: 'Marketing Agent',
-  SUPPORT_MANAGER: 'Support Manager',
-  SUPPORT_AGENT: 'Support Agent',
+  SUPER_ADMIN: 'Super Admin (Full Access)',
+  MARKETING_MANAGER: 'Admin / Manager (Standard Access)',
+  MARKETING_AGENT: 'Sales / Field Surveyor (Survey Only)',
+  SUPPORT_MANAGER: 'Support Manager (Support & Tickets)',
+  SUPPORT_AGENT: 'Support Agent (Tickets Only)',
+}
+
+const ROLE_DESCRIPTIONS: Record<TeamRole, string> = {
+  SUPER_ADMIN: 'Full unrestricted access to all admin tools, Settings, API keys/Integrations, Billing/Payments, and Operations.',
+  MARKETING_MANAGER: 'Admin dashboard access (Retailers, Customers, Catalog, Lookbooks, Social, Team, Reports). Excludes API keys, Payments, Settings, and Operations.',
+  MARKETING_AGENT: 'Field staff access for the /survey field survey and mobile staff tools only. Has NO access to the Admin dashboard.',
+  SUPPORT_MANAGER: 'Access to manage support tickets, customer inquiries, and retailer support issues.',
+  SUPPORT_AGENT: 'Access to resolve assigned support tickets only. Has NO access to Admin Settings or Operations.',
 }
 
 const ROLE_COLORS: Record<TeamRole, string> = {
@@ -267,7 +275,7 @@ function MemberModal({
               {/* Role */}
               {!editMember && (
                 <div>
-                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Role</label>
+                  <label className="block text-xs font-semibold text-gray-500 mb-1.5">Access Level / Role</label>
                   <select
                     value={role}
                     onChange={(e) => setRole(e.target.value as TeamRole)}
@@ -277,6 +285,10 @@ function MemberModal({
                       <option key={key} value={key}>{label}</option>
                     ))}
                   </select>
+                  <div className="mt-2 p-2.5 bg-gray-50 border border-gray-200/80 rounded-xl text-xs text-gray-600 flex items-start gap-2">
+                    <Shield size={14} className="text-cyan-600 mt-0.5 shrink-0" />
+                    <span>{ROLE_DESCRIPTIONS[role]}</span>
+                  </div>
                 </div>
               )}
 

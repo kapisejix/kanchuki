@@ -62,29 +62,23 @@ export async function verifyAdminSession(token: string): Promise<boolean> {
     await jwtVerify(token, sessionSecret());
     return true;
   } catch {
-    return false;
-  }
+    const teamClaims = await verifyTeamToken(token);
 }
 
-// Decode the admin email from a session JWT, or null when the token is
-// absent/invalid. Used by GET /admin/session — a DB-free session check so
+// Decode the admin email and role from a session JWT or team token.
+// Used by GET /admin/session and adminAuthPreHandler for RBAC.
+export async function adminSessionInfo(
+  token: string | undefined,
+): Promise<{ email?: string; role: string } | null> {
+    const { payload } = await jwtVerify(token, sessionSecret());
+    };
+  } catch {
+    const teamClaims = await verifyTeamToken(token);
+      };
 // the admin panel's refresh gate never depends on database health.
 export async function adminSessionEmail(token: string | undefined): Promise<string | null> {
-  if (!token) return null;
-  try {
-    const { payload } = await jwtVerify(token, sessionSecret());
-    return typeof payload.email === 'string' ? payload.email : null;
-  } catch {
-    return null;
-  }
-}
-
-// ─── IP Allowlist (SECURITY §8) ──────────────────────────────────────
-// ADMIN_IP_ALLOWLIST env var: comma-separated IPs and/or CIDR ranges.
-// Empty/unset = all IPs allowed (dev mode). Production should restrict to
-// office/static IPs, e.g. "103.45.67.89/32,203.0.113.0/24".
-
-// IPv4 CIDR matcher (SECURITY §8). Supports single IPs ("192.168.1.1") and
+  const info = await adminSessionInfo(token);
+  return info?.email ?? null;
 // CIDR ranges ("103.45.67.0/24"). Does NOT support IPv6 — office networks in
 // India overwhelmingly use IPv4, and IPv6 requests will safely fail-closed.
 export function ipInCidr(ip: string, cidr: string): boolean {
@@ -140,25 +134,20 @@ export async function adminAuthPreHandler(
 
   const key = request.headers['x-admin-key'] as string | undefined;
   if (!key) throw forbidden('Invalid admin key');
-  const sessionEmail = await adminSessionEmail(key);
-  if (!validAdminKey(key) && !sessionEmail) {
+
+  const info = await adminSessionInfo(key);
+  if (!info) {
     throw forbidden('Invalid admin key');
   }
-  // Session login carries the admin's email (per-admin audit attribution);
-  // the shared static key has no individual identity to attach.
-  request.adminId = sessionEmail ?? 'admin-key';
 
-  // CSRF protection (SECURITY §4):
-  // The admin uses header-based auth (x-admin-key), which is inherently
-  // CSRF-safe because custom headers cannot be sent cross-origin without
-  // CORS preflight. As defense-in-depth, we also require a SameSite cookie
-  // CSRF token on mutating requests (POST, PUT, PATCH, DELETE).
-  //
-  // GET/HEAD/OPTIONS are idempotent — no CSRF risk.
-  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method.toUpperCase())) {
-    const csrfCookie = request.cookies['csrf-token'];
-    const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
-
+  // Field staff / surveyors have NO admin dashboard access
+  if (info.role === 'MARKETING_AGENT' || info.role === 'SUPPORT_AGENT') {
+  // Standard Admin accounts (not Super Admin) are restricted from sensitive endpoints
+  if (info.role !== 'SUPER_ADMIN') {
+    const path = request.url.toLowerCase();
+    const isSuperAdminOnly =
+      path.startsWith('/v1/admin/integrations') ||
+      path.startsWith('/v1/admin/ai-providers') ||
     if (!csrfCookie || !csrfHeader) {
       throw forbidden(
         'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',

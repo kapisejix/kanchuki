@@ -59,59 +59,51 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-type Leaf = { label: string; href: string; icon: LucideIcon }
-type Group = { label: string; icon: LucideIcon; children: Leaf[] }
+type Leaf = { label: string; href: string; icon: LucideIcon; superAdminOnly?: boolean }
+type Group = { label: string; icon: LucideIcon; superAdminOnly?: boolean; children: Leaf[] }
 type NavItem = Leaf | Group | { separator: true }
 
 const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { label: 'Retailers', href: '/admin/retailers', icon: Store },
-  { label: 'Customers', href: '/admin/customers', icon: Users },
-  { label: 'Billing', href: '/admin/billing', icon: CreditCard },
-  { label: 'Commission', href: '/admin/commission', icon: Percent },
-  { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
-  { label: 'Festival BGs', href: '/admin/festival-backgrounds', icon: Sparkles },
-  { label: 'Incentives', href: '/admin/incentives', icon: Gift },
-  { label: 'Partners', href: '/admin/partners', icon: Handshake },
-  { label: 'Discovery', href: '/admin/discovery', icon: MapPin },
-  { label: 'Lookbooks', href: '/admin/lookbooks', icon: BookOpen },
-  { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
-  { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
-  { label: 'Aggregators', href: '/admin/aggregators', icon: RefreshCw },
-  { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
-  { separator: true },
   {
-    label: 'Plans',
-    icon: Gauge,
+    label: 'Overview',
+    icon: LayoutDashboard,
     children: [
-      { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge },
-      { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare },
+      { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+      { label: 'Activity Feed', href: '/admin/activity', icon: ActivitySquare },
+      { label: 'Retailer Discovery', href: '/admin/discovery', icon: MapPin },
     ],
   },
   {
-    label: 'AI Models',
-    icon: Bot,
+    label: 'Retailers & Network',
+    icon: Store,
     children: [
-      { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot },
-      { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3 },
+      { label: 'Retailers', href: '/admin/retailers', icon: Store },
+      { label: 'Customers', href: '/admin/customers', icon: Users },
+      { label: 'Partners', href: '/admin/partners', icon: Handshake },
+      { label: 'Incentives', href: '/admin/incentives', icon: Gift },
+      { label: 'Aggregators', href: '/admin/aggregators', icon: RefreshCw },
+      { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
     ],
   },
   {
-    label: 'Catalog',
+    label: 'Catalog & Creative',
     icon: Package,
     children: [
-      { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
-      { label: 'Integrations', href: '/admin/integrations', icon: KeyRound },
-      { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
       { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Default Attributes', href: '/admin/default-attributes', icon: Tags },
-      { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart },
+      { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
+      { label: 'Festival Backgrounds', href: '/admin/festival-backgrounds', icon: Sparkles },
+      { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
+      { label: 'Lookbooks', href: '/admin/lookbooks', icon: BookOpen },
+      { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
+      { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
+      { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
       { label: 'Ratings & Reviews', href: '/admin/ratings', icon: Star },
       { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
     ],
   },
   {
-    label: 'Team',
+    label: 'Team & Support',
     icon: UsersRound,
     children: [
       { label: 'Team Members', href: '/admin/team-members', icon: UsersRound },
@@ -122,52 +114,39 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
-    label: 'Reports',
+    label: 'Reports & Finance',
     icon: BarChart3,
     children: [
       { label: 'Overview', href: '/admin/reports', icon: BarChart3 },
       { label: 'GST Reports', href: '/admin/reports/gst', icon: Receipt },
-    ],
-  },
-  { separator: true },
-  {
-    label: 'Operations',
-    icon: Shield,
-    children: [
-      { label: 'Overview', href: '/admin/operations', icon: Shield },
-      { label: 'Pending Approvals', href: '/admin/operations/pending', icon: Clock },
-      { label: 'Deployments', href: '/admin/operations/deployments', icon: GitBranch },
-      { label: 'Deployment Gate', href: '/admin/operations/gate', icon: Activity },
+      { label: 'Billing & Invoices', href: '/admin/billing', icon: CreditCard, superAdminOnly: true },
+      { label: 'Commission', href: '/admin/commission', icon: Percent, superAdminOnly: true },
+      { label: 'Addon Purchases', href: '/admin/addon-purchases', icon: ShoppingCart, superAdminOnly: true },
+      { label: 'Plan Limits', href: '/admin/plan-limits', icon: Gauge, superAdminOnly: true },
+      { label: 'Plan Features', href: '/admin/plan-features', icon: CheckSquare, superAdminOnly: true },
     ],
   },
   {
-    label: 'Settings',
+    label: 'Settings & Operations',
     icon: Settings,
+    superAdminOnly: true,
     children: [
-      { label: 'General', href: '/admin/settings', icon: Settings },
-      { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge },
-      { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu },
-      { label: 'Theme', href: '/admin/settings/theme', icon: Palette },
-    ],
-  },
-  { separator: true },
-  {
-    label: 'Activity',
-    icon: ActivitySquare,
-    children: [
-      { label: 'Activity Feed', href: '/admin/activity', icon: ActivitySquare },
-      { label: 'Audit Log', href: '/admin/audit-log', icon: History },
-    ],
-  },
-  {
-    label: 'Database',
-    icon: HardDrive,
-    children: [
-      { label: 'Query Console', href: '/admin/database/query', icon: Terminal },
-      { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive },
-      { label: 'Database Health', href: '/admin/database/status', icon: Activity },
-      { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive },
-      { label: 'Storage Report', href: '/admin/storage-report', icon: DatabaseBackup },
+      { label: 'Integrations & API Keys', href: '/admin/integrations', icon: KeyRound, superAdminOnly: true },
+      { label: 'AI Providers', href: '/admin/ai-providers', icon: Bot, superAdminOnly: true },
+      { label: 'AI Usage', href: '/admin/ai-usage', icon: BarChart3, superAdminOnly: true },
+      { label: 'General Settings', href: '/admin/settings', icon: Settings, superAdminOnly: true },
+      { label: 'AI Config', href: '/admin/settings/ai-config', icon: Cpu, superAdminOnly: true },
+      { label: 'Rate Limits', href: '/admin/settings/rate-limits', icon: Gauge, superAdminOnly: true },
+      { label: 'Theme', href: '/admin/settings/theme', icon: Palette, superAdminOnly: true },
+      { label: 'Operations Overview', href: '/admin/operations', icon: Shield, superAdminOnly: true },
+      { label: 'Deployments', href: '/admin/operations/deployments', icon: GitBranch, superAdminOnly: true },
+      { label: 'Deployment Gate', href: '/admin/operations/gate', icon: Activity, superAdminOnly: true },
+      { label: 'Audit Log', href: '/admin/audit-log', icon: History, superAdminOnly: true },
+      { label: 'Database Health', href: '/admin/database/status', icon: Activity, superAdminOnly: true },
+      { label: 'Query Console', href: '/admin/database/query', icon: Terminal, superAdminOnly: true },
+      { label: 'Backup & Restore', href: '/admin/database/backup', icon: HardDrive, superAdminOnly: true },
+      { label: 'Deletion Vault', href: '/admin/database/deletion-vault', icon: Archive, superAdminOnly: true },
+      { label: 'Storage Report', href: '/admin/storage-report', icon: DatabaseBackup, superAdminOnly: true },
     ],
   },
 ]
@@ -178,12 +157,14 @@ export function Sidebar({
   mobileOpen,
   onMobileClose,
   onLogout,
+  role = 'SUPER_ADMIN',
 }: {
   collapsed: boolean
   onToggle: () => void
   mobileOpen: boolean
   onMobileClose: () => void
   onLogout: () => void
+  role?: string
 }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -203,6 +184,28 @@ export function Sidebar({
 
   const isLinkActive = (href: string) =>
     href === '/admin' ? pathname === '/admin' : pathname.startsWith(href)
+
+  const isSuperAdmin = role === 'SUPER_ADMIN'
+
+  const filteredNavItems = NAV_ITEMS.filter((item) => {
+    if ('superAdminOnly' in item && item.superAdminOnly && !isSuperAdmin) {
+      return false
+    }
+    return true
+  })
+    .map((item) => {
+      if ('children' in item) {
+        const visibleChildren = item.children.filter(
+          (child) => !child.superAdminOnly || isSuperAdmin,
+        )
+        return { ...item, children: visibleChildren }
+      }
+      return item
+    })
+    .filter((item) => {
+      if ('children' in item && item.children.length === 0) return false
+      return true
+    })
 
   return (
     <>
@@ -253,7 +256,7 @@ export function Sidebar({
 
         {/* Navigation */}
         <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-          {NAV_ITEMS.map((item, index) => {
+          {filteredNavItems.map((item, index) => {
             if ('separator' in item) {
               return (
                 <div key={`sep-${index}`} className="my-2 border-t border-white/[0.06]" />

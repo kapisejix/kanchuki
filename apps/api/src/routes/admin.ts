@@ -17,7 +17,7 @@ import {
   validationError,
 } from "../plugins/error-handler.js";
 import { verifyPassword } from "../plugins/team-auth.js";
-import { adminSessionEmail, signAdminSession } from "./admin-auth.js";
+import { adminSessionEmail, adminSessionInfo, signAdminSession } from "./admin-auth.js";
 import { adminAuthPreHandler } from "./admin-auth.js";
 import {
   adminActivityRoutes,
@@ -180,10 +180,18 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // key/JWT auth (enforced by adminAuthPreHandler above) and never touches
   // the database.
   server.get("/session", async (request) => {
-    const email = await adminSessionEmail(
-      request.headers["x-admin-key"] as string | undefined,
-    );
-    return { data: { authenticated: true, ...(email ? { email } : {}) } };
+    const key = request.headers["x-admin-key"] as string | undefined;
+    const info = await adminSessionInfo(key);
+    if (!info) {
+      return { data: { authenticated: false } };
+    }
+    return {
+      data: {
+        authenticated: true,
+        role: info.role,
+        ...(info.email ? { email: info.email } : {}),
+      },
+    };
   });
 
   // ─── GET /admin/csrf-token ────────────────────────────────────
