@@ -1,32 +1,17 @@
 // Auth helpers extracted from admin.ts (see scripts/split-admin-routes.mjs).
 // Kept here so domain modules can share them without a circular import back
 // into the aggregator. admin.ts re-exports these for back-compat.
-import type { FastifyPluginAsync } from 'fastify';
-
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
-import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import {
-  encryptSecret,
-  getReplicaPrisma,
-  getSecret,
-  getVaultPrisma,
-  invalidateSecret,
-  maskSecret,
-  prisma,
-  vaultDelete,
-} from '@kanchuki/db';
-import { INTEGRATION_KEYS, PLAN_PRICING, R2_PATHS } from '@kanchuki/shared';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { SignJWT, jwtVerify } from 'jose';
-import { verifySync } from 'otplib';
-import { z } from 'zod';
-import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
-import { verifyPassword, verifyTeamToken } from '../plugins/team-auth.js';
+import { forbidden } from '../plugins/error-handler.js';
+import { verifyTeamToken } from '../plugins/team-auth.js';
+
 declare module 'fastify' {
   interface FastifyRequest {
     // Set by adminAuthPreHandler: the session's email, or 'admin-key' when
     // authenticated with the shared static ADMIN_API_KEY (no individual identity).
     adminId?: string;
+    adminRole?: string;
   }
 }
 
@@ -50,6 +35,8 @@ function sessionSecret(): Uint8Array {
 export async function signAdminSession(email: string, role = 'SUPER_ADMIN'): Promise<string> {
   return new SignJWT({ email, role })
     .setProtectedHeader({ alg: 'HS256' })
+    .setSubject('admin')
+    .setIssuedAt()
     .setExpirationTime('12h')
     .sign(sessionSecret());
 }
@@ -63,6 +50,8 @@ export async function verifyAdminSession(token: string): Promise<boolean> {
     return teamClaims !== null && (teamClaims.role === 'SUPER_ADMIN' || teamClaims.role === 'ADMIN');
   }
 }
+
+// Decode the admin email and role from a session JWT or team token.
 // Used by GET /admin/session and adminAuthPreHandler for RBAC.
 export async function adminSessionInfo(
   token: string | undefined,
@@ -70,15 +59,38 @@ export async function adminSessionInfo(
   if (!token) return null;
 
   if (validAdminKey(token)) {
+    return { email: 'super-admin@kanchuki.com', role: 'SUPER_ADMIN' };
+  }
+
+  try {
+    const { payload } = await jwtVerify(token, sessionSecret());
+    return {
+      email: typeof payload.email === 'string' ? payload.email : undefined,
       role: typeof payload.role === 'string' ? payload.role : 'SUPER_ADMIN',
+    };
+  } catch {
+    const teamClaims = await verifyTeamToken(token);
     if (teamClaims) {
       return {
         email: teamClaims.sub,
+        role: teamClaims.role ?? 'ADMIN',
+      };
+    }
+    return null;
   }
+}
+
+// Decode the admin email from a session JWT, or null when the token is
+// absent/invalid. Used by GET /admin/session — a DB-free session check so
+// the admin panel's refresh gate never depends on database health.
+export async function adminSessionEmail(token: string | undefined): Promise<string | null> {
+  const info = await adminSessionInfo(token);
   return info?.email ?? null;
 }
 
 // CIDR ranges ("103.45.67.0/24"). Does NOT support IPv6 — office networks in
+// India overwhelmingly use IPv4, and IPv6 requests will safely fail-closed.
+export function ipInCidr(ip: string, cidr: string): boolean {
   try {
     const ipInt = ip.split('.').reduce((a, o) => (a << 8) + Number.parseInt(o, 10), 0) >>> 0;
     if (cidr.includes('/')) {
@@ -142,12 +154,43 @@ export async function adminAuthPreHandler(
     throw forbidden('Access denied — staff accounts cannot access the admin panel');
   }
 
+  // Standard Admin accounts (not Super Admin) are restricted from sensitive endpoints
+  if (info.role !== 'SUPER_ADMIN') {
+    const path = request.url.toLowerCase();
     const isSuperAdminOnly =
       path.startsWith('/v1/admin/integrations') ||
       path.startsWith('/v1/admin/ai-providers') ||
       path.startsWith('/v1/admin/settings') ||
       path.startsWith('/v1/admin/payments') ||
       path.startsWith('/v1/admin/billing') ||
+      path.startsWith('/v1/admin/operations') ||
+      path.startsWith('/v1/admin/database') ||
+      path.startsWith('/v1/admin/audit-logs');
+
+    if (isSuperAdminOnly) {
+      throw forbidden('Access denied — Super Admin privileges required');
+    }
+  }
+
+  // Session login carries the admin's email (per-admin audit attribution);
+  // the shared static key has no individual identity to attach.
+  request.adminId = info.email ?? 'admin-key';
+  request.adminRole = info.role;
+
+  // CSRF protection (SECURITY §4):
+  // The admin uses header-based auth (x-admin-key), which is inherently
+  // CSRF-safe because custom headers cannot be sent cross-origin without
+  // CORS preflight. As defense-in-depth, we also require a SameSite cookie
+  // CSRF token on mutating requests (POST, PUT, PATCH, DELETE).
+  //
+  // GET/HEAD/OPTIONS are idempotent — no CSRF risk.
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method.toUpperCase())) {
+    const csrfCookie = request.cookies['csrf-token'];
+    const csrfHeader = request.headers['x-csrf-token'] as string | undefined;
+
+    if (!csrfCookie || !csrfHeader) {
+      throw forbidden(
+        'Invalid CSRF token — include x-csrf-token header matching csrf-token cookie',
       );
     }
     // Timing-safe comparison (S-004) — prevent oracle attacks via response-time variance
