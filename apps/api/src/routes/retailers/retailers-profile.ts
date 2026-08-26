@@ -1,4 +1,3 @@
-// Auto-split from retailers.ts (scripts/check-route-size.sh) — route bodies verbatim.
 import { prisma, type Prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';

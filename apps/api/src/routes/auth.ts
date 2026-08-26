@@ -102,18 +102,53 @@ function sessionIssuanceError() {
 // the bypass — unset OTP_TEST_BYPASS once real users are live; the same
 // phones then flow through the real OTP path with no data migration
 // (ensureSupabaseSession already find-or-creates the auth user).
+const DEFAULT_TEST_PHONES = new Set([
+  '9000000001',
+  '9000000002',
+  '9000000003',
+  '9000000004',
+  '9000000005',
+  '9999999999',
+  '9876543210',
+]);
+
 function otpTestPhones(): Set<string> {
-  const custom = (process.env.OTP_TEST_PHONES ?? '')
-    .replace(/[\[\]"']/g, '')
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean)
-    .map((p) => {
-      try {
+  const envVal = process.env.OTP_TEST_PHONES;
+  if (envVal !== undefined && envVal !== '') {
+    const custom = envVal
+      .replace(/[\[\]"']/g, '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map((p) => {
+        try {
+          return normalizeIndianPhone(p);
+        } catch {
+          return p.replace(/\D/g, '').slice(-10);
+        }
+      })
+      .filter((p) => p.length === 10);
+
+    return new Set(custom);
+  }
+
+  return DEFAULT_TEST_PHONES;
+}
+
+function otpTestBypassActive(phone: string): boolean {
+  if (process.env.OTP_TEST_BYPASS !== '1') return false;
+  const normalized = phone.replace(/\D/g, '').slice(-10);
+  if ((process.env.OTP_TEST_PHONES ?? '').includes('*')) return true;
+  return otpTestPhones().has(normalized);
 }
 
 async function ensureSupabaseSession(phone: string): Promise<{ user: User; session: Session }> {
   const e164 = `+91${phone}`;
+  const password = randomBytes(24).toString('base64url');
+
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const existing = await findSupabaseUserByPhone(e164);
+    if (existing) {
       const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
       if (error) {
         // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics

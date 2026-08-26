@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react'
-import { normalizeIndianPhone } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -270,13 +269,12 @@ export default function OtpScreen() {
                 <AnimatedPressable
                   key={i}
                   onPress={() => inputRef.current?.focus()}
-                  className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
-                    otp.length === i
+                  className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${otp.length === i
                       ? 'border-ink-600 bg-ink-50'
                       : otp.length > i
-                      ? 'border-ink-300 bg-ink-50'
-                      : 'border-sand-200 bg-ink-50'
-                  }`}
+                        ? 'border-ink-300 bg-ink-50'
+                        : 'border-sand-200 bg-ink-50'
+                    }`}
                 >
                   <Text className="text-2xl font-bold text-sand-900">
                     {otp[i] ?? ''}

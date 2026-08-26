@@ -113,7 +113,7 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
           },
         },
       },
-      orderBy: { id: 'asc' },
+      orderBy: { created_at: 'desc' },
       take: limit + 1,
     });
 

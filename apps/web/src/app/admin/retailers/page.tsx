@@ -377,28 +377,31 @@ function RetailersContent() {
                           href={`/admin/retailers/${r.id}`}
                           className="font-medium text-gray-900 hover:text-cyan-600 transition-colors"
                         >
-                          {r.shop_name}
-                          {r.is_featured && (
-                            <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                              <Star size={9} className="fill-amber-400 text-amber-500" />
-                              Featured
-                            </span>
-                          )}
-                          {r.is_suspended && (
-                            <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
-                              Suspended
-                            </span>
-                          )}
-                          {!r.onboarding_completed && (
-                            <span className="ml-2 text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
-                              Setup
-                            </span>
-                          )}
-                          {isExpiring && (
-                            <span className="ml-1.5 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
-                              Expiring
-                            </span>
-                          )}
+                          <div>
+                            <span className="font-semibold">{r.shop_name || 'Unnamed Store'}</span>
+                            {r.is_featured && (
+                              <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-medium text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                <Star size={9} className="fill-amber-400 text-amber-500" />
+                                Featured
+                              </span>
+                            )}
+                            {r.is_suspended && (
+                              <span className="ml-2 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                                Suspended
+                              </span>
+                            )}
+                            {!r.onboarding_completed && (
+                              <span className="ml-2 text-[10px] font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                Setup
+                              </span>
+                            )}
+                            {isExpiring && (
+                              <span className="ml-1.5 text-[10px] font-medium text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
+                                Expiring
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 font-mono mt-0.5">+91 {r.phone}</p>
                         </Link>
                       </td>
                       <td className="px-4 py-3.5 text-gray-600">{r.city}</td>
