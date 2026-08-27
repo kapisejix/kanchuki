@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import * as MediaLibrary from 'expo-media-library'
 import * as Sharing from 'expo-sharing'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
 import type { ProductDetail } from '@kanchuki/shared'
@@ -282,21 +281,32 @@ export function useProductAiStudio({
         throw new Error(`Download failed with status ${downloadResult.status}`)
       }
 
-      const { status } = await MediaLibrary.requestPermissionsAsync()
-      if (status === 'granted') {
-        const asset = await MediaLibrary.createAssetAsync(downloadResult.uri)
-        await MediaLibrary.createAlbumAsync('Kanchuki', asset, false).catch(() => undefined)
-        Alert.alert(
-          'Saved to Gallery',
-          isVideo ? 'Video saved to your Photos app.' : 'Image saved to your Photos app.',
-        )
-      } else if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(downloadResult.uri, {
-          mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
-          dialogTitle: 'Save / Share Product Media',
-        })
-      } else {
-        Alert.alert('Saved', 'File downloaded successfully.')
+      let savedDirectly = false
+      try {
+        const MediaLibrary = await import('expo-media-library')
+        const { status } = await MediaLibrary.requestPermissionsAsync()
+        if (status === 'granted') {
+          const asset = await MediaLibrary.createAssetAsync(downloadResult.uri)
+          await MediaLibrary.createAlbumAsync('Kanchuki', asset, false).catch(() => undefined)
+          savedDirectly = true
+          Alert.alert(
+            'Saved to Gallery',
+            isVideo ? 'Video saved to your Photos app.' : 'Image saved to your Photos app.',
+          )
+        }
+      } catch {
+        // Fallback for Expo Go where native media library module may be absent
+      }
+
+      if (!savedDirectly) {
+        if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(downloadResult.uri, {
+            mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+            dialogTitle: 'Save / Share Product Media',
+          })
+        } else {
+          Alert.alert('Saved', 'File downloaded successfully.')
+        }
       }
     } catch (err) {
       showError(err, 'Failed to download product media')
