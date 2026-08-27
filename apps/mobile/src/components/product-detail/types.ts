@@ -6,6 +6,7 @@ export type Photo = {
   is_primary: boolean
   piece_type: 'upper' | 'lower' | null
   original_url?: string | null
+  metadata?: Record<string, unknown> | null
 }
 export type Variant = { id: string; color: string; photo_url: string | null }
 export type Product = {
@@ -37,6 +38,7 @@ export type Product = {
   spin_status: string | null
   spin_error: string | null
   photos: Photo[]
+  videos?: { id: string; public_url: string; duration_sec: number | null; is_main: boolean; source: 'UPLOAD' | 'KEN_BURNS' }[]
   spin_frames: { id: string; url: string }[]
   variants: Variant[]
   section: { name: string } | null

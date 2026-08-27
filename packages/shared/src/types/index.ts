@@ -81,6 +81,7 @@ export interface ProductDetail extends ProductSummary {
   notes: string | null
   metadata: Record<string, unknown> | null
   photos: ProductPhotoItem[]
+  videos?: ProductVideoItem[]
   variants: ProductVariantItem[]
 }
 
@@ -89,6 +90,18 @@ export interface ProductPhotoItem {
   url: string
   is_primary: boolean
   sort_order: number
+}
+
+export interface ProductVideoItem {
+  id: string
+  product_id: string
+  retailer_id: string
+  r2_key: string
+  public_url: string
+  duration_sec: number | null
+  is_main: boolean
+  source: 'UPLOAD' | 'KEN_BURNS'
+  created_at: string
 }
 
 export interface ProductVariantItem {

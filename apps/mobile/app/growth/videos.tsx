@@ -60,13 +60,25 @@ export default function VideosScreen() {
     onError: (err) => showError(err, 'Failed to delete video'),
   })
 
-  // F-033 Slice 1: ffmpeg job runs server-side (no file to upload) — just
-  // enqueues it and lets the retailer check back; no status polling yet.
+  // F-033: Ken Burns 6s auto-slideshow generated server-side from product photos.
+  const [generating, setGenerating] = useState(false)
   const generate = useMutation({
     mutationFn: () => growthApi.generateVideo(picked!.id),
-    onSuccess: () =>
-      Alert.alert('Generating video', 'Building a video from your product photos — check back in a minute.'),
-    onError: (err) => showError(err, 'Could not start video generation'),
+    onMutate: () => setGenerating(true),
+    onSuccess: () => {
+      setGenerating(true)
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'videos'] })
+      Alert.alert('Generating video', 'Building a 6-second video from your product photos — check back in a few seconds.')
+      // Quick refetch after 3s to pick up the generated video
+      setTimeout(() => {
+        void queryClient.invalidateQueries({ queryKey: ['growth', 'videos'] })
+        setGenerating(false)
+      }, 3500)
+    },
+    onError: (err) => {
+      setGenerating(false)
+      showError(err, 'Could not start video generation')
+    },
   })
 
   const handleUpload = async () => {
@@ -269,7 +281,7 @@ export default function VideosScreen() {
                       <Sparkles size={16} color={primaryColor} />
                     )}
                     <Text className="text-sm font-semibold" style={{ color: primaryColor }}>
-                      {generate.isPending ? 'Starting…' : 'Generate from photos'}
+                      {generate.isPending ? 'Starting…' : 'Generate 6s video from photos'}
                     </Text>
                   </AnimatedPressable>
                 </>

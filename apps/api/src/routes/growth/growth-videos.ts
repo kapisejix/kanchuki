@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
+import { photoUrlToDisplay } from '../products/products-helpers.js';
 
 export const VIDEO_MIME_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'] as const;
 export const MAX_VIDEO_BYTES = 50_000_000; // 50MB — compressed clips only (5-10s)
@@ -137,7 +138,13 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       where: { product_id: id },
       orderBy: [{ is_main: 'desc' }, { created_at: 'desc' }],
     });
-    return { data: videos };
+    const videosWithUrls = await Promise.all(
+      videos.map(async (v) => ({
+        ...v,
+        public_url: (await photoUrlToDisplay({ url: v.public_url, r2_key: v.r2_key })) ?? v.public_url,
+      })),
+    );
+    return { data: videosWithUrls };
   });
 
   // ─── DELETE /growth/videos/:id ──────────────────────────────────

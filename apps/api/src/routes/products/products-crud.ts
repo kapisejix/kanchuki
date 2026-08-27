@@ -204,6 +204,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       where: { id, retailer_id: request.retailerId, deleted_at: null },
       include: {
         photos: { orderBy: { sort_order: 'asc' } },
+        videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'desc' }] },
         spin_frames: { orderBy: { frame_index: 'asc' } },
         variants: true,
         section: { select: { name: true } },
@@ -226,6 +227,14 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
               : null,
         };
       }),
+    );
+
+    // Generate presigned URLs for videos
+    const videosWithUrls = await Promise.all(
+      (product.videos ?? []).map(async (video) => ({
+        ...video,
+        public_url: (await photoUrlToDisplay({ url: video.public_url, r2_key: video.r2_key })) ?? video.public_url,
+      })),
     );
 
     // Generate presigned URLs for spin frames (same fallback as photos)
@@ -252,6 +261,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       data: {
         ...product,
         photos: photosWithUrls,
+        videos: videosWithUrls,
         spin_frames: spinFramesWithUrls,
         variants: variantsWithUrls,
       },

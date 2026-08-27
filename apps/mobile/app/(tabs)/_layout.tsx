@@ -161,7 +161,7 @@ export default function TabsLayout() {
           ),
           tabBarButton: (props) => (
             <AnimatedPressable
-              {...props}
+              {...(props as any)}
               onPress={() => router.push('/product/add')}
             />
           ),

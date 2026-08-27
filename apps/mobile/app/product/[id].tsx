@@ -26,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, Camera, X, Tag, Star, Video, Languages } from 'lucide-react-native'
+import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, Camera, X, Tag, Star, Video, Languages, Clapperboard } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -156,12 +156,37 @@ export default function ProductDetailScreen() {
   });
   const studioQuota = studioQuotaData?.data;
 
-  // F-033: Ken Burns product video generated from the product's own photos.
+  // F-033: Ken Burns product video generated from the product's own photos (max 6s).
+  const [videoGenerating, setVideoGenerating] = useState(false)
+  const videosQuery = useQuery({
+    queryKey: ['growth', 'videos', product?.id],
+    queryFn: () => (product ? growthApi.productVideos(product.id) : null),
+    enabled: Boolean(product),
+    refetchInterval: videoGenerating ? 2500 : false,
+  })
+  const productVideos = videosQuery.data?.data ?? product?.videos ?? []
+  const prevVideoCountRef = useRef(productVideos.length)
+
+  useEffect(() => {
+    if (videoGenerating && productVideos.length > prevVideoCountRef.current) {
+      setVideoGenerating(false)
+    }
+    prevVideoCountRef.current = productVideos.length
+  }, [productVideos.length, videoGenerating])
+
   const generateVideo = useMutation({
     mutationFn: () => growthApi.generateVideo(product!.id),
-    onSuccess: () =>
-      Alert.alert('Generating video', 'Building a video from your product photos — check back in a minute.'),
-    onError: (err) => showError(err, 'Could not start video generation'),
+    onMutate: () => setVideoGenerating(true),
+    onSuccess: () => {
+      setVideoGenerating(true)
+      void queryClient.invalidateQueries({ queryKey: ['growth', 'videos', product?.id] })
+      void queryClient.invalidateQueries({ queryKey: ['product', product?.id] })
+      Alert.alert('Generating video', 'Building a 6-second video from your product photos — it will appear below in a few seconds.')
+    },
+    onError: (err) => {
+      setVideoGenerating(false)
+      showError(err, 'Could not start video generation')
+    },
   })
   const handleGenerateVideo = () => {
     if (!product) return
@@ -170,6 +195,22 @@ export default function ProductDetailScreen() {
       return
     }
     generateVideo.mutate()
+  }
+  const handleProductVideoPress = () => {
+    if (!product) return
+    if (videoGenerating) {
+      Alert.alert('Video Generating', 'Your product video is being created now. It will appear here shortly.')
+      return
+    }
+    if (productVideos.length > 0) {
+      Alert.alert('Product Video', `${productVideos.length} video clip${productVideos.length > 1 ? 's' : ''} available.`, [
+        { text: 'Manage Videos', onPress: () => router.push('/growth/videos') },
+        { text: 'Generate New (6s)', onPress: handleGenerateVideo },
+        { text: 'Cancel', style: 'cancel' },
+      ])
+      return
+    }
+    handleGenerateVideo()
   }
 
   // Editable AI fields
@@ -1000,16 +1041,26 @@ export default function ProductDetailScreen() {
             <Text className="text-ink-700 text-xs font-semibold">Add Color</Text>
           </AnimatedPressable>
           <AnimatedPressable
-            onPress={handleGenerateVideo}
-            disabled={generateVideo.isPending}
-            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl"
+            onPress={handleProductVideoPress}
+            disabled={generateVideo.isPending || videoGenerating}
+            className="flex-1 items-center justify-center gap-1.5 bg-ink-50 py-3 rounded-xl relative"
           >
-            {generateVideo.isPending ? (
+            {generateVideo.isPending || videoGenerating ? (
               <ActivityIndicator size="small" color={primaryColor} />
             ) : (
               <Video size={20} color={primaryColor} />
             )}
-            <Text className="text-ink-700 text-xs font-semibold">Product Video</Text>
+            <Text className="text-ink-700 text-xs font-semibold">
+              {videoGenerating ? 'Building...' : 'Product Video'}
+            </Text>
+            {productVideos.length > 0 && !videoGenerating && (
+              <View
+                className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-xs"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Text className="text-[9px] font-bold text-white">{productVideos.length}</Text>
+              </View>
+            )}
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => setStudioModalOpen(true)}
@@ -1647,6 +1698,86 @@ export default function ProductDetailScreen() {
           </View>
         </View>
 
+        {/* Product video section */}
+        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+          <View className="flex-row items-center justify-between mb-1.5">
+            <View className="flex-row items-center gap-1.5">
+              <Clapperboard size={14} color={colors.sand[600]} />
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+                Product Video
+              </Text>
+            </View>
+            {productVideos.length > 0 && (
+              <AnimatedPressable
+                onPress={() => router.push('/growth/videos')}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Manage videos"
+              >
+                <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
+                  Manage in Videos →
+                </Text>
+              </AnimatedPressable>
+            )}
+          </View>
+          {videoGenerating ? (
+            <View className="flex-row items-center gap-2 py-1">
+              <ActivityIndicator size="small" color={primaryColor} />
+              <Text className="text-xs text-sand-600 flex-1 font-medium">
+                Generating 6s pan/zoom video from photos… (ready in a moment)
+              </Text>
+            </View>
+          ) : productVideos.length > 0 ? (
+            <View className="gap-2 mt-1">
+              <Text className="text-xs text-sand-600 font-medium">
+                {productVideos.length} clip{productVideos.length > 1 ? 's' : ''} active
+                {productVideos[0]?.duration_sec ? ` (${productVideos[0].duration_sec}s)` : ' (6s)'}
+                {productVideos[0]?.source === 'KEN_BURNS' ? ' • Auto-generated slideshow' : ''}
+              </Text>
+              <View className="flex-row items-center gap-2 pt-1">
+                <AnimatedPressable
+                  onPress={handleGenerateVideo}
+                  disabled={generateVideo.isPending || videoGenerating}
+                  accessibilityRole="button"
+                  className="px-3 py-1.5 rounded-lg border border-sand-200 bg-sand-50 flex-row items-center gap-1.5"
+                >
+                  <Sparkles size={12} color={primaryColor} />
+                  <Text className="text-xs font-medium text-sand-700">Regenerate 6s Video</Text>
+                </AnimatedPressable>
+                <AnimatedPressable
+                  onPress={() => router.push('/growth/videos')}
+                  accessibilityRole="button"
+                  className="px-3 py-1.5 rounded-lg border border-sand-200 bg-sand-50 flex-row items-center gap-1.5"
+                >
+                  <Video size={12} color={colors.sand[700]} />
+                  <Text className="text-xs font-medium text-sand-700">View in Videos</Text>
+                </AnimatedPressable>
+              </View>
+            </View>
+          ) : (
+            <View className="gap-2 mt-1">
+              <Text className="text-xs text-sand-400">
+                {product.photos.length >= 2
+                  ? 'No video created yet. Create a quick 6s pan/zoom video from your photos.'
+                  : 'Add at least 2 photos to generate a 6s pan/zoom product video.'}
+              </Text>
+              {product.photos.length >= 2 && (
+                <AnimatedPressable
+                  onPress={handleGenerateVideo}
+                  disabled={generateVideo.isPending || videoGenerating}
+                  accessibilityRole="button"
+                  className="px-3 py-1.5 rounded-lg border border-sand-200 bg-sand-50 self-start flex-row items-center gap-1.5 mt-0.5"
+                >
+                  <Sparkles size={12} color={primaryColor} />
+                  <Text className="text-xs font-medium" style={{ color: primaryColor }}>
+                    Generate 6s Video
+                  </Text>
+                </AnimatedPressable>
+              )}
+            </View>
+          )}
+        </View>
+
         {/* 360 spin view — status only, the add/retake action lives in the row below the slider */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
@@ -2040,7 +2171,7 @@ export default function ProductDetailScreen() {
               <AnimatedPressable
                 onPress={() => {
                   setStudioModalOpen(false);
-                  router.push('/(tabs)/settings');
+                  router.push('/(tabs)/settings' as any);
                 }}
                 className="bg-amber-600 px-2.5 py-1 rounded-lg active:opacity-80"
               >

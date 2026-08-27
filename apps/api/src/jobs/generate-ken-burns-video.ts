@@ -14,8 +14,8 @@ const execFileAsync = promisify(execFile);
 // (and the Python CV script in extract-measurement.ts) — no fluent-ffmpeg dep.
 const FFMPEG_BIN = process.env.FFMPEG_BIN ?? 'ffmpeg';
 
-const MAX_PHOTOS = 5;
-const SEG_SEC = 2.4; // per-photo pan/zoom duration
+const MAX_PHOTOS = 3;
+const TOTAL_MAX_SEC = 6.0; // Max 6 seconds total video duration
 const FPS = 25;
 const CANVAS_W = 1080;
 const CANVAS_H = 1350; // 4:5 — matches Facebook/Instagram feed video crop
@@ -49,18 +49,23 @@ export async function handleGenerateKenBurnsVideo(data: KenBurnsVideoJobData): P
     );
 
     const outPath = join(dir, 'output.mp4');
-    const frames = Math.round(FPS * SEG_SEC);
-    const inputArgs = photoPaths.flatMap((p) => ['-loop', '1', '-t', String(SEG_SEC), '-i', p]);
+    const segSec = Number((TOTAL_MAX_SEC / photoPaths.length).toFixed(2));
+    const frames = Math.round(FPS * segSec);
+
+    // Pass single static image per photo into ffmpeg.
+    // zoompan takes 1 frame per input and outputs exactly `frames` frames at `fps`.
+    const inputArgs = photoPaths.flatMap((p) => ['-i', p]);
     const perClip = photoPaths.map(
       (_, i) =>
-        `[${i}:v]scale=${CANVAS_W}:${CANVAS_H}:force_original_aspect_ratio=increase,` +
-        `crop=${CANVAS_W}:${CANVAS_H},` +
-        `zoompan=z='min(zoom+0.0015,1.15)':d=${frames}:s=${CANVAS_W}x${CANVAS_H}:fps=${FPS}[v${i}]`,
+        `[${i}:v]scale=${CANVAS_W}*2:${CANVAS_H}*2:force_original_aspect_ratio=increase,` +
+        `crop=${CANVAS_W}*2:${CANVAS_H}*2,` +
+        `zoompan=z='min(zoom+0.0015,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${CANVAS_W}x${CANVAS_H}:fps=${FPS}[v${i}]`,
     );
     const concatInputs = photoPaths.map((_, i) => `[v${i}]`).join('');
     const filterComplex = `${perClip.join(';')};${concatInputs}concat=n=${photoPaths.length}:v=1:a=0[outv]`;
 
     await execFileAsync(FFMPEG_BIN, [
+      '-y',
       ...inputArgs,
       '-filter_complex',
       filterComplex,
@@ -68,6 +73,10 @@ export async function handleGenerateKenBurnsVideo(data: KenBurnsVideoJobData): P
       '[outv]',
       '-c:v',
       'libx264',
+      '-crf',
+      '23',
+      '-preset',
+      'faster',
       '-pix_fmt',
       'yuv420p',
       '-movflags',
@@ -87,7 +96,7 @@ export async function handleGenerateKenBurnsVideo(data: KenBurnsVideoJobData): P
         retailer_id,
         r2_key: r2Key,
         public_url: publicUrl(r2Key),
-        duration_sec: Math.round(SEG_SEC * photoPaths.length),
+        duration_sec: Math.round(segSec * photoPaths.length),
         is_main: !hasVideo,
         source: 'KEN_BURNS',
       },
