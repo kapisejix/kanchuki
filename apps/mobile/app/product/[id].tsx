@@ -22,7 +22,8 @@ import {
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
-import { useVideoPlayer, VideoView } from 'expo-video'
+import { VideoView } from 'expo-video'
+import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
@@ -66,11 +67,20 @@ const STUDIO_TEMPLATE_THUMBNAILS: Record<string, number> = {
 }
 
 function ProductVideoSlide({ url, width, height }: { url: string; width: number; height: number }) {
-  const player = useVideoPlayer(url, (p) => {
+  const player = useSafeVideoPlayer(url, (p) => {
     p.loop = true
     p.muted = false
     p.play()
   })
+
+  if (!player) {
+    return (
+      <View style={{ width, height }} className="w-full h-full bg-sand-950 items-center justify-center relative">
+        <Clapperboard size={40} color="white" />
+        <Text className="text-white text-xs mt-2 font-medium">Product Video (6s)</Text>
+      </View>
+    )
+  }
 
   return (
     <View style={{ width, height }} className="w-full h-full bg-sand-950 items-center justify-center relative">
