@@ -89,32 +89,30 @@ export default function PhoneScreen() {
           width: '100%',
           alignSelf: 'center',
           justifyContent: 'space-between',
-          paddingTop: insets.top + 32,
-          paddingBottom: insets.bottom + 24,
+          paddingTop: insets.top + 16,
+          paddingBottom: insets.bottom + 16,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Main Content */}
-        <View className="items-center w-full">
+        {/* Top spacer to balance layout */}
+        <View className="w-full h-2" />
+
+        {/* Vertically Centered Main Block */}
+        <View className="items-center w-full my-auto">
           {/* Full Kanchuki wordmark logo */}
-          <View className="items-center mb-4">
+          <View className="items-center mb-5">
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
-              style={{ width: 200, height: 38 }}
+              style={{ width: 220, height: 42 }}
               resizeMode="contain"
             />
           </View>
 
           {/* Headline in one line: Aap ki Dukan, AI ki Takat */}
-          <Text className="text-base font-bold text-spaceCadet-900 font-marcellus text-center tracking-tight mb-1">
+          <Text className="text-base font-bold text-spaceCadet-900 font-marcellus text-center tracking-tight mb-6">
             Aap ki <Text className="text-fuchsia-500 font-bold">Dukan</Text>,{' '}
             <Text className="text-tyrian-800 font-bold">AI</Text> ki Takat
-          </Text>
-
-          {/* Second tagline in normal text with bold prefix */}
-          <Text className="text-xs text-heliotrope-600 text-center leading-relaxed mb-6 font-medium max-w-xs">
-            <Text className="font-bold text-spaceCadet-900">AI catalog + WhatsApp</Text> = aapki dukaan har customer ke phone mein.
           </Text>
 
           {/* Phone input card */}
@@ -122,7 +120,7 @@ export default function PhoneScreen() {
             <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-1.5">
               Mobile Number
             </Text>
-            <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 gap-3">
+            <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-3">
               <Text className="text-sm font-bold text-tyrian-800">+91</Text>
               <View className="w-px h-4 bg-lavender-300" />
               <TextInput
@@ -149,7 +147,7 @@ export default function PhoneScreen() {
             )}
           </View>
 
-          {/* Get Instant OTP Button — closely following the phone card */}
+          {/* Get Instant OTP Button — signature gradient with fuchsia badge */}
           <View className="w-full">
             <GradientButton
               label="Get Instant OTP"
@@ -161,7 +159,7 @@ export default function PhoneScreen() {
         </View>
 
         {/* Bottom Legal Links */}
-        <View className="mt-auto pt-6 w-full">
+        <View className="pt-6 pb-2 w-full">
           <Text className="text-center text-[11px] text-heliotrope-500 px-4 leading-4 font-medium">
             By continuing, you agree to our{' '}
             <Text

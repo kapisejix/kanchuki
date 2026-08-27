@@ -1,5 +1,6 @@
 import { Text, View, ActivityIndicator, type ViewStyle } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
+import { ArrowRight } from 'lucide-react-native'
 import { AnimatedPressable } from './AnimatedPressable'
 import { useTheme } from '../lib/theme'
 
@@ -18,7 +19,7 @@ export function GradientButton({
   disabled?: boolean
   loading?: boolean
   icon?: React.ReactNode
-  accentBadge?: React.ReactNode
+  accentBadge?: React.ReactNode | null
   /** Override gradient stops (defaults to signature #231F48 Space Cadet → #560A39 Tyrian Purple) */
   colors?: [string, string]
 }) {
@@ -33,6 +34,13 @@ export function GradientButton({
     shadowRadius: 14,
     elevation: 6,
   }
+
+  const badgeContent =
+    accentBadge !== undefined ? (
+      accentBadge
+    ) : (
+      <ArrowRight size={16} color="white" strokeWidth={2.5} />
+    )
 
   return (
     <AnimatedPressable
@@ -57,11 +65,11 @@ export function GradientButton({
           <>
             <View className="flex-row items-center gap-2">
               {icon}
-              <Text className="text-white text-xs font-sans-bold uppercase tracking-wider">{label}</Text>
+              <Text className="text-white text-xs font-bold uppercase tracking-wider">{label}</Text>
             </View>
-            {accentBadge ? (
+            {badgeContent ? (
               <View className="w-8 h-8 rounded-xl bg-fuchsia-500 items-center justify-center shadow-sm">
-                {accentBadge}
+                {badgeContent}
               </View>
             ) : null}
           </>
