@@ -91,12 +91,71 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
 
     const categories = await prisma.productCategory.findMany({
       where: { retailer_id: request.retailerId },
-      include: { _count: { select: { products: true } } },
+      include: {
+        _count: { select: { products: { where: { deleted_at: null } } } },
+        products: {
+          where: { deleted_at: null },
+          orderBy: [{ created_at: 'desc' }],
+          take: 1,
+          select: {
+            photos: {
+              orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+              take: 1,
+              select: { url: true },
+            },
+          },
+        },
+      },
       orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
     });
 
+    // For any category without image_url and where direct category_id products had no photo,
+    // also check if there's any product matching the category name (F-024 name fallback)
+    const missingImageCategories = categories.filter(
+      (c) => !c.image_url && (!c.products.length || !c.products[0]?.photos.length),
+    );
+
+    const nameFallbackMap = new Map<string, string>();
+    if (missingImageCategories.length > 0) {
+      const fallbackProducts = await prisma.product.findMany({
+        where: {
+          retailer_id: request.retailerId,
+          deleted_at: null,
+          category: { in: missingImageCategories.map((c) => c.name) },
+        },
+        select: {
+          category: true,
+          photos: {
+            orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+            take: 1,
+            select: { url: true },
+          },
+        },
+      });
+      for (const p of fallbackProducts) {
+        if (p.category && p.photos[0]?.url && !nameFallbackMap.has(p.category)) {
+          nameFallbackMap.set(p.category, p.photos[0].url);
+        }
+      }
+    }
+
     return {
-      data: categories.map((c) => ({ ...c, product_count: c._count.products, _count: undefined })),
+      data: categories.map((c) => {
+        const fallbackImg =
+          c.products[0]?.photos[0]?.url ?? (nameFallbackMap.get(c.name) || null);
+        return {
+          id: c.id,
+          retailer_id: c.retailer_id,
+          name: c.name,
+          segment: c.segment,
+          image_url: c.image_url || fallbackImg,
+          image_r2_key: c.image_r2_key,
+          sort_order: c.sort_order,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          product_count: c._count.products,
+        };
+      }),
     };
   });
 
@@ -106,11 +165,57 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
 
     const category = await prisma.productCategory.findFirst({
       where: { id, retailer_id: request.retailerId },
-      include: { _count: { select: { products: true } } },
+      include: {
+        _count: { select: { products: { where: { deleted_at: null } } } },
+        products: {
+          where: { deleted_at: null },
+          orderBy: [{ created_at: 'desc' }],
+          take: 1,
+          select: {
+            photos: {
+              orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+              take: 1,
+              select: { url: true },
+            },
+          },
+        },
+      },
     });
     if (!category) throw notFound('Category');
 
-    return { data: { ...category, product_count: category._count.products, _count: undefined } };
+    let fallbackImg = category.products[0]?.photos[0]?.url ?? null;
+    if (!category.image_url && !fallbackImg) {
+      const nameProduct = await prisma.product.findFirst({
+        where: {
+          retailer_id: request.retailerId,
+          deleted_at: null,
+          category: category.name,
+        },
+        select: {
+          photos: {
+            orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+            take: 1,
+            select: { url: true },
+          },
+        },
+      });
+      fallbackImg = nameProduct?.photos[0]?.url ?? null;
+    }
+
+    return {
+      data: {
+        id: category.id,
+        retailer_id: category.retailer_id,
+        name: category.name,
+        segment: category.segment,
+        image_url: category.image_url || fallbackImg,
+        image_r2_key: category.image_r2_key,
+        sort_order: category.sort_order,
+        created_at: category.created_at,
+        updated_at: category.updated_at,
+        product_count: category._count.products,
+      },
+    };
   });
 
   // ─── PATCH /categories/:id ──────────────────────────────────────────

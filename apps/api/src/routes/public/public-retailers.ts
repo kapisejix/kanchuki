@@ -186,25 +186,72 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
           _count: {
             select: { products: { where: { deleted_at: null, status: 'AVAILABLE' } } },
           },
+          products: {
+            where: { deleted_at: null, status: 'AVAILABLE' },
+            orderBy: [{ created_at: 'desc' }],
+            take: 1,
+            select: {
+              photos: {
+                orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+                take: 1,
+                select: { url: true },
+              },
+            },
+          },
         },
         orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
       });
 
+      // For any category without image_url and where direct category_id products had no photo,
+      // also check if there's any product matching the category name (F-024 name fallback)
+      const missingImageCategories = categories.filter(
+        (c) => !c.image_url && (!c.products.length || !c.products[0]?.photos.length),
+      );
+
+      const nameFallbackMap = new Map<string, string>();
+      if (missingImageCategories.length > 0) {
+        const fallbackProducts = await prisma.product.findMany({
+          where: {
+            retailer_id: retailer.id,
+            deleted_at: null,
+            status: 'AVAILABLE',
+            category: { in: missingImageCategories.map((c) => c.name) },
+          },
+          select: {
+            category: true,
+            photos: {
+              orderBy: [{ is_primary: 'desc' }, { created_at: 'asc' }],
+              take: 1,
+              select: { url: true },
+            },
+          },
+        });
+        for (const p of fallbackProducts) {
+          if (p.category && p.photos[0]?.url && !nameFallbackMap.has(p.category)) {
+            nameFallbackMap.set(p.category, p.photos[0].url);
+          }
+        }
+      }
+
       // Total live catalog size — drives the "All Products" tile count on the
       // storefront categories page (includes products with no category).
       const totalProducts = await prisma.product.count({
-        where: { retailer_id: retailer.id, deleted_at: null },
+        where: { retailer_id: retailer.id, deleted_at: null, status: 'AVAILABLE' },
       });
 
       return {
         data: categories
           .filter((c) => c._count.products > 0)
-          .map((c) => ({
-            id: c.id,
-            name: c.name,
-            image_url: c.image_url,
-            product_count: c._count.products,
-          })),
+          .map((c) => {
+            const fallbackImg =
+              c.products[0]?.photos[0]?.url ?? (nameFallbackMap.get(c.name) || null);
+            return {
+              id: c.id,
+              name: c.name,
+              image_url: c.image_url || fallbackImg,
+              product_count: c._count.products,
+            };
+          }),
         total_products: totalProducts,
       };
     });

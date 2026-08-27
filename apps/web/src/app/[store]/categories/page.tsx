@@ -127,21 +127,21 @@ export default async function StoreCategoriesPage({ params }: Props) {
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 py-5">
-        <div className="grid grid-cols-2 gap-3">
+      <main className="max-w-lg mx-auto px-3.5 py-5">
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
         {/* All Products tile — always first so the full catalog (including
             products with no category) is one tap away and never hidden. */}
         <Link
           href={`/${store}/all`}
-          className="bg-white rounded-2xl border border-cyan-200 overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
+          className="bg-white rounded-xl sm:rounded-2xl border border-cyan-200 overflow-hidden shadow-sm active:scale-[0.98] transition-transform flex flex-col"
         >
           <div className="w-full aspect-square bg-gradient-to-br from-cyan-600 to-cyan-800 relative flex items-center justify-center">
-            <LayoutGrid size={44} className="text-white" />
+            <LayoutGrid size={32} className="text-white" />
           </div>
-          <div className="p-3">
-            <p className="text-sm font-semibold text-gray-900 truncate">All Products</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {data.total_products} product{data.total_products === 1 ? '' : 's'}
+          <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
+            <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">All Products</p>
+            <p className="text-[11px] text-gray-400 mt-0.5">
+              {data.total_products} item{data.total_products === 1 ? '' : 's'}
             </p>
           </div>
         </Link>
@@ -150,7 +150,7 @@ export default async function StoreCategoriesPage({ params }: Props) {
           <Link
             key={cat.id}
             href={`/${store}/categories/${cat.id}`}
-            className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm active:scale-[0.98] transition-transform"
+            className="bg-white rounded-xl sm:rounded-2xl border border-gray-100 overflow-hidden shadow-sm active:scale-[0.98] transition-transform flex flex-col"
           >
             <div className="w-full aspect-square bg-gray-100 relative">
               {cat.image_url ? (
@@ -159,16 +159,16 @@ export default async function StoreCategoriesPage({ params }: Props) {
                   alt={cat.name}
                   fill
                   className="object-cover"
-                  sizes="200px"
+                  sizes="(max-width: 640px) 33vw, 180px"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-3xl">🗂️</div>
+                <div className="w-full h-full flex items-center justify-center text-2xl">🗂️</div>
               )}
             </div>
-            <div className="p-3">
-              <p className="text-sm font-semibold text-gray-900 truncate">{cat.name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                {cat.product_count} product{cat.product_count === 1 ? '' : 's'}
+            <div className="p-2 sm:p-2.5 flex-1 flex flex-col justify-between">
+              <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{cat.name}</p>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {cat.product_count} item{cat.product_count === 1 ? '' : 's'}
               </p>
             </div>
           </Link>

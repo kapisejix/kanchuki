@@ -14,7 +14,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 export default function CategoryListScreen() {
   const { colors } = useTheme()
   const insets = useSafeAreaInsets()
-  const columns = useGridColumns()
+  const columns = 3
   const { data, isLoading } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
@@ -42,19 +42,19 @@ export default function CategoryListScreen() {
             data={categories}
             keyExtractor={(item) => item.id}
             numColumns={columns}
-            columnWrapperStyle={{ gap: 12 }}
-            contentContainerStyle={{ padding: 12, gap: 12, flexGrow: 1 }}
+            columnWrapperStyle={{ gap: 8 }}
+            contentContainerStyle={{ padding: 10, gap: 10, flexGrow: 1 }}
             renderItem={({ item }: { item: ProductCategory }) => (
               <ProductCard
                 imageUrl={item.image_url}
                 onPress={() => router.push(`/category/${item.id}`)}
                 placeholderIcon="🗂️"
                 footer={
-                  <View className="p-2.5">
-                    <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
+                  <View className="p-2">
+                    <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
                       {item.name}
                     </Text>
-                    <Text className="text-xs text-sand-500 mt-0.5">
+                    <Text className="text-[10px] text-sand-500 mt-0.5">
                       {item.product_count} product{item.product_count === 1 ? '' : 's'}
                     </Text>
                   </View>
