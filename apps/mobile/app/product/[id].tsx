@@ -326,6 +326,7 @@ export default function ProductDetailScreen() {
   const [detectingColor, setDetectingColor] = useState(false)
   const [detectedColor, setDetectedColor] = useState<string | null>(null)
   const [colorDetectError, setColorDetectError] = useState<string | null>(null)
+  const [deletingMedia, setDeletingMedia] = useState(false)
   // Measured on layout rather than trusting the static Dimensions snapshot —
   // if the rendered carousel width ever differs from SCREEN_WIDTH (safe-area
   // insets, split-screen, tablet), scrollTo's computed x lands on the wrong
@@ -691,6 +692,55 @@ export default function ProductDetailScreen() {
     }
   }
 
+  // Retailer photo / media deletion: allows deleting unwanted product photos,
+  // variant-linked photos, or Ken Burns product videos right from the detail page.
+  const handleDeleteCurrentMedia = useCallback(() => {
+    const photo = displayPhotos[selectedPhotoIndex]
+    if (!product || !photo || deletingMedia) return
+
+    const isVideo = photo.is_video
+    const isVariant = photo.is_variant_preview
+    const isOriginal = photo.is_original_preview
+
+    const title = isVideo ? 'Delete Product Video?' : 'Delete Image?'
+    const message = isVideo
+      ? 'Are you sure you want to remove this video from the product?'
+      : isVariant
+        ? `Are you sure you want to remove the image for the "${photo.variant_color ?? 'variant'}" color?`
+        : isOriginal
+          ? 'Are you sure you want to remove the original unedited photo preview?'
+          : 'Are you sure you want to delete this image from the product?'
+
+    Alert.alert(title, message, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeletingMedia(true)
+          try {
+            if (isVideo) {
+              const videoId = photo.id.replace('video-', '')
+              await growthApi.deleteVideo(videoId)
+            } else {
+              await productApi.deletePhoto(product.id, photo.id)
+            }
+            const nextIdx = Math.max(0, selectedPhotoIndex - 1)
+            setSelectedPhotoIndex(nextIdx)
+            galleryRef.current?.setIndex(nextIdx, true)
+            void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+            void queryClient.invalidateQueries({ queryKey: ['growth', 'videos', product.id] })
+            invalidate()
+          } catch (err) {
+            showError(err, 'Failed to delete image')
+          } finally {
+            setDeletingMedia(false)
+          }
+        },
+      },
+    ])
+  }, [displayPhotos, selectedPhotoIndex, product, deletingMedia, queryClient])
+
   // F-032: start a studio-shoot generation for the currently viewed photo or primary photo.
   const handleStartStudioShoot = async (
     template: string,
@@ -993,6 +1043,26 @@ export default function ProductDetailScreen() {
               <Star size={11} color="white" fill="white" />
               <Text className="text-white text-xs font-semibold">Main</Text>
             </View>
+          )}
+
+          {/* Delete current photo/video button */}
+          {displayPhotos.length > 0 && currentPhoto && (
+            <AnimatedPressable
+              onPress={handleDeleteCurrentMedia}
+              disabled={deletingMedia}
+              accessibilityLabel="Delete current image"
+              accessibilityRole="button"
+              className={`absolute top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm ${
+                currentPhoto?.is_video ? 'right-3' : 'right-14'
+              }`}
+              style={{ elevation: 3, zIndex: 10 }}
+            >
+              {deletingMedia ? (
+                <ActivityIndicator size="small" color={colors.rust[600]} />
+              ) : (
+                <Trash2 size={16} color={colors.rust[600]} />
+              )}
+            </AnimatedPressable>
           )}
 
           {/* Detect color from the current photo */}
@@ -1380,45 +1450,69 @@ export default function ProductDetailScreen() {
         </View>
       )}
 
-      {/* F-029: Set as main — promotes the currently-viewed photo to the
-          product's primary image (the one the catalog + customer storefront
-          show first). Shown as filled/checked when it's already the main. */}
-      {displayPhotos[selectedPhotoIndex] && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
-        <AnimatedPressable
-          onPress={() => void handleSetPrimary(displayPhotos[selectedPhotoIndex]!.id)}
-          disabled={settingPrimaryId !== null || !!currentPhoto?.is_primary}
-          accessibilityLabel={
-            currentPhoto?.is_primary ? 'This is the main photo' : 'Set as main photo'
-          }
-          accessibilityRole="button"
-          accessibilityState={{ selected: !!currentPhoto?.is_primary }}
-          className={`mx-4 mt-2 flex-row items-center justify-center gap-1.5 rounded-xl py-2 border ${
-            currentPhoto?.is_primary
-              ? 'border-turmeric-300 bg-turmeric-50'
-              : 'border-dashed border-ink-300'
-          }`}
-        >
-          {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id ? (
-            <ActivityIndicator size="small" color={primaryColor} />
-          ) : (
-            <Star
-              size={14}
-              color={currentPhoto?.is_primary ? colors.turmeric[600] : primaryColor}
-              fill={currentPhoto?.is_primary ? colors.turmeric[600] : 'none'}
-            />
+      {/* Media actions — Set as main & Delete Image / Video */}
+      {displayPhotos[selectedPhotoIndex] && (
+        <View className="mx-4 mt-2 flex-row gap-2">
+          {!currentPhotoIsVariant && !currentPhotoIsOriginal && !currentPhoto?.is_video && (
+            <AnimatedPressable
+              onPress={() => void handleSetPrimary(displayPhotos[selectedPhotoIndex]!.id)}
+              disabled={settingPrimaryId !== null || !!currentPhoto?.is_primary}
+              accessibilityLabel={
+                currentPhoto?.is_primary ? 'This is the main photo' : 'Set as main photo'
+              }
+              accessibilityRole="button"
+              accessibilityState={{ selected: !!currentPhoto?.is_primary }}
+              className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 border ${
+                currentPhoto?.is_primary
+                  ? 'border-turmeric-300 bg-turmeric-50'
+                  : 'border-dashed border-ink-300'
+              }`}
+            >
+              {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id ? (
+                <ActivityIndicator size="small" color={primaryColor} />
+              ) : (
+                <Star
+                  size={14}
+                  color={currentPhoto?.is_primary ? colors.turmeric[600] : primaryColor}
+                  fill={currentPhoto?.is_primary ? colors.turmeric[600] : 'none'}
+                />
+              )}
+              <Text
+                className={`text-xs font-medium ${
+                  currentPhoto?.is_primary ? 'text-turmeric-700' : 'text-ink-700'
+                }`}
+              >
+                {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id
+                  ? 'Setting as main...'
+                  : currentPhoto?.is_primary
+                    ? 'Main photo ✓'
+                    : 'Set as main photo'}
+              </Text>
+            </AnimatedPressable>
           )}
-          <Text
-            className={`text-xs font-medium ${
-              currentPhoto?.is_primary ? 'text-turmeric-700' : 'text-ink-700'
+
+          {/* Delete current media button */}
+          <AnimatedPressable
+            onPress={handleDeleteCurrentMedia}
+            disabled={deletingMedia}
+            accessibilityLabel="Delete image or video"
+            accessibilityRole="button"
+            className={`flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 px-4 border border-rust-200 bg-rust-50/60 ${
+              currentPhotoIsVariant || currentPhotoIsOriginal || currentPhoto?.is_video
+                ? 'flex-1'
+                : ''
             }`}
           >
-            {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id
-              ? 'Setting as main...'
-              : currentPhoto?.is_primary
-                ? 'Main photo ✓'
-                : 'Set as main photo'}
-          </Text>
-        </AnimatedPressable>
+            {deletingMedia ? (
+              <ActivityIndicator size="small" color={colors.rust[600]} />
+            ) : (
+              <Trash2 size={14} color={colors.rust[600]} />
+            )}
+            <Text className="text-xs font-medium text-rust-700">
+              {currentPhoto?.is_video ? 'Delete Video' : 'Delete Image'}
+            </Text>
+          </AnimatedPressable>
+        </View>
       )}
 
       {/* Post-save background picker — admin-curated backdrop library. Applies

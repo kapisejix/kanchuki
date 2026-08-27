@@ -115,6 +115,14 @@ export const productApi = {
       body: JSON.stringify(data),
     }),
 
+  deletePhoto: (productId: string, photoId: string) =>
+    request<{ data: { success: boolean; deleted_id: string } }>(
+      `/v1/products/${productId}/photos/${photoId}`,
+      {
+        method: 'DELETE',
+      },
+    ),
+
   /** Remove background on a specific photo (optionally compositing it onto an
    * admin-curated backdrop — the edit screen's background picker targets the
    * currently-viewed photo, not just the product's primary).
