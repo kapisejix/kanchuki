@@ -126,6 +126,25 @@
     opacity: 0.95;
   }
 
+  /* Compact Centered Signature Gradient Button */
+  .slide-btn-signature-compact {
+    background: linear-gradient(135deg, #231F48 0%, #560A39 100%);
+    color: #FFFFFF;
+    border-radius: 24px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 24px;
+    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(35, 31, 72, 0.28);
+    transition: transform 0.2s ease, opacity 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .slide-btn-signature-compact:active {
+    transform: scale(0.98);
+    opacity: 0.95;
+  }
+
   .floating-dock {
     position: absolute;
     bottom: 20px;
@@ -449,12 +468,12 @@
               <p class="text-[11px] text-[#6B4773] mt-1.5 font-medium">OTP will be sent via SMS / WhatsApp</p>
             </div>
 
-            <!-- Get Instant OTP Button (placed right next to phone number) -->
-            <div class="w-full">
-              <div class="slide-btn-signature py-3.5" onclick="renderScreen('register')">
-                <span class="text-xs font-extrabold uppercase tracking-wider text-white">Get Instant OTP</span>
-                <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            <!-- Get Instant OTP Button (compact width & centered) -->
+            <div class="w-full flex justify-center mt-1">
+              <div class="slide-btn-signature-compact" onclick="renderScreen('register')">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-white mr-3">Get Instant OTP</span>
+                <div class="w-7 h-7 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
                 </div>
               </div>
             </div>

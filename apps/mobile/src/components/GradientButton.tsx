@@ -13,6 +13,7 @@ export function GradientButton({
   icon,
   accentBadge,
   colors,
+  compact = false,
 }: {
   label: string
   onPress: () => void
@@ -22,6 +23,8 @@ export function GradientButton({
   accentBadge?: React.ReactNode | null
   /** Override gradient stops (defaults to signature #231F48 Space Cadet → #560A39 Tyrian Purple) */
   colors?: [string, string]
+  /** Auto-width compact centered button (just text + arrow badge, no stretched space) */
+  compact?: boolean
 }) {
   const { colors: themeColors } = useTheme()
   const isDisabled = disabled || loading
@@ -39,7 +42,7 @@ export function GradientButton({
     accentBadge !== undefined ? (
       accentBadge
     ) : (
-      <ArrowRight size={16} color="white" strokeWidth={2.5} />
+      <ArrowRight size={14} color="white" strokeWidth={2.5} />
     )
 
   return (
@@ -48,17 +51,21 @@ export function GradientButton({
       disabled={isDisabled}
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled }}
-      style={isDisabled ? undefined : shadow}
+      style={[isDisabled ? undefined : shadow, compact ? { alignSelf: 'center' } : { width: '100%' }]}
     >
       <LinearGradient
         colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ borderRadius: 24, opacity: isDisabled ? 0.5 : 1 }}
-        className="flex-row items-center justify-between py-3.5 px-5"
+        className={`flex-row items-center ${
+          compact
+            ? 'justify-center gap-3 py-3 px-6'
+            : 'justify-between py-3.5 px-5'
+        }`}
       >
         {loading ? (
-          <View className="w-full flex-row items-center justify-center py-0.5">
+          <View className={`${compact ? 'px-6' : 'w-full'} flex-row items-center justify-center py-0.5`}>
             <ActivityIndicator color="white" size="small" />
           </View>
         ) : (
@@ -68,7 +75,7 @@ export function GradientButton({
               <Text className="text-white text-xs font-bold uppercase tracking-wider">{label}</Text>
             </View>
             {badgeContent ? (
-              <View className="w-8 h-8 rounded-xl bg-fuchsia-500 items-center justify-center shadow-sm">
+              <View className="w-7 h-7 rounded-xl bg-fuchsia-500 items-center justify-center shadow-sm">
                 {badgeContent}
               </View>
             ) : null}

@@ -147,13 +147,14 @@ export default function PhoneScreen() {
             )}
           </View>
 
-          {/* Get Instant OTP Button — signature gradient with fuchsia badge */}
-          <View className="w-full">
+          {/* Get Instant OTP Button — compact width & center aligned */}
+          <View className="items-center w-full mt-1">
             <GradientButton
               label="Get Instant OTP"
               onPress={() => void handleSend()}
               disabled={!isValid}
               loading={loading}
+              compact
             />
           </View>
         </View>
