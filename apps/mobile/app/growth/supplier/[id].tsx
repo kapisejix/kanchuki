@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { ChevronLeft, Pencil, Trash2 } from 'lucide-react-native'
@@ -17,7 +18,6 @@ import { growthApi, type SupplierTransaction } from '../../../src/lib/api/growth
 import { showError } from '../../../src/lib/errors'
 import { useTheme } from '../../../src/lib/theme'
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 function Chip({
   label,
@@ -154,7 +154,7 @@ export default function SupplierDetailScreen() {
             Pending balance
           </Text>
           <Text className="text-2xl font-bold text-white mt-1">
-            {inr(supplier.pending_amount_paise)}
+            {formatPaiseShort(supplier.pending_amount_paise)}
           </Text>
           <Text className="text-[11px] text-white/50 mt-1">Orders − payments for this supplier</Text>
         </View>
@@ -231,7 +231,7 @@ export default function SupplierDetailScreen() {
                   className={`text-sm font-bold ${t.kind === 'ORDER' ? 'text-sand-900' : 'text-emerald-600'}`}
                 >
                   {t.kind === 'ORDER' ? '' : '− '}
-                  {inr(t.amount_paise)}
+                  {formatPaiseShort(t.amount_paise)}
                 </Text>
               </View>
             ))}

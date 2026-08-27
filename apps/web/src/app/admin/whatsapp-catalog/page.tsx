@@ -1,4 +1,5 @@
 'use client'
+import { formatPaiseShort } from '@kanchuki/shared'
 
 import { useCallback, useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -80,7 +81,6 @@ type CatalogItemRow = {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 const fmtDate = (iso: string | null) =>
   iso
@@ -612,7 +612,7 @@ function RetailerDetailModal({
                         <p className="font-medium text-gray-800 truncate max-w-[220px]">{item.product_name}</p>
                         <p className="text-xs text-gray-400">{item.sku ?? item.product_id}</p>
                       </td>
-                      <td className="py-2.5 pr-3 text-right text-gray-700 tabular-nums">{inr(item.price_paise)}</td>
+                      <td className="py-2.5 pr-3 text-right text-gray-700 tabular-nums">{formatPaiseShort(item.price_paise)}</td>
                       <td className="py-2.5 pr-3 font-mono text-xs text-gray-500 truncate max-w-[130px]">
                         {item.whatsapp_catalog_item_id ?? '—'}
                       </td>

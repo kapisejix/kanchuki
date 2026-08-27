@@ -143,7 +143,8 @@ describe('CollectionView favorites survive a client-side route change', () => {
     fireEvent.click(
       screen.getAllByRole('button', { name: /^Add to favorites$/ })[0],
     )
-    expect(screen.getByText('Selected (1)')).toBeInTheDocument()
+    expect(screen.getByText('Saved')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
     expect(localStorage.getItem('kanchuki_wishlist_festive-edit')).toContain('prod-1')
 
     // Capture the keyed wrapper so we can prove a real remount happens (a
@@ -163,7 +164,8 @@ describe('CollectionView favorites survive a client-side route change', () => {
 
     // Favorites survived the remount via localStorage rehydration: the sticky
     // bar count is back to 1 and product 1's heart is still filled.
-    expect(screen.getByText('Selected (1)')).toBeInTheDocument()
+    expect(screen.getByText('Saved')).toBeInTheDocument()
+    expect(screen.getByText('1')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /^Remove from favorites$/ }),
     ).toBeInTheDocument()

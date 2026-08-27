@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
@@ -48,7 +49,6 @@ const TYPE_EMOJI: Record<PartnerType, string> = {
   OTHER: '🤝',
 }
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 // ─── Main Screen ──────────────────────────────────────────────────
 
@@ -186,7 +186,7 @@ export default function PartnersScreen() {
                   <Text className="text-[10px] text-sand-400">
                     {p.commission_type === 'PERCENTAGE_OF_SALE'
                       ? `${p.commission_rate}% commission`
-                      : `${inr(p.commission_rate)} per referral`}
+                      : `${formatPaiseShort(p.commission_rate)} per referral`}
                   </Text>
                   {p.pending_referrals && p.pending_referrals > 0 ? (
                     <View className="ml-auto bg-amber-50 rounded-full px-2 py-0.5">

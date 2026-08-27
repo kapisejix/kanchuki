@@ -26,6 +26,13 @@ export function formatPriceRange(
   return `${formatPrice(min).replace(/\/-$/, '')} – ${formatPrice(max)}`
 }
 
+/** paise → "₹1,23,456" — Indian digit grouping, no "/-" marker, no forced
+ *  decimals. The compact form for dashboard tiles and list rows; use
+ *  formatPrice for billing/invoice display where the "/-" marker belongs. */
+export function formatPaiseShort(paise: number): string {
+  return `₹${(paise / 100).toLocaleString('en-IN')}`
+}
+
 /** ₹ rupees → paise integer */
 export function rupeesToPaise(rupees: number): number {
   return Math.round(rupees * 100)

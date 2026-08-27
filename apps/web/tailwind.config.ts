@@ -90,6 +90,36 @@ const config: Config = {
         glow: '#FFC94D',
         veil: '#0B1322',
 
+        // ── Royal Orchid Luxury Suite (2026 Mobile & Web Palette) ──
+        heliotrope: {
+          50: '#F7F2F8',
+          100: '#EBDDEE',
+          500: '#6B4773',
+          600: '#5A3962',
+          700: '#492D50',
+        },
+        fuchsia: {
+          400: '#D65CB3',
+          500: '#BB3F95',
+          600: '#A12E7E',
+        },
+        lavender: {
+          50: '#FAF9FE',
+          100: '#F2F1FA',
+          200: '#E0E1F6',
+          300: '#C8CAEE',
+        },
+        spaceCadet: {
+          800: '#1D193E',
+          900: '#231F48',
+          950: '#16132F',
+        },
+        tyrian: {
+          700: '#6D0E49',
+          800: '#560A39',
+          900: '#40062A',
+        },
+
         // ── "CoLab" marketing palette (2026-08-11, colabs.com.au) ─────────
         // Added AFTER the legacy ink/rust/turmeric/sand set and used ONLY by
         // the marketing/content pages (apps/web/src/components/site + the

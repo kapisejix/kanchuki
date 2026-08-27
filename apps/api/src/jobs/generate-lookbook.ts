@@ -170,12 +170,11 @@ function generateLookbookHtml(
   <div class="products">
     ${productCards}
   </div>
-  <div class="footer">
-    Curated with ❤️ by <a href="https://kanchuki.app">Kanchuki</a>
-  </div>
 </body>
 </html>`;
 }
+
+// ─── PDF Generation ───────────────────────────────────────────────
 
 // ─── PDF Generation ───────────────────────────────────────────────
 
@@ -189,7 +188,22 @@ async function generateLookbookPdf(
     price_min: number | null;
   }>,
 ): Promise<Buffer> {
-  return new Promise(async (resolve, reject) => {
+  // Pre-fetch all images concurrently for maximum throughput
+  const imageBuffers = await Promise.all(
+    products.map(async (p) => {
+      try {
+        const response = await fetch(p.photo_url);
+        if (response.ok) {
+          return Buffer.from(await response.arrayBuffer());
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    }),
+  );
+
+  return new Promise((resolve, reject) => {
     try {
       const doc = new PDFDocument({
         size: 'A4',
@@ -218,6 +232,7 @@ async function generateLookbookPdf(
       // Product pages — 2 per page
       for (let i = 0; i < products.length; i++) {
         const p = products[i]!;
+        const imageBuffer = imageBuffers[i];
         const isLeft = i % 2 === 0;
 
         if (isLeft && i > 0) {
@@ -226,18 +241,21 @@ async function generateLookbookPdf(
 
         const yStart = isLeft ? 40 : 320;
 
-        try {
-          // Fetch product image and draw it
-          const response = await fetch(p.photo_url);
-          if (response.ok) {
-            const imageBuffer = Buffer.from(await response.arrayBuffer());
+        if (imageBuffer) {
+          try {
             doc.image(imageBuffer, 40, yStart, {
               width: doc.page.width - 80,
               height: 240,
               fit: [doc.page.width - 80, 240],
             });
+          } catch {
+            doc.rect(40, yStart, doc.page.width - 80, 240).fill('#f0f0f0');
+            doc.fill('#999').fontSize(10).text('Image unavailable', 40, yStart + 110, {
+              width: doc.page.width - 80,
+              align: 'center',
+            });
           }
-        } catch {
+        } else {
           // Image fetch failed — draw placeholder
           doc.rect(40, yStart, doc.page.width - 80, 240).fill('#f0f0f0');
           doc.fill('#999').fontSize(10).text('Image unavailable', 40, yStart + 110, {
@@ -254,13 +272,6 @@ async function generateLookbookPdf(
           .join(' · ');
         if (meta) doc.text(meta, 40, textY + 20);
       }
-
-      // Footer on last page
-      doc.fontSize(8).font('Helvetica').fillColor('#999');
-      doc.text('Curated with ❤️ by Kanchuki', 40, doc.page.height - 60, {
-        width: doc.page.width - 80,
-        align: 'center',
-      });
 
       doc.end();
     } catch (err) {
@@ -321,7 +332,7 @@ export async function handleGenerateLookbook(data: LookbookJobData): Promise<voi
       throw new Error('No products with photos found');
     }
 
-    // Generate HTML
+    // Generate HTML and PDF
     const html = generateLookbookHtml(
       lookbook.name,
       lookbook.description,
@@ -329,22 +340,33 @@ export async function handleGenerateLookbook(data: LookbookJobData): Promise<voi
       productsWithPhotos,
     );
 
-    // Generate PDF
     const pdfBuffer = await generateLookbookPdf(
       lookbook.name,
       lookbook.description,
       productsWithPhotos,
     );
 
-    // Upload HTML to R2
+    // Upload HTML and PDF to R2 concurrently
     const htmlKey = R2_PATHS.lookbookOutput(retailer_id, lookbook_id, 'index.html');
-    const htmlUploadUrl = await getUploadPresignedUrl(htmlKey, 'text/html', 300);
-    await fetch(htmlUploadUrl, { method: 'PUT', body: html, headers: { 'Content-Type': 'text/html' } });
+    const pdfKey = R2_PATHS.lookbookOutput(
+      retailer_id,
+      lookbook_id,
+      `${lookbook.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`,
+    );
 
-    // Upload PDF to R2
-    const pdfKey = R2_PATHS.lookbookOutput(retailer_id, lookbook_id, `${lookbook.name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
-    const pdfUploadUrl = await getUploadPresignedUrl(pdfKey, 'application/pdf', 300);
-    await fetch(pdfUploadUrl, { method: 'PUT', body: pdfBuffer, headers: { 'Content-Type': 'application/pdf' } });
+    const [htmlUploadUrl, pdfUploadUrl] = await Promise.all([
+      getUploadPresignedUrl(htmlKey, 'text/html', 300),
+      getUploadPresignedUrl(pdfKey, 'application/pdf', 300),
+    ]);
+
+    await Promise.all([
+      fetch(htmlUploadUrl, { method: 'PUT', body: html, headers: { 'Content-Type': 'text/html' } }),
+      fetch(pdfUploadUrl, {
+        method: 'PUT',
+        body: pdfBuffer,
+        headers: { 'Content-Type': 'application/pdf' },
+      }),
+    ]);
 
     const outputUrl = publicUrl(htmlKey);
     const pdfUrl = publicUrl(pdfKey);

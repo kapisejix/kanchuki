@@ -1,4 +1,5 @@
 'use client'
+import { formatPaiseShort } from '@kanchuki/shared'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -54,7 +55,6 @@ type MonthExpenses = {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 const fmtMonth = (period: string) => {
   const [y, m] = period.split('-').map(Number)
@@ -213,28 +213,28 @@ export default function CommissionPage() {
             <SummaryCard
               icon={TrendingUp}
               label={`Total Payments · ${fmtMonth(currentMonth?.period ?? selectedMonth)}`}
-              value={inr(currentMonth?.total_payment_inr ?? 0)}
+              value={formatPaiseShort(currentMonth?.total_payment_inr ?? 0)}
               subtext="Successful subscription payments"
               color="blue"
             />
             <SummaryCard
               icon={PiggyBank}
               label="3% Commission Pool"
-              value={inr(currentMonth?.commission_inr ?? 0)}
+              value={formatPaiseShort(currentMonth?.commission_inr ?? 0)}
               subtext="Set aside from this month's payments"
               color="green"
             />
             <SummaryCard
               icon={Wallet}
               label="Spent"
-              value={inr(currentMonth?.spent_inr ?? 0)}
+              value={formatPaiseShort(currentMonth?.spent_inr ?? 0)}
               subtext={`${currentMonth?.expense_count ?? 0} expense entries`}
               color="amber"
             />
             <SummaryCard
               icon={IndianRupee}
               label="Remaining"
-              value={inr(currentMonth?.remaining_inr ?? 0)}
+              value={formatPaiseShort(currentMonth?.remaining_inr ?? 0)}
               subtext={(currentMonth?.remaining_inr ?? 0) < 0 ? 'Pool overspent — over the 3%' : 'Still available to spend'}
               color={(currentMonth?.remaining_inr ?? 0) < 0 ? 'red' : 'purple'}
             />
@@ -367,11 +367,11 @@ function MonthlySummaryTab({
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3.5 text-right text-gray-600 tabular-nums">{inr(row.total_payment_inr)}</td>
-                <td className="px-4 py-3.5 text-right font-semibold text-green-600 tabular-nums">{inr(row.commission_inr)}</td>
-                <td className="px-4 py-3.5 text-right text-amber-600 tabular-nums">{inr(row.spent_inr)}</td>
+                <td className="px-4 py-3.5 text-right text-gray-600 tabular-nums">{formatPaiseShort(row.total_payment_inr)}</td>
+                <td className="px-4 py-3.5 text-right font-semibold text-green-600 tabular-nums">{formatPaiseShort(row.commission_inr)}</td>
+                <td className="px-4 py-3.5 text-right text-amber-600 tabular-nums">{formatPaiseShort(row.spent_inr)}</td>
                 <td className={`px-6 py-3.5 text-right font-semibold tabular-nums ${row.remaining_inr < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {row.remaining_inr < 0 ? `−${inr(-row.remaining_inr)}` : inr(row.remaining_inr)}
+                  {row.remaining_inr < 0 ? `−${formatPaiseShort(-row.remaining_inr)}` : formatPaiseShort(row.remaining_inr)}
                 </td>
               </motion.tr>
             ))}
@@ -450,12 +450,12 @@ function ExpenditureTab({
       {/* Selected-month summary strip */}
       {summary && (
         <motion.div variants={containerVariants} className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <MiniStat label="Total Payments" value={inr(summary.total_payment_inr)} color="text-blue-600" />
-          <MiniStat label="3% Commission" value={inr(summary.commission_inr)} color="text-green-600" />
-          <MiniStat label="Spent" value={inr(summary.spent_inr)} color="text-amber-600" />
+          <MiniStat label="Total Payments" value={formatPaiseShort(summary.total_payment_inr)} color="text-blue-600" />
+          <MiniStat label="3% Commission" value={formatPaiseShort(summary.commission_inr)} color="text-green-600" />
+          <MiniStat label="Spent" value={formatPaiseShort(summary.spent_inr)} color="text-amber-600" />
           <MiniStat
             label="Remaining"
-            value={summary.remaining_inr < 0 ? `−${inr(-summary.remaining_inr)}` : inr(summary.remaining_inr)}
+            value={summary.remaining_inr < 0 ? `−${formatPaiseShort(-summary.remaining_inr)}` : formatPaiseShort(summary.remaining_inr)}
             color={summary.remaining_inr < 0 ? 'text-red-600' : 'text-purple-600'}
             warning={summary.remaining_inr < 0}
           />
@@ -505,7 +505,7 @@ function ExpenditureTab({
                   </p>
                 </div>
                 <span className="text-sm font-bold text-gray-900 tabular-nums shrink-0">
-                  {inr(expense.amount_inr)}
+                  {formatPaiseShort(expense.amount_inr)}
                 </span>
               </motion.button>
             ))}
@@ -1000,7 +1000,7 @@ function ExpenseDetailModal({
             </div>
 
             <p className="text-lg font-bold text-gray-900">{expense.category}</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{inr(expense.amount_inr)}</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1 tabular-nums">{formatPaiseShort(expense.amount_inr)}</p>
 
             <div className="mt-4 space-y-2 text-sm">
               <div className="flex justify-between">

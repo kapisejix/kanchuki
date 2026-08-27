@@ -340,32 +340,36 @@ export function runVisionAsk(req: VisionAskRequest): Promise<string> {
   )
 }
 
-// ─── Adapter construction ──────────────────────────────────────────────────
+// ─── Strategy Pattern Adapter Implementations ───────────────────────────
 
-function buildAdapter(row: AiProviderConfigRow): ProviderAdapter {
-  const base = {
-    id: row.id,
-    providerType: row.provider_type,
-    modelName: row.model_name,
-    liteModelName: row.lite_model_name,
-    creditsPerCall: row.credits_per_call,
+export abstract class BaseVisionProviderAdapter implements ProviderAdapter {
+  constructor(public readonly config: AiProviderConfigRow) {}
+
+  get id(): string {
+    return this.config.id
   }
-  switch (row.provider_type) {
-    case 'ANTHROPIC':
-      return { ...base, extract: anthropicExtract(row), ask: anthropicAsk(row) }
-    case 'OPENAI_COMPAT':
-      return { ...base, extract: openaiExtract(row), ask: openaiAsk(row) }
-    case 'GEMINI':
-      return { ...base, extract: geminiExtract(row), ask: geminiAsk(row) }
-    default:
-      throw new Error(`Unsupported AI provider type: ${row.provider_type}`)
+
+  get providerType(): AiProviderType {
+    return this.config.provider_type
   }
+
+  get modelName(): string {
+    return this.config.model_name
+  }
+
+  get liteModelName(): string | null {
+    return this.config.lite_model_name
+  }
+
+  get creditsPerCall(): number {
+    return this.config.credits_per_call
+  }
+
+  abstract extract(req: VisionExtractRequest): Promise<Record<string, unknown>>
+  abstract ask(req: VisionAskRequest): Promise<string>
 }
 
 // ─── Anthropic (Claude) ────────────────────────────────────────────────────
-// Tool-call extraction keeps the exact semantics of the original tagger:
-// the model must emit a tool_use block or we treat it as a contract error
-// (unless missingToolUseIsEmpty, used by the item detector).
 
 const claudeClients = new Map<string, Anthropic>()
 async function getClaudeClient(apiKeyName: string): Promise<Anthropic> {
@@ -384,11 +388,11 @@ function claudeImageBlocks(images: AiImageInput[]): Anthropic.ImageBlockParam[] 
   }))
 }
 
-function anthropicExtract(row: AiProviderConfigRow) {
-  return async (req: VisionExtractRequest): Promise<Record<string, unknown>> => {
+export class AnthropicProviderAdapter extends BaseVisionProviderAdapter {
+  async extract(req: VisionExtractRequest): Promise<Record<string, unknown>> {
     try {
-      const response = await (await getClaudeClient(row.api_key_name)).messages.create({
-        model: row.model_name,
+      const response = await (await getClaudeClient(this.config.api_key_name)).messages.create({
+        model: this.config.model_name,
         max_tokens: req.maxTokens,
         temperature: 0,
         system: req.systemPrompt,
@@ -414,16 +418,14 @@ function anthropicExtract(row: AiProviderConfigRow) {
       }
       return toolUse.input as Record<string, unknown>
     } catch (err) {
-      throw wrapProviderError(err, row.id)
+      throw wrapProviderError(err, this.id)
     }
   }
-}
 
-function anthropicAsk(row: AiProviderConfigRow) {
-  const model = row.lite_model_name ?? row.model_name
-  return async (req: VisionAskRequest): Promise<string> => {
+  async ask(req: VisionAskRequest): Promise<string> {
+    const model = this.config.lite_model_name ?? this.config.model_name
     try {
-      const response = await (await getClaudeClient(row.api_key_name)).messages.create({
+      const response = await (await getClaudeClient(this.config.api_key_name)).messages.create({
         model,
         max_tokens: req.maxTokens,
         temperature: 0,
@@ -440,14 +442,12 @@ function anthropicAsk(row: AiProviderConfigRow) {
         .map((c) => c.text.trim())
         .join(' ')
     } catch (err) {
-      throw wrapProviderError(err, row.id)
+      throw wrapProviderError(err, this.id)
     }
   }
 }
 
 // ─── OpenAI-compatible (OpenAI + OpenRouter/DeepSeek/Mistral/Groq/Together) ─
-// The generic adapter: base_url + model name come from the registry row, so
-// ANY OpenAI-protocol provider works with no new code.
 
 const openaiClients = new Map<string, OpenAI>()
 async function getOpenAIClient(apiKeyName: string, baseUrl: string | null): Promise<OpenAI> {
@@ -475,59 +475,48 @@ function openaiContent(
   ]
 }
 
-function openaiExtract(row: AiProviderConfigRow) {
-  return async (req: VisionExtractRequest): Promise<Record<string, unknown>> => {
+export class OpenAiCompatProviderAdapter extends BaseVisionProviderAdapter {
+  async extract(req: VisionExtractRequest): Promise<Record<string, unknown>> {
     try {
       let response: OpenAI.Chat.Completions.ChatCompletion
       try {
-        response = await (await getOpenAIClient(row.api_key_name, row.base_url)).chat.completions.create(
-          {
-            model: row.model_name,
-            max_tokens: req.maxTokens,
-            temperature: 0,
-            response_format: { type: 'json_object' },
-            messages: [
-              {
-                role: 'system',
-                content:
-                  `${req.systemPrompt}\n\n` +
-                  `Return ONLY a valid JSON object matching this schema:\n${JSON.stringify(req.schema.schema)}`,
-              },
-              { role: 'user', content: openaiContent(req) },
-            ],
-          },
-        )
+        response = await (
+          await getOpenAIClient(this.config.api_key_name, this.config.base_url)
+        ).chat.completions.create({
+          model: this.config.model_name,
+          max_tokens: req.maxTokens,
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content:
+                `${req.systemPrompt}\n\n` +
+                `Return ONLY a valid JSON object matching this schema:\n${JSON.stringify(req.schema.schema)}`,
+            },
+            { role: 'user', content: openaiContent(req) },
+          ],
+        })
       } catch (err) {
-        // Some OpenAI-compatible providers (older OpenRouter models, Groq
-        // free-tier) reject response_format. Retry once without it and parse
-        // the JSON from plain text. Only retry on a 400 (config-level), not
-        // on 429/5xx — those are real outages handled by the failover.
         const status = (err as { status?: number } | null)?.status ?? 0
         if (status !== 400) throw err
         try {
-          response = await (await getOpenAIClient(row.api_key_name, row.base_url)).chat.completions.create(
-            {
-              model: row.model_name,
-              max_tokens: req.maxTokens,
-              temperature: 0,
-              messages: [
-                { role: 'system', content: req.systemPrompt },
-                { role: 'user', content: openaiContent(req) },
-              ],
-            },
-          )
+          response = await (
+            await getOpenAIClient(this.config.api_key_name, this.config.base_url)
+          ).chat.completions.create({
+            model: this.config.model_name,
+            max_tokens: req.maxTokens,
+            temperature: 0,
+            messages: [
+              { role: 'system', content: req.systemPrompt },
+              { role: 'user', content: openaiContent(req) },
+            ],
+          })
         } catch (retryErr) {
-          // A second 400 means the model cannot serve this request AT ALL —
-          // the most common cause is a text-only model (e.g. deepseek-chat)
-          // rejecting the image input. That's a provider-level problem, not a
-          // bad response: mark it as an outage so the failover moves to the
-          // next provider instead of halting tagging on a bad model choice.
-          // AiProviderError carries the flag so wrapProviderError's instanceof
-          // short-circuit preserves it through the outer catch below.
           const retryStatus = (retryErr as { status?: number } | null)?.status ?? 0
           if (retryStatus === 400) {
             const detail = retryErr instanceof Error ? retryErr.message : String(retryErr)
-            throw new AiProviderError(detail, retryStatus, row.id, true)
+            throw new AiProviderError(detail, retryStatus, this.id, true)
           }
           throw retryErr
         }
@@ -537,45 +526,39 @@ function openaiExtract(row: AiProviderConfigRow) {
         if (req.missingToolUseIsEmpty) return {}
         throw new Error('OpenAI returned an empty response')
       }
-      return parseJsonOutput(text, row.id)
+      return parseJsonOutput(text, this.id)
     } catch (err) {
-      throw wrapProviderError(err, row.id)
+      throw wrapProviderError(err, this.id)
     }
   }
-}
 
-function openaiAsk(row: AiProviderConfigRow) {
-  const model = row.lite_model_name ?? row.model_name
-  return async (req: VisionAskRequest): Promise<string> => {
+  async ask(req: VisionAskRequest): Promise<string> {
+    const model = this.config.lite_model_name ?? this.config.model_name
     try {
-      const response = await (await getOpenAIClient(row.api_key_name, row.base_url)).chat.completions.create(
-        {
-          model,
-          max_tokens: req.maxTokens,
-          temperature: 0,
-          messages: [
-            { role: 'system', content: req.systemPrompt },
-            { role: 'user', content: openaiContent(req) },
-          ],
-        },
-      )
+      const response = await (
+        await getOpenAIClient(this.config.api_key_name, this.config.base_url)
+      ).chat.completions.create({
+        model,
+        max_tokens: req.maxTokens,
+        temperature: 0,
+        messages: [
+          { role: 'system', content: req.systemPrompt },
+          { role: 'user', content: openaiContent(req) },
+        ],
+      })
       return (response.choices[0]?.message?.content ?? '').trim()
     } catch (err) {
-      // The ask path (color detection) sends no response_format, so a 400 here
-      // means the model cannot serve this request at all (most commonly a
-      // text-only model rejecting the image input). Same providerDown treatment
-      // as openaiExtract's retry — color detection must fail over, not halt.
       const status = (err as { status?: number } | null)?.status ?? 0
       if (status === 400) {
         const detail = err instanceof Error ? err.message : String(err)
-        throw new AiProviderError(detail, status, row.id, true)
+        throw new AiProviderError(detail, status, this.id, true)
       }
-      throw wrapProviderError(err, row.id)
+      throw wrapProviderError(err, this.id)
     }
   }
 }
 
-// ─── Google Gemini (REST — no SDK dependency) ───────────────────────────────
+// ─── Google Gemini (REST) ──────────────────────────────────────────────────
 
 async function geminiGenerateContent(
   apiKeyName: string,
@@ -608,8 +591,6 @@ async function geminiGenerateContent(
             temperature: 0,
             maxOutputTokens: req.maxTokens,
             responseMimeType,
-            // Schema-enforced output (like Claude's tool_use): the model must
-            // conform, so the returned JSON always parses and matches shape.
             ...(schema ? { responseSchema: sanitizeSchemaForGemini(schema) } : {}),
           },
         }),
@@ -625,7 +606,7 @@ async function geminiGenerateContent(
       const body = (await res.json()) as { error?: { message?: string } }
       if (body.error?.message) detail = `${body.error.message} (HTTP ${res.status})`
     } catch {
-      // body wasn't JSON — the status alone is enough
+      // body wasn't JSON
     }
     throw new AiProviderError(`Gemini API error: ${detail}`, res.status, apiKeyName)
   }
@@ -640,11 +621,11 @@ async function geminiGenerateContent(
   return data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? '').join('') ?? ''
 }
 
-function geminiExtract(row: AiProviderConfigRow) {
-  return async (req: VisionExtractRequest): Promise<Record<string, unknown>> => {
+export class GeminiProviderAdapter extends BaseVisionProviderAdapter {
+  async extract(req: VisionExtractRequest): Promise<Record<string, unknown>> {
     const text = await geminiGenerateContent(
-      row.api_key_name,
-      row.model_name,
+      this.config.api_key_name,
+      this.config.model_name,
       req,
       'application/json',
       req.schema.schema,
@@ -653,13 +634,26 @@ function geminiExtract(row: AiProviderConfigRow) {
       if (req.missingToolUseIsEmpty) return {}
       throw new Error('Gemini returned an empty response')
     }
-    return parseJsonOutput(text, row.id)
+    return parseJsonOutput(text, this.id)
+  }
+
+  async ask(req: VisionAskRequest): Promise<string> {
+    const model = this.config.lite_model_name ?? this.config.model_name
+    return (await geminiGenerateContent(this.config.api_key_name, model, req, 'text/plain')).trim()
   }
 }
 
-function geminiAsk(row: AiProviderConfigRow) {
-  const model = row.lite_model_name ?? row.model_name
-  return async (req: VisionAskRequest): Promise<string> => {
-    return (await geminiGenerateContent(row.api_key_name, model, req, 'text/plain')).trim()
+// ─── Adapter Factory ───────────────────────────────────────────────────────
+
+function buildAdapter(row: AiProviderConfigRow): ProviderAdapter {
+  switch (row.provider_type) {
+    case 'ANTHROPIC':
+      return new AnthropicProviderAdapter(row)
+    case 'OPENAI_COMPAT':
+      return new OpenAiCompatProviderAdapter(row)
+    case 'GEMINI':
+      return new GeminiProviderAdapter(row)
+    default:
+      throw new Error(`Unsupported AI provider type: ${row.provider_type}`)
   }
 }

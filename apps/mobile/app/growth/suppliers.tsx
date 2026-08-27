@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useQuery } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ChevronLeft, ChevronRight, Plus, Store } from 'lucide-react-native'
@@ -8,7 +9,6 @@ import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi } from '../../src/lib/api/growth'
 import { useTheme } from '../../src/lib/theme'
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 export default function SuppliersScreen() {
   const { primaryColor, colors } = useTheme()
@@ -58,7 +58,7 @@ export default function SuppliersScreen() {
           <Text className="text-xs text-turmeric-300 font-semibold uppercase tracking-wide">
             Total pending to suppliers
           </Text>
-          <Text className="text-2xl font-bold text-white mt-1">{inr(totalPending)}</Text>
+          <Text className="text-2xl font-bold text-white mt-1">{formatPaiseShort(totalPending)}</Text>
           <Text className="text-[11px] text-white/50 mt-1">
             Unpaid stock orders minus payments — tracked per supplier below.
           </Text>
@@ -112,7 +112,7 @@ export default function SuppliersScreen() {
                     <Text
                       className={`text-sm font-bold ${s.pending_amount_paise > 0 ? 'text-rust-600' : 'text-sand-900'}`}
                     >
-                      {inr(s.pending_amount_paise)}
+                      {formatPaiseShort(s.pending_amount_paise)}
                     </Text>
                     <Text className="text-[10px] text-sand-400">pending</Text>
                   </View>

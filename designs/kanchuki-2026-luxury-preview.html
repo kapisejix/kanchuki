@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kanchuki — Royal Orchid Luxury Mobile Suite (2026 Edition)</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+          serif: ['"Marcellus"', 'Georgia', 'serif'],
+          mono: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+        },
+        colors: {
+          heliotrope: {
+            DEFAULT: '#6B4773',
+            50: '#F7F2F8',
+            100: '#EBDDEE',
+            500: '#6B4773',
+            600: '#5A3962',
+            700: '#492D50',
+          },
+          fuchsia: {
+            DEFAULT: '#BB3F95',
+            400: '#D65CB3',
+            500: '#BB3F95',
+            600: '#A12E7E',
+          },
+          lavender: {
+            DEFAULT: '#E0E1F6',
+            50: '#FAF9FE',
+            100: '#F2F1FA',
+            200: '#E0E1F6',
+            300: '#C8CAEE',
+          },
+          spaceCadet: {
+            DEFAULT: '#231F48',
+            800: '#1D193E',
+            900: '#231F48',
+            950: '#16132F',
+          },
+          tyrian: {
+            DEFAULT: '#560A39',
+            700: '#6D0E49',
+            800: '#560A39',
+            900: '#40062A',
+          }
+        },
+        boxShadow: {
+          'soft-clay': '0 12px 30px -4px rgba(35, 31, 72, 0.06), 0 4px 12px -2px rgba(35, 31, 72, 0.03)',
+          'fuchsia-glow': '0 8px 24px rgba(187, 63, 149, 0.35)',
+          'dock-glow': '0 20px 45px rgba(35, 31, 72, 0.45)',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body {
+    background: #D5D3E5;
+    color: #231F48;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .font-marcellus {
+    font-family: 'Marcellus', Georgia, serif;
+    letter-spacing: 0.02em;
+  }
+  
+  .phone-frame {
+    width: 380px;
+    height: 780px;
+    background: #F8F7FC;
+    border-radius: 50px;
+    box-shadow: 
+      0 40px 100px -20px rgba(35, 31, 72, 0.3),
+      0 0 0 12px #FFFFFF,
+      0 0 0 14px rgba(107, 71, 115, 0.2);
+    overflow: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+  }
+
+  .screen-viewport {
+    flex: 1;
+    overflow-y: auto;
+    scrollbar-width: none;
+  }
+  .screen-viewport::-webkit-scrollbar {
+    display: none;
+  }
+
+  .clay-card {
+    background: #FFFFFF;
+    border-radius: 26px;
+    box-shadow: 0 10px 25px -4px rgba(35, 31, 72, 0.05), 0 2px 6px -1px rgba(35, 31, 72, 0.03);
+    border: 1px solid rgba(224, 225, 246, 0.9);
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+  }
+  .clay-card:active {
+    transform: scale(0.98);
+  }
+
+  /* Universal Dashboard Signature Gradient Button */
+  .slide-btn-signature {
+    background: linear-gradient(135deg, #231F48 0%, #560A39 100%);
+    color: #FFFFFF;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px 8px 22px;
+    cursor: pointer;
+    box-shadow: 0 12px 30px rgba(35, 31, 72, 0.3);
+    transition: transform 0.2s ease, opacity 0.2s;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+  .slide-btn-signature:active {
+    transform: scale(0.98);
+    opacity: 0.95;
+  }
+
+  .floating-dock {
+    position: absolute;
+    bottom: 20px;
+    left: 24px;
+    right: 24px;
+    background: #231F48;
+    border-radius: 32px;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 20px 40px rgba(35, 31, 72, 0.45);
+    z-index: 50;
+    border: 1px solid rgba(224, 225, 246, 0.2);
+  }
+
+  .dock-item {
+    color: #928EB2;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .dock-item.active {
+    color: #BB3F95;
+  }
+  .dock-item.active .dock-dot {
+    background: #BB3F95;
+    transform: scale(1);
+  }
+
+  /* Animated Line Icons */
+  .anim-icon-pulse {
+    animation: iconPulse 2s infinite ease-in-out;
+  }
+  @keyframes iconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  .anim-icon-float {
+    animation: iconFloat 2.5s infinite ease-in-out;
+  }
+  @keyframes iconFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+
+  /* Size Selector Circles */
+  .size-circle {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: #E0E1F6;
+    color: #231F48;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .size-circle.active {
+    background: #231F48;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(35, 31, 72, 0.35);
+  }
+
+  /* Color Selector Circles */
+  .color-dot {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid transparent;
+  }
+  .color-dot.active {
+    border-color: #231F48;
+    box-shadow: 0 4px 10px rgba(35, 31, 72, 0.2);
+  }
+
+  .screen-tab.active {
+    background: #231F48;
+    color: #FFFFFF;
+    box-shadow: 0 10px 25px -4px rgba(35, 31, 72, 0.3);
+  }
+
+  /* Right-side floating thumbnail strip container inside hero */
+  .pdp-right-thumbnails {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px);
+    border-radius: 24px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 8px 24px rgba(35, 31, 72, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    z-index: 20;
+  }
+  .pdp-thumb-item {
+    width: 42px;
+    height: 48px;
+    border-radius: 16px;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .pdp-thumb-item.active {
+    border-color: #BB3F95;
+    transform: scale(1.06);
+    box-shadow: 0 4px 10px rgba(187, 63, 149, 0.35);
+  }
+
+  /* Onboarding Step Connector */
+  .step-connector {
+    height: 3px;
+    flex: 1;
+    border-radius: 9999px;
+    background: #E0E1F6;
+    margin: 0 6px;
+  }
+  .step-connector.active {
+    background: #BB3F95;
+  }
+  .step-bubble {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 800;
+    transition: all 0.2s;
+  }
+  .step-bubble.active {
+    background: #231F48;
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(35, 31, 72, 0.25);
+  }
+  .step-bubble.completed {
+    background: #BB3F95;
+    color: #FFFFFF;
+  }
+  .step-bubble.upcoming {
+    background: #FFFFFF;
+    color: #928EB2;
+    border: 1px solid #E0E1F6;
+  }
+</style>
+</head>
+<body class="min-h-screen py-8 px-4 md:px-12 flex flex-col items-center">
+
+  <!-- Header & Screen Navigation -->
+  <div class="max-w-6xl w-full mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-[#BFBDD5]">
+    <div>
+      <div class="flex items-center gap-2.5 mb-2">
+        <span class="px-3 py-1 text-xs font-bold tracking-wider uppercase bg-[#BB3F95]/15 text-[#560A39] border border-[#BB3F95]/30 rounded-full">Royal Orchid Suite</span>
+        <div class="flex items-center gap-1.5 ml-2">
+          <span class="w-3.5 h-3.5 rounded-full bg-[#6B4773] border border-white" title="Old Heliotrope"></span>
+          <span class="w-3.5 h-3.5 rounded-full bg-[#BB3F95] border border-white" title="Royal Fuchsia"></span>
+          <span class="w-3.5 h-3.5 rounded-full bg-[#E0E1F6] border border-white" title="Lavender Mist"></span>
+          <span class="w-3.5 h-3.5 rounded-full bg-[#231F48] border border-white" title="Space Cadet"></span>
+          <span class="w-3.5 h-3.5 rounded-full bg-[#560A39] border border-white" title="Tyrian Purple"></span>
+        </div>
+      </div>
+      <h1 class="text-3xl md:text-4xl font-extrabold text-[#231F48] tracking-tight font-marcellus">Kanchuki Luxury Screen Showcase</h1>
+      <p class="text-[#6B4773] text-sm mt-1 max-w-2xl font-medium">Interactive Registration Wizard, Settings Tab, Growth Engine, Discovery, and Product Details.</p>
+    </div>
+
+    <!-- Navigation Switcher -->
+    <div class="flex flex-wrap gap-2 bg-[#E0E1F6]/80 p-1.5 rounded-2xl border border-[#C8CAEE]">
+      <button onclick="renderScreen('register')" id="tab-register" class="screen-tab active px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">1. Registration Form</button>
+      <button onclick="renderScreen('growth')" id="tab-growth" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">2. Growth Hub</button>
+      <button onclick="renderScreen('settings')" id="tab-settings" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">3. Settings Tab</button>
+      <button onclick="renderScreen('discover')" id="tab-discover" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">4. Discovery Listing</button>
+      <button onclick="renderScreen('pdp')" id="tab-pdp" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">5. Product Details</button>
+      <button onclick="renderScreen('retailer')" id="tab-retailer" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">6. Dashboard</button>
+    </div>
+  </div>
+
+  <!-- Main Canvas Grid -->
+  <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-10 items-center justify-center">
+    
+    <!-- Phone Mockup Device -->
+    <div class="lg:col-span-6 flex justify-center">
+      <div class="phone-frame">
+        
+        <!-- Status Bar -->
+        <div class="pt-3 px-7 pb-2 flex justify-between items-center text-xs font-bold text-[#231F48] select-none z-40">
+          <span>9:41</span>
+          <div class="w-20 h-4 bg-[#231F48]/10 rounded-full flex items-center justify-center">
+            <div class="w-2.5 h-2.5 rounded-full bg-[#231F48]/30 mr-2"></div>
+            <div class="w-1.5 h-1.5 rounded-full bg-[#231F48]/40"></div>
+          </div>
+          <div class="flex items-center gap-1.5 text-[11px] font-bold">
+            <span>5G</span>
+            <span>100%</span>
+          </div>
+        </div>
+
+        <!-- Dynamic Screen Canvas -->
+        <div id="screen-container" class="screen-viewport">
+          <!-- Injected via JavaScript -->
+        </div>
+
+        <!-- Bottom Home Indicator Bar -->
+        <div class="w-full py-2 flex justify-center bg-transparent z-40">
+          <div class="w-32 h-1 bg-[#231F48]/40 rounded-full"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Specs & Architecture Panel -->
+    <div class="lg:col-span-6 space-y-5">
+      
+      <div class="clay-card p-6 bg-white border border-[#E0E1F6]">
+        <div class="flex items-center justify-between mb-4">
+          <span class="text-xs font-bold tracking-wider uppercase text-[#BB3F95] bg-[#BB3F95]/10 px-2.5 py-1 rounded-lg border border-[#BB3F95]/20">Active Flow Breakdown</span>
+          <span class="text-xs text-[#6B4773] font-bold">LIVE PREVIEW</span>
+        </div>
+
+        <div class="space-y-4 text-sm text-stone-700">
+          <div class="flex items-start gap-3">
+            <div class="w-7 h-7 rounded-xl bg-[#231F48] flex-shrink-0 flex items-center justify-center text-[#E0E1F6] font-bold text-xs">01</div>
+            <div>
+              <strong class="text-[#231F48] block font-marcellus text-base">Registration & Shop Setup</strong>
+              <span class="text-xs text-[#6B4773]">4-step tactile onboarding: Shop Name, Owner Name, Category chips, City/State address, optional GSTIN, and instant QR generation.</span>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-7 h-7 rounded-xl bg-[#BB3F95] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">02</div>
+            <div>
+              <strong class="text-[#231F48] block font-marcellus text-base">Growth Engine Hub</strong>
+              <span class="text-xs text-[#6B4773]">Festival AI Blasts, WhatsApp Campaign Analytics (CTR 42.8%), VIP Try-On Booking schedules, and Referral Network.</span>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-7 h-7 rounded-xl bg-[#560A39] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">03</div>
+            <div>
+              <strong class="text-[#231F48] block font-marcellus text-base">Settings & Integrations</strong>
+              <span class="text-xs text-[#6B4773]">Store Profile & custom URL slug, Meta WhatsApp Cloud Catalog sync status pill, Team members, and GST tax ledger.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script>
+    const screens = {
+      
+      // 1. REGISTRATION & ONBOARDING FORM (SCR-R03)
+      'register': `
+        <div class="p-5 pb-10 bg-[#F8F7FC]">
+          
+          <!-- Top Step Progress Indicator -->
+          <div class="flex items-center justify-between mb-6 px-1">
+            <div class="flex items-center gap-2">
+              <div class="step-bubble active">1</div>
+              <span class="text-xs font-bold text-[#231F48]">Shop</span>
+            </div>
+            <div class="step-connector active"></div>
+            <div class="flex items-center gap-2">
+              <div class="step-bubble upcoming">2</div>
+              <span class="text-xs font-medium text-[#928EB2]">Location</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="flex items-center gap-2">
+              <div class="step-bubble upcoming">3</div>
+              <span class="text-xs font-medium text-[#928EB2]">GST</span>
+            </div>
+          </div>
+
+          <!-- Screen Title in Marcellus -->
+          <div class="mb-4">
+            <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus">Setup Your Shop</h2>
+            <p class="text-xs text-[#6B4773] mt-0.5">Digitize your catalog and create your custom WhatsApp store URL.</p>
+          </div>
+
+          <!-- Form Fields Container -->
+          <div class="clay-card p-4 space-y-3.5 mb-5">
+            
+            <!-- Field 1: Shop Name -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">Shop Name <span class="text-[#BB3F95]">*</span></label>
+              <div class="flex items-center gap-2 p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                <svg class="w-4 h-4 text-[#6B4773]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                <input type="text" value="Radha Sarees & Bridal" placeholder="e.g. Royal Silk Emporium" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none" />
+              </div>
+            </div>
+
+            <!-- Field 2: Owner Name -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">Owner / Manager Name</label>
+              <div class="flex items-center gap-2 p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                <svg class="w-4 h-4 text-[#6B4773]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <input type="text" value="Suresh Kumar Verma" placeholder="Your Full Name" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none" />
+              </div>
+            </div>
+
+            <!-- Field 3: Primary Clothing Category -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1.5">Primary Specialization</label>
+              <div class="flex flex-wrap gap-2">
+                <span class="px-3 py-1.5 rounded-xl bg-[#231F48] text-white text-[11px] font-bold shadow-sm">Sarees & Silk</span>
+                <span class="px-3 py-1.5 rounded-xl bg-[#E0E1F6] text-[#231F48] text-[11px] font-semibold border border-[#C8CAEE]">Bridal Lehengas</span>
+                <span class="px-3 py-1.5 rounded-xl bg-[#E0E1F6] text-[#231F48] text-[11px] font-semibold border border-[#C8CAEE]">Suits & Kurtis</span>
+                <span class="px-3 py-1.5 rounded-xl bg-[#E0E1F6] text-[#231F48] text-[11px] font-semibold border border-[#C8CAEE]">Designer Blouses</span>
+              </div>
+            </div>
+
+            <!-- Field 4: Storefront Subdomain URL -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">Your Store Web Link</label>
+              <div class="flex items-center p-2.5 bg-[#E0E1F6]/50 border border-[#C8CAEE] rounded-2xl text-xs font-bold text-[#231F48]">
+                <span class="text-[#6B4773] font-medium mr-1">kanchuki.com/</span>
+                <span class="text-[#BB3F95] font-bold">radha-sarees</span>
+                <svg class="w-4 h-4 text-emerald-600 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"/></svg>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Bottom Signature Gradient Action Button -->
+          <div class="slide-btn-signature py-3.5" onclick="renderScreen('growth')">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-white">Save & Proceed to Location</span>
+            <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </div>
+          </div>
+
+        </div>
+      `,
+
+      // 2. GROWTH HUB SCREEN (SCR-R10)
+      'growth': `
+        <div class="p-5 pb-28 bg-[#F8F7FC]">
+          
+          <!-- Top Bar -->
+          <div class="flex justify-between items-center mb-5">
+            <div>
+              <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus">Growth Engine</h2>
+              <p class="text-[11px] text-[#6B4773] font-medium">Marketing, AI campaigns & WhatsApp reach</p>
+            </div>
+            <div class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6]">
+              <svg class="w-4 h-4 text-[#BB3F95] anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            </div>
+          </div>
+
+          <!-- Hero Campaign Performance Card in Dashboard Gradient -->
+          <div class="clay-card p-5 bg-gradient-to-br from-[#231F48] to-[#560A39] text-white mb-5 border-0 shadow-lg relative overflow-hidden">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-[10px] uppercase tracking-wider font-extrabold text-[#E0E1F6]/80">Diwali Festival Blast</span>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400 text-emerald-300 text-[10px] font-extrabold">LIVE</span>
+            </div>
+            <div class="flex items-baseline gap-2">
+              <h3 class="text-3xl font-extrabold font-marcellus text-white tracking-tight">42.8%</h3>
+              <span class="text-xs text-[#E0E1F6]/80 font-medium">WhatsApp CTR</span>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-white/15 text-xs text-center">
+              <div>
+                <span class="text-[9px] text-[#E0E1F6]/70 uppercase tracking-wider font-bold block">SENT</span>
+                <strong class="text-white font-bold">1,250</strong>
+              </div>
+              <div>
+                <span class="text-[9px] text-[#E0E1F6]/70 uppercase tracking-wider font-bold block">OPENED</span>
+                <strong class="text-white font-bold">980</strong>
+              </div>
+              <div>
+                <span class="text-[9px] text-[#E0E1F6]/70 uppercase tracking-wider font-bold block">ORDERS</span>
+                <strong class="text-amber-300 font-bold">54</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Growth Tools Grid with Clean Line Icons -->
+          <h4 class="text-xs uppercase tracking-wider text-[#6B4773] font-extrabold mb-3">Revenue Accelerators</h4>
+          <div class="grid grid-cols-2 gap-3.5 mb-5">
+            
+            <!-- Tool 1: AI Campaign Assistant -->
+            <div class="clay-card p-3.5 cursor-pointer hover:border-[#BB3F95] transition">
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95] mb-2">
+                <svg class="w-4 h-4 anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/></svg>
+              </div>
+              <h5 class="text-xs font-bold text-[#231F48] font-marcellus">AI Campaigns</h5>
+              <p class="text-[10px] text-[#6B4773] mt-0.5">Festival copy & blasts</p>
+            </div>
+
+            <!-- Tool 2: Try-On Bookings -->
+            <div class="clay-card p-3.5 cursor-pointer hover:border-[#BB3F95] transition">
+              <div class="w-8 h-8 rounded-xl bg-[#E0E1F6] flex items-center justify-center text-[#560A39] mb-2">
+                <svg class="w-4 h-4 anim-icon-float" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              </div>
+              <h5 class="text-xs font-bold text-[#231F48] font-marcellus">Showroom Trials</h5>
+              <p class="text-[10px] text-[#6B4773] mt-0.5">VIP bridal slots</p>
+            </div>
+
+            <!-- Tool 3: Digital Lookbooks -->
+            <div class="clay-card p-3.5 cursor-pointer hover:border-[#BB3F95] transition">
+              <div class="w-8 h-8 rounded-xl bg-[#E0E1F6] flex items-center justify-center text-[#560A39] mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+              </div>
+              <h5 class="text-xs font-bold text-[#231F48] font-marcellus">Lookbooks</h5>
+              <p class="text-[10px] text-[#6B4773] mt-0.5">PDF catalog shares</p>
+            </div>
+
+            <!-- Tool 4: Referral Engine -->
+            <div class="clay-card p-3.5 cursor-pointer hover:border-[#BB3F95] transition">
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95] mb-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              </div>
+              <h5 class="text-xs font-bold text-[#231F48] font-marcellus">Referral Engine</h5>
+              <p class="text-[10px] text-[#6B4773] mt-0.5">Tailor & salon network</p>
+            </div>
+
+          </div>
+
+          <!-- Bottom Action: Create New Campaign in Signature Gradient -->
+          <div class="slide-btn-signature" onclick="renderScreen('settings')">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-white">Create New Campaign</span>
+            <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Floating Dock -->
+        <div class="floating-dock">
+          <div class="dock-item" onclick="renderScreen('retailer')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          </div>
+          <div class="dock-item active">
+            <svg class="w-5 h-5 anim-icon-float" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#BB3F95] mt-1 dock-dot"></span>
+          </div>
+          <div class="dock-item" onclick="renderScreen('pdp')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('settings')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+          </div>
+        </div>
+      `,
+
+      // 3. SETTINGS SCREEN (SCR-R41 / Profile)
+      'settings': `
+        <div class="p-5 pb-28 bg-[#F8F7FC]">
+          
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-5">
+            <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus">Settings</h2>
+            <div class="px-2.5 py-1 rounded-full bg-[#BB3F95]/15 border border-[#BB3F95]/30 text-[#560A39] text-[10px] font-bold">PRO PLAN</div>
+          </div>
+
+          <!-- Store Profile Card -->
+          <div class="clay-card p-4 flex items-center justify-between mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-2xl bg-[#560A39] text-[#E0E1F6] flex items-center justify-center font-marcellus font-bold text-base shadow-sm">
+                RS
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-[#231F48] font-marcellus">Radha Sarees</h3>
+                <p class="text-[11px] text-[#6B4773]">kanchuki.com/radha-sarees</p>
+              </div>
+            </div>
+            <button class="w-8 h-8 rounded-xl bg-[#F8F7FC] border border-[#E0E1F6] flex items-center justify-center text-[#6B4773]">
+              <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+            </button>
+          </div>
+
+          <!-- Settings Groups -->
+          <div class="space-y-3 mb-5">
+            
+            <!-- WhatsApp Cloud Sync -->
+            <div class="clay-card p-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-700">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-[#231F48]">WhatsApp Cloud Sync</h4>
+                  <p class="text-[10px] text-emerald-600 font-semibold">● 148 SKUs connected</p>
+                </div>
+              </div>
+              <svg class="w-4 h-4 text-[#928EB2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+
+            <!-- Team & Staff Accounts -->
+            <div class="clay-card p-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-[#E0E1F6] flex items-center justify-center text-[#560A39]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-[#231F48]">Team & Staff Mode</h4>
+                  <p class="text-[10px] text-[#6B4773]">3 staff members active</p>
+                </div>
+              </div>
+              <svg class="w-4 h-4 text-[#928EB2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+
+            <!-- GST Invoicing & Tax -->
+            <div class="clay-card p-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-[#E0E1F6] flex items-center justify-center text-[#560A39]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-[#231F48]">GST & Invoicing</h4>
+                  <p class="text-[10px] text-[#6B4773]">07AAAAA0000A1Z5 (Verified)</p>
+                </div>
+              </div>
+              <svg class="w-4 h-4 text-[#928EB2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+
+            <!-- Subscription & Plan -->
+            <div class="clay-card p-3.5 flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95]">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+                </div>
+                <div>
+                  <h4 class="text-xs font-bold text-[#231F48]">Plan & Billing</h4>
+                  <p class="text-[10px] text-[#6B4773]">Growth Plan • Renews in 24d</p>
+                </div>
+              </div>
+              <svg class="w-4 h-4 text-[#928EB2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+
+          </div>
+
+          <!-- Logout Button in Signature Gradient -->
+          <div class="slide-btn-signature py-3" onclick="renderScreen('register')">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-white">Sign Out of Account</span>
+            <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Floating Dock -->
+        <div class="floating-dock">
+          <div class="dock-item" onclick="renderScreen('retailer')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('growth')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('pdp')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <div class="dock-item active">
+            <svg class="w-5 h-5 anim-icon-float" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#BB3F95] mt-1 dock-dot"></span>
+          </div>
+        </div>
+      `,
+
+      // 4. DISCOVERY
+      'discover': `
+        <div class="p-5 pb-28 bg-[#F8F7FC]">
+          
+          <div class="flex justify-between items-center mb-5">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl overflow-hidden bg-[#E0E1F6] shadow-sm border border-[#E0E1F6]">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <h3 class="text-sm font-bold text-[#231F48]">Hi, Victoria!</h3>
+            </div>
+            
+            <div class="relative w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] cursor-pointer" onclick="renderScreen('pdp')">
+              <svg class="w-5 h-5 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              <span class="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#BB3F95] text-white text-[9px] font-extrabold flex items-center justify-center shadow-sm">2</span>
+            </div>
+          </div>
+
+          <div class="mb-5">
+            <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus leading-tight">Find the best<br/>clothes for you</h2>
+          </div>
+
+          <div class="relative mb-6">
+            <div class="w-full bg-white rounded-2xl py-3.5 pl-11 pr-12 shadow-soft-clay border border-[#E0E1F6] flex items-center">
+              <svg class="w-4 h-4 text-[#928EB2] absolute left-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+              <input type="text" placeholder="Search" class="w-full text-xs font-semibold text-[#231F48] placeholder-[#928EB2] bg-transparent focus:outline-none" />
+              <button class="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center text-[#231F48] text-xs absolute right-3 border border-[#E0E1F6]">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="group cursor-pointer" onclick="renderScreen('pdp')">
+              <div class="relative h-56 rounded-[28px] overflow-hidden bg-white shadow-soft-clay border border-[#E0E1F6] mb-2.5">
+                <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <button class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#231F48] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6]">
+                  <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </button>
+              </div>
+              <h4 class="text-xs font-bold text-[#231F48]">Cotton dress</h4>
+              <p class="text-xs font-extrabold text-[#231F48] mt-0.5 font-sans">$129.00</p>
+            </div>
+
+            <div class="group cursor-pointer" onclick="renderScreen('pdp')">
+              <div class="relative h-44 rounded-[28px] overflow-hidden bg-white shadow-soft-clay border border-[#E0E1F6] mb-2.5">
+                <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <button class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#231F48] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6]">
+                  <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </button>
+              </div>
+              <h4 class="text-xs font-bold text-[#231F48]">Cotton T-shirt</h4>
+              <p class="text-xs font-extrabold text-[#231F48] mt-0.5 font-sans">$59.00</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="floating-dock">
+          <div class="dock-item active">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#BB3F95] mt-1 dock-dot"></span>
+          </div>
+          <div class="dock-item" onclick="renderScreen('growth')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('pdp')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('settings')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+          </div>
+        </div>
+      `,
+
+      // 5. PRODUCT DETAILS
+      'pdp': `
+        <div class="p-5 pb-10 bg-[#F8F7FC]">
+          
+          <div class="flex justify-between items-center mb-3">
+            <button onclick="renderScreen('discover')" class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6]">
+              <svg class="w-5 h-5 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            </button>
+            <button class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6]">
+              <svg class="w-5 h-5 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            </button>
+          </div>
+
+          <div class="relative h-80 rounded-[36px] overflow-hidden bg-[#E0E1F6] shadow-lg mb-5 border border-[#E0E1F6]">
+            <img id="main-pdp-hero" src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover" />
+            
+            <div class="pdp-right-thumbnails">
+              <div class="pdp-thumb-item active" onclick="switchMainPhoto(this, 'https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1539109136881-3be0616acf4b?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="pdp-thumb-item" onclick="switchMainPhoto(this, 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="pdp-thumb-item" onclick="switchMainPhoto(this, 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1490481651871-ab68de25d43d?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="pdp-thumb-item" onclick="switchMainPhoto(this, 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+            </div>
+
+            <div class="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#231F48]/85 backdrop-blur-md border border-white/20 text-white text-[10px] font-extrabold flex items-center gap-1.5 shadow-lg">
+              <svg class="w-3.5 h-3.5 text-[#BB3F95] anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              <span>AI Try-On</span>
+            </div>
+
+            <div class="absolute bottom-3 left-6 flex gap-1.5">
+              <span class="w-4 h-1.5 rounded-full bg-[#BB3F95]"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-white/70"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-white/70"></span>
+            </div>
+          </div>
+
+          <div class="flex justify-between items-center mb-5">
+            <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus">Jean jacket</h2>
+            <span class="text-xl font-extrabold text-[#231F48] font-sans">$109.00</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+              <span class="text-xs text-[#6B4773] font-bold block mb-2.5">Color</span>
+              <div class="flex items-center gap-2.5">
+                <div class="color-dot active bg-[#6B4773]" onclick="selectColor(this)">
+                  <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div class="color-dot bg-[#BB3F95]" onclick="selectColor(this)"></div>
+                <div class="color-dot bg-[#E0E1F6]" onclick="selectColor(this)"></div>
+              </div>
+            </div>
+
+            <div>
+              <span class="text-xs text-[#6B4773] font-bold block mb-2.5">Size</span>
+              <div class="flex items-center gap-2">
+                <div class="size-circle active" onclick="selectSize(this)">S</div>
+                <div class="size-circle" onclick="selectSize(this)">M</div>
+                <div class="size-circle" onclick="selectSize(this)">L</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <div class="flex items-center justify-between px-3 py-3 rounded-2xl bg-[#E0E1F6]/70 border border-[#C8CAEE] w-28 text-sm font-extrabold text-[#231F48]">
+              <button class="text-base text-[#231F48] hover:text-[#BB3F95] px-1 font-bold">−</button>
+              <span>1</span>
+              <button class="text-base text-[#231F48] hover:text-[#BB3F95] px-1 font-bold">+</button>
+            </div>
+
+            <div class="flex-1 slide-btn-signature py-3.5" onclick="renderScreen('discover')">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-white">Add to cart</span>
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      `,
+
+      // 6. RETAILER DASHBOARD
+      'retailer': `
+        <div class="p-5 pb-28 bg-[#F8F7FC]">
+          
+          <div class="flex justify-between items-center mb-5">
+            <div class="flex items-center gap-2.5">
+              <div class="w-10 h-10 rounded-2xl bg-[#560A39] text-[#E0E1F6] flex items-center justify-center font-marcellus font-bold text-sm shadow-md border border-[#BB3F95]/30">
+                RS
+              </div>
+              <div>
+                <h3 class="text-base font-extrabold text-[#231F48] font-marcellus">Radha Sarees</h3>
+                <p class="text-[10px] uppercase tracking-wider text-[#BB3F95] font-extrabold">CHANDNI CHOWK • PRO STORE</p>
+              </div>
+            </div>
+            
+            <div class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#560A39] shadow-soft-clay border border-[#E0E1F6]" onclick="renderScreen('settings')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+            </div>
+          </div>
+
+          <div class="clay-card p-5 bg-gradient-to-br from-[#231F48] to-[#560A39] text-white mb-4 border-0 shadow-lg relative overflow-hidden">
+            <div class="flex justify-between items-start mb-2">
+              <span class="text-[10px] uppercase tracking-wider font-extrabold text-[#E0E1F6]/80">Today's Store Sales</span>
+              <span class="px-2 py-0.5 rounded-full bg-[#BB3F95]/30 border border-[#BB3F95] text-white text-[10px] font-extrabold">+18.4%</span>
+            </div>
+            <h2 class="text-3xl font-extrabold font-marcellus text-white tracking-tight">₹42,500</h2>
+            
+            <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/15 text-xs">
+              <div>
+                <span class="text-[10px] text-[#E0E1F6]/70 block uppercase tracking-wider font-extrabold">WHATSAPP SHARES</span>
+                <strong class="text-white font-extrabold">34 Sent</strong>
+              </div>
+              <div>
+                <span class="text-[10px] text-[#E0E1F6]/70 block uppercase tracking-wider font-extrabold">ACTIVE SKUs</span>
+                <strong class="text-white font-extrabold">148 in Stock</strong>
+              </div>
+            </div>
+          </div>
+
+          <h4 class="text-xs uppercase tracking-wider text-[#6B4773] font-extrabold mb-3">AI Quick Tools</h4>
+          <div class="grid grid-cols-2 gap-3 mb-4">
+            <div class="clay-card p-4 cursor-pointer hover:border-[#BB3F95] transition" onclick="renderScreen('growth')">
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95] mb-2">
+                <svg class="w-4 h-4 anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+              </div>
+              <h5 class="text-sm font-extrabold text-[#231F48] font-marcellus">AI Auto-Tag</h5>
+              <p class="text-[10px] text-[#6B4773] mt-0.5 font-medium">Photo to SKU in 3s</p>
+            </div>
+
+            <div class="clay-card p-4 cursor-pointer hover:border-[#BB3F95] transition" onclick="renderScreen('growth')">
+              <div class="w-8 h-8 rounded-xl bg-[#E0E1F6] flex items-center justify-center text-[#560A39] mb-2">
+                <svg class="w-4 h-4 anim-icon-float" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              </div>
+              <h5 class="text-sm font-extrabold text-[#231F48] font-marcellus">Studio Shoot</h5>
+              <p class="text-[10px] text-[#6B4773] mt-0.5 font-medium">FLUX model backdrops</p>
+            </div>
+          </div>
+
+          <div class="slide-btn-signature">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-white">Scan Barcode / QR</span>
+            <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="floating-dock">
+          <div class="dock-item active">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#BB3F95] mt-1 dock-dot"></span>
+          </div>
+          <div class="dock-item" onclick="renderScreen('growth')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('pdp')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/></svg>
+          </div>
+          <div class="dock-item" onclick="renderScreen('settings')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
+          </div>
+        </div>
+      `
+    };
+
+    function renderScreen(screenKey) {
+      document.querySelectorAll('.screen-tab').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById('tab-' + screenKey);
+      if (activeBtn) activeBtn.classList.add('active');
+      document.getElementById('screen-container').innerHTML = screens[screenKey];
+    }
+
+    function switchMainPhoto(el, src) {
+      document.querySelectorAll('.pdp-thumb-item').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('main-pdp-hero').src = src;
+    }
+
+    function selectSize(el) {
+      document.querySelectorAll('.size-circle').forEach(s => s.classList.remove('active'));
+      el.classList.add('active');
+    }
+
+    function selectColor(el) {
+      document.querySelectorAll('.color-dot').forEach(c => {
+        c.classList.remove('active');
+        c.innerHTML = '';
+      });
+      el.classList.add('active');
+      el.innerHTML = '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+    }
+
+    // Initialize with Registration form
+    renderScreen('register');
+  </script>
+</body>
+</html>

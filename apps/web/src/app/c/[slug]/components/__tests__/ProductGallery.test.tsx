@@ -58,7 +58,7 @@ describe('ProductGallery', () => {
 
   it('opens the fullscreen lightbox on photo click and closes it', () => {
     render(<ProductGallery photos={PHOTOS} variants={VARIANTS} alt="Kurta Set" />);
-    fireEvent.click(screen.getByRole('button', { name: 'Open photo in fullscreen' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open photo in fullscreen' })[0]!);
     expect(screen.getByRole('button', { name: 'Close fullscreen photo' })).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close fullscreen photo' }));
     expect(

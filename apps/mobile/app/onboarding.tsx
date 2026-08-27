@@ -58,7 +58,6 @@ function StepIndicator({
   currentStep: Step;
   onPress: (step: Step) => void;
 }) {
-  const { colors } = useTheme();
   return (
     <View className="flex-row items-center justify-center px-4 pt-2 pb-3">
       {([1, 2, 3, 4] as Step[]).map((s, i) => {
@@ -71,7 +70,7 @@ function StepIndicator({
               <View
                 className="h-1 w-6 sm:w-10 rounded-full mx-1"
                 style={{
-                  backgroundColor: isPast ? colors.rust[500] : colors.sand[200],
+                  backgroundColor: isPast ? '#BB3F95' : '#E0E1F6',
                 }}
               />
             )}
@@ -85,15 +84,15 @@ function StepIndicator({
               <View
                 className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full items-center justify-center border-2 ${
                   isActive
-                    ? 'bg-rust-500 border-rust-600 shadow-sm'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
                     : isPast
-                      ? 'bg-rust-50 border-rust-500'
-                      : 'bg-white border-sand-300'
+                      ? 'bg-fuchsia-500 border-fuchsia-500'
+                      : 'bg-white border-lavender-300'
                 }`}
               >
                 <Text
                   className={`text-xs sm:text-sm font-bold ${
-                    isActive ? 'text-white' : isPast ? 'text-rust-700' : 'text-sand-400'
+                    isActive ? 'text-white' : isPast ? 'text-white' : 'text-heliotrope-500'
                   }`}
                 >
                   {isPast ? '✓' : s}
@@ -101,7 +100,7 @@ function StepIndicator({
               </View>
               <Text
                 className={`text-[11px] font-semibold ${
-                  isActive ? 'text-sand-900 font-bold' : isPast ? 'text-sand-700' : 'text-sand-400'
+                  isActive ? 'text-spaceCadet-900 font-bold' : isPast ? 'text-heliotrope-700' : 'text-heliotrope-500'
                 }`}
               >
                 {STEP_META[s].label}
@@ -116,10 +115,10 @@ function StepIndicator({
 
 // ─── Form field wrapper (Light Theme) ──────────────────────────────
 const fieldShadow: ViewStyle = {
-  shadowColor: '#0F172A',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.03,
-  shadowRadius: 2,
+  shadowColor: '#231F48',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.04,
+  shadowRadius: 4,
   elevation: 1,
 };
 
@@ -134,15 +133,14 @@ function Field({
   optional?: boolean;
   children: ReactNode;
 }) {
-  const { colors } = useTheme();
   return (
     <View className="mt-4 w-full">
-      <Text className="text-xs sm:text-sm font-semibold text-sand-800 mb-1.5 tracking-tight">
+      <Text className="text-xs sm:text-sm font-bold text-spaceCadet-900 mb-1.5 tracking-tight">
         {label}
-        {required && <Text style={{ color: colors.rust[600] }}> *</Text>}
-        {optional && <Text className="text-sand-400 font-normal"> (optional)</Text>}
+        {required && <Text className="text-fuchsia-500"> *</Text>}
+        {optional && <Text className="text-heliotrope-500 font-normal"> (optional)</Text>}
       </Text>
-      <View className="w-full rounded-2xl" style={fieldShadow}>
+      <View className="w-full rounded-2xl bg-white border border-lavender-200" style={fieldShadow}>
         {children}
       </View>
     </View>

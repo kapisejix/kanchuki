@@ -99,6 +99,7 @@ const fetchRoutes: Record<string, { status: number; body: unknown }> = {
 }
 
 beforeEach(() => {
+  localStorage.setItem('kanchuki_lead_meera-sarees', 'true')
   fetchMock.mockReset()
   fetchMock.mockImplementation((input: string | URL | Request) => {
     const url = typeof input === 'string' ? input : String(input)
@@ -115,6 +116,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  localStorage.clear()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })

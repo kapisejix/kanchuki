@@ -1,4 +1,5 @@
 'use client'
+import { formatPaiseShort } from '@kanchuki/shared'
 
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -62,7 +63,6 @@ type PartnerStats = {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -151,7 +151,7 @@ export default function PartnersPage() {
           <StatsCard icon={TrendingUp} label="Active" value={String(stats.active_partners)} color="green" />
           <StatsCard icon={ExternalLink} label="Referrals" value={String(stats.total_referrals)} color="blue" />
           <StatsCard icon={Clock} label="Pending" value={String(stats.pending_referrals)} color="purple" />
-          <StatsCard icon={IndianRupee} label="Paid Out" value={inr(stats.total_commission_paise)} color="green" />
+          <StatsCard icon={IndianRupee} label="Paid Out" value={formatPaiseShort(stats.total_commission_paise)} color="green" />
         </motion.div>
       )}
 
@@ -218,7 +218,7 @@ export default function PartnersPage() {
                     <td className="px-4 py-3.5 text-sm font-medium text-gray-700">
                       {p.commission_type === 'PERCENTAGE_OF_SALE'
                         ? `${p.commission_rate}%`
-                        : inr(p.commission_rate)}
+                        : formatPaiseShort(p.commission_rate)}
                     </td>
                     <td className="px-4 py-3.5 text-right text-gray-600 tabular-nums">
                       {p._count.referrals}
@@ -346,7 +346,7 @@ function PartnerDetailModal({
         {/* Info grid */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           <InfoRow label="Retailer" value={partner.retailer.shop_name ?? partner.retailer.phone} />
-          <InfoRow label="Commission" value={partner.commission_type === 'PERCENTAGE_OF_SALE' ? `${partner.commission_rate}%` : inr(partner.commission_rate)} />
+          <InfoRow label="Commission" value={partner.commission_type === 'PERCENTAGE_OF_SALE' ? `${partner.commission_rate}%` : formatPaiseShort(partner.commission_rate)} />
           <InfoRow label="Contact" value={partner.contact_person ?? '—'} />
           <InfoRow label="Phone" value={partner.phone ?? '—'} />
           <InfoRow label="Email" value={partner.email ?? '—'} />
@@ -369,7 +369,7 @@ function PartnerDetailModal({
                     <p className="text-[10px] text-gray-400">{fmtDate(r.created_at)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-semibold text-gray-900">{inr(r.commission_paise)}</p>
+                    <p className="text-xs font-semibold text-gray-900">{formatPaiseShort(r.commission_paise)}</p>
                     <span
                       className={`text-[10px] font-medium ${
                         r.status === 'PAID' ? 'text-green-600' : r.status === 'PENDING' ? 'text-amber-600' : 'text-gray-400'

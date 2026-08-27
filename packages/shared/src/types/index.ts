@@ -54,6 +54,7 @@ export interface ProductSummary {
   id: string
   retailer_id: string
   name: string | null
+  sku?: string | null
   price_min: number | null  // paise
   price_max: number | null  // paise
   status: ProductStatus
@@ -69,6 +70,13 @@ export interface ProductSummary {
 }
 
 export interface ProductDetail extends ProductSummary {
+  sku?: string | null
+  description?: string | null
+  subtype?: string | null
+  category_id?: string | null
+  background_image_id?: string | null
+  add_shadow?: boolean
+  sizes?: string[]
   product_type: string | null
   fabric_estimate: string | null
   fabrics: string[]
@@ -80,8 +88,12 @@ export interface ProductDetail extends ProductSummary {
   mrp: number | null
   notes: string | null
   metadata: Record<string, unknown> | null
+  ai_tag_error?: string | null
+  spin_status?: string | null
+  spin_error?: string | null
   photos: ProductPhotoItem[]
   videos?: ProductVideoItem[]
+  spin_frames?: { id: string; url: string }[]
   variants: ProductVariantItem[]
 }
 
@@ -89,7 +101,12 @@ export interface ProductPhotoItem {
   id: string
   url: string
   is_primary: boolean
-  sort_order: number
+  sort_order?: number
+  piece_type?: 'upper' | 'lower' | null
+  original_url?: string | null
+  metadata?: Record<string, unknown> | null
+  is_video?: boolean
+  video_duration?: number | null
 }
 
 export interface ProductVideoItem {
@@ -108,10 +125,48 @@ export interface ProductVariantItem {
   id: string
   color: string
   photo_url: string | null
-  ai_preview_url: string | null
-  is_ai_preview: boolean
-  status: ProductStatus
-  price_override: number | null
+  ai_preview_url?: string | null
+  is_ai_preview?: boolean
+  status?: ProductStatus
+  price_override?: number | null
+}
+
+export interface CreateProductInput {
+  name?: string
+  sku?: string
+  description?: string
+  category_id?: string
+  category?: string
+  subtype?: string
+  product_type?: string
+  primary_color?: string
+  secondary_colors?: string[]
+  fabric_estimate?: string
+  fabrics?: string[]
+  styles?: string[]
+  pattern?: string
+  embellishments?: string[]
+  neck_style?: string
+  sleeve_type?: string
+  sizes?: string[]
+  price_min?: number
+  price_max?: number
+  mrp?: number
+  status?: ProductStatus
+  section_id?: string
+  location_notes?: string
+  notes?: string
+  search_tags?: string[]
+  photo_url: string
+  photo_r2_key: string
+  metadata?: Record<string, unknown>
+  auto_cleanup?: boolean
+  background_image_id?: string
+  add_shadow?: boolean
+}
+
+export interface UpdateProductInput extends Partial<CreateProductInput> {
+  id?: string
 }
 
 export interface AiTagResult {

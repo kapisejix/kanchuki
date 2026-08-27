@@ -39,11 +39,13 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   // route, so they skip gating entirely, same as everywhere else in the app.
   const storeSlug = collection.retailer.public_slug;
   const catalogTarget = storeSlug
-    ? collectionPath.includes(`/all-`) || collectionPath.endsWith('/all')
-      ? `/${storeSlug}/all`
-      : collectionPath.includes(`/cat-`)
-        ? `/${storeSlug}/categories/${collectionPath.split('/cat-')[1]}`
-        : collectionPath
+    ? collectionPath.startsWith(`/${storeSlug}/categories/`) || collectionPath === `/${storeSlug}/all`
+      ? collectionPath
+      : collectionPath.includes(`/all-`) || collectionPath.endsWith('/all')
+        ? `/${storeSlug}/all`
+        : collectionPath.includes(`/cat-`)
+          ? `/${storeSlug}/categories/${collectionPath.slice(collectionPath.indexOf('/cat-') + 5)}`
+          : collectionPath
     : collectionPath;
 
   const [needsLead, setNeedsLead] = useState(() => Boolean(storeSlug));
@@ -132,23 +134,23 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         <div className="mt-4 space-y-3">
           <div>
             <p
-              className={`font-display text-3xl font-bold tabular-nums tracking-tight ${
-                isSold ? 'text-gray-400 line-through' : 'text-gray-900'
+              className={`font-marcellus text-3xl font-extrabold tabular-nums tracking-tight ${
+                isSold ? 'text-gray-400 line-through' : 'text-[#231F48]'
               }`}
             >
               {formatPriceRange(product.price_min, product.price_max)}
             </p>
             {(product.name || product.category) && (
-              <h2 className="text-lg font-semibold text-gray-900 mt-1">
+              <h2 className="text-lg font-bold text-[#231F48] font-marcellus mt-1">
                 {product.name ?? product.category}
               </h2>
             )}
             {product.category && product.name && (
-              <p className="text-sm text-gray-500">{product.category}</p>
+              <p className="text-xs font-bold text-[#6B4773] uppercase tracking-wider">{product.category}</p>
             )}
             {product.rating_count > 0 && (
               <div className="flex items-center gap-1 mt-1">
-                <Star size={14} className="text-amber-400 fill-amber-400" />
+                <Star size={14} className="text-[#BB3F95] fill-[#BB3F95]" />
                 <span className="text-sm font-semibold text-gray-700">
                   {product.avg_rating.toFixed(1)}
                 </span>
@@ -161,7 +163,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
 
           {/* Store location — tell staff where to find this item */}
           {product.location && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-[#560A39] bg-[#E0E1F6]/60 border border-[#C8CAEE] rounded-2xl px-3 py-2">
               <MapPin size={14} />
               {product.location}
             </div>
@@ -169,38 +171,24 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
 
           {/* AI Summary */}
           {product.description && (
-            <div className="bg-cyan-50/60 border border-cyan-100 rounded-2xl px-3.5 py-3">
-              <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1.5 mb-1">
+            <div className="bg-white border border-[#E0E1F6] rounded-2xl p-4 shadow-sm">
+              <p className="text-xs font-bold text-[#BB3F95] flex items-center gap-1.5 mb-1 uppercase tracking-wider">
                 <Sparkles size={13} />
-                AI Summary
+                AI Fabric & Style Summary
               </p>
-              <p className="text-sm text-gray-700 leading-relaxed">{product.description}</p>
+              <p className="text-xs text-[#231F48] leading-relaxed font-medium">{product.description}</p>
             </div>
           )}
-
-          {/* Product Info */}
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl px-3.5 py-3">
-            <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5 mb-2">
-              <Info size={13} />
-              Product Info
-            </p>
-            <div className="space-y-1.5">
-              {product.subtype && <InfoRow label="Type" value={product.subtype} />}
-              {product.fabric_estimate && (
-                <InfoRow label="Fabric" value={product.fabric_estimate} />
-              )}
-            </div>
-          </div>
 
           {/* Sizes */}
           {product.sizes.length > 0 && (
             <div>
-              <p className="text-xs text-gray-500 font-medium mb-2">Available Sizes</p>
+              <p className="text-xs text-[#6B4773] font-bold uppercase tracking-wider mb-2">Available Sizes</p>
               <div className="flex flex-wrap gap-2">
                 {product.sizes.map((size) => (
                   <span
                     key={size}
-                    className="text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-full"
+                    className="text-xs font-extrabold bg-[#E0E1F6] border border-[#C8CAEE] text-[#231F48] px-3.5 py-1.5 rounded-full"
                   >
                     {size}
                   </span>
@@ -212,30 +200,30 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
 
         {/* ── CTAs — enquire on WhatsApp + browse the full catalog ── */}
         {!isSold && (
-          <div className="mt-5 space-y-2.5">
+          <div className="mt-6 space-y-2.5">
             <a
               href={enquiryUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center justify-center gap-2 w-full font-semibold py-3.5 rounded-2xl
-                         bg-green-500 hover:bg-green-600 text-white shadow-soft hover:shadow-soft-lg
-                         transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2
-                         focus-visible:ring-green-500 focus-visible:ring-offset-2"
+              className="flex items-center justify-between px-5 py-3.5 rounded-3xl
+                         bg-gradient-to-r from-[#231F48] to-[#560A39] text-white shadow-lg
+                         transition-all active:scale-[0.98] font-bold text-xs uppercase tracking-wider"
             >
-              <MessageCircle size={18} />
-              Enquire on WhatsApp
+              <span>Enquire on WhatsApp</span>
+              <div className="w-8 h-8 rounded-xl bg-[#BB3F95] flex items-center justify-center text-white">
+                <MessageCircle size={16} />
+              </div>
             </a>
           </div>
         )}
 
         <Link
           href={catalogTarget}
-          className="mt-2.5 flex items-center justify-center gap-2 w-full font-semibold py-3.5 rounded-2xl
-                     bg-cyan-600 hover:bg-cyan-700 text-white shadow-soft hover:shadow-soft-lg
-                     transition-all active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2
-                     focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+          className="mt-2.5 flex items-center justify-center gap-2 w-full font-bold py-3.5 rounded-3xl
+                     bg-white border border-[#E0E1F6] text-[#231F48] shadow-sm
+                     transition-all active:scale-[0.98] text-xs uppercase tracking-wider"
         >
-          <ShoppingBag size={18} />
+          <ShoppingBag size={16} />
           View Full Catalog
         </Link>
 

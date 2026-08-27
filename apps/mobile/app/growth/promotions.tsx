@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ChevronLeft, Percent, Plus, Tag, Trash2 } from 'lucide-react-native'
@@ -9,11 +10,10 @@ import { growthApi, type Promotion } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 function promoBadge(p: Promotion) {
   if (p.discount_type === 'PERCENT') return `${p.discount_value}% off`
-  return `${inr(p.discount_value)} off`
+  return `${formatPaiseShort(p.discount_value)} off`
 }
 
 export default function PromotionsScreen() {
@@ -123,7 +123,7 @@ export default function PromotionsScreen() {
                       </Text>
                       <Text className="text-xs text-sand-400">
                         {promoBadge(p)}
-                        {p.min_order_paise ? ` · min ${inr(p.min_order_paise)}` : ''}
+                        {p.min_order_paise ? ` · min ${formatPaiseShort(p.min_order_paise)}` : ''}
                         {p.times_used > 0 ? ` · used ${p.times_used}×` : ''}
                       </Text>
                     </View>

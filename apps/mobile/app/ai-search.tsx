@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useMutation } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ChevronLeft, Image as ImageIcon, Mic, Search, Sparkles } from 'lucide-react-native'
@@ -49,7 +50,6 @@ const EXAMPLE_QUERIES = [
   'navy lehenga',
 ]
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 export default function AiSearchScreen() {
   const { primaryColor, colors } = useTheme()
@@ -182,7 +182,7 @@ export default function AiSearchScreen() {
               {interpretation.detected_budget_max != null && (
                 <View className="bg-sand-100 px-2.5 py-1 rounded-full">
                   <Text className="text-[11px] font-semibold text-sand-600">
-                    under {inr(interpretation.detected_budget_max)}
+                    under {formatPaiseShort(interpretation.detected_budget_max)}
                   </Text>
                 </View>
               )}
@@ -227,7 +227,7 @@ export default function AiSearchScreen() {
                       </Text>
                       <View className="flex-row items-center justify-between mt-0.5">
                         {p.price_min != null ? (
-                          <Text className="text-[11px] text-sand-500">{inr(p.price_min)}</Text>
+                          <Text className="text-[11px] text-sand-500">{formatPaiseShort(p.price_min)}</Text>
                         ) : (
                           <Text className="text-[11px] text-sand-300">—</Text>
                         )}

@@ -1,52 +1,15 @@
-// Auto-split from app/product/[id].tsx (1944 lines) — shared types for the
-// product detail screen and its sub-components.
-export type Photo = {
-  id: string
-  url: string
-  is_primary: boolean
-  piece_type: 'upper' | 'lower' | null
-  original_url?: string | null
-  metadata?: Record<string, unknown> | null
-  is_video?: boolean
-  video_duration?: number | null
-}
-export type Variant = { id: string; color: string; photo_url: string | null }
-export type Product = {
-  id: string
-  name: string | null
-  sku: string | null
-  description: string | null
-  subtype: string | null
-  category: string | null
-  category_id: string | null
-  background_image_id: string | null
-  // F-030: soft shadow under the garment cutout during background removal —
-  // product-level default, applied by the auto-clean job at upload time.
-  add_shadow?: boolean
-  product_type: string | null
-  primary_color: string | null
-  fabric_estimate: string | null
-  fabrics: string[]
-  styles: string[]
-  pattern: string | null
-  sizes: string[]
-  price_min: number | null
-  price_max: number | null
-  status: 'AVAILABLE' | 'SOLD' | 'RESERVED' | 'NOT_SURE'
-  location_notes: string | null
-  notes: string | null
-  ai_tagged: boolean
-  ai_tag_error: string | null
-  spin_status: string | null
-  spin_error: string | null
-  photos: Photo[]
-  videos?: { id: string; public_url: string; duration_sec: number | null; is_main: boolean; source: 'UPLOAD' | 'KEN_BURNS' }[]
-  spin_frames: { id: string; url: string }[]
-  variants: Variant[]
-  section: { name: string } | null
-}
+import type {
+  ProductDetail,
+  ProductPhotoItem,
+  ProductVariantItem,
+  ProductStatus,
+} from '@kanchuki/shared'
 
-export const STATUS_OPTIONS: { value: Product['status']; label: string }[] = [
+export type Photo = ProductPhotoItem
+export type Variant = ProductVariantItem
+export type Product = ProductDetail
+
+export const STATUS_OPTIONS: { value: ProductStatus; label: string }[] = [
   { value: 'AVAILABLE', label: 'Available' },
   { value: 'RESERVED', label: 'Reserved' },
   { value: 'SOLD', label: 'Sold' },

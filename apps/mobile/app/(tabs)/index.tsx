@@ -48,6 +48,9 @@ type RetailerMe = {
   plan_status: string;
 };
 
+import { LinearGradient } from 'expo-linear-gradient';
+import { GradientButton } from '../../src/components/GradientButton';
+
 export default function HomeScreen() {
   const { primaryColor, colors } = useTheme();
   const { data: meData, isLoading: meLoading } = useQuery({
@@ -89,34 +92,91 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-[#F8F7FC]"
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
     >
-      {/* Greeting hero */}
-      <View className="bg-ink-600 px-4 pt-4 pb-8 rounded-b-3xl">
-        <View className="flex-row items-center gap-3">
-          <View className="w-12 h-12 rounded-2xl bg-white/15 items-center justify-center">
-            <Text className="text-white font-bold text-lg">
-              {(me?.shop_name ?? 'S').charAt(0).toUpperCase()}
-            </Text>
+      {/* ── Signature Gradient Hero (#231F48 to #560A39) ── */}
+      <View className="px-4 pt-4 pb-2">
+        <LinearGradient
+          colors={['#231F48', '#560A39']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ borderRadius: 32 }}
+          className="p-5 shadow-lg"
+        >
+          {/* Top Retailer Bar */}
+          <View className="flex-row items-center justify-between mb-4">
+            <View className="flex-row items-center gap-3">
+              <View className="w-11 h-11 rounded-2xl bg-tyrian-800 border border-fuchsia-500/40 items-center justify-center shadow-sm">
+                <Text className="text-lavender-200 font-marcellus font-bold text-base">
+                  {(me?.shop_name ?? 'R').charAt(0).toUpperCase()}
+                </Text>
+              </View>
+              <View>
+                <Text className="text-white text-lg font-bold font-marcellus">
+                  {me?.shop_name ?? 'Your Store'}
+                </Text>
+                <Text className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wider">
+                  {me?.plan ?? 'PRO STORE'} • ACTIVE
+                </Text>
+              </View>
+            </View>
+
+            <AnimatedPressable
+              onPress={() => router.push('/settings')}
+              className="w-9 h-9 rounded-2xl bg-white/10 border border-white/20 items-center justify-center"
+            >
+              <Settings size={16} color="#E0E1F6" />
+            </AnimatedPressable>
           </View>
-          <View>
-            <Text className="text-ink-100 text-sm">Welcome back 👋</Text>
-            <Text className="text-white text-2xl font-bold mt-0.5">
-              {me?.shop_name ?? 'Your Store'}
-            </Text>
+
+          {/* Monthly Stats in Hero */}
+          <View className="border-t border-white/15 pt-3">
+            <View className="flex-row justify-between items-start mb-1">
+              <Text className="text-[10px] uppercase tracking-wider font-bold text-lavender-200/80">
+                Active Catalog Overview
+              </Text>
+              <View className="px-2 py-0.5 rounded-full bg-fuchsia-500/30 border border-fuchsia-400">
+                <Text className="text-white text-[10px] font-bold">+18.4%</Text>
+              </View>
+            </View>
+
+            <View className="flex-row items-baseline gap-2">
+              <Text className="text-3xl font-extrabold font-marcellus text-white">
+                {stats?.views_this_month ?? 0}
+              </Text>
+              <Text className="text-xs text-lavender-200 font-medium">Customer Views</Text>
+            </View>
+
+            <View className="flex-row gap-4 mt-3 pt-2 border-t border-white/10">
+              <View className="flex-1">
+                <Text className="text-[9px] text-lavender-200/70 font-bold uppercase tracking-wider">
+                  ENQUIRIES
+                </Text>
+                <Text className="text-white font-bold text-sm">
+                  {stats?.enquiries_this_month ?? 0} Sent
+                </Text>
+              </View>
+              <View className="flex-1">
+                <Text className="text-[9px] text-lavender-200/70 font-bold uppercase tracking-wider">
+                  ACTIVE PRODUCTS
+                </Text>
+                <Text className="text-white font-bold text-sm">
+                  {stats?.total_products_available ?? 0} SKUs
+                </Text>
+              </View>
+            </View>
           </View>
-        </View>
-        {me?.plan_status === 'TRIAL' && (
-          <AnimatedPressable
-            onPress={() => router.push('/billing')}
-            className="mt-4 bg-white/15 px-3 py-1.5 rounded-lg self-start"
-          >
-            <Text className="text-white text-xs font-medium">
-              14-day free trial active · View plans
-            </Text>
-          </AnimatedPressable>
-        )}
+        </LinearGradient>
+      </View>
+
+      {/* ── Scan Barcode / QR Primary CTA ── */}
+      <View className="px-4 py-2">
+        <GradientButton
+          label="Scan Barcode / QR"
+          onPress={() => router.push('/store-profile')}
+          accentBadge={<QrCode size={16} color="white" />}
+        />
       </View>
 
       {/* Quick Stats */}

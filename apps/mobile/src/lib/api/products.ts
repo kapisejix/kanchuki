@@ -1,3 +1,11 @@
+import type {
+  ProductDetail,
+  ProductSummary,
+  CreateProductInput,
+  UpdateProductInput,
+  Pagination,
+  ProductStatus,
+} from '@kanchuki/shared';
 import { request } from './client';
 
 export const productApi = {
@@ -16,8 +24,8 @@ export const productApi = {
       timeoutMs: 30_000,
     }),
 
-  create: (data: Record<string, unknown>) =>
-    request<{ data: unknown }>('/v1/products', {
+  create: (data: CreateProductInput | Record<string, unknown>) =>
+    request<{ data: ProductDetail }>('/v1/products', {
       method: 'POST',
       body: JSON.stringify(data),
       timeoutMs: 30_000,
@@ -40,7 +48,7 @@ export const productApi = {
     if (params?.sku) qs.set('sku', params.sku);
     if (params?.cursor) qs.set('cursor', params.cursor);
     if (params?.limit) qs.set('limit', String(params.limit));
-    return request<{ data: unknown[]; pagination: unknown }>(`/v1/products?${qs}`, {
+    return request<{ data: ProductSummary[]; pagination: Pagination }>(`/v1/products?${qs}`, {
       getCacheTtlMs: 10_000,
     });
   },
@@ -48,16 +56,16 @@ export const productApi = {
   get: (id: string) =>
     // Short TTL — this screen polls while AI tagging is in progress, so a
     // long-lived cache would mask the update and leave the spinner stuck.
-    request<{ data: unknown }>(`/v1/products/${id}`, { getCacheTtlMs: 3_000 }),
+    request<{ data: ProductDetail }>(`/v1/products/${id}`, { getCacheTtlMs: 3_000 }),
 
-  update: (id: string, data: Record<string, unknown>) =>
-    request<{ data: unknown }>(`/v1/products/${id}`, {
+  update: (id: string, data: UpdateProductInput | Record<string, unknown>) =>
+    request<{ data: ProductDetail }>(`/v1/products/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
 
-  updateStatus: (id: string, status: string) =>
-    request<{ data: unknown }>(`/v1/products/${id}/status`, {
+  updateStatus: (id: string, status: ProductStatus | string) =>
+    request<{ data: ProductDetail }>(`/v1/products/${id}/status`, {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
@@ -71,11 +79,11 @@ export const productApi = {
     }),
 
   /** Owner-only "Recently Deleted" tab — see products.ts GET /deleted */
-  listDeleted: () => request<{ data: unknown[] }>('/v1/products/deleted', { getCacheTtlMs: 0 }),
+  listDeleted: () => request<{ data: ProductSummary[] }>('/v1/products/deleted', { getCacheTtlMs: 0 }),
 
   /** Owner-only — undo a soft delete (staff or owner) */
   restore: (id: string) =>
-    request<{ data: unknown }>(`/v1/products/${id}/restore`, { method: 'PATCH' }),
+    request<{ data: ProductDetail }>(`/v1/products/${id}/restore`, { method: 'PATCH' }),
 
   /** Owner-only — permanent removal; fails with a clear message if the
    * product is referenced by a past order or collection. */

@@ -109,29 +109,29 @@ export default function PhoneScreen() {
             />
           </View>
 
-          <Text className="text-3xl font-bold text-sand-900">
+          <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus">
             Welcome back{'\n'}to Kanchuki
           </Text>
-          <Text className="text-sand-500 text-base mt-3">
+          <Text className="text-heliotrope-500 text-sm mt-2 font-medium">
             Aapki dukan, AI ki taakat. Enter your mobile number to continue.
           </Text>
 
-          {/* Phone input */}
-          <View className="mt-10">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+          {/* Phone input card */}
+          <View className="mt-8 bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm">
+            <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-2">
               Mobile Number
             </Text>
-            <View className="flex-row items-center border-2 border-sand-200 rounded-2xl px-4 py-4 gap-3 focus:border-ink-500">
-              <Text className="text-base font-semibold text-sand-600">+91</Text>
-              <View className="w-px h-5 bg-sand-300" />
+            <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-3">
+              <Text className="text-sm font-bold text-tyrian-800">+91</Text>
+              <View className="w-px h-4 bg-lavender-300" />
               <TextInput
                 value={phone}
                 onChangeText={setPhone}
                 placeholder="10-digit mobile number"
-                placeholderTextColor={colors.sand[400]}
+                placeholderTextColor="#928EB2"
                 keyboardType="phone-pad"
                 maxLength={15}
-                className="flex-1 text-base text-sand-900 font-medium"
+                className="flex-1 text-sm text-spaceCadet-900 font-bold"
                 autoFocus
                 returnKeyType="done"
                 onSubmitEditing={() => void handleSend()}
@@ -142,17 +142,17 @@ export default function PhoneScreen() {
                 Enter a valid 10-digit mobile number (starts with 6–9)
               </Text>
             ) : (
-              <Text className="text-xs text-sand-400 mt-2 pl-1">
-                OTP will be sent to this number
+              <Text className="text-[11px] text-heliotrope-500 mt-2 pl-1 font-medium">
+                OTP will be sent via SMS / WhatsApp
               </Text>
             )}
           </View>
         </View>
 
         {/* Bottom CTA */}
-        <View>
+        <View className="mt-6">
           <GradientButton
-            label='Send OTP →'
+            label="Get Instant OTP"
             onPress={() => void handleSend()}
             disabled={!isValid}
             loading={loading}

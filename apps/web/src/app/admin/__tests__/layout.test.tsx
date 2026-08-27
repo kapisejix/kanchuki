@@ -68,7 +68,7 @@ describe('AdminLayout auth/session check', () => {
     )
 
     // Shell mounts (sidebar chrome + header + children); login never shows
-    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    expect(await screen.findByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Kanchuki Admin')).toBeInTheDocument()
     expect(screen.getByText('Shell content')).toBeInTheDocument()
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument()
@@ -92,7 +92,7 @@ describe('AdminLayout auth/session check', () => {
     render(<AdminLayout>content</AdminLayout>)
     expect(await screen.findByTestId('login-screen')).toBeInTheDocument()
     expect(sessionStorage.getItem('admin_key')).toBeNull()
-    expect(screen.queryByText('Dashboard')).not.toBeInTheDocument()
+    expect(screen.queryByText('Overview')).not.toBeInTheDocument()
   })
 
   it('keeps the key and shows the shell when the session check hits a 500 (DB hiccup is NOT logout)', async () => {
@@ -110,7 +110,7 @@ describe('AdminLayout auth/session check', () => {
     )
     // This is the regression the old /stats gate had: a DB-backed check
     // 500'd and logged the admin out on every refresh.
-    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    expect(await screen.findByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Shell content')).toBeInTheDocument()
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument()
     expect(sessionStorage.getItem('admin_key')).toBe('k-db-down')
@@ -125,7 +125,7 @@ describe('AdminLayout auth/session check', () => {
         <div>Shell content</div>
       </AdminLayout>,
     )
-    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    expect(await screen.findByText('Overview')).toBeInTheDocument()
     expect(sessionStorage.getItem('admin_key')).toBe('k-offline')
   })
 
@@ -144,7 +144,7 @@ describe('AdminLayout auth/session check', () => {
     act(() => {
       resolveStats(okResponse())
     })
-    expect(await screen.findByText('Dashboard')).toBeInTheDocument()
+    expect(await screen.findByText('Overview')).toBeInTheDocument()
     expect(screen.queryByTestId('login-screen')).not.toBeInTheDocument()
   })
 
@@ -156,7 +156,7 @@ describe('AdminLayout auth/session check', () => {
       </AdminLayout>,
     )
     expect(await screen.findByText('Page one')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Overview')).toBeInTheDocument()
     // One session check on mount, before any navigation
     expect(sessionFetchCount(fetchMock)).toBe(1)
 
@@ -181,7 +181,7 @@ describe('AdminLayout auth/session check', () => {
       </AdminLayout>,
     )
     expect(screen.getByText('Page two')).toBeInTheDocument()
-    expect(screen.getByText('Dashboard')).toBeInTheDocument()
+    expect(screen.getByText('Overview')).toBeInTheDocument()
     expect(screen.getByText('Kanchuki Admin')).toBeInTheDocument()
 
     // Sidebar + header are the exact same DOM nodes — not remounted
@@ -189,12 +189,11 @@ describe('AdminLayout auth/session check', () => {
     expect(document.querySelector('header')).toBe(headerBefore)
     // Content area is keyed by pathname → remounted with the new route
     expect(document.querySelector('main')).not.toBe(mainBefore)
-    // The shell re-read the new pathname: the sidebar active link moved to
-    // Retailers (same label-span class contract the Sidebar tests use)
-    const labelSpan = (label: string) =>
-      screen.getByRole('link', { name: label }).querySelector('span') as HTMLElement
-    expect(labelSpan('Retailers')).toHaveClass('text-cyan-400')
-    expect(labelSpan('Dashboard')).toHaveClass('text-gray-400')
+    // The active group button switches from Overview (when /admin) to
+    // Retailers & Network (when /admin/retailers)
+    const groupButton = (label: string) => screen.getByRole('button', { name: label })
+    expect(groupButton('Retailers & Network')).toHaveClass('text-cyan-400')
+    expect(groupButton('Overview')).toHaveClass('text-gray-400')
     // The layout stayed mounted, so the session check did NOT re-run
     expect(sessionFetchCount(fetchMock)).toBe(1)
   })

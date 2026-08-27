@@ -63,6 +63,8 @@ function isFeatureUnavailable(err: unknown): boolean {
   return err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE'
 }
 
+import { LinearGradient } from 'expo-linear-gradient'
+
 export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
@@ -97,11 +99,11 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
   const loading = campaignsQuery.isLoading || statsQuery.isLoading
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       {!isTab && (
         <View
-          className="bg-white border-b border-sand-100 px-4 pb-4"
+          className="bg-white border-b border-lavender-200 px-4 pb-4"
           style={{ paddingTop: insets.top + 12 }}
         >
           <View className="flex-row items-center gap-3">
@@ -111,26 +113,40 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={24} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Growth Tools</Text>
+            <Text className="text-base font-bold text-spaceCadet-900 font-marcellus">Growth Engine</Text>
           </View>
         </View>
       )}
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Hero */}
-        <View className="bg-ink-600 rounded-3xl p-5 mb-4">
-          <View className="flex-row items-center gap-2 mb-1.5">
-            <Sparkles size={16} color={colors.turmeric[400]} />
-            <Text className="text-turmeric-300 text-xs font-semibold uppercase tracking-wide">
-              Grow your store
-            </Text>
+        {/* Signature Gradient Hero (#231F48 to #560A39) */}
+        <LinearGradient
+          colors={['#231F48', '#560A39']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ borderRadius: 28 }}
+          className="p-5 mb-4 shadow-md"
+        >
+          <View className="flex-row items-center justify-between mb-2">
+            <View className="flex-row items-center gap-2">
+              <Sparkles size={16} color="#BB3F95" />
+              <Text className="text-lavender-200 text-xs font-bold uppercase tracking-wider">
+                Festival Blast AI
+              </Text>
+            </View>
+            <View className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
+              <Text className="text-emerald-300 text-[10px] font-bold">READY</Text>
+            </View>
           </View>
-          <Text className="text-white text-lg font-bold leading-6">
-            Bring customers back and win new ones — without the manual work.
+          <Text className="text-white text-xl font-bold font-marcellus leading-6">
+            Grow your store with automated WhatsApp reach & lookbooks.
           </Text>
-        </View>
+          <Text className="text-lavender-200 text-xs mt-1.5 font-medium">
+            AI generated copy, product links, and instant checkout.
+          </Text>
+        </LinearGradient>
 
         {featureLocked && (
           <View className="bg-sand-100 rounded-2xl p-4 border border-sand-200 mb-4">

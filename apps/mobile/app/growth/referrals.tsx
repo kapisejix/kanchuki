@@ -1,3 +1,4 @@
+import { formatPaiseShort } from '@kanchuki/shared'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { ChevronLeft, Gift, Plus, RefreshCw, Ticket } from 'lucide-react-native'
@@ -19,7 +20,6 @@ import { growthApi, type Referral } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 
-const inr = (paise: number) => `₹${(paise / 100).toLocaleString('en-IN')}`
 
 export default function ReferralsScreen() {
   const { primaryColor, colors } = useTheme()
@@ -179,7 +179,7 @@ export default function ReferralsScreen() {
                 <TextInput
                   value={reward}
                   onChangeText={setReward}
-                  placeholder={inr(rewardPaise)}
+                  placeholder={formatPaiseShort(rewardPaise)}
                   placeholderTextColor={colors.sand[400]}
                   keyboardType="decimal-pad"
                   className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-2.5"
@@ -338,7 +338,7 @@ export default function ReferralsScreen() {
                       <Text className="text-[10px] text-sand-400">signups</Text>
                     </View>
                     <View className="flex-1 bg-sand-50 rounded-xl px-3 py-2">
-                      <Text className="text-base font-bold text-sand-900">{inr(r.reward_paise)}</Text>
+                      <Text className="text-base font-bold text-sand-900">{formatPaiseShort(r.reward_paise)}</Text>
                       <Text className="text-[10px] text-sand-400">reward</Text>
                     </View>
                   </View>
