@@ -278,23 +278,31 @@ export default function OtpScreen() {
           {/* OTP input — single hidden input drives display */}
           <View className="mt-8">
             <View className="flex-row gap-2.5 justify-center">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <Pressable
-                  key={i}
-                  onPress={() => inputRef.current?.focus()}
-                  className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
-                    otp.length === i
-                      ? 'border-fuchsia-500 bg-lavender-100 shadow-sm'
-                      : otp.length > i
-                        ? 'border-fuchsia-400 bg-white'
-                        : 'border-lavender-200 bg-white'
-                  }`}
-                >
-                  <Text className="text-2xl font-bold text-spaceCadet-900">
-                    {otp[i] ?? ''}
-                  </Text>
-                </Pressable>
-              ))}
+              {[0, 1, 2, 3, 4, 5].map((i) => {
+                // ponytail: per-box state goes through `style`, NOT a changing
+                // className. A className that mutates after the first render trips
+                // react-native-css-interop@0.1.22's printUpgradeWarning, whose
+                // JSON.stringify of the props deep-walks into React Navigation's
+                // NavigationStateContext default value and detonates its throwing
+                // `getKey` getter -> "Couldn't find a navigation context" crash.
+                const active = otp.length === i
+                const filled = otp.length > i
+                return (
+                  <Pressable
+                    key={i}
+                    onPress={() => inputRef.current?.focus()}
+                    className="w-12 h-14 rounded-2xl border-2 items-center justify-center"
+                    style={{
+                      borderColor: active ? '#BB3F95' : filled ? '#D65CB3' : '#E0E1F6',
+                      backgroundColor: active ? '#F2F1FA' : '#FFFFFF',
+                    }}
+                  >
+                    <Text className="text-2xl font-bold text-spaceCadet-900">
+                      {otp[i] ?? ''}
+                    </Text>
+                  </Pressable>
+                )
+              })}
             </View>
 
             {/* Hidden real input */}

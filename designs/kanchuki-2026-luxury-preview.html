@@ -310,13 +310,17 @@
     </div>
 
     <!-- Navigation Switcher -->
-    <div class="flex flex-wrap gap-2 bg-[#E0E1F6]/80 p-1.5 rounded-2xl border border-[#C8CAEE]">
-      <button onclick="renderScreen('register')" id="tab-register" class="screen-tab active px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">1. Registration Form</button>
-      <button onclick="renderScreen('growth')" id="tab-growth" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">2. Growth Hub</button>
-      <button onclick="renderScreen('settings')" id="tab-settings" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">3. Settings Tab</button>
-      <button onclick="renderScreen('discover')" id="tab-discover" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">4. Discovery Listing</button>
-      <button onclick="renderScreen('pdp')" id="tab-pdp" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">5. Product Details</button>
-      <button onclick="renderScreen('retailer')" id="tab-retailer" class="screen-tab px-3.5 py-2 rounded-xl text-xs font-bold text-[#560A39] transition">6. Dashboard</button>
+    <div class="flex flex-wrap gap-1.5 bg-[#E0E1F6]/80 p-1.5 rounded-2xl border border-[#C8CAEE]">
+      <button onclick="renderScreen('login')" id="tab-login" class="screen-tab active px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">1. Login (Phone)</button>
+      <button onclick="renderScreen('register')" id="tab-register" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">2. Setup: Shop</button>
+      <button onclick="renderScreen('location')" id="tab-location" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">3. Setup: Location</button>
+      <button onclick="renderScreen('gst')" id="tab-gst" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">4. Setup: GST</button>
+      <button onclick="renderScreen('done')" id="tab-done" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">5. Setup: Done</button>
+      <button onclick="renderScreen('retailer')" id="tab-retailer" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">6. Dashboard</button>
+      <button onclick="renderScreen('growth')" id="tab-growth" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">7. Growth Hub</button>
+      <button onclick="renderScreen('settings')" id="tab-settings" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">8. Settings Tab</button>
+      <button onclick="renderScreen('discover')" id="tab-discover" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">9. Discovery</button>
+      <button onclick="renderScreen('pdp')" id="tab-pdp" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">10. Product Details</button>
     </div>
   </div>
 
@@ -365,24 +369,40 @@
           <div class="flex items-start gap-3">
             <div class="w-7 h-7 rounded-xl bg-[#231F48] flex-shrink-0 flex items-center justify-center text-[#E0E1F6] font-bold text-xs">01</div>
             <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Registration & Shop Setup</strong>
-              <span class="text-xs text-[#6B4773]">4-step tactile onboarding: Shop Name, Owner Name, Category chips, City/State address, optional GSTIN, and instant QR generation.</span>
+              <strong class="text-[#231F48] block font-marcellus text-base">Login & OTP Authentication</strong>
+              <span class="text-xs text-[#6B4773]">Centered 2-line italic Marcellus tagline, luxury phone number card with +91 country prefix, instant OTP dispatch, and legal consent links.</span>
             </div>
           </div>
 
           <div class="flex items-start gap-3">
             <div class="w-7 h-7 rounded-xl bg-[#BB3F95] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">02</div>
             <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Growth Engine Hub</strong>
-              <span class="text-xs text-[#6B4773]">Festival AI Blasts, WhatsApp Campaign Analytics (CTR 42.8%), VIP Try-On Booking schedules, and Referral Network.</span>
+              <strong class="text-[#231F48] block font-marcellus text-base">Shop Details (Step 1)</strong>
+              <span class="text-xs text-[#6B4773]">Shop Name, Owner Name, interactive Specialization category chips, and live auto-slug store web link preview with verification badge.</span>
             </div>
           </div>
 
           <div class="flex items-start gap-3">
             <div class="w-7 h-7 rounded-xl bg-[#560A39] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">03</div>
             <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Settings & Integrations</strong>
-              <span class="text-xs text-[#6B4773]">Store Profile & custom URL slug, Meta WhatsApp Cloud Catalog sync status pill, Team members, and GST tax ledger.</span>
+              <strong class="text-[#231F48] block font-marcellus text-base">Shop Location (Step 2)</strong>
+              <span class="text-xs text-[#6B4773]">Shop address street textarea, City with MapPin icon, 2-column District and State inputs, 6-digit Pincode, and address advice tip.</span>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-7 h-7 rounded-xl bg-[#6B4773] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">04</div>
+            <div>
+              <strong class="text-[#231F48] block font-marcellus text-base">GST & Invoicing (Step 3)</strong>
+              <span class="text-xs text-[#6B4773]">15-digit GSTIN with formatting hints, automatic invoice generation explanation card, and dedicated skip button.</span>
+            </div>
+          </div>
+
+          <div class="flex items-start gap-3">
+            <div class="w-7 h-7 rounded-xl bg-emerald-700 flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">05</div>
+            <div>
+              <strong class="text-[#231F48] block font-marcellus text-base">Congratulations (Step 4)</strong>
+              <span class="text-xs text-[#6B4773]">Royal Orchid celebration hero banner in Space Cadet & Tyrian gradient, counter QR code generator, and catalog assistance links.</span>
             </div>
           </div>
         </div>
@@ -395,7 +415,57 @@
   <script>
     const screens = {
       
-      // 1. REGISTRATION & ONBOARDING FORM (SCR-R03)
+      // 1. LOGIN (PHONE SCREEN)
+      'login': `
+        <div class="p-6 pb-10 bg-[#F8F7FC] flex flex-col justify-between h-full">
+          
+          <!-- Top Section -->
+          <div class="flex flex-col items-center">
+            
+            <!-- Wordmark Logo -->
+            <div class="mb-6 mt-4 flex items-center justify-center">
+              <div class="px-5 py-2.5 rounded-2xl bg-white border border-[#E0E1F6] shadow-sm flex items-center gap-2">
+                <span class="text-xl font-extrabold tracking-widest text-[#231F48] font-marcellus">KANCHUKI</span>
+                <span class="w-2 h-2 rounded-full bg-[#BB3F95]"></span>
+              </div>
+            </div>
+
+            <!-- Tagline in 2 lines, italic, Marcellus heading font, center aligned -->
+            <h2 class="text-2xl font-bold text-[#231F48] font-marcellus text-center italic leading-tight mb-8">
+              Aapki Dukan,<br/>AI ki Taakat
+            </h2>
+
+            <!-- Mobile Number Card -->
+            <div class="clay-card p-5 w-full">
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-2">Mobile Number</label>
+              <div class="flex items-center gap-3 p-3 bg-[#FAF9FE] border border-[#E0E1F6] rounded-2xl">
+                <span class="text-sm font-bold text-[#560A39]">+91</span>
+                <div class="w-px h-4 bg-[#C8CAEE]"></div>
+                <input type="tel" value="98765 43210" placeholder="10-digit mobile number" class="w-full text-sm font-bold text-[#231F48] bg-transparent focus:outline-none" />
+              </div>
+              <p class="text-[11px] text-[#6B4773] mt-2 font-medium">OTP will be sent via SMS / WhatsApp</p>
+            </div>
+
+          </div>
+
+          <!-- Bottom CTA -->
+          <div class="mt-8">
+            <div class="slide-btn-signature py-3.5" onclick="renderScreen('register')">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-white">Get Instant OTP</span>
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </div>
+            </div>
+
+            <p class="text-center text-[11px] text-[#6B4773] mt-4 px-4 leading-4 font-medium">
+              By continuing, you agree to our <a href="#" class="font-bold text-[#BB3F95] underline">Terms of Service</a> and <a href="#" class="font-bold text-[#BB3F95] underline">Privacy Policy</a>
+            </p>
+          </div>
+
+        </div>
+      `,
+
+      // 2. REGISTRATION (STEP 1: SHOP DETAILS)
       'register': `
         <div class="p-5 pb-10 bg-[#F8F7FC]">
           
@@ -406,12 +476,12 @@
               <span class="text-xs font-bold text-[#231F48]">Shop</span>
             </div>
             <div class="step-connector active"></div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="renderScreen('location')">
               <div class="step-bubble upcoming">2</div>
               <span class="text-xs font-medium text-[#928EB2]">Location</span>
             </div>
             <div class="step-connector"></div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 cursor-pointer" onclick="renderScreen('gst')">
               <div class="step-bubble upcoming">3</div>
               <span class="text-xs font-medium text-[#928EB2]">GST</span>
             </div>
@@ -468,11 +538,227 @@
           </div>
 
           <!-- Bottom Signature Gradient Action Button -->
-          <div class="slide-btn-signature py-3.5" onclick="renderScreen('growth')">
+          <div class="slide-btn-signature py-3.5" onclick="renderScreen('location')">
             <span class="text-xs font-extrabold uppercase tracking-wider text-white">Save & Proceed to Location</span>
             <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
             </div>
+          </div>
+
+        </div>
+      `,
+
+      // 3. STEP 2: LOCATION
+      'location': `
+        <div class="p-5 pb-10 bg-[#F8F7FC]">
+          
+          <!-- Top Step Progress Indicator -->
+          <div class="flex items-center justify-between mb-6 px-1">
+            <div class="flex items-center gap-1.5 cursor-pointer" onclick="renderScreen('register')">
+              <div class="step-bubble completed">✓</div>
+              <span class="text-xs font-bold text-[#6B4773]">Shop</span>
+            </div>
+            <div class="step-connector active"></div>
+            <div class="flex items-center gap-1.5">
+              <div class="step-bubble active">2</div>
+              <span class="text-xs font-bold text-[#231F48]">Location</span>
+            </div>
+            <div class="step-connector"></div>
+            <div class="flex items-center gap-1.5 cursor-pointer" onclick="renderScreen('gst')">
+              <div class="step-bubble upcoming">3</div>
+              <span class="text-xs font-medium text-[#928EB2]">GST</span>
+            </div>
+          </div>
+
+          <!-- Screen Title in Marcellus -->
+          <div class="mb-4">
+            <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus">Shop Location</h2>
+            <p class="text-xs text-[#6B4773] mt-0.5">Add your shop address so local customers can easily discover and visit your store.</p>
+          </div>
+
+          <!-- Form Fields Container -->
+          <div class="clay-card p-4 space-y-3.5 mb-5">
+            
+            <!-- Field 1: Address -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">Shop Address / Street <span class="text-[#BB3F95]">*</span></label>
+              <div class="p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                <textarea rows="2" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none resize-none">Shop 42, Ground Floor, Moti Katra, Chandni Chowk</textarea>
+              </div>
+            </div>
+
+            <!-- Field 2: City -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">City <span class="text-[#BB3F95]">*</span></label>
+              <div class="flex items-center gap-2 p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                <svg class="w-4 h-4 text-[#6B4773]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                <input type="text" value="New Delhi" placeholder="e.g. Surat / Jaipur / Delhi" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none" />
+              </div>
+            </div>
+
+            <!-- 2-Column: District & State -->
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">District</label>
+                <div class="p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                  <input type="text" value="Central Delhi" placeholder="e.g. Surat" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none" />
+                </div>
+              </div>
+              <div>
+                <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">State</label>
+                <div class="p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                  <input type="text" value="Delhi" placeholder="e.g. Gujarat" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Field 4: Pincode -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">Pincode / Zipcode</label>
+              <div class="p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                <input type="text" value="110006" placeholder="6-digit pincode" class="w-full text-xs font-bold text-[#231F48] bg-transparent focus:outline-none" />
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Store Tip Box -->
+          <div class="bg-[#FAF9FE] border border-[#E0E1F6] rounded-2xl p-3.5 mb-5 flex items-start gap-2.5">
+            <span class="text-sm">📍</span>
+            <p class="text-[11px] text-[#6B4773] leading-relaxed font-medium">
+              Your shop location will appear on your customer store links and digital invoices.
+            </p>
+          </div>
+
+          <!-- Bottom Signature Gradient Action Button -->
+          <div class="slide-btn-signature py-3.5" onclick="renderScreen('gst')">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-white">Save & Proceed to GST</span>
+            <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+            </div>
+          </div>
+
+        </div>
+      `,
+
+      // 4. STEP 3: GST DETAILS
+      'gst': `
+        <div class="p-5 pb-10 bg-[#F8F7FC]">
+          
+          <!-- Top Step Progress Indicator -->
+          <div class="flex items-center justify-between mb-6 px-1">
+            <div class="flex items-center gap-1.5 cursor-pointer" onclick="renderScreen('register')">
+              <div class="step-bubble completed">✓</div>
+              <span class="text-xs font-bold text-[#6B4773]">Shop</span>
+            </div>
+            <div class="step-connector active"></div>
+            <div class="flex items-center gap-1.5 cursor-pointer" onclick="renderScreen('location')">
+              <div class="step-bubble completed">✓</div>
+              <span class="text-xs font-bold text-[#6B4773]">Location</span>
+            </div>
+            <div class="step-connector active"></div>
+            <div class="flex items-center gap-1.5">
+              <div class="step-bubble active">3</div>
+              <span class="text-xs font-bold text-[#231F48]">GST</span>
+            </div>
+          </div>
+
+          <!-- Screen Title in Marcellus -->
+          <div class="mb-4">
+            <h2 class="text-2xl font-extrabold text-[#231F48] font-marcellus">GST Details</h2>
+            <p class="text-xs text-[#6B4773] mt-0.5">Optional — add your GSTIN now to enable automatic GST invoice generation.</p>
+          </div>
+
+          <!-- Form Fields Container -->
+          <div class="clay-card p-4 space-y-3.5 mb-5">
+            
+            <!-- Field 1: GSTIN -->
+            <div>
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1">GSTIN (Optional)</label>
+              <div class="flex items-center gap-2 p-3 bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl">
+                <svg class="w-4 h-4 text-[#6B4773]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                <input type="text" value="07AAAAA0000A1Z5" placeholder="15-digit GSTIN" class="w-full text-xs font-bold text-[#231F48] tracking-widest bg-transparent focus:outline-none uppercase" />
+              </div>
+              <p class="text-[10px] text-[#6B4773] mt-1.5 font-medium">Format: 07AAAAA0000A1Z5 • You can also update this in Settings.</p>
+            </div>
+
+          </div>
+
+          <!-- Automatic GST Tip Box -->
+          <div class="bg-[#FAF9FE] border border-[#E0E1F6] rounded-2xl p-4 mb-5">
+            <div class="flex items-center gap-2 mb-1">
+              <svg class="w-4 h-4 text-[#BB3F95]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              <h4 class="text-xs font-bold text-[#231F48]">Automatic GST Invoicing</h4>
+            </div>
+            <p class="text-[11px] text-[#6B4773] leading-relaxed font-medium">
+              When a customer orders a product via your store link, Kanchuki generates an itemized GST invoice automatically.
+            </p>
+          </div>
+
+          <!-- Bottom Signature Gradient Action Button -->
+          <div class="slide-btn-signature py-3.5 mb-3" onclick="renderScreen('done')">
+            <span class="text-xs font-extrabold uppercase tracking-wider text-white">Complete Setup →</span>
+            <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 13l4 4L19 7"/></svg>
+            </div>
+          </div>
+
+          <!-- Skip Button -->
+          <button onclick="renderScreen('done')" class="w-full py-2.5 text-center text-xs font-bold text-[#BB3F95] uppercase tracking-wider">
+            Skip — I don't have a GST number
+          </button>
+
+        </div>
+      `,
+
+      // 5. STEP 4: CONGRATULATIONS / ALL SET
+      'done': `
+        <div class="p-5 pb-10 bg-[#F8F7FC] flex flex-col items-center">
+          
+          <!-- Hero Congratulations Gradient Card -->
+          <div class="w-full bg-gradient-to-br from-[#231F48] to-[#560A39] rounded-3xl p-6 text-white text-center shadow-lg mb-5 relative overflow-hidden">
+            <div class="w-14 h-14 rounded-2xl bg-white/10 mx-auto flex items-center justify-center mb-3 border border-white/20">
+              <svg class="w-7 h-7 text-[#BB3F95] anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+            </div>
+            <h2 class="text-2xl font-extrabold font-marcellus tracking-tight">You're All Set!</h2>
+            <p class="text-xs text-[#E0E1F6]/90 mt-1 font-medium">Your digital luxury catalog is ready to receive customers.</p>
+          </div>
+
+          <!-- Action Stack -->
+          <div class="w-full space-y-3">
+            
+            <!-- Button 1: Go to Dashboard -->
+            <div class="slide-btn-signature py-3.5" onclick="renderScreen('retailer')">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-white">Go to Dashboard →</span>
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </div>
+            </div>
+
+            <!-- Card 2: Create Store QR Code -->
+            <div class="clay-card p-4 flex items-center gap-3.5 cursor-pointer hover:border-[#BB3F95] transition" onclick="renderScreen('settings')">
+              <div class="w-10 h-10 rounded-2xl bg-[#E0E1F6] flex items-center justify-center text-[#231F48] flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-xs font-bold text-[#231F48] uppercase tracking-wider">Create your store QR code</h4>
+                <p class="text-[11px] text-[#6B4773] mt-0.5 font-medium">Customers scan to open your luxury catalog</p>
+              </div>
+              <span class="text-[#6B4773] text-sm font-bold">→</span>
+            </div>
+
+            <!-- Card 3: Catalog Upload Help -->
+            <div class="clay-card p-4 flex items-center gap-3.5 cursor-pointer hover:border-[#BB3F95] transition" onclick="renderScreen('growth')">
+              <div class="w-10 h-10 rounded-2xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95] flex-shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+              </div>
+              <div class="flex-1">
+                <h4 class="text-xs font-bold text-[#231F48] uppercase tracking-wider">Catalog Upload Help</h4>
+                <p class="text-[11px] text-[#6B4773] mt-0.5 font-medium">A team member adds your inventory for you</p>
+              </div>
+              <span class="text-[#6B4773] text-sm font-bold">→</span>
+            </div>
+
           </div>
 
         </div>
@@ -979,8 +1265,8 @@
       el.innerHTML = '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
     }
 
-    // Initialize with Registration form
-    renderScreen('register');
+    // Initialize with Login screen
+    renderScreen('login');
   </script>
 </body>
 </html>
