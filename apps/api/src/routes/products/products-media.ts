@@ -465,76 +465,93 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   // variant-linked photos ('variant-{id}'), and original unedited previews ('{id}-original').
   // Automatically promotes the next photo to primary if the main photo is deleted.
   server.delete('/:id/photos/:photoId', async (request, reply) => {
-    const { id, photoId } = request.params as { id: string; photoId: string };
+    try {
+      const { id, photoId } = request.params as { id: string; photoId: string };
 
-    const product = await prisma.product.findFirst({
-      where: { id, retailer_id: request.retailerId, deleted_at: null },
-      include: { photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] } },
-    });
-    if (!product) throw notFound('Product');
-
-    const isVariant = photoId.startsWith('variant-');
-    const isOriginal = photoId.endsWith('-original');
-
-    if (isVariant) {
-      const variantId = photoId.replace('variant-', '');
-      const variant = await prisma.productVariant.findFirst({
-        where: { id: variantId, product_id: id, retailer_id: request.retailerId },
+      const product = await prisma.product.findFirst({
+        where: { id, retailer_id: request.retailerId, deleted_at: null },
+        include: { photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] } },
       });
-      if (!variant) throw notFound('Variant photo');
-      const r2Key = variant.r2_key;
-      await prisma.productVariant.update({
-        where: { id: variantId },
-        data: { photo_url: null, r2_key: null },
-      });
-      if (r2Key) {
-        void deleteObject(r2Key).catch(() => {});
-      }
-      return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
-    }
+      if (!product) throw notFound('Product');
 
-    if (isOriginal) {
-      const basePhotoId = photoId.replace('-original', '');
-      const photo = await prisma.productPhoto.findFirst({
-        where: { id: basePhotoId, product_id: id, retailer_id: request.retailerId },
-      });
-      if (!photo) throw notFound('Original photo');
-      const meta = (photo.metadata as Record<string, unknown> | null) ?? {};
-      const originalR2Key = meta.original_r2_key as string | undefined;
-      const { original_r2_key, original_url, ...restMeta } = meta;
-      await prisma.productPhoto.update({
-        where: { id: basePhotoId },
-        data: { metadata: restMeta as any },
-      });
-      if (originalR2Key) {
-        void deleteObject(originalR2Key).catch(() => {});
-      }
-      return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
-    }
+      const isVariant = photoId.startsWith('variant-');
+      const isOriginal = photoId.endsWith('-original');
 
-    const targetPhoto = product.photos.find((p) => p.id === photoId);
-    if (!targetPhoto) throw notFound('Product photo');
-
-    await prisma.productPhoto.delete({
-      where: { id: photoId },
-    });
-
-    if (targetPhoto.r2_key) {
-      void deleteObject(targetPhoto.r2_key).catch(() => {});
-    }
-
-    // If the deleted photo was primary, promote the first remaining photo
-    if (targetPhoto.is_primary) {
-      const remaining = product.photos.filter((p) => p.id !== photoId);
-      const nextPrimary = remaining[0];
-      if (nextPrimary) {
-        await prisma.productPhoto.update({
-          where: { id: nextPrimary.id },
-          data: { is_primary: true },
+      if (isVariant) {
+        const variantId = photoId.replace('variant-', '');
+        const variant = await prisma.productVariant.findFirst({
+          where: { id: variantId, product_id: id, retailer_id: request.retailerId },
         });
+        if (!variant) throw notFound('Variant photo');
+        const r2Key = variant.r2_key;
+        await prisma.productVariant.update({
+          where: { id: variantId },
+          data: { photo_url: null, r2_key: null },
+        });
+        if (r2Key) {
+          try {
+            await deleteObject(r2Key);
+          } catch {
+            // Non-fatal R2 cleanup
+          }
+        }
+        return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
       }
-    }
 
-    return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
+      if (isOriginal) {
+        const basePhotoId = photoId.replace('-original', '');
+        const photo = await prisma.productPhoto.findFirst({
+          where: { id: basePhotoId, product_id: id, retailer_id: request.retailerId },
+        });
+        if (!photo) throw notFound('Original photo');
+        const meta = (photo.metadata as Record<string, unknown> | null) ?? {};
+        const originalR2Key = meta.original_r2_key as string | undefined;
+        const { original_r2_key, original_url, ...restMeta } = meta;
+        await prisma.productPhoto.update({
+          where: { id: basePhotoId },
+          data: { metadata: restMeta as any },
+        });
+        if (originalR2Key) {
+          try {
+            await deleteObject(originalR2Key);
+          } catch {
+            // Non-fatal R2 cleanup
+          }
+        }
+        return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
+      }
+
+      const targetPhoto = product.photos.find((p) => p.id === photoId);
+      if (!targetPhoto) throw notFound('Product photo');
+
+      await prisma.productPhoto.delete({
+        where: { id: photoId },
+      });
+
+      if (targetPhoto.r2_key) {
+        try {
+          await deleteObject(targetPhoto.r2_key);
+        } catch {
+          // Non-fatal R2 cleanup
+        }
+      }
+
+      // If the deleted photo was primary, promote the first remaining photo
+      if (targetPhoto.is_primary) {
+        const remaining = product.photos.filter((p) => p.id !== photoId);
+        const nextPrimary = remaining[0];
+        if (nextPrimary) {
+          await prisma.productPhoto.update({
+            where: { id: nextPrimary.id },
+            data: { is_primary: true },
+          });
+        }
+      }
+
+      return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
+    } catch (err) {
+      console.error('[DELETE PHOTO HANDLER ERROR]:', err);
+      throw err;
+    }
   });
 };

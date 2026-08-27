@@ -20,6 +20,10 @@ const {
   mockRotateImage,
   mockGetDownloadPresignedUrl,
   mockCleanupProductPhoto,
+  mockPhotoDelete,
+  mockVariantFindFirst,
+  mockVariantUpdate,
+  mockDeleteObject,
   MockPrismaClientKnownRequestError,
 } = vi.hoisted(() => {
   class MockPrismaClientKnownRequestError extends Error {
@@ -45,7 +49,11 @@ const {
     mockUploadBuffer: vi.fn(),
     mockRotateImage: vi.fn(),
     mockGetDownloadPresignedUrl: vi.fn(),
-    mockCleanupProductPhoto: vi.fn(),
+    mockCleanupProductPhoto: vi.fn().mockResolvedValue(Buffer.from('cleaned')),
+    mockPhotoDelete: vi.fn().mockResolvedValue(undefined),
+    mockVariantFindFirst: vi.fn().mockResolvedValue(null),
+    mockVariantUpdate: vi.fn().mockResolvedValue(undefined),
+    mockDeleteObject: vi.fn().mockResolvedValue(undefined),
     MockPrismaClientKnownRequestError,
   };
 });
@@ -65,9 +73,11 @@ vi.mock('@kanchuki/db', () => ({
       update: mockPhotoUpdate,
       updateMany: mockPhotoUpdateMany,
       findUnique: mockPhotoFindUnique,
+      delete: mockPhotoDelete,
     },
     productVariant: {
-      findFirst: vi.fn().mockResolvedValue(null),
+      findFirst: mockVariantFindFirst,
+      update: mockVariantUpdate,
       create: vi.fn(),
     },
     backgroundImage: { findFirst: mockBackgroundImageFindFirst },
@@ -93,6 +103,7 @@ vi.mock('@kanchuki/ai', () => ({
   publicUrl: vi.fn(),
   uploadBuffer: mockUploadBuffer,
   rotateImage: mockRotateImage,
+  deleteObject: mockDeleteObject,
   MATCH_SIMILARITY_THRESHOLD: 0.9,
   MIN_CONFIDENCE_FOR_MATCHING: 0.5,
   detectColor: vi.fn(),
@@ -541,6 +552,7 @@ describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F
   beforeEach(() => {
     mockFetchImageBuffer.mockResolvedValue(Buffer.from('raw'));
     mockUploadBuffer.mockResolvedValue(undefined);
+    mockCleanupProductPhoto.mockResolvedValue(Buffer.from('cleaned'));
     mockHasFeature.mockResolvedValue(true);
   });
 
@@ -707,5 +719,115 @@ describe('POST /products/:id/photos/:photoId/cleanup — per-photo background (F
     expect(res.statusCode).toBe(200);
     expect(mockCleanupProductPhoto).toHaveBeenCalledWith(Buffer.from('raw'), undefined, false);
     await app.close();
+  });
+
+  describe('DELETE /v1/products/:id/photos/:photoId', () => {
+    it('deletes a standard product photo and cleans up R2', async () => {
+      mockProductFindFirst.mockResolvedValue({
+        id: 'prod_1',
+        retailer_id: 'ret_1',
+        photos: [
+          { id: 'photo_1', is_primary: false, r2_key: 'prod/photo_1.jpg' },
+          { id: 'photo_2', is_primary: true, r2_key: 'prod/photo_2.jpg' },
+        ],
+      });
+      mockPhotoDelete.mockResolvedValue({ id: 'photo_1' });
+
+      const app = await buildApp(null);
+      const res = await app.inject({
+        method: 'DELETE',
+        url: '/v1/products/prod_1/photos/photo_1',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(mockPhotoDelete).toHaveBeenCalledWith({ where: { id: 'photo_1' } });
+      expect(mockDeleteObject).toHaveBeenCalledWith('prod/photo_1.jpg');
+      await app.close();
+    });
+
+    it('promotes the next photo when the primary photo is deleted', async () => {
+      mockProductFindFirst.mockResolvedValue({
+        id: 'prod_1',
+        retailer_id: 'ret_1',
+        photos: [
+          { id: 'photo_1', is_primary: true, r2_key: 'prod/photo_1.jpg' },
+          { id: 'photo_2', is_primary: false, r2_key: 'prod/photo_2.jpg' },
+        ],
+      });
+      mockPhotoDelete.mockResolvedValue({ id: 'photo_1' });
+      mockPhotoUpdate.mockResolvedValue({ id: 'photo_2', is_primary: true });
+
+      const app = await buildApp(null);
+      const res = await app.inject({
+        method: 'DELETE',
+        url: '/v1/products/prod_1/photos/photo_1',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(mockPhotoDelete).toHaveBeenCalledWith({ where: { id: 'photo_1' } });
+      expect(mockPhotoUpdate).toHaveBeenCalledWith({
+        where: { id: 'photo_2' },
+        data: { is_primary: true },
+      });
+      await app.close();
+    });
+
+    it('clears photo_url on a variant photo (variant-*)', async () => {
+      mockProductFindFirst.mockResolvedValue({
+        id: 'prod_1',
+        retailer_id: 'ret_1',
+        photos: [],
+      });
+      mockVariantFindFirst.mockResolvedValue({
+        id: 'var_1',
+        product_id: 'prod_1',
+        retailer_id: 'ret_1',
+        r2_key: 'variants/var_1.jpg',
+      });
+      mockVariantUpdate.mockResolvedValue({ id: 'var_1', photo_url: null, r2_key: null });
+
+      const app = await buildApp(null);
+      const res = await app.inject({
+        method: 'DELETE',
+        url: '/v1/products/prod_1/photos/variant-var_1',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(mockVariantUpdate).toHaveBeenCalledWith({
+        where: { id: 'var_1' },
+        data: { photo_url: null, r2_key: null },
+      });
+      expect(mockDeleteObject).toHaveBeenCalledWith('variants/var_1.jpg');
+      await app.close();
+    });
+
+    it('clears original photo preview (*-original)', async () => {
+      mockProductFindFirst.mockResolvedValue({
+        id: 'prod_1',
+        retailer_id: 'ret_1',
+        photos: [],
+      });
+      mockPhotoFindFirst.mockResolvedValue({
+        id: 'photo_1',
+        product_id: 'prod_1',
+        retailer_id: 'ret_1',
+        metadata: { original_r2_key: 'orig/photo_1.jpg', original_url: 'https://orig' },
+      });
+      mockPhotoUpdate.mockResolvedValue({ id: 'photo_1' });
+
+      const app = await buildApp(null);
+      const res = await app.inject({
+        method: 'DELETE',
+        url: '/v1/products/prod_1/photos/photo_1-original',
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(mockPhotoUpdate).toHaveBeenCalledWith({
+        where: { id: 'photo_1' },
+        data: { metadata: {} },
+      });
+      expect(mockDeleteObject).toHaveBeenCalledWith('orig/photo_1.jpg');
+      await app.close();
+    });
   });
 });

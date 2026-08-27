@@ -1,4 +1,4 @@
-import { getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
+import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
@@ -162,6 +162,13 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     const video = await prisma.productVideo.findFirst({ where: { id, retailer_id: retailerId } });
     if (!video) throw notFound('Video');
     await prisma.productVideo.delete({ where: { id } });
+    if (video.r2_key) {
+      try {
+        await deleteObject(video.r2_key);
+      } catch {
+        // Non-fatal R2 cleanup
+      }
+    }
     return reply.status(204).send();
   });
 };
