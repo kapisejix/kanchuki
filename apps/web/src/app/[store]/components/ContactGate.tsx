@@ -101,42 +101,42 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="min-h-screen bg-cyan-50 flex flex-col items-center justify-center px-6 relative"
+      className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-6 relative"
     >
       <Link
         href="/"
-        className="absolute top-4 left-4 text-sm text-cyan-700/70 hover:text-cyan-700 flex items-center gap-1"
+        className="absolute top-6 left-6 text-xs font-bold text-[#6B4773] hover:text-[#231F48] flex items-center gap-1 uppercase tracking-wider"
       >
         ← Back
       </Link>
       <form
         onSubmit={(e) => void handleSubmit(e)}
-        className="bg-white rounded-3xl border border-gray-100 p-6 max-w-sm w-full"
+        className="bg-white rounded-3xl border border-[#E0E1F6] p-7 max-w-sm w-full shadow-sm"
       >
         {/* Store Logo + Name */}
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3.5 mb-4">
           {profile.logo_url ? (
             <Image
               src={profile.logo_url}
               alt={profile.shop_name}
               width={48}
               height={48}
-              className="w-12 h-12 rounded-2xl object-cover border border-gray-100"
+              className="w-12 h-12 rounded-2xl object-cover border border-[#E0E1F6]"
             />
           ) : (
-            <div className="w-12 h-12 rounded-2xl bg-cyan-100 flex items-center justify-center">
-              <span className="text-xl font-bold text-cyan-700">
+            <div className="w-12 h-12 rounded-2xl bg-[#E0E1F6] flex items-center justify-center">
+              <span className="text-xl font-bold text-[#231F48] font-marcellus">
                 {profile.shop_name.charAt(0).toUpperCase()}
               </span>
             </div>
           )}
           <div>
-            <h1 className="text-lg font-bold text-gray-900">{profile.shop_name}</h1>
-            {profile.city && <p className="text-xs text-gray-500">{profile.city}</p>}
+            <h1 className="text-lg font-bold text-[#231F48] font-marcellus">{profile.shop_name}</h1>
+            {profile.city && <p className="text-xs text-[#6B4773] font-medium">{profile.city}</p>}
           </div>
         </div>
-        <p className="text-xs text-gray-500 mb-5">
-          Share your details to view this store&apos;s catalog.
+        <p className="text-xs text-[#6B4773] mb-5">
+          Share your details to enter this exclusive catalog.
         </p>
 
         {error && (
@@ -147,24 +147,24 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
 
         <label
           htmlFor="contact-name"
-          className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+          className="block text-[10px] font-bold text-[#6B4773] uppercase tracking-wider mb-1"
         >
-          Name
+          Your Name
         </label>
         <input
           id="contact-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-cyan-400"
-          placeholder="Your name"
+          className="w-full bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl px-4 py-3 text-sm text-[#231F48] mb-4 focus:outline-none focus:border-[#BB3F95]"
+          placeholder="e.g. Ananya Sharma"
         />
 
         <label
           htmlFor="contact-phone"
-          className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1"
+          className="block text-[10px] font-bold text-[#6B4773] uppercase tracking-wider mb-1"
         >
-          Phone
+          WhatsApp Number
         </label>
         <input
           id="contact-phone"
@@ -173,11 +173,11 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
           required
           type="tel"
           minLength={10}
-          className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm mb-4 focus:outline-none focus:border-cyan-400"
+          className="w-full bg-[#F8F7FC] border border-[#E0E1F6] rounded-2xl px-4 py-3 text-sm text-[#231F48] mb-4 focus:outline-none focus:border-[#BB3F95]"
           placeholder="10-digit mobile number"
         />
 
-        <p className="block text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <p className="block text-[10px] font-bold text-[#6B4773] uppercase tracking-wider mb-2">
           Gender
         </p>
         <div className="flex gap-3 mb-4">
@@ -186,10 +186,10 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
               key={g}
               type="button"
               onClick={() => setGender(g)}
-              className={`flex-1 rounded-xl py-2.5 text-sm font-medium border ${
+              className={`flex-1 rounded-2xl py-3 text-xs font-bold uppercase tracking-wider border transition-all ${
                 gender === g
-                  ? 'bg-cyan-600 text-white border-cyan-600'
-                  : 'bg-white text-gray-600 border-gray-200'
+                  ? 'bg-[#231F48] text-white border-[#231F48] shadow-sm'
+                  : 'bg-[#F8F7FC] text-[#231F48] border-[#E0E1F6]'
               }`}
             >
               {g === 'MALE' ? 'Male' : 'Female'}
@@ -205,25 +205,17 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
             required
             className="mt-0.5"
           />
-          <span className="text-xs text-gray-500">
-            I agree to share my details with {profile.shop_name} and Kanchuki, per the{' '}
-            <Link href="/privacy" target="_blank" className="underline hover:text-gray-700">
-              Privacy Policy
-            </Link>{' '}
-            and{' '}
-            <Link href="/terms" target="_blank" className="underline hover:text-gray-700">
-              Terms
-            </Link>
-            , and be contacted about products, offers, and AI styling features.
+          <span className="text-[11px] text-[#6B4773] leading-relaxed">
+            I agree to receive personalized collection updates from {profile.shop_name} on WhatsApp.
           </span>
         </label>
 
         <button
           type="submit"
           disabled={!canSubmit || submitting}
-          className="w-full bg-cyan-600 disabled:bg-gray-300 text-white font-semibold text-sm py-3 rounded-2xl flex items-center justify-center gap-2"
+          className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-3xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98]"
         >
-          {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Continue'}
+          {submitting ? <Loader2 size={16} className="animate-spin" /> : 'Enter Catalog →'}
         </button>
       </form>
     </motion.div>

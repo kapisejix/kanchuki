@@ -234,14 +234,14 @@ export default function OtpScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
+      className="flex-1 bg-[#F8F7FC]"
     >
       <ScrollView
         className="flex-1 px-6"
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: 'space-between',
-          paddingTop: insets.top + 32,
+          paddingTop: insets.top + 24,
           paddingBottom: insets.bottom + 24,
         }}
         keyboardShouldPersistTaps="handled"
@@ -251,33 +251,34 @@ export default function OtpScreen() {
         <View>
           <AnimatedPressable
             onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-sand-100 items-center justify-center mb-8"
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center mb-8 border border-lavender-200"
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <Text className="text-lg">←</Text>
+            <Text className="text-spaceCadet-900 text-base font-bold">←</Text>
           </AnimatedPressable>
 
-          <Text className="text-3xl font-bold text-sand-900">Enter OTP</Text>
-          <Text className="text-sand-500 text-base mt-2">
-            Sent to +91 ****{phone?.slice(-4)}
+          <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus">Enter OTP</Text>
+          <Text className="text-heliotrope-500 text-sm mt-2">
+            Verification code sent to +91 ****{phone?.slice(-4)}
           </Text>
 
           {/* OTP input — single hidden input drives display */}
-          <View className="mt-10">
-            <View className="flex-row gap-3 justify-center">
+          <View className="mt-8">
+            <View className="flex-row gap-2.5 justify-center">
               {[0, 1, 2, 3, 4, 5].map((i) => (
                 <AnimatedPressable
                   key={i}
                   onPress={() => inputRef.current?.focus()}
-                  className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${otp.length === i
-                      ? 'border-ink-600 bg-ink-50'
+                  className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
+                    otp.length === i
+                      ? 'border-fuchsia-500 bg-lavender-100 shadow-sm'
                       : otp.length > i
-                        ? 'border-ink-300 bg-ink-50'
-                        : 'border-sand-200 bg-ink-50'
-                    }`}
+                        ? 'border-fuchsia-400 bg-white'
+                        : 'border-lavender-200 bg-white'
+                  }`}
                 >
-                  <Text className="text-2xl font-bold text-sand-900">
+                  <Text className="text-2xl font-bold text-spaceCadet-900">
                     {otp[i] ?? ''}
                   </Text>
                 </AnimatedPressable>
@@ -303,12 +304,12 @@ export default function OtpScreen() {
           {/* Resend */}
           <View className="flex-row justify-center mt-6">
             {resendTimer > 0 ? (
-              <Text className="text-sand-400 text-sm">
+              <Text className="text-heliotrope-400 text-xs font-medium">
                 Resend OTP in {resendTimer}s
               </Text>
             ) : (
               <AnimatedPressable onPress={() => void handleResend()} disabled={resending}>
-                <Text className="text-ink-600 text-sm font-semibold">
+                <Text className="text-fuchsia-600 text-xs font-bold uppercase tracking-wider">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
               </AnimatedPressable>
@@ -317,12 +318,14 @@ export default function OtpScreen() {
         </View>
 
         {/* Verify button */}
-        <GradientButton
-          label="Verify & Continue →"
-          onPress={() => void handleVerify(otp)}
-          disabled={otp.length !== 6 || loading}
-          loading={loading}
-        />
+        <View className="mt-8">
+          <GradientButton
+            label="Verify & Continue →"
+            onPress={() => void handleVerify(otp)}
+            disabled={otp.length !== 6 || loading}
+            loading={loading}
+          />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   )

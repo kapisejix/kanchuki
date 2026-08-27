@@ -27,8 +27,8 @@ export function ProductActionsBar({
   return (
     <View className="px-4 py-4 gap-4">
       {/* Product Status Selector */}
-      <View className="bg-white rounded-2xl p-4 border border-sand-100">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
           Product Availability
         </Text>
         <View className="flex-row gap-2">
@@ -39,10 +39,10 @@ export function ProductActionsBar({
                 key={opt.value}
                 onPress={() => handleStatusChange(opt.value)}
                 disabled={statusUpdating}
-                className={`flex-1 py-2.5 rounded-xl border items-center justify-center ${
+                className={`flex-1 py-3 rounded-2xl border items-center justify-center ${
                   isSelected
-                    ? 'bg-ink-600 border-ink-600'
-                    : 'bg-sand-50 border-sand-200'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                    : 'bg-lavender-50 border-lavender-200'
                 }`}
               >
                 {statusUpdating && isSelected ? (
@@ -50,7 +50,7 @@ export function ProductActionsBar({
                 ) : (
                   <Text
                     className={`text-xs font-bold ${
-                      isSelected ? 'text-white' : 'text-sand-700'
+                      isSelected ? 'text-white' : 'text-spaceCadet-900'
                     }`}
                   >
                     {opt.label}
@@ -67,14 +67,14 @@ export function ProductActionsBar({
         <AnimatedPressable
           onPress={handleDelete}
           disabled={deleting}
-          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-200 bg-rust-50/60"
+          className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border border-red-200 bg-red-50/70"
         >
           {deleting ? (
-            <ActivityIndicator size="small" color={colors.rust[600]} />
+            <ActivityIndicator size="small" color="#dc2626" />
           ) : (
-            <Trash2 size={16} color={colors.rust[600]} />
+            <Trash2 size={16} color="#dc2626" />
           )}
-          <Text className="text-rust-700 text-sm font-semibold">Delete Product</Text>
+          <Text className="text-red-700 text-xs font-bold uppercase tracking-wider">Delete Product</Text>
         </AnimatedPressable>
       </View>
     </View>

@@ -61,16 +61,16 @@ function ChipRow({
 }) {
   if (options.length === 0) return null
   return (
-    <View className="mb-2.5">
-      <Text className="text-xs text-sand-500 mb-1.5">{label}</Text>
+    <View className="mb-3">
+      <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-1.5">{label}</Text>
       <View className="flex-row flex-wrap gap-2">
         <AnimatedPressable
           onPress={() => onSelect(null)}
-          className={`px-3 py-1.5 rounded-full border ${
-            selected === null ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+          className={`px-3.5 py-1.5 rounded-full border ${
+            selected === null ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
           }`}
         >
-          <Text className={`text-xs font-medium ${selected === null ? 'text-white' : 'text-sand-600'}`}>
+          <Text className={`text-xs font-bold ${selected === null ? 'text-white' : 'text-spaceCadet-900'}`}>
             All
           </Text>
         </AnimatedPressable>
@@ -78,11 +78,11 @@ function ChipRow({
           <AnimatedPressable
             key={opt}
             onPress={() => onSelect(selected === opt ? null : opt)}
-            className={`px-3 py-1.5 rounded-full border ${
-              selected === opt ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+            className={`px-3.5 py-1.5 rounded-full border ${
+              selected === opt ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
             }`}
           >
-            <Text className={`text-xs font-medium ${selected === opt ? 'text-white' : 'text-sand-600'}`}>
+            <Text className={`text-xs font-bold ${selected === opt ? 'text-white' : 'text-spaceCadet-900'}`}>
               {opt}
             </Text>
           </AnimatedPressable>
@@ -122,26 +122,26 @@ const CatalogCard = memo(function CatalogCard({
       showAIDot={!product.ai_tagged}
       catalogSyncStatus={catalogSyncStatus}
       footer={
-        <View className="p-2.5 gap-1">
-          <Text className="text-xs text-sand-500 truncate" numberOfLines={1}>
+        <View className="py-1 gap-1">
+          <Text className="text-xs text-heliotrope-500 font-medium truncate" numberOfLines={1}>
             {product.category ?? 'Product'}
             {product.primary_color ? ` · ${product.primary_color}` : ''}
           </Text>
-          <Text className="text-sm font-bold text-sand-900">
+          <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">
             {formatPriceRange(product.price_min, product.price_max)}
           </Text>
           {product.section && (
             <View className="flex-row items-center gap-1">
-              <MapPin size={10} color={colors.sand[400]} />
-              <Text className="text-xs text-sand-400" numberOfLines={1}>{product.section.name}</Text>
+              <MapPin size={10} color="#6B4773" />
+              <Text className="text-[11px] text-heliotrope-400" numberOfLines={1}>{product.section.name}</Text>
             </View>
           )}
           {product.status === 'AVAILABLE' && (
             <AnimatedPressable
               onPress={onMarkSold}
-              className="mt-1.5 bg-sand-100 py-1.5 rounded-lg items-center"
+              className="mt-2 bg-lavender-100 py-1.5 rounded-xl items-center border border-lavender-200"
             >
-              <Text className="text-xs text-sand-600 font-medium">Mark Sold</Text>
+              <Text className="text-[11px] text-spaceCadet-900 font-bold">Mark Sold</Text>
             </AnimatedPressable>
           )}
         </View>

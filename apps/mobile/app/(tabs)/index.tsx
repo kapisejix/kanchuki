@@ -179,39 +179,39 @@ export default function HomeScreen() {
       </View>
 
       {/* Quick Stats */}
-      <View className="px-4 pt-4 pb-2 -mt-4">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-          This Month
+      <View className="px-4 pt-3 pb-2">
+        <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-2.5 px-1">
+          Store Performance
         </Text>
         <View className="flex-row gap-3">
           <StatCard
-            icon={<Eye size={16} color={primaryColor} />}
+            icon={<Eye size={16} color="#BB3F95" />}
             label="Views"
             value={stats?.views_this_month ?? 0}
-            color={primaryColor}
+            color="#231F48"
             onPress={() => router.push('/analytics')}
           />
           <StatCard
-            icon={<MessageCircle size={16} color={colors.turmeric[500]} />}
+            icon={<MessageCircle size={16} color="#BB3F95" />}
             label="Enquiries"
             value={stats?.enquiries_this_month ?? 0}
-            color={colors.turmeric[500]}
+            color="#231F48"
             onPress={() => router.push('/analytics')}
           />
         </View>
         <View className="flex-row gap-3 mt-3">
           <StatCard
-            icon={<Package size={16} color={colors.turmeric[500]} />}
-            label="Products"
+            icon={<Package size={16} color="#BB3F95" />}
+            label="Active SKUs"
             value={stats?.total_products_available ?? 0}
-            color={colors.turmeric[500]}
+            color="#231F48"
             onPress={() => router.push('/catalog')}
           />
           <StatCard
-            icon={<Users size={16} color={colors.danger} />}
+            icon={<Users size={16} color="#BB3F95" />}
             label="Customers"
             value={stats?.total_customers ?? 0}
-            color={colors.danger}
+            color="#231F48"
             onPress={() => router.push('/customers')}
           />
         </View>
@@ -220,20 +220,22 @@ export default function HomeScreen() {
       {/* Trending products */}
       {(stats?.top_viewed_products?.length ?? 0) > 0 && (
         <View className="px-4 py-2">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-            Trending This Month
+          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-2.5 px-1">
+            Trending Products
           </Text>
-          <View className="gap-2">
+          <View className="gap-2.5">
             {stats!.top_viewed_products.map((r) => (
               <AnimatedPressable
                 key={r.product.id}
                 onPress={() => router.push(`/product/${r.product.id}`)}
-                className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center justify-between"
+                className="bg-white rounded-3xl p-3.5 border border-lavender-200 flex-row items-center justify-between shadow-sm"
               >
-                <Text className="text-sm text-sand-700">
+                <Text className="text-xs font-bold text-spaceCadet-900 font-marcellus">
                   {r.product.category ?? 'Product'} · {r.product.primary_color ?? '—'}
                 </Text>
-                <Text className="text-xs font-semibold text-ink-600">{r.count} views</Text>
+                <View className="px-2.5 py-1 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20">
+                  <Text className="text-[11px] font-bold text-fuchsia-600">{r.count} views</Text>
+                </View>
               </AnimatedPressable>
             ))}
           </View>
@@ -243,41 +245,41 @@ export default function HomeScreen() {
       {/* ── Catalog & Products ── */}
       <View className="px-4 pt-4">
         <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${primaryColor}1A` }}>
-            <Package size={14} color={primaryColor} />
+          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
+            <Package size={14} color="#BB3F95" />
           </View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
             Catalog & Products
           </Text>
         </View>
         <View className="flex-row flex-wrap gap-3">
           <QuickAction
-            icon={<Camera size={22} color={primaryColor} />}
+            icon={<Camera size={20} color="#BB3F95" />}
             label="Add Product"
             sublabel="Photo + AI tagging"
             onPress={() => router.push('/product/add')}
-            accent={colors.ink[50]}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<FolderKanban size={22} color={primaryColor} />}
+            icon={<FolderKanban size={20} color="#560A39" />}
             label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
             sublabel="Manage categories"
             onPress={() => router.push('/category')}
-            accent={colors.ink[50]}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<PackagePlus size={22} color={colors.rust[600]} />}
+            icon={<PackagePlus size={20} color="#BB3F95" />}
             label="Bulk Onboard"
-            sublabel="Rack-by-rack batch upload"
+            sublabel="Rack-by-rack upload"
             onPress={() => router.push('/product/bulk-onboard')}
-            accent={colors.rust[50]}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<QrCode size={22} color={colors.rust[600]} />}
+            icon={<QrCode size={20} color="#560A39" />}
             label="Store QR Code"
-            sublabel="Scan to view your catalog"
+            sublabel="Scan to view catalog"
             onPress={() => router.push('/store-profile')}
-            accent={colors.rust[50]}
+            accent="#E0E1F6"
           />
         </View>
       </View>
@@ -285,34 +287,34 @@ export default function HomeScreen() {
       {/* ── Customers & Sales ── */}
       <View className="px-4 pt-5">
         <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${colors.turmeric[500]}1A` }}>
-            <Users size={14} color={colors.turmeric[500]} />
+          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
+            <Users size={14} color="#BB3F95" />
           </View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
             Customers & Sales
           </Text>
         </View>
         <View className="flex-row flex-wrap gap-3">
           <QuickAction
-            icon={<Users size={22} color={colors.turmeric[500]} />}
+            icon={<Users size={20} color="#560A39" />}
             label="Add Customer"
             sublabel="Save preferences"
             onPress={() => router.push('/customer/add')}
-            accent={colors.turmeric[50]}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<Link2 size={22} color={colors.danger} />}
+            icon={<Link2 size={20} color="#BB3F95" />}
             label="New Collection"
             sublabel="Share on WhatsApp"
             onPress={() => router.push('/collection/new')}
-            accent={colors.dangerSurface}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<ShoppingBag size={22} color={colors.turmeric[500]} />}
+            icon={<ShoppingBag size={20} color="#560A39" />}
             label="Orders"
             sublabel={pendingOrders > 0 ? `${pendingOrders} pending` : 'Manage fulfillment'}
             onPress={() => router.push('/(tabs)/orders')}
-            accent={colors.turmeric[50]}
+            accent="#E0E1F6"
           />
         </View>
       </View>
@@ -320,34 +322,34 @@ export default function HomeScreen() {
       {/* ── Growth & Marketing ── */}
       <View className="px-4 pt-5">
         <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${colors.rust[600]}1A` }}>
-            <Megaphone size={14} color={colors.rust[600]} />
+          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
+            <Megaphone size={14} color="#BB3F95" />
           </View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
             Growth & Marketing
           </Text>
         </View>
         <View className="flex-row flex-wrap gap-3">
           <QuickAction
-            icon={<Megaphone size={22} color={colors.turmeric[500]} />}
+            icon={<Megaphone size={20} color="#BB3F95" />}
             label="Growth Tools"
-            sublabel="Campaigns · Referrals · More"
+            sublabel="AI Campaigns · Referrals"
             onPress={() => router.push('/growth')}
-            accent={colors.turmeric[50]}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<Search size={22} color={primaryColor} />}
+            icon={<Search size={20} color="#560A39" />}
             label="AI Search"
-            sublabel="Hindi / Hinglish voice-ready"
+            sublabel="Voice-ready inventory"
             onPress={() => router.push('/ai-search')}
-            accent={colors.ink[50]}
+            accent="#E0E1F6"
           />
           <QuickAction
-            icon={<BarChart3 size={22} color={primaryColor} />}
+            icon={<BarChart3 size={20} color="#BB3F95" />}
             label="Analytics"
-            sublabel="Views, enquiries & trends"
+            sublabel="Views, enquiries & stats"
             onPress={() => router.push('/analytics')}
-            accent={colors.ink[50]}
+            accent="#E0E1F6"
           />
         </View>
       </View>
@@ -355,20 +357,20 @@ export default function HomeScreen() {
       {/* ── Settings ── */}
       <View className="px-4 pt-5 pb-2">
         <View className="flex-row items-center gap-2 mb-3">
-          <View className="w-6 h-6 rounded-lg items-center justify-center" style={{ backgroundColor: `${colors.sand[600]}1A` }}>
-            <Settings size={14} color={colors.sand[600]} />
+          <View className="w-6 h-6 rounded-lg items-center justify-center bg-fuchsia-500/15">
+            <Settings size={14} color="#BB3F95" />
           </View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+          <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider">
             Settings
           </Text>
         </View>
         <View className="flex-row flex-wrap gap-3">
           <QuickAction
-            icon={<Settings size={22} color={colors.sand[600]} />}
+            icon={<Settings size={20} color="#560A39" />}
             label="Settings"
-            sublabel="Profile · Billing · Staff"
+            sublabel="Store Profile · Staff · Sync"
             onPress={() => router.push('/settings')}
-            accent={colors.sand[100]}
+            accent="#E0E1F6"
           />
         </View>
       </View>
@@ -395,18 +397,17 @@ function StatCard({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="flex-1 bg-white rounded-2xl p-4 border border-sand-100"
+      className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
     >
       <View
-        className="w-7 h-7 rounded-lg items-center justify-center mb-2"
-        style={{ backgroundColor: `${color}1A` }}
+        className="w-8 h-8 rounded-xl items-center justify-center mb-2 bg-lavender-100"
       >
         {icon}
       </View>
-      <Text className="text-2xl font-bold" style={{ color }}>
+      <Text className="text-2xl font-bold text-spaceCadet-900">
         {value.toLocaleString('en-IN')}
       </Text>
-      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
+      <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">{label}</Text>
     </AnimatedPressable>
   );
 }
@@ -427,16 +428,16 @@ function QuickAction({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="w-[47%] bg-white rounded-2xl p-4 border border-sand-100"
+      className="w-[47%] bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
     >
       <View
-        className="w-10 h-10 rounded-xl items-center justify-center mb-3"
+        className="w-10 h-10 rounded-2xl items-center justify-center mb-2.5"
         style={{ backgroundColor: accent }}
       >
         {icon}
       </View>
-      <Text className="text-sm font-semibold text-sand-900">{label}</Text>
-      <Text className="text-xs text-sand-400 mt-0.5">{sublabel}</Text>
+      <Text className="text-xs font-bold text-spaceCadet-900 font-marcellus">{label}</Text>
+      <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">{sublabel}</Text>
     </AnimatedPressable>
   );
 }

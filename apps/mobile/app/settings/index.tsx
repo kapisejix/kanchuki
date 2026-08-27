@@ -971,26 +971,25 @@ function SettingsRow({
   onPress: () => void;
   destructive?: boolean;
 }) {
-  const { colors } = useTheme();
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
+      className="flex-row items-center bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
     >
-      <View className="w-9 h-9 rounded-xl bg-sand-100 items-center justify-center mr-3">
+      <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center mr-3.5">
         {icon}
       </View>
       <View className="flex-1">
         <Text
-          className={`text-sm font-semibold ${destructive ? "text-rust-600" : "text-sand-900"}`}
+          className={`text-sm font-bold ${destructive ? "text-red-600" : "text-spaceCadet-900 font-marcellus"}`}
         >
           {label}
         </Text>
         {subtitle && (
-          <Text className="text-xs text-sand-400 mt-0.5">{subtitle}</Text>
+          <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{subtitle}</Text>
         )}
       </View>
-      <ChevronRight size={18} color={colors.sand[400]} />
+      <ChevronRight size={18} color="#6B4773" />
     </AnimatedPressable>
   );
 }
@@ -1036,33 +1035,33 @@ function UsageSection() {
   if (activeResources.length === 0) return null;
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 mb-4 shadow-sm">
       <View className="flex-row items-center gap-2 mb-3">
-        <BarChart2 size={16} color={primaryColor} />
-        <Text className="text-sm font-bold text-sand-900">Usage</Text>
+        <BarChart2 size={16} color="#BB3F95" />
+        <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus">Usage & Quotas</Text>
       </View>
       {activeResources.map((r) => {
         const pct = Math.min(Math.round((r.used / r.limit) * 100), 100);
         const isOver = r.used >= r.limit;
         const barColor = isOver
-          ? colors.rust[600]
+          ? "#dc2626"
           : pct > 80
-            ? colors.turmeric[600]
-            : primaryColor;
+            ? "#BB3F95"
+            : "#231F48";
         return (
           <View key={r.resource_type} className="mb-2.5">
             <View className="flex-row justify-between items-center mb-1">
-              <Text className="text-xs text-sand-600">
+              <Text className="text-xs text-heliotrope-600 font-medium">
                 {labelMap[r.resource_type] ?? r.resource_type}
               </Text>
               <Text
-                className={`text-xs font-medium ${isOver ? "text-rust-600" : "text-sand-700"}`}
+                className={`text-xs font-bold ${isOver ? "text-red-600" : "text-spaceCadet-900"}`}
               >
                 {r.used}/{r.limit}{" "}
                 {r.period === "MONTH" ? "mo" : r.period === "DAY" ? "day" : ""}
               </Text>
             </View>
-            <View className="h-2 bg-sand-100 rounded-full overflow-hidden">
+            <View className="h-2 bg-lavender-100 rounded-full overflow-hidden">
               <View
                 style={{
                   width: `${Math.max(pct, 3)}%`,
@@ -1073,8 +1072,8 @@ function UsageSection() {
             </View>
             {isOver && (
               <View className="flex-row items-center gap-1 mt-1">
-                <AlertTriangle size={10} color={colors.rust[600]} />
-                <Text className="text-[10px] text-rust-600">
+                <AlertTriangle size={10} color="#dc2626" />
+                <Text className="text-[10px] text-red-600">
                   Limit reached. Upgrade or contact support.
                 </Text>
               </View>
@@ -1160,22 +1159,24 @@ export default function SettingsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-3"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <View className="flex-row items-center gap-3">
+        <View className="flex-row items-center justify-between">
           <AnimatedPressable
             onPress={() => router.back()}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             hitSlop={8}
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Settings</Text>
+          <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">Settings</Text>
+          <View className="w-10" />
         </View>
       </View>
 
@@ -1184,11 +1185,11 @@ export default function SettingsScreen() {
         contentContainerStyle={{ paddingBottom: 32 }}
       >
         {/* Shop Card */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-          <Text className="text-base font-bold text-sand-900">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 mb-4 shadow-sm">
+          <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">
             {retailer?.shop_name ?? "My Store"}
           </Text>
-          <Text className="text-sm text-sand-500 mt-0.5">
+          <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
             {retailer?.city ?? ""} · {retailer?.plan ?? "STARTER"}
           </Text>
         </View>

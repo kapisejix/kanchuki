@@ -122,129 +122,110 @@ export function ProductAttributesForm({
 
   return (
     <View className="px-4 py-4 gap-4">
-      {/* Price input */}
-      <View className="bg-white rounded-2xl p-4 border border-sand-100">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-          Price (₹)
+      {/* Product Display Header & Price */}
+      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <Text className="text-xl font-bold text-spaceCadet-900 font-marcellus">
+          {editedName || product.name || 'Luxury Ensemble'}
         </Text>
-        <TextInput
-          value={price}
-          onChangeText={dirty(setPrice)}
-          placeholder="e.g. 1500"
-          keyboardType="numeric"
-          className="text-lg font-bold text-sand-900"
-          placeholderTextColor={colors.sand[400]}
-        />
-        <Text className="text-xs text-sand-400 mt-1.5">
-          Selling price — AI handles the tags. Edit below only if needed.
+        <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
+          {[product.subtype ?? product.category, product.fabric_estimate].filter(Boolean).join(' · ') || 'Handcrafted Design'}
         </Text>
-      </View>
 
-      {/* Color variants swatches */}
-      <View className="bg-white rounded-2xl p-4 border border-sand-100">
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
-          Colors · Same Design
-        </Text>
-        {product.variants.length === 0 ? (
-          <View className="bg-sand-50 rounded-xl px-4 py-3">
-            <Text className="text-xs text-sand-400 text-center">
-              No color variants yet. Add photos of the same design in different colors.
-            </Text>
-          </View>
-        ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-3">
-              {product.variants.map((variant) => {
-                const variantPhotoIndex = variant.photo_url
-                  ? displayPhotos.findIndex((p) => p.url === variant.photo_url)
-                  : -1
-                const isActive = variantPhotoIndex === selectedPhotoIndex
-                return (
-                  <AnimatedPressable
-                    key={variant.id}
-                    onPress={() => {
-                      if (variantPhotoIndex >= 0) {
-                        goToPhoto(isActive ? 0 : variantPhotoIndex)
-                      }
-                    }}
-                    className={`items-center gap-1.5 ${isActive ? 'opacity-100' : 'opacity-80'}`}
-                  >
-                    <View
-                      className={`w-9 h-9 rounded-full border-2 ${
-                        isActive ? 'border-ink-600' : 'border-sand-200'
-                      }`}
-                      style={{ backgroundColor: resolveFashionColor(variant.color) }}
-                    />
-                    <View className="flex-row items-center gap-1">
-                      {isActive && <Check size={10} color={primaryColor} />}
-                      <Text
-                        className={`text-xs font-medium ${isActive ? 'text-ink-700' : 'text-sand-500'}`}
-                      >
-                        {variant.color}
-                      </Text>
-                    </View>
-                  </AnimatedPressable>
-                )
-              })}
+        <View className="mt-4 pt-3 border-t border-lavender-200 flex-row items-center justify-between">
+          <View>
+            <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">Selling Price</Text>
+            <View className="flex-row items-center gap-1 mt-0.5">
+              <Text className="text-xl font-bold text-spaceCadet-900 font-marcellus">₹</Text>
+              <TextInput
+                value={price}
+                onChangeText={dirty(setPrice)}
+                placeholder="1500"
+                keyboardType="numeric"
+                className="text-2xl font-bold text-spaceCadet-900 font-marcellus p-0"
+                placeholderTextColor="#928EB2"
+              />
             </View>
-          </ScrollView>
-        )}
+          </View>
+
+          <View className="px-3 py-1.5 rounded-full bg-lavender-100 border border-lavender-200">
+            <Text className="text-[11px] font-bold text-fuchsia-600">In Stock</Text>
+          </View>
+        </View>
       </View>
 
-      {/* AI Summary card */}
-      <View className="bg-white rounded-2xl p-4 border border-sand-100">
-        <View className="flex-row items-center gap-2 mb-2">
-          <Sparkles size={14} color={primaryColor} />
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-            AI Summary
+      {/* Color swatches with checkmarks */}
+      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+        <View className="flex-row items-center justify-between mb-3">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+            Color Variants
+          </Text>
+          <Text className="text-xs text-heliotrope-500">
+            {editedColor || 'Select'}
           </Text>
         </View>
-        {product.name ? (
-          <Text className="text-sm font-semibold text-sand-700">{product.name}</Text>
-        ) : null}
-        <Text className="text-base font-bold text-sand-900">
-          {product.subtype ?? product.category ?? 'Uncategorized'}
-          {product.primary_color ? ` · ${product.primary_color}` : ''}
-        </Text>
-        <Text className="text-sm text-sand-500 mt-0.5">
-          {[product.fabric_estimate, product.pattern].filter(Boolean).join(' · ') ||
-            'AI details pending'}
-        </Text>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <View className="flex-row gap-3 items-center py-1">
+            {product.variants.map((variant) => {
+              const variantPhotoIndex = variant.photo_url
+                ? displayPhotos.findIndex((p) => p.url === variant.photo_url)
+                : -1
+              const isActive = variantPhotoIndex === selectedPhotoIndex
+              const hex = resolveFashionColor(variant.color)
+              return (
+                <AnimatedPressable
+                  key={variant.id}
+                  onPress={() => {
+                    if (variantPhotoIndex >= 0) {
+                      goToPhoto(isActive ? 0 : variantPhotoIndex)
+                    }
+                  }}
+                  className={`w-11 h-11 rounded-full items-center justify-center border-2 ${
+                    isActive ? 'border-fuchsia-500 scale-105' : 'border-lavender-200'
+                  }`}
+                  style={{ backgroundColor: hex }}
+                >
+                  {isActive && <Check size={14} color="#ffffff" strokeWidth={3} />}
+                </AnimatedPressable>
+              )
+            })}
+          </View>
+        </ScrollView>
       </View>
 
       {/* Editable Fields Container */}
-      <View className="bg-white rounded-2xl p-4 border border-sand-100 gap-4">
+      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm gap-4">
         {/* Product Title / Name */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
             Product Title
           </Text>
           <TextInput
             value={editedName}
             onChangeText={dirty(setEditedName)}
             placeholder="e.g. Pink Embroidered Anarkali Suit"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2.5"
+            placeholderTextColor="#928EB2"
+            className="text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
         </View>
 
         {/* Subtype / Garment Type */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
             Garment Subtype
           </Text>
           <TextInput
             value={editedSubtype}
             onChangeText={dirty(setEditedSubtype)}
             placeholder="e.g. Anarkali Suit, Kurta Set, Lehenga Choli"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2.5"
+            placeholderTextColor="#928EB2"
+            className="text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
         </View>
 
         {/* Category */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
             Category
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -259,15 +240,15 @@ export function ProductAttributesForm({
                       dirty(setEditedCategoryId)(c.id)
                       dirty(setEditedCategory)(c.name)
                     }}
-                    className={`px-3 py-2 rounded-xl border ${
+                    className={`px-3.5 py-2 rounded-2xl border ${
                       isSelected
-                        ? 'bg-ink-600 border-ink-600'
-                        : 'bg-sand-50 border-sand-200'
+                        ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                        : 'bg-lavender-50 border-lavender-200'
                     }`}
                   >
                     <Text
-                      className={`text-xs font-medium ${
-                        isSelected ? 'text-white' : 'text-sand-700'
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-white' : 'text-spaceCadet-900'
                       }`}
                     >
                       {c.name}
@@ -281,13 +262,13 @@ export function ProductAttributesForm({
 
         {/* Primary Color */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
             Primary Color
           </Text>
           <View className="flex-row items-center gap-2">
             {editedColor ? (
               <View
-                className="w-7 h-7 rounded-full border border-sand-200"
+                className="w-8 h-8 rounded-full border-2 border-lavender-200"
                 style={{ backgroundColor: resolveFashionColor(editedColor) }}
               />
             ) : null}
@@ -295,15 +276,15 @@ export function ProductAttributesForm({
               value={editedColor}
               onChangeText={dirty(setEditedColor)}
               placeholder="e.g. Rani Pink, Mustard, Navy Blue"
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2.5"
+              placeholderTextColor="#928EB2"
+              className="flex-1 text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
           </View>
         </View>
 
         {/* Pattern */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
             Pattern / Work
           </Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -314,15 +295,15 @@ export function ProductAttributesForm({
                   <AnimatedPressable
                     key={p}
                     onPress={() => dirty(setEditedPattern)(isSelected ? null : p)}
-                    className={`px-3 py-2 rounded-xl border ${
+                    className={`px-3.5 py-2 rounded-2xl border ${
                       isSelected
-                        ? 'bg-ink-600 border-ink-600'
-                        : 'bg-sand-50 border-sand-200'
+                        ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                        : 'bg-lavender-50 border-lavender-200'
                     }`}
                   >
                     <Text
-                      className={`text-xs font-medium ${
-                        isSelected ? 'text-white' : 'text-sand-700'
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-white' : 'text-spaceCadet-900'
                       }`}
                     >
                       {p}
@@ -337,7 +318,7 @@ export function ProductAttributesForm({
         {/* Style Silhouettes */}
         {availableStyles.length > 0 && (
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
               Styles / Silhouettes
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -348,15 +329,15 @@ export function ProductAttributesForm({
                     <AnimatedPressable
                       key={s.id}
                       onPress={() => toggleStyle(s.name)}
-                      className={`px-3 py-2 rounded-xl border ${
+                      className={`px-3.5 py-2 rounded-2xl border ${
                         isSelected
-                          ? 'bg-ink-600 border-ink-600'
-                          : 'bg-sand-50 border-sand-200'
+                          ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                          : 'bg-lavender-50 border-lavender-200'
                       }`}
                     >
                       <Text
-                        className={`text-xs font-medium ${
-                          isSelected ? 'text-white' : 'text-sand-700'
+                        className={`text-xs font-bold ${
+                          isSelected ? 'text-white' : 'text-spaceCadet-900'
                         }`}
                       >
                         {s.name}
@@ -372,7 +353,7 @@ export function ProductAttributesForm({
         {/* Fabrics */}
         {availableFabrics.length > 0 && (
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
               Fabrics
             </Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -383,15 +364,15 @@ export function ProductAttributesForm({
                     <AnimatedPressable
                       key={f.id}
                       onPress={() => toggleFabric(f.name)}
-                      className={`px-3 py-2 rounded-xl border ${
+                      className={`px-3.5 py-2 rounded-2xl border ${
                         isSelected
-                          ? 'bg-ink-600 border-ink-600'
-                          : 'bg-sand-50 border-sand-200'
+                          ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                          : 'bg-lavender-50 border-lavender-200'
                       }`}
                     >
                       <Text
-                        className={`text-xs font-medium ${
-                          isSelected ? 'text-white' : 'text-sand-700'
+                        className={`text-xs font-bold ${
+                          isSelected ? 'text-white' : 'text-spaceCadet-900'
                         }`}
                       >
                         {f.name}
@@ -406,25 +387,25 @@ export function ProductAttributesForm({
 
         {/* Available Sizes */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
             Available Sizes
           </Text>
-          <View className="flex-row flex-wrap gap-2">
+          <View className="flex-row flex-wrap gap-2.5">
             {SIZE_OPTIONS.map((size) => {
               const isSelected = selectedSizes.includes(size)
               return (
                 <AnimatedPressable
                   key={size}
                   onPress={() => toggleSize(size)}
-                  className={`px-4 py-2 rounded-xl border ${
+                  className={`w-12 h-12 rounded-full border items-center justify-center ${
                     isSelected
-                      ? 'bg-ink-600 border-ink-600'
-                      : 'bg-sand-50 border-sand-200'
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                      : 'bg-white border-lavender-200'
                   }`}
                 >
                   <Text
                     className={`text-xs font-bold ${
-                      isSelected ? 'text-white' : 'text-sand-700'
+                      isSelected ? 'text-white' : 'text-spaceCadet-900'
                     }`}
                   >
                     {size}
@@ -438,23 +419,23 @@ export function ProductAttributesForm({
         {/* SKU & Barcode Tag */}
         <View>
           <View className="flex-row items-center justify-between mb-1.5">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
               SKU / Product Code
             </Text>
             <AnimatedPressable
               onPress={onOpenSkuTagModal}
-              className="flex-row items-center gap-1 bg-ink-50 px-2 py-1 rounded-lg"
+              className="flex-row items-center gap-1.5 bg-lavender-100 px-3 py-1 rounded-full border border-lavender-200"
             >
-              <Tag size={12} color={primaryColor} />
-              <Text className="text-ink-700 text-[10px] font-semibold">Print Price Tag</Text>
+              <Tag size={12} color="#BB3F95" />
+              <Text className="text-spaceCadet-900 text-[10px] font-bold">Print Price Tag</Text>
             </AnimatedPressable>
           </View>
           <TextInput
             value={editedSku}
             onChangeText={dirty(setEditedSku)}
             placeholder="e.g. KUR-001 or scan barcode"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2.5"
+            placeholderTextColor="#928EB2"
+            className="text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
         </View>
 

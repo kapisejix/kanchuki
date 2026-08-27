@@ -11,6 +11,7 @@ import { retailerApi, collectionApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 import { useTheme } from '../src/lib/theme'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
+import { GradientButton } from '../src/components/GradientButton'
 
 type QrSlug = { public_slug: string; profile_url: string }
 type RetailerMe = {
@@ -129,101 +130,103 @@ export default function StoreProfileScreen() {
     deleteConfirmText.trim().toLowerCase() === (me?.shop_name ?? '').trim().toLowerCase()
 
   return (
-    <ScrollView className="flex-1 bg-ink-50" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
-      <View className="flex-row items-center justify-between px-4 mb-4">
-        <AnimatedPressable onPress={closeScreen} className="w-10 h-10 items-center justify-center" accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={colors.sand[700]} />
+    <ScrollView className="flex-1 bg-[#F8F7FC]" contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: 32 }}>
+      <View className="flex-row items-center justify-between px-5 mb-4">
+        <AnimatedPressable
+          onPress={closeScreen}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
+          <X size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">Store QR Code</Text>
+        <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">Store QR Code</Text>
         <View className="w-10" />
       </View>
 
       <View className="items-center px-6 mb-6">
-        <View className="bg-white rounded-3xl p-6 border border-sand-100 items-center">
+        <View className="bg-white rounded-3xl p-6 border border-lavender-200 shadow-sm items-center w-full max-w-sm">
           {hasQr ? (
             qrError ? (
               <View className="w-56 h-56 items-center justify-center px-4">
-                <Text className="text-sm text-sand-500 text-center mb-3">{"Couldn't load QR code"}</Text>
+                <Text className="text-sm text-heliotrope-500 text-center mb-3">{"Couldn't load QR code"}</Text>
                 <AnimatedPressable
                   onPress={() => void refetchQr()}
-                  className="bg-ink-600 rounded-full px-4 py-2"
+                  className="bg-spaceCadet-900 rounded-full px-5 py-2.5"
                 >
-                  <Text className="text-white font-semibold text-sm">Retry</Text>
+                  <Text className="text-white font-bold text-xs uppercase tracking-wider">Retry</Text>
                 </AnimatedPressable>
               </View>
             ) : qrLoading || !qr ? (
               <View className="w-56 h-56 items-center justify-center">
-                <ActivityIndicator color={primaryColor} />
+                <ActivityIndicator color="#BB3F95" />
               </View>
             ) : (
-              <QRCode value={qr.profile_url} size={220} getRef={(ref) => { qrRef.current = ref }} />
+              <View className="p-2 bg-white rounded-2xl border border-lavender-200">
+                <QRCode value={qr.profile_url} size={200} getRef={(ref) => { qrRef.current = ref }} />
+              </View>
             )
           ) : (
             <View className="w-56 items-center justify-center px-2 py-4">
-              <Text className="text-sm font-semibold text-sand-900 text-center mb-1">
+              <Text className="text-base font-bold text-spaceCadet-900 font-marcellus text-center mb-1">
                 No QR code yet
               </Text>
-              <Text className="text-xs text-sand-400 text-center mb-4 px-2">
-                Generate one to let customers scan straight into your catalog. The link uses your shop name.
+              <Text className="text-xs text-heliotrope-500 text-center mb-5 px-2">
+                Generate one to let customers scan straight into your luxury catalog.
               </Text>
-              <AnimatedPressable
-                onPress={() => generateQr.mutate()}
-                disabled={generateQr.isPending}
-                className={`rounded-full px-6 py-3 flex-row items-center gap-2 ${generateQr.isPending ? 'bg-ink-300' : 'bg-ink-600'}`}
-              >
-                {generateQr.isPending ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <Text className="text-white font-semibold text-sm">Generate QR Code</Text>
-                )}
-              </AnimatedPressable>
+              <View className="w-full">
+                <GradientButton
+                  label="Generate QR Code"
+                  onPress={() => generateQr.mutate()}
+                  loading={generateQr.isPending}
+                />
+              </View>
             </View>
           )}
         </View>
-        <Text className="text-xs text-sand-500 text-center mt-3 px-8">
+        <Text className="text-xs text-heliotrope-500 text-center mt-3 px-8">
           {hasQr
             ? 'Customers scan this to view your store profile and catalog'
             : 'Your QR opens your store profile where customers browse your catalog'}
         </Text>
         {hasQr && qr && !confirmingDelete && (
-          <>
+          <View className="w-full max-w-sm mt-4 gap-3">
             <AnimatedPressable onPress={() => void Linking.openURL(qr.profile_url)}>
-              <Text className="text-sm text-ink-700 underline text-center mt-2 px-8">
+              <Text className="text-xs text-fuchsia-600 font-bold underline text-center">
                 {qr.profile_url}
               </Text>
             </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => void Share.share({ message: qr.profile_url })}
-              className="flex-row items-center gap-2 bg-ink-600 px-5 py-3 rounded-2xl mt-4"
-            >
-              <Share2 size={16} color="white" />
-              <Text className="text-white font-semibold text-sm">Share Link</Text>
-            </AnimatedPressable>
 
-            <View className="flex-row gap-3 mt-2">
+            <GradientButton
+              label="Share Store Link"
+              onPress={() => void Share.share({ message: qr.profile_url })}
+              icon={<Share2 size={16} color="white" />}
+            />
+
+            <View className="flex-row gap-3 mt-1">
               <AnimatedPressable
                 onPress={() => void handleExportImage()}
                 disabled={exporting}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-sand-800 border border-sand-700 py-3 rounded-2xl"
+                className="flex-1 flex-row items-center justify-center gap-2 bg-lavender-100 border border-lavender-200 py-3 rounded-2xl"
               >
                 {exporting ? (
-                  <ActivityIndicator size="small" color="white" />
+                  <ActivityIndicator size="small" color="#231F48" />
                 ) : (
                   <>
-                    <Download size={16} color="white" />
-                    <Text className="text-white font-semibold text-sm">Save QR Image</Text>
+                    <Download size={16} color="#231F48" />
+                    <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Save Image</Text>
                   </>
                 )}
               </AnimatedPressable>
               <AnimatedPressable
                 onPress={() => setConfirmingDelete(true)}
-                className="flex-1 flex-row items-center justify-center gap-2 bg-white border border-rust-300 py-3 rounded-2xl"
+                className="flex-1 flex-row items-center justify-center gap-2 bg-white border border-red-200 py-3 rounded-2xl"
               >
-                <Trash2 size={16} color={colors.rust[500]} />
-                <Text className="text-rust-500 font-semibold text-sm">Delete QR</Text>
+                <Trash2 size={16} color="#dc2626" />
+                <Text className="text-red-600 font-bold text-xs uppercase tracking-wider">Delete QR</Text>
               </AnimatedPressable>
             </View>
-          </>
+          </View>
         )}
 
         {/* Delete verification — the retailer must type their shop name; the

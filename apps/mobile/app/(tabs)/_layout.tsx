@@ -54,17 +54,17 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: primaryColor,
-        tabBarInactiveTintColor: colors.sand[400],
+        tabBarActiveTintColor: '#BB3F95',
+        tabBarInactiveTintColor: '#928EB2',
         tabBarStyle: {
-          backgroundColor: colors.cotton,
-          borderTopColor: colors.sand[100],
-          height: 60 + insets.bottom,
-          paddingBottom: 8 + insets.bottom,
+          backgroundColor: '#231F48',
+          borderTopColor: 'rgba(224, 225, 246, 0.12)',
+          height: 64 + insets.bottom,
+          paddingBottom: 10 + insets.bottom,
         },
-        headerStyle: { backgroundColor: colors.cotton },
-        headerTintColor: colors.charcoal,
-        headerTitleStyle: { fontWeight: '700', fontSize: 17 },
+        headerStyle: { backgroundColor: '#F8F7FC' },
+        headerTintColor: '#231F48',
+        headerTitleStyle: { fontWeight: '700', fontSize: 17, fontFamily: 'Marcellus_400Regular' },
         headerShadowVisible: false,
       }}
     >
@@ -73,7 +73,7 @@ export default function TabsLayout() {
         options={{
           title: 'Home',
           tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Home color={color} size={size} strokeWidth={1.8} />,
           headerTitleAlign: 'center',
           headerTitle: () => (
             <Image
@@ -88,7 +88,7 @@ export default function TabsLayout() {
         name="catalog"
         options={{
           title: 'Catalog',
-          tabBarIcon: ({ color, size }) => <Grid3X3 color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => <Grid3X3 color={color} size={size} strokeWidth={1.8} />,
           headerShown: false,
         }}
       />
@@ -103,14 +103,14 @@ export default function TabsLayout() {
                 width: 48,
                 height: 48,
                 borderRadius: 24,
-                backgroundColor: primaryColor,
+                backgroundColor: '#BB3F95',
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: 10,
-                shadowColor: primaryColor,
+                marginBottom: 12,
+                shadowColor: '#BB3F95',
                 shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.35,
-                shadowRadius: 6,
+                shadowOpacity: 0.45,
+                shadowRadius: 8,
                 elevation: 6,
               }}
             >
