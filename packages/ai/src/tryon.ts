@@ -3,10 +3,18 @@ import { PIECE_TAGGABLE_CATEGORIES } from '@kanchuki/shared'
 import { uploadBuffer, publicUrl, copyUrlToR2 } from './r2.js'
 import { ssrfSafeFetch, readCappedBuffer } from './safe-fetch.js'
 
-// ─── Configuration ─────────────────────────────────────────────
-// Fashion V-Tone v1.5 (Apache 2.0, maskless, CPU-capable)
-// Deploy via services/fashion-vtone/Dockerfile
-// ~$0.0003/try-on on CPU, ~10-30s on GPU
+// ─── Configuration & Key Resolvers ─────────────────────────────
+
+export async function resolveFalKey(): Promise<string | null> {
+  const secret = await getSecret('FAL_API_KEY').catch(() => null)
+  return (
+    secret ||
+    (await getSecret('FAL_KEY').catch(() => null)) ||
+    process.env['FAL_API_KEY'] ||
+    process.env['FAL_KEY'] ||
+    null
+  )
+}
 
 async function getVtoneApiUrl(): Promise<string> {
   return (await getSecret('VTONE_API_URL')) ?? ''
@@ -16,16 +24,12 @@ async function getVtoneSharedSecret(): Promise<string | undefined> {
   return getSecret('VTONE_SHARED_SECRET')
 }
 
-// How long a single V-Tone inference call may take before the API aborts it.
-// Defaults to 30 minutes: self-hosted CPU inference is slow (measured ~52s
-// per diffusion step, 30 steps ≈ 26 min on a shared Railway CPU). A GPU box
-// finishes in ~10-30s, but aborting an in-flight CPU run wastes the whole
-// inference, so err generous. Override with VTONE_CALL_TIMEOUT_MS.
 const VTONE_CALL_TIMEOUT_MS = (() => {
   const raw = process.env['VTONE_CALL_TIMEOUT_MS']
   const parsed = raw ? Number.parseInt(raw, 10) : NaN
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 30 * 60 * 1000
 })()
+
 const R2_TRYON_PREFIX = 'tryon-results'
 const R2_TRAINING_PREFIX = 'training-data'
 
@@ -37,9 +41,8 @@ export interface TryOnRequest {
   productCategory?: string | null
   pieceGarmentUrls?: { upper?: string; lower?: string }
   /**
-   * Direct V-Tone category override (admin on-model tool). When set, it wins
-   * over the heuristic mapping in resolveVtoneCategory, so the admin page's
-   * tops/bottoms/one-pieces picker is honored exactly.
+   * Direct category override (admin on-model tool). When set, it wins
+   * over the heuristic mapping in resolveVtoneCategory.
    */
   vtoneCategory?: VtoneCategory
 }
@@ -51,7 +54,7 @@ export interface TryOnResult {
   status: 'queued' | 'processing' | 'completed' | 'failed'
   outputUrls: string[]
   errorMessage: string | null
-  engine: 'vton'
+  engine: 'fal-fashn' | 'vton'
 }
 
 // ─── R2 paths ─────────────────────────────────────────────────
@@ -60,14 +63,42 @@ export function tryonResultR2Key(jobId: string): string {
   return `${R2_TRYON_PREFIX}/${jobId}/result.jpg`
 }
 
-// ─── Category Mapping ──────────────────────────────────────────
-// Maps Kanchuki's AI-tagged categories to V-Tone categories.
-// V-Tone uses: tops, bottoms, one-pieces
+// ─── Category Mapping & Helpers ────────────────────────────────
+
+// Indian long top categories that should enable long_top in FASHN
+const LONG_TOP_CATEGORIES = new Set([
+  'Kurta',
+  'Sherwani',
+  'Long Kurti',
+  'Kurti',
+  'Tunic',
+  'Kameez',
+  'Achkan',
+  'Indo-Western',
+  'Nehru Jacket',
+])
+
+export function isLongTopCategory(category: string | null | undefined): boolean {
+  if (!category) return false
+  return (
+    LONG_TOP_CATEGORIES.has(category) ||
+    /kurta|kurti|sherwani|tunic|kameez|achkan/i.test(category)
+  )
+}
 
 // Categories that are a 2+ piece outfit but have only ONE product photo
-// shot as a set — no piece-tagged photo available.
+// shot as a set — mapped to one-pieces in try-on models
 const MULTIPIECE_AS_OVERALL = new Set([
-  'Ladies Suit', 'Readymade Suit', "Men's Kurta Pajama", 'Lehenga', 'Saree',
+  'Ladies Suit',
+  'Readymade Suit',
+  "Men's Kurta Pajama",
+  'Lehenga',
+  'Saree',
+  'Anarkali Suit',
+  'Sharara Suit',
+  'Gown',
+  'Dress',
+  'Jumpsuit',
 ])
 
 // Categories where a retailer can tag separate upper/lower piece photos.
@@ -84,20 +115,169 @@ export function isUnsupportedTryOnCategory(category: string | null | undefined):
   return !!category && UNSUPPORTED_CATEGORIES.has(category)
 }
 
-/** Map Kanchuki category to V-Tone category. */
-function resolveVtoneCategory(category: string | null | undefined): VtoneCategory {
+/** Map Kanchuki category to virtual try-on category. */
+export function resolveVtoneCategory(category: string | null | undefined): VtoneCategory {
   if (!category) return 'tops'
-  if (MULTIPIECE_AS_OVERALL.has(category)) return 'one-pieces'
+  if (MULTIPIECE_AS_OVERALL.has(category) || /suit|saree|lehenga|gown|dress|jumpsuit|anarkali/i.test(category)) {
+    return 'one-pieces'
+  }
+  if (/pant|trouser|jeans|skirt|dhoti|salwar|pyjama|pajama|palazzo|churidar|legging/i.test(category)) {
+    return 'bottoms'
+  }
   return 'tops'
 }
 
-// ─── V-Tone Inference ──────────────────────────────────────────
+// ─── Fal.ai FASHN v1.5 Inference ───────────────────────────────
+
+const FAL_BASE = 'https://queue.fal.run'
 
 /**
- * One V-Tone inference call.
- * Maskless — no background removal needed, handles raw product photos.
- * Returns sync (10-30s on GPU, 30-60s on CPU).
+ * Executes a single FASHN v1.5 Try-On task via fal.ai.
+ * Preserves garment details, textures, and Indian ethnic drape characteristics.
  */
+async function callFalFashnOnce(
+  apiKey: string,
+  personImageUrl: string,
+  garmentImageUrl: string,
+  category: VtoneCategory,
+  options?: { isLongTop?: boolean },
+): Promise<TryOnResult> {
+  const modelEndpoint = 'fal-ai/fashn/tryon-v1.5'
+  const submitUrl = `${FAL_BASE}/${modelEndpoint}`
+
+  const input = {
+    model_image: personImageUrl,
+    garment_image: garmentImageUrl,
+    category,
+    mode: 'quality',
+    long_top: options?.isLongTop ?? (category === 'tops'),
+    garment_photo_type: 'auto',
+    nsfw_filter: true,
+    cover_feet: false,
+    adjust_hands: true,
+    restore_background: true,
+  }
+
+  const submitRes = await fetch(submitUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Key ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal: AbortSignal.timeout(30_000),
+  })
+
+  if (!submitRes.ok) {
+    const errorText = await submitRes.text().catch(() => '')
+    throw new Error(`Fal.ai FASHN submission failed (${submitRes.status}): ${errorText}`)
+  }
+
+  const submitData = (await submitRes.json()) as {
+    request_id?: string
+    status_url?: string
+    response_url?: string
+    images?: { url: string }[]
+    image?: { url: string }
+  }
+
+  // Fast-path: already resolved
+  if (submitData.images?.[0]?.url) {
+    return {
+      jobId: `fashn-${Date.now()}`,
+      status: 'completed',
+      outputUrls: [submitData.images[0].url],
+      errorMessage: null,
+      engine: 'fal-fashn',
+    }
+  }
+  if (submitData.image?.url) {
+    return {
+      jobId: `fashn-${Date.now()}`,
+      status: 'completed',
+      outputUrls: [submitData.image.url],
+      errorMessage: null,
+      engine: 'fal-fashn',
+    }
+  }
+
+  const requestId = submitData.request_id
+  const statusUrl = submitData.status_url || `${FAL_BASE}/${modelEndpoint}/requests/${requestId}/status`
+  const responseUrl = submitData.response_url || `${FAL_BASE}/${modelEndpoint}/requests/${requestId}`
+
+  // Poll for completion (FASHN usually finishes in 8–15s)
+  const startTime = Date.now()
+  const timeoutMs = 180_000
+  const deadline = startTime + timeoutMs
+
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 1500))
+
+    try {
+      const statusRes = await fetch(statusUrl, {
+        headers: { Authorization: `Key ${apiKey}` },
+        signal: AbortSignal.timeout(10_000),
+      })
+
+      if (statusRes.ok) {
+        const statusJson = (await statusRes.json()) as { status?: string; error?: string }
+        if (statusJson.status === 'COMPLETED') {
+          const finalRes = await fetch(responseUrl, {
+            headers: { Authorization: `Key ${apiKey}` },
+            signal: AbortSignal.timeout(10_000),
+          })
+          const finalData = (await finalRes.json()) as {
+            images?: { url: string }[]
+            image?: { url: string }
+          }
+          const resultUrl = finalData.images?.[0]?.url || finalData.image?.url
+          if (!resultUrl) throw new Error('No output image in Fal.ai FASHN completed response')
+
+          return {
+            jobId: `fashn-${requestId || Date.now()}`,
+            status: 'completed',
+            outputUrls: [resultUrl],
+            errorMessage: null,
+            engine: 'fal-fashn',
+          }
+        }
+        if (statusJson.status === 'FAILED' || statusJson.status === 'ERROR') {
+          throw new Error(`Fal.ai FASHN generation failed: ${statusJson.error ?? 'Unknown error'}`)
+        }
+      }
+    } catch (err) {
+      if (err instanceof Error && err.message.includes('Fal.ai FASHN generation failed')) throw err
+      // Transient network blip during polling, continue next iteration
+    }
+  }
+
+  throw new Error('Fal.ai FASHN try-on timed out after 3 minutes')
+}
+
+/**
+ * Trigger FASHN Try-On via fal.ai with multi-piece outfit chaining support.
+ */
+async function triggerFalFashn(apiKey: string, request: TryOnRequest): Promise<TryOnResult> {
+  const { upper: upperPhotoUrl, lower: lowerPhotoUrl } = request.pieceGarmentUrls ?? {}
+  if (upperPhotoUrl && lowerPhotoUrl && isPieceTaggableCategory(request.productCategory)) {
+    // Multi-piece: tops first, then chain bottoms onto result
+    const upperResult = await callFalFashnOnce(apiKey, request.customerPhotoUrl, upperPhotoUrl, 'tops', {
+      isLongTop: isLongTopCategory(request.productCategory),
+    })
+    const intermediateUrl = await saveTryOnResultToR2(
+      `tryon-chain-${Date.now()}`,
+      upperResult.outputUrls[0]!,
+    )
+    return callFalFashnOnce(apiKey, intermediateUrl, lowerPhotoUrl, 'bottoms')
+  }
+
+  const category = request.vtoneCategory ?? resolveVtoneCategory(request.productCategory)
+  const isLongTop = isLongTopCategory(request.productCategory)
+  return callFalFashnOnce(apiKey, request.customerPhotoUrl, request.productPhotoUrl, category, { isLongTop })
+}
+
+// ─── Legacy Fashion V-Tone Inference (Fallback) ────────────────
+
 async function callVTONOnce(
   personImageUrl: string,
   garmentImageUrl: string,
@@ -137,21 +317,9 @@ async function callVTONOnce(
   }
 }
 
-/**
- * Trigger a try-on via Fashion V-Tone v1.5.
- * Two paths:
- * - Piece-tagged multi-piece outfit (upper + lower photos both present):
- *   two sequential calls — tops first, then bottoms composited onto the result.
- * - Everything else: single call with mapped V-Tone category.
- */
 async function triggerVTON(request: TryOnRequest): Promise<TryOnResult> {
-  if (isUnsupportedTryOnCategory(request.productCategory)) {
-    throw new Error(`Try-on not supported for category "${request.productCategory}" (draping unsupported for MVP)`)
-  }
-
   const { upper: upperPhotoUrl, lower: lowerPhotoUrl } = request.pieceGarmentUrls ?? {}
   if (upperPhotoUrl && lowerPhotoUrl && isPieceTaggableCategory(request.productCategory)) {
-    // Multi-piece: tops first, then chain bottoms onto result
     const upperResult = await callVTONOnce(request.customerPhotoUrl, upperPhotoUrl, 'tops')
     const intermediateUrl = await saveTryOnResultToR2(
       `tryon-chain-${Date.now()}`,
@@ -160,8 +328,6 @@ async function triggerVTON(request: TryOnRequest): Promise<TryOnResult> {
     return callVTONOnce(intermediateUrl, lowerPhotoUrl, 'bottoms')
   }
 
-  // Single photo path — explicit vtoneCategory override (admin tool) or
-  // the heuristic mapping for customer try-ons.
   const category = request.vtoneCategory ?? resolveVtoneCategory(request.productCategory)
   return callVTONOnce(request.customerPhotoUrl, request.productPhotoUrl, category)
 }
@@ -177,19 +343,30 @@ async function downloadBufferFromUrl(url: string): Promise<Buffer> {
 // ─── Public API ────────────────────────────────────────────────
 
 /**
- * Trigger a virtual try-on via Fashion V-Tone v1.5.
- * Apache 2.0 licensed, maskless, CPU-capable.
- * Throws if VTONE_API_URL is not configured.
+ * Trigger a virtual try-on.
+ * Prioritizes FASHN v1.5 via Fal.ai if FAL_KEY / FAL_API_KEY is configured,
+ * otherwise falls back to self-hosted Fashion V-Tone (VTONE_API_URL).
  */
 export async function triggerTryOn(request: TryOnRequest): Promise<TryOnResult> {
-  if (!(await getVtoneApiUrl())) {
-    throw new Error(
-      'Try-on engine not configured. Set VTONE_API_URL to your Fashion V-Tone service endpoint.',
-    )
+  if (isUnsupportedTryOnCategory(request.productCategory)) {
+    throw new Error(`Try-on not supported for category "${request.productCategory}" (draping unsupported for MVP)`)
   }
 
-  console.log('[TryOn] Using V-Tone v1.5 engine')
-  return await triggerVTON(request)
+  const falKey = await resolveFalKey()
+  if (falKey) {
+    console.log('[TryOn] Using FASHN v1.5 via Fal.ai engine')
+    return await triggerFalFashn(falKey, request)
+  }
+
+  const vtoneUrl = await getVtoneApiUrl()
+  if (vtoneUrl) {
+    console.log('[TryOn] Using self-hosted Fashion V-Tone engine')
+    return await triggerVTON(request)
+  }
+
+  throw new Error(
+    'Virtual try-on engine is not configured. Set FAL_KEY (Admin → Integrations) or VTONE_API_URL.',
+  )
 }
 
 /**

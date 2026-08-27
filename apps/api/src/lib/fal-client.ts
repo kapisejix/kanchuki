@@ -193,3 +193,34 @@ export async function generateIdmVtonTryon(
   return runFalTask('fal-ai/idm-vton', input, onProgress);
 }
 
+/**
+ * Run FASHN v1.5 Virtual Try-On via fal.ai (high fidelity, maskless, with Indian long_top support).
+ */
+export async function generateFashnTryon(
+  humanImageUrl: string,
+  garmentImageUrl: string,
+  category: 'tops' | 'bottoms' | 'one-pieces' = 'tops',
+  options?: {
+    isLongTop?: boolean;
+    mode?: 'quality' | 'balanced' | 'performance';
+    garmentPhotoType?: 'auto' | 'flat-lay' | 'model';
+    onProgress?: (p: { progress: number; etaMs: number }) => void;
+  },
+): Promise<{ sampleUrl: string }> {
+  const input = {
+    model_image: humanImageUrl,
+    garment_image: garmentImageUrl,
+    category,
+    mode: options?.mode ?? 'quality',
+    long_top: options?.isLongTop ?? (category === 'tops'),
+    garment_photo_type: options?.garmentPhotoType ?? 'auto',
+    nsfw_filter: true,
+    cover_feet: false,
+    adjust_hands: true,
+    restore_background: true,
+  };
+
+  return runFalTask('fal-ai/fashn/tryon-v1.5', input, options?.onProgress);
+}
+
+

@@ -99,10 +99,13 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
       pieceGarmentUrls,
     });
 
-    // Update with job ID
+    // Update with job ID and engine provider
     await prisma.tryOnJob.update({
       where: { id: try_on_job_id },
-      data: { api_job_id: triggerResult.jobId },
+      data: {
+        api_job_id: triggerResult.jobId,
+        api_provider: triggerResult.engine,
+      },
     });
 
     // Engine is synchronous — result already available from triggerTryOn
@@ -114,8 +117,8 @@ export async function handleProcessTryOn(data: TryOnJobData): Promise<void> {
       if (!outputUrl) throw new Error('No output URL from try-on engine');
       const resultPublicUrl = await saveTryOnResultToR2(try_on_job_id, outputUrl);
 
-      // Calculate cost per try-on (V-Tone: ~$0.0003 on CPU, ~$0.003 on L4 GPU)
-      const costUsd = 0.003;
+      // Calculate cost per try-on (FASHN v1.5 via Fal.ai: ~$0.055, V-Tone: ~$0.003)
+      const costUsd = triggerResult.engine === 'fal-fashn' ? 0.055 : 0.003;
 
       // Update job as completed
       await prisma.tryOnJob.update({
