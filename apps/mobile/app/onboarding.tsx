@@ -1,11 +1,21 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import {
+  Building2,
+  CheckCircle2,
+  ChevronLeft,
+  FileText,
+  MapPin,
+  QrCode,
+  Sparkles,
+  Truck,
+  User,
+} from 'lucide-react-native';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
   BackHandler,
-  Dimensions,
   KeyboardAvoidingView,
   Linking,
   Platform,
@@ -13,30 +23,45 @@ import {
   Text,
   TextInput,
   View,
-  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AnimatedPressable } from '../src/components/AnimatedPressable';
 import { GradientButton } from '../src/components/GradientButton';
-import { useReduceMotion } from '../src/hooks/useReduceMotion';
 import { retailerApi } from '../src/lib/api';
-import { useTheme } from '../src/lib/theme';
 import { WEB_URL } from '../src/lib/web-url';
 
 type Step = 1 | 2 | 3 | 4;
 const TOTAL_STEPS = 4;
 
+const SPECIALIZATIONS = [
+  'Sarees & Silk',
+  'Bridal Lehengas',
+  'Suits & Kurtis',
+  'Designer Blouses',
+  'Western & Fusion',
+  'Fabrics & Unstitched',
+];
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 // ─── Step config ──────────────────────────────────────────────────
 const STEP_META: Record<Step, { label: string; title: string; subtitle: string }> = {
   1: {
     label: 'Shop',
-    title: 'Shop Details',
-    subtitle: 'Set up your digital store profile. AI will catalog your outfits and create WhatsApp links.',
+    title: 'Setup Your Shop',
+    subtitle: 'Digitize your catalog and create your custom WhatsApp store URL.',
   },
   2: {
     label: 'Location',
     title: 'Shop Location',
-    subtitle: 'Add your shop address so local customers can easily find and visit your store.',
+    subtitle: 'Add your shop address so local customers can easily discover and visit your store.',
   },
   3: {
     label: 'GST',
@@ -46,11 +71,11 @@ const STEP_META: Record<Step, { label: string; title: string; subtitle: string }
   4: {
     label: 'Done',
     title: "You're All Set!",
-    subtitle: 'Your digital catalog is ready. Start adding products or create your store QR.',
+    subtitle: 'Your digital luxury catalog is ready. Start adding products or create your store QR.',
   },
 };
 
-// ─── Step Indicator (Fixed Light Header) ───────────────────────────
+// ─── Step Indicator ───────────────────────────────────────────────
 function StepIndicator({
   currentStep,
   onPress,
@@ -59,18 +84,18 @@ function StepIndicator({
   onPress: (step: Step) => void;
 }) {
   return (
-    <View className="flex-row items-center justify-center px-4 pt-2 pb-3">
+    <View className="flex-row items-center justify-between px-2 pt-3 pb-2">
       {([1, 2, 3, 4] as Step[]).map((s, i) => {
         const isActive = s === currentStep;
         const isPast = s < currentStep;
         return (
-          <View key={s} className="flex-row items-center">
-            {/* Connector line between step circles */}
+          <View key={s} className="flex-row items-center flex-1">
+            {/* Connector line before step (except first) */}
             {i > 0 && (
               <View
-                className="h-1 w-6 sm:w-10 rounded-full mx-1"
+                className="h-1 flex-1 rounded-full mx-1.5"
                 style={{
-                  backgroundColor: isPast ? '#BB3F95' : '#E0E1F6',
+                  backgroundColor: isPast || isActive ? '#BB3F95' : '#E0E1F6',
                 }}
               />
             )}
@@ -79,19 +104,19 @@ function StepIndicator({
               disabled={!isPast}
               accessibilityLabel={STEP_META[s].label}
               accessibilityRole="button"
-              className="items-center gap-1 px-1"
+              className="flex-row items-center gap-1.5"
             >
               <View
-                className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full items-center justify-center border-2 ${
+                className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
                   isActive
                     ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
                     : isPast
                       ? 'bg-fuchsia-500 border-fuchsia-500'
-                      : 'bg-white border-lavender-300'
+                      : 'bg-white border-lavender-200'
                 }`}
               >
                 <Text
-                  className={`text-xs sm:text-sm font-bold ${
+                  className={`text-xs font-extrabold ${
                     isActive ? 'text-white' : isPast ? 'text-white' : 'text-heliotrope-500'
                   }`}
                 >
@@ -99,8 +124,12 @@ function StepIndicator({
                 </Text>
               </View>
               <Text
-                className={`text-[11px] font-semibold ${
-                  isActive ? 'text-spaceCadet-900 font-bold' : isPast ? 'text-heliotrope-700' : 'text-heliotrope-500'
+                className={`text-xs ${
+                  isActive
+                    ? 'text-spaceCadet-900 font-extrabold'
+                    : isPast
+                      ? 'text-heliotrope-700 font-bold'
+                      : 'text-heliotrope-400 font-medium'
                 }`}
               >
                 {STEP_META[s].label}
@@ -113,43 +142,8 @@ function StepIndicator({
   );
 }
 
-// ─── Form field wrapper (Light Theme) ──────────────────────────────
-const fieldShadow: ViewStyle = {
-  shadowColor: '#231F48',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.04,
-  shadowRadius: 4,
-  elevation: 1,
-};
-
-function Field({
-  label,
-  required,
-  optional,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  optional?: boolean;
-  children: ReactNode;
-}) {
-  return (
-    <View className="mt-4 w-full">
-      <Text className="text-xs sm:text-sm font-bold text-spaceCadet-900 mb-1.5 tracking-tight">
-        {label}
-        {required && <Text className="text-fuchsia-500"> *</Text>}
-        {optional && <Text className="text-heliotrope-500 font-normal"> (optional)</Text>}
-      </Text>
-      <View className="w-full rounded-2xl bg-white border border-lavender-200" style={fieldShadow}>
-        {children}
-      </View>
-    </View>
-  );
-}
-
 // ─── Main Onboarding Screen ────────────────────────────────────────
 export default function OnboardingScreen() {
-  const { colors } = useTheme();
   const queryClient = useQueryClient();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<Step>(1);
@@ -159,6 +153,7 @@ export default function OnboardingScreen() {
   // ── Form state ──
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
+  const [selectedSpecs, setSelectedSpecs] = useState<string[]>(['Sarees & Silk']);
   const [shopAddress, setShopAddress] = useState('');
   const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
@@ -166,6 +161,12 @@ export default function OnboardingScreen() {
   const [pincode, setPincode] = useState('');
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
+
+  const toggleSpec = (spec: string) => {
+    setSelectedSpecs((prev) =>
+      prev.includes(spec) ? prev.filter((s) => s !== spec) : [...prev, spec]
+    );
+  };
 
   // ── Validation ──
   const canProceed = useCallback((): boolean => {
@@ -233,8 +234,8 @@ export default function OnboardingScreen() {
       await saveFinalStep();
       setShowConfetti(true);
       setTimeout(() => {
-        router.replace('/');
-      }, 2000);
+        router.replace('/(tabs)');
+      }, 1500);
     } catch {
       Alert.alert('Error', 'Could not save details. Please check your connection and try again.');
     } finally {
@@ -299,184 +300,242 @@ export default function OnboardingScreen() {
     }
   };
 
-  const commonInputStyle = {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: colors.sand[300],
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 15,
-    color: colors.sand[900],
-    width: '100%' as const,
-  };
-
   const renderContent = () => {
     switch (step) {
       case 1:
         return (
-          <View className="w-full">
-            <Text className="text-sand-600 text-sm leading-5 mb-1">
-              Create your digital store in minutes — AI catalogs your products and shares them with
-              customers on WhatsApp.
-            </Text>
-
-            <Field label="Shop Name" required>
-              <TextInput
-                value={shopName}
-                onChangeText={setShopName}
-                placeholder="e.g. Priya Fashion House"
-                style={commonInputStyle}
-                placeholderTextColor={colors.sand[400]}
-                maxLength={200}
-                autoFocus
-              />
-            </Field>
-
-            <Field label="Owner / Contact Name" optional>
-              <TextInput
-                value={ownerName}
-                onChangeText={setOwnerName}
-                placeholder="e.g. Priya Sharma"
-                style={commonInputStyle}
-                placeholderTextColor={colors.sand[400]}
-                maxLength={200}
-              />
-            </Field>
-
-            <Field label="Referral Code" optional>
-              <TextInput
-                value={referralCode}
-                onChangeText={(t) => setReferralCode(t.toUpperCase())}
-                placeholder="Referred by a Kanchuki agent?"
-                style={{ ...commonInputStyle, letterSpacing: 1 }}
-                placeholderTextColor={colors.sand[400]}
-                autoCapitalize="characters"
-                maxLength={20}
-              />
-            </Field>
-
-            <View className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 mt-6 w-full">
-              <Text className="text-amber-900 text-sm font-bold">✨ What happens next?</Text>
-              <Text className="text-amber-800 text-xs sm:text-sm mt-1 leading-5">
-                Add your shop details, then take a photo of any outfit — AI will automatically tag
-                it with category, color & fabric.
+          <View className="space-y-4">
+            {/* Field 1: Shop Name */}
+            <View>
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                Shop Name <Text className="text-fuchsia-500">*</Text>
               </Text>
+              <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
+                <Building2 size={16} color="#6B4773" />
+                <TextInput
+                  value={shopName}
+                  onChangeText={setShopName}
+                  placeholder="e.g. Radha Sarees & Bridal"
+                  placeholderTextColor="#928EB2"
+                  className="flex-1 text-sm font-bold text-spaceCadet-900"
+                  maxLength={200}
+                  autoFocus
+                />
+              </View>
+            </View>
+
+            {/* Field 2: Owner Name */}
+            <View className="mt-3">
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                Owner / Manager Name
+              </Text>
+              <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
+                <User size={16} color="#6B4773" />
+                <TextInput
+                  value={ownerName}
+                  onChangeText={setOwnerName}
+                  placeholder="e.g. Suresh Kumar Verma"
+                  placeholderTextColor="#928EB2"
+                  className="flex-1 text-sm font-bold text-spaceCadet-900"
+                  maxLength={200}
+                />
+              </View>
+            </View>
+
+            {/* Field 3: Primary Clothing Category */}
+            <View className="mt-3">
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-2">
+                Primary Specialization
+              </Text>
+              <View className="flex-row flex-wrap gap-2">
+                {SPECIALIZATIONS.map((spec) => {
+                  const isSelected = selectedSpecs.includes(spec);
+                  return (
+                    <AnimatedPressable
+                      key={spec}
+                      onPress={() => toggleSpec(spec)}
+                      className={`px-3.5 py-2 rounded-2xl border ${
+                        isSelected
+                          ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                          : 'bg-lavender-50 border-lavender-200'
+                      }`}
+                    >
+                      <Text
+                        className={`text-xs font-bold ${
+                          isSelected ? 'text-white' : 'text-spaceCadet-900'
+                        }`}
+                      >
+                        {spec}
+                      </Text>
+                    </AnimatedPressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* Field 4: Storefront Subdomain URL */}
+            <View className="mt-3">
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                Your Store Web Link
+              </Text>
+              <View className="flex-row items-center p-3 bg-lavender-100/70 border border-lavender-200 rounded-2xl">
+                <Text className="text-xs text-heliotrope-500 font-medium mr-1">kanchuki.app/</Text>
+                <Text className="text-xs text-fuchsia-600 font-bold">
+                  {slugify(shopName) || 'your-shop-name'}
+                </Text>
+                <View className="ml-auto">
+                  <CheckCircle2 size={16} color="#059669" />
+                </View>
+              </View>
+            </View>
+
+            {/* Field 5: Referral Code */}
+            <View className="mt-3">
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                Referral Code (Optional)
+              </Text>
+              <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
+                <TextInput
+                  value={referralCode}
+                  onChangeText={(t) => setReferralCode(t.toUpperCase())}
+                  placeholder="Referred by a Kanchuki agent?"
+                  placeholderTextColor="#928EB2"
+                  className="flex-1 text-sm font-bold text-spaceCadet-900 tracking-wider"
+                  autoCapitalize="characters"
+                  maxLength={20}
+                />
+              </View>
             </View>
           </View>
         );
 
       case 2:
         return (
-          <View className="w-full">
-            <Text className="text-sand-600 text-sm leading-5 mb-1">
-              Customers use your shop address and location to discover your store and arrange visits.
-            </Text>
+          <View className="space-y-4">
+            <View>
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                Shop Address / Street <Text className="text-fuchsia-500">*</Text>
+              </Text>
+              <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5">
+                <TextInput
+                  value={shopAddress}
+                  onChangeText={setShopAddress}
+                  placeholder="Shop no., building, street, area, landmark"
+                  placeholderTextColor="#928EB2"
+                  className="text-sm font-bold text-spaceCadet-900"
+                  style={{ minHeight: 70, textAlignVertical: 'top' }}
+                  multiline
+                  maxLength={300}
+                  autoFocus
+                />
+              </View>
+            </View>
 
-            <Field label="Shop Address / Street" required>
-              <TextInput
-                value={shopAddress}
-                onChangeText={setShopAddress}
-                placeholder="Shop no., building, street, area, landmark"
-                style={{
-                  ...commonInputStyle,
-                  minHeight: 88,
-                  textAlignVertical: 'top',
-                }}
-                placeholderTextColor={colors.sand[400]}
-                multiline
-                maxLength={300}
-                autoFocus
-              />
-            </Field>
+            <View className="mt-3">
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                City <Text className="text-fuchsia-500">*</Text>
+              </Text>
+              <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
+                <MapPin size={16} color="#6B4773" />
+                <TextInput
+                  value={city}
+                  onChangeText={setCity}
+                  placeholder="e.g. Surat / Jaipur / Delhi"
+                  placeholderTextColor="#928EB2"
+                  className="flex-1 text-sm font-bold text-spaceCadet-900"
+                  maxLength={100}
+                />
+              </View>
+            </View>
 
-            <Field label="City" required>
-              <TextInput
-                value={city}
-                onChangeText={setCity}
-                placeholder="e.g. Surat / Jaipur / Delhi"
-                style={commonInputStyle}
-                placeholderTextColor={colors.sand[400]}
-                maxLength={100}
-              />
-            </Field>
-
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-3 mt-3">
               <View className="flex-1">
-                <Field label="District" optional>
+                <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                  District
+                </Text>
+                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
                   <TextInput
                     value={district}
                     onChangeText={setDistrict}
                     placeholder="e.g. Surat"
-                    style={commonInputStyle}
-                    placeholderTextColor={colors.sand[400]}
+                    placeholderTextColor="#928EB2"
+                    className="text-sm font-bold text-spaceCadet-900"
                     maxLength={100}
                   />
-                </Field>
+                </View>
               </View>
+
               <View className="flex-1">
-                <Field label="State" optional>
+                <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                  State
+                </Text>
+                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
                   <TextInput
                     value={state}
                     onChangeText={setState}
                     placeholder="e.g. Gujarat"
-                    style={commonInputStyle}
-                    placeholderTextColor={colors.sand[400]}
+                    placeholderTextColor="#928EB2"
+                    className="text-sm font-bold text-spaceCadet-900"
                     maxLength={100}
                   />
-                </Field>
+                </View>
               </View>
             </View>
 
-            <Field label="Pincode / Zipcode" optional>
-              <TextInput
-                value={pincode}
-                onChangeText={(t) => setPincode(t.replace(/[^0-9]/g, ''))}
-                placeholder="6-digit pincode (e.g. 395002)"
-                keyboardType="number-pad"
-                style={commonInputStyle}
-                placeholderTextColor={colors.sand[400]}
-                maxLength={6}
-              />
-            </Field>
-
-            <View className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 mt-6 w-full">
-              <Text className="text-amber-900 text-sm font-bold">📍 Store Address Tip</Text>
-              <Text className="text-amber-800 text-xs sm:text-sm mt-1 leading-5">
-                Your shop location will appear on your customer store links and digital invoices.
+            <View className="mt-3">
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                Pincode / Zipcode
               </Text>
+              <View className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5">
+                <TextInput
+                  value={pincode}
+                  onChangeText={(t) => setPincode(t.replace(/[^0-9]/g, ''))}
+                  placeholder="6-digit pincode (e.g. 395002)"
+                  keyboardType="number-pad"
+                  placeholderTextColor="#928EB2"
+                  className="text-sm font-bold text-spaceCadet-900"
+                  maxLength={6}
+                />
+              </View>
             </View>
           </View>
         );
 
       case 3:
         return (
-          <View className="w-full">
-            <Text className="text-sand-600 text-sm leading-5 mb-1">
-              Required for generating GST invoices for your customer orders.
-            </Text>
+          <View className="space-y-4">
+            <View>
+              <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-1.5">
+                GSTIN (Optional)
+              </Text>
+              <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-2.5">
+                <FileText size={16} color="#6B4773" />
+                <TextInput
+                  value={gstin}
+                  onChangeText={(t) => setGstin(t.toUpperCase())}
+                  placeholder="15-digit GSTIN (e.g. 24AAAAA0000A1Z5)"
+                  placeholderTextColor="#928EB2"
+                  autoCapitalize="characters"
+                  className="flex-1 text-sm font-bold text-spaceCadet-900 tracking-wider"
+                  maxLength={15}
+                  autoFocus
+                />
+              </View>
+              <Text className="text-xs text-heliotrope-500 mt-2 px-1 font-medium">
+                Format: 24AAAAA0000A1Z5 · You can also add or update this anytime in Settings.
+              </Text>
+            </View>
 
-            <Field label="GSTIN" optional>
-              <TextInput
-                value={gstin}
-                onChangeText={(t) => setGstin(t.toUpperCase())}
-                placeholder="15-digit GSTIN (e.g. 24AAAAA0000A1Z5)"
-                style={{ ...commonInputStyle, letterSpacing: 2, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' }}
-                placeholderTextColor={colors.sand[400]}
-                autoCapitalize="characters"
-                maxLength={15}
-                autoFocus
-              />
-            </Field>
-            <Text className="text-xs text-sand-500 mt-2 px-1">
-              Format: 22AAAAA0000A1Z5 · You can also add or update this anytime in Settings.
-            </Text>
-
-            <View className="bg-amber-50/80 border border-amber-200 rounded-2xl p-4 mt-6 w-full">
-              <Text className="text-amber-900 text-sm font-bold">💡 GST invoice tip</Text>
-              <Text className="text-amber-800 text-xs sm:text-sm mt-1 leading-5">
-                When a customer orders a product, Kanchuki can automatically generate a GST invoice.
-                You can add your GSTIN now or skip it.
+            <View className="bg-lavender-100/70 border border-lavender-200 rounded-2xl p-4 mt-4">
+              <View className="flex-row items-center gap-2 mb-1">
+                <Sparkles size={14} color="#BB3F95" />
+                <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
+                  Automatic GST Invoicing
+                </Text>
+              </View>
+              <Text className="text-heliotrope-600 text-xs leading-relaxed font-medium">
+                When a customer orders a product via your store link, Kanchuki generates an itemized
+                GST invoice automatically.
               </Text>
             </View>
           </View>
@@ -484,74 +543,65 @@ export default function OnboardingScreen() {
 
       case 4:
         return (
-          <View className="pt-2 items-center w-full">
-            {/* Big celebration emoji */}
+          <View className="items-center w-full">
             <LinearGradient
-              colors={[colors.rust[400], colors.rust[600]]}
+              colors={['#231F48', '#560A39']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={{
-                width: 96,
-                height: 96,
-                borderRadius: 24,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 16,
-                shadowColor: '#000000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 10,
-                elevation: 4,
-              }}
+              className="w-full rounded-3xl p-6 items-center shadow-lg mb-5"
             >
-              <Text className="text-4xl">🎉</Text>
+              <View className="w-14 h-14 rounded-2xl bg-white/10 items-center justify-center mb-3 border border-white/20">
+                <Sparkles size={28} color="#BB3F95" />
+              </View>
+              <Text className="text-2xl font-extrabold text-white font-marcellus text-center">
+                You&apos;re All Set!
+              </Text>
+              <Text className="text-xs text-lavender-200 mt-1 text-center font-medium">
+                Your digital luxury catalog is ready to receive customers.
+              </Text>
             </LinearGradient>
 
-            <Text className="text-2xl font-bold text-sand-900 text-center">Congratulations!</Text>
-            <Text className="text-sand-600 text-sm sm:text-base mt-1.5 text-center">
-              Your store has been set up successfully.
-            </Text>
-
-            <View className="mt-6 w-full gap-3">
-              <AnimatedPressable
+            <View className="w-full gap-3">
+              <GradientButton
+                label="Go to Dashboard →"
                 onPress={() => void handleNext()}
-                className="bg-rust-500 rounded-2xl p-4 items-center shadow-sm active:bg-rust-600"
-              >
-                <Text className="text-white text-base font-bold">Go to Dashboard</Text>
-              </AnimatedPressable>
+                loading={saving}
+              />
 
               <AnimatedPressable
                 onPress={() => void handleCreateStoreQr()}
-                className="flex-row items-center gap-3 bg-white border border-sand-200 rounded-2xl p-4 shadow-sm"
+                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm"
               >
-                <View className="w-10 h-10 rounded-xl bg-sand-100 items-center justify-center">
-                  <Text className="text-xl">🔳</Text>
+                <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center border border-lavender-200">
+                  <QrCode size={20} color="#231F48" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sand-900 text-sm font-bold">Create your store QR code</Text>
-                  <Text className="text-sand-500 text-xs mt-0.5">
-                    Customers scan it to open your catalog at your counter
+                  <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
+                    Create your store QR code
+                  </Text>
+                  <Text className="text-heliotrope-500 text-[11px] mt-0.5 font-medium">
+                    Customers scan to open your luxury catalog
                   </Text>
                 </View>
-                <Text className="text-sand-400 text-lg">→</Text>
+                <Text className="text-heliotrope-400 text-base font-bold">→</Text>
               </AnimatedPressable>
 
               <AnimatedPressable
                 onPress={() => void handleGetCatalogHelp()}
-                className="flex-row items-center gap-3 bg-white border border-sand-200 rounded-2xl p-4 shadow-sm"
+                className="flex-row items-center gap-3.5 bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm"
               >
-                <View className="w-10 h-10 rounded-xl bg-sand-100 items-center justify-center">
-                  <Text className="text-xl">🧑‍💼</Text>
+                <View className="w-10 h-10 rounded-2xl bg-lavender-100 items-center justify-center border border-lavender-200">
+                  <Truck size={20} color="#BB3F95" />
                 </View>
                 <View className="flex-1">
-                  <Text className="text-sand-900 text-sm font-bold">
-                    Get help adding your catalog
+                  <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
+                    Catalog Upload Help
                   </Text>
-                  <Text className="text-sand-500 text-xs mt-0.5">
-                    A paid Kanchuki visit uploads it for you — skip anytime
+                  <Text className="text-heliotrope-500 text-[11px] mt-0.5 font-medium">
+                    A team member adds your inventory for you
                   </Text>
                 </View>
-                <Text className="text-sand-400 text-lg">→</Text>
+                <Text className="text-heliotrope-400 text-base font-bold">→</Text>
               </AnimatedPressable>
             </View>
           </View>
@@ -562,136 +612,127 @@ export default function OnboardingScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-[#F8F7FC]"
     >
-      {/* ── Fixed Light Header ── */}
+      {/* ── Fixed Luxury Header ── */}
       <View
-        className="bg-white border-b border-sand-200"
-        style={{
-          paddingTop: insets.top + 8,
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.04,
-          shadowRadius: 4,
-          elevation: 2,
-        }}
+        className="bg-white border-b border-lavender-200 px-5 pb-3"
+        style={{ paddingTop: insets.top + 8 }}
       >
-        {/* Top bar with back button & title */}
-        <View className="flex-row items-center px-4 pt-1 pb-1">
+        {/* Top bar with back button */}
+        <View className="flex-row items-center justify-between pt-1 pb-1">
           <View className="w-10 items-start">
             {step > 1 && step < TOTAL_STEPS && (
               <AnimatedPressable
                 onPress={() => goToStep((step - 1) as Step)}
                 accessibilityLabel="Back"
                 accessibilityRole="button"
-                className="w-9 h-9 rounded-full bg-sand-100 items-center justify-center border border-sand-200 active:bg-sand-200"
+                className="w-9 h-9 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               >
-                <Text className="text-sand-800 text-lg font-bold">‹</Text>
+                <ChevronLeft size={20} color="#231F48" />
               </AnimatedPressable>
             )}
           </View>
-          <Text className="flex-1 text-center text-sand-900 text-base sm:text-lg font-bold">
+          <Text className="text-base font-bold text-spaceCadet-900 font-marcellus">
             {STEP_META[step].title}
           </Text>
           <View className="w-10" />
-        </View>
-
-        {/* Progress bar */}
-        <View className="h-1 bg-sand-200 mx-6 mt-1 rounded-full overflow-hidden">
-          <View
-            className="h-full bg-rust-500 rounded-full"
-            style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
-          />
         </View>
 
         {/* Step circles */}
         <StepIndicator currentStep={step} onPress={goToStep} />
       </View>
 
-      {/* ── Main Form Body (Light & Centered) ── */}
-      <View className="flex-1 bg-slate-50">
-        <ScrollView
-          className="flex-1 w-full"
-          contentContainerStyle={{
-            flexGrow: 1,
-            maxWidth: 540,
-            width: '100%',
-            alignSelf: 'center',
-            paddingHorizontal: 20,
-            paddingTop: 16,
-            paddingBottom: 32,
-          }}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="bg-white border border-sand-200 rounded-3xl p-5 sm:p-7 shadow-sm w-full">
-            {renderContent()}
-          </View>
-        </ScrollView>
-      </View>
-
-      {/* ── Bottom action bar (Light Mode) ── */}
-      <View
-        className="bg-white border-t border-sand-200 px-6 pt-3.5"
-        style={{
-          paddingBottom: Math.max(12, insets.bottom + 8),
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: -2 },
-          shadowOpacity: 0.05,
-          shadowRadius: 4,
-          elevation: 4,
+      {/* ── Main Form Body ── */}
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{
+          flexGrow: 1,
+          maxWidth: 540,
+          width: '100%',
+          alignSelf: 'center',
+          paddingHorizontal: 20,
+          paddingTop: 16,
+          paddingBottom: 32,
         }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        <View className="max-w-[540px] w-full self-center">
-          <GradientButton
-            label={
-              showConfetti
-                ? "🎉 You're in!"
-                : step === TOTAL_STEPS
-                  ? 'Go to Dashboard'
-                  : 'Continue →'
-            }
-            onPress={() => void handleNext()}
-            disabled={!canProceed() || showConfetti || saving}
-            loading={saving}
-          />
+        {/* Screen Title in Marcellus */}
+        <View className="mb-4">
+          <h2 className="text-2xl font-extrabold text-spaceCadet-900 font-marcellus">
+            {STEP_META[step].title}
+          </h2>
+          <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">
+            {STEP_META[step].subtitle}
+          </Text>
+        </View>
 
-          {/* GST step skip button */}
-          {step === 3 && (
-            <AnimatedPressable
+        {/* Form Container Card */}
+        <View className="bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm w-full">
+          {renderContent()}
+        </View>
+      </ScrollView>
+
+      {/* ── Bottom action bar ── */}
+      {step < TOTAL_STEPS && (
+        <View
+          className="bg-white border-t border-lavender-200 px-6 pt-3.5"
+          style={{
+            paddingBottom: Math.max(12, insets.bottom + 8),
+          }}
+        >
+          <View className="max-w-[540px] w-full self-center">
+            <GradientButton
+              label={
+                showConfetti
+                  ? "🎉 You're in!"
+                  : step === 1
+                    ? 'Save & Proceed to Location'
+                    : step === 2
+                      ? 'Save & Proceed to GST'
+                      : 'Complete Setup →'
+              }
               onPress={() => void handleNext()}
-              disabled={saving || showConfetti}
-              accessibilityLabel="Skip — continue without a GST number"
-              accessibilityRole="button"
-              className="items-center justify-center py-2.5 mt-1.5"
-            >
-              <Text className="text-sm font-semibold text-rust-600">
-                Skip — I don&apos;t have a GST number
-              </Text>
-            </AnimatedPressable>
-          )}
+              disabled={!canProceed() || showConfetti || saving}
+              loading={saving}
+            />
 
-          {/* Legal consent line */}
-          {step < TOTAL_STEPS && (
-            <Text className="text-center text-xs text-sand-500 mt-2 px-2 leading-4">
+            {/* GST step skip button */}
+            {step === 3 && (
+              <AnimatedPressable
+                onPress={() => void handleNext()}
+                disabled={saving || showConfetti}
+                accessibilityLabel="Skip — continue without a GST number"
+                accessibilityRole="button"
+                className="items-center justify-center py-2.5 mt-1"
+              >
+                <Text className="text-xs font-bold text-fuchsia-600 uppercase tracking-wider">
+                  Skip — I don&apos;t have a GST number
+                </Text>
+              </AnimatedPressable>
+            )}
+
+            {/* Legal consent line */}
+            <Text className="text-center text-[11px] text-heliotrope-500 mt-2 px-2 leading-4 font-medium">
               By continuing, you agree to our{' '}
               <Text
-                className="font-semibold text-rust-600"
+                className="font-bold text-fuchsia-600 underline"
                 onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
               >
                 Terms of Service
               </Text>{' '}
               and{' '}
               <Text
-                className="font-semibold text-rust-600"
+                className="font-bold text-fuchsia-600 underline"
                 onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
               >
                 Privacy Policy
               </Text>
             </Text>
-          )}
+          </View>
         </View>
-      </View>
+      )}
     </KeyboardAvoidingView>
   );
 }

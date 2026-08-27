@@ -1,8 +1,7 @@
-import { COLORS, isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
+import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-  Alert,
   Image,
   KeyboardAvoidingView,
   Linking,
@@ -22,11 +21,9 @@ import {
   isMsg91OtpConfigured,
   sendMsg91Otp,
 } from '../../src/lib/msg91-otp';
-import { useTheme } from '../../src/lib/theme';
 import { WEB_URL } from '../../src/lib/web-url';
 
 export default function PhoneScreen() {
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -82,7 +79,7 @@ export default function PhoneScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-white"
+      className="flex-1 bg-[#F8F7FC]"
     >
       <ScrollView
         className="flex-1 px-6"
@@ -92,32 +89,30 @@ export default function PhoneScreen() {
           width: '100%',
           alignSelf: 'center',
           justifyContent: 'space-between',
-          paddingTop: insets.top + 40,
+          paddingTop: insets.top + 32,
           paddingBottom: insets.bottom + 24,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
         {/* Top */}
-        <View>
-          {/* Full Kanchuki wordmark logo (single logo, no duplicate icon) */}
-          <View className="items-center mb-10 mt-2">
+        <View className="items-center w-full">
+          {/* Full Kanchuki wordmark logo */}
+          <View className="items-center mb-6">
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
-              style={{ width: 240, height: 44 }}
+              style={{ width: 220, height: 42 }}
               resizeMode="contain"
             />
           </View>
 
-          <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus">
-            Welcome back{'\n'}to Kanchuki
-          </Text>
-          <Text className="text-heliotrope-500 text-sm mt-2 font-medium">
-            Aapki dukan, AI ki taakat. Enter your mobile number to continue.
+          {/* Tagline: Aapki Dukan, AI ki Taakat in 2 lines, italic, Marcellus heading font, center aligned */}
+          <Text className="text-3xl italic font-bold text-spaceCadet-900 font-marcellus text-center leading-tight mb-8">
+            Aapki Dukan,{"\n"}AI ki Taakat
           </Text>
 
           {/* Phone input card */}
-          <View className="mt-8 bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm">
+          <View className="w-full bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm">
             <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-2">
               Mobile Number
             </Text>
@@ -150,7 +145,7 @@ export default function PhoneScreen() {
         </View>
 
         {/* Bottom CTA */}
-        <View className="mt-6">
+        <View className="mt-6 w-full">
           <GradientButton
             label="Get Instant OTP"
             onPress={() => void handleSend()}
@@ -158,17 +153,17 @@ export default function PhoneScreen() {
             loading={loading}
           />
 
-          <Text className="text-center text-xs text-sand-400 mt-4 px-4 leading-4">
+          <Text className="text-center text-xs text-heliotrope-500 mt-4 px-4 leading-4 font-medium">
             By continuing, you agree to our{' '}
             <Text
-              className="font-semibold text-ink-600"
+              className="font-bold text-fuchsia-600 underline"
               onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
             >
               Terms of Service
             </Text>{' '}
             and{' '}
             <Text
-              className="font-semibold text-ink-600"
+              className="font-bold text-fuchsia-600 underline"
               onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
             >
               Privacy Policy

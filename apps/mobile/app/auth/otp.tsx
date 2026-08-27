@@ -6,6 +6,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   Alert,
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -14,7 +15,6 @@ import { normalizeIndianPhone } from '@kanchuki/shared'
 import { authApi, setToken, ApiError, type VerifyOtpResult } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
 import { setItem, deleteItem } from '../../src/lib/storage'
-import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import {
   extractMsg91AccessToken,
@@ -67,7 +67,15 @@ async function completeLogin(result: VerifyOtpResult) {
       deleteItem('staff_retailer_id'),
     ])
     await setItem('retailer_id', result.retailer.id)
-    router.replace(result.is_new ? '/onboarding' : '/')
+    router.replace(result.is_new ? '/onboarding' : '/(tabs)')
+  } else {
+    // Demo bypass or newly registered account without a retailer record attached yet
+    await Promise.all([
+      deleteItem('staff_role'),
+      deleteItem('staff_name'),
+      deleteItem('staff_retailer_id'),
+    ])
+    router.replace(result.is_new ? '/onboarding' : '/(tabs)')
   }
 }
 
@@ -249,14 +257,14 @@ export default function OtpScreen() {
       >
         {/* Top */}
         <View>
-          <AnimatedPressable
+          <Pressable
             onPress={() => router.back()}
             className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center mb-8 border border-lavender-200"
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
             <Text className="text-spaceCadet-900 text-base font-bold">←</Text>
-          </AnimatedPressable>
+          </Pressable>
 
           <Text className="text-3xl font-bold text-spaceCadet-900 font-marcellus">Enter OTP</Text>
           <Text className="text-heliotrope-500 text-sm mt-2">
@@ -267,7 +275,7 @@ export default function OtpScreen() {
           <View className="mt-8">
             <View className="flex-row gap-2.5 justify-center">
               {[0, 1, 2, 3, 4, 5].map((i) => (
-                <AnimatedPressable
+                <Pressable
                   key={i}
                   onPress={() => inputRef.current?.focus()}
                   className={`w-12 h-14 rounded-2xl border-2 items-center justify-center ${
@@ -281,7 +289,7 @@ export default function OtpScreen() {
                   <Text className="text-2xl font-bold text-spaceCadet-900">
                     {otp[i] ?? ''}
                   </Text>
-                </AnimatedPressable>
+                </Pressable>
               ))}
             </View>
 
@@ -308,11 +316,11 @@ export default function OtpScreen() {
                 Resend OTP in {resendTimer}s
               </Text>
             ) : (
-              <AnimatedPressable onPress={() => void handleResend()} disabled={resending}>
+              <Pressable onPress={() => void handleResend()} disabled={resending}>
                 <Text className="text-fuchsia-600 text-xs font-bold uppercase tracking-wider">
                   {resending ? 'Sending...' : 'Resend OTP'}
                 </Text>
-              </AnimatedPressable>
+              </Pressable>
             )}
           </View>
         </View>
