@@ -320,90 +320,9 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       session = authData.session;
     }
 
-    // ── Staff Login Detection ────────────────────────────────────────
-    // Before treating this as a retailer login, check if the phone belongs
-    // to a Staff member of an existing retailer. Staff login is scoped to
-    // the retailer they belong to (does not create a new Retailer record).
-    const staffMember = await prisma.staff.findFirst({
-      where: { phone, is_active: true },
-      select: {
-        id: true,
-        name: true,
-        role: true,
-        retailer_id: true,
-        auth_user_id: true,
-        retailer: { select: { id: true, shop_name: true, city: true } },
-      },
-    });
-
-    if (staffMember) {
-      // Link the Supabase auth user to this staff member if not already linked
-      if (!staffMember.auth_user_id) {
-        await prisma.staff.update({
-          where: { id: staffMember.id },
-          data: { auth_user_id: user.id },
-        });
-      }
-
-      return reply.status(200).send({
-        data: {
-          access_token: session.access_token,
-          refresh_token: session.refresh_token,
-          expires_in: session.expires_in,
-          is_staff: true,
-          staff: {
-            id: staffMember.id,
-            name: staffMember.name,
-            role: staffMember.role,
-            retailer_id: staffMember.retailer_id,
-            retailer_shop_name: staffMember.retailer.shop_name,
-            retailer_city: staffMember.retailer.city,
-          },
-        },
-      });
-    }
-
-    // ── TeamMember Login (Kanchuki's own field/sales/support agents) ──
-    // 2026-08-04 (auth bridge Option A): the mobile app's only sign-in is
-    // phone OTP, but the staff screens under app/staff/* call /team/* routes
-    // which require a team JWT. If this phone belongs to an active
-    // TeamMember, mint that JWT here so agents can reach the catalog-upload
-    // (F-019/F-020) and staff screens from their own phone.
-    //
-    // SECURITY: the token returned is a TEAM_JWT (signed with
-    // TEAM_JWT_SECRET), deliberately NOT the Supabase session token — team
-    // routes accept it while every retailer route (Supabase-verified)
-    // rejects it, and vice versa, so Staff and TeamMember identities can
-    // never cross-authorize each other's routes. The Supabase auth user
-    // created by the OTP verify is simply never linked to this TeamMember.
-    const teamMember = await prisma.teamMember.findFirst({
-      where: { phone, is_active: true },
-      select: { id: true, name: true, email: true, role: true, referral_code: true },
-    });
-
-    if (teamMember) {
-      const teamToken = await signTeamToken({ sub: teamMember.id, role: teamMember.role });
-      return reply.status(200).send({
-        data: {
-          access_token: teamToken,
-          is_staff: true,
-          team_member: {
-            id: teamMember.id,
-            name: teamMember.name,
-            email: teamMember.email,
-            role: teamMember.role,
-            referral_code: teamMember.referral_code,
-          },
-        },
-      });
-    }
-
-    // ── Retailer Login (existing flow) ───────────────────────────────
-    // A marketing agent may have pre-created this retailer in person (see
-    // team.ts POST /retailers) before the retailer ever logs in themselves —
-    // that row has a placeholder `pending:<id>` auth_user_id since no real
-    // Supabase user existed yet. Link it by phone instead of creating a
-    // second, duplicate row keyed on the now-real auth_user_id.
+    // ── 2. Determine Account Type (Retailer vs Staff vs TeamMember) ──
+    // Prioritize Retailer owner account if one already exists for this phone,
+    // or if this is a test bypass number (e.g. 9000000002).
     let pending = await prisma.retailer.findUnique({ where: { phone } });
     if (pending?.deleted_at && bypassActive) {
       // TEST BYPASS: revive a soft-deleted account instead of 409-ing —
@@ -414,12 +333,76 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       });
       pending = await prisma.retailer.findUnique({ where: { phone } });
     }
+
+    if (!pending && !bypassActive) {
+      // ── Staff Login Detection ────────────────────────────────────────
+      // Only check Staff if this phone is not an existing retailer owner.
+      const staffMember = await prisma.staff.findFirst({
+        where: { phone, is_active: true, retailer: { deleted_at: null } },
+        select: {
+          id: true,
+          name: true,
+          role: true,
+          retailer_id: true,
+          auth_user_id: true,
+          retailer: { select: { id: true, shop_name: true, city: true } },
+        },
+      });
+
+      if (staffMember && staffMember.retailer) {
+        // Link the Supabase auth user to this staff member if not already linked
+        if (!staffMember.auth_user_id) {
+          await prisma.staff.update({
+            where: { id: staffMember.id },
+            data: { auth_user_id: user.id },
+          });
+        }
+
+        return reply.status(200).send({
+          data: {
+            access_token: session.access_token,
+            refresh_token: session.refresh_token,
+            expires_in: session.expires_in,
+            is_staff: true,
+            staff: {
+              id: staffMember.id,
+              name: staffMember.name,
+              role: staffMember.role,
+              retailer_id: staffMember.retailer_id,
+              retailer_shop_name: staffMember.retailer.shop_name,
+              retailer_city: staffMember.retailer.city,
+            },
+          },
+        });
+      }
+
+      // ── TeamMember Login (Kanchuki's own field/sales/support agents) ──
+      const teamMember = await prisma.teamMember.findFirst({
+        where: { phone, is_active: true },
+        select: { id: true, name: true, email: true, role: true, referral_code: true },
+      });
+
+      if (teamMember) {
+        const teamToken = await signTeamToken({ sub: teamMember.id, role: teamMember.role });
+        return reply.status(200).send({
+          data: {
+            access_token: teamToken,
+            is_staff: true,
+            team_member: {
+              id: teamMember.id,
+              name: teamMember.name,
+              email: teamMember.email,
+              role: teamMember.role,
+              referral_code: teamMember.referral_code,
+            },
+          },
+        });
+      }
+    }
+
+    // ── Retailer Login Flow ───────────────────────────────────────────
     if (pending) {
-      // Soft-deleted account still owns the unique phone. Until the row is
-      // purged (admin/SQL-editor path — role separation blocks the app role's
-      // DELETE), this number can't be re-registered. Fail with a clean 409
-      // instead of letting the upsert below throw an unhandled P2002 → 500
-      // (which the mobile app used to show as a misleading "Incorrect OTP").
+      // Soft-deleted account still owns the unique phone.
       if (pending.deleted_at) {
         throw new AppError(
           'ACCOUNT_DELETED',
@@ -427,11 +410,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
           409,
         );
       }
-      // Supabase auth user may have been recreated since this retailer last
-      // logged in (e.g. auth.users cleanup, or the `pending:` placeholder
-      // above) — user.id differs from the row's stored auth_user_id. Relink
-      // by phone so the upsert below matches instead of colliding on the
-      // unique phone constraint.
+      // Relink auth_user_id if Supabase auth user changed
       if (pending.auth_user_id !== user.id) {
         await prisma.retailer.update({
           where: { id: pending.id },

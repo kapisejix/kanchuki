@@ -28,54 +28,56 @@ import {
  * and legacy paths. Stores the session + staff/retailer context and routes.
  */
 async function completeLogin(result: VerifyOtpResult) {
-  await setToken(result.access_token)
-  // TeamMember logins have no Supabase session → no refresh token (their team
-  // JWT expires in 12h like the /team/login path). Only store one when the
-  // backend actually returned one, and never keep a stale one from a previous
-  // retailer login.
-  if (result.refresh_token) {
-    await setItem('refresh_token', result.refresh_token)
-  } else {
-    await deleteItem('refresh_token')
-  }
+  try {
+    await setToken(result.access_token)
+    // TeamMember logins have no Supabase session → no refresh token (their team
+    // JWT expires in 12h like the /team/login path). Only store one when the
+    // backend actually returned one, and never keep a stale one from a previous
+    // retailer login.
+    if (result.refresh_token) {
+      await setItem('refresh_token', result.refresh_token)
+    } else {
+      await deleteItem('refresh_token')
+    }
 
-  if (result.is_staff && result.staff) {
-    // Staff (retailer's own shop employee) login — store staff context and
-    // redirect to staff dashboard
-    await setItem('staff_role', result.staff.role)
-    await setItem('staff_name', result.staff.name)
-    await setItem('staff_retailer_id', result.staff.retailer_id)
-    await setItem('retailer_id', result.staff.retailer_id)
-    router.replace('/staff')
-  } else if (result.is_staff && result.team_member) {
-    // TeamMember (Kanchuki's own field/sales/support agent) logged in via
-    // phone OTP. access_token is a team JWT — the staff screens' teamApi
-    // sends it to /team/* directly. No retailer scoping; clear any stale
-    // retailer/staff context from a previous login on this device so the
-    // agent is never shown the retailer UI or a stale shop identity.
-    await setItem('staff_role', result.team_member.role)
-    await setItem('staff_name', result.team_member.name)
-    await Promise.all([deleteItem('staff_retailer_id'), deleteItem('retailer_id')])
-    router.replace('/staff')
-  } else if (result.retailer) {
-    // Retailer owner login — existing flow. Clear any staff context left
-    // behind by a previous team-member session on this device (shared shop
-    // tablet), so the owner isn't shown the restricted staff UI.
-    await Promise.all([
-      deleteItem('staff_role'),
-      deleteItem('staff_name'),
-      deleteItem('staff_retailer_id'),
-    ])
-    await setItem('retailer_id', result.retailer.id)
-    router.replace(result.is_new ? '/onboarding' : '/(tabs)')
-  } else {
-    // Demo bypass or newly registered account without a retailer record attached yet
-    await Promise.all([
-      deleteItem('staff_role'),
-      deleteItem('staff_name'),
-      deleteItem('staff_retailer_id'),
-    ])
-    router.replace(result.is_new ? '/onboarding' : '/(tabs)')
+    if (result.retailer) {
+      // Retailer owner login — clear any staff context left behind
+      await Promise.all([
+        deleteItem('staff_role'),
+        deleteItem('staff_name'),
+        deleteItem('staff_retailer_id'),
+      ])
+      await setItem('retailer_id', result.retailer.id)
+      const hasCompletedOnboarding =
+        !result.is_new &&
+        result.retailer.onboarding_completed === true &&
+        Boolean(result.retailer.shop_name && result.retailer.shop_name.trim().length > 0)
+
+      router.replace(hasCompletedOnboarding ? '/(tabs)' : '/onboarding')
+    } else if (result.is_staff && result.staff) {
+      // Staff (retailer's own shop employee) login — store staff context
+      await setItem('staff_role', result.staff.role)
+      await setItem('staff_name', result.staff.name)
+      await setItem('staff_retailer_id', result.staff.retailer_id)
+      await setItem('retailer_id', result.staff.retailer_id)
+      router.replace('/staff')
+    } else if (result.is_staff && result.team_member) {
+      // TeamMember login
+      await setItem('staff_role', result.team_member.role)
+      await setItem('staff_name', result.team_member.name)
+      await Promise.all([deleteItem('staff_retailer_id'), deleteItem('retailer_id')])
+      router.replace('/staff')
+    } else {
+      // Brand new retailer / Demo bypass without a retailer profile yet
+      await Promise.all([
+        deleteItem('staff_role'),
+        deleteItem('staff_name'),
+        deleteItem('staff_retailer_id'),
+      ])
+      router.replace('/onboarding')
+    }
+  } catch (err) {
+    console.error('[auth] Error in completeLogin:', err)
   }
 }
 
