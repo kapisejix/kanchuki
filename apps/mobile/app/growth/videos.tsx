@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import * as ImagePicker from 'expo-image-picker'
 import { ChevronLeft, ChevronRight, Clapperboard, Plus, Search, Sparkles, Star, Trash2, Upload } from 'lucide-react-native'
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { ActivityIndicator, Alert, ScrollView, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
@@ -28,6 +28,11 @@ export default function VideosScreen() {
   const [uploading, setUploading] = useState(false)
   const [uploadPct, setUploadPct] = useState(0)
 
+  // F-033: Ken Burns 6s auto-slideshow generated server-side from product photos.
+  const [generating, setGenerating] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [videoEtaMs, setVideoEtaMs] = useState(0)
+
   const productsQuery = useQuery({
     queryKey: ['products', 'list', 'growth-videos', search],
     queryFn: () => productApi.list({ status: 'AVAILABLE', limit: 30, ...(search.trim() ? { sku: search.trim() } : {}) }),
@@ -39,8 +44,43 @@ export default function VideosScreen() {
     queryKey: ['growth', 'videos', picked?.id],
     queryFn: () => growthApi.productVideos(picked!.id),
     enabled: !!picked,
+    refetchInterval: generating ? 1200 : false,
   })
   const videos = videosQuery.data?.data ?? []
+  const prevVideoCountRef = useRef(videos.length)
+
+  // Smooth progress animation for video generation (same pattern as AI Studio)
+  useEffect(() => {
+    if (!generating) return
+    setVideoProgress(15)
+    setVideoEtaMs(3500)
+    const startTime = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      if (elapsed < 3000) {
+        const pct = Math.min(Math.round(15 + (elapsed / 3000) * 75), 90)
+        setVideoProgress(pct)
+        setVideoEtaMs(Math.max(3000 - elapsed, 500))
+      } else {
+        setVideoProgress(95)
+        setVideoEtaMs(0)
+      }
+    }, 150)
+    return () => clearInterval(interval)
+  }, [generating])
+
+  useEffect(() => {
+    if (generating && videos.length > prevVideoCountRef.current) {
+      setVideoProgress(100)
+      setVideoEtaMs(0)
+      const timer = setTimeout(() => {
+        setGenerating(false)
+        setVideoProgress(0)
+      }, 600)
+      return () => clearTimeout(timer)
+    }
+    prevVideoCountRef.current = videos.length
+  }, [videos.length, generating])
 
   const setMain = useMutation({
     mutationFn: (video: ProductVideo) =>
@@ -60,23 +100,21 @@ export default function VideosScreen() {
     onError: (err) => showError(err, 'Failed to delete video'),
   })
 
-  // F-033: Ken Burns 6s auto-slideshow generated server-side from product photos.
-  const [generating, setGenerating] = useState(false)
   const generate = useMutation({
     mutationFn: () => growthApi.generateVideo(picked!.id),
-    onMutate: () => setGenerating(true),
+    onMutate: () => {
+      setGenerating(true)
+      setVideoProgress(10)
+      setVideoEtaMs(3500)
+    },
     onSuccess: () => {
       setGenerating(true)
       void queryClient.invalidateQueries({ queryKey: ['growth', 'videos'] })
-      Alert.alert('Generating video', 'Building a 6-second video from your product photos — check back in a few seconds.')
-      // Quick refetch after 3s to pick up the generated video
-      setTimeout(() => {
-        void queryClient.invalidateQueries({ queryKey: ['growth', 'videos'] })
-        setGenerating(false)
-      }, 3500)
     },
     onError: (err) => {
       setGenerating(false)
+      setVideoProgress(0)
+      setVideoEtaMs(0)
       showError(err, 'Could not start video generation')
     },
   })
@@ -268,22 +306,48 @@ export default function VideosScreen() {
                     loading={uploading}
                     icon={<Upload size={16} color="white" />}
                   />
-                  <AnimatedPressable
-                    onPress={() => generate.mutate()}
-                    disabled={generate.isPending}
-                    accessibilityRole="button"
-                    accessibilityLabel="Generate video from photos"
-                    className="flex-row items-center justify-center gap-2 bg-white border border-sand-200 rounded-2xl py-3.5 mt-2.5"
-                  >
-                    {generate.isPending ? (
-                      <ActivityIndicator size="small" color={primaryColor} />
-                    ) : (
+                  {generating ? (
+                    <View className="bg-white border border-sand-200 rounded-2xl p-4 mt-2.5">
+                      <View className="flex-row items-center gap-2">
+                        <ActivityIndicator size="small" color={primaryColor} />
+                        <Text className="text-xs text-sand-700 flex-1 font-medium">
+                          {videoProgress >= 100
+                            ? 'Video ready! 100%'
+                            : videoProgress > 0
+                              ? `Creating 6s video... ${videoProgress}%`
+                              : 'Creating 6s video...'}
+                        </Text>
+                        {videoEtaMs > 0 && videoProgress < 100 && (
+                          <Text className="text-[10px] text-sand-400 font-medium">
+                            ~{Math.ceil(videoEtaMs / 1000)}s left
+                          </Text>
+                        )}
+                      </View>
+                      {/* Progress bar */}
+                      <View className="mt-2.5 h-1.5 bg-sand-100 rounded-full overflow-hidden">
+                        <View
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(Math.max(videoProgress, 5), 100)}%`,
+                            backgroundColor: primaryColor,
+                          }}
+                        />
+                      </View>
+                    </View>
+                  ) : (
+                    <AnimatedPressable
+                      onPress={() => generate.mutate()}
+                      disabled={generate.isPending}
+                      accessibilityRole="button"
+                      accessibilityLabel="Generate video from photos"
+                      className="flex-row items-center justify-center gap-2 bg-white border border-sand-200 rounded-2xl py-3.5 mt-2.5"
+                    >
                       <Sparkles size={16} color={primaryColor} />
-                    )}
-                    <Text className="text-sm font-semibold" style={{ color: primaryColor }}>
-                      {generate.isPending ? 'Starting…' : 'Generate 6s video from photos'}
-                    </Text>
-                  </AnimatedPressable>
+                      <Text className="text-sm font-semibold" style={{ color: primaryColor }}>
+                        Generate 6s video from photos
+                      </Text>
+                    </AnimatedPressable>
+                  )}
                 </>
               )}
               <Text className="text-[11px] text-sand-400 text-center mt-3 leading-4">

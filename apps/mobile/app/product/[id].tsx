@@ -158,33 +158,67 @@ export default function ProductDetailScreen() {
 
   // F-033: Ken Burns product video generated from the product's own photos (max 6s).
   const [videoGenerating, setVideoGenerating] = useState(false)
+  const [videoProgress, setVideoProgress] = useState(0)
+  const [videoEtaMs, setVideoEtaMs] = useState(0)
+
   const videosQuery = useQuery({
     queryKey: ['growth', 'videos', product?.id],
     queryFn: () => (product ? growthApi.productVideos(product.id) : null),
     enabled: Boolean(product),
-    refetchInterval: videoGenerating ? 2500 : false,
+    refetchInterval: videoGenerating ? 1200 : false,
   })
   const productVideos = videosQuery.data?.data ?? product?.videos ?? []
   const prevVideoCountRef = useRef(productVideos.length)
 
+  // Smooth progress animation for video generation (same pattern as AI Studio)
+  useEffect(() => {
+    if (!videoGenerating) return
+    setVideoProgress(15)
+    setVideoEtaMs(3500)
+    const startTime = Date.now()
+    const interval = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      if (elapsed < 3000) {
+        const pct = Math.min(Math.round(15 + (elapsed / 3000) * 75), 90)
+        setVideoProgress(pct)
+        setVideoEtaMs(Math.max(3000 - elapsed, 500))
+      } else {
+        setVideoProgress(95)
+        setVideoEtaMs(0)
+      }
+    }, 150)
+    return () => clearInterval(interval)
+  }, [videoGenerating])
+
   useEffect(() => {
     if (videoGenerating && productVideos.length > prevVideoCountRef.current) {
-      setVideoGenerating(false)
+      setVideoProgress(100)
+      setVideoEtaMs(0)
+      const timer = setTimeout(() => {
+        setVideoGenerating(false)
+        setVideoProgress(0)
+      }, 600)
+      return () => clearTimeout(timer)
     }
     prevVideoCountRef.current = productVideos.length
   }, [productVideos.length, videoGenerating])
 
   const generateVideo = useMutation({
     mutationFn: () => growthApi.generateVideo(product!.id),
-    onMutate: () => setVideoGenerating(true),
+    onMutate: () => {
+      setVideoGenerating(true)
+      setVideoProgress(10)
+      setVideoEtaMs(3500)
+    },
     onSuccess: () => {
       setVideoGenerating(true)
       void queryClient.invalidateQueries({ queryKey: ['growth', 'videos', product?.id] })
       void queryClient.invalidateQueries({ queryKey: ['product', product?.id] })
-      Alert.alert('Generating video', 'Building a 6-second video from your product photos — it will appear below in a few seconds.')
     },
     onError: (err) => {
       setVideoGenerating(false)
+      setVideoProgress(0)
+      setVideoEtaMs(0)
       showError(err, 'Could not start video generation')
     },
   })
@@ -1208,6 +1242,39 @@ export default function ProductDetailScreen() {
         </View>
       )}
 
+      {/* Video generating progress bar (same as AI Studio) */}
+      {videoGenerating && (
+        <View className="mx-4 mt-2">
+          <View className="bg-white rounded-2xl p-4 border border-sand-100 shadow-sm">
+            <View className="flex-row items-center gap-2">
+              <ActivityIndicator size="small" color={primaryColor} />
+              <Text className="text-xs text-sand-700 flex-1 font-medium">
+                {videoProgress >= 100
+                  ? 'Video ready! 100%'
+                  : videoProgress > 0
+                    ? `Creating 6s video... ${videoProgress}%`
+                    : 'Building 6s pan/zoom video...'}
+              </Text>
+              {videoEtaMs > 0 && videoProgress < 100 && (
+                <Text className="text-[10px] text-sand-400 font-medium">
+                  ~{Math.ceil(videoEtaMs / 1000)}s left
+                </Text>
+              )}
+            </View>
+            {/* Progress bar */}
+            <View className="mt-2 h-1.5 bg-sand-100 rounded-full overflow-hidden">
+              <View
+                className="h-full rounded-full"
+                style={{
+                  width: `${Math.min(Math.max(videoProgress, 5), 100)}%`,
+                  backgroundColor: primaryColor,
+                }}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* F-030: Shadow toggle — single on/off, next to the background row
           (same pattern: tap → re-runs cleanup on the currently-viewed photo
           with the new setting baked in). Hidden on original
@@ -1721,11 +1788,32 @@ export default function ProductDetailScreen() {
             )}
           </View>
           {videoGenerating ? (
-            <View className="flex-row items-center gap-2 py-1">
-              <ActivityIndicator size="small" color={primaryColor} />
-              <Text className="text-xs text-sand-600 flex-1 font-medium">
-                Generating 6s pan/zoom video from photos… (ready in a moment)
-              </Text>
+            <View className="mt-2 bg-sand-50 rounded-xl p-3 border border-sand-200">
+              <View className="flex-row items-center gap-2">
+                <ActivityIndicator size="small" color={primaryColor} />
+                <Text className="text-xs text-sand-700 flex-1 font-medium">
+                  {videoProgress >= 100
+                    ? 'Video ready! 100%'
+                    : videoProgress > 0
+                      ? `Creating 6s video... ${videoProgress}%`
+                      : 'Creating 6s video...'}
+                </Text>
+                {videoEtaMs > 0 && videoProgress < 100 && (
+                  <Text className="text-[10px] text-sand-400 font-medium">
+                    ~{Math.ceil(videoEtaMs / 1000)}s left
+                  </Text>
+                )}
+              </View>
+              {/* Progress bar */}
+              <View className="mt-2 h-1.5 bg-sand-200 rounded-full overflow-hidden">
+                <View
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.min(Math.max(videoProgress, 5), 100)}%`,
+                    backgroundColor: primaryColor,
+                  }}
+                />
+              </View>
             </View>
           ) : productVideos.length > 0 ? (
             <View className="gap-2 mt-1">
