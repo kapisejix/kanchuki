@@ -85,7 +85,7 @@ function StepIndicator({
 }) {
   return (
     <View className="flex-row items-center justify-between px-2 pt-3 pb-2">
-      {([1, 2, 3, 4] as Step[]).map((s, i) => {
+      {([1, 2, 3] as Step[]).map((s, i) => {
         const isActive = s === currentStep;
         const isPast = s < currentStep;
         return (
@@ -93,7 +93,7 @@ function StepIndicator({
             {/* Connector line before step (except first) */}
             {i > 0 && (
               <View
-                className="h-1 flex-1 rounded-full mx-1.5"
+                className="h-0.5 flex-1 rounded-full mx-2"
                 style={{
                   backgroundColor: isPast || isActive ? '#BB3F95' : '#E0E1F6',
                 }}
@@ -107,7 +107,7 @@ function StepIndicator({
               className="flex-row items-center gap-1.5"
             >
               <View
-                className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
+                className={`w-7 h-7 rounded-full items-center justify-center border ${
                   isActive
                     ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
                     : isPast
@@ -116,7 +116,7 @@ function StepIndicator({
                 }`}
               >
                 <Text
-                  className={`text-xs font-extrabold ${
+                  className={`text-[11px] font-extrabold ${
                     isActive ? 'text-white' : isPast ? 'text-white' : 'text-heliotrope-500'
                   }`}
                 >
@@ -498,6 +498,14 @@ export default function OnboardingScreen() {
                 />
               </View>
             </View>
+
+            {/* Store Tip Box */}
+            <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5">
+              <Text className="text-sm">📍</Text>
+              <Text className="flex-1 text-[11px] text-heliotrope-600 leading-relaxed font-medium">
+                Your shop location will appear on your customer store links and digital invoices.
+              </Text>
+            </View>
           </View>
         );
 
@@ -660,9 +668,9 @@ export default function OnboardingScreen() {
       >
         {/* Screen Title in Marcellus */}
         <View className="mb-4">
-          <h2 className="text-2xl font-extrabold text-spaceCadet-900 font-marcellus">
+          <Text className="text-2xl font-extrabold text-spaceCadet-900 font-marcellus">
             {STEP_META[step].title}
-          </h2>
+          </Text>
           <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">
             {STEP_META[step].subtitle}
           </Text>
