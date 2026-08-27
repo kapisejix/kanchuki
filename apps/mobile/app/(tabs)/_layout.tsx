@@ -1,18 +1,16 @@
-import { useState, useEffect } from 'react'
-import { AppState, View, ActivityIndicator, Image } from 'react-native'
+import { useEffect } from 'react'
+import { View, ActivityIndicator, Image } from 'react-native'
 import { Tabs, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Home, Grid3X3, Plus, TrendingUp, Link2 } from 'lucide-react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { ordersApi, retailerApi } from '../../src/lib/api'
+import { retailerApi } from '../../src/lib/api'
 import { useTheme } from '../../src/lib/theme'
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets()
   const { primaryColor, colors } = useTheme()
-  const [pendingCount, setPendingCount] = useState(0)
-  const [checkoutEnabled, setCheckoutEnabled] = useState(false)
 
   // Gate: retailer must finish the registration/onboarding form before the
   // dashboard renders — otherwise a dropped-off signup (or any later relaunch)
@@ -44,46 +42,6 @@ export default function TabsLayout() {
       router.replace('/onboarding')
     }
   }, [meLoading, meFetching, onboardingCompleted])
-
-  // Fetch pending order count for the badge on the Orders tab.
-  // Refetches on app foreground so the badge stays current.
-  const fetchPendingCount = async () => {
-    try {
-      const data = await ordersApi.list()
-      const orders = data.data ?? []
-      const count = orders.filter(
-        (o) => o.status === 'PENDING_PAYMENT' || o.status === 'PAID',
-      ).length
-      setPendingCount(count)
-    } catch {
-      // Silently fail — keep previous count so badge doesn't flicker off
-    }
-  }
-
-  useEffect(() => {
-    // Skip while the onboarding gate is still deciding — no point badging a
-    // dashboard that isn't about to render.
-    if (meLoading || meFetching || onboardingCompleted === false) return
-    void fetchPendingCount()
-    const interval = setInterval(() => void fetchPendingCount(), 30_000)
-    const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') void fetchPendingCount()
-    })
-    return () => {
-      clearInterval(interval)
-      sub.remove()
-    }
-  }, [meLoading, meFetching, onboardingCompleted])
-
-  // Gate: hide Orders tab if retailer's plan doesn't include checkout.
-  // Server-side CHECKOUT_CART feature is the authority; this is a client-side
-  // shortcut to avoid showing a tab that would 403 on every action.
-  useEffect(() => {
-    const plan = (meData?.data as { plan?: string } | undefined)?.plan
-    // CHECKOUT_CART is enabled for GROWTH and PRO plans (admin-configurable
-    // via PlanFeature table — if a new plan is added, update this check).
-    setCheckoutEnabled(plan === 'GROWTH' || plan === 'PRO')
-  }, [meData])
 
   if (meLoading || onboardingCompleted === false) {
     return (
