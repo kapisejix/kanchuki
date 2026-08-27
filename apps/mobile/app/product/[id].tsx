@@ -6,7 +6,6 @@ import {
   STUDIO_TEMPLATES,
   STUDIO_MODELS,
   resolveFashionColor,
-  COLORS,
 } from '@kanchuki/shared'
 import {
   View,
@@ -743,7 +742,7 @@ export default function ProductDetailScreen() {
         },
       },
     ])
-  }, [displayPhotos, selectedPhotoIndex, product, deletingMedia, queryClient])
+  }, [displayPhotos, selectedPhotoIndex, product, deletingMedia, queryClient, invalidate])
 
   // Retailer product photo/video download: downloads the high-res image or video
   // and saves it to device Photos / Gallery, with quick share sheet fallback.
