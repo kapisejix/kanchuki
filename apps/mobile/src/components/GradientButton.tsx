@@ -1,4 +1,4 @@
-import { Text, ActivityIndicator, type ViewStyle } from 'react-native'
+import { Text, View, ActivityIndicator, type ViewStyle } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { AnimatedPressable } from './AnimatedPressable'
 import { useTheme } from '../lib/theme'
