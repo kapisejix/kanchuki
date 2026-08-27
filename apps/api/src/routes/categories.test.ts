@@ -119,3 +119,4 @@ describe('GET /v1/categories — image fallback', () => {
     await app.close();
   });
 });
+

@@ -27,8 +27,11 @@ import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
+import * as MediaLibrary from 'expo-media-library'
+import * as Sharing from 'expo-sharing'
+import * as LegacyFileSystem from 'expo-file-system/legacy'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
-import { Check, Trash2, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, Camera, X, Tag, Star, Video, Languages, Clapperboard } from 'lucide-react-native'
+import { Check, Trash2, Download, MapPin, Sparkles, Scissors, Palette, ChevronLeft, ChevronRight, Wand2, Camera, X, Tag, Star, Video, Languages, Clapperboard } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -327,6 +330,7 @@ export default function ProductDetailScreen() {
   const [detectedColor, setDetectedColor] = useState<string | null>(null)
   const [colorDetectError, setColorDetectError] = useState<string | null>(null)
   const [deletingMedia, setDeletingMedia] = useState(false)
+  const [downloadingMedia, setDownloadingMedia] = useState(false)
   // Measured on layout rather than trusting the static Dimensions snapshot —
   // if the rendered carousel width ever differs from SCREEN_WIDTH (safe-area
   // insets, split-screen, tablet), scrollTo's computed x lands on the wrong
@@ -741,6 +745,75 @@ export default function ProductDetailScreen() {
     ])
   }, [displayPhotos, selectedPhotoIndex, product, deletingMedia, queryClient])
 
+  // Retailer product photo/video download: downloads the high-res image or video
+  // and saves it to device Photos / Gallery, with quick share sheet fallback.
+  const handleDownloadCurrentMedia = useCallback(async () => {
+    const photo = displayPhotos[selectedPhotoIndex]
+    if (!product || !photo || downloadingMedia) return
+
+    setDownloadingMedia(true)
+    try {
+      const isVideo = photo.is_video
+      const ext = isVideo ? 'mp4' : 'jpg'
+      const cleanName = (product.name || 'product')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .slice(0, 20)
+      const filename = `kanchuki_${cleanName}_${Date.now()}.${ext}`
+      const fileUri = `${LegacyFileSystem.cacheDirectory}${filename}`
+
+      const downloadResult = await LegacyFileSystem.downloadAsync(photo.url, fileUri)
+      if (downloadResult.status !== 200) {
+        throw new Error(`Download failed with status ${downloadResult.status}`)
+      }
+
+      let savedToGallery = false
+      try {
+        const { status } = await MediaLibrary.requestPermissionsAsync()
+        if (status === 'granted') {
+          await MediaLibrary.saveToLibraryAsync(downloadResult.uri)
+          savedToGallery = true
+        }
+      } catch (permErr) {
+        console.warn('MediaLibrary permission/save error:', permErr)
+      }
+
+      if (savedToGallery) {
+        Alert.alert(
+          'Saved to Gallery',
+          isVideo
+            ? 'The product video has been saved to your device gallery.'
+            : 'The product image has been saved to your device gallery.',
+          [
+            { text: 'OK' },
+            {
+              text: 'Share',
+              onPress: async () => {
+                if (await Sharing.isAvailableAsync()) {
+                  await Sharing.shareAsync(downloadResult.uri, {
+                    mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+                    dialogTitle: 'Share Product Media',
+                  })
+                }
+              },
+            },
+          ]
+        )
+      } else if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(downloadResult.uri, {
+          mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+          dialogTitle: 'Save / Share Product Media',
+        })
+      } else {
+        Alert.alert('Saved', 'File downloaded successfully.')
+      }
+    } catch (err) {
+      showError(err, 'Failed to download product media')
+    } finally {
+      setDownloadingMedia(false)
+    }
+  }, [displayPhotos, selectedPhotoIndex, product, downloadingMedia])
+
   // F-032: start a studio-shoot generation for the currently viewed photo or primary photo.
   const handleStartStudioShoot = async (
     template: string,
@@ -1043,6 +1116,26 @@ export default function ProductDetailScreen() {
               <Star size={11} color="white" fill="white" />
               <Text className="text-white text-xs font-semibold">Main</Text>
             </View>
+          )}
+
+          {/* Download current photo/video button */}
+          {displayPhotos.length > 0 && currentPhoto && (
+            <AnimatedPressable
+              onPress={() => void handleDownloadCurrentMedia()}
+              disabled={downloadingMedia}
+              accessibilityLabel="Download current image or video"
+              accessibilityRole="button"
+              className={`absolute top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm ${
+                currentPhoto?.is_video ? 'right-14' : 'right-24'
+              }`}
+              style={{ elevation: 3, zIndex: 10 }}
+            >
+              {downloadingMedia ? (
+                <ActivityIndicator size="small" color={primaryColor} />
+              ) : (
+                <Download size={16} color={colors.sand[700]} />
+              )}
+            </AnimatedPressable>
           )}
 
           {/* Delete current photo/video button */}
@@ -1450,7 +1543,7 @@ export default function ProductDetailScreen() {
         </View>
       )}
 
-      {/* Media actions — Set as main & Delete Image / Video */}
+      {/* Media actions — Set as main, Download & Delete Image / Video */}
       {displayPhotos[selectedPhotoIndex] && (
         <View className="mx-4 mt-2 flex-row gap-2">
           {!currentPhotoIsVariant && !currentPhotoIsOriginal && !currentPhoto?.is_video && (
@@ -1483,13 +1576,35 @@ export default function ProductDetailScreen() {
                 }`}
               >
                 {settingPrimaryId === displayPhotos[selectedPhotoIndex]?.id
-                  ? 'Setting as main...'
+                  ? 'Setting...'
                   : currentPhoto?.is_primary
-                    ? 'Main photo ✓'
-                    : 'Set as main photo'}
+                    ? 'Main ✓'
+                    : 'Set as main'}
               </Text>
             </AnimatedPressable>
           )}
+
+          {/* Download current media button */}
+          <AnimatedPressable
+            onPress={() => void handleDownloadCurrentMedia()}
+            disabled={downloadingMedia}
+            accessibilityLabel="Download image or video"
+            accessibilityRole="button"
+            className={`flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 px-3.5 border border-sand-200 bg-white ${
+              currentPhotoIsVariant || currentPhotoIsOriginal || currentPhoto?.is_video
+                ? 'flex-1'
+                : ''
+            }`}
+          >
+            {downloadingMedia ? (
+              <ActivityIndicator size="small" color={primaryColor} />
+            ) : (
+              <Download size={14} color={colors.sand[700]} />
+            )}
+            <Text className="text-xs font-medium text-sand-800">
+              Download
+            </Text>
+          </AnimatedPressable>
 
           {/* Delete current media button */}
           <AnimatedPressable
@@ -1497,7 +1612,7 @@ export default function ProductDetailScreen() {
             disabled={deletingMedia}
             accessibilityLabel="Delete image or video"
             accessibilityRole="button"
-            className={`flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 px-4 border border-rust-200 bg-rust-50/60 ${
+            className={`flex-row items-center justify-center gap-1.5 rounded-xl py-2.5 px-3.5 border border-rust-200 bg-rust-50/60 ${
               currentPhotoIsVariant || currentPhotoIsOriginal || currentPhoto?.is_video
                 ? 'flex-1'
                 : ''
@@ -1509,7 +1624,7 @@ export default function ProductDetailScreen() {
               <Trash2 size={14} color={colors.rust[600]} />
             )}
             <Text className="text-xs font-medium text-rust-700">
-              {currentPhoto?.is_video ? 'Delete Video' : 'Delete Image'}
+              Delete
             </Text>
           </AnimatedPressable>
         </View>
