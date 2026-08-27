@@ -37,6 +37,20 @@ export class ApiError extends Error {
 // Single-flight refresh — concurrent 401s share one refresh call instead of
 // each racing to burn the same refresh_token.
 let refreshPromise: Promise<string | null> | null = null
+let isRedirectingToAuth = false
+
+export function redirectToAuth() {
+  if (isRedirectingToAuth) return
+  isRedirectingToAuth = true
+  try {
+    router.replace('/auth/phone')
+  } catch {
+    // router might not be ready yet
+  }
+  setTimeout(() => {
+    isRedirectingToAuth = false
+  }, 4000)
+}
 
 async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
@@ -105,12 +119,14 @@ export async function request<T>(
 
     // Expired access token — refresh once and retry the original request
     if (status === 401 && code === 'UNAUTHORIZED' && !isRetry) {
-      const newToken = await refreshAccessToken()
-      if (newToken) return request<T>(path, options, true)
-      await clearToken()
-      await deleteItem('refresh_token')
-      clearRequestCache()
-      router.replace('/auth/phone')
+      if (!path.startsWith('/v1/auth/')) {
+        const newToken = await refreshAccessToken()
+        if (newToken) return request<T>(path, options, true)
+        await clearToken()
+        await deleteItem('refresh_token')
+        clearRequestCache()
+        redirectToAuth()
+      }
     }
 
     if (err instanceof ApiError) throw err

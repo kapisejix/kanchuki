@@ -20,14 +20,11 @@ export default function TabsLayout() {
     data: meData,
     isLoading: meLoading,
     isFetching: meFetching,
+    isError: meError,
   } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
-    // A cached `false` from the persisted offline cache must always be
-    // re-verified against the DB before the gate redirects — staleTime 0
-    // forces the mount refetch (cheap: getMe has a 60s request-cache TTL,
-    // and the onboarding PATCH just cleared that cache).
-    staleTime: 0,
+    staleTime: 60_000,
   })
   const onboardingCompleted = (meData?.data as { onboarding_completed?: boolean } | undefined)
     ?.onboarding_completed
@@ -38,14 +35,14 @@ export default function TabsLayout() {
   // user who just completed onboarding back to step 1 — the refetch lands
   // first and renders the dashboard.
   useEffect(() => {
-    if (!meLoading && !meFetching && onboardingCompleted === false) {
+    if (!meLoading && !meFetching && !meError && onboardingCompleted === false) {
       router.replace('/onboarding')
     }
-  }, [meLoading, meFetching, onboardingCompleted])
+  }, [meLoading, meFetching, meError, onboardingCompleted])
 
-  if (meLoading || onboardingCompleted === false) {
+  if (meLoading || onboardingCompleted === false || meError) {
     return (
-      <View className="flex-1 items-center justify-center bg-cotton">
+      <View className="flex-1 items-center justify-center bg-[#F8F7FC]">
         <ActivityIndicator color={primaryColor} />
       </View>
     )

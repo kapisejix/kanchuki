@@ -75,7 +75,14 @@ const queryClient = new QueryClient({
       // ── Reduce network churn on slow connections ──
       staleTime: 60_000, // 1 min — don't refetch immediately on mount
       gcTime: 24 * 60 * 60 * 1000, // 24h — survive background kill for offline use
-      retry: 2,
+      retry: (failureCount, error) => {
+        const status = (error as any)?.status ?? (error as any)?.response?.status
+        const code = (error as any)?.code
+        if (status === 401 || status === 403 || status === 404 || code === 'UNAUTHORIZED') {
+          return false
+        }
+        return failureCount < 2
+      },
       retryDelay: (attempt) => Math.min(1_000 * 2 ** attempt, 10_000),
       refetchOnWindowFocus: false, // mobile doesn't need this — AppState handles it
       refetchOnReconnect: true, // refetch when network comes back
