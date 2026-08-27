@@ -35,12 +35,14 @@ export default function TabsLayout() {
   // user who just completed onboarding back to step 1 — the refetch lands
   // first and renders the dashboard.
   useEffect(() => {
-    if (!meLoading && !meFetching && !meError && onboardingCompleted === false) {
-      router.replace('/onboarding')
+    if (!meLoading && !meFetching) {
+      if (meError || onboardingCompleted === false) {
+        router.replace('/onboarding')
+      }
     }
   }, [meLoading, meFetching, meError, onboardingCompleted])
 
-  if (meLoading || onboardingCompleted === false || meError) {
+  if (meLoading || meFetching || onboardingCompleted === false || meError) {
     return (
       <View className="flex-1 items-center justify-center bg-[#F8F7FC]">
         <ActivityIndicator color={primaryColor} />

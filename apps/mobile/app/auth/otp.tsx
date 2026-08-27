@@ -111,8 +111,11 @@ export default function OtpScreen() {
 
   const msg91 = isMsg91OtpConfigured() && Boolean(reqId || token) && bypass !== 'true'
 
+  const isVerifyingRef = useRef(false)
+
   const handleVerify = async (code: string) => {
-    if (code.length !== 6 || !phone || loading) return
+    if (code.length !== 6 || !phone || loading || isVerifyingRef.current) return
+    isVerifyingRef.current = true
     setLoading(true)
     const digits = normalizeIndianPhone(phone)
     let verified = false
@@ -143,6 +146,7 @@ export default function OtpScreen() {
         await completeLogin(result)
       }
     } catch (err) {
+      isVerifyingRef.current = false
       // Don't blanket-label every failure "Incorrect OTP" — a 500 (e.g. the
       // phone number still being released after account deletion) or a 409 is
       // NOT a wrong code, and clearing the input to retype would mislead.
@@ -178,7 +182,7 @@ export default function OtpScreen() {
   // Both land in the same completeLogin. On failure we simply show the OTP
   // input — a normal code will have been sent as the fallback.
   useEffect(() => {
-    if (!phone || autoVerifyAttempted.current) return
+    if (!phone || autoVerifyAttempted.current || bypass === 'true') return
     autoVerifyAttempted.current = true
 
     if (token) {
@@ -212,7 +216,7 @@ export default function OtpScreen() {
       })
     // autoVerifyAttempted.current guards against re-runs, so the param deps
     // are safe to declare. completeLogin/verifyWithMsg91Token are module-level.
-  }, [phone, msg91, reqId, token])
+  }, [phone, msg91, reqId, token, bypass])
 
   const handleResend = async () => {
     if (!phone || resendTimer > 0) return
