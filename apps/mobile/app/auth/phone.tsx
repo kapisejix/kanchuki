@@ -95,28 +95,34 @@ export default function PhoneScreen() {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Top */}
+        {/* Main Content */}
         <View className="items-center w-full">
           {/* Full Kanchuki wordmark logo */}
-          <View className="items-center mb-6">
+          <View className="items-center mb-4">
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
-              style={{ width: 220, height: 42 }}
+              style={{ width: 200, height: 38 }}
               resizeMode="contain"
             />
           </View>
 
-          {/* Tagline: Aapki Dukan, AI ki Taakat in 2 lines, italic, Marcellus heading font, center aligned */}
-          <Text className="text-3xl italic font-bold text-spaceCadet-900 font-marcellus text-center leading-tight mb-8">
-            Aapki Dukan,{"\n"}AI ki Taakat
+          {/* Headline in one line: Aap ki Dukan, AI ki Takat */}
+          <Text className="text-base font-bold text-spaceCadet-900 font-marcellus text-center tracking-tight mb-1">
+            Aap ki <Text className="text-fuchsia-500 font-bold">Dukan</Text>,{' '}
+            <Text className="text-tyrian-800 font-bold">AI</Text> ki Takat
+          </Text>
+
+          {/* Second tagline in normal text with bold prefix */}
+          <Text className="text-xs text-heliotrope-600 text-center leading-relaxed mb-6 font-medium max-w-xs">
+            <Text className="font-bold text-spaceCadet-900">AI catalog + WhatsApp</Text> = aapki dukaan har customer ke phone mein.
           </Text>
 
           {/* Phone input card */}
-          <View className="w-full bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm">
-            <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-2">
+          <View className="w-full bg-white border border-lavender-200 rounded-3xl p-4 shadow-sm mb-4">
+            <Text className="text-[11px] font-bold text-heliotrope-600 uppercase tracking-wider mb-1.5">
               Mobile Number
             </Text>
-            <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3.5 gap-3">
+            <View className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 gap-3">
               <Text className="text-sm font-bold text-tyrian-800">+91</Text>
               <View className="w-px h-4 bg-lavender-300" />
               <TextInput
@@ -133,27 +139,30 @@ export default function PhoneScreen() {
               />
             </View>
             {showPhoneError ? (
-              <Text className="text-xs font-medium text-danger mt-2 pl-1">
+              <Text className="text-xs font-medium text-danger mt-1.5 pl-1">
                 Enter a valid 10-digit mobile number (starts with 6–9)
               </Text>
             ) : (
-              <Text className="text-[11px] text-heliotrope-500 mt-2 pl-1 font-medium">
+              <Text className="text-[11px] text-heliotrope-500 mt-1.5 pl-1 font-medium">
                 OTP will be sent via SMS / WhatsApp
               </Text>
             )}
           </View>
+
+          {/* Get Instant OTP Button — closely following the phone card */}
+          <View className="w-full">
+            <GradientButton
+              label="Get Instant OTP"
+              onPress={() => void handleSend()}
+              disabled={!isValid}
+              loading={loading}
+            />
+          </View>
         </View>
 
-        {/* Bottom CTA */}
-        <View className="mt-6 w-full">
-          <GradientButton
-            label="Get Instant OTP"
-            onPress={() => void handleSend()}
-            disabled={!isValid}
-            loading={loading}
-          />
-
-          <Text className="text-center text-xs text-heliotrope-500 mt-4 px-4 leading-4 font-medium">
+        {/* Bottom Legal Links */}
+        <View className="mt-auto pt-6 w-full">
+          <Text className="text-center text-[11px] text-heliotrope-500 px-4 leading-4 font-medium">
             By continuing, you agree to our{' '}
             <Text
               className="font-bold text-fuchsia-600 underline"

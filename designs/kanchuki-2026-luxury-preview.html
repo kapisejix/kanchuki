@@ -417,47 +417,55 @@
       
       // 1. LOGIN (PHONE SCREEN)
       'login': `
-        <div class="p-6 pb-10 bg-[#F8F7FC] flex flex-col justify-between h-full">
+        <div class="p-6 pb-6 bg-[#F8F7FC] flex flex-col justify-between h-full">
           
-          <!-- Top Section -->
+          <!-- Top & Main Content -->
           <div class="flex flex-col items-center">
             
             <!-- Wordmark Logo -->
-            <div class="mb-6 mt-4 flex items-center justify-center">
+            <div class="mb-4 mt-2 flex items-center justify-center">
               <div class="px-5 py-2.5 rounded-2xl bg-white border border-[#E0E1F6] shadow-sm flex items-center gap-2">
                 <span class="text-xl font-extrabold tracking-widest text-[#231F48] font-marcellus">KANCHUKI</span>
                 <span class="w-2 h-2 rounded-full bg-[#BB3F95]"></span>
               </div>
             </div>
 
-            <!-- Tagline in 2 lines, italic, Marcellus heading font, center aligned -->
-            <h2 class="text-2xl font-bold text-[#231F48] font-marcellus text-center italic leading-tight mb-8">
-              Aapki Dukan,<br/>AI ki Taakat
+            <!-- Title in one line with exact font-marcellus, text-base, font-bold, text-[#231F48] -->
+            <h2 class="text-base font-bold text-[#231F48] font-marcellus text-center tracking-tight mb-1">
+              Aap ki <span class="text-[#BB3F95]">Dukan</span>, <span class="text-[#560A39]">AI</span> ki Takat
             </h2>
 
+            <!-- Second tagline in normal text with bold prefix -->
+            <p class="text-xs text-[#6B4773] text-center leading-relaxed mb-6 font-medium max-w-xs">
+              <strong>AI catalog + WhatsApp</strong> = aapki dukaan har customer ke phone mein.
+            </p>
+
             <!-- Mobile Number Card -->
-            <div class="clay-card p-5 w-full">
-              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-2">Mobile Number</label>
+            <div class="clay-card p-4 w-full mb-3.5">
+              <label class="text-[11px] uppercase tracking-wider text-[#6B4773] font-bold block mb-1.5">Mobile Number</label>
               <div class="flex items-center gap-3 p-3 bg-[#FAF9FE] border border-[#E0E1F6] rounded-2xl">
                 <span class="text-sm font-bold text-[#560A39]">+91</span>
                 <div class="w-px h-4 bg-[#C8CAEE]"></div>
                 <input type="tel" value="98765 43210" placeholder="10-digit mobile number" class="w-full text-sm font-bold text-[#231F48] bg-transparent focus:outline-none" />
               </div>
-              <p class="text-[11px] text-[#6B4773] mt-2 font-medium">OTP will be sent via SMS / WhatsApp</p>
+              <p class="text-[11px] text-[#6B4773] mt-1.5 font-medium">OTP will be sent via SMS / WhatsApp</p>
+            </div>
+
+            <!-- Get Instant OTP Button (placed right next to phone number) -->
+            <div class="w-full">
+              <div class="slide-btn-signature py-3.5" onclick="renderScreen('register')">
+                <span class="text-xs font-extrabold uppercase tracking-wider text-white">Get Instant OTP</span>
+                <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+                </div>
+              </div>
             </div>
 
           </div>
 
-          <!-- Bottom CTA -->
-          <div class="mt-8">
-            <div class="slide-btn-signature py-3.5" onclick="renderScreen('register')">
-              <span class="text-xs font-extrabold uppercase tracking-wider text-white">Get Instant OTP</span>
-              <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
-              </div>
-            </div>
-
-            <p class="text-center text-[11px] text-[#6B4773] mt-4 px-4 leading-4 font-medium">
+          <!-- Bottom Legal Links -->
+          <div class="mt-auto pt-6">
+            <p class="text-center text-[11px] text-[#6B4773] px-4 leading-4 font-medium">
               By continuing, you agree to our <a href="#" class="font-bold text-[#BB3F95] underline">Terms of Service</a> and <a href="#" class="font-bold text-[#BB3F95] underline">Privacy Policy</a>
             </p>
           </div>
