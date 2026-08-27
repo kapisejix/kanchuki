@@ -22,6 +22,7 @@ import {
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
+import { useVideoPlayer, VideoView } from 'expo-video'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as ImagePicker from 'expo-image-picker'
 import * as ImageManipulator from 'expo-image-manipulator'
@@ -62,6 +63,25 @@ const STUDIO_TEMPLATE_THUMBNAILS: Record<string, number> = {
   diwali_lights: require('../../assets/studio-templates/diwali_lights.png'),
   wedding_elegant: require('../../assets/studio-templates/wedding_elegant.png'),
   flat_lay: require('../../assets/studio-templates/flat_lay.png'),
+}
+
+function ProductVideoSlide({ url, width, height }: { url: string; width: number; height: number }) {
+  const player = useVideoPlayer(url, (p) => {
+    p.loop = true
+    p.muted = false
+    p.play()
+  })
+
+  return (
+    <View style={{ width, height }} className="w-full h-full bg-sand-950 items-center justify-center relative">
+      <VideoView
+        style={{ width: '100%', height: '100%' }}
+        player={player}
+        nativeControls
+        contentFit="contain"
+      />
+    </View>
+  )
 }
 
 export default function ProductDetailScreen() {
@@ -373,6 +393,22 @@ export default function ProductDetailScreen() {
           is_original_preview: true,
         })
       }
+    }
+    // Include product videos (e.g. 6s Ken Burns generated video)
+    for (const v of productVideos) {
+      if (!v.public_url || seen.has(v.public_url)) continue
+      seen.add(v.public_url)
+      result.push({
+        id: `video-${v.id}`,
+        url: v.public_url,
+        is_primary: v.is_main ?? false,
+        piece_type: null,
+        is_variant_preview: false,
+        variant_color: null,
+        is_original_preview: false,
+        is_video: true,
+        video_duration: v.duration_sec ?? 6,
+      })
     }
     for (const v of product?.variants ?? []) {
       if (!v.photo_url || seen.has(v.photo_url)) continue
@@ -861,7 +897,13 @@ export default function ProductDetailScreen() {
               containerDimensions={{ width: carouselWidth, height: 380 }}
               style={{ width: carouselWidth, height: 380 }}
               renderItem={({ item: photo }) =>
-                !imageErrors.has(photo.url) ? (
+                photo.is_video ? (
+                  <ProductVideoSlide
+                    url={photo.url}
+                    width={carouselWidth}
+                    height={380}
+                  />
+                ) : !imageErrors.has(photo.url) ? (
                   <Image
                     source={{ uri: displayUrl(photo) }}
                     style={{ width: '100%', height: '100%' }}
@@ -909,8 +951,18 @@ export default function ProductDetailScreen() {
             </AnimatedPressable>
           )}
 
+          {/* Video badge */}
+          {currentPhoto?.is_video && (
+            <View className="absolute top-3 left-3 bg-ink-900/90 px-3 py-1 rounded-full flex-row items-center gap-1.5 shadow-sm">
+              <Clapperboard size={12} color="white" />
+              <Text className="text-white text-xs font-semibold">
+                Product Video ({currentPhoto.video_duration ?? 6}s)
+              </Text>
+            </View>
+          )}
+
           {/* Variant badge */}
-          {currentPhotoIsVariant && currentPhoto?.variant_color && (
+          {!currentPhoto?.is_video && currentPhotoIsVariant && currentPhoto?.variant_color && (
             <View className="absolute top-3 left-3 bg-ink-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
               <Palette size={12} color="white" />
               <Text className="text-white text-xs font-semibold">{currentPhoto.variant_color}</Text>
@@ -918,7 +970,7 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Original (pre-cleanup) badge */}
-          {currentPhotoIsOriginal && (
+          {!currentPhoto?.is_video && currentPhotoIsOriginal && (
             <View className="absolute top-3 left-3 bg-sand-700/90 px-3 py-1 rounded-full">
               <Text className="text-white text-xs font-semibold">Original</Text>
             </View>
@@ -926,7 +978,7 @@ export default function ProductDetailScreen() {
 
           {/* Main-image badge — this photo is what the catalog/storefront
               show first (is_primary desc ordering) */}
-          {currentPhoto?.is_primary && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
+          {!currentPhoto?.is_video && currentPhoto?.is_primary && !currentPhotoIsVariant && !currentPhotoIsOriginal && (
             <View className="absolute top-3 left-3 bg-turmeric-600/90 px-3 py-1 rounded-full flex-row items-center gap-1">
               <Star size={11} color="white" fill="white" />
               <Text className="text-white text-xs font-semibold">Main</Text>
@@ -934,20 +986,22 @@ export default function ProductDetailScreen() {
           )}
 
           {/* Detect color from the current photo */}
-          <AnimatedPressable
-            onPress={() => void handleDetectColor()}
-            disabled={detectingColor}
-            accessibilityLabel="Detect color from photo"
-            accessibilityRole="button"
-            className="absolute right-3 top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
-            style={{ elevation: 3, zIndex: 10 }}
-          >
-            {detectingColor ? (
-              <ActivityIndicator size="small" color={colors.sand[700]} />
-            ) : (
-              <Palette size={16} color={colors.sand[700]} />
-            )}
-          </AnimatedPressable>
+          {!currentPhoto?.is_video && (
+            <AnimatedPressable
+              onPress={() => void handleDetectColor()}
+              disabled={detectingColor}
+              accessibilityLabel="Detect color from photo"
+              accessibilityRole="button"
+              className="absolute right-3 top-3 w-9 h-9 rounded-full bg-white/80 items-center justify-center shadow-sm"
+              style={{ elevation: 3, zIndex: 10 }}
+            >
+              {detectingColor ? (
+                <ActivityIndicator size="small" color={colors.sand[700]} />
+              ) : (
+                <Palette size={16} color={colors.sand[700]} />
+              )}
+            </AnimatedPressable>
+          )}
 
           {/* Detected-color confirm chip */}
           {detectedColor && (
@@ -995,12 +1049,12 @@ export default function ProductDetailScreen() {
           {/* Dot indicators */}
           {displayPhotos.length > 1 && (
             <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
-              {displayPhotos.map((_, idx) => (
+              {displayPhotos.map((p, idx) => (
                 <AnimatedPressable
                   key={idx}
                   onPress={() => goToPhoto(idx)}
                   className={`w-2 h-2 rounded-full ${
-                    idx === selectedPhotoIndex ? 'bg-white w-3' : 'bg-white/50'
+                    idx === selectedPhotoIndex ? 'bg-white w-3' : p.is_video ? 'bg-turmeric-400' : 'bg-white/50'
                   }`}
                 />
               ))}
@@ -1016,6 +1070,7 @@ export default function ProductDetailScreen() {
                 const isSelected = idx === selectedPhotoIndex
                 const isVariant = photo.is_variant_preview
                 const isOriginal = photo.is_original_preview
+                const isVideo = photo.is_video
                 return (
                   <AnimatedPressable
                     key={photo.id}
@@ -1026,11 +1081,22 @@ export default function ProductDetailScreen() {
                       isSelected ? 'border-ink-600' : 'border-sand-200'
                     }`}
                   >
-                    <Image
-                      source={{ uri: displayUrl(photo) }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                    />
+                    {isVideo ? (
+                      <View className="w-full h-full bg-sand-900 items-center justify-center">
+                        <Clapperboard size={22} color="white" />
+                        <View className="absolute bottom-0 left-0 right-0 bg-black/80 py-0.5">
+                          <Text className="text-white text-[8px] text-center font-bold">
+                            {photo.video_duration ? `${photo.video_duration}s` : 'VIDEO'}
+                          </Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <Image
+                        source={{ uri: displayUrl(photo) }}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="cover"
+                      />
+                    )}
                     {isVariant && (
                       <View className="absolute bottom-0 left-0 right-0 bg-ink-600/80 py-0.5">
                         <Text className="text-white text-[8px] text-center font-medium">
@@ -1043,7 +1109,7 @@ export default function ProductDetailScreen() {
                         <Text className="text-white text-[8px] text-center font-medium">Original</Text>
                       </View>
                     )}
-                    {photo.is_primary && !isVariant && !isOriginal && (
+                    {photo.is_primary && !isVariant && !isOriginal && !isVideo && (
                       <View className="absolute bottom-0 left-0 right-0 bg-turmeric-600/80 py-0.5">
                         <Text className="text-white text-[8px] text-center font-medium">Main</Text>
                       </View>

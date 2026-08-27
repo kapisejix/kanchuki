@@ -5,6 +5,7 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addKenBurnsVideoJob } from '../../jobs/index.js';
+import { handleGenerateKenBurnsVideo } from '../../jobs/generate-ken-burns-video.js';
 import { hasFeature } from '../../lib/features.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 import { photoUrlToDisplay } from '../products/products-helpers.js';
@@ -124,7 +125,14 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
       throw validationError('Add at least 2 photos before generating a video');
     }
 
-    await addKenBurnsVideoJob({ product_id: id, retailer_id: retailerId });
+    try {
+      await addKenBurnsVideoJob({ product_id: id, retailer_id: retailerId });
+    } catch (err) {
+      server.log.warn({ err }, 'Maintenance queue unavailable — running Ken Burns video directly');
+      void handleGenerateKenBurnsVideo({ product_id: id, retailer_id: retailerId }).catch((e) => {
+        server.log.error({ err: e }, 'Direct Ken Burns video generation failed');
+      });
+    }
     return reply.status(202).send({ data: { message: 'Video generation started' } });
   });
 

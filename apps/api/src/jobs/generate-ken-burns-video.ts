@@ -41,7 +41,28 @@ export async function handleGenerateKenBurnsVideo(data: KenBurnsVideoJobData): P
 
     const photoPaths = await Promise.all(
       photos.map(async (photo, i) => {
-        const buf = await downloadBuffer(photo.r2_key);
+        let buf: Buffer | null = null;
+        if (photo.r2_key) {
+          try {
+            buf = await downloadBuffer(photo.r2_key);
+          } catch (e) {
+            console.warn(`[jobs] Failed to download r2_key ${photo.r2_key}:`, e);
+          }
+        }
+        if (!buf && photo.url) {
+          try {
+            const resp = await fetch(photo.url);
+            if (resp.ok) {
+              const arrayBuf = await resp.arrayBuffer();
+              buf = Buffer.from(arrayBuf);
+            }
+          } catch (e) {
+            console.warn(`[jobs] Failed to fetch photo url ${photo.url}:`, e);
+          }
+        }
+        if (!buf) {
+          throw new Error(`Could not download image data for photo ${photo.id}`);
+        }
         const path = join(dir, `photo-${i}.jpg`);
         await writeFile(path, buf);
         return path;

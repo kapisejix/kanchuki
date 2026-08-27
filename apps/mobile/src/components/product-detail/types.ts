@@ -7,6 +7,8 @@ export type Photo = {
   piece_type: 'upper' | 'lower' | null
   original_url?: string | null
   metadata?: Record<string, unknown> | null
+  is_video?: boolean
+  video_duration?: number | null
 }
 export type Variant = { id: string; color: string; photo_url: string | null }
 export type Product = {
