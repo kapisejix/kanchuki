@@ -15,6 +15,7 @@
   "dependencies": {
     "@babel/runtime": "^7.24.0",
     "@expo-google-fonts/inter": "^0.4.2",
+    "@expo-google-fonts/marcellus": "^0.4.1",
     "@expo/metro-runtime": "~6.1.2",
     "@gorhom/bottom-sheet": "^4.6.4",
     "@kanchuki/shared": "workspace:*",

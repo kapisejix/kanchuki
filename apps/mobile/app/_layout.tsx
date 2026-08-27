@@ -10,6 +10,7 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import { Marcellus_400Regular } from "@expo-google-fonts/marcellus";
 import type { PlatformTheme } from "@kanchuki/shared";
 import {
   QueryClient,
@@ -201,6 +202,7 @@ function RootLayoutInner() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    Marcellus_400Regular,
   });
 
   // Hydrate the persisted per-user palette BEFORE the first render so the

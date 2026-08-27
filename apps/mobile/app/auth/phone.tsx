@@ -89,19 +89,16 @@ export default function PhoneScreen() {
           width: '100%',
           alignSelf: 'center',
           justifyContent: 'space-between',
-          paddingTop: insets.top + 16,
+          paddingTop: insets.top + 36,
           paddingBottom: insets.bottom + 16,
         }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* Top spacer to balance layout */}
-        <View className="w-full h-2" />
-
-        {/* Vertically Centered Main Block */}
-        <View className="items-center w-full my-auto">
+        {/* Main Content (Top 30% positioning) */}
+        <View className="items-center w-full">
           {/* Full Kanchuki wordmark logo */}
-          <View className="items-center mb-5">
+          <View className="items-center mb-4">
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
               style={{ width: 220, height: 42 }}
@@ -109,10 +106,18 @@ export default function PhoneScreen() {
             />
           </View>
 
-          {/* Headline in one line: Aap ki Dukan, AI ki Takat */}
-          <Text className="text-base font-bold text-spaceCadet-900 font-marcellus text-center tracking-tight mb-6">
-            Aap ki <Text className="text-fuchsia-500 font-bold">Dukan</Text>,{' '}
-            <Text className="text-tyrian-800 font-bold">AI</Text> ki Takat
+          {/* Headline in Marcellus font */}
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-lg font-bold text-spaceCadet-900 text-center tracking-tight mb-1"
+          >
+            Aap ki <Text style={{ color: '#BB3F95' }}>Dukan</Text>,{' '}
+            <Text style={{ color: '#560A39' }}>AI</Text> ki Takat
+          </Text>
+
+          {/* Descriptive text in normal font */}
+          <Text className="text-xs text-heliotrope-600 text-center leading-relaxed font-medium max-w-xs mb-6">
+            AI-powered digital catalog, instant WhatsApp storefront, and seamless billing for ethnic fashion retailers.
           </Text>
 
           {/* Phone input card */}

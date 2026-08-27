@@ -51,31 +51,53 @@ export function GradientButton({
       disabled={isDisabled}
       accessibilityLabel={label}
       accessibilityState={{ disabled: isDisabled }}
-      style={[isDisabled ? undefined : shadow, compact ? { alignSelf: 'center' } : { width: '100%' }]}
+      style={[
+        isDisabled ? undefined : shadow,
+        compact ? { alignSelf: 'center' } : { width: '100%' },
+      ]}
     >
       <LinearGradient
         colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={{ borderRadius: 24, opacity: isDisabled ? 0.5 : 1 }}
-        className={`flex-row items-center ${
-          compact
-            ? 'justify-center gap-3 py-3 px-6'
-            : 'justify-between py-3.5 px-5'
-        }`}
+        style={{
+          borderRadius: 24,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: compact ? 'center' : 'space-between',
+          paddingVertical: 12,
+          paddingHorizontal: compact ? 22 : 20,
+          opacity: isDisabled ? 0.5 : 1,
+        }}
       >
         {loading ? (
-          <View className={`${compact ? 'px-6' : 'w-full'} flex-row items-center justify-center py-0.5`}>
-            <ActivityIndicator color="white" size="small" />
+          <View style={{ width: compact ? undefined : '100%', paddingHorizontal: compact ? 24 : 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 2 }}>
+            <ActivityIndicator color="#FFFFFF" size="small" />
           </View>
         ) : (
           <>
-            <View className="flex-row items-center gap-2">
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: compact ? 10 : 0 }}>
               {icon}
-              <Text className="text-white text-xs font-bold uppercase tracking-wider">{label}</Text>
+              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                {label}
+              </Text>
             </View>
             {badgeContent ? (
-              <View className="w-7 h-7 rounded-xl bg-fuchsia-500 items-center justify-center shadow-sm">
+              <View
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 10,
+                  backgroundColor: '#BB3F95',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  shadowColor: '#000',
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.15,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+              >
                 {badgeContent}
               </View>
             ) : null}
