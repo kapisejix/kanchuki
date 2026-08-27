@@ -3,6 +3,7 @@ import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import ffmpegPath from 'ffmpeg-static';
 import {
   cleanupProductPhoto,
   deleteObject,
@@ -15,9 +16,8 @@ import { R2_PATHS } from '@kanchuki/shared';
 
 const execFileAsync = promisify(execFile);
 
-// ponytail: shell out to system ffmpeg/ffprobe (same approach as the Python CV
-// script in extract-measurement.ts) instead of a fluent-ffmpeg wrapper dependency.
-const FFMPEG_BIN = process.env.FFMPEG_BIN ?? 'ffmpeg';
+// Use FFMPEG_BIN if set (e.g. system binary), otherwise fall back to ffmpeg-static binary
+const FFMPEG_BIN = process.env.FFMPEG_BIN ?? (ffmpegPath as unknown as string) ?? 'ffmpeg';
 const FFPROBE_BIN = process.env.FFPROBE_BIN ?? 'ffprobe';
 const SPIN_FRAME_COUNT = 24;
 

@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import ffmpegPath from 'ffmpeg-static';
 import { downloadBuffer, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
@@ -10,9 +11,8 @@ import { createId } from '@paralleldrive/cuid2';
 
 const execFileAsync = promisify(execFile);
 
-// ponytail: same execFile-a-system-binary approach as extract-spin-frames.ts
-// (and the Python CV script in extract-measurement.ts) — no fluent-ffmpeg dep.
-const FFMPEG_BIN = process.env.FFMPEG_BIN ?? 'ffmpeg';
+// Use FFMPEG_BIN if set (e.g. system binary), otherwise fall back to ffmpeg-static binary
+const FFMPEG_BIN = process.env.FFMPEG_BIN ?? (ffmpegPath as unknown as string) ?? 'ffmpeg';
 
 const MAX_PHOTOS = 3;
 const TOTAL_MAX_SEC = 6.0; // Max 6 seconds total video duration
