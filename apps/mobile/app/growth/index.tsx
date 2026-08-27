@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import {
   BookOpen,
@@ -62,8 +63,6 @@ const GROWTH_MODULES = [
 function isFeatureUnavailable(err: unknown): boolean {
   return err instanceof ApiError && err.code === 'FEATURE_UNAVAILABLE'
 }
-
-import { LinearGradient } from 'expo-linear-gradient'
 
 export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
   const { primaryColor, colors } = useTheme()

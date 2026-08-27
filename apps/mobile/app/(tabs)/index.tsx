@@ -1,5 +1,6 @@
 import { COLORS } from '@kanchuki/shared';
 import { useQuery } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
   BarChart3,
@@ -19,6 +20,7 @@ import {
 } from 'lucide-react-native';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
+import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
 import { categoryApi, ordersApi, retailerApi } from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
@@ -47,9 +49,6 @@ type RetailerMe = {
   plan: string;
   plan_status: string;
 };
-
-import { LinearGradient } from 'expo-linear-gradient';
-import { GradientButton } from '../../src/components/GradientButton';
 
 export default function HomeScreen() {
   const { primaryColor, colors } = useTheme();
