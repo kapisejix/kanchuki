@@ -261,35 +261,52 @@
         box-shadow: 0 10px 25px -4px rgba(35, 31, 72, 0.3);
       }
 
-      /* Right-side floating thumbnail strip container inside hero */
+      /* Floating Thumbnail Strip Container Inside Hero */
+      .pdp-left-thumbnails {
+        position: absolute;
+        top: 50%;
+        left: 12px;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(16px);
+        border-radius: 22px;
+        padding: 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        box-shadow: 0 8px 24px rgba(35, 31, 72, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.85);
+        z-index: 20;
+      }
       .pdp-right-thumbnails {
         position: absolute;
         top: 50%;
-        right: 14px;
+        right: 12px;
         transform: translateY(-50%);
-        background: rgba(255, 255, 255, 0.85);
+        background: rgba(255, 255, 255, 0.88);
         backdrop-filter: blur(16px);
-        border-radius: 24px;
-        padding: 6px;
+        border-radius: 22px;
+        padding: 5px;
         display: flex;
         flex-direction: column;
-        gap: 8px;
-        box-shadow: 0 8px 24px rgba(35, 31, 72, 0.15);
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        gap: 7px;
+        box-shadow: 0 8px 24px rgba(35, 31, 72, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.85);
         z-index: 20;
       }
       .pdp-thumb-item {
-        width: 42px;
+        width: 40px;
         height: 48px;
-        border-radius: 16px;
+        border-radius: 14px;
         overflow: hidden;
         cursor: pointer;
         border: 2px solid transparent;
-        transition: all 0.2s;
+        transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+        background: #FAF9FE;
       }
       .pdp-thumb-item.active {
         border-color: #bb3f95;
-        transform: scale(1.06);
+        transform: scale(1.08);
         box-shadow: 0 4px 10px rgba(187, 63, 149, 0.35);
       }
 
@@ -464,6 +481,13 @@
         >
           12. Customer: PDP Sheet
         </button>
+        <button
+          onclick="renderScreen('customer_consent')"
+          id="tab-customer_consent"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          13. Customer: Lead & Consent
+        </button>
       </div>
     </div>
 
@@ -631,7 +655,23 @@
                   >Customer Product Details & Reviews (Web PDP)</strong
                 >
                 <span class="text-xs text-[#6B4773]"
-                  >4-photo multi-angle carousel with counter badge, price header with wishlist/share, AI Summary card, full product info table, family size selector box, dual action buttons (Select & WhatsApp Enquire), and in-app rating & review submission form.</span
+                  >Hero image with floating multi-photo thumbnail strip on left/right for 1-click angle switching, price header with wishlist/share, AI Summary card, full product info table, family size selector box, dual action buttons (Select & WhatsApp Enquire), and in-app rating & review submission form.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#560A39] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                13
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Customer WhatsApp Lead & Legal Consent Flow</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >Boutique direct WhatsApp connect modal with selected product summary, Customer Name & +91 WhatsApp mobile input, explicit consent agreement checkbox with Privacy Policy & Terms of Service links, and 1-Click instant WhatsApp dispatch.</span
                 >
               </div>
             </div>
@@ -1650,7 +1690,7 @@
             <span class="text-[9px] font-bold mt-0.5">Saved</span>
             <span class="absolute -top-1 right-1 w-4 h-4 rounded-full bg-[#BB3F95] text-white text-[9px] font-extrabold flex items-center justify-center">1</span>
           </div>
-          <div class="dock-item text-emerald-400 hover:text-emerald-300" onclick="alert('Opening WhatsApp enquiry with store manager...')">
+          <div class="dock-item text-emerald-400 hover:text-emerald-300 cursor-pointer" onclick="renderScreen('customer_consent')">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
             <span class="text-[9px] font-bold mt-0.5 text-emerald-400">Enquire</span>
           </div>
@@ -1672,25 +1712,38 @@
             </button>
           </div>
 
-          <!-- Hero Image Carousel -->
+          <!-- Hero Image Carousel with Floating Left-Side Thumbnails -->
           <div class="relative h-80 rounded-[32px] overflow-hidden bg-white shadow-soft-clay mb-4 border border-[#E0E1F6]">
-            <img id="cust-pdp-hero" src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover" />
+            <img id="cust-pdp-hero" src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover transition-all duration-300" />
             
+            <!-- Left-side Floating Thumbnail Strip Container (matches Screenshot & Point 10 PDP) -->
+            <div class="pdp-left-thumbnails">
+              <div class="pdp-thumb-item active" onclick="switchCustomerHeroPhoto(this, 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="pdp-thumb-item" onclick="switchCustomerHeroPhoto(this, 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="pdp-thumb-item" onclick="switchCustomerHeroPhoto(this, 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="pdp-thumb-item" onclick="switchCustomerHeroPhoto(this, 'https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=600&q=80')">
+                <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=150&q=80" class="w-full h-full object-cover" />
+              </div>
+            </div>
+
             <!-- Left & Right Arrow controls -->
-            <button class="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
-            </button>
-            <button class="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40">
+            <button class="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40 hover:scale-105 transition">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
             </button>
 
             <!-- Counter Badge -->
             <div class="absolute bottom-3.5 right-3.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm">
-              4 / 4
+              4 Photos
             </div>
 
             <!-- Dots Indicator -->
-            <div class="absolute bottom-3.5 left-4 flex gap-1.5 items-center">
+            <div class="absolute bottom-3.5 left-20 flex gap-1.5 items-center">
               <span class="w-4 h-1.5 rounded-full bg-[#BB3F95]"></span>
               <span class="w-1.5 h-1.5 rounded-full bg-white/80"></span>
               <span class="w-1.5 h-1.5 rounded-full bg-white/80"></span>
@@ -1705,7 +1758,7 @@
               <p class="text-xs text-[#6B4773] font-bold mt-0.5">Salwar Suits • Festive Collection</p>
             </div>
             <div class="flex items-center gap-2">
-              <button class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6]">
+              <button class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] hover:border-[#BB3F95] transition">
                 <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
               </button>
               <button class="w-10 h-10 rounded-2xl bg-[#BB3F95]/10 border border-[#BB3F95]/30 flex items-center justify-center text-[#BB3F95] shadow-soft-clay">
@@ -1775,13 +1828,13 @@
 
           <!-- Dual Action Buttons -->
           <div class="flex items-center gap-3 mb-5">
-            <button class="flex-1 py-3 rounded-2xl bg-white border border-[#E0E1F6] text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition">
+            <button class="flex-1 py-3.5 rounded-2xl bg-white border border-[#E0E1F6] text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition">
               <svg class="w-4 h-4 text-amber-500 fill-amber-500" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
               <span>Select</span>
             </button>
-            <button class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition" onclick="alert('Opening WhatsApp enquiry with store manager...')">
+            <button class="flex-1 py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition cursor-pointer" onclick="renderScreen('customer_consent')">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
-              <span>Enquire</span>
+              <span>Enquire on WhatsApp</span>
             </button>
           </div>
 
@@ -1832,6 +1885,120 @@
 
         </div>
         `,
+
+        // 13. CUSTOMER LEAD & WHATSAPP CONSENT
+        customer_consent: `
+        <div class="p-5 pb-12 bg-[#F8F7FC] min-h-full flex flex-col justify-between">
+          
+          <div>
+            <!-- Top Navigation -->
+            <div class="flex justify-between items-center mb-4">
+              <button onclick="renderScreen('customer_pdp')" class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] hover:border-[#BB3F95] transition">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+              <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-xl bg-gradient-to-br from-[#231F48] to-[#560A39] text-white flex items-center justify-center font-marcellus font-bold text-xs shadow-sm">PF</div>
+                <span class="text-xs font-bold text-[#231F48]">Priya Fashion Store</span>
+              </div>
+              <button onclick="renderScreen('customer_catalog')" class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] hover:border-[#BB3F95] transition">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+              </button>
+            </div>
+
+            <!-- Header Title -->
+            <div class="mb-4">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span class="text-[10px] uppercase tracking-wider font-extrabold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">Boutique Direct Connect</span>
+              </div>
+              <h2 class="text-xl font-extrabold text-[#231F48] font-marcellus leading-tight">Enquire on WhatsApp</h2>
+              <p class="text-xs text-[#6B4773] mt-0.5 font-medium">Receive HD photos, price quote, and fitting assistance directly from store owner.</p>
+            </div>
+
+            <!-- Selected Product Preview Summary Card -->
+            <div class="clay-card p-3 bg-white border border-[#E0E1F6] mb-4 flex items-center gap-3 shadow-sm">
+              <div class="w-14 h-16 rounded-xl overflow-hidden bg-[#FAF9FE] flex-shrink-0 border border-[#E0E1F6]">
+                <img src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=200&q=80" class="w-full h-full object-cover" />
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex justify-between items-start">
+                  <h4 class="text-xs font-bold text-[#231F48] truncate">Pink Embroidered Lehenga Choli</h4>
+                  <span class="text-xs font-extrabold text-[#231F48] font-sans">₹4,100</span>
+                </div>
+                <div class="flex items-center gap-2 mt-1">
+                  <span class="text-[10px] text-[#6B4773] font-medium bg-[#E0E1F6]/60 px-2 py-0.5 rounded-md">Size: XL</span>
+                  <span class="text-[10px] text-[#6B4773] font-medium bg-[#E0E1F6]/60 px-2 py-0.5 rounded-md">Georgette</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Customer Details Input Form -->
+            <div class="clay-card p-4 border border-[#E0E1F6] space-y-3.5 mb-4 shadow-sm">
+              <div>
+                <label class="text-[10px] uppercase tracking-wider font-extrabold text-[#6B4773] block mb-1">Your Full Name *</label>
+                <div class="w-full bg-[#FAF9FE] rounded-2xl p-2.5 px-3.5 text-xs text-[#231F48] border border-[#E0E1F6] flex items-center gap-2.5 focus-within:border-[#231F48] focus-within:bg-white transition">
+                  <svg class="w-4 h-4 text-[#928EB2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                  <input type="text" id="lead-name" placeholder="e.g. Priya Sharma" class="w-full bg-transparent text-xs text-[#231F48] font-semibold focus:outline-none placeholder-[#928EB2]" />
+                </div>
+              </div>
+
+              <div>
+                <label class="text-[10px] uppercase tracking-wider font-extrabold text-[#6B4773] block mb-1">WhatsApp Mobile Number *</label>
+                <div class="w-full bg-[#FAF9FE] rounded-2xl p-2.5 px-3.5 text-xs text-[#231F48] border border-[#E0E1F6] flex items-center gap-2.5 focus-within:border-[#231F48] focus-within:bg-white transition">
+                  <span class="text-xs font-bold text-[#231F48] flex items-center gap-1 border-r border-[#E0E1F6] pr-2.5">
+                    🇮🇳 +91
+                  </span>
+                  <input type="tel" id="lead-phone" placeholder="98765 43210" maxlength="10" class="w-full bg-transparent text-xs text-[#231F48] font-semibold tracking-wider focus:outline-none placeholder-[#928EB2]" />
+                  <svg class="w-4 h-4 text-emerald-600 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.2.662.591 1.221.774 1.394.861.173.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
+                </div>
+              </div>
+
+              <!-- Checkbox Consent for WhatsApp, Privacy Policy & Terms -->
+              <div class="pt-1 space-y-2.5 border-t border-[#E0E1F6]/70">
+                <div class="flex items-start gap-2.5">
+                  <input type="checkbox" id="consent-whatsapp" checked class="mt-0.5 w-4 h-4 rounded border-[#E0E1F6] text-[#231F48] focus:ring-0 cursor-pointer accent-[#231F48]" />
+                  <label for="consent-whatsapp" class="text-[11px] text-[#231F48] leading-relaxed font-medium cursor-pointer">
+                    I agree to receive product photos, pricing, and order updates on WhatsApp and accept Kanchuki's <a href="#" class="text-[#BB3F95] font-bold underline">Privacy Policy</a> and <a href="#" class="text-[#BB3F95] font-bold underline">Terms of Service</a>.
+                  </label>
+                </div>
+
+                <div class="flex items-start gap-2.5">
+                  <input type="checkbox" id="consent-vip" class="mt-0.5 w-4 h-4 rounded border-[#E0E1F6] text-[#231F48] focus:ring-0 cursor-pointer accent-[#BB3F95]" />
+                  <label for="consent-vip" class="text-[11px] text-[#6B4773] leading-relaxed font-medium cursor-pointer">
+                    Send me new arrival alerts & exclusive festive coupon discounts.
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Bottom Action Area -->
+          <div class="space-y-3 pt-2">
+            <!-- 1-Click WhatsApp Connect Button in Signature Gradient -->
+            <div class="slide-btn-signature py-4 cursor-pointer" onclick="handleWhatsAppConnect()">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.771-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.2.662.591 1.221.774 1.394.861.173.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg>
+                </div>
+                <div>
+                  <span class="text-xs font-extrabold uppercase tracking-wider text-white block">Continue to WhatsApp</span>
+                  <span class="text-[9px] text-[#E0E1F6]/80 font-medium block">Direct chat with store manager</span>
+                </div>
+              </div>
+              <div class="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+              </div>
+            </div>
+
+            <!-- Trust Badge -->
+            <div class="flex items-center justify-center gap-1.5 text-[10px] text-[#6B4773] font-semibold">
+              <svg class="w-3.5 h-3.5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+              <span>100% Privacy Protected • Zero Spam Guarantee</span>
+            </div>
+          </div>
+
+        </div>
+        `,
       };
 
       function renderScreen(screenKey) {
@@ -1850,6 +2017,18 @@
           .forEach((t) => t.classList.remove("active"));
         el.classList.add("active");
         document.getElementById("main-pdp-hero").src = src;
+      }
+
+      function switchCustomerHeroPhoto(el, src) {
+        const parent = el.closest('.pdp-left-thumbnails') || el.closest('.pdp-right-thumbnails');
+        if (parent) {
+          parent.querySelectorAll(".pdp-thumb-item").forEach((t) => t.classList.remove("active"));
+        }
+        el.classList.add("active");
+        const heroImg = document.getElementById("cust-pdp-hero");
+        if (heroImg) {
+          heroImg.src = src;
+        }
       }
 
       function selectSize(el) {
@@ -1880,6 +2059,19 @@
             star.classList.add('text-stone-300');
           }
         });
+      }
+
+      function handleWhatsAppConnect() {
+        const name = document.getElementById('lead-name')?.value?.trim() || 'Valued Customer';
+        const phone = document.getElementById('lead-phone')?.value?.trim() || '';
+        const consent = document.getElementById('consent-whatsapp')?.checked;
+
+        if (!consent) {
+          alert('Please agree to the WhatsApp communications and privacy policy consent to proceed.');
+          return;
+        }
+
+        alert('✨ Connecting ' + name + ' directly with Priya Fashion Store on WhatsApp with selected product details!');
       }
 
       // Initialize with Login screen
