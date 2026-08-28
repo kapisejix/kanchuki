@@ -12,7 +12,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { VideoView } from 'expo-video'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronLeft, Clapperboard } from 'lucide-react-native'
+import { ChevronLeft, Clapperboard, Heart, Share2, ShoppingBag } from 'lucide-react-native'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import type { ProductDetail } from '@kanchuki/shared'
 
@@ -21,6 +21,7 @@ import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
 import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 import { RelatedProductsSection } from '../../src/components/product-detail/RelatedProducts'
 import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
 import { ProductMediaCarousel } from '../../src/components/product-detail/ProductMediaCarousel'
@@ -121,6 +122,8 @@ export default function ProductDetailScreen() {
   const [skuTagOpen, setSkuTagOpen] = useState(false)
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set())
   const [photoCacheBust, setPhotoCacheBust] = useState<Record<string, number>>({})
+  const [quantity, setQuantity] = useState(1)
+  const [isFavorite, setIsFavorite] = useState(false)
 
   const galleryRef = useRef<GalleryRef>(null)
   const spinTouchStartX = useRef<number | null>(null)
@@ -239,7 +242,7 @@ export default function ProductDetailScreen() {
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
-      {/* Top App Header */}
+      {/* Top App Header (Point 10 PDP Spec) */}
       <View
         className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
@@ -259,17 +262,35 @@ export default function ProductDetailScreen() {
         >
           Product Details
         </Text>
-        <AnimatedPressable
-          onPress={() => void form.handleSave()}
-          disabled={form.saving}
-          className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
-        >
-          {form.saving ? (
-            <ActivityIndicator size="small" color="white" />
+        <View className="flex-row items-center gap-2">
+          {form.isDirty ? (
+            <AnimatedPressable
+              onPress={() => void form.handleSave()}
+              disabled={form.saving}
+              className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
+            >
+              {form.saving ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
+              )}
+            </AnimatedPressable>
           ) : (
-            <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
+            <AnimatedPressable
+              onPress={() => setIsFavorite((f) => !f)}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+              hitSlop={8}
+              accessibilityLabel="Favorite"
+              accessibilityRole="button"
+            >
+              <Heart
+                size={18}
+                color={isFavorite ? "#BB3F95" : "#231F48"}
+                fill={isFavorite ? "#BB3F95" : "transparent"}
+              />
+            </AnimatedPressable>
           )}
-        </AnimatedPressable>
+        </View>
       </View>
 
       <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
@@ -386,6 +407,40 @@ export default function ProductDetailScreen() {
           colors={colors}
         />
       </ScrollView>
+
+      {/* Bottom Sticky Action Bar (Point 10 PDP Spec) */}
+      <View
+        className="bg-white/95 border-t border-lavender-200 px-4 py-3 flex-row items-center gap-3 shadow-lg"
+        style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+      >
+        {/* Quantity Counter */}
+        <View className="flex-row items-center justify-between px-3 py-2.5 rounded-2xl bg-lavender-100/80 border border-lavender-200 w-24">
+          <AnimatedPressable
+            onPress={() => setQuantity((q) => Math.max(1, q - 1))}
+            className="p-1"
+            hitSlop={8}
+          >
+            <Text className="text-base text-spaceCadet-900 font-bold">−</Text>
+          </AnimatedPressable>
+          <Text className="text-sm font-extrabold text-spaceCadet-900">{quantity}</Text>
+          <AnimatedPressable
+            onPress={() => setQuantity((q) => q + 1)}
+            className="p-1"
+            hitSlop={8}
+          >
+            <Text className="text-base text-spaceCadet-900 font-bold">+</Text>
+          </AnimatedPressable>
+        </View>
+
+        {/* Signature Gradient CTA */}
+        <View className="flex-1">
+          <GradientButton
+            label={form.isDirty ? "Save Changes" : "Add to Cart"}
+            onPress={() => void form.handleSave()}
+            loading={form.saving}
+          />
+        </View>
+      </View>
 
       {/* Fullscreen Photo Zoom Viewer */}
       <Modal

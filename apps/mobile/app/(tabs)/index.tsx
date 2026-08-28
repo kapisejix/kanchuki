@@ -343,35 +343,39 @@ export default function HomeScreen() {
             Catalog & Products
           </Text>
         </View>
-        <View className="flex-row flex-wrap gap-3">
-          <QuickAction
-            icon={<Camera size={20} color="#BB3F95" />}
-            label="Add Product"
-            sublabel="Photo + AI tagging"
-            onPress={() => router.push('/product/add')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<FolderKanban size={20} color="#560A39" />}
-            label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
-            sublabel="Manage categories"
-            onPress={() => router.push('/category')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<PackagePlus size={20} color="#BB3F95" />}
-            label="Bulk Onboard"
-            sublabel="Rack-by-rack upload"
-            onPress={() => router.push('/product/bulk-onboard')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<QrCode size={20} color="#560A39" />}
-            label="Store QR Code"
-            sublabel="Scan to view catalog"
-            onPress={() => router.push('/store-profile')}
-            accent="#E0E1F6"
-          />
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<Camera size={20} color="#BB3F95" />}
+              label="Add Product"
+              sublabel="Photo + AI tagging"
+              onPress={() => router.push('/product/add')}
+              accent="#E0E1F6"
+            />
+            <QuickAction
+              icon={<FolderKanban size={20} color="#560A39" />}
+              label={`${categories.length} ${categories.length === 1 ? 'Category' : 'Categories'}`}
+              sublabel="Manage categories"
+              onPress={() => router.push('/category')}
+              accent="#E0E1F6"
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<PackagePlus size={20} color="#BB3F95" />}
+              label="Bulk Onboard"
+              sublabel="Rack-by-rack upload"
+              onPress={() => router.push('/product/bulk-onboard')}
+              accent="#E0E1F6"
+            />
+            <QuickAction
+              icon={<QrCode size={20} color="#560A39" />}
+              label="Store QR Code"
+              sublabel="Scan to view catalog"
+              onPress={() => router.push('/store-profile')}
+              accent="#E0E1F6"
+            />
+          </View>
         </View>
       </View>
 
@@ -385,28 +389,33 @@ export default function HomeScreen() {
             Customers & Sales
           </Text>
         </View>
-        <View className="flex-row flex-wrap gap-3">
-          <QuickAction
-            icon={<Users size={20} color="#560A39" />}
-            label="Add Customer"
-            sublabel="Save preferences"
-            onPress={() => router.push('/customer/add')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<Link2 size={20} color="#BB3F95" />}
-            label="New Collection"
-            sublabel="Share on WhatsApp"
-            onPress={() => router.push('/collection/new')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<ShoppingBag size={20} color="#560A39" />}
-            label="Orders"
-            sublabel={pendingOrders > 0 ? `${pendingOrders} pending` : 'Manage fulfillment'}
-            onPress={() => router.push('/(tabs)/orders')}
-            accent="#E0E1F6"
-          />
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<Users size={20} color="#560A39" />}
+              label="Add Customer"
+              sublabel="Save preferences"
+              onPress={() => router.push('/customer/add')}
+              accent="#E0E1F6"
+            />
+            <QuickAction
+              icon={<Link2 size={20} color="#BB3F95" />}
+              label="New Collection"
+              sublabel="Share on WhatsApp"
+              onPress={() => router.push('/collection/new')}
+              accent="#E0E1F6"
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<ShoppingBag size={20} color="#560A39" />}
+              label="Orders"
+              sublabel={pendingOrders > 0 ? `${pendingOrders} pending` : 'Manage fulfillment'}
+              onPress={() => router.push('/(tabs)/orders')}
+              accent="#E0E1F6"
+            />
+            <View className="flex-1" />
+          </View>
         </View>
       </View>
 
@@ -420,28 +429,33 @@ export default function HomeScreen() {
             Growth & Marketing
           </Text>
         </View>
-        <View className="flex-row flex-wrap gap-3">
-          <QuickAction
-            icon={<Megaphone size={20} color="#BB3F95" />}
-            label="Growth Tools"
-            sublabel="AI Campaigns · Referrals"
-            onPress={() => router.push('/growth')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<Search size={20} color="#560A39" />}
-            label="AI Search"
-            sublabel="Voice-ready inventory"
-            onPress={() => router.push('/ai-search')}
-            accent="#E0E1F6"
-          />
-          <QuickAction
-            icon={<BarChart3 size={20} color="#BB3F95" />}
-            label="Analytics"
-            sublabel="Views, enquiries & stats"
-            onPress={() => router.push('/analytics')}
-            accent="#E0E1F6"
-          />
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<Megaphone size={20} color="#BB3F95" />}
+              label="Growth Tools"
+              sublabel="AI Campaigns · Referrals"
+              onPress={() => router.push('/growth')}
+              accent="#E0E1F6"
+            />
+            <QuickAction
+              icon={<Search size={20} color="#560A39" />}
+              label="AI Search"
+              sublabel="Voice-ready inventory"
+              onPress={() => router.push('/ai-search')}
+              accent="#E0E1F6"
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<BarChart3 size={20} color="#BB3F95" />}
+              label="Analytics"
+              sublabel="Views, enquiries & stats"
+              onPress={() => router.push('/analytics')}
+              accent="#E0E1F6"
+            />
+            <View className="flex-1" />
+          </View>
         </View>
       </View>
 
@@ -455,7 +469,7 @@ export default function HomeScreen() {
             Settings
           </Text>
         </View>
-        <View className="flex-row flex-wrap gap-3">
+        <View className="flex-row gap-3">
           <QuickAction
             icon={<Settings size={20} color="#560A39" />}
             label="Settings"
@@ -463,6 +477,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/settings')}
             accent="#E0E1F6"
           />
+          <View className="flex-1" />
         </View>
       </View>
 
@@ -529,7 +544,7 @@ function QuickAction({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="w-[47%] bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+      className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
       style={{
         shadowColor: '#231F48',
         shadowOffset: { width: 0, height: 4 },

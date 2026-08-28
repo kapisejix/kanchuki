@@ -2,9 +2,10 @@ import { Text, View, ActivityIndicator, type ViewStyle } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ArrowRight } from 'lucide-react-native'
 import { AnimatedPressable } from './AnimatedPressable'
-import { useTheme } from '../lib/theme'
 
-/** Primary CTA — gradient fill (#231F48 Space Cadet → #560A39 Tyrian Purple) + shadow + press-scale. One shared button for every screen's main action. */
+/** Primary CTA — signature gradient fill (#231F48 Space Cadet → #560A39 Tyrian Purple) + shadow + press-scale.
+ * Exactly matches .slide-btn-signature and .slide-btn-signature-compact from 2026 luxury design.
+ */
 export function GradientButton({
   label,
   onPress,
@@ -14,6 +15,7 @@ export function GradientButton({
   accentBadge,
   colors,
   compact = false,
+  style,
 }: {
   label: string
   onPress: () => void
@@ -25,8 +27,8 @@ export function GradientButton({
   colors?: [string, string]
   /** Auto-width compact centered button (just text + arrow badge, no stretched space) */
   compact?: boolean
+  style?: ViewStyle
 }) {
-  const { colors: themeColors } = useTheme()
   const isDisabled = disabled || loading
   const gradientColors = colors ?? ['#231F48', '#560A39']
 
@@ -42,7 +44,7 @@ export function GradientButton({
     accentBadge !== undefined ? (
       accentBadge
     ) : (
-      <ArrowRight size={14} color="white" strokeWidth={2.5} />
+      <ArrowRight size={16} color="white" strokeWidth={2.2} />
     )
 
   return (
@@ -54,6 +56,7 @@ export function GradientButton({
       style={[
         isDisabled ? undefined : shadow,
         compact ? { alignSelf: 'center' } : { width: '100%' },
+        style,
       ]}
     >
       <LinearGradient
@@ -65,29 +68,40 @@ export function GradientButton({
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: compact ? 'center' : 'space-between',
-          paddingVertical: 12,
-          paddingHorizontal: compact ? 22 : 20,
+          paddingVertical: 10,
+          paddingLeft: compact ? 20 : 18,
+          paddingRight: 12,
           opacity: isDisabled ? 0.5 : 1,
+          minHeight: 48,
         }}
       >
         {loading ? (
-          <View style={{ width: compact ? undefined : '100%', paddingHorizontal: compact ? 24 : 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 2 }}>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 2 }}>
             <ActivityIndicator color="#FFFFFF" size="small" />
           </View>
         ) : (
           <>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: compact ? 10 : 0 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1, marginRight: 8 }}>
               {icon}
-              <Text style={{ color: '#FFFFFF', fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+              <Text
+                style={{
+                  color: '#FFFFFF',
+                  fontSize: 12,
+                  fontWeight: '800',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.8,
+                }}
+                numberOfLines={1}
+              >
                 {label}
               </Text>
             </View>
             {badgeContent ? (
               <View
                 style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 10,
+                  width: 32,
+                  height: 32,
+                  borderRadius: 12,
                   backgroundColor: '#BB3F95',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -96,6 +110,7 @@ export function GradientButton({
                   shadowOpacity: 0.15,
                   shadowRadius: 4,
                   elevation: 2,
+                  flexShrink: 0,
                 }}
               >
                 {badgeContent}
@@ -107,4 +122,3 @@ export function GradientButton({
     </AnimatedPressable>
   )
 }
-

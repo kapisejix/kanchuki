@@ -21,6 +21,7 @@ import React, { memo, useState, useEffect } from 'react'
 import { COLORS } from '@kanchuki/shared'
 import { View, Text, type ViewStyle } from 'react-native'
 import { Image } from 'expo-image'
+import { Heart } from 'lucide-react-native'
 import { AnimatedPressable } from './AnimatedPressable'
 
 // iOS shadow (Android keeps its own `elevation` prop, RN can't share one style key for both).
@@ -64,6 +65,10 @@ export interface ProductCardProps {
   cachePolicy?: 'memory-disk' | 'memory' | 'disk'
   /** Optional: Placeholder icon shown when no image URL */
   placeholderIcon?: string
+  /** Optional: Favorite action callback */
+  onFavorite?: () => void
+  /** Optional: Whether card is currently favorited */
+  isFavorite?: boolean
 }
 
 const ProductCard = memo(function ProductCard({
@@ -81,6 +86,8 @@ const ProductCard = memo(function ProductCard({
   imageHeight,
   cachePolicy = 'memory-disk',
   placeholderIcon = '📦',
+  onFavorite,
+  isFavorite,
 }: ProductCardProps) {
   const [imageError, setImageError] = useState(false)
 
@@ -148,6 +155,21 @@ const ProductCard = memo(function ProductCard({
                       : '#d97706', // amber-600 — pending / partial
               }}
             />
+          )}
+
+          {/* Floating favorite heart button (Point 9 Discovery Spec) */}
+          {onFavorite && (
+            <AnimatedPressable
+              onPress={onFavorite}
+              className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-2 right-2 shadow-md border border-lavender-200"
+              style={{ elevation: 3 }}
+            >
+              <Heart
+                size={16}
+                color={isFavorite ? "#BB3F95" : "#231F48"}
+                fill={isFavorite ? "#BB3F95" : "transparent"}
+              />
+            </AnimatedPressable>
           )}
 
           {/* Selected checkmark overlay */}

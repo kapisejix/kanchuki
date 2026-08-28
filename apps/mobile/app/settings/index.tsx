@@ -1160,23 +1160,31 @@ export default function SettingsScreen() {
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
-      {/* Header */}
+      {/* Header (Point 8 Settings Spec) */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-3"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
-          <AnimatedPressable
-            onPress={() => router.back()}
-            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
-            hitSlop={8}
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-          >
-            <ChevronLeft size={20} color="#231F48" />
-          </AnimatedPressable>
-          <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">Settings</Text>
-          <View className="w-10" />
+          <View className="flex-row items-center gap-3">
+            <AnimatedPressable
+              onPress={() => router.back()}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+              hitSlop={8}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+            >
+              <ChevronLeft size={20} color="#231F48" />
+            </AnimatedPressable>
+            <Text className="text-xl font-extrabold text-spaceCadet-900 font-marcellus">
+              Settings
+            </Text>
+          </View>
+          <View className="px-2.5 py-1 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30">
+            <Text className="text-tyrian-800 text-[10px] font-extrabold uppercase tracking-wider">
+              {retailer?.plan ?? "PRO PLAN"}
+            </Text>
+          </View>
         </View>
       </View>
 
@@ -1184,14 +1192,33 @@ export default function SettingsScreen() {
         className="flex-1 px-4 pt-4"
         contentContainerStyle={{ paddingBottom: 32 }}
       >
-        {/* Shop Card */}
-        <View className="bg-white rounded-3xl p-5 border border-lavender-200 mb-4 shadow-sm">
-          <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">
-            {retailer?.shop_name ?? "My Store"}
-          </Text>
-          <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
-            {retailer?.city ?? ""} · {retailer?.plan ?? "STARTER"}
-          </Text>
+        {/* Store Profile Card (Point 8 Spec) */}
+        <View className="bg-white rounded-3xl p-4 flex-row items-center justify-between mb-4 border border-lavender-200 shadow-sm">
+          <View className="flex-row items-center gap-3 flex-1 mr-2">
+            <View className="w-12 h-12 rounded-2xl bg-tyrian-800 border border-fuchsia-500/30 items-center justify-center shadow-sm">
+              <Text className="text-lavender-200 font-bold text-base font-marcellus">
+                {(retailer?.shop_name ?? "RS").slice(0, 2).toUpperCase()}
+              </Text>
+            </View>
+            <View className="flex-1">
+              <Text
+                className="text-sm font-bold text-spaceCadet-900 font-marcellus"
+                numberOfLines={1}
+              >
+                {retailer?.shop_name ?? "Radha Sarees"}
+              </Text>
+              <Text className="text-[11px] text-heliotrope-500 font-medium" numberOfLines={1}>
+                {retailer?.slug ? `kanchuki.com/${retailer.slug}` : `${retailer?.city ?? ""} · ${retailer?.plan ?? "PRO"}`}
+              </Text>
+            </View>
+          </View>
+          <AnimatedPressable
+            onPress={() => setShowProfileEdit(true)}
+            className="w-8 h-8 rounded-xl bg-lavender-50 border border-lavender-200 items-center justify-center"
+            accessibilityLabel="Edit profile"
+          >
+            <User size={16} color="#6B4773" />
+          </AnimatedPressable>
         </View>
 
         {/* Store URL change notice — one-shot, shown right after a rename that
@@ -1460,12 +1487,6 @@ export default function SettingsScreen() {
             onPress={() => setShowReportProblem(true)}
           />
 
-          <SettingsRow
-            icon={<LogOut size={18} color={colors.sand[600]} />}
-            label="Logout"
-            onPress={handleLogout}
-          />
-
           {!isStaff && (
             <SettingsRow
               icon={<Trash2 size={18} color={colors.rust[600]} />}
@@ -1474,6 +1495,14 @@ export default function SettingsScreen() {
               onPress={() => setShowDelete(true)}
             />
           )}
+
+          {/* Signature Sign Out Button (Point 8 Spec) */}
+          <View className="mt-3">
+            <GradientButton
+              label="Sign Out of Account"
+              onPress={handleLogout}
+            />
+          </View>
         </View>
       </ScrollView>
 

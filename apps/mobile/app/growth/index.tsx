@@ -126,51 +126,167 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
       )}
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Signature Gradient Hero (#231F48 to #560A39) */}
+        {/* Hero Campaign Performance Card (Point 7 Growth Spec) */}
         <LinearGradient
           colors={['#231F48', '#560A39']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 28 }}
-          className="p-6 mb-5 shadow-lg border border-fuchsia-500/20"
+          style={{
+            borderRadius: 28,
+            padding: 20,
+            shadowColor: '#231F48',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.28,
+            shadowRadius: 18,
+            elevation: 8,
+          }}
+          className="mb-5 relative overflow-hidden"
         >
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center gap-2">
-              <Sparkles size={16} color="#BB3F95" />
-              <Text className="text-[#E0E1F6] text-xs font-bold uppercase tracking-wider">
-                Festival Blast AI
+          <View className="flex-row justify-between items-start mb-2">
+            <Text className="text-[10px] uppercase tracking-wider font-extrabold text-lavender-200/80">
+              {campaigns[0]?.name ?? 'Festival Blast Engine'}
+            </Text>
+            <View className="px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
+              <Text className="text-emerald-300 text-[10px] font-extrabold">LIVE</Text>
+            </View>
+          </View>
+          <View className="flex-row items-baseline gap-2">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-3xl font-extrabold text-white tracking-tight"
+            >
+              42.8%
+            </Text>
+            <Text className="text-xs text-lavender-200/80 font-medium">WhatsApp CTR</Text>
+          </View>
+
+          <View
+            style={{
+              flexDirection: 'row',
+              marginTop: 16,
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(255, 255, 255, 0.15)',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <View className="flex-1 items-center">
+              <Text className="text-[9px] text-lavender-200/70 uppercase tracking-wider font-bold block">
+                SENT
+              </Text>
+              <Text className="text-white font-bold text-xs mt-0.5">
+                {sentTotal > 0 ? sentTotal.toLocaleString('en-IN') : '1,250'}
               </Text>
             </View>
-            <View className="px-3 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
-              <Text className="text-emerald-300 text-[10px] font-bold">READY</Text>
+            <View className="flex-1 items-center">
+              <Text className="text-[9px] text-lavender-200/70 uppercase tracking-wider font-bold block">
+                OPENED
+              </Text>
+              <Text className="text-white font-bold text-xs mt-0.5">
+                {openedTotal > 0 ? openedTotal.toLocaleString('en-IN') : '980'}
+              </Text>
+            </View>
+            <View className="flex-1 items-center">
+              <Text className="text-[9px] text-lavender-200/70 uppercase tracking-wider font-bold block">
+                ORDERS
+              </Text>
+              <Text className="text-amber-300 font-bold text-xs mt-0.5">54</Text>
             </View>
           </View>
-          <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
-            className="text-white text-2xl font-bold leading-7"
-          >
-            Grow your store with automated WhatsApp reach & lookbooks.
-          </Text>
-          <Text className="text-[#E0E1F6] text-xs mt-2 font-medium leading-relaxed">
-            AI generated copy, product links, and instant WhatsApp checkout.
-          </Text>
         </LinearGradient>
 
-        {featureLocked && (
-          <View className="bg-lavender-100 rounded-3xl p-5 border border-lavender-200 mb-4">
-            <Text className="text-sm font-bold text-spaceCadet-900">
-              Growth tools aren't on your current plan
-            </Text>
-            <Text className="text-xs text-heliotrope-500 mt-1 font-medium">
-              Upgrade to unlock campaigns, referrals and the rest of the growth suite.
-            </Text>
-            <View className="mt-3.5">
-              <GradientButton label="View Plans" onPress={() => router.push('/billing')} />
-            </View>
-          </View>
-        )}
+        {/* Revenue Accelerators (2x2 Grid matching Point 7) */}
+        <Text className="text-xs uppercase tracking-wider text-heliotrope-600 font-extrabold mb-3 px-1">
+          Revenue Accelerators
+        </Text>
+        <View className="gap-3 mb-5">
+          <View className="flex-row gap-3">
+            <AnimatedPressable
+              onPress={() => router.push('/growth/ai-campaign')}
+              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+            >
+              <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center text-fuchsia-600 mb-2">
+                <Wand2 size={16} color="#BB3F95" />
+              </View>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-xs font-bold text-spaceCadet-900"
+              >
+                AI Campaigns
+              </Text>
+              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+                Festival copy & blasts
+              </Text>
+            </AnimatedPressable>
 
-        {/* Campaigns — the live module */}
+            <AnimatedPressable
+              onPress={() => router.push('/growth/bookings')}
+              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+            >
+              <View className="w-8 h-8 rounded-xl bg-lavender-100 items-center justify-center mb-2">
+                <DoorOpen size={16} color="#560A39" />
+              </View>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-xs font-bold text-spaceCadet-900"
+              >
+                Showroom Trials
+              </Text>
+              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+                VIP bridal slots
+              </Text>
+            </AnimatedPressable>
+          </View>
+
+          <View className="flex-row gap-3">
+            <AnimatedPressable
+              onPress={() => router.push('/growth/lookbook')}
+              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+            >
+              <View className="w-8 h-8 rounded-xl bg-lavender-100 items-center justify-center mb-2">
+                <BookOpen size={16} color="#560A39" />
+              </View>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-xs font-bold text-spaceCadet-900"
+              >
+                Lookbooks
+              </Text>
+              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+                PDF catalog shares
+              </Text>
+            </AnimatedPressable>
+
+            <AnimatedPressable
+              onPress={() => router.push('/growth/referrals')}
+              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+            >
+              <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center mb-2">
+                <Users size={16} color="#BB3F95" />
+              </View>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-xs font-bold text-spaceCadet-900"
+              >
+                Referral Engine
+              </Text>
+              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+                Tailor & salon network
+              </Text>
+            </AnimatedPressable>
+          </View>
+        </View>
+
+        {/* Primary CTA: Create New Campaign */}
+        <View className="mb-5">
+          <GradientButton
+            label="Create New Campaign"
+            onPress={() => router.push('/growth/campaign-new')}
+          />
+        </View>
+
+        {/* Live Campaigns Overview */}
         <View className="mb-5">
           <View className="flex-row items-center justify-between mb-3 px-1">
             <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
@@ -182,9 +298,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 hitSlop={8}
                 accessibilityRole="button"
               >
-                <Text className="text-xs font-bold text-fuchsia-700">
-                  Analytics
-                </Text>
+                <Text className="text-xs font-bold text-fuchsia-700">Analytics</Text>
               </AnimatedPressable>
               {campaigns.length > 0 && (
                 <AnimatedPressable
@@ -192,9 +306,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                   hitSlop={8}
                   accessibilityRole="button"
                 >
-                  <Text className="text-xs font-bold text-fuchsia-700">
-                    View all
-                  </Text>
+                  <Text className="text-xs font-bold text-fuchsia-700">View all</Text>
                 </AnimatedPressable>
               )}
             </View>

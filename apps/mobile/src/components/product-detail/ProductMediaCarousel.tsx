@@ -175,22 +175,67 @@ export function ProductMediaCarousel({
           </AnimatedPressable>
         )}
 
-        {/* Right arrow */}
-        {displayPhotos.length > 1 && selectedPhotoIndex < displayPhotos.length - 1 && (
-          <AnimatedPressable
-            onPress={() => goToPhoto(selectedPhotoIndex + 1)}
-            accessibilityLabel="Next photo"
-            accessibilityRole="button"
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 items-center justify-center shadow-md border border-lavender-200"
-            style={{ elevation: 3, zIndex: 10 }}
+        {/* Right-side floating thumbnail strip (Point 10 PDP spec) */}
+        {displayPhotos.length > 1 && (
+          <View
+            style={{
+              position: 'absolute',
+              top: '50%',
+              right: 10,
+              transform: [{ translateY: -((Math.min(displayPhotos.length, 4) * 44 + (Math.min(displayPhotos.length, 4) - 1) * 6) / 2) }],
+              backgroundColor: 'rgba(255, 255, 255, 0.88)',
+              borderRadius: 20,
+              padding: 5,
+              gap: 6,
+              borderWidth: 1,
+              borderColor: 'rgba(255, 255, 255, 0.8)',
+              shadowColor: '#231F48',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.15,
+              shadowRadius: 10,
+              elevation: 4,
+              zIndex: 20,
+            }}
           >
-            <ChevronRight size={20} color="#231F48" />
-          </AnimatedPressable>
+            {displayPhotos.slice(0, 4).map((photo, idx) => {
+              const isSelected = idx === selectedPhotoIndex
+              return (
+                <AnimatedPressable
+                  key={photo.id}
+                  onPress={() => goToPhoto(idx)}
+                  style={{
+                    width: 36,
+                    height: 42,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    borderWidth: 2,
+                    borderColor: isSelected ? '#BB3F95' : 'transparent',
+                  }}
+                >
+                  <Image
+                    source={{ uri: displayUrl(photo) }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                </AnimatedPressable>
+              )
+            })}
+          </View>
         )}
 
-        {/* Video badge */}
+        {/* AI Try-On badge (top-left) */}
+        <AnimatedPressable
+          onPress={() => setStudioModalOpen(true)}
+          className="absolute top-3 left-3 px-3 py-1 rounded-full bg-[#231F48]/85 border border-white/20 flex-row items-center gap-1.5 shadow-lg"
+          style={{ zIndex: 10 }}
+        >
+          <Sparkles size={13} color="#BB3F95" />
+          <Text className="text-white text-[10px] font-extrabold tracking-wider">AI Try-On</Text>
+        </AnimatedPressable>
+
+        {/* Video duration badge */}
         {currentPhoto?.is_video && (
-          <View className="absolute top-3 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full flex-row items-center gap-1.5 shadow-sm border border-white/20">
+          <View className="absolute top-10 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full flex-row items-center gap-1.5 shadow-sm border border-white/20">
             <Clapperboard size={12} color="#BB3F95" />
             <Text className="text-white text-xs font-bold">
               Product Video ({currentPhoto.video_duration ?? 6}s)
@@ -200,29 +245,11 @@ export function ProductMediaCarousel({
 
         {/* Variant badge */}
         {!currentPhoto?.is_video && currentPhotoIsVariant && currentPhoto?.variant_color && (
-          <View className="absolute top-3 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full flex-row items-center gap-1 border border-white/20">
+          <View className="absolute top-10 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full flex-row items-center gap-1 border border-white/20">
             <Palette size={12} color="#BB3F95" />
             <Text className="text-white text-xs font-bold">{currentPhoto.variant_color}</Text>
           </View>
         )}
-
-        {/* Original badge */}
-        {!currentPhoto?.is_video && currentPhotoIsOriginal && (
-          <View className="absolute top-3 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full border border-white/20">
-            <Text className="text-white text-xs font-bold">Original</Text>
-          </View>
-        )}
-
-        {/* Main image badge */}
-        {!currentPhoto?.is_video &&
-          currentPhoto?.is_primary &&
-          !currentPhotoIsVariant &&
-          !currentPhotoIsOriginal && (
-            <View className="absolute top-3 left-3 bg-spaceCadet-900/90 px-3 py-1 rounded-full flex-row items-center gap-1.5 border border-white/20">
-              <Star size={11} color="#BB3F95" fill="#BB3F95" />
-              <Text className="text-white text-xs font-bold uppercase tracking-wider">Main</Text>
-            </View>
-          )}
 
         {/* Download current media */}
         {displayPhotos.length > 0 && currentPhoto && (
