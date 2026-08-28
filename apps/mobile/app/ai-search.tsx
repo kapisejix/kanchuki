@@ -1,6 +1,7 @@
 import { formatPaiseShort } from '@kanchuki/shared'
 import { useMutation } from '@tanstack/react-query'
 import { router } from 'expo-router'
+import { LinearGradient } from 'expo-linear-gradient'
 import { ChevronLeft, Image as ImageIcon, Mic, Search, Sparkles } from 'lucide-react-native'
 import { useState } from 'react'
 import {
@@ -15,15 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../src/components/AnimatedPressable'
 import { productApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
-import { useTheme } from '../src/lib/theme'
-
-// ─── Roadmap M — Hinglish voice search surface ─────────────────────
-// The /v1/search endpoint already understands Hindi/Hinglish (devanagari +
-// transliteration + budget phrases). This screen is its first retailer UI.
-// Voice input: the OS keyboard's built-in dictation (tap the mic on the
-// keyboard) — it transcribes Hinglish speech into the search box. A native
-// in-app mic needs a dev build (same standing constraint as the MSG91
-// widget — Expo Go can't run extra native modules).
 
 type SearchResult = {
   id: string
@@ -50,9 +42,7 @@ const EXAMPLE_QUERIES = [
   'navy lehenga',
 ]
 
-
 export default function AiSearchScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
   const [submitted, setSubmitted] = useState('')
@@ -73,34 +63,40 @@ export default function AiSearchScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900 flex-1">AI Search</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900 flex-1"
+          >
+            AI Vernacular Search
+          </Text>
         </View>
 
         {/* Search box */}
-        <View className="flex-row items-center gap-2 bg-sand-100 rounded-2xl px-3.5 py-2.5 mt-3">
-          <Search size={16} color={colors.sand[500]} />
+        <View className="flex-row items-center gap-2.5 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-2.5 mt-3.5">
+          <Search size={18} color="#BB3F95" />
           <TextInput
             value={query}
             onChangeText={setQuery}
             onSubmitEditing={() => runSearch(query)}
             placeholder="“cotton pink suits under ₹2000”"
-            placeholderTextColor={colors.sand[400]}
-            className="flex-1 text-sm text-sand-900"
+            placeholderTextColor="#928EB2"
+            className="flex-1 text-sm font-bold text-spaceCadet-900"
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -108,7 +104,7 @@ export default function AiSearchScreen() {
           {query.length > 0 && (
             <AnimatedPressable
               onPress={() => runSearch(query)}
-              className="bg-ink-600 rounded-xl px-3 py-1.5"
+              className="bg-spaceCadet-900 rounded-xl px-3.5 py-1.5 shadow-sm"
               accessibilityRole="button"
               accessibilityLabel="Search"
             >
@@ -116,9 +112,8 @@ export default function AiSearchScreen() {
             </AnimatedPressable>
           )}
         </View>
-        <Text className="text-[11px] text-sand-400 mt-2 flex-row items-center">
-          <Mic size={11} color={colors.sand[400]} /> Speak it: use the mic on your keyboard — Hindi
-          or Hinglish both work.
+        <Text className="text-[11px] text-heliotrope-400 font-medium mt-2 flex-row items-center">
+          <Mic size={11} color="#BB3F95" /> Speak in Hindi, Hinglish, or English via your keyboard mic.
         </Text>
       </View>
 
@@ -126,22 +121,30 @@ export default function AiSearchScreen() {
         {submitted === '' ? (
           <View>
             {/* Hero */}
-            <View className="bg-ink-600 rounded-2xl p-4 mb-4">
-              <View className="flex-row items-center gap-2 mb-1">
-                <Sparkles size={16} color={colors.turmeric[400]} />
-                <Text className="text-turmeric-300 text-xs font-semibold uppercase tracking-wide">
-                  Describe it in your own words
+            <LinearGradient
+              colors={['#231F48', '#560A39']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="rounded-3xl p-5 mb-4 shadow-sm"
+            >
+              <View className="flex-row items-center gap-2 mb-1.5">
+                <Sparkles size={18} color="#BB3F95" />
+                <Text
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-white text-base font-bold"
+                >
+                  Describe Designs in Natural Language
                 </Text>
               </View>
-              <Text className="text-white text-sm leading-5 mt-1">
+              <Text className="text-lavender-200 text-xs leading-relaxed mt-1 font-medium">
                 “neela cotton suit”, “लाल साड़ी silk”, “kurti under 1500” — the AI understands
-                Hindi, Hinglish and mixed phrases with prices.
+                Hindi, Hinglish, colors, fabrics and budget ranges effortlessly.
               </Text>
-            </View>
+            </LinearGradient>
 
             {/* Example queries */}
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-2.5">
-              Try one
+            <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
+              Popular Queries
             </Text>
             <View className="gap-2.5">
               {EXAMPLE_QUERIES.map((q) => (
@@ -152,15 +155,14 @@ export default function AiSearchScreen() {
                     runSearch(q)
                   }}
                   accessibilityRole="button"
-                  className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center"
+                  className="bg-white rounded-3xl p-4 border border-lavender-200 flex-row items-center shadow-sm"
                 >
                   <View
-                    className="w-9 h-9 rounded-xl items-center justify-center mr-3"
-                    style={{ backgroundColor: `${primaryColor}1A` }}
+                    className="w-10 h-10 rounded-2xl items-center justify-center mr-3 bg-lavender-100 border border-lavender-200"
                   >
-                    <Search size={16} color={primaryColor} />
+                    <Search size={16} color="#BB3F95" />
                   </View>
-                  <Text className="text-sm text-sand-800 flex-1">{q}</Text>
+                  <Text className="text-sm font-bold text-spaceCadet-900 flex-1">{q}</Text>
                 </AnimatedPressable>
               ))}
             </View>
@@ -168,20 +170,20 @@ export default function AiSearchScreen() {
         ) : (
           <View>
             {/* Interpretation chips */}
-            <View className="flex-row flex-wrap gap-1.5 mb-3">
+            <View className="flex-row flex-wrap gap-1.5 mb-3.5">
               {(interpretation.detected_colors ?? []).map((c) => (
-                <View key={`c-${c}`} className="bg-fuchsia-100 px-2.5 py-1 rounded-full">
-                  <Text className="text-[11px] font-semibold text-fuchsia-700">{c}</Text>
+                <View key={`c-${c}`} className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-bold text-fuchsia-700">{c}</Text>
                 </View>
               ))}
               {(interpretation.detected_fabrics ?? []).map((f) => (
-                <View key={`f-${f}`} className="bg-turmeric-50 px-2.5 py-1 rounded-full">
-                  <Text className="text-[11px] font-semibold text-turmeric-700">{f}</Text>
+                <View key={`f-${f}`} className="bg-lavender-100 border border-lavender-200 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-bold text-spaceCadet-900">{f}</Text>
                 </View>
               ))}
               {interpretation.detected_budget_max != null && (
-                <View className="bg-sand-100 px-2.5 py-1 rounded-full">
-                  <Text className="text-[11px] font-semibold text-sand-600">
+                <View className="bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-full">
+                  <Text className="text-xs font-bold text-emerald-700">
                     under {formatPaiseShort(interpretation.detected_budget_max)}
                   </Text>
                 </View>
@@ -190,14 +192,14 @@ export default function AiSearchScreen() {
 
             {search.isPending ? (
               <View className="items-center py-16">
-                <ActivityIndicator color={primaryColor} />
-                <Text className="text-xs text-sand-400 mt-3">Searching your catalog…</Text>
+                <ActivityIndicator color="#BB3F95" />
+                <Text className="text-xs text-heliotrope-500 font-medium mt-3">Searching boutique catalog…</Text>
               </View>
             ) : results.length === 0 ? (
               <View className="items-center py-16">
-                <Search size={28} color={colors.sand[300]} />
-                <Text className="text-sm text-sand-400 mt-3 text-center max-w-[260px]">
-                  No matches for “{submitted}”. Try simpler words, a colour, or a budget.
+                <Search size={32} color="#BB3F95" />
+                <Text className="text-xs text-heliotrope-500 font-medium mt-3 text-center max-w-[260px]">
+                  No matches for “{submitted}”. Try simpler keywords, colors, or fabrics.
                 </Text>
               </View>
             ) : (
@@ -207,33 +209,42 @@ export default function AiSearchScreen() {
                     key={p.id}
                     onPress={() => router.push(`/product/${p.id}`)}
                     accessibilityRole="button"
-                    className="bg-white rounded-2xl border border-sand-100 overflow-hidden"
+                    className="bg-white rounded-3xl border border-lavender-200 overflow-hidden shadow-sm"
                     style={{ width: '48%' }}
                   >
                     {p.primary_photo_url ? (
                       <Image
                         source={{ uri: p.primary_photo_url }}
-                        className="w-full h-32"
+                        className="w-full h-36"
                         resizeMode="cover"
                       />
                     ) : (
-                      <View className="w-full h-32 bg-ink-100 items-center justify-center">
-                        <ImageIcon size={20} color={colors.sand[300]} />
+                      <View className="w-full h-36 bg-lavender-100 items-center justify-center">
+                        <ImageIcon size={24} color="#928EB2" />
                       </View>
                     )}
-                    <View className="px-2.5 py-2">
-                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
-                        {p.category ?? 'Product'}
+                    <View className="p-3">
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-sm font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
+                        {p.category ?? 'Design'}
                       </Text>
-                      <View className="flex-row items-center justify-between mt-0.5">
+                      <View className="flex-row items-center justify-between mt-1">
                         {p.price_min != null ? (
-                          <Text className="text-[11px] text-sand-500">{formatPaiseShort(p.price_min)}</Text>
+                          <Text
+                            style={{ fontFamily: 'Marcellus_400Regular' }}
+                            className="text-xs font-bold text-spaceCadet-900"
+                          >
+                            {formatPaiseShort(p.price_min)}
+                          </Text>
                         ) : (
-                          <Text className="text-[11px] text-sand-300">—</Text>
+                          <Text className="text-xs text-heliotrope-400">—</Text>
                         )}
                         {p.is_new_arrival && (
-                          <View className="bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                            <Text className="text-[9px] font-bold text-emerald-700">NEW</Text>
+                          <View className="bg-fuchsia-500/10 border border-fuchsia-500/20 px-2 py-0.5 rounded-full">
+                            <Text className="text-[9px] font-bold text-fuchsia-700">NEW</Text>
                           </View>
                         )}
                       </View>

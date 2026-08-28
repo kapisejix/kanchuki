@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import { Image } from 'expo-image'
 import {
@@ -8,13 +8,11 @@ import {
   Eye,
   Filter,
   Check,
-  Image as ImageIcon,
   Calendar,
   MapPin,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
-  Alert,
   RefreshControl,
   ScrollView,
   Text,
@@ -28,8 +26,6 @@ import {
   growthApi,
   type FestivalBackground,
 } from '../../src/lib/api/growth'
-import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -55,7 +51,6 @@ function getOccasionEmoji(occasion: string): string {
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function BackgroundsScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [filterOccasion, setFilterOccasion] = useState<string | undefined>()
@@ -81,10 +76,10 @@ export default function BackgroundsScreen() {
   const stats = statsData?.data
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -92,31 +87,41 @@ export default function BackgroundsScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Festival Backgrounds</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Festival Backgrounds
+            </Text>
           </View>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : backgrounds.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Sparkles size={28} color={primaryColor} />
+              <Sparkles size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No backgrounds available</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No backgrounds available
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               Festival backgrounds are curated by the platform admin. Check back during festive
               seasons for Diwali, Eid, Wedding, and more.
             </Text>
@@ -131,16 +136,16 @@ export default function BackgroundsScreen() {
           {/* Stats strip */}
           {stats && (
             <View className="flex-row gap-2 px-4 pt-4 mb-3">
-              <View className="flex-row items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-sand-100">
-                <Sparkles size={12} color={primaryColor} />
-                <Text className="text-[10px] font-semibold text-sand-600">
-                  {stats.active} active
+              <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-white rounded-2xl px-3.5 py-2.5 border border-lavender-200 shadow-sm">
+                <Sparkles size={13} color="#BB3F95" />
+                <Text className="text-xs font-bold text-spaceCadet-900">
+                  {stats.active} active styles
                 </Text>
               </View>
-              <View className="flex-row items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-sand-100">
-                <Calendar size={12} color={colors.sand[500]} />
-                <Text className="text-[10px] font-semibold text-sand-600">
-                  {stats.occasions.length} occasions
+              <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-white rounded-2xl px-3.5 py-2.5 border border-lavender-200 shadow-sm">
+                <Calendar size={13} color="#6B4773" />
+                <Text className="text-xs font-bold text-spaceCadet-900">
+                  {stats.occasions.length} festive occasions
                 </Text>
               </View>
             </View>
@@ -148,73 +153,65 @@ export default function BackgroundsScreen() {
 
           {/* Occasion filter chips */}
           {occasions.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 px-4">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3.5 px-4">
               <View className="flex-row gap-2">
                 <AnimatedPressable
                   onPress={() => setFilterOccasion(undefined)}
-                  className="flex-row items-center gap-1 rounded-full px-3 py-1.5 border"
-                  style={{
-                    backgroundColor: !filterOccasion ? `${primaryColor}1A` : colors.sand[50],
-                    borderColor: !filterOccasion ? primaryColor : colors.sand[200],
-                  }}
+                  className={`flex-row items-center gap-1 rounded-full px-4 py-1.5 border ${
+                    !filterOccasion ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  }`}
                 >
-                  <Filter size={12} color={!filterOccasion ? primaryColor : colors.sand[400]} />
+                  <Filter size={12} color={!filterOccasion ? 'white' : '#928EB2'} />
                   <Text
-                    className="text-[11px] font-semibold"
-                    style={{ color: !filterOccasion ? primaryColor : colors.sand[500] }}
+                    className={`text-xs font-bold ${!filterOccasion ? 'text-white' : 'text-spaceCadet-900'}`}
                   >
                     All
                   </Text>
                 </AnimatedPressable>
-                {occasions.map((o) => (
-                  <AnimatedPressable
-                    key={o.occasion}
-                    onPress={() =>
-                      setFilterOccasion(filterOccasion === o.occasion ? undefined : o.occasion)
-                    }
-                    className="flex-row items-center gap-1 rounded-full px-3 py-1.5 border"
-                    style={{
-                      backgroundColor:
-                        filterOccasion === o.occasion ? `${primaryColor}1A` : colors.sand[50],
-                      borderColor:
-                        filterOccasion === o.occasion ? primaryColor : colors.sand[200],
-                    }}
-                  >
-                    <Text className="text-xs">{getOccasionEmoji(o.occasion)}</Text>
-                    <Text
-                      className="text-[11px] font-semibold"
-                      style={{
-                        color:
-                          filterOccasion === o.occasion ? primaryColor : colors.sand[500],
-                      }}
+                {occasions.map((o) => {
+                  const active = filterOccasion === o.occasion
+                  return (
+                    <AnimatedPressable
+                      key={o.occasion}
+                      onPress={() =>
+                        setFilterOccasion(filterOccasion === o.occasion ? undefined : o.occasion)
+                      }
+                      className={`flex-row items-center gap-1.5 rounded-full px-4 py-1.5 border ${
+                        active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                      }`}
                     >
-                      {o.occasion}
-                    </Text>
-                    <Text
-                      className="text-[10px]"
-                      style={{
-                        color:
-                          filterOccasion === o.occasion ? primaryColor : colors.sand[400],
-                      }}
-                    >
-                      {o.count}
-                    </Text>
-                  </AnimatedPressable>
-                ))}
+                      <Text className="text-xs">{getOccasionEmoji(o.occasion)}</Text>
+                      <Text
+                        className={`text-xs font-bold ${
+                          active ? 'text-white' : 'text-spaceCadet-900'
+                        }`}
+                      >
+                        {o.occasion}
+                      </Text>
+                      <Text
+                        className={`text-[10px] font-bold ${
+                          active ? 'text-lavender-200' : 'text-heliotrope-400'
+                        }`}
+                      >
+                        {o.count}
+                      </Text>
+                    </AnimatedPressable>
+                  )
+                })}
               </View>
             </ScrollView>
           )}
 
           {/* Background grid — 2 columns */}
-          <View className="flex-row flex-wrap px-3 gap-2.5">
+          <View className="flex-row flex-wrap px-4 gap-3">
             {backgrounds.map((bg) => (
               <AnimatedPressable
                 key={bg.id}
                 onPress={() => setDetail(bg)}
                 accessibilityRole="button"
                 accessibilityLabel={`View ${bg.name}`}
-                className="bg-white rounded-2xl border border-sand-100 overflow-hidden"
-                style={{ width: '48.5%' }}
+                className="bg-white rounded-3xl border border-lavender-200 overflow-hidden shadow-sm"
+                style={{ width: '48%' }}
               >
                 <Image
                   source={{ uri: bg.thumbnail_url ?? bg.image_url }}
@@ -222,20 +219,24 @@ export default function BackgroundsScreen() {
                   contentFit="cover"
                   transition={200}
                 />
-                <View className="p-2.5">
-                  <View className="flex-row items-center gap-1 mb-0.5">
+                <View className="p-3">
+                  <View className="flex-row items-center gap-1 mb-1">
                     <Text className="text-xs">{getOccasionEmoji(bg.occasion)}</Text>
-                    <Text className="text-xs font-bold text-sand-900" numberOfLines={1}>
+                    <Text
+                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      className="text-sm font-bold text-spaceCadet-900 flex-1"
+                      numberOfLines={1}
+                    >
                       {bg.name}
                     </Text>
                   </View>
                   <View className="flex-row items-center gap-1.5">
-                    <View className="bg-turmeric-50 rounded-full px-2 py-0.5">
-                      <Text className="text-[10px] font-semibold text-turmeric-600">
+                    <View className="bg-fuchsia-500/10 rounded-full px-2 py-0.5 border border-fuchsia-500/20">
+                      <Text className="text-[10px] font-bold text-fuchsia-700">
                         {bg.occasion}
                       </Text>
                     </View>
-                    <Text className="text-[10px] text-sand-400">
+                    <Text className="text-[10px] text-heliotrope-500 font-medium">
                       {bg.usage_count} uses
                     </Text>
                   </View>
@@ -284,7 +285,6 @@ function BackgroundDetailModal({
   onClose: () => void
   onApply: (bg: FestivalBackground) => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   return (
@@ -292,40 +292,45 @@ function BackgroundDetailModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full max-h-[85%]">
+      <View className="bg-white rounded-t-3xl w-full max-h-[85%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Preview image */}
           <Image
             source={{ uri: bg.image_url }}
-            className="w-full h-56 rounded-t-3xl"
+            className="w-full h-60 rounded-t-3xl"
             contentFit="cover"
           />
 
           <View className="px-5 pt-4 pb-8">
             {/* Title */}
-            <View className="flex-row items-center gap-2 mb-1">
+            <View className="flex-row items-center gap-2 mb-1.5">
               <Text className="text-lg">{getOccasionEmoji(bg.occasion)}</Text>
-              <Text className="text-base font-bold text-sand-900 flex-1">{bg.name}</Text>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-xl font-bold text-spaceCadet-900 flex-1"
+              >
+                {bg.name}
+              </Text>
             </View>
 
             {/* Tags */}
             <View className="flex-row items-center gap-2 mb-3">
-              <View className="bg-turmeric-50 rounded-full px-2.5 py-1">
-                <Text className="text-[11px] font-semibold text-turmeric-600">
+              <View className="bg-fuchsia-500/10 rounded-full px-3 py-1 border border-fuchsia-500/20">
+                <Text className="text-xs font-bold text-fuchsia-700">
                   {bg.occasion}
                 </Text>
               </View>
               {bg.season && (
-                <View className="bg-sand-50 rounded-full px-2.5 py-1">
-                  <Text className="text-[11px] font-semibold text-sand-500">
+                <View className="bg-lavender-100 rounded-full px-3 py-1 border border-lavender-200">
+                  <Text className="text-xs font-bold text-spaceCadet-900">
                     {bg.season}
                   </Text>
                 </View>
               )}
               {bg.region && (
-                <View className="bg-sand-50 rounded-full px-2.5 py-1 flex-row items-center gap-0.5">
-                  <MapPin size={10} color={colors.sand[400]} />
-                  <Text className="text-[11px] font-semibold text-sand-500">
+                <View className="bg-lavender-100 rounded-full px-3 py-1 flex-row items-center gap-1 border border-lavender-200">
+                  <MapPin size={11} color="#6B4773" />
+                  <Text className="text-xs font-bold text-spaceCadet-900">
                     {bg.region}
                   </Text>
                 </View>
@@ -333,19 +338,19 @@ function BackgroundDetailModal({
             </View>
 
             {bg.description && (
-              <Text className="text-sm text-sand-600 mb-3 leading-5">{bg.description}</Text>
+              <Text className="text-xs text-heliotrope-500 mb-3.5 leading-relaxed font-medium">{bg.description}</Text>
             )}
 
             {/* Stats */}
-            <View className="flex-row gap-4 mb-4">
-              <View className="flex-row items-center gap-1">
-                <Eye size={14} color={colors.sand[400]} />
-                <Text className="text-xs text-sand-500">
+            <View className="flex-row gap-4 mb-4 pt-2 border-t border-lavender-100">
+              <View className="flex-row items-center gap-1.5">
+                <Eye size={14} color="#6B4773" />
+                <Text className="text-xs text-heliotrope-500 font-medium">
                   {bg.usage_count} {bg.usage_count === 1 ? 'time' : 'times'} used
                 </Text>
               </View>
               {bg.valid_from && (
-                <Text className="text-[10px] text-sand-400">
+                <Text className="text-xs text-heliotrope-400 font-medium">
                   Valid from {new Date(bg.valid_from).toLocaleDateString('en-IN')}
                 </Text>
               )}
@@ -353,15 +358,15 @@ function BackgroundDetailModal({
 
             {/* Apply button */}
             <GradientButton
-              label="✨ Apply to Product"
+              label="✨ Apply to Product Photoshoot"
               onPress={() => onApply(bg)}
             />
 
             <AnimatedPressable
               onPress={onClose}
-              className="items-center justify-center bg-sand-100 rounded-xl py-3 mt-2.5"
+              className="items-center justify-center bg-lavender-100 rounded-2xl py-3 mt-3 border border-lavender-200"
             >
-              <Text className="text-sm font-semibold text-sand-600">Close</Text>
+              <Text className="text-sm font-bold text-spaceCadet-900">Close</Text>
             </AnimatedPressable>
           </View>
         </ScrollView>
@@ -381,9 +386,7 @@ function ApplyBackgroundModal({
   onClose: () => void
   onApplied: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
-  const queryClient = useQueryClient()
 
   const [productId, setProductId] = useState('')
   const [applying, setApplying] = useState(false)
@@ -432,58 +435,61 @@ function ApplyBackgroundModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8">
-        <Text className="text-base font-bold text-sand-900 mb-1">
-          Apply Background
+      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl font-bold text-spaceCadet-900 mb-1"
+        >
+          Apply Festive Backdrop
         </Text>
-        <Text className="text-xs text-sand-500 mb-4">
+        <Text className="text-xs text-heliotrope-500 font-medium mb-4">
           {getOccasionEmoji(bg.occasion)} {bg.name} — {bg.occasion}
         </Text>
 
         {/* Product ID input */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">
           Product ID
         </Text>
         <TextInput
           value={productId}
           onChangeText={setProductId}
           placeholder="Paste product ID from your catalog"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-1"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-1"
           editable={!applying}
         />
-        <Text className="text-[10px] text-sand-400 mb-4 px-1">
+        <Text className="text-[10px] text-heliotrope-400 font-medium mb-4 px-1">
           Find it on your product detail screen → Copy ID
         </Text>
 
         {/* Status */}
         {status === 'processing' && (
-          <View className="flex-row items-center gap-2 bg-blue-50 rounded-xl px-4 py-3 mb-4">
-            <ActivityIndicator size="small" color="#3B82F6" />
-            <Text className="text-xs text-blue-600 font-medium">
-              AI is applying the background…
+          <View className="flex-row items-center gap-2 bg-fuchsia-500/10 border border-fuchsia-500/20 rounded-2xl px-4 py-3 mb-4">
+            <ActivityIndicator size="small" color="#BB3F95" />
+            <Text className="text-xs text-fuchsia-700 font-bold">
+              AI is rendering the photoshoot background…
             </Text>
           </View>
         )}
         {status === 'ready' && (
-          <View className="flex-row items-center gap-2 bg-green-50 rounded-xl px-4 py-3 mb-4">
-            <Check size={16} color="#22C55E" />
-            <Text className="text-xs text-green-600 font-medium">
+          <View className="flex-row items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-2xl px-4 py-3 mb-4">
+            <Check size={16} color="#16a34a" />
+            <Text className="text-xs text-emerald-700 font-bold">
               Background applied successfully!
             </Text>
           </View>
         )}
         {status === 'failed' && (
-          <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-            <Text className="text-xs text-red-600">
+          <View className="bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-4">
+            <Text className="text-xs text-rose-700 font-semibold">
               Generation failed. Check your product photo and try again.
             </Text>
           </View>
         )}
 
         {error ? (
-          <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-            <Text className="text-xs text-red-600">{error}</Text>
+          <View className="bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-4">
+            <Text className="text-xs text-rose-700 font-semibold">{error}</Text>
           </View>
         ) : null}
 
@@ -499,9 +505,9 @@ function ApplyBackgroundModal({
           )}
           <AnimatedPressable
             onPress={onClose}
-            className="flex-1 items-center justify-center bg-sand-100 rounded-xl py-3"
+            className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
           >
-            <Text className="text-sm font-semibold text-sand-600">
+            <Text className="text-sm font-bold text-spaceCadet-900">
               {status === 'ready' ? 'Done' : 'Cancel'}
             </Text>
           </AnimatedPressable>
@@ -510,3 +516,4 @@ function ApplyBackgroundModal({
     </View>
   )
 }
+

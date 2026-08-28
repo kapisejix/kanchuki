@@ -10,8 +10,9 @@ import { growthApi } from '../../src/lib/api/growth'
 import { useTheme } from '../../src/lib/theme'
 
 
+import { LinearGradient } from 'expo-linear-gradient'
+
 export default function SuppliersScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const { data, isLoading, refetch, isRefetching } = useQuery({
@@ -22,10 +23,10 @@ export default function SuppliersScreen() {
   const totalPending = suppliers.reduce((s, x) => s + x.pending_amount_paise, 0)
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -33,51 +34,70 @@ export default function SuppliersScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Suppliers</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Supplier Ledger
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => router.push('/growth/supplier-form')}
             accessibilityLabel="Add supplier"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Pending summary */}
-        <View className="bg-ink-600 rounded-2xl p-4 mb-4">
-          <Text className="text-xs text-turmeric-300 font-semibold uppercase tracking-wide">
-            Total pending to suppliers
+        {/* Pending summary - Signature Gradient */}
+        <LinearGradient
+          colors={['#231F48', '#560A39']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          className="rounded-3xl p-5 mb-5 shadow-sm"
+        >
+          <Text className="text-xs text-[#E0E1F6] font-bold uppercase tracking-wider">
+            Total Outstanding to Suppliers
           </Text>
-          <Text className="text-2xl font-bold text-white mt-1">{formatPaiseShort(totalPending)}</Text>
-          <Text className="text-[11px] text-white/50 mt-1">
-            Unpaid stock orders minus payments — tracked per supplier below.
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-3xl font-bold text-white mt-1.5"
+          >
+            {formatPaiseShort(totalPending)}
           </Text>
-        </View>
+          <Text className="text-xs text-white/70 mt-1 font-medium">
+            Unpaid stock orders minus payments — tracked per vendor ledger.
+          </Text>
+        </LinearGradient>
 
         {isLoading ? (
-          <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center">
-            <ActivityIndicator color={primaryColor} />
+          <View className="bg-white rounded-3xl p-6 border border-lavender-200 items-center">
+            <ActivityIndicator color="#BB3F95" />
           </View>
         ) : suppliers.length === 0 ? (
-          <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center">
+          <View className="bg-white rounded-3xl p-6 border border-lavender-200 items-center">
             <View
-              className="w-12 h-12 rounded-2xl items-center justify-center mb-3"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-14 h-14 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200"
             >
-              <Store size={22} color={primaryColor} />
+              <Store size={24} color="#BB3F95" />
             </View>
-            <Text className="text-sm font-semibold text-sand-700">No suppliers yet</Text>
-            <Text className="text-xs text-sand-400 text-center mt-1 leading-4">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base font-bold text-spaceCadet-900"
+            >
+              No Suppliers Added
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1 leading-relaxed font-medium">
               Add the vendors you buy stock from, then log orders and payments to track what you owe.
             </Text>
             <View className="w-48 mt-4">
@@ -85,38 +105,42 @@ export default function SuppliersScreen() {
             </View>
           </View>
         ) : (
-          <View className="gap-2.5">
+          <View className="gap-3.5">
             {suppliers.map((s) => (
               <AnimatedPressable
                 key={s.id}
                 onPress={() => router.push(`/growth/supplier/${s.id}`)}
                 accessibilityRole="button"
-                className="bg-white rounded-2xl p-4 border border-sand-100"
+                className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm"
               >
                 <View className="flex-row items-center gap-3">
                   <View
-                    className="w-10 h-10 rounded-xl items-center justify-center"
-                    style={{ backgroundColor: `${primaryColor}1A` }}
+                    className="w-11 h-11 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
                   >
-                    <Store size={18} color={primaryColor} />
+                    <Store size={18} color="#BB3F95" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                    <Text
+                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      className="text-base font-bold text-spaceCadet-900"
+                      numberOfLines={1}
+                    >
                       {s.name}
                     </Text>
-                    <Text className="text-xs text-sand-400" numberOfLines={1}>
+                    <Text className="text-xs text-heliotrope-500 font-medium mt-0.5" numberOfLines={1}>
                       {[s.city, s.phone].filter(Boolean).join(' · ') || 'No contact details'}
                     </Text>
                   </View>
                   <View className="items-end">
                     <Text
-                      className={`text-sm font-bold ${s.pending_amount_paise > 0 ? 'text-rust-600' : 'text-sand-900'}`}
+                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      className={`text-base font-bold ${s.pending_amount_paise > 0 ? 'text-fuchsia-700' : 'text-spaceCadet-900'}`}
                     >
                       {formatPaiseShort(s.pending_amount_paise)}
                     </Text>
-                    <Text className="text-[10px] text-sand-400">pending</Text>
+                    <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">pending</Text>
                   </View>
-                  <ChevronRight size={16} color={colors.sand[300]} />
+                  <ChevronRight size={16} color="#928EB2" />
                 </View>
               </AnimatedPressable>
             ))}

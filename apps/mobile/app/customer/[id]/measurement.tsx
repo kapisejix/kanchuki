@@ -115,39 +115,54 @@ export default function MeasurementCaptureScreen() {
 
   if (step === 'height') {
     return (
-      <View className="flex-1 bg-ink-50 px-6" style={{ paddingTop: insets.top + 24 }}>
-        <AnimatedPressable onPress={() => router.back()} className="mb-6" accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={colors.sand[700]} />
+      <View className="flex-1 bg-[#F8F7FC] px-6" style={{ paddingTop: insets.top + 24 }}>
+        <AnimatedPressable
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200 mb-6"
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
+          <X size={20} color="#231F48" />
         </AnimatedPressable>
 
         <View className="items-center mb-8">
-          <View className="w-16 h-16 bg-ink-100 rounded-full items-center justify-center mb-3">
-            <Ruler size={28} color={primaryColor} />
+          <View className="w-16 h-16 bg-[#560A39] rounded-3xl items-center justify-center mb-3 border border-[#BB3F95]/30">
+            <Ruler size={28} color="#BB3F95" />
           </View>
-          <Text className="text-xl font-bold text-sand-900">Body Measurement</Text>
-          <Text className="text-sm text-sand-500 text-center mt-1 px-4">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-2xl font-bold text-spaceCadet-900"
+          >
+            Body Measurement
+          </Text>
+          <Text className="text-xs text-heliotrope-500 text-center mt-1.5 px-4 font-medium leading-relaxed">
             Front + back photo, height only — AI reads bust/waist/hip/inseam. Photos are deleted
             right after processing.
           </Text>
         </View>
 
-        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-6">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-            Height (cm)
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Height (cm) *
           </Text>
           <TextInput
             value={height}
             onChangeText={setHeight}
             placeholder="e.g. 162"
             keyboardType="numeric"
-            className="text-lg font-bold text-sand-900"
-            placeholderTextColor={colors.sand[400]}
+            className="text-lg font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+            placeholderTextColor="#928EB2"
           />
         </View>
 
-        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-6 flex-row items-center gap-3">
-          <Switch value={consentGiven} onValueChange={setConsentGiven} />
-          <Text className="flex-1 text-xs text-sand-600">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-6 flex-row items-center gap-3.5">
+          <Switch
+            value={consentGiven}
+            onValueChange={setConsentGiven}
+            trackColor={{ false: '#E0E1F6', true: '#BB3F95' }}
+            thumbColor="#ffffff"
+          />
+          <Text className="flex-1 text-xs text-heliotrope-500 font-medium leading-relaxed">
             Customer has consented to their front/back photos being captured and used to
             estimate measurements for try-on.
           </Text>
@@ -162,15 +177,15 @@ export default function MeasurementCaptureScreen() {
 
   if (!permission.granted) {
     return (
-      <View className="flex-1 bg-black items-center justify-center px-8">
-        <Text className="text-white text-center text-base mb-6">
+      <View className="flex-1 bg-[#231F48] items-center justify-center px-8">
+        <Text className="text-white text-center text-base mb-6 font-bold">
           Camera access needed to capture measurement photos
         </Text>
         <AnimatedPressable
           onPress={() => void requestPermission()}
-          className="bg-ink-600 px-6 py-3 rounded-xl"
+          className="bg-fuchsia-600 px-6 py-3.5 rounded-2xl"
         >
-          <Text className="text-white font-semibold">Allow Camera</Text>
+          <Text className="text-white font-bold text-xs uppercase tracking-wider">Allow Camera</Text>
         </AnimatedPressable>
       </View>
     )
@@ -195,21 +210,21 @@ export default function MeasurementCaptureScreen() {
         </AnimatedPressable>
 
         <View className="absolute left-0 right-0 items-center" style={{ top: insets.top + 8 }}>
-          <Text className="text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded-full">
+          <Text className="text-white text-xs font-bold bg-[#231F48]/85 px-4 py-1.5 rounded-full border border-white/20">
             {label} · {slot === 'front' ? '1' : '2'} of 2
           </Text>
         </View>
 
         <View className="flex-1 items-center justify-center">
-          <View className="w-64 h-96 border-2 border-white/40 rounded-3xl" />
-          <Text className="text-white/60 text-sm mt-4">Stand straight, full body in frame</Text>
+          <View className="w-64 h-96 border-2 border-fuchsia-400/60 rounded-3xl" />
+          <Text className="text-white/80 text-xs mt-4 font-semibold">Stand straight, full body in frame</Text>
         </View>
 
         <View className="pb-12 items-center gap-6">
           <View className="flex-row items-center gap-10">
             <AnimatedPressable
               onPress={() => void handlePickFromGallery()}
-              className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center"
+              className="w-14 h-14 bg-white/20 rounded-2xl items-center justify-center border border-white/30"
             >
               <ImagePlus size={24} color="white" />
             </AnimatedPressable>
@@ -223,7 +238,7 @@ export default function MeasurementCaptureScreen() {
 
             <View className="w-14" />
           </View>
-          <Text className="text-white/50 text-xs">Tap to capture · Gallery to import</Text>
+          <Text className="text-white/60 text-xs font-medium">Tap to capture · Gallery to import</Text>
         </View>
       </View>
     )
@@ -249,8 +264,8 @@ export default function MeasurementCaptureScreen() {
                   contentFit="contain"
                 />
               )}
-              <View className="absolute top-4 left-4 bg-ink-600/80 px-2.5 py-1 rounded-full">
-                <Text className="text-white text-xs font-semibold">Front</Text>
+              <View className="absolute top-4 left-4 bg-spaceCadet-900/90 px-3 py-1 rounded-full border border-white/20">
+                <Text className="text-white text-xs font-bold">Front</Text>
               </View>
             </View>
             <View className="w-[1px] bg-white/20" />
@@ -262,8 +277,8 @@ export default function MeasurementCaptureScreen() {
                   contentFit="contain"
                 />
               )}
-              <View className="absolute top-4 right-4 bg-ink-600/80 px-2.5 py-1 rounded-full">
-                <Text className="text-white text-xs font-semibold">Back</Text>
+              <View className="absolute top-4 right-4 bg-spaceCadet-900/90 px-3 py-1 rounded-full border border-white/20">
+                <Text className="text-white text-xs font-bold">Back</Text>
               </View>
             </View>
           </View>
@@ -281,17 +296,17 @@ export default function MeasurementCaptureScreen() {
             {/* Thumbnail strip showing both photos when available */}
             {otherUri && (
               <View className="absolute bottom-32 left-0 right-0 items-center">
-                <View className="bg-black/60 rounded-xl px-4 py-2.5 flex-row gap-4">
-                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'front' ? 'border-ink-400' : 'border-transparent'}`}>
+                <View className="bg-black/60 rounded-2xl px-4 py-2.5 flex-row gap-4 border border-white/20">
+                  <View className={`w-16 h-24 rounded-xl overflow-hidden border-2 ${slot === 'front' ? 'border-fuchsia-500' : 'border-transparent'}`}>
                     {photos.front && <Image source={{ uri: photos.front }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
                     <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
-                      <Text className="text-white text-[8px] text-center font-medium">Front</Text>
+                      <Text className="text-white text-[8px] text-center font-bold">Front</Text>
                     </View>
                   </View>
-                  <View className={`w-16 h-24 rounded-lg overflow-hidden border-2 ${slot === 'back' ? 'border-ink-400' : 'border-transparent'}`}>
+                  <View className={`w-16 h-24 rounded-xl overflow-hidden border-2 ${slot === 'back' ? 'border-fuchsia-500' : 'border-transparent'}`}>
                     {photos.back && <Image source={{ uri: photos.back }} style={{ width: '100%', height: '100%' }} contentFit="cover" />}
                     <View className="absolute bottom-0 left-0 right-0 bg-black/60 py-0.5">
-                      <Text className="text-white text-[8px] text-center font-medium">Back</Text>
+                      <Text className="text-white text-[8px] text-center font-bold">Back</Text>
                     </View>
                   </View>
                 </View>
@@ -302,10 +317,10 @@ export default function MeasurementCaptureScreen() {
 
         {error && (
           <View
-            className="absolute left-4 right-4 bg-rust-500/90 rounded-xl p-3"
+            className="absolute left-4 right-4 bg-red-600/90 rounded-2xl p-3.5 border border-red-400"
             style={{ top: insets.top + 8 }}
           >
-            <Text className="text-white text-sm">{error}</Text>
+            <Text className="text-white text-xs font-bold text-center">{error}</Text>
           </View>
         )}
         <View
@@ -314,15 +329,15 @@ export default function MeasurementCaptureScreen() {
         >
           <AnimatedPressable
             onPress={() => setStep('camera')}
-            className="flex-1 bg-white/20 py-4 rounded-2xl items-center"
+            className="flex-1 bg-white/20 py-4 rounded-2xl items-center border border-white/20"
           >
-            <Text className="text-white font-semibold">Retake</Text>
+            <Text className="text-white font-bold text-xs uppercase tracking-wider">Retake</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={useThisPhoto}
-            className="flex-1 bg-ink-600 py-4 rounded-2xl items-center"
+            className="flex-1 bg-fuchsia-600 py-4 rounded-2xl items-center shadow-lg"
           >
-            <Text className="text-white font-semibold">
+            <Text className="text-white font-bold text-xs uppercase tracking-wider">
               {slot === 'front' ? 'Use Photo → Back' : bothReady ? 'Upload Both Photos ✓' : 'Use Photo ✓'}
             </Text>
           </AnimatedPressable>
@@ -335,10 +350,15 @@ export default function MeasurementCaptureScreen() {
 
   if (step === 'uploading') {
     return (
-      <View className="flex-1 bg-sand-900 items-center justify-center gap-5">
-        <ActivityIndicator size="large" color={primaryColor} />
-        <Text className="text-white text-base font-semibold">Uploading photos...</Text>
-        <Text className="text-sand-400 text-sm">Queuing AI measurement extraction</Text>
+      <View className="flex-1 bg-[#231F48] items-center justify-center gap-5">
+        <ActivityIndicator size="large" color="#BB3F95" />
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-white text-xl font-bold"
+        >
+          Uploading photos...
+        </Text>
+        <Text className="text-[#E0E1F6] text-xs font-medium">Queuing AI measurement extraction</Text>
       </View>
     )
   }
@@ -346,20 +366,25 @@ export default function MeasurementCaptureScreen() {
   // ── Done step ─────────────────────────────────────────────────────
 
   return (
-    <View className="flex-1 bg-ink-50 items-center justify-center px-8">
-      <View className="w-16 h-16 bg-turmeric-100 rounded-full items-center justify-center mb-4">
-        <Check size={28} color={colors.turmeric[600]} />
+    <View className="flex-1 bg-[#F8F7FC] items-center justify-center px-8">
+      <View className="w-16 h-16 bg-lavender-100 border border-lavender-200 rounded-3xl items-center justify-center mb-4">
+        <Check size={28} color="#BB3F95" />
       </View>
-      <Text className="text-lg font-bold text-sand-900 text-center">Measurement queued</Text>
-      <Text className="text-sm text-sand-500 text-center mt-1">
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-2xl font-bold text-spaceCadet-900 text-center"
+      >
+        Measurement Queued
+      </Text>
+      <Text className="text-xs text-heliotrope-500 text-center mt-1.5 font-medium leading-relaxed">
         Bust/waist/hip/inseam will appear on the customer profile in a moment. Photos are deleted
         after processing.
       </Text>
       <AnimatedPressable
         onPress={() => router.back()}
-        className="mt-6 bg-ink-600 px-6 py-3 rounded-xl"
+        className="mt-6 bg-spaceCadet-900 px-6 py-3.5 rounded-2xl"
       >
-        <Text className="text-white font-semibold">Back to Customer</Text>
+        <Text className="text-white text-xs font-bold uppercase tracking-wider">Back to Customer</Text>
       </AnimatedPressable>
     </View>
   )

@@ -22,7 +22,6 @@ import { useTheme } from '../../src/lib/theme'
 
 
 export default function ReferralsScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [reward, setReward] = useState('')
@@ -128,61 +127,68 @@ export default function ReferralsScreen() {
       )
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">Referrals</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900"
+          >
+            Referral Program
+          </Text>
         </View>
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Settings */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-          <View className="flex-row items-center gap-2 mb-1">
-            <Gift size={16} color={primaryColor} />
-            <Text className="text-sm font-bold text-sand-900">Referral program</Text>
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-5">
+          <View className="flex-row items-center gap-2 mb-1.5">
+            <Gift size={18} color="#BB3F95" />
+            <Text className="text-base font-bold text-spaceCadet-900">Program Settings</Text>
           </View>
-          <Text className="text-xs text-sand-500 leading-4 mb-3">
+          <Text className="text-xs text-heliotrope-500 leading-relaxed mb-4 font-medium">
             Give customers a code to share with friends. You get new leads; the friend gets a
             discount on their first order.
           </Text>
-          <View className="flex-row items-center justify-between py-2 border-t border-sand-100">
+          <View className="flex-row items-center justify-between py-3 border-t border-lavender-200">
             <View className="flex-1 pr-3">
-              <Text className="text-sm font-medium text-sand-800">Referrals enabled</Text>
-              <Text className="text-xs text-sand-400 mt-0.5">
-                Turn the program on to start generating codes
+              <Text className="text-sm font-bold text-spaceCadet-900">Referrals active</Text>
+              <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">
+                Turn on to generate sharable customer codes
               </Text>
             </View>
             <Switch
               value={enabled}
               onValueChange={(v) => toggleEnabled.mutate(v)}
-              trackColor={{ true: primaryColor, false: colors.sand[200] }}
+              trackColor={{ true: '#BB3F95', false: '#E0E1F6' }}
+              thumbColor="#ffffff"
               accessibilityLabel="Referrals enabled"
             />
           </View>
           {enabled && (
-            <View className="mt-2 border-t border-sand-100 pt-3">
-              <Text className="text-xs font-medium text-sand-600 mb-1.5">Reward per referral (₹)</Text>
-              <View className="flex-row gap-2">
+            <View className="mt-2 border-t border-lavender-200 pt-3.5">
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">Reward per referral (₹)</Text>
+              <View className="flex-row gap-2.5">
                 <TextInput
                   value={reward}
                   onChangeText={setReward}
                   placeholder={formatPaiseShort(rewardPaise)}
-                  placeholderTextColor={colors.sand[400]}
+                  placeholderTextColor="#928EB2"
                   keyboardType="decimal-pad"
-                  className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-2.5"
+                  className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
                 />
                 <View className="w-28">
                   <GradientButton
@@ -197,25 +203,25 @@ export default function ReferralsScreen() {
         </View>
 
         {/* Referral codes */}
-        <View className="flex-row items-center justify-between mb-2.5 px-1">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-            Referral codes
+        <View className="flex-row items-center justify-between mb-3 px-1">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+            Active Referral Codes
           </Text>
           <AnimatedPressable
             onPress={() => setShowCustomerPicker((v) => !v)}
             hitSlop={8}
             accessibilityRole="button"
           >
-            <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
+            <Text className="text-xs font-bold text-fuchsia-700">
               + Generate code
             </Text>
           </AnimatedPressable>
         </View>
 
         {showCustomerPicker && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-            <View className="flex-row items-center justify-between mb-2">
-              <Text className="text-sm font-bold text-sand-900">
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-5">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-sm font-bold text-spaceCadet-900">
                 {creditingReferral ? 'Who converted?' : 'Pick a customer'}
               </Text>
               {creditingReferral && (
@@ -226,7 +232,7 @@ export default function ReferralsScreen() {
                   }}
                   accessibilityRole="button"
                 >
-                  <Text className="text-xs font-semibold text-sand-400">Cancel</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500">Cancel</Text>
                 </AnimatedPressable>
               )}
             </View>
@@ -234,19 +240,19 @@ export default function ReferralsScreen() {
               value={customerSearch}
               onChangeText={setCustomerSearch}
               placeholder="Search by name or phone…"
-              placeholderTextColor={colors.sand[400]}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-2.5 mb-2.5"
+              placeholderTextColor="#928EB2"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 mb-3"
               autoFocus
             />
             {customersQuery.isLoading ? (
               <View className="py-6 items-center">
-                <ActivityIndicator color={primaryColor} />
+                <ActivityIndicator color="#BB3F95" />
               </View>
             ) : (
               <ScrollView className="max-h-64" keyboardShouldPersistTaps="handled">
-                <View className="gap-1.5">
+                <View className="gap-2">
                   {filteredCustomers.length === 0 ? (
-                    <Text className="text-xs text-sand-400 py-3 text-center">
+                    <Text className="text-xs text-heliotrope-500 py-3 text-center font-medium">
                       No matching customers — add them from the Customers tab first.
                     </Text>
                   ) : (
@@ -266,18 +272,18 @@ export default function ReferralsScreen() {
                           createCode.mutate(c.id)
                         }}
                         accessibilityRole="button"
-                        className="flex-row items-center justify-between bg-sand-50 rounded-xl px-3 py-2.5 border border-sand-100"
+                        className="flex-row items-center justify-between bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200"
                       >
                         <View className="flex-1 mr-2">
-                          <Text className="text-sm font-semibold text-sand-800" numberOfLines={1}>
+                          <Text className="text-sm font-bold text-spaceCadet-900" numberOfLines={1}>
                             {c.name ?? 'Unnamed customer'}
                           </Text>
-                          {c.phone ? <Text className="text-xs text-sand-400">{c.phone}</Text> : null}
+                          {c.phone ? <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{c.phone}</Text> : null}
                         </View>
                         {(createCode.isPending || credit.isPending) && pickedCustomer?.id === c.id ? (
-                          <ActivityIndicator size="small" color={primaryColor} />
+                          <ActivityIndicator size="small" color="#BB3F95" />
                         ) : (
-                          <Text className="text-[11px] font-semibold" style={{ color: primaryColor }}>
+                          <Text className="text-xs font-bold text-fuchsia-700">
                             {creditingReferral ? 'Select' : 'Generate'}
                           </Text>
                         )}
@@ -291,69 +297,91 @@ export default function ReferralsScreen() {
         )}
 
         {referralsQuery.isLoading ? (
-          <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center">
-            <ActivityIndicator color={primaryColor} />
+          <View className="bg-white rounded-3xl p-6 border border-lavender-200 items-center">
+            <ActivityIndicator color="#BB3F95" />
           </View>
         ) : referrals.length === 0 ? (
-          <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center">
-            <View className="w-12 h-12 rounded-2xl items-center justify-center mb-3" style={{ backgroundColor: `${primaryColor}1A` }}>
-              <Ticket size={22} color={primaryColor} />
+          <View className="bg-white rounded-3xl p-6 border border-lavender-200 items-center">
+            <View className="w-14 h-14 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200">
+              <Ticket size={24} color="#BB3F95" />
             </View>
-            <Text className="text-sm font-semibold text-sand-700">No referral codes yet</Text>
-            <Text className="text-xs text-sand-400 text-center mt-1 leading-4">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base font-bold text-spaceCadet-900"
+            >
+              No referral codes yet
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1 leading-relaxed font-medium">
               Generate a code for a loyal customer and share it with them on WhatsApp.
             </Text>
           </View>
         ) : (
-          <View className="gap-2.5">
+          <View className="gap-3">
             {referrals.map((r) => {
               const pendingCredits = r.credits.filter((c) => c.status === 'PENDING').length
               return (
-                <View key={r.id} className="bg-white rounded-2xl p-4 border border-sand-100">
-                  <View className="flex-row items-center justify-between mb-1.5">
+                <View key={r.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+                  <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-1 mr-2">
-                      <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
                         {r.customer?.name ?? 'Customer'}
                       </Text>
                       {r.customer?.phone ? (
-                        <Text className="text-xs text-sand-400">{r.customer.phone}</Text>
+                        <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{r.customer.phone}</Text>
                       ) : null}
                     </View>
                     <View
-                      className="rounded-lg px-2.5 py-1"
-                      style={{ backgroundColor: `${primaryColor}1A` }}
+                      className="rounded-xl px-3 py-1 bg-fuchsia-500/15 border border-fuchsia-500/30"
                     >
-                      <Text className="text-[11px] font-bold" style={{ color: primaryColor }}>
+                      <Text className="text-xs font-bold text-fuchsia-700">
                         {r.code}
                       </Text>
                     </View>
                   </View>
-                  <View className="flex-row gap-3 mt-2">
-                    <View className="flex-1 bg-sand-50 rounded-xl px-3 py-2">
-                      <Text className="text-base font-bold text-sand-900">{r.clicks}</Text>
-                      <Text className="text-[10px] text-sand-400">clicks</Text>
+                  <View className="flex-row gap-2.5 mt-2.5">
+                    <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-lg font-bold text-spaceCadet-900"
+                      >
+                        {r.clicks}
+                      </Text>
+                      <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">clicks</Text>
                     </View>
-                    <View className="flex-1 bg-sand-50 rounded-xl px-3 py-2">
-                      <Text className="text-base font-bold text-sand-900">{r.signups}</Text>
-                      <Text className="text-[10px] text-sand-400">signups</Text>
+                    <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-lg font-bold text-spaceCadet-900"
+                      >
+                        {r.signups}
+                      </Text>
+                      <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">signups</Text>
                     </View>
-                    <View className="flex-1 bg-sand-50 rounded-xl px-3 py-2">
-                      <Text className="text-base font-bold text-sand-900">{formatPaiseShort(r.reward_paise)}</Text>
-                      <Text className="text-[10px] text-sand-400">reward</Text>
+                    <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-lg font-bold text-spaceCadet-900"
+                      >
+                        {formatPaiseShort(r.reward_paise)}
+                      </Text>
+                      <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">reward</Text>
                     </View>
                   </View>
                   {pendingCredits > 0 && (
-                    <View className="mt-2">
-                      <View className="flex-row items-center gap-1.5 bg-turmeric-50 rounded-xl px-3 py-2 border border-turmeric-100">
-                        <RefreshCw size={12} color={colors.turmeric[600]} />
-                        <Text className="text-[11px] text-turmeric-700 font-medium">
-                          {pendingCredits} PENDING reward credit{pendingCredits > 1 ? 's' : ''} — apply the
-                          discount when the friend orders
+                    <View className="mt-3">
+                      <View className="flex-row items-center gap-1.5 bg-fuchsia-500/10 rounded-2xl p-3 border border-fuchsia-500/20">
+                        <RefreshCw size={13} color="#BB3F95" />
+                        <Text className="text-xs text-fuchsia-800 font-bold">
+                          {pendingCredits} PENDING reward credit{pendingCredits > 1 ? 's' : ''}
                         </Text>
                       </View>
                     </View>
                   )}
-                  <View className="mt-3">
+                  <View className="mt-4">
                     <GradientButton
                       label={credit.isPending ? 'Crediting…' : 'Mark converted & credit'}
                       onPress={() => handleCredit(r)}

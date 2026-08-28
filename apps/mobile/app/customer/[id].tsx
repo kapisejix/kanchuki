@@ -298,35 +298,48 @@ export default function CustomerDetailScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-ink-50">
+    <ScrollView className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={colors.sand[700]} />
+        <AnimatedPressable
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
+          <X size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">Customer</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+        >
+          Customer Profile
+        </Text>
         <AnimatedPressable
           onPress={() => void handleSave()}
           disabled={saving}
-          className="bg-ink-600 px-4 py-2 rounded-xl"
+          className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
         >
           {saving ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Text className="text-white font-semibold text-sm">Save</Text>
+            <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
           )}
         </AnimatedPressable>
       </View>
 
       <View className="px-4 py-4 gap-4">
         {/* Identity */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <View className="flex-row items-center gap-3 mb-3">
-            <View className="w-14 h-14 rounded-full bg-ink-100 items-center justify-center">
-              <Text className="text-ink-700 font-bold text-xl">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <View className="flex-row items-center gap-3.5 mb-4">
+            <View className="w-14 h-14 rounded-2xl bg-[#560A39] items-center justify-center border border-[#BB3F95]/30 flex-shrink-0">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-[#E0E1F6] font-bold text-xl"
+              >
                 {name.charAt(0).toUpperCase() || '?'}
               </Text>
             </View>
@@ -335,46 +348,47 @@ export default function CustomerDetailScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Customer name"
-                className="text-base font-bold text-sand-900"
-                placeholderTextColor={colors.sand[400]}
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-lg font-bold text-spaceCadet-900"
+                placeholderTextColor="#928EB2"
               />
-              <Text className="text-xs text-sand-400 mt-0.5">{customer.phone}</Text>
+              <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{customer.phone}</Text>
               <TextInput
                 value={email}
                 onChangeText={setEmail}
                 placeholder="email@example.com (optional)"
-                placeholderTextColor={colors.sand[400]}
+                placeholderTextColor="#928EB2"
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
-                className="text-xs text-sand-500 mt-0.5"
+                className="text-xs text-heliotrope-500 mt-0.5"
               />
             </View>
           </View>
 
           {/* Address fields */}
-          <View className="border-t border-sand-100 pt-3 gap-3">
+          <View className="border-t border-lavender-200 pt-3 gap-3">
             <TextInput
               value={addressLine1}
               onChangeText={setAddressLine1}
               placeholder="Shop/Home address (optional)"
-              placeholderTextColor={colors.sand[400]}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
+              placeholderTextColor="#928EB2"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
             <View className="flex-row gap-3">
               <TextInput
                 value={city}
                 onChangeText={setCity}
                 placeholder="City"
-                placeholderTextColor={colors.sand[400]}
-                className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
+                placeholderTextColor="#928EB2"
+                className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               />
               <TextInput
                 value={state}
                 onChangeText={setState}
                 placeholder="State"
-                placeholderTextColor={colors.sand[400]}
-                className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
+                placeholderTextColor="#928EB2"
+                className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               />
             </View>
           </View>
@@ -382,82 +396,94 @@ export default function CustomerDetailScreen() {
 
         {/* Purchase summary */}
         <View className="flex-row gap-3">
-          <View className="flex-1 bg-white rounded-2xl p-3 border border-sand-100 items-center">
-            <Text className="text-lg font-bold text-sand-900">{customer.total_purchases}</Text>
-            <Text className="text-xs text-sand-400">Purchases</Text>
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm items-center">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-2xl font-bold text-spaceCadet-900"
+            >
+              {customer.total_purchases}
+            </Text>
+            <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Purchases</Text>
           </View>
-          <View className="flex-1 bg-white rounded-2xl p-3 border border-sand-100 items-center">
-            <Text className="text-lg font-bold text-sand-900">{formatPrice(customer.total_spent)}</Text>
-            <Text className="text-xs text-sand-400">Total Spent</Text>
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm items-center">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-2xl font-bold text-spaceCadet-900"
+            >
+              {formatPrice(customer.total_spent)}
+            </Text>
+            <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Total Spent</Text>
           </View>
         </View>
 
         {/* Fashion DNA — AI Match Section */}
         {matchedProducts.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
-            <View className="flex-row items-center justify-between mb-3">
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+            <View className="flex-row items-center justify-between mb-3.5">
               <View className="flex-row items-center gap-2">
-                <Heart size={16} color={colors.rust[500]} />
-                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-                  AI Match
+                <Heart size={16} color="#BB3F95" />
+                <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wide">
+                  AI Match & Fashion DNA
                 </Text>
                 {dnaUsed && (
-                  <View className="bg-fuchsia-100 px-2 py-0.5 rounded-full">
-                    <Text className="text-[10px] text-fuchsia-700 font-semibold">DNA</Text>
+                  <View className="bg-fuchsia-500/15 border border-fuchsia-500/30 px-2 py-0.5 rounded-full">
+                    <Text className="text-[10px] text-fuchsia-700 font-bold">DNA</Text>
                   </View>
                 )}
               </View>
               <AnimatedPressable
                 onPress={() => void handleAutoSuggestCollection()}
                 disabled={generatingCollection}
-                className="flex-row items-center gap-1 bg-fuchsia-600 px-3 py-1.5 rounded-full"
+                className="flex-row items-center gap-1 bg-fuchsia-600 px-3.5 py-1.5 rounded-full shadow-sm"
               >
                 {generatingCollection ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <>
                     <Sparkles size={12} color="white" />
-                    <Text className="text-white text-xs font-semibold">Create Collection</Text>
+                    <Text className="text-white text-xs font-bold">Create Collection</Text>
                   </>
                 )}
               </AnimatedPressable>
             </View>
 
             {/* Top matched products — horizontal scroll */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1">
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1 py-1">
               {matchedProducts.map((product) => (
                 <AnimatedPressable
                   key={product.id}
                   onPress={() => router.push(`/product/${product.id}`)}
-                  className="mr-2 w-28"
+                  className="mr-3 w-32"
                 >
-                  <View className="bg-sand-50 rounded-xl overflow-hidden border border-sand-100">
+                  <View className="bg-lavender-50 rounded-2xl overflow-hidden border border-lavender-200">
                     {product.primary_photo_url ? (
                       <Image
                         source={{ uri: product.primary_photo_url }}
-                        className="w-full h-28"
+                        className="w-full h-32"
                         resizeMode="cover"
                       />
                     ) : (
-                      <View className="w-full h-28 bg-ink-100 items-center justify-center">
-                        <Text className="text-ink-400 text-xs">No photo</Text>
+                      <View className="w-full h-32 bg-lavender-100 items-center justify-center">
+                        <Text className="text-heliotrope-400 text-xs">No photo</Text>
                       </View>
                     )}
-                    <View className="px-2 py-1.5">
-                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
+                    <View className="p-2 gap-0.5">
+                      <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
                         {product.category ?? 'Product'}
                       </Text>
                       {product.price_min != null && (
-                        <Text className="text-[10px] text-sand-500">
+                        <Text
+                          style={{ fontFamily: 'Marcellus_400Regular' }}
+                          className="text-xs font-bold text-spaceCadet-900"
+                        >
                           {formatPrice(product.price_min)}
                         </Text>
                       )}
                       {product.suggested_size && (
                         <View
-                          className="mt-1 self-start rounded-full px-2 py-0.5"
-                          style={{ backgroundColor: `${primaryColor}1A` }}
+                          className="mt-1 self-start rounded-full px-2 py-0.5 bg-fuchsia-500/15 border border-fuchsia-500/30"
                         >
-                          <Text className="text-[9px] font-bold" style={{ color: primaryColor }}>
+                          <Text className="text-[9px] font-bold text-fuchsia-700">
                             Size {product.suggested_size}
                           </Text>
                         </View>
@@ -469,9 +495,9 @@ export default function CustomerDetailScreen() {
             </ScrollView>
 
             {customer.fashion_dna && (
-              <View className="flex-row items-center gap-2 mt-2">
-                <Text className="text-[10px] text-sand-400">
-                  {customer.fashion_dna.interaction_count} interactions · {(customer.fashion_dna.confidence_score * 100).toFixed(0)}% confidence
+              <View className="flex-row items-center gap-2 mt-2 pt-2 border-t border-lavender-200">
+                <Text className="text-[10px] text-heliotrope-500 font-medium">
+                  {customer.fashion_dna.interaction_count} interactions · {(customer.fashion_dna.confidence_score * 100).toFixed(0)}% AI confidence
                 </Text>
               </View>
             )}
@@ -479,8 +505,8 @@ export default function CustomerDetailScreen() {
         )}
 
         {/* Preferred colors — free text */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
             Preferred Colors
           </Text>
           <View className="flex-row flex-wrap gap-2 mb-3">
@@ -488,12 +514,12 @@ export default function CustomerDetailScreen() {
               <AnimatedPressable
                 key={c}
                 onPress={() => setPrefColors((prev) => prev.filter((x) => x !== c))}
-                className="bg-ink-600 px-3 py-1.5 rounded-full flex-row items-center gap-1"
+                className="bg-spaceCadet-900 px-3.5 py-1.5 rounded-full flex-row items-center gap-1.5 shadow-sm"
                 accessibilityLabel={`Remove ${c}`}
                 accessibilityRole="button"
               >
-                <Text className="text-white text-xs font-medium">{c}</Text>
-                <X size={10} color="white" />
+                <Text className="text-white text-xs font-bold">{c}</Text>
+                <X size={12} color="white" />
               </AnimatedPressable>
             ))}
           </View>
@@ -502,24 +528,24 @@ export default function CustomerDetailScreen() {
               value={colorInput}
               onChangeText={setColorInput}
               onSubmitEditing={addColor}
-              placeholder="e.g. Maroon"
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
+              placeholder="e.g. Rani Pink, Maroon, Mustard"
+              placeholderTextColor="#928EB2"
+              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
             />
             <AnimatedPressable
               onPress={addColor}
-              className="bg-sand-100 px-3 rounded-xl items-center justify-center"
+              className="bg-spaceCadet-900 px-4 rounded-2xl items-center justify-center"
               accessibilityLabel="Add color"
               accessibilityRole="button"
             >
-              <Plus size={16} color={colors.sand[700]} />
+              <Plus size={18} color="white" />
             </AnimatedPressable>
           </View>
         </View>
 
         {/* Preferred styles */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
             Preferred Style
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -531,12 +557,12 @@ export default function CustomerDetailScreen() {
                   onPress={() => toggle(prefStyles, setPrefStyles, s.name)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                  className={`px-3.5 py-2 rounded-2xl border flex-row items-center gap-1.5 ${
+                    selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{s.name}</Text>
+                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>{s.name}</Text>
                 </AnimatedPressable>
               )
             })}
@@ -544,8 +570,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Preferred fabrics */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
             Preferred Fabrics
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -557,12 +583,12 @@ export default function CustomerDetailScreen() {
                   onPress={() => toggle(prefFabrics, setPrefFabrics, f.name)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                  className={`px-3.5 py-2 rounded-2xl border flex-row items-center gap-1.5 ${
+                    selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>{f.name}</Text>
+                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>{f.name}</Text>
                 </AnimatedPressable>
               )
             })}
@@ -570,14 +596,14 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Usual size — roadmap N quick capture */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1">
             Usual Size
           </Text>
-          <Text className="text-[11px] text-sand-400 mb-2.5">
+          <Text className="text-[11px] text-heliotrope-500 font-medium mb-3">
             Used to recommend sizes on products this customer browses.
           </Text>
-          <View className="flex-row flex-wrap gap-1.5">
+          <View className="flex-row flex-wrap gap-2">
             {SIZE_OPTIONS.map((s) => {
               const selected = usualSize === s
               return (
@@ -586,10 +612,13 @@ export default function CustomerDetailScreen() {
                   onPress={() => setUsualSize(selected ? null : s)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  className={`px-2.5 py-1.5 rounded-lg border ${selected ? 'border-ink-600' : 'border-sand-200 bg-white'}`}
-                  style={selected ? { backgroundColor: primaryColor } : undefined}
+                  className={`w-12 h-12 rounded-full border items-center justify-center ${
+                    selected
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                      : 'bg-white border-lavender-200'
+                  }`}
                 >
-                  <Text className={`text-[11px] font-semibold ${selected ? 'text-white' : 'text-sand-600'}`}>
+                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                     {s}
                   </Text>
                 </AnimatedPressable>
@@ -599,8 +628,8 @@ export default function CustomerDetailScreen() {
         </View>
 
         {/* Budget */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2.5">
             Budget Range (₹)
           </Text>
           <View className="flex-row gap-3">
@@ -609,74 +638,74 @@ export default function CustomerDetailScreen() {
               onChangeText={setBudgetMin}
               placeholder="Min"
               keyboardType="numeric"
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
+              placeholderTextColor="#928EB2"
+              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
             />
             <TextInput
               value={budgetMax}
               onChangeText={setBudgetMax}
               placeholder="Max"
               keyboardType="numeric"
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2 text-sm"
+              placeholderTextColor="#928EB2"
+              className="flex-1 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
             />
           </View>
         </View>
 
         {/* Measurements */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <View className="flex-row items-center justify-between mb-3.5">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
               Measurements
             </Text>
-            <View className="flex-row gap-1.5">
+            <View className="flex-row gap-2">
               <AnimatedPressable
                 onPress={() => setShowManualForm(true)}
-                className="flex-row items-center gap-1 bg-turmeric-50 px-2.5 py-1 rounded-full"
+                className="flex-row items-center gap-1 bg-lavender-100 border border-lavender-200 px-3 py-1 rounded-full"
               >
-                <Text className="text-turmeric-700 text-xs font-semibold">Manual</Text>
+                <Text className="text-spaceCadet-900 text-xs font-bold">Manual</Text>
               </AnimatedPressable>
               <AnimatedPressable
                 onPress={() => router.push(`/customer/${customer.id}/measurement`)}
-                className="flex-row items-center gap-1 bg-ink-50 px-2.5 py-1 rounded-full"
+                className="flex-row items-center gap-1 bg-fuchsia-500/15 border border-fuchsia-500/30 px-3 py-1 rounded-full"
               >
-                <Ruler size={12} color={primaryColor} />
-                <Text className="text-ink-700 text-xs font-semibold">Camera</Text>
+                <Ruler size={12} color="#BB3F95" />
+                <Text className="text-fuchsia-700 text-xs font-bold">Camera</Text>
               </AnimatedPressable>
             </View>
           </View>
 
           {measurements.length === 0 ? (
-            <Text className="text-xs text-sand-400">No measurements recorded yet.</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium">No measurements recorded yet.</Text>
           ) : (
             <View className="gap-2">
               {measurements.slice(0, 3).map((m) => (
-                <View key={m.id} className="bg-ink-50 rounded-xl px-3 py-2">
+                <View key={m.id} className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3">
                   <View className="flex-row items-center justify-between">
                     <View className="flex-row items-center gap-1.5">
-                      <View className={`px-2 py-0.5 rounded ${m.source === 'PHOTO' ? 'bg-ink-100' : 'bg-turmeric-100'}`}>
-                        <Text className={`text-[10px] font-semibold ${m.source === 'PHOTO' ? 'text-ink-700' : 'text-turmeric-700'}`}>
-                          {m.source === 'PHOTO' ? 'AI' : 'Tape'}
+                      <View className={`px-2 py-0.5 rounded-full ${m.source === 'PHOTO' ? 'bg-fuchsia-500/20' : 'bg-spaceCadet-900/15'}`}>
+                        <Text className={`text-[10px] font-bold ${m.source === 'PHOTO' ? 'text-fuchsia-700' : 'text-spaceCadet-900'}`}>
+                          {m.source === 'PHOTO' ? 'AI CAM' : 'TAPE'}
                         </Text>
                       </View>
-                      <Text className="text-[10px] text-sand-400">
+                      <Text className="text-[10px] text-heliotrope-500 font-medium">
                         {new Date(m.created_at).toLocaleDateString('en-IN')}
                       </Text>
                     </View>
                   </View>
-                  <Text className="text-xs text-sand-600 mt-1">
+                  <Text className="text-xs font-bold text-spaceCadet-900 mt-1.5">
                     Height {m.height_cm}cm
                     {m.bust_cm ? ` · Bust ${m.bust_cm}cm` : ''}
                     {m.waist_cm ? ` · Waist ${m.waist_cm}cm` : ''}
                     {m.hip_cm ? ` · Hip ${m.hip_cm}cm` : ''}
                   </Text>
                   {m.source === 'PHOTO' && !m.bust_cm && (
-                    <Text className="text-[10px] text-turmeric-600 mt-1">Processing...</Text>
+                    <Text className="text-[10px] text-fuchsia-600 mt-1 font-medium">AI Processing...</Text>
                   )}
                 </View>
               ))}
               {measurements.length > 3 && (
-                <Text className="text-[10px] text-sand-400 text-center">
+                <Text className="text-[10px] text-heliotrope-500 text-center font-medium">
                   +{measurements.length - 3} more
                 </Text>
               )}
@@ -684,17 +713,27 @@ export default function CustomerDetailScreen() {
           )}
 
           {(upperSize || lowerSize) && (
-            <View className="flex-row gap-2 mt-3">
+            <View className="flex-row gap-2 mt-3 pt-3 border-t border-lavender-200">
               {upperSize && (
-                <View className="bg-turmeric-50 rounded-xl px-3 py-2 flex-1">
-                  <Text className="text-[10px] text-turmeric-700 font-semibold uppercase">Upper Size</Text>
-                  <Text className="text-sm font-bold text-turmeric-800">{upperSize.size_label}</Text>
+                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3 flex-1">
+                  <Text className="text-[10px] text-heliotrope-500 font-bold uppercase tracking-wider">Upper Size</Text>
+                  <Text
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-base font-bold text-spaceCadet-900 mt-0.5"
+                  >
+                    {upperSize.size_label}
+                  </Text>
                 </View>
               )}
               {lowerSize && (
-                <View className="bg-turmeric-50 rounded-xl px-3 py-2 flex-1">
-                  <Text className="text-[10px] text-turmeric-700 font-semibold uppercase">Lower Size</Text>
-                  <Text className="text-sm font-bold text-turmeric-800">{lowerSize.size_label}</Text>
+                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3 flex-1">
+                  <Text className="text-[10px] text-heliotrope-500 font-bold uppercase tracking-wider">Lower Size</Text>
+                  <Text
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-base font-bold text-spaceCadet-900 mt-0.5"
+                  >
+                    {lowerSize.size_label}
+                  </Text>
                 </View>
               )}
             </View>
@@ -703,19 +742,19 @@ export default function CustomerDetailScreen() {
 
         {/* Recent activity */}
         {customer.interactions.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
               Recent Activity
             </Text>
-            <View className="gap-2">
+            <View className="gap-2.5">
               {customer.interactions.slice(0, 8).map((i) => (
                 <View key={i.id} className="flex-row items-center gap-2">
-                  <Clock size={12} color={colors.sand[400]} />
-                  <Text className="text-xs text-sand-600 flex-1">
+                  <Clock size={13} color="#928EB2" />
+                  <Text className="text-xs text-spaceCadet-900 font-semibold flex-1">
                     {i.type}
                     {i.product ? ` · ${i.product.category ?? ''} ${i.product.primary_color ?? ''}` : ''}
                   </Text>
-                  <Text className="text-[10px] text-sand-400">
+                  <Text className="text-[10px] text-heliotrope-500 font-medium">
                     {new Date(i.created_at).toLocaleDateString('en-IN')}
                   </Text>
                 </View>
@@ -725,28 +764,28 @@ export default function CustomerDetailScreen() {
         )}
 
         {/* Notes */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-            Notes (private)
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Store Notes (private)
           </Text>
           <TextInput
             value={notes}
             onChangeText={setNotes}
             placeholder={`e.g. "likes bright colors", "buying for daughter's wedding"`}
             multiline
-            numberOfLines={2}
-            className="text-sm text-sand-900"
-            placeholderTextColor={colors.sand[400]}
+            numberOfLines={3}
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
+            placeholderTextColor="#928EB2"
           />
         </View>
 
         {/* Delete */}
         <AnimatedPressable
           onPress={handleDelete}
-          className="flex-row items-center justify-center gap-2 py-3 rounded-2xl border border-rust-100 bg-rust-50"
+          className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border border-red-200 bg-red-50/70"
         >
-          <Trash2 size={16} color={colors.rust[600]} />
-          <Text className="text-rust-600 font-semibold text-sm">Delete Customer</Text>
+          <Trash2 size={16} color="#dc2626" />
+          <Text className="text-red-700 font-bold text-xs uppercase tracking-wider">Delete Customer</Text>
         </AnimatedPressable>
       </View>
 
@@ -757,30 +796,40 @@ export default function CustomerDetailScreen() {
         {...(Platform.OS === 'ios' ? { presentationStyle: 'pageSheet' } : {})}
         onRequestClose={() => setShowManualForm(false)}
       >
-        <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top + 16 }}>
+        <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: insets.top + 16 }}>
           {/* Modal Header */}
-          <View className="flex-row items-center justify-between px-4 pb-4">
-            <AnimatedPressable onPress={() => setShowManualForm(false)} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={22} color={colors.sand[700]} />
+          <View className="flex-row items-center justify-between px-5 pb-4 border-b border-lavender-200 bg-white">
+            <AnimatedPressable
+              onPress={() => setShowManualForm(false)}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+              accessibilityLabel="Close"
+              accessibilityRole="button"
+            >
+              <X size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Manual Measurements</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base font-bold text-spaceCadet-900"
+            >
+              Manual Measurements
+            </Text>
             <AnimatedPressable
               onPress={() => void handleSaveManualMeasurement()}
               disabled={savingManual}
-              className="bg-turmeric-600 px-4 py-2 rounded-xl"
+              className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
             >
               {savingManual ? (
                 <ActivityIndicator size="small" color="white" />
               ) : (
-                <Text className="text-white font-semibold text-sm">Save</Text>
+                <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
               )}
             </AnimatedPressable>
           </View>
 
-          <ScrollView className="flex-1 px-4" keyboardShouldPersistTaps="handled">
+          <ScrollView className="flex-1 px-4 py-4" keyboardShouldPersistTaps="handled">
             {/* Height — required */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
+            <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-3">
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
                 Height (cm) *
               </Text>
               <TextInput
@@ -788,97 +837,97 @@ export default function CustomerDetailScreen() {
                 onChangeText={setManualHeight}
                 placeholder="e.g. 162"
                 keyboardType="numeric"
-                className="text-lg font-bold text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                placeholderTextColor={colors.sand[400]}
+                className="text-lg font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                placeholderTextColor="#928EB2"
               />
             </View>
 
             {/* Upper body */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-3">
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
                 Upper Body (cm, optional)
               </Text>
               <View className="gap-3">
                 <View>
-                  <Text className="text-xs text-sand-500 mb-1">Bust</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Bust</Text>
                   <TextInput
                     value={manualBust}
                     onChangeText={setManualBust}
                     placeholder="e.g. 92"
                     keyboardType="numeric"
-                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor={colors.sand[400]}
+                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                    placeholderTextColor="#928EB2"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-sand-500 mb-1">Waist</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Waist</Text>
                   <TextInput
                     value={manualWaist}
                     onChangeText={setManualWaist}
                     placeholder="e.g. 76"
                     keyboardType="numeric"
-                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor={colors.sand[400]}
+                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                    placeholderTextColor="#928EB2"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-sand-500 mb-1">Hip</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Hip</Text>
                   <TextInput
                     value={manualHip}
                     onChangeText={setManualHip}
                     placeholder="e.g. 100"
                     keyboardType="numeric"
-                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor={colors.sand[400]}
+                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                    placeholderTextColor="#928EB2"
                   />
                 </View>
               </View>
             </View>
 
             {/* Lower body */}
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-3">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+            <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-3">
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3">
                 Lower Body (cm, optional)
               </Text>
               <View className="gap-3">
                 <View>
-                  <Text className="text-xs text-sand-500 mb-1">Pant Waist</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Pant Waist</Text>
                   <TextInput
                     value={manualPantWaist}
                     onChangeText={setManualPantWaist}
                     placeholder="e.g. 78"
                     keyboardType="numeric"
-                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor={colors.sand[400]}
+                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                    placeholderTextColor="#928EB2"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-sand-500 mb-1">Pant Hip</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Pant Hip</Text>
                   <TextInput
                     value={manualPantHip}
                     onChangeText={setManualPantHip}
                     placeholder="e.g. 102"
                     keyboardType="numeric"
-                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor={colors.sand[400]}
+                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                    placeholderTextColor="#928EB2"
                   />
                 </View>
                 <View>
-                  <Text className="text-xs text-sand-500 mb-1">Inseam</Text>
+                  <Text className="text-xs font-bold text-heliotrope-500 mb-1">Inseam</Text>
                   <TextInput
                     value={manualInseam}
                     onChangeText={setManualInseam}
                     placeholder="e.g. 78"
                     keyboardType="numeric"
-                    className="text-sm text-sand-900 bg-ink-50 border border-sand-200 rounded-xl px-3 py-2"
-                    placeholderTextColor={colors.sand[400]}
+                    className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
+                    placeholderTextColor="#928EB2"
                   />
                 </View>
               </View>
             </View>
 
-            <View className="bg-turmeric-50 rounded-2xl p-3 border border-turmeric-100 mb-6">
-              <Text className="text-xs text-turmeric-700">
+            <View className="bg-lavender-100 rounded-2xl p-3.5 border border-lavender-200 mb-6">
+              <Text className="text-xs text-heliotrope-500 font-medium leading-relaxed">
                 Use a flexible measuring tape. Measure over light clothing. Keep tape snug but not tight.
               </Text>
             </View>

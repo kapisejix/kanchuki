@@ -18,12 +18,12 @@ const STATUS_FILTERS: { key: BookingStatus | 'ALL'; label: string }[] = [
   { key: 'CANCELLED', label: 'Cancelled' },
 ]
 
-function statusBadge(status: BookingStatus, colors: ReturnType<typeof useTheme>['colors']) {
-  const map: Record<BookingStatus, { label: string; color: string; bg: string }> = {
-    REQUESTED: { label: 'Requested', color: colors.turmeric[600], bg: colors.turmeric[100] },
-    CONFIRMED: { label: 'Confirmed', color: colors.turmeric[700], bg: colors.turmeric[100] },
-    COMPLETED: { label: 'Completed', color: colors.sand[500], bg: colors.sand[100] },
-    CANCELLED: { label: 'Cancelled', color: colors.rust[600], bg: colors.rust[50] },
+function statusBadge(status: BookingStatus) {
+  const map: Record<BookingStatus, { label: string; color: string; bg: string; border: string }> = {
+    REQUESTED: { label: 'Requested', color: '#BB3F95', bg: '#BB3F9515', border: '#BB3F9530' },
+    CONFIRMED: { label: 'Confirmed', color: '#059669', bg: '#10B98115', border: '#10B98130' },
+    COMPLETED: { label: 'Completed', color: '#231F48', bg: '#E0E1F6', border: '#D0D2F0' },
+    CANCELLED: { label: 'Cancelled', color: '#DC2626', bg: '#FEE2E2', border: '#FECACA' },
   }
   return map[status]
 }
@@ -39,7 +39,6 @@ function fmtSlot(iso: string) {
 }
 
 export default function BookingsScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState<BookingStatus | 'ALL'>('ALL')
@@ -71,10 +70,10 @@ export default function BookingsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -82,21 +81,26 @@ export default function BookingsScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Try-on Bookings</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Try-on Bookings
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => router.push('/growth/booking-form')}
             accessibilityLabel="New booking"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
@@ -105,7 +109,7 @@ export default function BookingsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="flex-grow-0 bg-white border-b border-sand-100 px-4 py-2.5"
+        className="flex-grow-0 bg-white border-b border-lavender-200 px-4 py-2.5"
         contentContainerStyle={{ gap: 8 }}
       >
         {STATUS_FILTERS.map((t) => {
@@ -116,12 +120,11 @@ export default function BookingsScreen() {
               onPress={() => setFilter(t.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              className={`px-3.5 py-1.5 rounded-full border ${
-                active ? 'border-ink-600' : 'border-sand-200 bg-white'
+              className={`px-4 py-1.5 rounded-full border ${
+                active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
               }`}
-              style={active ? { backgroundColor: primaryColor } : undefined}
             >
-              <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-600'}`}>
+              <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>
                 {t.label}
               </Text>
             </AnimatedPressable>
@@ -131,20 +134,24 @@ export default function BookingsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : bookings.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <DoorOpen size={28} color={primaryColor} />
+              <DoorOpen size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No bookings</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
-              Reserve the try-on room for a customer, or take a phone-in booking.
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No Bookings
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
+              Reserve the VIP try-on room for a customer, or take a phone-in bridal slot.
             </Text>
             <View className="w-48 mt-5">
               <GradientButton label="New Booking" onPress={() => router.push('/growth/booking-form')} />
@@ -157,55 +164,59 @@ export default function BookingsScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
-          <View className="gap-2.5">
+          <View className="gap-3">
             {bookings.map((b) => {
-              const badge = statusBadge(b.status, colors)
+              const badge = statusBadge(b.status)
               return (
-                <View key={b.id} className="bg-white rounded-2xl p-4 border border-sand-100">
-                  <View className="flex-row items-center justify-between mb-2">
+                <View key={b.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+                  <View className="flex-row items-center justify-between mb-2.5">
                     <View className="flex-1 mr-2">
-                      <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
                         {b.name}
                       </Text>
-                      {b.phone ? <Text className="text-xs text-sand-400">{b.phone}</Text> : null}
+                      {b.phone ? <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{b.phone}</Text> : null}
                     </View>
-                    <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: badge.bg }}>
-                      <Text className="text-[10px] font-semibold" style={{ color: badge.color }}>
+                    <View className="rounded-full px-3 py-1 border" style={{ backgroundColor: badge.bg, borderColor: badge.border }}>
+                      <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: badge.color }}>
                         {badge.label}
                       </Text>
                     </View>
                   </View>
                   <View className="flex-row items-center gap-2 mb-3">
-                    <CalendarClock size={13} color={colors.sand[400]} />
-                    <Text className="text-xs text-sand-600">
+                    <CalendarClock size={14} color="#928EB2" />
+                    <Text className="text-xs text-spaceCadet-900 font-semibold">
                       {fmtSlot(b.starts_at)} → {new Date(b.ends_at).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })}
                     </Text>
                   </View>
-                  {b.note ? <Text className="text-[11px] text-sand-500 mb-3">{b.note}</Text> : null}
+                  {b.note ? <Text className="text-xs text-heliotrope-500 mb-3 font-medium bg-lavender-50 p-2.5 rounded-xl border border-lavender-200">{b.note}</Text> : null}
                   <View className="flex-row gap-2">
                     {b.status === 'REQUESTED' && (
                       <View className="flex-1">
-                        <GradientButton label="Confirm" onPress={() => setStatus.mutate({ id: b.id, status: 'CONFIRMED' })} />
+                        <GradientButton label="Confirm Slot" onPress={() => setStatus.mutate({ id: b.id, status: 'CONFIRMED' })} />
                       </View>
                     )}
                     {b.status === 'CONFIRMED' && (
                       <AnimatedPressable
                         onPress={() => setStatus.mutate({ id: b.id, status: 'COMPLETED' })}
                         accessibilityRole="button"
-                        className="flex-1 flex-row items-center justify-center gap-1.5 bg-emerald-50 rounded-2xl py-3 border border-emerald-100"
+                        className="flex-1 flex-row items-center justify-center gap-1.5 bg-emerald-50 rounded-2xl py-3 border border-emerald-200"
                       >
                         <Check size={14} color="#059669" />
-                        <Text className="text-emerald-700 text-xs font-semibold">Mark Completed</Text>
+                        <Text className="text-emerald-700 text-xs font-bold uppercase tracking-wider">Mark Completed</Text>
                       </AnimatedPressable>
                     )}
                     {(b.status === 'REQUESTED' || b.status === 'CONFIRMED') && (
                       <AnimatedPressable
                         onPress={() => confirmCancel(b)}
                         accessibilityRole="button"
-                        className="flex-row items-center justify-center gap-1 px-4 rounded-2xl py-3 bg-rust-50 border border-rust-100"
+                        className="flex-row items-center justify-center gap-1 px-4 rounded-2xl py-3 bg-red-50 border border-red-200"
                       >
-                        <X size={14} color={colors.rust[500]} />
-                        <Text className="text-rust-600 text-xs font-semibold">Cancel</Text>
+                        <X size={14} color="#dc2626" />
+                        <Text className="text-red-700 text-xs font-bold uppercase tracking-wider">Cancel</Text>
                       </AnimatedPressable>
                     )}
                     {b.status === 'CANCELLED' && (
@@ -217,9 +228,9 @@ export default function BookingsScreen() {
                           ])
                         }
                         accessibilityRole="button"
-                        className="flex-1 items-center rounded-2xl py-3"
+                        className="flex-1 items-center rounded-2xl py-3 border border-red-200 bg-red-50"
                       >
-                        <Text className="text-rust-600 text-xs font-semibold">Delete</Text>
+                        <Text className="text-red-700 text-xs font-bold uppercase tracking-wider">Delete</Text>
                       </AnimatedPressable>
                     )}
                   </View>

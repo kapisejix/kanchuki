@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatPriceRange, COLORS } from '@kanchuki/shared'
+import { formatPriceRange } from '@kanchuki/shared'
 import { View, Text, FlatList } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -10,7 +10,6 @@ import { ProductGridSkeleton } from '../../../src/components/Skeleton'
 import { useGridColumns } from '../../../src/hooks/useIsTablet'
 import { productApi, categoryApi } from '../../../src/lib/api'
 import { showError } from '../../../src/lib/errors'
-import { useTheme } from '../../../src/lib/theme'
 import { AnimatedPressable } from '../../../src/components/AnimatedPressable'
 import { GradientButton } from '../../../src/components/GradientButton'
 
@@ -26,7 +25,6 @@ type Product = {
 
 export default function AddProductsToCategoryScreen() {
   const columns = useGridColumns()
-  const { primaryColor, colors } = useTheme()
   const { id } = useLocalSearchParams<{ id: string }>()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
@@ -60,69 +58,85 @@ export default function AddProductsToCategoryScreen() {
   const canAssign = selected.size > 0 && !assign.isPending
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       <View
-        className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center px-5 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={colors.sand[700]} />
-        </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900 ml-3">Add Products</Text>
-      </View>
-      {isLoading ? (
-          <ProductGridSkeleton />
-        ) : (
-          <FlatList
-            key={columns}
-            data={products}
-            keyExtractor={(item) => item.id}
-            numColumns={columns}
-            contentContainerStyle={{ padding: 12, gap: 10 }}
-            columnWrapperStyle={{ gap: 10 }}
-            renderItem={({ item }) => {
-              const isSelected = selected.has(item.id)
-              return (
-                <ProductCard
-                  imageUrl={item.primary_photo_url}
-                  onPress={() => toggle(item.id)}
-                  selected={isSelected}
-                  elevation={isSelected ? 3 : 1}
-                  imageHeight={144}
-                  style={isSelected ? { borderWidth: 2, borderColor: primaryColor } : undefined}
-                  placeholderIcon="📷"
-                  footer={
-                    <View className="p-2.5">
-                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
-                        {item.category ?? 'Product'} · {item.primary_color ?? '—'}
-                      </Text>
-                      <Text className="text-xs text-sand-500 mt-0.5">
-                        {formatPriceRange(item.price_min, item.price_max)}
-                      </Text>
-                    </View>
-                  }
-                />
-              )
-            }}
-            ListEmptyComponent={
-              <Text className="text-sand-400 text-sm text-center mt-16">
-                No available products. Add products first.
-              </Text>
-            }
-          />
-        )}
-
-        <View
-          className="bg-white px-4 pt-3 border-t border-sand-100"
-          style={{ paddingBottom: 12 + insets.bottom }}
+        <AnimatedPressable
+          onPress={() => router.back()}
+          hitSlop={8}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
-          <GradientButton
-            label={`Add ${selected.size || ''} Product${selected.size === 1 ? '' : 's'}`.trim()}
-            disabled={!canAssign}
-            loading={assign.isPending}
-            onPress={() => assign.mutate()}
-          />
-        </View>
+          <ChevronLeft size={20} color="#231F48" />
+        </AnimatedPressable>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl font-bold text-spaceCadet-900 ml-3"
+        >
+          Add Products to Category
+        </Text>
+      </View>
+
+      {isLoading ? (
+        <ProductGridSkeleton />
+      ) : (
+        <FlatList
+          key={columns}
+          data={products}
+          keyExtractor={(item) => item.id}
+          numColumns={columns}
+          contentContainerStyle={{ padding: 16, gap: 12 }}
+          columnWrapperStyle={{ gap: 12 }}
+          renderItem={({ item }) => {
+            const isSelected = selected.has(item.id)
+            return (
+              <ProductCard
+                imageUrl={item.primary_photo_url}
+                onPress={() => toggle(item.id)}
+                selected={isSelected}
+                elevation={isSelected ? 3 : 1}
+                imageHeight={150}
+                style={isSelected ? { borderWidth: 2, borderColor: '#BB3F95' } : undefined}
+                placeholderIcon="📷"
+                footer={
+                  <View className="p-3">
+                    <Text
+                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      className="text-xs font-bold text-spaceCadet-900"
+                      numberOfLines={1}
+                    >
+                      {item.category ?? 'Design'} · {item.primary_color ?? '—'}
+                    </Text>
+                    <Text className="text-xs font-bold text-spaceCadet-900 mt-1">
+                      {formatPriceRange(item.price_min, item.price_max)}
+                    </Text>
+                  </View>
+                }
+              />
+            )
+          }}
+          ListEmptyComponent={
+            <Text className="text-heliotrope-400 text-xs font-medium text-center mt-16">
+              No available products. Add products to your catalog first.
+            </Text>
+          }
+        />
+      )}
+
+      <View
+        className="bg-white px-5 pt-3.5 border-t border-lavender-200"
+        style={{ paddingBottom: 16 + insets.bottom }}
+      >
+        <GradientButton
+          label={`Add ${selected.size || ''} Design${selected.size === 1 ? '' : 's'}`.trim()}
+          disabled={!canAssign}
+          loading={assign.isPending}
+          onPress={() => assign.mutate()}
+        />
+      </View>
     </View>
   )
 }

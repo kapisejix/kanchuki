@@ -19,20 +19,24 @@ import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-medium text-sand-600 mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5 mt-3">{text}</Text>
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">{title}</Text>
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+      >
+        {title}
+      </Text>
       {children}
     </View>
   )
 }
 
 export default function SupplierFormScreen() {
-  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -89,8 +93,8 @@ export default function SupplierFormScreen() {
 
   if (isEdit && existingLoading) {
     return (
-      <View className="flex-1 bg-ink-50 items-center justify-center">
-        <Text className="text-xs text-sand-400">Loading…</Text>
+      <View className="flex-1 bg-[#F8F7FC] items-center justify-center">
+        <Text className="text-xs text-heliotrope-500 font-medium">Loading…</Text>
       </View>
     )
   }
@@ -98,23 +102,27 @@ export default function SupplierFormScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-[#F8F7FC]"
     >
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900"
+          >
             {isEdit ? 'Edit Supplier' : 'Add Supplier'}
           </Text>
         </View>
@@ -122,14 +130,14 @@ export default function SupplierFormScreen() {
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        <Section title="Details">
+        <Section title="Supplier Details">
           <Label text="Name *" />
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. Shree Textiles"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+            placeholderTextColor="#928EB2"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             maxLength={120}
           />
           <Label text="Phone" />
@@ -137,9 +145,9 @@ export default function SupplierFormScreen() {
             value={phone}
             onChangeText={setPhone}
             placeholder="98765 43210"
-            placeholderTextColor={colors.sand[400]}
+            placeholderTextColor="#928EB2"
             keyboardType="phone-pad"
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             maxLength={20}
           />
           <Label text="City" />
@@ -147,8 +155,8 @@ export default function SupplierFormScreen() {
             value={city}
             onChangeText={setCity}
             placeholder="Surat"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+            placeholderTextColor="#928EB2"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             maxLength={60}
           />
           <Label text="Notes" />
@@ -156,9 +164,9 @@ export default function SupplierFormScreen() {
             value={notes}
             onChangeText={setNotes}
             placeholder="Payment terms, usual lead time…"
-            placeholderTextColor={colors.sand[400]}
+            placeholderTextColor="#928EB2"
             multiline
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3 min-h-[80px]"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 min-h-[90px]"
             maxLength={500}
             textAlignVertical="top"
           />

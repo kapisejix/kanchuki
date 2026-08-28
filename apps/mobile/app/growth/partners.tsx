@@ -53,7 +53,6 @@ const TYPE_EMOJI: Record<PartnerType, string> = {
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function PartnersScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
@@ -73,17 +72,17 @@ export default function PartnersScreen() {
   })
 
   const confirmDelete = (p: Partner) => {
-    Alert.alert('Remove partner?', `\"${p.name}\" will be deactivated.`, [
+    Alert.alert('Remove partner?', `"${p.name}" will be deactivated.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Remove', style: 'destructive', onPress: () => remove.mutate(p.id) },
     ])
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -91,40 +90,49 @@ export default function PartnersScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Partners</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Partner Network
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => setCreating(true)}
             accessibilityLabel="Add partner"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : partners.length === 0 && !creating ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Handshake size={28} color={primaryColor} />
+              <Handshake size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No partners yet</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No Partners Yet
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               Add local salons, tailors, and stylists as partners.
               They refer customers to your store and earn commission.
             </Text>
@@ -139,23 +147,26 @@ export default function PartnersScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
-          <View className="gap-2.5">
+          <View className="gap-3.5">
             {partners.map((p) => (
-              <View key={p.id} className="bg-white rounded-2xl p-4 border border-sand-100">
+              <View key={p.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
                 <View className="flex-row items-center justify-between mb-2">
-                  <View className="flex-row items-center gap-2 flex-1 mr-2">
+                  <View className="flex-row items-center gap-3 flex-1 mr-2">
                     <View
-                      className="w-9 h-9 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: `${primaryColor}1A` }}
+                      className="w-11 h-11 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
                     >
-                      <Text className="text-base">{TYPE_EMOJI[p.type]}</Text>
+                      <Text className="text-xl">{TYPE_EMOJI[p.type]}</Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
                         {p.name}
                       </Text>
-                      <Text className="text-xs text-sand-400">
-                        {TYPE_LABELS[p.type]} · {p.referral_code}
+                      <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
+                        {TYPE_LABELS[p.type]} · <Text className="font-bold text-fuchsia-700">{p.referral_code}</Text>
                       </Text>
                     </View>
                   </View>
@@ -165,32 +176,32 @@ export default function PartnersScreen() {
                     accessibilityLabel={`Remove ${p.name}`}
                     accessibilityRole="button"
                   >
-                    <Trash2 size={15} color={colors.rust?.[500] ?? '#C2724D'} />
+                    <Trash2 size={16} color="#dc2626" />
                   </AnimatedPressable>
                 </View>
 
-                <View className="flex-row items-center gap-2 mt-1">
+                <View className="flex-row items-center gap-2 mt-2 pt-3 border-t border-lavender-200">
                   <View
-                    className="rounded-full px-2.5 py-1"
-                    style={{
-                      backgroundColor: p.is_active ? `${primaryColor}1A` : colors.sand[100],
-                    }}
+                    className={`rounded-full px-3 py-1 ${
+                      p.is_active ? 'bg-fuchsia-500/15 border border-fuchsia-500/30' : 'bg-lavender-100 border border-lavender-200'
+                    }`}
                   >
                     <Text
-                      className="text-[10px] font-semibold uppercase"
-                      style={{ color: p.is_active ? primaryColor : colors.sand[400] }}
+                      className={`text-[10px] font-bold uppercase tracking-wider ${
+                        p.is_active ? 'text-fuchsia-700' : 'text-heliotrope-500'
+                      }`}
                     >
                       {p.is_active ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
-                  <Text className="text-[10px] text-sand-400">
+                  <Text className="text-xs font-semibold text-heliotrope-500">
                     {p.commission_type === 'PERCENTAGE_OF_SALE'
                       ? `${p.commission_rate}% commission`
                       : `${formatPaiseShort(p.commission_rate)} per referral`}
                   </Text>
                   {p.pending_referrals && p.pending_referrals > 0 ? (
-                    <View className="ml-auto bg-amber-50 rounded-full px-2 py-0.5">
-                      <Text className="text-[10px] font-semibold text-amber-600">
+                    <View className="ml-auto bg-fuchsia-500/10 rounded-full px-2.5 py-0.5 border border-fuchsia-500/20">
+                      <Text className="text-[10px] font-bold text-fuchsia-700">
                         {p.pending_referrals} pending
                       </Text>
                     </View>
@@ -229,7 +240,6 @@ function CreatePartnerModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [name, setName] = useState('')
@@ -272,36 +282,40 @@ function CreatePartnerModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8">
-        <Text className="text-base font-bold text-sand-900 mb-5">Add Partner</Text>
+      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl font-bold text-spaceCadet-900 mb-5"
+        >
+          Add Partner
+        </Text>
 
         {/* Name */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Partner Name</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Partner Name</Text>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder="e.g. Style Studio Salon, Master Tailor…"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
         />
 
         {/* Type */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Type</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Type</Text>
         <View className="flex-row gap-2 mb-4">
           {TYPES.map((t) => (
             <AnimatedPressable
               key={t.value}
               onPress={() => setType(t.value)}
-              className="flex-1 items-center py-2 rounded-xl border"
-              style={{
-                backgroundColor: type === t.value ? `${primaryColor}1A` : colors.sand[50],
-                borderColor: type === t.value ? primaryColor : colors.sand[200],
-              }}
+              className={`flex-1 items-center py-2.5 rounded-2xl border ${
+                type === t.value ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+              }`}
             >
               <Text className="text-base mb-0.5">{t.emoji}</Text>
               <Text
-                className="text-[10px] font-semibold"
-                style={{ color: type === t.value ? primaryColor : colors.sand[500] }}
+                className={`text-[10px] font-bold ${
+                  type === t.value ? 'text-white' : 'text-spaceCadet-900'
+                }`}
               >
                 {t.label}
               </Text>
@@ -310,30 +324,30 @@ function CreatePartnerModal({
         </View>
 
         {/* Phone */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Phone (optional)</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Phone (optional)</Text>
         <TextInput
           value={phone}
           onChangeText={setPhone}
           keyboardType="phone-pad"
           placeholder="98765 43210"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
         />
 
         {/* Commission */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Commission (%)</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Commission (%)</Text>
         <TextInput
           value={commissionRate}
           onChangeText={(t) => setCommissionRate(t.replace(/[^\d]/g, ''))}
           keyboardType="numeric"
           placeholder="10"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
         />
 
         {error ? (
-          <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-            <Text className="text-xs text-red-600">{error}</Text>
+          <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+            <Text className="text-xs text-red-600 font-bold">{error}</Text>
           </View>
         ) : null}
 
@@ -347,9 +361,9 @@ function CreatePartnerModal({
           </View>
           <AnimatedPressable
             onPress={onClose}
-            className="flex-1 items-center justify-center bg-sand-100 rounded-xl py-3"
+            className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
           >
-            <Text className="text-sm font-semibold text-sand-600">Cancel</Text>
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">Cancel</Text>
           </AnimatedPressable>
         </View>
       </View>

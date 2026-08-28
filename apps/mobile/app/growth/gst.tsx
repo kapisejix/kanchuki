@@ -14,7 +14,6 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { growthApi, type GstTransaction, type GstSummary, type GstMonthly, type GstTransactions } from '../../src/lib/api/growth'
-import { useTheme } from '../../src/lib/theme'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -28,11 +27,9 @@ const inr = (n: number) => `₹${n.toLocaleString('en-IN')}`
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function GstScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [tab, setTab] = useState<'summary' | 'monthly' | 'transactions'>('summary')
   const currentYear = new Date().getFullYear()
-  const currentMonth = new Date().getMonth() + 1
   const [selectedMonth, setSelectedMonth] = useState<number | undefined>()
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [txPage, setTxPage] = useState(1)
@@ -63,78 +60,81 @@ export default function GstScreen() {
   const isLoading = summaryLoading || monthlyLoading || txLoading
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <View className="flex-row items-center justify-between mb-3">
+        <View className="flex-row items-center justify-between mb-3.5">
           <View className="flex-row items-center gap-3">
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">GST Report</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              GST Filing Ledger
+            </Text>
           </View>
           {/* Year selector */}
-          <View className="flex-row items-center gap-1">
+          <View className="flex-row items-center gap-1 bg-lavender-50 rounded-2xl p-1 border border-lavender-200">
             <AnimatedPressable
               onPress={() => setSelectedYear((y) => y - 1)}
               hitSlop={8}
-              className="w-7 h-7 rounded-lg items-center justify-center"
-              style={{ backgroundColor: colors.sand[100] }}
+              className="w-8 h-8 rounded-xl items-center justify-center bg-white border border-lavender-200"
             >
-              <ChevronLeft size={14} color={colors.sand[600]} />
+              <ChevronLeft size={14} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-sm font-bold text-sand-900 w-10 text-center">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-sm font-bold text-spaceCadet-900 px-2 text-center"
+            >
               {selectedYear}
             </Text>
             <AnimatedPressable
               onPress={() => setSelectedYear((y) => y + 1)}
               hitSlop={8}
-              className="w-7 h-7 rounded-lg items-center justify-center"
-              style={{ backgroundColor: colors.sand[100] }}
+              className="w-8 h-8 rounded-xl items-center justify-center bg-white border border-lavender-200"
             >
-              <ChevronRight size={14} color={colors.sand[600]} />
+              <ChevronRight size={14} color="#231F48" />
             </AnimatedPressable>
           </View>
         </View>
 
         {/* Tab bar */}
-        <View className="flex-row gap-1 bg-sand-50 rounded-xl p-1">
+        <View className="flex-row gap-2">
           {(
             [
               { key: 'summary', label: 'Summary' },
               { key: 'monthly', label: 'Monthly' },
-              { key: 'transactions', label: 'Transactions' },
+              { key: 'transactions', label: 'Invoices' },
             ] as const
-          ).map((t) => (
-            <AnimatedPressable
-              key={t.key}
-              onPress={() => setTab(t.key)}
-              className="flex-1 items-center py-2 rounded-lg"
-              style={{
-                backgroundColor: tab === t.key ? 'white' : 'transparent',
-                shadowColor: tab === t.key ? colors.sand[300] : 'transparent',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: tab === t.key ? 0.2 : 0,
-                shadowRadius: 2,
-                elevation: tab === t.key ? 2 : 0,
-              }}
-            >
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: tab === t.key ? primaryColor : colors.sand[500] }}
+          ).map((t) => {
+            const active = tab === t.key
+            return (
+              <AnimatedPressable
+                key={t.key}
+                onPress={() => setTab(t.key)}
+                className={`flex-1 items-center py-2.5 rounded-2xl border ${
+                  active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                }`}
               >
-                {t.label}
-              </Text>
-            </AnimatedPressable>
-          ))}
+                <Text
+                  className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                >
+                  {t.label}
+                </Text>
+              </AnimatedPressable>
+            )
+          })}
         </View>
       </View>
 
@@ -144,59 +144,54 @@ export default function GstScreen() {
         refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
       >
         {/* Month filter chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 pt-3 mb-2">
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} className="px-4 pt-3.5 mb-2">
           <View className="flex-row gap-2">
             <AnimatedPressable
               onPress={() => { setSelectedMonth(undefined); setTxPage(1) }}
-              className="rounded-full px-3 py-1.5 border"
-              style={{
-                backgroundColor: !selectedMonth ? `${primaryColor}1A` : colors.sand[50],
-                borderColor: !selectedMonth ? primaryColor : colors.sand[200],
-              }}
+              className={`rounded-full px-4 py-1.5 border ${
+                !selectedMonth ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+              }`}
             >
               <Text
-                className="text-[11px] font-semibold"
-                style={{ color: !selectedMonth ? primaryColor : colors.sand[500] }}
+                className={`text-xs font-bold ${!selectedMonth ? 'text-white' : 'text-spaceCadet-900'}`}
               >
                 Full Year
               </Text>
             </AnimatedPressable>
-            {MONTHS.map((m, i) => (
-              <AnimatedPressable
-                key={i}
-                onPress={() => { setSelectedMonth(i + 1); setTxPage(1) }}
-                className="rounded-full px-3 py-1.5 border"
-                style={{
-                  backgroundColor: selectedMonth === i + 1 ? `${primaryColor}1A` : colors.sand[50],
-                  borderColor: selectedMonth === i + 1 ? primaryColor : colors.sand[200],
-                }}
-              >
-                <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: selectedMonth === i + 1 ? primaryColor : colors.sand[500] }}
+            {MONTHS.map((m, i) => {
+              const active = selectedMonth === i + 1
+              return (
+                <AnimatedPressable
+                  key={i}
+                  onPress={() => { setSelectedMonth(i + 1); setTxPage(1) }}
+                  className={`rounded-full px-4 py-1.5 border ${
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  }`}
                 >
-                  {m}
-                </Text>
-              </AnimatedPressable>
-            ))}
+                  <Text
+                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  >
+                    {m}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
           </View>
         </ScrollView>
 
         {isLoading ? (
           <View className="items-center justify-center py-20">
-            <Text className="text-sm text-sand-400">Loading GST data…</Text>
+            <Text className="text-xs text-heliotrope-500 font-medium">Loading GST data…</Text>
           </View>
         ) : tab === 'summary' && summary ? (
-          <SummaryTab summary={summary} primaryColor={primaryColor} colors={colors} />
+          <SummaryTab summary={summary} />
         ) : tab === 'monthly' && monthly ? (
-          <MonthlyTab monthly={monthly} primaryColor={primaryColor} colors={colors} />
+          <MonthlyTab monthly={monthly} />
         ) : tab === 'transactions' && transactions ? (
           <TransactionsTab
             transactions={transactions}
             page={txPage}
             onPageChange={setTxPage}
-            primaryColor={primaryColor}
-            colors={colors}
           />
         ) : null}
       </ScrollView>
@@ -208,12 +203,8 @@ export default function GstScreen() {
 
 function SummaryTab({
   summary,
-  primaryColor,
-  colors,
 }: {
   summary: GstSummary
-  primaryColor: string
-  colors: any
 }) {
   return (
     <View className="px-4 pt-2">
@@ -222,17 +213,13 @@ function SummaryTab({
         <StatCard
           label="Total Sales"
           value={inr(summary.total_sales)}
-          icon={<TrendingUp size={16} color={primaryColor} />}
-          primaryColor={primaryColor}
-          colors={colors}
+          icon={<TrendingUp size={16} color="#BB3F95" />}
           flex
         />
         <StatCard
           label="Total GST"
           value={inr(summary.total_gst)}
-          icon={<Receipt size={16} color={colors.rust?.[500] ?? '#C2724D'} />}
-          primaryColor={colors.rust?.[500] ?? '#C2724D'}
-          colors={colors}
+          icon={<Receipt size={16} color="#16a34a" />}
           flex
         />
       </View>
@@ -241,34 +228,36 @@ function SummaryTab({
         <StatCard
           label="Taxable Amount"
           value={inr(summary.total_taxable)}
-          icon={<FileText size={16} color={colors.sand[500]} />}
-          primaryColor={colors.sand[500]}
-          colors={colors}
+          icon={<FileText size={16} color="#6B4773" />}
           flex
         />
         <StatCard
-          label="Orders"
+          label="Total Orders"
           value={String(summary.total_orders)}
-          icon={<FileText size={16} color="#3B82F6" />}
-          primaryColor="#3B82F6"
-          colors={colors}
+          icon={<FileText size={16} color="#BB3F95" />}
           flex
         />
       </View>
 
       {/* GST Breakdown */}
-      <View className="bg-white rounded-2xl border border-sand-100 p-4 mb-3">
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-3">
+      <View className="bg-white rounded-3xl border border-lavender-200 p-5 mb-3.5 shadow-sm">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900 mb-3.5"
+        >
           GST Breakdown (Estimated)
         </Text>
-        <View className="gap-2.5">
-          <BreakdownRow label="CGST (9%)" value={inr(summary.estimated_cgst)} colors={colors} />
-          <BreakdownRow label="SGST (9%)" value={inr(summary.estimated_sgst)} colors={colors} />
-          <BreakdownRow label="IGST (18%)" value={inr(summary.estimated_igst)} colors={colors} />
-          <View className="border-t border-sand-100 pt-2.5">
+        <View className="gap-3">
+          <BreakdownRow label="CGST (9%)" value={inr(summary.estimated_cgst)} />
+          <BreakdownRow label="SGST (9%)" value={inr(summary.estimated_sgst)} />
+          <BreakdownRow label="IGST (18%)" value={inr(summary.estimated_igst)} />
+          <View className="border-t border-lavender-200 pt-3">
             <View className="flex-row items-center justify-between">
-              <Text className="text-sm font-bold text-sand-900">Total GST</Text>
-              <Text className="text-sm font-bold" style={{ color: primaryColor }}>
+              <Text className="text-sm font-bold text-spaceCadet-900">Total GST Liability</Text>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base font-bold text-fuchsia-700"
+              >
                 {inr(summary.total_gst)}
               </Text>
             </View>
@@ -277,24 +266,33 @@ function SummaryTab({
       </View>
 
       {/* Invoice status */}
-      <View className="bg-white rounded-2xl border border-sand-100 p-4">
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-3">
-          Invoice Status
+      <View className="bg-white rounded-3xl border border-lavender-200 p-5 shadow-sm">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900 mb-3.5"
+        >
+          Invoice Fulfillment Status
         </Text>
         <View className="flex-row gap-3">
-          <View className="flex-1 items-center py-3 bg-green-50 rounded-xl">
-            <CheckCircle size={18} color="#22C55E" />
-            <Text className="text-lg font-bold text-green-700 mt-1">
+          <View className="flex-1 items-center py-3.5 bg-emerald-50 rounded-2xl border border-emerald-200">
+            <CheckCircle size={20} color="#16a34a" />
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-emerald-700 mt-1"
+            >
               {summary.invoiced_orders}
             </Text>
-            <Text className="text-[10px] text-green-600 font-medium">Invoiced</Text>
+            <Text className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider mt-0.5">Invoiced</Text>
           </View>
-          <View className="flex-1 items-center py-3 bg-amber-50 rounded-xl">
-            <Clock size={18} color="#F59E0B" />
-            <Text className="text-lg font-bold text-amber-700 mt-1">
+          <View className="flex-1 items-center py-3.5 bg-amber-50 rounded-2xl border border-amber-200">
+            <Clock size={20} color="#d97706" />
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-amber-700 mt-1"
+            >
               {summary.pending_invoices}
             </Text>
-            <Text className="text-[10px] text-amber-600 font-medium">Pending</Text>
+            <Text className="text-[10px] text-amber-600 font-bold uppercase tracking-wider mt-0.5">Pending</Text>
           </View>
         </View>
       </View>
@@ -306,48 +304,54 @@ function SummaryTab({
 
 function MonthlyTab({
   monthly,
-  primaryColor,
-  colors,
 }: {
   monthly: GstMonthly
-  primaryColor: string
-  colors: any
 }) {
   const maxGst = Math.max(...monthly.months.map((m) => m.gst), 1)
 
   return (
     <View className="px-4 pt-2">
-      <Text className="text-xs font-semibold text-sand-500 uppercase mb-3">
-        Monthly GST — {monthly.year}
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+      >
+        Monthly GST Breakdown — {monthly.year}
       </Text>
 
-      <View className="gap-2">
+      <View className="gap-3">
         {monthly.months.map((m) => (
           <View
             key={m.month}
-            className="bg-white rounded-xl border border-sand-100 p-3"
+            className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm"
           >
-            <View className="flex-row items-center justify-between mb-1.5">
-              <Text className="text-sm font-semibold text-sand-900">{m.month_name}</Text>
-              <Text className="text-xs text-sand-400">
+            <View className="flex-row items-center justify-between mb-2">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base font-bold text-spaceCadet-900"
+              >
+                {m.month_name}
+              </Text>
+              <Text className="text-xs text-heliotrope-500 font-medium">
                 {m.orders} {m.orders === 1 ? 'order' : 'orders'}
               </Text>
             </View>
             {/* Bar */}
-            <View className="h-2 bg-sand-100 rounded-full mb-1.5 overflow-hidden">
+            <View className="h-2 bg-lavender-100 rounded-full mb-2 overflow-hidden">
               <View
-                className="h-full rounded-full"
+                className="h-full rounded-full bg-fuchsia-600"
                 style={{
                   width: `${Math.max((m.gst / maxGst) * 100, 0)}%`,
-                  backgroundColor: primaryColor,
                 }}
               />
             </View>
             <View className="flex-row justify-between">
-              <Text className="text-[10px] text-sand-400">
+              <Text className="text-xs text-heliotrope-500 font-medium">
                 Sales: {inr(m.sales)}
               </Text>
-              <Text className="text-[10px] font-semibold" style={{ color: primaryColor }}>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-sm font-bold text-fuchsia-700"
+              >
                 GST: {inr(m.gst)}
               </Text>
             </View>
@@ -364,60 +368,55 @@ function TransactionsTab({
   transactions,
   page,
   onPageChange,
-  primaryColor,
-  colors,
 }: {
   transactions: GstTransactions
   page: number
   onPageChange: (p: number) => void
-  primaryColor: string
-  colors: any
 }) {
   return (
     <View className="px-4 pt-2">
-      <View className="flex-row items-center justify-between mb-3">
-        <Text className="text-xs font-semibold text-sand-500 uppercase">
-          Transactions ({transactions.pagination.total})
+      <View className="flex-row items-center justify-between mb-3.5">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+        >
+          Invoices ({transactions.pagination.total})
         </Text>
-        <Text className="text-[10px] text-sand-400">
+        <Text className="text-xs text-heliotrope-500 font-medium">
           Page {transactions.pagination.page} of {transactions.pagination.pages}
         </Text>
       </View>
 
       {transactions.transactions.length === 0 ? (
-        <View className="items-center py-10">
-          <Text className="text-sm text-sand-400">No transactions found</Text>
+        <View className="items-center py-12">
+          <Text className="text-sm text-heliotrope-500 font-medium">No transactions found</Text>
         </View>
       ) : (
-        <View className="gap-2">
+        <View className="gap-3">
           {transactions.transactions.map((tx) => (
-            <TxRow key={tx.id} tx={tx} primaryColor={primaryColor} colors={colors} />
+            <TxRow key={tx.id} tx={tx} />
           ))}
         </View>
       )}
 
       {/* Pagination */}
       {transactions.pagination.pages > 1 && (
-        <View className="flex-row items-center justify-center gap-3 mt-4">
+        <View className="flex-row items-center justify-center gap-3 mt-5">
           <AnimatedPressable
             onPress={() => onPageChange(Math.max(1, page - 1))}
             disabled={page <= 1}
-            className="rounded-lg px-4 py-2 border"
-            style={{
-              backgroundColor: page <= 1 ? colors.sand[50] : 'white',
-              borderColor: colors.sand[200],
-              opacity: page <= 1 ? 0.5 : 1,
-            }}
+            className={`rounded-2xl px-5 py-2.5 border ${
+              page <= 1 ? 'bg-lavender-50 border-lavender-200 opacity-50' : 'bg-white border-lavender-200'
+            }`}
           >
-            <Text className="text-xs font-semibold text-sand-600">← Prev</Text>
+            <Text className="text-xs font-bold text-spaceCadet-900">← Prev</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => onPageChange(Math.min(transactions.pagination.pages, page + 1))}
             disabled={page >= transactions.pagination.pages}
-            className="rounded-lg px-4 py-2"
-            style={{ backgroundColor: primaryColor }}
+            className="rounded-2xl px-5 py-2.5 bg-spaceCadet-900 shadow-sm"
           >
-            <Text className="text-xs font-semibold text-white">Next →</Text>
+            <Text className="text-xs font-bold text-white">Next →</Text>
           </AnimatedPressable>
         </View>
       )}
@@ -429,41 +428,44 @@ function TransactionsTab({
 
 function TxRow({
   tx,
-  primaryColor,
-  colors,
 }: {
   tx: GstTransaction
-  primaryColor: string
-  colors: any
 }) {
   const date = new Date(tx.date)
   const dateStr = date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
 
   return (
-    <View className="bg-white rounded-xl border border-sand-100 p-3">
-      <View className="flex-row items-center justify-between mb-1">
-        <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
-          {tx.customer ?? 'Walk-in Customer'}
+    <View className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm">
+      <View className="flex-row items-center justify-between mb-1.5">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+          numberOfLines={1}
+        >
+          {tx.customer ?? 'Walk-in Client'}
         </Text>
-        <Text className="text-xs font-bold" style={{ color: primaryColor }}>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+        >
           {inr(tx.total)}
         </Text>
       </View>
       <View className="flex-row items-center gap-2">
-        <Text className="text-[10px] text-sand-400">{dateStr}</Text>
-        <Text className="text-[10px] text-sand-300">·</Text>
-        <Text className="text-[10px] text-sand-400">GST: {inr(tx.gst)}</Text>
+        <Text className="text-xs text-heliotrope-400 font-medium">{dateStr}</Text>
+        <Text className="text-xs text-lavender-300">·</Text>
+        <Text className="text-xs text-fuchsia-700 font-bold">GST: {inr(tx.gst)}</Text>
         <View className="flex-1" />
         {tx.has_invoice ? (
-          <View className="flex-row items-center gap-0.5 bg-green-50 rounded-full px-2 py-0.5">
-            <CheckCircle size={10} color="#22C55E" />
-            <Text className="text-[10px] font-semibold text-green-600">
+          <View className="flex-row items-center gap-1 bg-emerald-50 rounded-full px-2.5 py-0.5 border border-emerald-200">
+            <CheckCircle size={11} color="#16a34a" />
+            <Text className="text-[10px] font-bold text-emerald-700">
               {tx.invoice_number}
             </Text>
           </View>
         ) : (
-          <View className="bg-amber-50 rounded-full px-2 py-0.5">
-            <Text className="text-[10px] font-semibold text-amber-600">No invoice</Text>
+          <View className="bg-amber-50 rounded-full px-2.5 py-0.5 border border-amber-200">
+            <Text className="text-[10px] font-bold text-amber-700">No invoice</Text>
           </View>
         )}
       </View>
@@ -477,27 +479,29 @@ function StatCard({
   label,
   value,
   icon,
-  primaryColor,
-  colors,
   flex,
 }: {
   label: string
   value: string
   icon: React.ReactNode
-  primaryColor: string
-  colors: any
   flex?: boolean
 }) {
   return (
     <View
-      className="bg-white rounded-2xl border border-sand-100 p-3.5"
+      className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm"
       style={flex ? { flex: 1 } : undefined}
     >
-      <View className="flex-row items-center gap-1.5 mb-1.5">
-        {icon}
-        <Text className="text-[10px] font-semibold text-sand-500 uppercase">{label}</Text>
+      <View className="flex-row items-center gap-2 mb-2">
+        <View className="w-8 h-8 rounded-xl bg-lavender-100 items-center justify-center border border-lavender-200">
+          {icon}
+        </View>
+        <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">{label}</Text>
       </View>
-      <Text className="text-lg font-bold text-sand-900" numberOfLines={1}>
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-xl font-bold text-spaceCadet-900"
+        numberOfLines={1}
+      >
         {value}
       </Text>
     </View>
@@ -507,16 +511,14 @@ function StatCard({
 function BreakdownRow({
   label,
   value,
-  colors,
 }: {
   label: string
   value: string
-  colors: any
 }) {
   return (
     <View className="flex-row items-center justify-between">
-      <Text className="text-xs text-sand-500">{label}</Text>
-      <Text className="text-xs font-semibold text-sand-700">{value}</Text>
+      <Text className="text-xs text-heliotrope-500 font-medium">{label}</Text>
+      <Text className="text-xs font-bold text-spaceCadet-900">{value}</Text>
     </View>
   )
 }

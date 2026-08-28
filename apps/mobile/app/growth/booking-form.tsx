@@ -27,28 +27,31 @@ function Chip({
   active: boolean
   onPress: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   return (
     <AnimatedPressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`px-3.5 py-2 rounded-xl border ${active ? 'border-ink-600' : 'border-sand-200 bg-white'}`}
-      style={active ? { backgroundColor: primaryColor } : undefined}
+      className={`px-4 py-2 rounded-2xl border ${active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'}`}
     >
-      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-600'}`}>{label}</Text>
+      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>{label}</Text>
     </AnimatedPressable>
   )
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-medium text-sand-600 mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5 mt-3">{text}</Text>
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">{title}</Text>
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+      >
+        {title}
+      </Text>
       {children}
     </View>
   )
@@ -83,7 +86,6 @@ function slotsForDay(dayKey: string): { key: string; label: string }[] {
 }
 
 export default function BookingFormScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -134,37 +136,43 @@ export default function BookingFormScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-[#F8F7FC]"
     >
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">New Booking</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900"
+          >
+            New Booking
+          </Text>
         </View>
         <GradientButton label={saving ? 'Saving…' : 'Save'} onPress={() => void handleSave()} loading={saving} />
       </View>
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="gap-4">
-          <Section title="Customer">
+          <Section title="Customer Details">
             <Label text="Name *" />
             <TextInput
               value={name}
               onChangeText={setName}
               placeholder="Customer name"
-              placeholderTextColor={colors.sand[400]}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+              placeholderTextColor="#928EB2"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               maxLength={120}
             />
             <Label text="Phone *" />
@@ -172,23 +180,23 @@ export default function BookingFormScreen() {
               value={phone}
               onChangeText={setPhone}
               placeholder="98765 43210"
-              placeholderTextColor={colors.sand[400]}
+              placeholderTextColor="#928EB2"
               keyboardType="phone-pad"
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               maxLength={20}
             />
             <Label text="Note (optional)" />
             <TextInput
               value={note}
               onChangeText={setNote}
-              placeholder="e.g. wants to try 3 suits"
-              placeholderTextColor={colors.sand[400]}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+              placeholder="e.g. wants to try 3 bridal suits"
+              placeholderTextColor="#928EB2"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
               maxLength={500}
             />
           </Section>
 
-          <Section title="Date">
+          <Section title="Date of Visit">
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
               {days.map((d) => (
                 <AnimatedPressable
@@ -199,15 +207,14 @@ export default function BookingFormScreen() {
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ selected: dayKey === d.key }}
-                  className={`rounded-xl px-3.5 py-2.5 border items-center min-w-[72px] ${
-                    dayKey === d.key ? 'border-ink-600' : 'border-sand-200 bg-white'
+                  className={`rounded-2xl px-4 py-3 border items-center min-w-[76px] ${
+                    dayKey === d.key ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
                   }`}
-                  style={dayKey === d.key ? { backgroundColor: primaryColor } : undefined}
                 >
-                  <Text className={`text-xs font-bold ${dayKey === d.key ? 'text-white' : 'text-sand-800'}`}>
+                  <Text className={`text-xs font-bold ${dayKey === d.key ? 'text-white' : 'text-spaceCadet-900'}`}>
                     {d.label}
                   </Text>
-                  <Text className={`text-[10px] mt-0.5 ${dayKey === d.key ? 'text-white/70' : 'text-sand-400'}`}>
+                  <Text className={`text-[10px] mt-0.5 font-medium ${dayKey === d.key ? 'text-[#E0E1F6]' : 'text-heliotrope-500'}`}>
                     {d.sub}
                   </Text>
                 </AnimatedPressable>
@@ -215,7 +222,7 @@ export default function BookingFormScreen() {
             </ScrollView>
           </Section>
 
-          <Section title="Time slot">
+          <Section title="Time Slot">
             <View className="flex-row flex-wrap gap-2">
               {slots.map((s) => (
                 <Chip
@@ -233,7 +240,7 @@ export default function BookingFormScreen() {
               ))}
             </View>
             {slotKey && (
-              <Text className="text-[11px] text-sand-500 mt-3">
+              <Text className="text-xs text-fuchsia-700 font-bold mt-3.5 bg-fuchsia-500/10 p-2.5 rounded-xl border border-fuchsia-500/20">
                 {new Date(slotKey).toLocaleString('en-IN', {
                   weekday: 'short',
                   day: 'numeric',

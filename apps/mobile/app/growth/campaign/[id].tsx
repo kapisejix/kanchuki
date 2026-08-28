@@ -40,17 +40,16 @@ const TYPE_LABEL: Record<CampaignType, { label: string; icon: React.ReactNode }>
   AB_TEST: { label: 'A/B Test', icon: null },
 }
 
-function statusInfo(status: CampaignStatus, colors: ReturnType<typeof useTheme>['colors']) {
+function statusInfo(status: CampaignStatus) {
   const map: Record<CampaignStatus, { label: string; color: string; bg: string }> = {
-    DRAFT: { label: 'Draft', color: colors.sand[600], bg: colors.sand[100] },
-    SCHEDULED: { label: 'Scheduled', color: colors.turmeric[600], bg: colors.turmeric[100] },
-    SENT: { label: 'Sent', color: colors.turmeric[600], bg: colors.turmeric[100] },
+    DRAFT: { label: 'Draft', color: '#928EB2', bg: '#F8F7FC' },
+    SCHEDULED: { label: 'Scheduled', color: '#BB3F95', bg: '#BB3F951A' },
+    SENT: { label: 'Sent', color: '#16a34a', bg: '#dcfce7' },
   }
   return map[status]
 }
 
 export default function CampaignDetailScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -90,13 +89,13 @@ export default function CampaignDetailScreen() {
 
   if (isLoading || !campaign) {
     return (
-      <View className="flex-1 bg-ink-50 items-center justify-center">
-        <ActivityIndicator color={primaryColor} />
+      <View className="flex-1 bg-[#F8F7FC] items-center justify-center">
+        <ActivityIndicator color="#BB3F95" />
       </View>
     )
   }
 
-  const status = statusInfo(campaign.status, colors)
+  const status = statusInfo(campaign.status)
   const sent = campaign.status === 'SENT'
   const canEdit = !sent
   const breakdown = campaign.sends_breakdown ?? {}
@@ -151,22 +150,27 @@ export default function CampaignDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Go back"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900 flex-1" numberOfLines={1}>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900 flex-1"
+            numberOfLines={1}
+          >
             {campaign.name}
           </Text>
           {canEdit && (
@@ -174,20 +178,19 @@ export default function CampaignDetailScreen() {
               onPress={() => router.push(`/growth/campaign-new?id=${campaign.id}`)}
               accessibilityLabel="Edit campaign"
               accessibilityRole="button"
-              className="w-9 h-9 rounded-xl items-center justify-center"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
             >
-              <Pencil size={17} color={primaryColor} />
+              <Pencil size={16} color="#231F48" />
             </AnimatedPressable>
           )}
         </View>
         <View className="flex-row items-center gap-2 mt-2.5">
-          <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: status.bg }}>
-            <Text className="text-[10px] font-semibold" style={{ color: status.color }}>
+          <View className="rounded-full px-2.5 py-0.5" style={{ backgroundColor: status.bg }}>
+            <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: status.color }}>
               {status.label}
             </Text>
           </View>
-          <Text className="text-xs text-sand-500">
+          <Text className="text-xs text-heliotrope-500 font-medium">
             {TYPE_LABEL[campaign.type].label}
             {campaign.festival_name ? ` · ${campaign.festival_name}` : ''}
           </Text>
@@ -197,27 +200,30 @@ export default function CampaignDetailScreen() {
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
         {/* Send result */}
         {sendResult && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
             <View className="flex-row items-center gap-2 mb-2">
               {sendResult.sent_via === 'whatsapp_api' ? (
-                <Send size={16} color={colors.turmeric[600]} />
+                <Send size={16} color="#BB3F95" />
               ) : (
-                <Link2 size={16} color={colors.turmeric[600]} />
+                <Link2 size={16} color="#BB3F95" />
               )}
-              <Text className="text-sm font-bold text-sand-900">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base font-bold text-spaceCadet-900"
+              >
                 {sendResult.sent_via === 'whatsapp_api'
                   ? 'Sent via WhatsApp Business API'
                   : 'Ready to forward on WhatsApp'}
               </Text>
             </View>
             {sendResult.sent_via === 'whatsapp_api' ? (
-              <Text className="text-xs text-sand-600 leading-4">
+              <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">
                 {sendResult.api_sent} sent, {sendResult.api_failed} failed, out of{' '}
                 {sendResult.audience_count}.
               </Text>
             ) : (
               <>
-                <Text className="text-xs text-sand-600 leading-4">
+                <Text className="text-xs text-heliotrope-500 leading-relaxed font-medium">
                   {sendResult.manual_links?.length ?? 0} personalised messages ready. Tap each to
                   open WhatsApp and send — the campaign is marked sent.
                 </Text>
@@ -227,16 +233,16 @@ export default function CampaignDetailScreen() {
                       key={m.customer_id}
                       onPress={() => void Linking.openURL(m.link)}
                       accessibilityRole="button"
-                      className="flex-row items-center bg-sand-50 rounded-xl px-3 py-2.5 border border-sand-100"
+                      className="flex-row items-center bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200"
                     >
                       <View className="flex-1 mr-2">
-                        <Text className="text-xs font-semibold text-sand-800">{m.name}</Text>
+                        <Text className="text-xs font-bold text-spaceCadet-900">{m.name}</Text>
                       </View>
                       <View className="flex-row items-center gap-1">
-                        <Text className="text-[11px] font-semibold" style={{ color: primaryColor }}>
+                        <Text className="text-xs font-bold text-fuchsia-700">
                           Open WhatsApp
                         </Text>
-                        <ExternalLink size={12} color={primaryColor} />
+                        <ExternalLink size={12} color="#BB3F95" />
                       </View>
                     </AnimatedPressable>
                   ))}
@@ -247,62 +253,79 @@ export default function CampaignDetailScreen() {
         )}
 
         {/* Audience */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center gap-2 mb-1.5">
-            <Users size={16} color={primaryColor} />
-            <Text className="text-sm font-bold text-sand-900">Audience</Text>
+            <Users size={16} color="#BB3F95" />
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base font-bold text-spaceCadet-900"
+            >
+              Audience Match
+            </Text>
           </View>
-          <Text className="text-xs text-sand-500 leading-4">{audienceSummary}</Text>
+          <Text className="text-xs text-heliotrope-500 leading-relaxed font-medium">{audienceSummary}</Text>
           {!sent && (
-            <View className="mt-3 bg-sand-50 rounded-xl p-3">
+            <View className="mt-3.5 bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
               {previewQuery.isLoading ? (
                 <View className="flex-row items-center gap-2 py-1">
-                  <ActivityIndicator size="small" color={primaryColor} />
-                  <Text className="text-xs text-sand-500">Counting matching customers…</Text>
+                  <ActivityIndicator size="small" color="#BB3F95" />
+                  <Text className="text-xs text-heliotrope-500 font-medium">Counting matching customers…</Text>
                 </View>
               ) : preview ? (
                 <>
-                  <Text className="text-lg font-bold" style={{ color: primaryColor }}>
+                  <Text
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-2xl font-bold text-fuchsia-700"
+                  >
                     {preview.audience_count.toLocaleString('en-IN')}
                   </Text>
-                  <Text className="text-[11px] text-sand-500">
+                  <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
                     {preview.audience_count === 1 ? 'customer matches' : 'customers match'} this
                     audience
                   </Text>
                   {preview.sample.length > 0 && (
-                    <Text className="text-[11px] text-sand-400 mt-1.5" numberOfLines={2}>
+                    <Text className="text-[11px] text-heliotrope-400 mt-2 font-medium" numberOfLines={2}>
                       e.g. {preview.sample.map((s) => s.name ?? 'Customer').join(', ')}
                     </Text>
                   )}
                 </>
               ) : (
-                <Text className="text-xs text-sand-400">Couldn't load the audience count.</Text>
+                <Text className="text-xs text-heliotrope-500 font-medium">Couldn't load the audience count.</Text>
               )}
             </View>
           )}
           {sent && (
-            <View className="mt-3 flex-row gap-3">
-              <View className="flex-1 bg-sand-50 rounded-xl p-3">
-                <Text className="text-lg font-bold text-sand-900">
+            <View className="mt-3.5 flex-row gap-2.5">
+              <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
+                <Text
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-lg font-bold text-spaceCadet-900"
+                >
                   {campaign.sent_count.toLocaleString('en-IN')}
                 </Text>
-                <Text className="text-[11px] text-sand-500">sent</Text>
+                <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">sent</Text>
               </View>
-              <View className="flex-1 bg-sand-50 rounded-xl p-3">
-                <Text className="text-lg font-bold text-sand-900">
+              <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
+                <Text
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-lg font-bold text-spaceCadet-900"
+                >
                   {campaign.opened_count.toLocaleString('en-IN')}
                 </Text>
-                <Text className="text-[11px] text-sand-500">opened</Text>
+                <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">opened</Text>
               </View>
               {breakdown['OPENED'] != null && (
-                <View className="flex-1 bg-sand-50 rounded-xl p-3">
-                  <Text className="text-lg font-bold text-sand-900">
+                <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
+                  <Text
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-lg font-bold text-fuchsia-700"
+                  >
                     {campaign.sent_count > 0
                       ? Math.round((campaign.opened_count / campaign.sent_count) * 100)
                       : 0}
                     %
                   </Text>
-                  <Text className="text-[11px] text-sand-500">open rate</Text>
+                  <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-0.5">open rate</Text>
                 </View>
               )}
             </View>
@@ -311,55 +334,65 @@ export default function CampaignDetailScreen() {
 
         {/* A/B results — roadmap S */}
         {campaign.variant_breakdown && campaign.variant_breakdown.length > 0 && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-            <View className="flex-row items-center gap-2 mb-2">
-              <Trophy size={16} color={colors.turmeric[600]} />
-              <Text className="text-sm font-bold text-sand-900">Variant results</Text>
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
+            <View className="flex-row items-center gap-2 mb-3">
+              <Trophy size={16} color="#BB3F95" />
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base font-bold text-spaceCadet-900"
+              >
+                Variant Performance
+              </Text>
             </View>
-            <View className="gap-2">
+            <View className="gap-2.5">
               {campaign.variant_breakdown.map((v) => (
                 <View
                   key={v.label}
-                  className="flex-row items-center bg-sand-50 rounded-xl px-3 py-2.5 border border-sand-100"
+                  className="flex-row items-center bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200"
                 >
                   <View className="flex-1 mr-2">
                     <View className="flex-row items-center gap-1.5">
-                      <Text className="text-xs font-semibold text-sand-800" numberOfLines={1}>
+                      <Text className="text-xs font-bold text-spaceCadet-900" numberOfLines={1}>
                         {v.label}
                       </Text>
                       {v.winner === true && (
-                        <View className="bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                          <Text className="text-[9px] font-bold text-emerald-700">WINNING</Text>
+                        <View className="bg-fuchsia-500/15 px-2 py-0.5 rounded-full border border-fuchsia-500/30">
+                          <Text className="text-[9px] font-bold text-fuchsia-700">WINNING</Text>
                         </View>
                       )}
                     </View>
-                    <Text className="text-[11px] text-sand-500 mt-0.5">
+                    <Text className="text-[11px] text-heliotrope-500 font-medium mt-0.5">
                       {v.sent} sent · {v.opened} opened
                     </Text>
                   </View>
-                  <Text className="text-sm font-bold" style={{ color: primaryColor }}>
+                  <Text
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-base font-bold text-fuchsia-700"
+                  >
                     {Math.round(v.open_rate * 100)}%
                   </Text>
                 </View>
               ))}
             </View>
-            <Text className="text-[11px] text-sand-400 mt-2 leading-4">
-              Open rate per variant — keep testing until one pulls clearly ahead.
-            </Text>
           </View>
         )}
 
         {/* Message */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-          <View className="flex-row items-center gap-2 mb-1.5">
-            <Megaphone size={16} color={primaryColor} />
-            <Text className="text-sm font-bold text-sand-900">Message</Text>
-          </View>
-          <View className="bg-sand-50 rounded-xl p-3">
-            <Text className="text-[11px] font-semibold text-sand-500 uppercase tracking-wide mb-1">
-              Sample — how it reaches a customer
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
+          <View className="flex-row items-center gap-2 mb-2">
+            <Megaphone size={16} color="#BB3F95" />
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base font-bold text-spaceCadet-900"
+            >
+              Message Content
             </Text>
-            <Text className="text-xs text-sand-700 leading-4">{sampleMessage}</Text>
+          </View>
+          <View className="bg-lavender-50 rounded-2xl p-3.5 border border-lavender-200">
+            <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mb-1">
+              Sample — Customer View
+            </Text>
+            <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">{sampleMessage}</Text>
           </View>
           <AnimatedPressable
             onPress={() =>
@@ -368,44 +401,22 @@ export default function CampaignDetailScreen() {
               )
             }
             accessibilityRole="button"
-            className="flex-row items-center justify-center gap-1.5 mt-2.5 border border-dashed border-ink-300 rounded-xl py-2"
+            className="flex-row items-center justify-center gap-2 mt-3 border border-dashed border-fuchsia-400 bg-fuchsia-500/5 rounded-2xl py-2.5"
           >
-            <Languages size={14} color={primaryColor} />
-            <Text className="text-ink-700 text-xs font-medium">AI Translate</Text>
+            <Languages size={15} color="#BB3F95" />
+            <Text className="text-fuchsia-800 text-xs font-bold">AI Multi-lingual Translate</Text>
           </AnimatedPressable>
-          {campaign.ab_variants && campaign.ab_variants.length === 2 && (
-            <View className="mt-2.5 gap-1.5">
-              {campaign.ab_variants.map((v) => (
-                <View
-                  key={v.label}
-                  className="flex-row items-center bg-sand-50 rounded-xl px-3 py-2 border border-sand-100"
-                >
-                  <View className="flex-1 mr-2">
-                    <Text className="text-xs font-semibold text-sand-800" numberOfLines={1}>
-                      {v.label}
-                    </Text>
-                    {(v.product_ids?.length ?? 0) > 0 && (
-                      <Text className="text-[10px] text-sand-400 mt-0.5">
-                        {v.product_ids!.length} {v.product_ids!.length === 1 ? 'product' : 'products'} in this collection
-                      </Text>
-                    )}
-                  </View>
-                  <Text className="text-[11px] text-sand-500">{v.send_pct}%</Text>
-                </View>
-              ))}
-            </View>
-          )}
         </View>
 
         {/* Actions */}
         {canEdit && (
-          <View className="gap-2.5">
+          <View className="gap-3 mt-2">
             <GradientButton
               label={
                 sendMutation.isPending
                   ? 'Sending…'
                   : preview
-                    ? `Send to ${preview.audience_count}`
+                    ? `Send to ${preview.audience_count} Customers`
                     : 'Send Campaign'
               }
               onPress={confirmSend}
@@ -418,11 +429,11 @@ export default function CampaignDetailScreen() {
               accessibilityRole="button"
             >
               {deleteMutation.isPending ? (
-                <ActivityIndicator size="small" color={colors.rust[600]} />
+                <ActivityIndicator size="small" color="#dc2626" />
               ) : (
                 <View className="flex-row items-center gap-1.5">
-                  <Trash2 size={14} color={colors.rust[600]} />
-                  <Text className="text-rust-600 text-xs font-semibold">Delete Campaign</Text>
+                  <Trash2 size={15} color="#dc2626" />
+                  <Text className="text-red-600 text-xs font-bold uppercase tracking-wider">Delete Campaign</Text>
                 </View>
               )}
             </AnimatedPressable>

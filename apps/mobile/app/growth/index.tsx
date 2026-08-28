@@ -102,19 +102,25 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
       {/* Header */}
       {!isTab && (
         <View
-          className="bg-white border-b border-lavender-200 px-4 pb-4"
+          className="bg-white border-b border-lavender-200 px-5 pb-4"
           style={{ paddingTop: insets.top + 12 }}
         >
           <View className="flex-row items-center gap-3">
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color="#231F48" />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-spaceCadet-900 font-marcellus">Growth Engine</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Growth Engine
+            </Text>
           </View>
         </View>
       )}
@@ -126,46 +132,49 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ borderRadius: 28 }}
-          className="p-5 mb-4 shadow-md"
+          className="p-6 mb-5 shadow-lg border border-fuchsia-500/20"
         >
-          <View className="flex-row items-center justify-between mb-2">
+          <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2">
               <Sparkles size={16} color="#BB3F95" />
-              <Text className="text-lavender-200 text-xs font-bold uppercase tracking-wider">
+              <Text className="text-[#E0E1F6] text-xs font-bold uppercase tracking-wider">
                 Festival Blast AI
               </Text>
             </View>
-            <View className="px-2 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
+            <View className="px-3 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400">
               <Text className="text-emerald-300 text-[10px] font-bold">READY</Text>
             </View>
           </View>
-          <Text className="text-white text-xl font-bold font-marcellus leading-6">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-white text-2xl font-bold leading-7"
+          >
             Grow your store with automated WhatsApp reach & lookbooks.
           </Text>
-          <Text className="text-lavender-200 text-xs mt-1.5 font-medium">
-            AI generated copy, product links, and instant checkout.
+          <Text className="text-[#E0E1F6] text-xs mt-2 font-medium leading-relaxed">
+            AI generated copy, product links, and instant WhatsApp checkout.
           </Text>
         </LinearGradient>
 
         {featureLocked && (
-          <View className="bg-sand-100 rounded-2xl p-4 border border-sand-200 mb-4">
-            <Text className="text-sm font-semibold text-sand-900">
+          <View className="bg-lavender-100 rounded-3xl p-5 border border-lavender-200 mb-4">
+            <Text className="text-sm font-bold text-spaceCadet-900">
               Growth tools aren't on your current plan
             </Text>
-            <Text className="text-xs text-sand-600 mt-1">
+            <Text className="text-xs text-heliotrope-500 mt-1 font-medium">
               Upgrade to unlock campaigns, referrals and the rest of the growth suite.
             </Text>
-            <View className="mt-3">
+            <View className="mt-3.5">
               <GradientButton label="View Plans" onPress={() => router.push('/billing')} />
             </View>
           </View>
         )}
 
         {/* Campaigns — the live module */}
-        <View className="mb-4">
-          <View className="flex-row items-center justify-between mb-2.5">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1">
-              Campaigns
+        <View className="mb-5">
+          <View className="flex-row items-center justify-between mb-3 px-1">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+              Live Campaigns
             </Text>
             <View className="flex-row items-center gap-3">
               <AnimatedPressable
@@ -173,7 +182,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 hitSlop={8}
                 accessibilityRole="button"
               >
-                <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
+                <Text className="text-xs font-bold text-fuchsia-700">
                   Analytics
                 </Text>
               </AnimatedPressable>
@@ -183,7 +192,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                   hitSlop={8}
                   accessibilityRole="button"
                 >
-                  <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
+                  <Text className="text-xs font-bold text-fuchsia-700">
                     View all
                   </Text>
                 </AnimatedPressable>
@@ -192,34 +201,34 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           </View>
 
           {loading ? (
-            <View className="bg-white rounded-2xl p-6 border border-sand-100 items-center">
-              <ActivityIndicator color={primaryColor} />
+            <View className="bg-white rounded-3xl p-6 border border-lavender-200 items-center">
+              <ActivityIndicator color="#BB3F95" />
             </View>
           ) : (
             <AnimatedPressable
               onPress={() => router.push('/growth/campaigns')}
-              className="bg-white rounded-2xl p-4 border border-sand-100"
+              className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm"
             >
               {campaigns.length === 0 && featureLocked ? (
                 <View className="flex-row items-center gap-2 py-1">
-                  <Megaphone size={18} color={colors.sand[400]} />
-                  <Text className="text-sm font-semibold text-sand-500">
+                  <Megaphone size={18} color="#928EB2" />
+                  <Text className="text-sm font-bold text-heliotrope-500">
                     Campaigns unlock with a plan upgrade
                   </Text>
                 </View>
               ) : campaigns.length === 0 ? (
                 <>
-                  <View className="flex-row items-center gap-2 mb-1">
-                    <Megaphone size={18} color={primaryColor} />
-                    <Text className="text-sm font-bold text-sand-900">
+                  <View className="flex-row items-center gap-2 mb-1.5">
+                    <Megaphone size={18} color="#BB3F95" />
+                    <Text className="text-base font-bold text-spaceCadet-900">
                       Send your first campaign
                     </Text>
                   </View>
-                  <Text className="text-xs text-sand-500 mt-0.5 leading-4">
+                  <Text className="text-xs text-heliotrope-500 mt-0.5 leading-relaxed font-medium">
                     Festival greetings, reactivation offers, or a simple new-arrivals blast to
                     your consented customers.
                   </Text>
-                  <View className="mt-3">
+                  <View className="mt-4">
                     <GradientButton
                       label="Create Campaign"
                       onPress={() => router.push('/growth/campaign-new')}
@@ -228,42 +237,44 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 </>
               ) : (
                 <>
-                  <View className="flex-row items-center gap-2 mb-2.5">
+                  <View className="flex-row items-center gap-3 mb-3">
                     <View
-                      className="w-9 h-9 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: `${primaryColor}1A` }}
+                      className="w-11 h-11 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
                     >
-                      <Megaphone size={18} color={primaryColor} />
+                      <Megaphone size={20} color="#BB3F95" />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-bold text-sand-900">
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base font-bold text-spaceCadet-900"
+                      >
                         {campaigns.length} {campaigns.length === 1 ? 'Campaign' : 'Campaigns'}
                       </Text>
-                      <Text className="text-xs text-sand-400">
+                      <Text className="text-xs text-heliotrope-500 font-medium">
                         {sentTotal} sent · {openedTotal} opened
                       </Text>
                     </View>
-                    <ChevronRight size={18} color={colors.sand[400]} />
+                    <ChevronRight size={18} color="#928EB2" />
                   </View>
-                  <View className="gap-1.5">
+                  <View className="gap-2">
                     {campaigns.slice(0, 3).map((c) => (
                       <View
                         key={c.id}
-                        className="flex-row items-center justify-between bg-sand-50 rounded-xl px-3 py-2"
+                        className="flex-row items-center justify-between bg-lavender-50 rounded-2xl px-3.5 py-2.5 border border-lavender-200"
                       >
-                        <Text className="text-xs font-medium text-sand-700 flex-1 mr-2" numberOfLines={1}>
+                        <Text className="text-xs font-bold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
                           {c.name}
                         </Text>
-                        <Text className="text-[10px] font-semibold text-sand-400 uppercase">
+                        <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">
                           {c.status === 'SENT' ? `${c.sent_count} sent` : TYPE_LABEL[c.type]}
                         </Text>
                       </View>
                     ))}
                   </View>
-                  <View className="flex-row gap-3 mt-3">
+                  <View className="flex-row gap-3 mt-4">
                     <View className="flex-1">
                       <GradientButton
-                        label="+ New"
+                        label="+ New Campaign"
                         onPress={() => router.push('/growth/campaign-new')}
                       />
                     </View>
@@ -278,13 +289,13 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         {!featureLocked && inactive > 0 && (
           <AnimatedPressable
             onPress={() => router.push('/growth/campaign-new?type=REACTIVATION&inactive_days=60')}
-            className="bg-white rounded-2xl p-4 border border-sand-100 mb-4"
+            className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-5"
           >
-            <View className="flex-row items-center gap-2 mb-1">
-              <CalendarHeart size={18} color={colors.rust[600]} />
-              <Text className="text-sm font-bold text-sand-900">Bring customers back</Text>
+            <View className="flex-row items-center gap-2 mb-1.5">
+              <CalendarHeart size={18} color="#BB3F95" />
+              <Text className="text-sm font-bold text-spaceCadet-900">Bring customers back</Text>
             </View>
-            <Text className="text-xs text-sand-500 mt-0.5 leading-4">
+            <Text className="text-xs text-heliotrope-500 mt-0.5 leading-relaxed font-medium">
               {inactive} {inactive === 1 ? 'customer hasn\'t' : 'customers haven\'t'} interacted in
               60 days. One tap builds a reactivation campaign for them.
             </Text>
@@ -292,29 +303,28 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
         )}
 
         {/* All growth modules — each opens its live screen */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-2.5">
-          More Growth Tools
+        <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider px-1 mb-3">
+          Growth Suite & Accelerators
         </Text>
-        <View className="gap-2.5">
+        <View className="gap-3">
           {GROWTH_MODULES.map(({ icon: Icon, label, hint, href }) => (
-                  <AnimatedPressable
-                    key={label}
-                    onPress={() => router.push(href as any)}
-                    accessibilityRole="button"
+            <AnimatedPressable
+              key={label}
+              onPress={() => router.push(href as any)}
+              accessibilityRole="button"
               accessibilityLabel={label}
-              className="flex-row items-center bg-white rounded-2xl p-4 border border-sand-100"
+              className="flex-row items-center bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
             >
               <View
-                className="w-9 h-9 rounded-xl items-center justify-center mr-3"
-                style={{ backgroundColor: `${primaryColor}1A` }}
+                className="w-11 h-11 rounded-2xl items-center justify-center mr-3.5 bg-lavender-100 border border-lavender-200"
               >
-                <Icon size={18} color={primaryColor} />
+                <Icon size={20} color="#BB3F95" />
               </View>
               <View className="flex-1">
-                <Text className="text-sm font-semibold text-sand-900">{label}</Text>
-                <Text className="text-xs text-sand-400 mt-0.5">{hint}</Text>
+                <Text className="text-sm font-bold text-spaceCadet-900">{label}</Text>
+                <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">{hint}</Text>
               </View>
-              <ChevronRight size={16} color={colors.sand[300]} />
+              <ChevronRight size={18} color="#928EB2" />
             </AnimatedPressable>
           ))}
         </View>

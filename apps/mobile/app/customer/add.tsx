@@ -56,96 +56,114 @@ export default function AddCustomerScreen() {
   }
 
   return (
-    <ScrollView className="flex-1 bg-ink-50">
+    <ScrollView className="flex-1 bg-[#F8F7FC]">
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
-          <X size={22} color={colors.sand[700]} />
+        <AnimatedPressable
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+          accessibilityLabel="Close"
+          accessibilityRole="button"
+        >
+          <X size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">New Customer</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+        >
+          New Customer
+        </Text>
         <GradientButton label="Save" onPress={() => void handleSave()} loading={saving} />
       </View>
 
       <View className="px-4 py-4 gap-4">
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">Name *</Text>
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Full Name *
+          </Text>
           <TextInput
             value={name}
             onChangeText={setName}
-            placeholder="Customer name"
-            placeholderTextColor={colors.sand[400]}
-            className="text-base text-sand-900"
+            placeholder="Customer name (e.g. Priya Sharma)"
+            placeholderTextColor="#928EB2"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             autoFocus
           />
         </View>
 
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">Phone *</Text>
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Mobile Number *
+          </Text>
           <TextInput
             value={phone}
             onChangeText={setPhone}
             placeholder="10-digit mobile number"
-            placeholderTextColor={colors.sand[400]}
+            placeholderTextColor="#928EB2"
             keyboardType="phone-pad"
             maxLength={15}
-            className="text-base text-sand-900"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
           {showPhoneError ? (
-            <Text className="text-xs font-medium text-danger mt-1.5">
+            <Text className="text-xs font-medium text-red-600 mt-2">
               Enter a valid 10-digit mobile number (starts with 6–9)
             </Text>
           ) : null}
         </View>
 
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">Email (optional)</Text>
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
+            Email Address (optional)
+          </Text>
           <TextInput
             value={email}
             onChangeText={setEmail}
-            placeholder="email@example.com"
-            placeholderTextColor={colors.sand[400]}
+            placeholder="customer@example.com"
+            placeholderTextColor="#928EB2"
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
-            className="text-base text-sand-900"
+            className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
         </View>
 
         {/* Address section */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
           <View className="flex-row items-center gap-1.5 mb-3">
-            <MapPin size={14} color={colors.sand[600]} />
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">Address (optional)</Text>
+            <MapPin size={15} color="#BB3F95" />
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+              Address (optional)
+            </Text>
           </View>
           <TextInput
             value={addressLine1}
             onChangeText={setAddressLine1}
-            placeholder="Shop/Home address"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 mb-3 bg-sand-50 rounded-xl px-3 py-2"
+            placeholder="Street address or landmark"
+            placeholderTextColor="#928EB2"
+            className="text-sm font-bold text-spaceCadet-900 mb-3 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
           <View className="flex-row gap-3">
             <TextInput
               value={city}
               onChangeText={setCity}
               placeholder="City"
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
+              placeholderTextColor="#928EB2"
+              className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
             <TextInput
               value={state}
               onChangeText={setState}
               placeholder="State"
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2"
+              placeholderTextColor="#928EB2"
+              className="flex-1 text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             />
           </View>
         </View>
 
-        <Text className="text-xs text-sand-400 px-1">
-          Preferences, budget, and measurements can be added after saving.
+        <Text className="text-xs text-heliotrope-500 font-medium px-2 leading-relaxed">
+          Preferences, budget, Fashion DNA affinities, and measurements can be updated anytime after creating the profile.
         </Text>
       </View>
     </ScrollView>

@@ -17,7 +17,6 @@ function promoBadge(p: Promotion) {
 }
 
 export default function PromotionsScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
 
@@ -48,10 +47,10 @@ export default function PromotionsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -59,40 +58,49 @@ export default function PromotionsScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Promotions</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Promotions & Offers
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => router.push('/growth/promotion-form')}
             accessibilityLabel="New promotion"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : promotions.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Percent size={28} color={primaryColor} />
+              <Percent size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No promotions yet</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No Promotions Yet
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               Create a discount code — percentage off or flat ₹ — for your store or specific products.
             </Text>
             <View className="w-48 mt-5">
@@ -106,22 +114,25 @@ export default function PromotionsScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
-          <View className="gap-2.5">
+          <View className="gap-3.5">
             {promotions.map((p) => (
-              <View key={p.id} className="bg-white rounded-2xl p-4 border border-sand-100">
+              <View key={p.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
                 <View className="flex-row items-center justify-between mb-2">
-                  <View className="flex-row items-center gap-2 flex-1 mr-2">
+                  <View className="flex-row items-center gap-3 flex-1 mr-2">
                     <View
-                      className="w-9 h-9 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: `${primaryColor}1A` }}
+                      className="w-11 h-11 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
                     >
-                      <Tag size={16} color={primaryColor} />
+                      <Tag size={18} color="#BB3F95" />
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-lg font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
                         {p.code}
                       </Text>
-                      <Text className="text-xs text-sand-400">
+                      <Text className="text-xs font-semibold text-fuchsia-700 mt-0.5">
                         {promoBadge(p)}
                         {p.min_order_paise ? ` · min ${formatPaiseShort(p.min_order_paise)}` : ''}
                         {p.times_used > 0 ? ` · used ${p.times_used}×` : ''}
@@ -131,22 +142,23 @@ export default function PromotionsScreen() {
                   <Switch
                     value={p.is_active}
                     onValueChange={(v) => toggleActive.mutate({ id: p.id, is_active: v })}
-                    trackColor={{ true: primaryColor, false: colors.sand[200] }}
+                    trackColor={{ true: '#BB3F95', false: '#E0E1F6' }}
+                    thumbColor="#ffffff"
                     accessibilityLabel={`${p.code} active`}
                   />
                 </View>
-                <View className="flex-row items-center gap-2 mt-1">
-                  <View className="bg-sand-50 rounded-full px-2.5 py-1">
-                    <Text className="text-[10px] font-semibold text-sand-500 uppercase">
+                <View className="flex-row items-center gap-2 mt-2 pt-3 border-t border-lavender-200">
+                  <View className={`rounded-full px-3 py-1 ${p.is_active ? 'bg-fuchsia-500/15 border border-fuchsia-500/30' : 'bg-lavender-100 border border-lavender-200'}`}>
+                    <Text className={`text-[10px] font-bold uppercase tracking-wider ${p.is_active ? 'text-fuchsia-700' : 'text-heliotrope-500'}`}>
                       {p.is_active ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
                   {p.product_ids.length > 0 ? (
-                    <Text className="text-[10px] text-sand-400">
+                    <Text className="text-xs font-semibold text-heliotrope-500">
                       {p.product_ids.length} product{p.product_ids.length > 1 ? 's' : ''} only
                     </Text>
                   ) : (
-                    <Text className="text-[10px] text-sand-400">Store-wide</Text>
+                    <Text className="text-xs font-semibold text-heliotrope-500">Store-wide</Text>
                   )}
                   <View className="flex-1" />
                   <AnimatedPressable
@@ -155,7 +167,7 @@ export default function PromotionsScreen() {
                     accessibilityLabel={`Delete ${p.code}`}
                     accessibilityRole="button"
                   >
-                    <Trash2 size={15} color={colors.rust[500]} />
+                    <Trash2 size={16} color="#dc2626" />
                   </AnimatedPressable>
                 </View>
               </View>

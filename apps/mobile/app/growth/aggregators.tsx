@@ -3,10 +3,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router } from 'expo-router'
 import {
   ChevronLeft,
-  ChevronRight,
   Link2,
   RefreshCw,
-  Store,
   ExternalLink,
   Plus,
   Trash2,
@@ -26,7 +24,6 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 import { growthApi, type ChannelSync, type ChannelType } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -50,13 +47,13 @@ const CHANNEL_EMOJI: Record<ChannelType, string> = {
   OTHER: '🔗',
 }
 
-const STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  CONNECTED: { label: 'Connected', color: '#22C55E' },
-  SYNCING: { label: 'Syncing…', color: '#3B82F6' },
-  ERROR: { label: 'Error', color: '#EF4444' },
-  DISCONNECTED: { label: 'Disconnected', color: '#9CA3AF' },
-  CONNECTING: { label: 'Connecting…', color: '#F59E0B' },
-  SUSPENDED: { label: 'Suspended', color: '#F97316' },
+const STATUS_LABELS: Record<string, { label: string; bg: string; text: string; border: string }> = {
+  CONNECTED: { label: 'Connected', bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
+  SYNCING: { label: 'Syncing…', bg: 'bg-fuchsia-500/10', text: 'text-fuchsia-700', border: 'border-fuchsia-500/20' },
+  ERROR: { label: 'Error', bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' },
+  DISCONNECTED: { label: 'Disconnected', bg: 'bg-lavender-100', text: 'text-spaceCadet-900', border: 'border-lavender-200' },
+  CONNECTING: { label: 'Connecting…', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
+  SUSPENDED: { label: 'Suspended', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
 }
 
 const fmtDate = (iso: string | null) =>
@@ -72,7 +69,6 @@ const fmtDate = (iso: string | null) =>
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function AggregatorsScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [connecting, setConnecting] = useState(false)
@@ -115,10 +111,10 @@ export default function AggregatorsScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -126,40 +122,49 @@ export default function AggregatorsScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Marketplace Sync</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Marketplace Sync
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => setConnecting(true)}
             accessibilityLabel="Connect channel"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : syncs.length === 0 && !connecting ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Link2 size={28} color={primaryColor} />
+              <Link2 size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No channels connected</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[280px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No channels connected
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[280px] font-medium">
               Connect your Meesho, Instamojo, or other marketplace accounts to sync
               your product catalog and orders in one place.
             </Text>
@@ -174,31 +179,34 @@ export default function AggregatorsScreen() {
           contentContainerStyle={{ paddingBottom: 32 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />}
         >
-          <View className="gap-2.5">
+          <View className="gap-3">
             {syncs.map((s) => {
               const st = STATUS_LABELS[s.status] ?? STATUS_LABELS.DISCONNECTED
               return (
-                <View key={s.id} className="bg-white rounded-2xl p-4 border border-sand-100">
-                  <View className="flex-row items-center justify-between mb-2">
-                    <View className="flex-row items-center gap-2 flex-1 mr-2">
+                <View key={s.id} className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm">
+                  <View className="flex-row items-center justify-between mb-2.5">
+                    <View className="flex-row items-center gap-3 flex-1 mr-2">
                       <View
-                        className="w-9 h-9 rounded-xl items-center justify-center"
-                        style={{ backgroundColor: `${primaryColor}1A` }}
+                        className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
                       >
-                        <Text className="text-base">{CHANNEL_EMOJI[s.channel]}</Text>
+                        <Text className="text-lg">{CHANNEL_EMOJI[s.channel]}</Text>
                       </View>
                       <View className="flex-1">
-                        <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                        <Text
+                          style={{ fontFamily: 'Marcellus_400Regular' }}
+                          className="text-base font-bold text-spaceCadet-900"
+                          numberOfLines={1}
+                        >
                           {CHANNEL_LABELS[s.channel]}
                         </Text>
-                        <Text className="text-xs text-sand-400">
+                        <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
                           {s.products_synced} products · {s.orders_synced} orders
                         </Text>
                       </View>
                     </View>
                     <View className="flex-row items-center gap-1">
-                      <View className="rounded-full px-2 py-0.5" style={{ backgroundColor: `${st.color}15` }}>
-                        <Text className="text-[10px] font-semibold" style={{ color: st.color }}>
+                      <View className={`rounded-full px-2.5 py-0.5 border ${st.bg} ${st.border}`}>
+                        <Text className={`text-[10px] font-bold ${st.text}`}>
                           {st.label}
                         </Text>
                       </View>
@@ -206,26 +214,26 @@ export default function AggregatorsScreen() {
                   </View>
 
                   {s.last_sync_error ? (
-                    <View className="flex-row items-center gap-1.5 bg-red-50 rounded-xl px-3 py-2 mb-2">
-                      <AlertTriangle size={12} color="#EF4444" />
-                      <Text className="text-[11px] text-red-600 flex-1" numberOfLines={1}>
+                    <View className="flex-row items-center gap-2 bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-2.5">
+                      <AlertTriangle size={14} color="#dc2626" />
+                      <Text className="text-xs text-rose-700 flex-1 font-semibold" numberOfLines={1}>
                         {s.last_sync_error}
                       </Text>
                     </View>
                   ) : null}
 
-                  <View className="flex-row items-center gap-2 mt-1">
-                    <Text className="text-[10px] text-sand-400">
+                  <View className="flex-row items-center gap-2 pt-2 border-t border-lavender-100">
+                    <Text className="text-xs text-heliotrope-400 font-medium">
                       Last sync: {fmtDate(s.last_synced_at)}
                     </Text>
-                    <View className="ml-auto flex-row items-center gap-2">
+                    <View className="ml-auto flex-row items-center gap-3">
                       {s.channel_shop_url ? (
                         <AnimatedPressable
                           accessibilityLabel="Open shop"
                           accessibilityRole="button"
                           hitSlop={8}
                         >
-                          <ExternalLink size={14} color={colors.sand[400]} />
+                          <ExternalLink size={16} color="#928EB2" />
                         </AnimatedPressable>
                       ) : null}
                       <AnimatedPressable
@@ -234,7 +242,7 @@ export default function AggregatorsScreen() {
                         accessibilityRole="button"
                         hitSlop={8}
                       >
-                        <RefreshCw size={14} color={primaryColor} />
+                        <RefreshCw size={16} color="#BB3F95" />
                       </AnimatedPressable>
                       <AnimatedPressable
                         onPress={() => confirmDisconnect(s)}
@@ -242,7 +250,7 @@ export default function AggregatorsScreen() {
                         accessibilityRole="button"
                         hitSlop={8}
                       >
-                        <Trash2 size={14} color={colors.rust?.[500] ?? '#C2724D'} />
+                        <Trash2 size={16} color="#dc2626" />
                       </AnimatedPressable>
                     </View>
                   </View>
@@ -290,7 +298,6 @@ function ConnectChannelModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [channel, setChannel] = useState<ChannelType>('MEESHO')
@@ -327,99 +334,105 @@ function ConnectChannelModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8">
-        <Text className="text-base font-bold text-sand-900 mb-5">Connect Marketplace</Text>
+      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl font-bold text-spaceCadet-900 mb-5"
+        >
+          Connect Marketplace
+        </Text>
 
         {/* Channel picker */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Marketplace</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Marketplace Channel</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
-          {CHANNELS.map((c) => (
-            <AnimatedPressable
-              key={c.value}
-              onPress={() => setChannel(c.value)}
-              className="flex-row items-center gap-1 py-2 px-3 rounded-xl border"
-              style={{
-                backgroundColor: channel === c.value ? `${primaryColor}1A` : colors.sand[50],
-                borderColor: channel === c.value ? primaryColor : colors.sand[200],
-              }}
-            >
-              <Text className="text-sm">{c.emoji}</Text>
-              <Text
-                className="text-[11px] font-semibold"
-                style={{ color: channel === c.value ? primaryColor : colors.sand[500] }}
+          {CHANNELS.map((c) => {
+            const active = channel === c.value
+            return (
+              <AnimatedPressable
+                key={c.value}
+                onPress={() => setChannel(c.value)}
+                className={`flex-row items-center gap-1.5 py-2 px-3.5 rounded-full border ${
+                  active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                }`}
               >
-                {c.label}
-              </Text>
-            </AnimatedPressable>
-          ))}
+                <Text className="text-sm">{c.emoji}</Text>
+                <Text
+                  className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                >
+                  {c.label}
+                </Text>
+              </AnimatedPressable>
+            )
+          })}
         </View>
 
         {/* API Key */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">API Key *</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">API Key *</Text>
         <TextInput
           value={apiKey}
           onChangeText={setApiKey}
           placeholder="Your marketplace API key"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
           secureTextEntry
         />
 
         {/* API Secret */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">API Secret (optional)</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">API Secret (optional)</Text>
         <TextInput
           value={apiSecret}
           onChangeText={setApiSecret}
           placeholder="Your marketplace API secret"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
           secureTextEntry
         />
 
         {/* Shop ID */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Seller/Shop ID</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Seller / Shop ID</Text>
         <TextInput
           value={shopId}
           onChangeText={setShopId}
           placeholder="e.g. seller_abc123"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
         />
 
         {/* Shop URL */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Shop URL (optional)</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Shop Storefront URL (optional)</Text>
         <TextInput
           value={shopUrl}
           onChangeText={setShopUrl}
           placeholder="https://meesho.com/myshop"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
           autoCapitalize="none"
           keyboardType="url"
         />
 
         {error ? (
-          <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-            <Text className="text-xs text-red-600">{error}</Text>
+          <View className="bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-4">
+            <Text className="text-xs text-rose-600 font-semibold">{error}</Text>
           </View>
         ) : null}
 
         <View className="flex-row gap-3">
           <View className="flex-1">
             <GradientButton
-              label={saving ? 'Connecting…' : 'Connect'}
+              label={saving ? 'Connecting…' : 'Connect Channel'}
               onPress={() => void submit()}
               disabled={!canSubmit}
             />
           </View>
           <AnimatedPressable
             onPress={onClose}
-            className="flex-1 items-center justify-center bg-sand-100 rounded-xl py-3"
+            className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
           >
-            <Text className="text-sm font-semibold text-sand-600">Cancel</Text>
+            <Text className="text-sm font-bold text-spaceCadet-900">Cancel</Text>
           </AnimatedPressable>
         </View>
       </View>
     </View>
   )
 }
+

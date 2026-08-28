@@ -24,17 +24,16 @@ const TYPE_FILTERS: { key: CampaignType | 'ALL'; label: string }[] = [
   { key: 'AB_TEST', label: 'A/B Test' },
 ]
 
-function statusInfo(status: CampaignStatus, colors: ReturnType<typeof useTheme>['colors']) {
+function statusInfo(status: CampaignStatus) {
   const map: Record<CampaignStatus, { label: string; color: string; bg: string }> = {
-    DRAFT: { label: 'Draft', color: colors.sand[600], bg: colors.sand[100] },
-    SCHEDULED: { label: 'Scheduled', color: colors.turmeric[600], bg: colors.turmeric[100] },
-    SENT: { label: 'Sent', color: colors.turmeric[600], bg: colors.turmeric[100] },
+    DRAFT: { label: 'Draft', color: '#928EB2', bg: '#F8F7FC' },
+    SCHEDULED: { label: 'Scheduled', color: '#BB3F95', bg: '#BB3F951A' },
+    SENT: { label: 'Sent', color: '#16a34a', bg: '#dcfce7' },
   }
   return map[status]
 }
 
 export default function CampaignsScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const [filter, setFilter] = useState<CampaignType | 'ALL'>('ALL')
 
@@ -48,10 +47,10 @@ export default function CampaignsScreen() {
   )
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -59,21 +58,26 @@ export default function CampaignsScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Campaigns</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Campaign Broadcasts
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => router.push('/growth/campaign-new')}
             accessibilityLabel="New campaign"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
@@ -82,7 +86,7 @@ export default function CampaignsScreen() {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        className="flex-grow-0 bg-white border-b border-sand-100 px-4 py-2.5"
+        className="flex-grow-0 bg-white border-b border-lavender-200 px-5 py-3"
         contentContainerStyle={{ gap: 8 }}
       >
         {TYPE_FILTERS.map((t) => {
@@ -93,13 +97,12 @@ export default function CampaignsScreen() {
               onPress={() => setFilter(t.key)}
               accessibilityRole="button"
               accessibilityState={{ selected: active }}
-              className={`px-3.5 py-1.5 rounded-full border ${
-                active ? 'border-ink-600' : 'border-sand-200 bg-white'
+              className={`px-4 py-1.5 rounded-full border ${
+                active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
               }`}
-              style={active ? { backgroundColor: primaryColor } : undefined}
             >
               <Text
-                className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-600'}`}
+                className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
               >
                 {t.label}
               </Text>
@@ -110,21 +113,23 @@ export default function CampaignsScreen() {
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : campaigns.length === 0 ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Megaphone size={28} color={primaryColor} />
+              <Megaphone size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
               {filter === 'ALL' ? 'No campaigns yet' : `No ${TYPE_LABEL[filter].toLowerCase()} campaigns`}
             </Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               {filter === 'ALL'
                 ? 'Create a festival greeting, reactivation offer, or new-arrivals blast.'
                 : 'Try a different filter or create a new campaign.'}
@@ -145,36 +150,40 @@ export default function CampaignsScreen() {
             <RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} />
           }
         >
-          <View className="gap-2.5">
+          <View className="gap-3.5">
             {campaigns.map((c) => {
-              const status = statusInfo(c.status, colors)
+              const status = statusInfo(c.status)
               return (
                 <AnimatedPressable
                   key={c.id}
                   onPress={() => router.push(`/growth/campaign/${c.id}`)}
-                  className="bg-white rounded-2xl p-4 border border-sand-100"
+                  className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm"
                 >
-                  <View className="flex-row items-center justify-between mb-1.5">
-                    <Text className="text-sm font-bold text-sand-900 flex-1 mr-2" numberOfLines={1}>
+                  <View className="flex-row items-center justify-between mb-2">
+                    <Text
+                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      className="text-base font-bold text-spaceCadet-900 flex-1 mr-2"
+                      numberOfLines={1}
+                    >
                       {c.name}
                     </Text>
                     <View
-                      className="rounded-full px-2.5 py-1"
+                      className="rounded-full px-2.5 py-0.5"
                       style={{ backgroundColor: status.bg }}
                     >
-                      <Text className="text-[10px] font-semibold" style={{ color: status.color }}>
+                      <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: status.color }}>
                         {status.label}
                       </Text>
                     </View>
                   </View>
                   <View className="flex-row items-center gap-2">
-                    <Text className="text-xs text-sand-500">
+                    <Text className="text-xs text-heliotrope-500 font-medium">
                       {TYPE_LABEL[c.type]}
                       {c.festival_name ? ` · ${c.festival_name}` : ''}
                     </Text>
                   </View>
                   {c.status === 'SENT' && (
-                    <Text className="text-[11px] text-sand-400 mt-1.5">
+                    <Text className="text-xs font-semibold text-fuchsia-700 mt-2">
                       {c.sent_count} sent · {c.opened_count} opened
                     </Text>
                   )}

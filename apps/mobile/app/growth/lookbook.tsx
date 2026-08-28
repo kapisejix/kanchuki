@@ -65,7 +65,6 @@ const STATUS_CONFIG: Record<LookbookStatus, { label: string; color: string; bg: 
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function LookbookScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
@@ -101,10 +100,10 @@ export default function LookbookScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -112,40 +111,49 @@ export default function LookbookScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Lookbooks</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Digital Lookbooks
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => setCreating(true)}
             accessibilityLabel="New lookbook"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : lookbooks.length === 0 && !creating ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <BookOpen size={28} color={primaryColor} />
+              <BookOpen size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No lookbooks yet</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No Lookbooks Yet
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               Create styled product collections — pick your best items, choose a layout, and
               generate a shareable lookbook for Instagram, WhatsApp, or PDF.
             </Text>
@@ -162,22 +170,20 @@ export default function LookbookScreen() {
         >
           {/* Stats strip */}
           {stats && (
-            <View className="flex-row gap-2 mb-3">
-              <StatChip icon={BookOpen} label={`${stats.total} lookbooks`} color={primaryColor} />
-              <StatChip icon={Eye} label={`${stats.total_views} views`} color={colors.sand[500]} />
-              <StatChip icon={Share2} label={`${stats.total_shares} shares`} color={colors.sand[500]} />
+            <View className="flex-row gap-2.5 mb-3.5">
+              <StatChip icon={BookOpen} label={`${stats.total} lookbooks`} color="#BB3F95" />
+              <StatChip icon={Eye} label={`${stats.total_views} views`} color="#231F48" />
+              <StatChip icon={Share2} label={`${stats.total_shares} shares`} color="#560A39" />
             </View>
           )}
 
           {/* Filter chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-1">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4 -mx-1">
             <View className="flex-row gap-2 px-1">
               <FilterChip
                 label="All"
                 active={!filterStatus}
                 onPress={() => setFilterStatus(undefined)}
-                primaryColor={primaryColor}
-                colors={colors}
               />
               {(['READY', 'DRAFT', 'GENERATING', 'FAILED'] as const).map((s) => (
                 <FilterChip
@@ -185,15 +191,13 @@ export default function LookbookScreen() {
                   label={STATUS_CONFIG[s].label}
                   active={filterStatus === s}
                   onPress={() => setFilterStatus(filterStatus === s ? undefined : s)}
-                  primaryColor={primaryColor}
-                  colors={colors}
                 />
               ))}
             </View>
           </ScrollView>
 
           {/* Lookbook cards */}
-          <View className="gap-2.5">
+          <View className="gap-3.5">
             {lookbooks.map((lb) => {
               const FormatIcon = FORMAT_ICONS[lb.format]
               const statusConf = STATUS_CONFIG[lb.status]
@@ -203,40 +207,43 @@ export default function LookbookScreen() {
                   onPress={() => setDetail(lb)}
                   accessibilityRole="button"
                   accessibilityLabel={`View ${lb.name}`}
-                  className="bg-white rounded-2xl border border-sand-100 overflow-hidden"
+                  className="bg-white rounded-3xl border border-lavender-200 overflow-hidden shadow-sm"
                 >
                   {/* Cover image */}
                   {lb.cover_url ? (
                     <Image
                       source={{ uri: lb.cover_url }}
-                      className="w-full h-36"
+                      className="w-full h-40"
                       contentFit="cover"
                       transition={200}
                     />
                   ) : (
                     <View
-                      className="w-full h-24 items-center justify-center"
-                      style={{ backgroundColor: `${primaryColor}0D` }}
+                      className="w-full h-28 items-center justify-center bg-lavender-100"
                     >
-                      <BookOpen size={24} color={colors.sand[300]} />
-                      <Text className="text-[10px] text-sand-400 mt-1">No cover yet</Text>
+                      <BookOpen size={24} color="#928EB2" />
+                      <Text className="text-[10px] text-heliotrope-500 mt-1 font-medium">No cover yet</Text>
                     </View>
                   )}
 
-                  <View className="p-3">
-                    <View className="flex-row items-center justify-between mb-1">
+                  <View className="p-4">
+                    <View className="flex-row items-center justify-between mb-1.5">
                       <View className="flex-row items-center gap-2 flex-1 mr-2">
-                        <FormatIcon size={16} color={primaryColor} />
-                        <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                        <FormatIcon size={16} color="#BB3F95" />
+                        <Text
+                          style={{ fontFamily: 'Marcellus_400Regular' }}
+                          className="text-base font-bold text-spaceCadet-900"
+                          numberOfLines={1}
+                        >
                           {lb.name}
                         </Text>
                       </View>
                       <View
-                        className="rounded-full px-2 py-0.5"
+                        className="rounded-full px-2.5 py-0.5"
                         style={{ backgroundColor: statusConf.bg }}
                       >
                         <Text
-                          className="text-[10px] font-semibold"
+                          className="text-[10px] font-bold uppercase tracking-wider"
                           style={{ color: statusConf.color }}
                         >
                           {statusConf.label}
@@ -244,16 +251,16 @@ export default function LookbookScreen() {
                       </View>
                     </View>
 
-                    <View className="flex-row items-center gap-2 mt-1">
-                      <Text className="text-[10px] text-sand-400">
+                    <View className="flex-row items-center gap-2 mt-1.5 pt-2 border-t border-lavender-200">
+                      <Text className="text-xs font-semibold text-heliotrope-500">
                         {FORMAT_LABELS[lb.format]}
                       </Text>
-                      <Text className="text-[10px] text-sand-300">·</Text>
-                      <Text className="text-[10px] text-sand-400">
+                      <Text className="text-xs text-lavender-300">·</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">
                         {lb.product_ids.length} {lb.product_ids.length === 1 ? 'product' : 'products'}
                       </Text>
-                      <Text className="text-[10px] text-sand-300">·</Text>
-                      <Text className="text-[10px] text-sand-400">
+                      <Text className="text-xs text-lavender-300">·</Text>
+                      <Text className="text-xs font-semibold text-heliotrope-500">
                         {lb.view_count} views
                       </Text>
                       <View className="flex-1" />
@@ -263,7 +270,7 @@ export default function LookbookScreen() {
                         accessibilityLabel={`Delete ${lb.name}`}
                         accessibilityRole="button"
                       >
-                        <Trash2 size={14} color={colors.rust?.[500] ?? '#DC2626'} />
+                        <Trash2 size={15} color="#dc2626" />
                       </AnimatedPressable>
                     </View>
                   </View>
@@ -315,9 +322,9 @@ function StatChip({
   color: string
 }) {
   return (
-    <View className="flex-row items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-sand-100">
-      <Icon size={12} color={color} />
-      <Text className="text-[10px] font-semibold text-sand-600">{label}</Text>
+    <View className="flex-row items-center gap-1.5 bg-white rounded-2xl px-3.5 py-2 border border-lavender-200 shadow-sm flex-1 justify-center">
+      <Icon size={13} color={color} />
+      <Text className="text-xs font-bold text-spaceCadet-900">{label}</Text>
     </View>
   )
 }
@@ -328,27 +335,20 @@ function FilterChip({
   label,
   active,
   onPress,
-  primaryColor,
-  colors,
 }: {
   label: string
   active: boolean
   onPress: () => void
-  primaryColor: string
-  colors: any
 }) {
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="rounded-full px-3 py-1.5 border"
-      style={{
-        backgroundColor: active ? `${primaryColor}1A` : colors.sand[50],
-        borderColor: active ? primaryColor : colors.sand[200],
-      }}
+      className={`rounded-full px-4 py-1.5 border ${
+        active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
+      }`}
     >
       <Text
-        className="text-[11px] font-semibold"
-        style={{ color: active ? primaryColor : colors.sand[500] }}
+        className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
       >
         {label}
       </Text>
@@ -365,7 +365,6 @@ function CreateLookbookModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [name, setName] = useState('')
@@ -405,9 +404,14 @@ function CreateLookbookModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 max-h-[85%]">
+      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 max-h-[85%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text className="text-base font-bold text-sand-900 mb-4">New Lookbook</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900 mb-4"
+          >
+            New Lookbook
+          </Text>
 
           {/* Name */}
           <Label text="Lookbook Name" />
@@ -415,7 +419,6 @@ function CreateLookbookModal({
             value={name}
             onChangeText={setName}
             placeholder="e.g. Diwali Collection 2026, Wedding Essentials…"
-            colors={colors}
           />
 
           {/* Description */}
@@ -424,8 +427,8 @@ function CreateLookbookModal({
             value={description}
             onChangeText={setDescription}
             placeholder="A short description of this collection…"
-            placeholderTextColor={colors.sand[300]}
-            className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4 min-h-[60px]"
+            placeholderTextColor="#928EB2"
+            className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4 min-h-[70px]"
             multiline
             textAlignVertical="top"
           />
@@ -444,16 +447,15 @@ function CreateLookbookModal({
               <AnimatedPressable
                 key={f.value}
                 onPress={() => setFormat(f.value)}
-                className="flex-1 items-center py-2.5 rounded-xl border"
-                style={{
-                  backgroundColor: format === f.value ? `${primaryColor}1A` : colors.sand[50],
-                  borderColor: format === f.value ? primaryColor : colors.sand[200],
-                }}
+                className={`flex-1 items-center py-3 rounded-2xl border ${
+                  format === f.value ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                }`}
               >
                 <Text className="text-base mb-0.5">{f.emoji}</Text>
                 <Text
-                  className="text-[10px] font-semibold"
-                  style={{ color: format === f.value ? primaryColor : colors.sand[500] }}
+                  className={`text-[10px] font-bold ${
+                    format === f.value ? 'text-white' : 'text-spaceCadet-900'
+                  }`}
                 >
                   {f.label}
                 </Text>
@@ -467,19 +469,19 @@ function CreateLookbookModal({
             value={productIds}
             onChangeText={setProductIds}
             placeholder={"Paste product IDs, one per line\nor comma-separated:\ncm1abc123\ncm2def456"}
-            placeholderTextColor={colors.sand[300]}
-            className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-1 min-h-[80px]"
+            placeholderTextColor="#928EB2"
+            className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-1 min-h-[85px]"
             multiline
             textAlignVertical="top"
           />
-          <Text className="text-[10px] text-sand-400 mb-4 px-1">
+          <Text className="text-[11px] text-heliotrope-500 font-medium mb-4 px-1">
             {parsedIds.length} product{parsedIds.length !== 1 ? 's' : ''} detected
             {parsedIds.length > 20 ? ' (max 20)' : ''}
           </Text>
 
           {error ? (
-            <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-              <Text className="text-xs text-red-600">{error}</Text>
+            <View className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <Text className="text-xs text-red-600 font-bold">{error}</Text>
             </View>
           ) : null}
 
@@ -493,9 +495,9 @@ function CreateLookbookModal({
             </View>
             <AnimatedPressable
               onPress={onClose}
-              className="flex-1 items-center justify-center bg-sand-100 rounded-xl py-3"
+              className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
             >
-              <Text className="text-sm font-semibold text-sand-600">Cancel</Text>
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">Cancel</Text>
             </AnimatedPressable>
           </View>
         </ScrollView>
@@ -515,7 +517,6 @@ function LookbookDetailModal({
   onClose: () => void
   onRefresh: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [generating, setGenerating] = useState(false)
@@ -559,7 +560,7 @@ function LookbookDetailModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full max-h-[90%]">
+      <View className="bg-white rounded-t-3xl w-full max-h-[90%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Cover */}
           {lookbook.cover_url ? (
@@ -570,80 +571,60 @@ function LookbookDetailModal({
             />
           ) : (
             <View
-              className="w-full h-40 rounded-t-3xl items-center justify-center"
-              style={{ backgroundColor: `${primaryColor}0D` }}
+              className="w-full h-40 rounded-t-3xl items-center justify-center bg-lavender-100"
             >
-              <BookOpen size={32} color={colors.sand[300]} />
-              <Text className="text-xs text-sand-400 mt-2">No cover image</Text>
+              <BookOpen size={32} color="#928EB2" />
+              <Text className="text-xs text-heliotrope-500 mt-2 font-medium">No cover image</Text>
             </View>
           )}
 
-          <View className="px-5 pt-4 pb-8">
+          <View className="px-5 pt-5 pb-8">
             {/* Title */}
-            <View className="flex-row items-center gap-2 mb-1">
-              <FormatIcon size={18} color={primaryColor} />
-              <Text className="text-base font-bold text-sand-900 flex-1">{lookbook.name}</Text>
+            <View className="flex-row items-center gap-2 mb-1.5">
+              <FormatIcon size={18} color="#BB3F95" />
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-lg font-bold text-spaceCadet-900 flex-1"
+              >
+                {lookbook.name}
+              </Text>
             </View>
 
             <View className="flex-row items-center gap-2 mb-3">
-              <Text className="text-xs text-sand-400">{FORMAT_LABELS[lookbook.format]}</Text>
-              <Text className="text-xs text-sand-300">·</Text>
+              <Text className="text-xs text-heliotrope-500 font-semibold">{FORMAT_LABELS[lookbook.format]}</Text>
+              <Text className="text-xs text-lavender-300">·</Text>
               <View
-                className="rounded-full px-2 py-0.5"
+                className="rounded-full px-2.5 py-0.5"
                 style={{ backgroundColor: statusConf.bg }}
               >
-                <Text className="text-[10px] font-semibold" style={{ color: statusConf.color }}>
+                <Text className="text-[10px] font-bold uppercase tracking-wider" style={{ color: statusConf.color }}>
                   {statusConf.label}
                 </Text>
               </View>
-              <Text className="text-xs text-sand-300">·</Text>
-              <Text className="text-xs text-sand-400">
+              <Text className="text-xs text-lavender-300">·</Text>
+              <Text className="text-xs text-heliotrope-500 font-semibold">
                 {lookbook.product_ids.length} products
               </Text>
             </View>
 
             {lookbook.description && (
-              <Text className="text-sm text-sand-600 mb-3 leading-5">{lookbook.description}</Text>
+              <Text className="text-xs text-heliotrope-500 mb-3.5 leading-relaxed font-medium">{lookbook.description}</Text>
             )}
 
             {/* Stats */}
-            <View className="flex-row gap-4 mb-4">
-              <View className="flex-row items-center gap-1">
-                <Eye size={14} color={colors.sand[400]} />
-                <Text className="text-xs text-sand-500">{lookbook.view_count} views</Text>
+            <View className="flex-row gap-4 mb-4 pt-3 border-t border-lavender-200">
+              <View className="flex-row items-center gap-1.5">
+                <Eye size={14} color="#BB3F95" />
+                <Text className="text-xs font-bold text-spaceCadet-900">{lookbook.view_count} views</Text>
               </View>
-              <View className="flex-row items-center gap-1">
-                <Share2 size={14} color={colors.sand[400]} />
-                <Text className="text-xs text-sand-500">{lookbook.share_count} shares</Text>
-              </View>
-            </View>
-
-            {/* Products list */}
-            <View className="mb-4">
-              <Text className="text-xs font-semibold text-sand-500 uppercase mb-2">
-                Products ({lookbook.product_ids.length})
-              </Text>
-              <View className="flex-row flex-wrap gap-1.5">
-                {lookbook.product_ids.slice(0, 10).map((pid, i) => (
-                  <View key={i} className="bg-sand-50 rounded-lg px-2.5 py-1.5 border border-sand-100">
-                    <Text className="text-[10px] font-mono text-sand-500">
-                      {pid.slice(0, 12)}…
-                    </Text>
-                  </View>
-                ))}
-                {lookbook.product_ids.length > 10 && (
-                  <View className="bg-sand-50 rounded-lg px-2.5 py-1.5">
-                    <Text className="text-[10px] font-semibold text-sand-400">
-                      +{lookbook.product_ids.length - 10} more
-                    </Text>
-                  </View>
-                )}
+              <View className="flex-row items-center gap-1.5">
+                <Share2 size={14} color="#BB3F95" />
+                <Text className="text-xs font-bold text-spaceCadet-900">{lookbook.share_count} shares</Text>
               </View>
             </View>
 
             {/* Action buttons */}
-            <View className="gap-2.5">
-              {/* Generate / Regenerate */}
+            <View className="gap-2.5 mt-2">
               {lookbook.status !== 'GENERATING' && (
                 <GradientButton
                   label={generating ? 'Generating…' : '✨ Generate Lookbook'}
@@ -655,24 +636,12 @@ function LookbookDetailModal({
                 />
               )}
               {lookbook.status === 'GENERATING' && (
-                <View className="flex-row items-center gap-2 bg-blue-50 rounded-xl px-4 py-3">
-                  <ActivityIndicator size="small" color="#3B82F6" />
-                  <Text className="text-xs text-blue-600 font-medium">
+                <View className="flex-row items-center gap-2 bg-fuchsia-50 rounded-2xl px-4 py-3 border border-fuchsia-200">
+                  <ActivityIndicator size="small" color="#BB3F95" />
+                  <Text className="text-xs text-fuchsia-800 font-bold">
                     Generating your lookbook…
                   </Text>
                 </View>
-              )}
-
-              {/* View output */}
-              {lookbook.status === 'READY' && lookbook.output_url && (
-                <AnimatedPressable
-                  onPress={() => {
-                    // Would open the output URL in a webview or browser
-                  }}
-                  className="items-center justify-center bg-sand-100 rounded-xl py-3"
-                >
-                  <Text className="text-sm font-semibold text-sand-700">👁 View Output</Text>
-                </AnimatedPressable>
               )}
 
               {/* Share */}
@@ -680,38 +649,20 @@ function LookbookDetailModal({
                 <View className="flex-row gap-2.5">
                   <View className="flex-1">
                     <GradientButton
-                      label="📤 Share"
+                      label="📤 Share Lookbook"
                       onPress={() => void handleShare()}
                       disabled={shareMutation.isPending}
                     />
                   </View>
-                  {lookbook.share_url && (
-                    <View className="flex-1">
-                      <AnimatedPressable
-                        onPress={async () => {
-                          try {
-                            const { Clipboard } = await import('react-native')
-                            Clipboard.setString(lookbook.share_url!)
-                            Alert.alert('Copied', 'Lookbook link copied to clipboard')
-                          } catch {
-                            // fallback
-                          }
-                        }}
-                        className="items-center justify-center bg-sand-100 rounded-xl py-3.5"
-                      >
-                        <Text className="text-sm font-semibold text-sand-700">🔗 Copy Link</Text>
-                      </AnimatedPressable>
-                    </View>
-                  )}
                 </View>
               )}
 
               {/* Close */}
               <AnimatedPressable
                 onPress={onClose}
-                className="items-center justify-center bg-sand-100 rounded-xl py-3"
+                className="items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
               >
-                <Text className="text-sm font-semibold text-sand-600">Close</Text>
+                <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">Close</Text>
               </AnimatedPressable>
             </View>
           </View>
@@ -725,7 +676,7 @@ function LookbookDetailModal({
 
 function Label({ text }: { text: string }) {
   return (
-    <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">{text}</Text>
+    <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">{text}</Text>
   )
 }
 
@@ -733,20 +684,18 @@ function Input({
   value,
   onChangeText,
   placeholder,
-  colors,
 }: {
   value: string
   onChangeText: (t: string) => void
   placeholder: string
-  colors: any
 }) {
   return (
     <TextInput
       value={value}
       onChangeText={onChangeText}
       placeholder={placeholder}
-      placeholderTextColor={colors.sand[300]}
-      className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+      placeholderTextColor="#928EB2"
+      className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
     />
   )
 }

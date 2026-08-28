@@ -27,35 +27,37 @@ function Chip({
   active: boolean
   onPress: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   return (
     <AnimatedPressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected: active }}
-      className={`px-3.5 py-2 rounded-xl border ${active ? 'border-ink-600' : 'border-sand-200 bg-white'}`}
-      style={active ? { backgroundColor: primaryColor } : undefined}
+      className={`px-4 py-2 rounded-2xl border ${active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'}`}
     >
-      <Text className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-600'}`}>{label}</Text>
+      <Text className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}>{label}</Text>
     </AnimatedPressable>
   )
 }
 
 function Label({ text }: { text: string }) {
-  return <Text className="text-xs font-medium text-sand-600 mb-1.5 mt-3">{text}</Text>
+  return <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5 mt-3">{text}</Text>
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">{title}</Text>
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-base font-bold text-spaceCadet-900 mb-3.5"
+      >
+        {title}
+      </Text>
       {children}
     </View>
   )
 }
 
 export default function PromotionFormScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -122,8 +124,8 @@ export default function PromotionFormScreen() {
 
   if (isEdit && existingLoading) {
     return (
-      <View className="flex-1 bg-ink-50 items-center justify-center">
-        <Text className="text-xs text-sand-400">Loading…</Text>
+      <View className="flex-1 bg-[#F8F7FC] items-center justify-center">
+        <Text className="text-xs text-heliotrope-500 font-medium">Loading…</Text>
       </View>
     )
   }
@@ -131,23 +133,27 @@ export default function PromotionFormScreen() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-[#F8F7FC]"
     >
       {/* Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900"
+          >
             {isEdit ? 'Edit Promotion' : 'New Promotion'}
           </Text>
         </View>
@@ -156,22 +162,22 @@ export default function PromotionFormScreen() {
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
         <View className="gap-4">
-          <Section title="Code">
+          <Section title="Promo Code">
             <TextInput
               value={code}
               onChangeText={(v) => setCode(v.toUpperCase().replace(/\s+/g, '_'))}
               placeholder="e.g. DIWALI10"
-              placeholderTextColor={colors.sand[400]}
+              placeholderTextColor="#928EB2"
               autoCapitalize="characters"
               maxLength={20}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             />
-            <Text className="text-[11px] text-sand-400 mt-2">
+            <Text className="text-xs text-heliotrope-500 mt-2 font-medium">
               Shown to customers at checkout — letters, numbers and underscores only.
             </Text>
           </Section>
 
-          <Section title="Discount">
+          <Section title="Discount Configuration">
             <View className="flex-row gap-2 mb-3">
               <Chip label="% off" active={discountType === 'PERCENT'} onPress={() => setDiscountType('PERCENT')} />
               <Chip label="Flat ₹" active={discountType === 'FIXED'} onPress={() => setDiscountType('FIXED')} />
@@ -181,19 +187,19 @@ export default function PromotionFormScreen() {
               value={discountValue}
               onChangeText={(v) => setDiscountValue(v.replace(/[^\d]/g, ''))}
               placeholder={discountType === 'PERCENT' ? '10' : '500'}
-              placeholderTextColor={colors.sand[400]}
+              placeholderTextColor="#928EB2"
               keyboardType="number-pad"
               maxLength={6}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             />
             <Label text="Minimum order (₹, optional)" />
             <TextInput
               value={minOrder}
               onChangeText={(v) => setMinOrder(v.replace(/[^\d.]/g, ''))}
               placeholder="2000"
-              placeholderTextColor={colors.sand[400]}
+              placeholderTextColor="#928EB2"
               keyboardType="decimal-pad"
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3"
             />
           </Section>
 

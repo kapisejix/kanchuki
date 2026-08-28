@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { router, useLocalSearchParams } from 'expo-router'
+import { LinearGradient } from 'expo-linear-gradient'
 import {
   Check,
   ChevronLeft,
@@ -18,18 +19,14 @@ import { GradientButton } from '../../src/components/GradientButton'
 import { productApi } from '../../src/lib/api'
 import { growthApi, TRANSLATE_LANGUAGES, type TranslateLanguage, type TranslateResult } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 
 type PickedItem = { id: string; name: string | null; message?: string | null }
 
 type Mode = 'description' | 'message'
 
 export default function TranslateScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
-  // Deep-linked from a product's or campaign's detail page — skip straight to
-  // the language picker instead of the pick-an-item list.
   const params = useLocalSearchParams<{
     mode?: string
     productId?: string
@@ -49,7 +46,6 @@ export default function TranslateScreen() {
         : null,
   )
   const [language, setLanguage] = useState<TranslateLanguage>('hindi')
-  // Editable message source for campaign-message mode (prefilled from the campaign).
   const [messageInput, setMessageInput] = useState(params.message ?? '')
   const [copied, setCopied] = useState(false)
 
@@ -109,41 +105,42 @@ export default function TranslateScreen() {
 
   const handleCopy = () => {
     if (!resultText) return
-    // Minimal copy: show a toast-style confirmation. Full clipboard wiring is
-    // trivial with expo-clipboard but not currently a dependency — the text
-    // stays on screen for manual copy until then.
     setCopied(true)
     setTimeout(() => setCopied(false), 1500)
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => (picked && !deepLinked ? setPicked(null) : router.back())}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel={picked ? 'Back to list' : 'Go back'}
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900 flex-1">
-            {picked ? picked.name ?? 'Item' : 'AI Translate'}
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900 flex-1"
+          >
+            {picked ? picked.name ?? 'Item' : 'AI Multilingual Studio'}
           </Text>
         </View>
 
-        {/* Mode toggle — description vs WhatsApp/campaign message */}
+        {/* Mode toggle */}
         {!picked && (
-          <View className="flex-row bg-sand-100 rounded-xl p-1 mt-3">
+          <View className="flex-row gap-2 mt-3.5">
             {(
               [
-                { key: 'description', label: 'Product description', icon: <Languages size={13} color="white" /> },
-                { key: 'message', label: 'Campaign message', icon: <MessageSquareText size={13} color="white" /> },
+                { key: 'description', label: 'Product Copy', icon: <Languages size={13} color="white" /> },
+                { key: 'message', label: 'WhatsApp Broadcast', icon: <MessageSquareText size={13} color="white" /> },
               ] as const
             ).map((m) => {
               const active = mode === m.key
@@ -153,14 +150,13 @@ export default function TranslateScreen() {
                   onPress={() => switchMode(m.key)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg py-2 ${
-                    active ? '' : 'bg-transparent'
+                  className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-2xl py-2.5 border ${
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
                   }`}
-                  style={active ? { backgroundColor: primaryColor } : undefined}
                 >
                   {active && m.icon}
                   <Text
-                    className={`text-xs font-semibold ${active ? 'text-white' : 'text-sand-500'}`}
+                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
                   >
                     {m.label}
                   </Text>
@@ -173,49 +169,58 @@ export default function TranslateScreen() {
 
       {!picked ? (
         <View className="flex-1">
-          <View className="bg-white border-b border-sand-100 px-4 py-3 flex-row items-center gap-2">
-            <Search size={16} color={colors.sand[400]} />
+          <View className="bg-white border-b border-lavender-200 px-5 py-3 flex-row items-center gap-2.5">
+            <Search size={16} color="#928EB2" />
             <TextInput
               value={search}
               onChangeText={setSearch}
-              placeholder={mode === 'description' ? 'Search by name or SKU…' : 'Filter campaigns…'}
-              placeholderTextColor={colors.sand[400]}
-              className="flex-1 text-sm text-sand-900"
+              placeholder={mode === 'description' ? 'Search design name or SKU…' : 'Filter campaigns…'}
+              placeholderTextColor="#928EB2"
+              className="flex-1 text-sm font-bold text-spaceCadet-900"
             />
           </View>
           <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
-            <View className="bg-ink-600 rounded-2xl p-4 mb-4">
-              <View className="flex-row items-center gap-2 mb-1">
+            <LinearGradient
+              colors={['#231F48', '#560A39']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              className="rounded-3xl p-5 mb-4 shadow-sm"
+            >
+              <View className="flex-row items-center gap-2 mb-1.5">
                 {mode === 'description' ? (
-                  <Languages size={16} color={colors.turmeric[400]} />
+                  <Languages size={18} color="#BB3F95" />
                 ) : (
-                  <Megaphone size={16} color={colors.turmeric[400]} />
+                  <Megaphone size={18} color="#BB3F95" />
                 )}
-                <Text className="text-turmeric-300 text-xs font-semibold uppercase tracking-wide">
+                <Text
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-white text-base font-bold"
+                >
                   {mode === 'description'
-                    ? 'Descriptions your customers understand'
-                    : 'Messages your customers understand'}
+                    ? 'Regional Catalog Descriptions'
+                    : 'Vernacular WhatsApp Messages'}
                 </Text>
               </View>
-              <Text className="text-white text-sm leading-5 mt-1">
+              <Text className="text-lavender-200 text-xs leading-relaxed mt-1 font-medium">
                 {mode === 'description'
-                  ? 'Write product descriptions in Hindi, Hinglish, Tamil, Telugu, Marathi, Gujarati or Bengali — from the product’s own attributes.'
-                  : 'Rewrite a WhatsApp / campaign message in a regional language. {{placeholders}} stay untouched so they still fill per customer at send time.'}
+                  ? 'Generate high-converting luxury product descriptions in Hindi, Hinglish, Tamil, Telugu, Marathi, Gujarati or Bengali — from design attributes.'
+                  : 'Rewrite WhatsApp broadcasts in regional languages. All {{placeholders}} are preserved to auto-fill at send time.'}
               </Text>
-            </View>
+            </LinearGradient>
+
             {mode === 'description'
               ? productsQuery.isLoading || campaignsQuery.isLoading
                 ? (
                   <View className="items-center py-10">
-                    <ActivityIndicator color={primaryColor} />
+                    <ActivityIndicator color="#BB3F95" />
                   </View>
                 )
                 : products.length === 0
                   ? (
                     <View className="items-center py-10">
-                      <Languages size={28} color={colors.sand[300]} />
-                      <Text className="text-sm text-sand-400 mt-3 text-center max-w-[260px]">
-                        No available products found. Pick a product to translate its description.
+                      <Languages size={32} color="#BB3F95" />
+                      <Text className="text-xs text-heliotrope-500 mt-3 text-center max-w-[260px] font-medium">
+                        No available designs found. Pick a product to translate its description.
                       </Text>
                     </View>
                   )
@@ -226,20 +231,23 @@ export default function TranslateScreen() {
                           key={p.id}
                           onPress={() => setPicked({ id: p.id, name: p.name })}
                           accessibilityRole="button"
-                          className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center"
+                          className="bg-white rounded-3xl p-4 border border-lavender-200 flex-row items-center shadow-sm"
                         >
                           <View
-                            className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-                            style={{ backgroundColor: `${primaryColor}1A` }}
+                            className="w-10 h-10 rounded-2xl items-center justify-center mr-3 bg-lavender-100 border border-lavender-200"
                           >
-                            <Languages size={18} color={primaryColor} />
+                            <Languages size={18} color="#BB3F95" />
                           </View>
                           <View className="flex-1 mr-2">
-                            <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
-                              {p.name ?? 'Unnamed product'}
+                            <Text
+                              style={{ fontFamily: 'Marcellus_400Regular' }}
+                              className="text-base font-bold text-spaceCadet-900"
+                              numberOfLines={1}
+                            >
+                              {p.name ?? 'Unnamed design'}
                             </Text>
                           </View>
-                          <ChevronRight size={16} color={colors.sand[300]} />
+                          <ChevronRight size={16} color="#928EB2" />
                         </AnimatedPressable>
                       ))}
                     </View>
@@ -247,14 +255,14 @@ export default function TranslateScreen() {
               : campaignsQuery.isLoading
                 ? (
                   <View className="items-center py-10">
-                    <ActivityIndicator color={primaryColor} />
+                    <ActivityIndicator color="#BB3F95" />
                   </View>
                 )
                 : campaigns.length === 0
                   ? (
                     <View className="items-center py-10">
-                      <Megaphone size={28} color={colors.sand[300]} />
-                      <Text className="text-sm text-sand-400 mt-3 text-center max-w-[260px]">
+                      <Megaphone size={32} color="#BB3F95" />
+                      <Text className="text-xs text-heliotrope-500 mt-3 text-center max-w-[260px] font-medium">
                         No campaigns yet. Create one in Campaigns, then translate its message here.
                       </Text>
                     </View>
@@ -271,23 +279,26 @@ export default function TranslateScreen() {
                               setMessageInput(c.message_template)
                             }}
                             accessibilityRole="button"
-                            className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center"
+                            className="bg-white rounded-3xl p-4 border border-lavender-200 flex-row items-center shadow-sm"
                           >
                             <View
-                              className="w-10 h-10 rounded-xl items-center justify-center mr-3"
-                              style={{ backgroundColor: `${primaryColor}1A` }}
+                              className="w-10 h-10 rounded-2xl items-center justify-center mr-3 bg-lavender-100 border border-lavender-200"
                             >
-                              <Megaphone size={18} color={primaryColor} />
+                              <Megaphone size={18} color="#BB3F95" />
                             </View>
                             <View className="flex-1 mr-2">
-                              <Text className="text-sm font-semibold text-sand-900" numberOfLines={1}>
+                              <Text
+                                style={{ fontFamily: 'Marcellus_400Regular' }}
+                                className="text-base font-bold text-spaceCadet-900"
+                                numberOfLines={1}
+                              >
                                 {c.name}
                               </Text>
-                              <Text className="text-xs text-sand-400 mt-0.5" numberOfLines={1}>
+                              <Text className="text-xs text-heliotrope-500 font-medium mt-0.5" numberOfLines={1}>
                                 {c.message_template}
                               </Text>
                             </View>
-                            <ChevronRight size={16} color={colors.sand[300]} />
+                            <ChevronRight size={16} color="#928EB2" />
                           </AnimatedPressable>
                         ))}
                     </View>
@@ -298,65 +309,67 @@ export default function TranslateScreen() {
         <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
           {/* Editable message source (campaign mode) */}
           {mode === 'message' && (
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 mb-4">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-2">
-                Message
+            <View className="bg-white rounded-3xl p-5 border border-lavender-200 mb-4 shadow-sm">
+              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-2">
+                Original Message
               </Text>
               <TextInput
                 value={messageInput}
                 onChangeText={setMessageInput}
                 placeholder="Write the WhatsApp message…"
-                placeholderTextColor={colors.sand[400]}
-                className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3 min-h-[88px]"
+                placeholderTextColor="#928EB2"
+                className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 min-h-[95px]"
                 multiline
                 maxLength={2000}
                 textAlignVertical="top"
               />
-              <Text className="text-[11px] text-sand-400 mt-2 leading-4">
-                {'{{name}}, {{shop}}, {{link}} and {{festival}} placeholders are preserved by the AI — they still fill per customer at send time.'}
+              <Text className="text-[11px] text-heliotrope-400 font-medium mt-2 leading-relaxed">
+                {'{{name}}, {{shop}}, {{link}} and {{festival}} placeholders are preserved by the AI.'}
               </Text>
             </View>
           )}
 
           {/* Language picker */}
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1 mb-2.5">
-            Language
+          <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider px-1 mb-2.5">
+            Target Language
           </Text>
           <View className="flex-row flex-wrap gap-2 mb-4">
-            {TRANSLATE_LANGUAGES.map((l) => (
-              <AnimatedPressable
-                key={l.key}
-                onPress={() => {
-                  setLanguage(l.key as TranslateLanguage)
-                  translate.reset()
-                  setCopied(false)
-                }}
-                accessibilityRole="button"
-                accessibilityState={{ selected: language === l.key }}
-                className={`px-3.5 py-2 rounded-xl border ${
-                  language === l.key ? 'border-ink-600' : 'border-sand-200 bg-white'
-                }`}
-                style={language === l.key ? { backgroundColor: primaryColor } : undefined}
-              >
-                <Text
-                  className={`text-xs font-semibold ${language === l.key ? 'text-white' : 'text-sand-600'}`}
+            {TRANSLATE_LANGUAGES.map((l) => {
+              const active = language === l.key
+              return (
+                <AnimatedPressable
+                  key={l.key}
+                  onPress={() => {
+                    setLanguage(l.key as TranslateLanguage)
+                    translate.reset()
+                    setCopied(false)
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: active }}
+                  className={`px-4 py-2 rounded-full border ${
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'border-lavender-200 bg-lavender-50'
+                  }`}
                 >
-                  {l.label}
-                </Text>
-              </AnimatedPressable>
-            ))}
+                  <Text
+                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  >
+                    {l.label}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
           </View>
 
           {/* Generate */}
           <GradientButton
             label={
               translate.isPending
-                ? 'Writing…'
+                ? 'Writing Translation…'
                 : resultText
-                  ? 'Regenerate'
+                  ? 'Regenerate Translation'
                   : mode === 'description'
-                    ? 'Generate Description'
-                    : 'Translate Message'
+                    ? '✨ Generate Luxury Description'
+                    : '✨ Translate Broadcast'
             }
             onPress={() => {
               if (mode === 'message' && !messageInput.trim()) {
@@ -377,17 +390,20 @@ export default function TranslateScreen() {
             }
           />
           {cached && (
-            <Text className="text-[11px] text-turmeric-600 font-medium mt-2 text-center">
-              Reused the saved copy for this language — no new AI call.
+            <Text className="text-xs text-fuchsia-700 font-bold mt-2 text-center">
+              Reused saved copy for this language — zero latency.
             </Text>
           )}
 
           {/* Result */}
           {resultText && (
-            <View className="bg-white rounded-2xl p-4 border border-sand-100 mt-4">
-              <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-                  {mode === 'description' ? 'Description' : 'Message'} ·{' '}
+            <View className="bg-white rounded-3xl p-5 border border-lavender-200 mt-4 shadow-sm">
+              <View className="flex-row items-center justify-between mb-2.5 pb-2 border-b border-lavender-100">
+                <Text
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-sm font-bold text-spaceCadet-900"
+                >
+                  {mode === 'description' ? 'Generated Description' : 'Translated Message'} ·{' '}
                   {TRANSLATE_LANGUAGES.find((l) => l.key === language)?.label}
                 </Text>
                 <AnimatedPressable
@@ -395,29 +411,28 @@ export default function TranslateScreen() {
                   hitSlop={8}
                   accessibilityLabel="Copy text"
                   accessibilityRole="button"
-                  className="flex-row items-center gap-1"
+                  className="flex-row items-center gap-1 bg-fuchsia-500/10 px-3 py-1 rounded-full border border-fuchsia-500/20"
                 >
                   {copied ? (
-                    <Check size={14} color={colors.turmeric[600]} />
+                    <Check size={12} color="#16a34a" />
                   ) : (
-                    <Copy size={14} color={colors.sand[500]} />
+                    <Copy size={12} color="#BB3F95" />
                   )}
                   <Text
-                    className="text-[11px] font-semibold"
-                    style={{ color: copied ? colors.turmeric[600] : colors.sand[600] }}
+                    className={`text-xs font-bold ${copied ? 'text-emerald-700' : 'text-fuchsia-700'}`}
                   >
                     {copied ? 'Copied' : 'Copy'}
                   </Text>
                 </AnimatedPressable>
               </View>
-              <Text className="text-sm text-sand-800 leading-5">{resultText}</Text>
+              <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">{resultText}</Text>
             </View>
           )}
 
-          <Text className="text-[11px] text-sand-400 mt-4 text-center leading-4">
+          <Text className="text-[11px] text-heliotrope-400 mt-4 text-center leading-relaxed font-medium">
             {mode === 'description'
-              ? 'Generated from the product’s name, category, colour, fabric and sizes. Paste it into the product’s description or WhatsApp it to customers.'
-              : 'Paste the translated message back into your campaign, or WhatsApp it directly to customers.'}
+              ? 'Generated from the product’s name, category, colour, fabric and sizes.'
+              : 'Paste the translated message back into your broadcast campaign.'}
           </Text>
         </ScrollView>
       )}

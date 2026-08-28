@@ -11,12 +11,8 @@ import {
   Trash2,
   Sparkles,
   Eye,
-  Hash,
   MessageSquare,
   Image as ImageIcon,
-  RefreshCw,
-  ExternalLink,
-  Clipboard,
 } from 'lucide-react-native'
 import {
   ActivityIndicator,
@@ -37,10 +33,8 @@ import {
   growthApi,
   type SocialTemplate,
   type SocialTemplateType,
-  type SocialTemplateCreatePayload,
 } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -90,7 +84,6 @@ const OCCASIONS = [
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function TemplatesScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
@@ -126,10 +119,10 @@ export default function TemplatesScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -137,40 +130,49 @@ export default function TemplatesScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Social Templates</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Social Templates
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => setCreating(true)}
             accessibilityLabel="New template"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : templates.length === 0 && !creating ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Share2 size={28} color={primaryColor} />
+              <Share2 size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No templates yet</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No templates yet
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               Create AI-powered social media templates — pick a product, choose a festive background,
               and get a ready-to-share image with caption & hashtags.
             </Text>
@@ -188,20 +190,18 @@ export default function TemplatesScreen() {
           {/* Stats strip */}
           {stats && (
             <View className="flex-row gap-2 mb-3">
-              <StatChip icon={Sparkles} label={`${stats.total} templates`} color={primaryColor} />
-              <StatChip icon={Share2} label={`${stats.total_usage} shares`} color={colors.sand[500]} />
+              <StatChip icon={Sparkles} label={`${stats.total} templates`} color="#BB3F95" />
+              <StatChip icon={Share2} label={`${stats.total_usage} shares`} color="#6B4773" />
             </View>
           )}
 
           {/* Filter chips */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3 -mx-1">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-3.5 -mx-1">
             <View className="flex-row gap-2 px-1">
               <FilterChip
                 label="All"
                 active={!filterType}
                 onPress={() => setFilterType(undefined)}
-                primaryColor={primaryColor}
-                colors={colors}
               />
               {(['INSTAGRAM_POST', 'WHATSAPP_STATUS', 'FACEBOOK_POST', 'INSTAGRAM_STORY'] as const).map(
                 (t) => (
@@ -210,8 +210,6 @@ export default function TemplatesScreen() {
                     label={TYPE_LABELS[t]}
                     active={filterType === t}
                     onPress={() => setFilterType(filterType === t ? undefined : t)}
-                    primaryColor={primaryColor}
-                    colors={colors}
                   />
                 ),
               )}
@@ -219,45 +217,48 @@ export default function TemplatesScreen() {
           </ScrollView>
 
           {/* Template grid */}
-          <View className="gap-2.5">
+          <View className="gap-3">
             {templates.map((t) => (
               <AnimatedPressable
                 key={t.id}
                 onPress={() => setDetail(t)}
                 accessibilityRole="button"
                 accessibilityLabel={`View ${t.name}`}
-                className="bg-white rounded-2xl border border-sand-100 overflow-hidden"
+                className="bg-white rounded-3xl border border-lavender-200 overflow-hidden shadow-sm"
               >
                 {/* Image preview */}
                 {t.image_url ? (
                   <Image
                     source={{ uri: t.image_url }}
-                    className="w-full h-40"
+                    className="w-full h-44"
                     contentFit="cover"
                     transition={200}
                   />
                 ) : (
                   <View
-                    className="w-full h-24 items-center justify-center"
-                    style={{ backgroundColor: `${primaryColor}0D` }}
+                    className="w-full h-28 items-center justify-center bg-lavender-50 border-b border-lavender-100"
                   >
-                    <ImageIcon size={24} color={colors.sand[300]} />
-                    <Text className="text-[10px] text-sand-400 mt-1">No image yet</Text>
+                    <ImageIcon size={26} color="#BB3F95" />
+                    <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider mt-1">No image generated</Text>
                   </View>
                 )}
 
-                <View className="p-3">
-                  <View className="flex-row items-center justify-between mb-1">
+                <View className="p-4">
+                  <View className="flex-row items-center justify-between mb-1.5">
                     <View className="flex-row items-center gap-2 flex-1 mr-2">
                       <Text className="text-base">{TYPE_EMOJI[t.template_type]}</Text>
-                      <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
                         {t.name}
                       </Text>
                     </View>
                     <View className="flex-row items-center gap-1.5">
                       {t.occasion && (
-                        <View className="bg-turmeric-50 rounded-full px-2 py-0.5">
-                          <Text className="text-[10px] font-semibold text-turmeric-600">
+                        <View className="bg-fuchsia-500/10 rounded-full px-2.5 py-0.5 border border-fuchsia-500/20">
+                          <Text className="text-[10px] font-bold text-fuchsia-700">
                             {t.occasion}
                           </Text>
                         </View>
@@ -265,20 +266,20 @@ export default function TemplatesScreen() {
                     </View>
                   </View>
 
-                  <View className="flex-row items-center gap-2 mt-1">
-                    <Text className="text-[10px] text-sand-400">
+                  <View className="flex-row items-center gap-2 mt-2 pt-2 border-t border-lavender-100">
+                    <Text className="text-xs text-heliotrope-500 font-medium">
                       {TYPE_LABELS[t.template_type]}
                     </Text>
-                    <Text className="text-[10px] text-sand-300">·</Text>
-                    <Text className="text-[10px] text-sand-400">
+                    <Text className="text-xs text-lavender-300">·</Text>
+                    <Text className="text-xs text-heliotrope-500 font-medium">
                       {t.usage_count} {t.usage_count === 1 ? 'share' : 'shares'}
                     </Text>
                     {t.image_url && (
                       <>
-                        <Text className="text-[10px] text-sand-300">·</Text>
-                        <View className="flex-row items-center gap-0.5">
-                          <Eye size={10} color={colors.sand[400]} />
-                          <Text className="text-[10px] text-green-600">Ready</Text>
+                        <Text className="text-xs text-lavender-300">·</Text>
+                        <View className="flex-row items-center gap-1">
+                          <Eye size={11} color="#16a34a" />
+                          <Text className="text-xs font-bold text-emerald-700">Ready</Text>
                         </View>
                       </>
                     )}
@@ -289,7 +290,7 @@ export default function TemplatesScreen() {
                       accessibilityLabel={`Delete ${t.name}`}
                       accessibilityRole="button"
                     >
-                      <Trash2 size={14} color={colors.rust?.[500] ?? '#DC2626'} />
+                      <Trash2 size={16} color="#dc2626" />
                     </AnimatedPressable>
                   </View>
                 </View>
@@ -340,9 +341,9 @@ function StatChip({
   color: string
 }) {
   return (
-    <View className="flex-row items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-sand-100">
-      <Icon size={12} color={color} />
-      <Text className="text-[10px] font-semibold text-sand-600">{label}</Text>
+    <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-white rounded-2xl px-3 py-2.5 border border-lavender-200 shadow-sm">
+      <Icon size={13} color={color} />
+      <Text className="text-xs font-bold text-spaceCadet-900">{label}</Text>
     </View>
   )
 }
@@ -353,27 +354,20 @@ function FilterChip({
   label,
   active,
   onPress,
-  primaryColor,
-  colors,
 }: {
   label: string
   active: boolean
   onPress: () => void
-  primaryColor: string
-  colors: any
 }) {
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="rounded-full px-3 py-1.5 border"
-      style={{
-        backgroundColor: active ? `${primaryColor}1A` : colors.sand[50],
-        borderColor: active ? primaryColor : colors.sand[200],
-      }}
+      className={`rounded-full px-4 py-1.5 border ${
+        active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+      }`}
     >
       <Text
-        className="text-[11px] font-semibold"
-        style={{ color: active ? primaryColor : colors.sand[500] }}
+        className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
       >
         {label}
       </Text>
@@ -390,7 +384,6 @@ function CreateTemplateModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [name, setName] = useState('')
@@ -439,21 +432,27 @@ function CreateTemplateModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 max-h-[85%]">
+      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 max-h-[85%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
-          <Text className="text-base font-bold text-sand-900 mb-4">New Social Template</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900 mb-4"
+          >
+            New Social Template
+          </Text>
 
           {/* Name */}
-          <Label text="Template Name" />
-          <Input
+          <Label text="Template Title" />
+          <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. Diwali Saree Post, Wedding Collection…"
-            colors={colors}
+            placeholderTextColor="#928EB2"
+            className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
           />
 
           {/* Type */}
-          <Label text="Template Type" />
+          <Label text="Template Platform Format" />
           <View className="flex-row flex-wrap gap-2 mb-4">
             {(
               [
@@ -464,122 +463,122 @@ function CreateTemplateModal({
                 'WHATSAPP_CATALOG',
                 'PDF_FLYER',
               ] as const
-            ).map((t) => (
-              <AnimatedPressable
-                key={t}
-                onPress={() => setTemplateType(t)}
-                className="flex-row items-center gap-1 rounded-full px-3 py-1.5 border"
-                style={{
-                  backgroundColor: templateType === t ? `${primaryColor}1A` : colors.sand[50],
-                  borderColor: templateType === t ? primaryColor : colors.sand[200],
-                }}
-              >
-                <Text className="text-xs">{TYPE_EMOJI[t]}</Text>
-                <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: templateType === t ? primaryColor : colors.sand[500] }}
+            ).map((t) => {
+              const active = templateType === t
+              return (
+                <AnimatedPressable
+                  key={t}
+                  onPress={() => setTemplateType(t)}
+                  className={`flex-row items-center gap-1 rounded-full px-3.5 py-2 border ${
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  }`}
                 >
-                  {TYPE_LABELS[t]}
-                </Text>
-              </AnimatedPressable>
-            ))}
+                  <Text className="text-xs">{TYPE_EMOJI[t]}</Text>
+                  <Text
+                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  >
+                    {TYPE_LABELS[t]}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
           </View>
 
           {/* Occasion */}
-          <Label text="Occasion (optional)" />
+          <Label text="Festive / Occasion (Optional)" />
           <View className="flex-row flex-wrap gap-2 mb-4">
-            {OCCASIONS.map((o) => (
-              <AnimatedPressable
-                key={o}
-                onPress={() => setOccasion(occasion === o ? '' : o)}
-                className="rounded-full px-3 py-1.5 border"
-                style={{
-                  backgroundColor: occasion === o ? `${primaryColor}1A` : colors.sand[50],
-                  borderColor: occasion === o ? primaryColor : colors.sand[200],
-                }}
-              >
-                <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: occasion === o ? primaryColor : colors.sand[500] }}
+            {OCCASIONS.map((o) => {
+              const active = occasion === o
+              return (
+                <AnimatedPressable
+                  key={o}
+                  onPress={() => setOccasion(occasion === o ? '' : o)}
+                  className={`rounded-full px-3.5 py-1.5 border ${
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  }`}
                 >
-                  {o}
-                </Text>
-              </AnimatedPressable>
-            ))}
+                  <Text
+                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  >
+                    {o}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
           </View>
 
           {/* Studio Template */}
-          <Label text="Background Style" />
+          <Label text="AI Photoshoot Style" />
           <View className="flex-row flex-wrap gap-2 mb-4">
-            {STUDIO_TEMPLATES.map((st) => (
-              <AnimatedPressable
-                key={st.id}
-                onPress={() => setStudioTemplate(st.id)}
-                className="flex-row items-center gap-1 rounded-full px-3 py-1.5 border"
-                style={{
-                  backgroundColor: studioTemplate === st.id ? `${primaryColor}1A` : colors.sand[50],
-                  borderColor: studioTemplate === st.id ? primaryColor : colors.sand[200],
-                }}
-              >
-                <Text className="text-xs">{st.emoji}</Text>
-                <Text
-                  className="text-[11px] font-semibold"
-                  style={{ color: studioTemplate === st.id ? primaryColor : colors.sand[500] }}
+            {STUDIO_TEMPLATES.map((st) => {
+              const active = studioTemplate === st.id
+              return (
+                <AnimatedPressable
+                  key={st.id}
+                  onPress={() => setStudioTemplate(st.id)}
+                  className={`flex-row items-center gap-1.5 rounded-full px-3.5 py-2 border ${
+                    active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                  }`}
                 >
-                  {st.label}
-                </Text>
-              </AnimatedPressable>
-            ))}
+                  <Text className="text-xs">{st.emoji}</Text>
+                  <Text
+                    className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                  >
+                    {st.label}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
           </View>
 
           {/* Products */}
-          <Label text="Products" />
+          <Label text="Featured Designs" />
           <AnimatedPressable
             onPress={() => setProductPickerOpen(true)}
-            className="flex-row items-center border border-sand-200 rounded-xl px-3 py-2.5 mb-4"
+            className="flex-row items-center bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 mb-4"
           >
             {pickedProducts.length > 0 ? (
               <View className="flex-row" style={{ marginLeft: 4 }}>
                 {pickedProducts.slice(0, 3).map((p, i) => (
-                  <View key={p.id} style={{ marginLeft: -4, zIndex: 3 - i }}>
+                  <View key={p.id} style={{ marginLeft: -6, zIndex: 3 - i }}>
                     {p.primary_photo_url ? (
                       <Image
                         source={{ uri: p.primary_photo_url }}
-                        style={{ width: 32, height: 32, borderRadius: 8, borderWidth: 2, borderColor: 'white' }}
+                        style={{ width: 34, height: 34, borderRadius: 10, borderWidth: 2, borderColor: 'white' }}
                         contentFit="cover"
                       />
                     ) : (
                       <View
-                        className="w-8 h-8 rounded-lg items-center justify-center bg-sand-100"
+                        className="w-8 h-8 rounded-xl items-center justify-center bg-lavender-100"
                         style={{ borderWidth: 2, borderColor: 'white' }}
                       >
-                        <ImageIcon size={16} color={colors.sand[400]} />
+                        <ImageIcon size={16} color="#BB3F95" />
                       </View>
                     )}
                   </View>
                 ))}
               </View>
             ) : (
-              <View className="w-8 h-8 rounded-lg items-center justify-center bg-sand-100">
-                <ImageIcon size={16} color={colors.sand[400]} />
+              <View className="w-8 h-8 rounded-xl items-center justify-center bg-lavender-100">
+                <ImageIcon size={16} color="#BB3F95" />
               </View>
             )}
             <Text
-              className={`flex-1 ml-2.5 text-sm ${pickedProducts.length > 0 ? 'text-sand-900 font-semibold' : 'text-sand-400'}`}
+              className={`flex-1 ml-3 text-sm ${pickedProducts.length > 0 ? 'text-spaceCadet-900 font-bold' : 'text-heliotrope-400 font-medium'}`}
               numberOfLines={1}
             >
               {pickedProducts.length === 0
-                ? 'Select products'
+                ? 'Select designs from inventory'
                 : pickedProducts.length === 1
-                  ? pickedProducts[0].name ?? 'Unnamed product'
-                  : `${pickedProducts.length} products selected`}
+                  ? pickedProducts[0].name ?? 'Selected design'
+                  : `${pickedProducts.length} designs selected`}
             </Text>
-            <ChevronRight size={16} color={colors.sand[300]} />
+            <ChevronRight size={16} color="#928EB2" />
           </AnimatedPressable>
 
           {error ? (
-            <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-              <Text className="text-xs text-red-600">{error}</Text>
+            <View className="bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-4">
+              <Text className="text-xs text-rose-600 font-semibold">{error}</Text>
             </View>
           ) : null}
 
@@ -593,26 +592,28 @@ function CreateTemplateModal({
             </View>
             <AnimatedPressable
               onPress={onClose}
-              className="flex-1 items-center justify-center bg-sand-100 rounded-xl py-3"
+              className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
             >
-              <Text className="text-sm font-semibold text-sand-600">Cancel</Text>
+              <Text className="text-sm font-bold text-spaceCadet-900">Cancel</Text>
             </AnimatedPressable>
           </View>
         </ScrollView>
       </View>
 
-      {/* Product picker — thumbnail grid so the retailer never needs to find
-          or copy a product ID by hand. */}
+      {/* Product picker */}
       <Modal
         visible={productPickerOpen}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setProductPickerOpen(false)}
       >
-        <View className="flex-1 bg-ink-50" style={{ paddingTop: insets.top + 12 }}>
-          <View className="flex-row items-center justify-between px-4 pb-3 bg-white border-b border-sand-100">
-            <Text className="text-base font-bold text-sand-900">
-              Select products{pickedProducts.length > 0 ? ` (${pickedProducts.length})` : ''}
+        <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: insets.top + 12 }}>
+          <View className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-lg font-bold text-spaceCadet-900"
+            >
+              Select Designs{pickedProducts.length > 0 ? ` (${pickedProducts.length})` : ''}
             </Text>
             <AnimatedPressable
               onPress={() => setProductPickerOpen(false)}
@@ -620,20 +621,20 @@ function CreateTemplateModal({
               accessibilityLabel="Done"
               accessibilityRole="button"
             >
-              <Text className="text-sm font-semibold" style={{ color: primaryColor }}>Done</Text>
+              <Text className="text-sm font-bold text-fuchsia-700">Done</Text>
             </AnimatedPressable>
           </View>
-          <ScrollView className="flex-1 px-4 pt-3" contentContainerStyle={{ paddingBottom: 32 }}>
+          <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 32 }}>
             {productsQuery.isLoading ? (
               <View className="items-center py-10">
-                <ActivityIndicator color={primaryColor} />
+                <ActivityIndicator color="#BB3F95" />
               </View>
             ) : pickerProducts.length === 0 ? (
-              <Text className="text-sm text-sand-400 text-center py-10">
+              <Text className="text-sm text-heliotrope-500 text-center py-10 font-medium">
                 No available products. Add products first.
               </Text>
             ) : (
-              <View className="gap-2">
+              <View className="gap-2.5">
                 {pickerProducts.map((p) => {
                   const selected = pickedProducts.some((x) => x.id === p.id)
                   return (
@@ -646,29 +647,28 @@ function CreateTemplateModal({
                       }}
                       accessibilityRole="button"
                       accessibilityState={{ selected }}
-                      className="flex-row items-center bg-white rounded-xl p-2.5 border"
-                      style={{ borderColor: selected ? primaryColor : colors.sand[100] }}
+                      className={`flex-row items-center bg-white rounded-2xl p-3 border ${
+                        selected ? 'border-fuchsia-600 shadow-sm' : 'border-lavender-200'
+                      }`}
                     >
                       {p.primary_photo_url ? (
                         <Image
                           source={{ uri: p.primary_photo_url }}
-                          style={{ width: 40, height: 40, borderRadius: 8 }}
+                          style={{ width: 44, height: 44, borderRadius: 10 }}
                           contentFit="cover"
                         />
                       ) : (
-                        <View className="w-10 h-10 rounded-lg items-center justify-center bg-sand-100">
-                          <ImageIcon size={18} color={colors.sand[400]} />
+                        <View className="w-11 h-11 rounded-xl items-center justify-center bg-lavender-100">
+                          <ImageIcon size={18} color="#BB3F95" />
                         </View>
                       )}
-                      <Text className="flex-1 ml-3 text-sm text-sand-800" numberOfLines={1}>
-                        {p.name ?? 'Unnamed product'}
+                      <Text className="flex-1 ml-3 text-sm font-bold text-spaceCadet-900" numberOfLines={1}>
+                        {p.name ?? 'Unnamed design'}
                       </Text>
                       <View
-                        className="w-5 h-5 rounded-full items-center justify-center border"
-                        style={{
-                          backgroundColor: selected ? primaryColor : 'transparent',
-                          borderColor: selected ? primaryColor : colors.sand[300],
-                        }}
+                        className={`w-6 h-6 rounded-full items-center justify-center border ${
+                          selected ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-lavender-300'
+                        }`}
                       >
                         {selected && <Check size={12} color="white" />}
                       </View>
@@ -695,9 +695,7 @@ function TemplateDetailModal({
   onClose: () => void
   onRefresh: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
-  const queryClient = useQueryClient()
 
   const [editingCaption, setEditingCaption] = useState(false)
   const [caption, setCaption] = useState(template.caption ?? '')
@@ -791,22 +789,21 @@ function TemplateDetailModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full max-h-[90%]">
+      <View className="bg-white rounded-t-3xl w-full max-h-[90%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Image */}
           {template.image_url ? (
             <Image
               source={{ uri: template.image_url }}
-              className="w-full h-56 rounded-t-3xl"
+              className="w-full h-60 rounded-t-3xl"
               contentFit="cover"
             />
           ) : (
             <View
-              className="w-full h-40 rounded-t-3xl items-center justify-center"
-              style={{ backgroundColor: `${primaryColor}0D` }}
+              className="w-full h-44 rounded-t-3xl items-center justify-center bg-lavender-50"
             >
-              <ImageIcon size={32} color={colors.sand[300]} />
-              <Text className="text-xs text-sand-400 mt-2">No image generated yet</Text>
+              <ImageIcon size={34} color="#BB3F95" />
+              <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mt-2">No image generated yet</Text>
             </View>
           )}
 
@@ -814,22 +811,27 @@ function TemplateDetailModal({
             {/* Title */}
             <View className="flex-row items-center gap-2 mb-1">
               <Text className="text-base">{TYPE_EMOJI[template.template_type]}</Text>
-              <Text className="text-base font-bold text-sand-900 flex-1">{template.name}</Text>
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-lg font-bold text-spaceCadet-900 flex-1"
+              >
+                {template.name}
+              </Text>
             </View>
-            <View className="flex-row items-center gap-2 mb-3">
-              <Text className="text-xs text-sand-400">{TYPE_LABELS[template.template_type]}</Text>
+            <View className="flex-row items-center gap-2 mb-3.5">
+              <Text className="text-xs text-heliotrope-500 font-medium">{TYPE_LABELS[template.template_type]}</Text>
               {template.occasion && (
                 <>
-                  <Text className="text-xs text-sand-300">·</Text>
-                  <View className="bg-turmeric-50 rounded-full px-2 py-0.5">
-                    <Text className="text-[10px] font-semibold text-turmeric-600">
+                  <Text className="text-xs text-lavender-300">·</Text>
+                  <View className="bg-fuchsia-500/10 rounded-full px-2.5 py-0.5 border border-fuchsia-500/20">
+                    <Text className="text-[10px] font-bold text-fuchsia-700">
                       {template.occasion}
                     </Text>
                   </View>
                 </>
               )}
-              <Text className="text-xs text-sand-300">·</Text>
-              <Text className="text-xs text-sand-400">
+              <Text className="text-xs text-lavender-300">·</Text>
+              <Text className="text-xs text-heliotrope-500 font-medium">
                 {template.usage_count} {template.usage_count === 1 ? 'share' : 'shares'}
               </Text>
             </View>
@@ -838,7 +840,7 @@ function TemplateDetailModal({
             {!template.image_url && (
               <View className="mb-4">
                 <GradientButton
-                  label={generating ? 'Generating…' : '✨ Generate Image'}
+                  label={generating ? 'Generating…' : '✨ Generate AI Design Photo'}
                   onPress={() => {
                     setGenerating(true)
                     void generateMutation.mutate()
@@ -846,13 +848,13 @@ function TemplateDetailModal({
                   disabled={generating}
                 />
                 {generateStatus === 'processing' && (
-                  <View className="flex-row items-center gap-2 mt-2 justify-center">
-                    <ActivityIndicator size="small" color={primaryColor} />
-                    <Text className="text-xs text-sand-500">AI is generating your image…</Text>
+                  <View className="flex-row items-center gap-2 mt-2.5 justify-center">
+                    <ActivityIndicator size="small" color="#BB3F95" />
+                    <Text className="text-xs text-heliotrope-500 font-medium">AI is rendering the luxury background…</Text>
                   </View>
                 )}
                 {generateStatus === 'failed' && (
-                  <Text className="text-xs text-red-500 text-center mt-2">
+                  <Text className="text-xs text-red-600 font-semibold text-center mt-2.5">
                     Generation failed. Check your product photo and try again.
                   </Text>
                 )}
@@ -864,14 +866,14 @@ function TemplateDetailModal({
               <View className="mb-4">
                 <View className="flex-row items-center justify-between mb-2">
                   <View className="flex-row items-center gap-1.5">
-                    <MessageSquare size={14} color={colors.sand[500]} />
-                    <Text className="text-xs font-semibold text-sand-600">Caption & Hashtags</Text>
+                    <MessageSquare size={14} color="#BB3F95" />
+                    <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider">Caption & Hashtags</Text>
                   </View>
                   <AnimatedPressable
                     onPress={() => setEditingCaption(!editingCaption)}
                     hitSlop={8}
                   >
-                    <Text className="text-xs font-semibold" style={{ color: primaryColor }}>
+                    <Text className="text-xs font-bold text-fuchsia-700">
                       {editingCaption ? 'Done' : 'Edit'}
                     </Text>
                   </AnimatedPressable>
@@ -885,35 +887,35 @@ function TemplateDetailModal({
                       multiline
                       numberOfLines={4}
                       placeholder="Write your caption…"
-                      placeholderTextColor={colors.sand[300]}
-                      className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-2 min-h-[80px]"
+                      placeholderTextColor="#928EB2"
+                      className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-2 min-h-[85px]"
                       textAlignVertical="top"
                     />
                     <TextInput
                       value={hashtags}
                       onChangeText={setHashtags}
                       placeholder="#diwali #saree #festive"
-                      placeholderTextColor={colors.sand[300]}
-                      className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+                      placeholderTextColor="#928EB2"
+                      className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
                     />
-                    <View className="mt-2">
+                    <View className="mt-2.5">
                       <GradientButton
-                        label="Save"
+                        label="Save Caption"
                         onPress={() => void updateMutation.mutate()}
                         disabled={updateMutation.isPending}
                       />
                     </View>
                   </>
                 ) : (
-                  <View className="bg-sand-50 rounded-xl p-3">
-                    <Text className="text-sm text-sand-700 leading-5">
-                      {template.caption || 'No caption yet'}
+                  <View className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
+                    <Text className="text-xs text-spaceCadet-900 leading-relaxed font-medium">
+                      {template.caption || 'No caption generated'}
                     </Text>
                     {template.hashtags.length > 0 && (
-                      <View className="flex-row flex-wrap gap-1 mt-2">
+                      <View className="flex-row flex-wrap gap-1.5 mt-2.5">
                         {template.hashtags.map((h, i) => (
-                          <View key={i} className="bg-primary-50 rounded-full px-2 py-0.5">
-                            <Text className="text-[10px] font-semibold" style={{ color: primaryColor }}>
+                          <View key={i} className="bg-fuchsia-500/10 rounded-full px-2.5 py-0.5 border border-fuchsia-500/20">
+                            <Text className="text-[10px] font-bold text-fuchsia-700">
                               {h}
                             </Text>
                           </View>
@@ -930,14 +932,14 @@ function TemplateDetailModal({
               {template.image_url && (
                 <View className="flex-row gap-2.5">
                   <View className="flex-1">
-                    <GradientButton label="📤 Share" onPress={() => void handleShare()} />
+                    <GradientButton label="📤 Share Now" onPress={() => void handleShare()} />
                   </View>
                   <View className="flex-1">
                     <AnimatedPressable
                       onPress={() => void handleCopyCaption()}
-                      className="items-center justify-center bg-sand-100 rounded-xl py-3.5"
+                      className="items-center justify-center bg-lavender-100 rounded-2xl py-3.5 border border-lavender-200"
                     >
-                      <Text className="text-sm font-semibold text-sand-700">📋 Copy</Text>
+                      <Text className="text-sm font-bold text-spaceCadet-900">📋 Copy Text</Text>
                     </AnimatedPressable>
                   </View>
                 </View>
@@ -949,16 +951,16 @@ function TemplateDetailModal({
                     void generateMutation.mutate()
                   }}
                   disabled={generating}
-                  className="items-center justify-center bg-sand-100 rounded-xl py-3"
+                  className="items-center justify-center bg-lavender-50 rounded-2xl py-3 border border-lavender-200"
                 >
-                  <Text className="text-sm font-semibold text-sand-600">🔄 Regenerate</Text>
+                  <Text className="text-sm font-bold text-fuchsia-700">🔄 Regenerate Photo</Text>
                 </AnimatedPressable>
               )}
               <AnimatedPressable
                 onPress={onClose}
-                className="items-center justify-center bg-sand-100 rounded-xl py-3"
+                className="items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
               >
-                <Text className="text-sm font-semibold text-sand-600">Close</Text>
+                <Text className="text-sm font-bold text-spaceCadet-900">Close</Text>
               </AnimatedPressable>
             </View>
           </View>
@@ -972,28 +974,6 @@ function TemplateDetailModal({
 
 function Label({ text }: { text: string }) {
   return (
-    <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">{text}</Text>
-  )
-}
-
-function Input({
-  value,
-  onChangeText,
-  placeholder,
-  colors,
-}: {
-  value: string
-  onChangeText: (t: string) => void
-  placeholder: string
-  colors: any
-}) {
-  return (
-    <TextInput
-      value={value}
-      onChangeText={onChangeText}
-      placeholder={placeholder}
-      placeholderTextColor={colors.sand[300]}
-      className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
-    />
+    <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">{text}</Text>
   )
 }

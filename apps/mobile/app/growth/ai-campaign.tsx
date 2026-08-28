@@ -29,8 +29,8 @@ const EXAMPLE_PROMPTS = [
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-3.5">
         {title}
       </Text>
       {children}
@@ -39,7 +39,6 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function AiCampaignScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -109,22 +108,28 @@ export default function AiCampaignScreen() {
   return (
     <KeyboardAvoidingView
       behavior="padding"
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-[#F8F7FC]"
     >
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
             onPress={() => router.back()}
             hitSlop={8}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
             accessibilityLabel="Close"
             accessibilityRole="button"
           >
-            <ChevronLeft size={24} color={colors.sand[700]} />
+            <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
-          <Text className="text-base font-bold text-sand-900">AI Campaign Assistant</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-xl font-bold text-spaceCadet-900"
+          >
+            AI Campaign Assistant
+          </Text>
         </View>
       </View>
 
@@ -136,27 +141,27 @@ export default function AiCampaignScreen() {
               value={prompt}
               onChangeText={setPrompt}
               placeholder="e.g. Send cotton new arrivals to customers who like office wear"
-              placeholderTextColor={colors.sand[400]}
-              className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-3 min-h-[80px]"
+              placeholderTextColor="#928EB2"
+              className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 min-h-[90px] border border-lavender-200"
               multiline
               maxLength={2000}
               textAlignVertical="top"
             />
-            <View className="flex-row flex-wrap gap-2 mt-3">
+            <View className="flex-row flex-wrap gap-2 mt-3.5">
               {EXAMPLE_PROMPTS.map((example) => (
                 <AnimatedPressable
                   key={example}
                   onPress={() => setPrompt(example)}
                   accessibilityRole="button"
-                  className="px-3 py-2 rounded-xl bg-sand-100 border border-sand-200"
+                  className="px-3.5 py-2 rounded-2xl bg-lavender-100 border border-lavender-200"
                 >
-                  <Text className="text-[11px] font-medium text-sand-600 leading-4">
+                  <Text className="text-xs font-semibold text-spaceCadet-900 leading-4">
                     {example}
                   </Text>
                 </AnimatedPressable>
               ))}
             </View>
-            <View className="mt-3">
+            <View className="mt-4">
               <GradientButton
                 label={generating ? 'Generating…' : 'Generate Campaign'}
                 onPress={() => void handleGenerate()}
@@ -169,29 +174,29 @@ export default function AiCampaignScreen() {
           {draft && (
             <>
               <Section title="Suggested campaign">
-                <View className="gap-3">
+                <View className="gap-3.5">
                   <View>
-                    <Text className="text-xs font-medium text-sand-600 mb-1">Name</Text>
+                    <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">Campaign Name</Text>
                     <TextInput
                       value={draft.name}
                       onChangeText={(text) => setDraft({ ...draft, name: text })}
-                      className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-2.5 border border-sand-200"
+                      className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200"
                       maxLength={120}
                     />
                   </View>
 
-                  <View className="flex-row gap-2">
+                  <View className="flex-row gap-3">
                     <View className="flex-1">
-                      <Text className="text-xs font-medium text-sand-600 mb-1">Type</Text>
-                      <View className="bg-sand-50 rounded-xl px-3 py-2.5 border border-sand-200">
-                        <Text className="text-sm text-sand-800">{typeLabel[draft.type] ?? draft.type}</Text>
+                      <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">Type</Text>
+                      <View className="bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200">
+                        <Text className="text-sm font-bold text-spaceCadet-900">{typeLabel[draft.type] ?? draft.type}</Text>
                       </View>
                     </View>
                     {draft.type === 'FESTIVAL' && (
                       <View className="flex-1">
-                        <Text className="text-xs font-medium text-sand-600 mb-1">Festival</Text>
-                        <View className="bg-sand-50 rounded-xl px-3 py-2.5 border border-sand-200">
-                          <Text className="text-sm text-sand-800">
+                        <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">Festival</Text>
+                        <View className="bg-lavender-50 rounded-2xl px-4 py-3 border border-lavender-200">
+                          <Text className="text-sm font-bold text-spaceCadet-900">
                             {draft.festival_id ? `Festival #${draft.festival_id}` : 'Not selected'}
                           </Text>
                         </View>
@@ -200,46 +205,49 @@ export default function AiCampaignScreen() {
                   </View>
 
                   <View>
-                    <Text className="text-xs font-medium text-sand-600 mb-1">Message template</Text>
+                    <Text className="text-xs font-bold text-heliotrope-500 mb-1.5 uppercase tracking-wider">WhatsApp Message Template</Text>
                     <TextInput
                       value={draft.message_template}
                       onChangeText={(text) => setDraft({ ...draft, message_template: text })}
-                      className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3.5 py-2.5 min-h-[96px] border border-sand-200"
+                      className="text-sm font-bold text-spaceCadet-900 bg-lavender-50 rounded-2xl px-4 py-3 min-h-[100px] border border-lavender-200"
                       multiline
                       maxLength={2000}
                       textAlignVertical="top"
                     />
                   </View>
 
-                  <View className="bg-sand-50 rounded-xl p-3">
-                    <Text className="text-[11px] font-semibold text-sand-500 uppercase tracking-wide mb-1">
-                      Audience
+                  <View className="bg-lavender-50 rounded-2xl p-4 border border-lavender-200">
+                    <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1">
+                      Target Audience
                     </Text>
-                    <Text className="text-xs text-sand-600 leading-4">
+                    <Text className="text-xs font-bold text-fuchsia-700 leading-4">
                       {draft.audience_count > 0
                         ? `${draft.audience_count} customers match this audience`
                         : 'No customers match — adjust filters'}
                     </Text>
                     {draft.rationale ? (
-                      <Text className="text-xs text-sand-500 mt-1 leading-4">{draft.rationale}</Text>
+                      <Text className="text-xs text-heliotrope-500 mt-1.5 leading-relaxed font-medium">{draft.rationale}</Text>
                     ) : null}
                   </View>
 
                   {draft.matched_products.length > 0 && (
                     <View>
-                      <Text className="text-xs font-medium text-sand-600 mb-2">
+                      <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
                         Matched products ({draft.matched_products.length})
                       </Text>
-                      <View className="gap-1.5">
+                      <View className="gap-2">
                         {draft.matched_products.slice(0, 8).map((p: SuggestedProduct) => (
                           <View
                             key={p.id}
-                            className="flex-row items-center justify-between bg-sand-50 rounded-xl px-3 py-2"
+                            className="flex-row items-center justify-between bg-lavender-50 rounded-2xl px-3.5 py-2.5 border border-lavender-200"
                           >
-                            <Text className="text-xs font-medium text-sand-700 flex-1 mr-2" numberOfLines={1}>
+                            <Text className="text-xs font-bold text-spaceCadet-900 flex-1 mr-2" numberOfLines={1}>
                               {p.name ?? p.category ?? 'Product'}
                             </Text>
-                            <Text className="text-[10px] text-sand-400">
+                            <Text
+                              style={{ fontFamily: 'Marcellus_400Regular' }}
+                              className="text-xs font-bold text-spaceCadet-900"
+                            >
                               {p.primary_color ?? ''}
                               {p.price_min ? ` · ₹${(p.price_min / 100).toFixed(0)}` : ''}
                             </Text>

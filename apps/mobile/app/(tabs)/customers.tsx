@@ -47,48 +47,58 @@ const CustomerCard = memo(function CustomerCard({
   return (
     <AnimatedPressable
       onPress={onPress}
-      className="bg-white rounded-2xl p-4 border border-sand-100 flex-row items-center gap-3"
+      className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm flex-row items-center gap-3.5"
     >
       {/* Avatar */}
-      <View className="w-12 h-12 rounded-full bg-ink-100 items-center justify-center flex-shrink-0">
-        <Text className="text-ink-700 font-bold text-lg">
+      <View className="w-12 h-12 rounded-2xl bg-[#560A39] items-center justify-center flex-shrink-0 border border-[#BB3F95]/30">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-[#E0E1F6] font-bold text-lg"
+        >
           {item.name.charAt(0).toUpperCase()}
         </Text>
       </View>
 
       <View className="flex-1 min-w-0">
-        <Text className="text-sm font-semibold text-sand-900">{item.name}</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+        >
+          {item.name}
+        </Text>
         
         {/* City / State */}
         {locationStr && (
           <View className="flex-row items-center gap-1 mt-0.5">
-            <MapPin size={10} color={colors.sand[400]} />
-            <Text className="text-xs text-sand-400" numberOfLines={1}>{locationStr}</Text>
+            <MapPin size={11} color="#6B4773" />
+            <Text className="text-xs text-heliotrope-500 font-medium" numberOfLines={1}>
+              {locationStr}
+            </Text>
           </View>
         )}
 
-        <Text className="text-xs text-sand-400 mt-0.5">
+        <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">
           {item.phone.slice(-4).padStart(item.phone.length, '•')}
         </Text>
 
         {/* Preference summary chips */}
         {prefSummary.length > 0 && (
-          <View className="flex-row flex-wrap gap-1 mt-1.5">
+          <View className="flex-row flex-wrap gap-1 mt-2">
             {prefSummary.slice(0, 3).map((tag) => (
-              <View key={tag} className="bg-ink-50 px-2 py-0.5 rounded-full">
-                <Text className="text-ink-700 text-xs">{tag}</Text>
+              <View key={tag} className="bg-lavender-100 px-2.5 py-0.5 rounded-full border border-lavender-200">
+                <Text className="text-spaceCadet-900 font-bold text-[11px]">{tag}</Text>
               </View>
             ))}
             {!!item.budget_max && (
-              <View className="bg-turmeric-50 px-2 py-0.5 rounded-full">
-                <Text className="text-turmeric-700 text-xs">≤{formatPrice(item.budget_max)}</Text>
+              <View className="bg-fuchsia-500/15 px-2.5 py-0.5 rounded-full border border-fuchsia-500/30">
+                <Text className="text-fuchsia-700 font-bold text-[11px]">≤{formatPrice(item.budget_max)}</Text>
               </View>
             )}
           </View>
         )}
       </View>
 
-      <ChevronRight size={16} color={colors.sand[300]} />
+      <ChevronRight size={18} color="#928EB2" />
     </AnimatedPressable>
   )
 })
@@ -121,21 +131,26 @@ export default function CustomersScreen() {
     () => (
       <View className="items-center py-16 px-8">
         {search ? (
-          <Text className="text-sand-400 text-sm">No customers found</Text>
+          <Text className="text-heliotrope-500 text-sm font-medium">No customers found</Text>
         ) : (
           <>
-            <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
-              <Users size={28} color={colors.sand[400]} />
+            <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200">
+              <Users size={28} color="#BB3F95" />
             </View>
-            <Text className="text-sand-700 text-base font-semibold text-center">No customers yet</Text>
-            <Text className="text-sand-400 text-xs text-center mt-1 leading-5">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-spaceCadet-900 text-lg font-bold text-center"
+            >
+              No customers yet
+            </Text>
+            <Text className="text-heliotrope-500 text-xs text-center mt-1 leading-5 font-medium">
               Scan a QR code or add customers manually{'\n'}to start building your CRM.
             </Text>
             <AnimatedPressable
               onPress={() => router.push('/customer/add')}
-              className="mt-4 bg-ink-600 px-6 py-3 rounded-xl"
+              className="mt-5 bg-spaceCadet-900 px-6 py-3 rounded-2xl"
             >
-              <Text className="text-white text-sm font-semibold">Add First Customer</Text>
+              <Text className="text-white text-xs font-bold uppercase tracking-wider">Add First Customer</Text>
             </AnimatedPressable>
           </>
         )}
@@ -145,17 +160,17 @@ export default function CustomersScreen() {
   )
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Search */}
-      <View className="bg-white px-4 py-3 border-b border-sand-100">
-        <View className="flex-row items-center bg-sand-100 rounded-xl px-3 py-2.5 gap-2">
-          <Search size={16} color={colors.sand[400]} />
+      <View className="bg-white px-5 py-3.5 border-b border-lavender-200">
+        <View className="flex-row items-center bg-lavender-50 rounded-2xl px-4 py-3 gap-2.5 border border-lavender-200">
+          <Search size={16} color="#928EB2" />
           <TextInput
             value={search}
             onChangeText={setSearch}
             placeholder="Search by name or phone..."
-            placeholderTextColor={colors.sand[400]}
-            className="flex-1 text-sm text-sand-900"
+            placeholderTextColor="#928EB2"
+            className="flex-1 text-sm font-bold text-spaceCadet-900"
           />
         </View>
       </View>
@@ -167,7 +182,7 @@ export default function CustomersScreen() {
           data={customers}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 12, gap: 8, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 14, gap: 10, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
           // ── Performance props ──
           windowSize={5}
@@ -180,12 +195,12 @@ export default function CustomersScreen() {
       {/* FAB */}
       <AnimatedPressable
         onPress={() => router.push('/customer/add')}
-        className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
+        className="absolute bottom-6 right-5 w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg"
         style={{ elevation: 6 }}
         accessibilityLabel="Add customer"
         accessibilityRole="button"
       >
-        <Plus size={24} color="white" />
+        <Plus size={26} color="white" />
       </AnimatedPressable>
     </View>
   )

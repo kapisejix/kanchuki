@@ -68,27 +68,31 @@ const StatCard = memo(function StatCard({
   icon,
   label,
   value,
-  color,
   subtitle,
   onPress,
 }: {
   icon: React.ReactNode
   label: string
   value: string | number
-  color: string
+  color?: string
   subtitle?: string
   onPress?: () => void
 }) {
   const content = (
-    <View className="flex-1 bg-white rounded-2xl p-4 border border-sand-100 min-w-[48%]">
-      <View className="flex-row items-center gap-2 mb-2">
-        <View className="w-8 h-8 rounded-lg items-center justify-center" style={{ backgroundColor: `${color}15` }}>
+    <View className="flex-1 bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm min-w-[48%]">
+      <View className="flex-row items-center gap-2 mb-3">
+        <View className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200">
           {icon}
         </View>
       </View>
-      <Text className="text-2xl font-bold text-sand-900">{value}</Text>
-      <Text className="text-xs text-sand-500 mt-0.5">{label}</Text>
-      {subtitle && <Text className="text-[10px] text-sand-400 mt-0.5">{subtitle}</Text>}
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-2xl font-bold text-spaceCadet-900"
+      >
+        {value}
+      </Text>
+      <Text className="text-xs font-bold text-spaceCadet-900 mt-1 uppercase tracking-wider">{label}</Text>
+      {subtitle && <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">{subtitle}</Text>}
     </View>
   )
 
@@ -109,26 +113,24 @@ function MiniBarChart({
   maxValue: number
   color: string
 }) {
-  const { colors } = useTheme()
   const max = Math.max(maxValue, 1)
   return (
-    <View className="flex-row items-end gap-1.5 h-24">
+    <View className="flex-row items-end gap-2 h-24 pt-2">
       {data.map((d, i) => {
-        const height = Math.max((d.value / max) * 80, d.value > 0 ? 8 : 2)
+        const height = Math.max((d.value / max) * 70, d.value > 0 ? 8 : 3)
         return (
-          <View key={i} className="flex-1 items-center gap-1">
-            <Text className="text-[10px] text-sand-400 font-medium">
+          <View key={i} className="flex-1 items-center gap-1.5">
+            <Text className="text-[10px] text-heliotrope-500 font-bold">
               {d.value > 0 ? d.value : ''}
             </Text>
             <View
-              className="w-full rounded-t-md"
+              className="w-full rounded-t-lg"
               style={{
                 height,
-                backgroundColor: d.value > 0 ? color : colors.sand[100],
-                opacity: d.value > 0 ? 0.5 + (d.value / max) * 0.5 : 1,
+                backgroundColor: d.value > 0 ? color : '#E0E1F6',
               }}
             />
-            <Text className="text-[10px] text-sand-400">{d.label}</Text>
+            <Text className="text-[10px] text-heliotrope-500 font-bold">{d.label}</Text>
           </View>
         )
       })}
@@ -143,34 +145,38 @@ function CategoryBreakdown({
 }: {
   data: { category: string; count: number }[]
 }) {
-  const { primaryColor, colors } = useTheme()
   const CHART_COLORS = [
-    primaryColor,
-    colors.turmeric[600],
-    colors.rust[700],
-    colors.sand[600],
-    colors.chartAccent,
-    colors.rust[500],
+    '#BB3F95',
+    '#231F48',
+    '#560A39',
+    '#6B4773',
+    '#845EC2',
+    '#D65CB3',
   ]
   const total = data.reduce((s, d) => s + d.count, 0)
   if (total === 0) return null
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-3">
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-4">
         Products by Category
       </Text>
       {data.slice(0, 6).map((d, i) => {
         const pct = Math.round((d.count / total) * 100)
         return (
-          <View key={d.category} className="flex-row items-center gap-2 mb-2">
+          <View key={d.category} className="flex-row items-center gap-3 mb-3">
             <View
-              className="w-2.5 h-2.5 rounded-full"
+              className="w-3 h-3 rounded-full"
               style={{ backgroundColor: CHART_COLORS[i % CHART_COLORS.length] }}
             />
-            <Text className="flex-1 text-sm text-sand-700">{d.category}</Text>
-            <Text className="text-xs font-semibold text-sand-900">{d.count}</Text>
-            <View className="w-12 bg-sand-100 rounded-full h-1.5 overflow-hidden">
+            <Text className="flex-1 text-sm font-bold text-spaceCadet-900">{d.category}</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xs font-bold text-spaceCadet-900"
+            >
+              {d.count} ({pct}%)
+            </Text>
+            <View className="w-16 bg-lavender-100 rounded-full h-2 overflow-hidden border border-lavender-200">
               <View
                 className="h-full rounded-full"
                 style={{
@@ -193,24 +199,29 @@ const CollectionCard = memo(function CollectionCard({
 }: {
   item: Analytics['recent_collections'][0]
 }) {
-  const { colors } = useTheme()
   return (
     <AnimatedPressable
       onPress={() => router.push({ pathname: '/collection/[id]', params: { id: item.id } })}
-      className="bg-white rounded-2xl p-4 border border-sand-100"
+      className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm"
     >
-      <View className="flex-row items-start justify-between mb-2">
-        <Text className="text-sm font-semibold text-sand-900 flex-1 mr-2" numberOfLines={1}>
+      <View className="flex-row items-start justify-between mb-3">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900 flex-1 mr-2"
+          numberOfLines={1}
+        >
           {item.title}
         </Text>
         <View
-          className={`px-2 py-0.5 rounded-full ${
-            item.status === 'ACTIVE' ? 'bg-turmeric-100' : 'bg-sand-100'
+          className={`px-3 py-1 rounded-full border ${
+            item.status === 'ACTIVE'
+              ? 'bg-fuchsia-500/15 border-fuchsia-500/30'
+              : 'bg-lavender-100 border-lavender-200'
           }`}
         >
           <Text
-            className={`text-[10px] font-medium ${
-              item.status === 'ACTIVE' ? 'text-turmeric-700' : 'text-sand-500'
+            className={`text-[10px] font-bold ${
+              item.status === 'ACTIVE' ? 'text-fuchsia-700' : 'text-heliotrope-500'
             }`}
           >
             {item.status}
@@ -218,22 +229,22 @@ const CollectionCard = memo(function CollectionCard({
         </View>
       </View>
 
-      <View className="flex-row gap-3">
-        <View className="flex-row items-center gap-1">
-          <Eye size={12} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-500">{item.view_count}</Text>
+      <View className="flex-row gap-4 pt-2 border-t border-lavender-200">
+        <View className="flex-row items-center gap-1.5">
+          <Eye size={14} color="#BB3F95" />
+          <Text className="text-xs font-bold text-spaceCadet-900">{item.view_count}</Text>
         </View>
-        <View className="flex-row items-center gap-1">
-          <MessageCircle size={12} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-500">{item.enquiry_count}</Text>
+        <View className="flex-row items-center gap-1.5">
+          <MessageCircle size={14} color="#BB3F95" />
+          <Text className="text-xs font-bold text-spaceCadet-900">{item.enquiry_count}</Text>
         </View>
-        <View className="flex-row items-center gap-1">
-          <Heart size={12} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-500">{item.favorite_count}</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Heart size={14} color="#BB3F95" />
+          <Text className="text-xs font-bold text-spaceCadet-900">{item.favorite_count}</Text>
         </View>
-        <View className="flex-row items-center gap-1">
-          <Package size={12} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-500">{item.product_count}</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Package size={14} color="#BB3F95" />
+          <Text className="text-xs font-bold text-spaceCadet-900">{item.product_count}</Text>
         </View>
       </View>
     </AnimatedPressable>
@@ -252,18 +263,20 @@ function PlanUsageBar({
   label: string
 }) {
   const pct = Math.min(Math.round((current / Math.max(max, 1)) * 100), 100)
-  const isNearLimit = pct >= 80
   return (
-    <View className="mb-2">
-      <View className="flex-row justify-between items-center mb-1">
-        <Text className="text-xs text-sand-600">{label}</Text>
-        <Text className="text-xs font-semibold text-sand-900">
-          {current}/{max >= 999999 ? '∞' : max.toLocaleString('en-IN')}
+    <View className="mb-3">
+      <View className="flex-row justify-between items-center mb-1.5">
+        <Text className="text-xs font-bold text-spaceCadet-900">{label}</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xs font-bold text-spaceCadet-900"
+        >
+          {current} / {max >= 999999 ? '∞' : max.toLocaleString('en-IN')}
         </Text>
       </View>
-      <View className="h-2 bg-sand-100 rounded-full overflow-hidden">
+      <View className="h-2 bg-lavender-100 rounded-full overflow-hidden border border-lavender-200">
         <View
-          className={`h-full rounded-full ${isNearLimit ? 'bg-turmeric-500' : 'bg-ink-500'}`}
+          className="h-full rounded-full bg-fuchsia-600"
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
       </View>
@@ -296,19 +309,24 @@ export default function AnalyticsScreen() {
 
   return (
     <ScrollView
-      className="flex-1 bg-ink-50"
+      className="flex-1 bg-[#F8F7FC]"
       refreshControl={
         <RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />
       }
     >
       {/* Page Header */}
       <View
-        className="bg-white px-4 pb-5 border-b border-sand-100"
+        className="bg-white px-5 pb-4 border-b border-lavender-200"
         style={{ paddingTop: insets.top + 16 }}
       >
-        <Text className="text-2xl font-bold text-sand-900">Analytics</Text>
-        <Text className="text-sm text-sand-500 mt-1">
-          Last 7 days overview
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-2xl font-bold text-spaceCadet-900"
+        >
+          Store Analytics
+        </Text>
+        <Text className="text-xs text-heliotrope-500 mt-0.5 font-medium">
+          Last 7 days performance overview
         </Text>
       </View>
 
@@ -316,47 +334,43 @@ export default function AnalyticsScreen() {
         {/* Overview Stats */}
         <View className="flex-row flex-wrap gap-3">
           <StatCard
-            icon={<Eye size={18} color={primaryColor} />}
-            label="Total Views (7d)"
+            icon={<Eye size={20} color="#BB3F95" />}
+            label="Total Views"
             value={totalViews.toLocaleString('en-IN')}
-            color={primaryColor}
             subtitle="Across all collections"
           />
           <StatCard
-            icon={<MessageCircle size={18} color={colors.turmeric[500]} />}
-            label="Total Enquiries (7d)"
+            icon={<MessageCircle size={20} color="#BB3F95" />}
+            label="Enquiries"
             value={totalEnquiries.toLocaleString('en-IN')}
-            color={colors.turmeric[500]}
-            subtitle="Customer enquiries"
+            subtitle="WhatsApp leads"
           />
           <StatCard
-            icon={<Package size={18} color={colors.turmeric[500]} />}
-            label="Active Products"
+            icon={<Package size={20} color="#BB3F95" />}
+            label="Available SKUs"
             value={
               (analytics?.status_breakdown
                 ?.find((s) => s.status === 'AVAILABLE')
                 ?.count ?? 0).toLocaleString('en-IN')
             }
-            color={colors.turmeric[500]}
           />
           <StatCard
-            icon={<BarChart3 size={18} color={colors.danger} />}
+            icon={<BarChart3 size={20} color="#BB3F95" />}
             label="Total Products"
             value={
               (analytics?.status_breakdown
                 ?.reduce((s, g) => s + g.count, 0) ?? 0).toLocaleString('en-IN')
             }
-            color={colors.danger}
           />
         </View>
 
         {/* Daily Trend Chart */}
-        <View className="bg-white rounded-2xl p-4 border border-sand-100">
-          <View className="flex-row items-center justify-between mb-4">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-              Daily Views
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+          <View className="flex-row items-center justify-between mb-3">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+              Daily Views (7 Days)
             </Text>
-            <TrendingUp size={16} color={primaryColor} />
+            <TrendingUp size={16} color="#BB3F95" />
           </View>
           <MiniBarChart
             data={trends.map((d) => ({
@@ -364,10 +378,10 @@ export default function AnalyticsScreen() {
               value: d.views,
             }))}
             maxValue={maxViews}
-            color={primaryColor}
+            color="#BB3F95"
           />
           {totalViews === 0 && (
-            <Text className="text-xs text-sand-400 text-center mt-3">
+            <Text className="text-xs text-heliotrope-500 font-medium text-center mt-3">
               Share a collection link to start seeing views
             </Text>
           )}
@@ -375,12 +389,12 @@ export default function AnalyticsScreen() {
 
         {/* Daily Enquiries Chart */}
         {trends.some((d) => d.enquiries > 0) && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
-            <View className="flex-row items-center justify-between mb-4">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+            <View className="flex-row items-center justify-between mb-3">
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
                 Daily Enquiries
               </Text>
-              <MessageCircle size={16} color={colors.turmeric[500]} />
+              <MessageCircle size={16} color="#BB3F95" />
             </View>
             <MiniBarChart
               data={trends.map((d) => ({
@@ -388,7 +402,7 @@ export default function AnalyticsScreen() {
                 value: d.enquiries,
               }))}
               maxValue={Math.max(...trends.map((d) => d.enquiries), 1)}
-              color={colors.turmeric[500]}
+              color="#231F48"
             />
           </View>
         )}
@@ -400,57 +414,43 @@ export default function AnalyticsScreen() {
 
         {/* Plan Usage */}
         {analytics?.plan && (
-          <View className="bg-white rounded-2xl p-4 border border-sand-100">
-            <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-                Plan Usage
+          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+            <View className="flex-row items-center justify-between mb-4">
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+                Plan Usage & Limits
               </Text>
-              <View className="flex-row items-center gap-1">
-                <Store size={12} color={colors.sand[400]} />
-                <Text className="text-xs text-sand-500 font-medium">
+              <View className="flex-row items-center gap-1.5">
+                <Store size={14} color="#BB3F95" />
+                <Text className="text-xs text-spaceCadet-900 font-bold">
                   {analytics.plan.plan}
                 </Text>
                 <View
-                  className={`px-1.5 py-0.5 rounded-full ${
-                    analytics.plan.plan_status === 'ACTIVE'
-                      ? 'bg-turmeric-100'
-                      : analytics.plan.plan_status === 'TRIAL'
-                        ? 'bg-turmeric-100'
-                        : 'bg-sand-100'
-                  }`}
+                  className="px-2.5 py-0.5 rounded-full bg-fuchsia-500/15 border border-fuchsia-500/30"
                 >
-                  <Text
-                    className={`text-[10px] font-medium ${
-                      analytics.plan.plan_status === 'ACTIVE'
-                        ? 'text-turmeric-700'
-                        : analytics.plan.plan_status === 'TRIAL'
-                          ? 'text-turmeric-700'
-                          : 'text-sand-500'
-                    }`}
-                  >
+                  <Text className="text-[10px] font-bold text-fuchsia-700">
                     {analytics.plan.plan_status}
                   </Text>
                 </View>
               </View>
             </View>
             <PlanUsageBar
-              label="Products"
+              label="Products in Catalog"
               current={
                 analytics.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0
               }
               max={analytics.plan.max_products}
             />
             <PlanUsageBar
-              label="Customers"
+              label="Customer Contacts"
               current={analytics.recent_collections.length}
               max={analytics.plan.max_customers}
             />
             <AnimatedPressable
               onPress={() => router.push('/billing')}
-              className="mt-2 bg-ink-50 border border-ink-100 py-2.5 rounded-xl items-center"
+              className="mt-3 bg-spaceCadet-900 py-3 rounded-2xl items-center"
             >
-              <Text className="text-ink-700 text-sm font-semibold">
-                Manage Plan
+              <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                Manage Subscription & Billing
               </Text>
             </AnimatedPressable>
           </View>
@@ -458,8 +458,8 @@ export default function AnalyticsScreen() {
 
         {/* Recent Collections */}
         {(analytics?.recent_collections?.length ?? 0) > 0 && (
-          <View className="gap-2">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide px-1">
+          <View className="gap-3">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider px-1">
               Recent Collections
             </Text>
             {analytics!.recent_collections.map((c) => (
@@ -471,8 +471,8 @@ export default function AnalyticsScreen() {
         {/* Empty state */}
         {(analytics?.status_breakdown?.reduce((s, g) => s + g.count, 0) ?? 0) === 0 && (
           <View className="items-center py-10">
-            <BarChart3 size={48} color={colors.sand[300]} />
-            <Text className="text-sand-400 text-sm mt-4 text-center">
+            <BarChart3 size={48} color="#928EB2" />
+            <Text className="text-heliotrope-500 text-sm mt-4 text-center font-medium">
               No data yet.{'\n'}Start by adding products and sharing collections.
             </Text>
           </View>

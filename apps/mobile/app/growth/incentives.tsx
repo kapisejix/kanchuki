@@ -5,7 +5,6 @@ import {
   ChevronLeft,
   Gift,
   Plus,
-  Sparkles,
   ToggleLeft,
   ToggleRight,
   Trash2,
@@ -32,7 +31,6 @@ import {
   type IncentiveTriggerType,
 } from '../../src/lib/api/growth'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -61,7 +59,6 @@ const fmtDate = (iso: string | null) =>
 // ─── Main Screen ──────────────────────────────────────────────────
 
 export default function IncentivesScreen() {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
@@ -96,17 +93,17 @@ export default function IncentivesScreen() {
   })
 
   const confirmDelete = (rule: IncentiveRule) => {
-    Alert.alert('Delete rule?', `\"${rule.name}\" will stop working for customers.`, [
+    Alert.alert('Delete rule?', `"${rule.name}" will stop working for customers.`, [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => remove.mutate(rule.id) },
     ])
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="bg-white border-b border-sand-100 px-4 pb-4"
+        className="bg-white border-b border-lavender-200 px-5 pb-4"
         style={{ paddingTop: insets.top + 12 }}
       >
         <View className="flex-row items-center justify-between">
@@ -114,40 +111,49 @@ export default function IncentivesScreen() {
             <AnimatedPressable
               onPress={() => router.back()}
               hitSlop={8}
+              className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
               accessibilityLabel="Go back"
               accessibilityRole="button"
             >
-              <ChevronLeft size={24} color={colors.sand[700]} />
+              <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
-            <Text className="text-base font-bold text-sand-900">Incentives</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              Automated Incentives
+            </Text>
           </View>
           <AnimatedPressable
             onPress={() => setCreating(true)}
             accessibilityLabel="New incentive rule"
             accessibilityRole="button"
-            className="w-9 h-9 rounded-xl items-center justify-center"
-            style={{ backgroundColor: `${primaryColor}1A` }}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-600 shadow-sm"
           >
-            <Plus size={20} color={primaryColor} />
+            <Plus size={20} color="white" />
           </AnimatedPressable>
         </View>
       </View>
 
       {isLoading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={primaryColor} />
+          <ActivityIndicator color="#BB3F95" />
         </View>
       ) : rules.length === 0 && !creating ? (
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="items-center">
             <View
-              className="w-16 h-16 rounded-3xl items-center justify-center mb-4"
-              style={{ backgroundColor: `${primaryColor}1A` }}
+              className="w-16 h-16 rounded-3xl items-center justify-center mb-4 bg-lavender-100 border border-lavender-200"
             >
-              <Gift size={28} color={primaryColor} />
+              <Gift size={28} color="#BB3F95" />
             </View>
-            <Text className="text-base font-bold text-sand-900">No incentive rules yet</Text>
-            <Text className="text-xs text-sand-500 text-center mt-1.5 leading-4 max-w-[260px]">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-xl font-bold text-spaceCadet-900"
+            >
+              No incentive rules yet
+            </Text>
+            <Text className="text-xs text-heliotrope-500 text-center mt-1.5 leading-relaxed max-w-[260px] font-medium">
               Create automated rewards — first-visit discounts, birthday offers,
               loyalty perks — to keep customers coming back.
             </Text>
@@ -165,29 +171,32 @@ export default function IncentivesScreen() {
           {/* Stats strip */}
           {stats && (
             <View className="flex-row gap-2 mb-4">
-              <StatChip icon={Zap} label={`${stats.active_rules} active`} color={primaryColor} />
-              <StatChip icon={Users} label={`${stats.total_visits} visits`} color={colors.sand[500]} />
-              <StatChip icon={TrendingUp} label={`${stats.visits_last_30d} this month`} color={colors.rust?.[500] ?? '#C2724D'} />
+              <StatChip icon={Zap} label={`${stats.active_rules} active`} color="#BB3F95" />
+              <StatChip icon={Users} label={`${stats.total_visits} visits`} color="#6B4773" />
+              <StatChip icon={TrendingUp} label={`${stats.visits_last_30d} this month`} color="#16a34a" />
             </View>
           )}
 
           {/* Rules list */}
-          <View className="gap-2.5">
+          <View className="gap-3">
             {rules.map((rule) => (
-              <View key={rule.id} className="bg-white rounded-2xl p-4 border border-sand-100">
-                <View className="flex-row items-center justify-between mb-2">
-                  <View className="flex-row items-center gap-2 flex-1 mr-2">
+              <View key={rule.id} className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+                <View className="flex-row items-center justify-between mb-2.5">
+                  <View className="flex-row items-center gap-3 flex-1 mr-2">
                     <View
-                      className="w-9 h-9 rounded-xl items-center justify-center"
-                      style={{ backgroundColor: `${primaryColor}1A` }}
+                      className="w-10 h-10 rounded-2xl items-center justify-center bg-fuchsia-500/10 border border-fuchsia-500/20"
                     >
-                      <Text className="text-base">{TRIGGER_EMOJI[rule.trigger_type]}</Text>
+                      <Text className="text-lg">{TRIGGER_EMOJI[rule.trigger_type]}</Text>
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-bold text-sand-900" numberOfLines={1}>
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-base font-bold text-spaceCadet-900"
+                        numberOfLines={1}
+                      >
                         {rule.name}
                       </Text>
-                      <Text className="text-xs text-sand-400">
+                      <Text className="text-xs text-heliotrope-500 font-medium">
                         {fmtDiscount(rule)} · {TRIGGER_LABELS[rule.trigger_type]}
                       </Text>
                     </View>
@@ -199,33 +208,33 @@ export default function IncentivesScreen() {
                     accessibilityRole="button"
                   >
                     {rule.active ? (
-                      <ToggleRight size={28} color={primaryColor} />
+                      <ToggleRight size={30} color="#BB3F95" />
                     ) : (
-                      <ToggleLeft size={28} color={colors.sand[300]} />
+                      <ToggleLeft size={30} color="#E0E1F6" />
                     )}
                   </AnimatedPressable>
                 </View>
 
-                <View className="flex-row items-center gap-2 mt-1">
+                <View className="flex-row items-center gap-2 mt-2 pt-2.5 border-t border-lavender-100">
                   <View
-                    className="rounded-full px-2.5 py-1"
+                    className="rounded-full px-2.5 py-0.5"
                     style={{
-                      backgroundColor: rule.active ? `${primaryColor}1A` : colors.sand[100],
+                      backgroundColor: rule.active ? '#BB3F951A' : '#F8F7FC',
                     }}
                   >
                     <Text
-                      className="text-[10px] font-semibold uppercase"
-                      style={{ color: rule.active ? primaryColor : colors.sand[400] }}
+                      className="text-[10px] font-bold uppercase tracking-wider"
+                      style={{ color: rule.active ? '#BB3F95' : '#928EB2' }}
                     >
                       {rule.active ? 'Active' : 'Inactive'}
                     </Text>
                   </View>
                   {rule.starts_at || rule.ends_at ? (
-                    <Text className="text-[10px] text-sand-400">
+                    <Text className="text-[11px] text-heliotrope-500 font-medium">
                       {fmtDate(rule.starts_at) ?? '…'} — {fmtDate(rule.ends_at) ?? '…'}
                     </Text>
                   ) : (
-                    <Text className="text-[10px] text-sand-400">Always active</Text>
+                    <Text className="text-[11px] text-heliotrope-500 font-medium">Always active</Text>
                   )}
                   <View className="flex-1" />
                   <AnimatedPressable
@@ -234,7 +243,7 @@ export default function IncentivesScreen() {
                     accessibilityLabel={`Delete ${rule.name}`}
                     accessibilityRole="button"
                   >
-                    <Trash2 size={15} color={colors.rust?.[500] ?? '#DC2626'} />
+                    <Trash2 size={16} color="#dc2626" />
                   </AnimatedPressable>
                 </View>
               </View>
@@ -242,7 +251,7 @@ export default function IncentivesScreen() {
           </View>
 
           <View className="mt-5">
-            <GradientButton label="+ New Rule" onPress={() => setCreating(true)} />
+            <GradientButton label="+ New Incentive Rule" onPress={() => setCreating(true)} />
           </View>
         </ScrollView>
       )}
@@ -273,9 +282,9 @@ function StatChip({
   color: string
 }) {
   return (
-    <View className="flex-row items-center gap-1.5 bg-white rounded-full px-3 py-1.5 border border-sand-100">
-      <Icon size={12} color={color} />
-      <Text className="text-[10px] font-semibold text-sand-600">{label}</Text>
+    <View className="flex-1 flex-row items-center justify-center gap-1.5 bg-white rounded-2xl px-3 py-2.5 border border-lavender-200 shadow-sm">
+      <Icon size={13} color={color} />
+      <Text className="text-xs font-bold text-spaceCadet-900">{label}</Text>
     </View>
   )
 }
@@ -289,7 +298,6 @@ function CreateRuleModal({
   onClose: () => void
   onSaved: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const [name, setName] = useState('')
@@ -331,84 +339,89 @@ function CreateRuleModal({
       className="absolute inset-0 bg-black/60 items-center justify-end"
       style={{ paddingBottom: insets.bottom }}
     >
-      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8">
-        <Text className="text-base font-bold text-sand-900 mb-5">New Incentive Rule</Text>
+      <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-xl font-bold text-spaceCadet-900 mb-5"
+        >
+          New Incentive Rule
+        </Text>
 
         {/* Name */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Rule Name</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Rule Name</Text>
         <TextInput
           value={name}
           onChangeText={setName}
           placeholder="e.g. Welcome Gift, Festive Bonus…"
-          placeholderTextColor={colors.sand[300]}
-          className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900 mb-4"
+          placeholderTextColor="#928EB2"
+          className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 mb-4"
         />
 
         {/* Trigger */}
-        <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Trigger</Text>
+        <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Trigger Condition</Text>
         <View className="flex-row gap-2 mb-4">
-          {TRIGGERS.map((t) => (
-            <AnimatedPressable
-              key={t.value}
-              onPress={() => setTriggerType(t.value)}
-              className="flex-1 items-center py-2.5 rounded-xl border"
-              style={{
-                backgroundColor: triggerType === t.value ? `${primaryColor}1A` : colors.sand[50],
-                borderColor: triggerType === t.value ? primaryColor : colors.sand[200],
-              }}
-            >
-              <Text className="text-base mb-0.5">{t.emoji}</Text>
-              <Text
-                className="text-[10px] font-semibold"
-                style={{ color: triggerType === t.value ? primaryColor : colors.sand[500] }}
+          {TRIGGERS.map((t) => {
+            const active = triggerType === t.value
+            return (
+              <AnimatedPressable
+                key={t.value}
+                onPress={() => setTriggerType(t.value)}
+                className={`flex-1 items-center py-2.5 rounded-2xl border ${
+                  active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                }`}
               >
-                {t.label}
-              </Text>
-            </AnimatedPressable>
-          ))}
+                <Text className="text-base mb-0.5">{t.emoji}</Text>
+                <Text
+                  className={`text-[10px] font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                >
+                  {t.label}
+                </Text>
+              </AnimatedPressable>
+            )
+          })}
         </View>
 
         {/* Discount */}
         <View className="flex-row gap-3 mb-4">
           <View className="flex-1">
-            <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Type</Text>
+            <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Discount Type</Text>
             <View className="flex-row gap-2">
-              {(['PERCENT', 'FIXED_AMOUNT'] as const).map((dt) => (
-                <AnimatedPressable
-                  key={dt}
-                  onPress={() => setDiscountType(dt)}
-                  className="flex-1 items-center py-2 rounded-xl border"
-                  style={{
-                    backgroundColor: discountType === dt ? `${primaryColor}1A` : colors.sand[50],
-                    borderColor: discountType === dt ? primaryColor : colors.sand[200],
-                  }}
-                >
-                  <Text
-                    className="text-xs font-semibold"
-                    style={{ color: discountType === dt ? primaryColor : colors.sand[500] }}
+              {(['PERCENT', 'FIXED_AMOUNT'] as const).map((dt) => {
+                const active = discountType === dt
+                return (
+                  <AnimatedPressable
+                    key={dt}
+                    onPress={() => setDiscountType(dt)}
+                    className={`flex-1 items-center py-2.5 rounded-2xl border ${
+                      active ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm' : 'bg-lavender-50 border-lavender-200'
+                    }`}
                   >
-                    {dt === 'PERCENT' ? '% Off' : '₹ Off'}
-                  </Text>
-                </AnimatedPressable>
-              ))}
+                    <Text
+                      className={`text-xs font-bold ${active ? 'text-white' : 'text-spaceCadet-900'}`}
+                    >
+                      {dt === 'PERCENT' ? '% Off' : '₹ Off'}
+                    </Text>
+                  </AnimatedPressable>
+                )
+              })}
             </View>
           </View>
           <View className="flex-1">
-            <Text className="text-xs font-semibold text-sand-500 uppercase mb-1.5">Value</Text>
+            <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider mb-1.5">Value</Text>
             <TextInput
               value={discountValue}
               onChangeText={(t) => setDiscountValue(t.replace(/[^\d]/g, ''))}
               keyboardType="numeric"
               placeholder={discountType === 'PERCENT' ? '10' : '500'}
-              placeholderTextColor={colors.sand[300]}
-              className="border border-sand-200 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+              placeholderTextColor="#928EB2"
+              className="bg-lavender-50 border border-lavender-200 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900"
             />
           </View>
         </View>
 
         {error ? (
-          <View className="bg-red-50 border border-red-200 rounded-xl px-3 py-2.5 mb-4">
-            <Text className="text-xs text-red-600">{error}</Text>
+          <View className="bg-rose-50 border border-rose-200 rounded-2xl px-3.5 py-2.5 mb-4">
+            <Text className="text-xs text-rose-600 font-semibold">{error}</Text>
           </View>
         ) : null}
 
@@ -422,9 +435,9 @@ function CreateRuleModal({
           </View>
           <AnimatedPressable
             onPress={onClose}
-            className="flex-1 items-center justify-center bg-sand-100 rounded-xl py-3"
+            className="flex-1 items-center justify-center bg-lavender-100 rounded-2xl py-3 border border-lavender-200"
           >
-            <Text className="text-sm font-semibold text-sand-600">Cancel</Text>
+            <Text className="text-sm font-bold text-spaceCadet-900">Cancel</Text>
           </AnimatedPressable>
         </View>
       </View>
