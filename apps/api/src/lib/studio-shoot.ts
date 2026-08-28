@@ -74,6 +74,20 @@ const POLL_TIMEOUT_MS = 180_000;
 const POLL_INTERVALS_MS = [1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 3_000, 3_000, 5_000, 5_000, 10_000, 10_000, 15_000, 15_000];
 
 /**
+ * Determine the appropriate Indian fashion model demographic based on the garment category and title.
+ */
+function resolveIndianModelDescription(product?: { category?: string | null; name?: string | null }): string {
+  const combined = `${product?.category ?? ''} ${product?.name ?? ''}`.toLowerCase();
+  if (/(men|gents|sherwani|kurta pajama|kurta pyjama|nehru jacket|bandhgala|dhoti|menswear)/i.test(combined) && !/(women|ladies)/i.test(combined)) {
+    return 'an elegant Indian gentleman / male fashion model';
+  }
+  if (/(kid|boy|child|toddler)/i.test(combined)) {
+    return 'a charming young Indian boy model';
+  }
+  return 'a graceful Indian lady / female fashion model';
+}
+
+/**
  * Generate studio product photo or AI fashion model draping using the requested or optimal engine.
  */
 export async function generateStudioImage(
@@ -149,11 +163,17 @@ export async function generateStudioImage(
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
   }
 
-  const basePrompt = template?.prompt ?? (
+  const indianModelDesc = resolveIndianModelDescription(product);
+  let basePrompt: string = template?.prompt ?? (
     options?.modelId
-      ? `A professional Indian studio fashion model wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`
+      ? `A professional ${indianModelDesc} wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`
       : `Place this product photo in a professional studio setting with clean lighting: ${templateId}`
   );
+
+  // If Catwalk Runway preset, customize the model with the exact Indian demographic
+  if (templateId === 'runway' || (template && template.id === 'runway')) {
+    basePrompt = `Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. ${indianModelDesc} is walking gracefully down the runway. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.`;
+  }
 
   const colorEnforcement = colorSpec
     ? ` The garment has ${colorSpec}. CRITICAL COLOR ACCURACY: Absolutely preserve the garment's exact fabric dye, color tone, embroidery, and saturation without any tinting, hue shift, or color alteration. Use neutral 5500K daylight-balanced CRI-98 key lighting on the garment.`

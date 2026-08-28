@@ -363,7 +363,7 @@ export const STUDIO_TEMPLATES = [
     description: 'High-fashion catwalk runway setting with dramatic spotlights',
     preview_image_url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80',
     prompt:
-      'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. The model is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
+      'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. A graceful Indian fashion model (Indian lady for womenswear / Indian gentleman for menswear / Indian boy for kids) is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
   },
   {
     id: 'white_studio',

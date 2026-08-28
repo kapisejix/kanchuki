@@ -27,8 +27,32 @@ export interface SocialPostInfo {
 }
 
 export const socialApi = {
-  // No getConnectUrl(): the app opens {WEB_URL}/social/connect directly — the
-  // web page does its own authenticated connect via GET /me/social/connect.
+  getConnectUrl: (provider: 'instagram' | 'facebook' | 'youtube' | 'x' = 'instagram', redirectUri?: string) =>
+    request<{ data: { auth_url: string; state: string; provider: string } }>(
+      `/v1/retailers/me/social/connect?provider=${provider}&redirect_uri=${encodeURIComponent(
+        redirectUri || 'kanchuki://oauth/callback',
+      )}`,
+    ),
+
+  autoConnect: (payload: {
+    code: string;
+    state: string;
+    provider: 'instagram' | 'facebook' | 'youtube' | 'x';
+    redirect_uri?: string;
+  }) =>
+    request<{
+      data: {
+        connected: boolean;
+        provider: string;
+        handle?: string;
+        account_id?: string;
+        account_name?: string;
+      };
+    }>('/v1/retailers/me/social/auto-connect', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   listAccounts: () =>
     request<{ data: SocialAccountInfo[] }>('/v1/retailers/me/social/accounts', {
       getCacheTtlMs: 15_000,

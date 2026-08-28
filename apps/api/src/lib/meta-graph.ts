@@ -66,14 +66,26 @@ export async function resolveMetaCredentials(): Promise<MetaCredentials | null> 
 }
 
 /** OAuth dialog URL the browser should open. state must be opaque + short-lived. */
-export function buildOAuthUrl(meta: MetaCredentials, redirectUri: string, state: string): string {
+export function buildOAuthUrl(
+  meta: MetaCredentials,
+  redirectUri: string,
+  state: string,
+  provider: 'instagram' | 'facebook' | 'both' = 'both',
+): string {
+  const scopes = [
+    'pages_show_list',
+    'pages_read_engagement',
+    'pages_manage_posts',
+    'instagram_basic',
+    'instagram_content_publish',
+    'business_management',
+  ];
+
   const params = new URLSearchParams({
     client_id: meta.appId,
     redirect_uri: redirectUri,
     state,
-    // pages_show_list: read which Pages the user administers (connect flow)
-    // pages_manage_posts: publish posts to those Pages (Phase 1 scope)
-    scope: 'pages_show_list,pages_manage_posts',
+    scope: scopes.join(','),
     response_type: 'code',
   });
   return `${OAUTH_DIALOG}?${params.toString()}`;
@@ -119,6 +131,60 @@ export async function exchangeCodeForToken(
   const expiresIn = typeof longBody.expires_in === 'number' ? longBody.expires_in : 51_840_000; // 60d
   const expiresAt = new Date(Date.now() + expiresIn * 1000);
   return { accessToken: longBody.access_token as string, expiresAt };
+}
+
+export interface MetaInstagramAccount {
+  id: string;
+  username: string;
+  name?: string;
+  profile_picture_url?: string;
+  page_id?: string;
+  page_name?: string;
+}
+
+/** List connected Instagram Business / Creator accounts across the user's Pages. */
+export async function listInstagramAccounts(accessToken: string): Promise<MetaInstagramAccount[]> {
+  try {
+    const res = await fetch(
+      `${GRAPH_BASE}/me/accounts?${new URLSearchParams({
+        access_token: accessToken,
+        fields: 'id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}',
+      })}`,
+    );
+    const body = (await res.json()) as {
+      data?: Array<{
+        id: string;
+        name: string;
+        instagram_business_account?: {
+          id: string;
+          username: string;
+          name?: string;
+          profile_picture_url?: string;
+        };
+      }>;
+    };
+
+    if (!res.ok || !Array.isArray(body.data)) {
+      return [];
+    }
+
+    const results: MetaInstagramAccount[] = [];
+    for (const page of body.data) {
+      if (page.instagram_business_account) {
+        results.push({
+          id: page.instagram_business_account.id,
+          username: page.instagram_business_account.username,
+          name: page.instagram_business_account.name || page.name,
+          profile_picture_url: page.instagram_business_account.profile_picture_url,
+          page_id: page.id,
+          page_name: page.name,
+        });
+      }
+    }
+    return results;
+  } catch {
+    return [];
+  }
 }
 
 /** List the Pages the user administers (from /me/accounts with a user token). */
