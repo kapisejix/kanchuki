@@ -90,8 +90,8 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
 
   if (checkingReturningVisitor) {
     return (
-      <div className="min-h-screen bg-cyan-50 flex items-center justify-center">
-        <Loader2 size={24} className="animate-spin text-cyan-600" />
+      <div className="min-h-screen bg-[#F8F7FC] flex items-center justify-center">
+        <Loader2 size={24} className="animate-spin text-[#BB3F95]" />
       </div>
     );
   }
