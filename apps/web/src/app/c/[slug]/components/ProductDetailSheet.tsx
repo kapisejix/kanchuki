@@ -370,27 +370,26 @@ export function ProductDetailSheet({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col"
+      className="fixed inset-0 z-50 flex flex-col justify-end items-center"
       onClick={closeSheet}
     >
       {/* Backdrop */}
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
 
-      {/* Sheet */}
+      {/* Sheet Container wrapped and centered */}
       <div
-        className="relative mt-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col"
+        className="relative mt-auto bg-white rounded-t-3xl max-h-[92vh] flex flex-col w-full max-w-md mx-auto shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Sticky top bar: drag handle + back/close buttons — stays fixed as
-            the content below scrolls. */}
-        <div className="sticky top-0 z-20 bg-white rounded-t-3xl">
+        {/* Sticky top bar: drag handle + back/close buttons */}
+        <div className="sticky top-0 z-20 bg-white rounded-t-3xl w-full">
           <div className="flex justify-center pt-3 pb-1">
             <div className="w-10 h-1 bg-gray-200 rounded-full" />
           </div>
           <button
             onClick={closeSheet}
             className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
-                       transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                       transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BB3F95]"
             aria-label="Back to catalog"
           >
             <ArrowLeft size={17} className="text-gray-600" />
@@ -398,7 +397,7 @@ export function ProductDetailSheet({
           <button
             onClick={closeSheet}
             className="absolute top-4 right-4 w-9 h-9 rounded-full bg-white shadow-soft flex items-center justify-center z-10
-                       transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+                       transition-all active:scale-90 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BB3F95]"
             aria-label="Close"
           >
             <X size={17} className="text-gray-600" />

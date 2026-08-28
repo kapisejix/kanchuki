@@ -551,26 +551,26 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
       <div className="h-20" />
 
       {/* ── Fixed Bottom Overlay Nav: Catalog, Saved, Enquire ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-gray-100 shadow-[0_-8px_24px_-12px_rgb(0,0,0,0.08)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white/95 backdrop-blur-md border-t border-[#E0E1F6] shadow-[0_-8px_24px_-12px_rgba(35,31,72,0.1)]">
         <div className="max-w-md mx-auto grid grid-cols-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Link
             href={catalogPath}
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-cyan-600 hover:text-cyan-700 transition-colors"
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#231F48] hover:text-[#BB3F95] transition-colors"
           >
             <LayoutGrid size={20} />
             <span className="text-[10px] font-semibold">Catalog</span>
           </Link>
           <Link
             href={`${basePath}/wishlist`}
-            className="flex flex-col items-center justify-center gap-0.5 py-1 text-gray-500 hover:text-rose-500 transition-colors relative"
+            className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors relative"
           >
             <div className="relative">
               <Heart
                 size={20}
-                className={favorites.size > 0 ? 'text-rose-500 fill-rose-500' : ''}
+                className={favorites.size > 0 ? 'text-[#BB3F95] fill-[#BB3F95]' : ''}
               />
               {favorites.size > 0 && (
-                <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
+                <span className="absolute -top-1 -right-2.5 min-w-[16px] h-4 px-1 bg-[#BB3F95] text-white text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
                   {favorites.size}
                 </span>
               )}
