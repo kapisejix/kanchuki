@@ -555,16 +555,17 @@ export default function CatalogScreen() {
           initialNumToRender={6}
         />
       )}
-      {/* Selection action bar — replaces the FAB while items are selected */}
-      {selectionMode ? (
+      {/* Selection action bar — appears only while items are selected */}
+      {selectionMode && (
         <View
-          className="absolute bottom-6 left-4 right-4 bg-spaceCadet-900 rounded-3xl px-5 py-3.5 flex-row items-center justify-between shadow-lg border border-white/20"
+          className="absolute bottom-4 left-4 right-4 bg-spaceCadet-900 rounded-3xl px-5 py-3.5 flex-row items-center justify-between shadow-lg border border-white/20"
           style={{
             shadowColor: '#231F48',
             shadowOffset: { width: 0, height: 6 },
             shadowOpacity: 0.35,
             shadowRadius: 12,
-            elevation: 6,
+            elevation: 8,
+            zIndex: 50,
           }}
         >
           <AnimatedPressable onPress={clearSelection} disabled={deleting}>
@@ -584,41 +585,6 @@ export default function CatalogScreen() {
                 <Text className="text-white text-xs font-bold">Delete</Text>
               </>
             )}
-          </AnimatedPressable>
-        </View>
-      ) : (
-        /* FAB — quick add product button */
-        <View className="absolute bottom-6 right-5 items-end gap-2">
-          <AnimatedPressable
-            onPress={() => router.push('/product/add')}
-            className="w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
-            style={{
-              shadowColor: '#BB3F95',
-              shadowOffset: { width: 0, height: 6 },
-              shadowOpacity: 0.45,
-              shadowRadius: 10,
-              elevation: 6,
-            }}
-            accessibilityLabel="Add product"
-            accessibilityRole="button"
-          >
-            <Plus size={24} color="white" strokeWidth={2.5} />
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => router.push('/product/bulk')}
-            className="bg-white px-3.5 py-1.5 rounded-full border border-lavender-200 shadow-sm flex-row items-center gap-1.5"
-            style={{ elevation: 3 }}
-          >
-            <Text className="text-xs font-bold text-spaceCadet-900">Bulk</Text>
-            <Text className="text-xs">📷</Text>
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => router.push('/product/catalog-import')}
-            className="bg-white px-3.5 py-1.5 rounded-full border border-lavender-200 shadow-sm flex-row items-center gap-1.5"
-            style={{ elevation: 3 }}
-          >
-            <Text className="text-xs font-bold text-spaceCadet-900">Catalog</Text>
-            <Text className="text-xs">📋</Text>
           </AnimatedPressable>
         </View>
       )}

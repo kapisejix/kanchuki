@@ -354,16 +354,20 @@ export default function OnboardingScreen() {
                     <AnimatedPressable
                       key={spec}
                       onPress={() => toggleSpec(spec)}
-                      className={`px-3.5 py-2 rounded-2xl border ${
-                        isSelected
-                          ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
-                          : 'bg-lavender-50 border-lavender-200'
-                      }`}
+                      accessibilityLabel={spec}
+                      accessibilityState={{ selected: isSelected }}
+                      /* ponytail: static className + conditional style. A className whose class *set*
+                         changes after mount trips react-native-css-interop@0.1.22's dev-only
+                         upgrade-warning path, which crashes on JSON.stringify of the element tree. */
+                      className="px-3.5 py-2 rounded-2xl border"
+                      style={{
+                        backgroundColor: isSelected ? '#231F48' : '#FAF9FE',
+                        borderColor: isSelected ? '#231F48' : '#E0E1F6',
+                      }}
                     >
                       <Text
-                        className={`text-xs font-bold ${
-                          isSelected ? 'text-white' : 'text-spaceCadet-900'
-                        }`}
+                        className="text-xs font-bold"
+                        style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
                       >
                         {spec}
                       </Text>

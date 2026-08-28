@@ -1,10 +1,9 @@
 import type { ReactNode } from 'react';
 import type { GestureResponderEvent, Insets, StyleProp, ViewStyle } from 'react-native';
 import { Pressable } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 
-/** Press-scale wrapper (0.96 spring) shared by buttons/cards/icons. Skips the scale under Reduce Motion. */
+/** Press-scale wrapper (0.96 scale + 0.92 opacity) shared by buttons/cards/icons. Skips transform under Reduce Motion. */
 export function AnimatedPressable({
   onPress,
   onLongPress,
@@ -22,7 +21,7 @@ export function AnimatedPressable({
   onLongPress?: (e: GestureResponderEvent) => void;
   disabled?: boolean;
   children?: ReactNode;
-  style?: StyleProp<ViewStyle>;
+  style?: StyleProp<ViewStyle> | ((state: { pressed: boolean }) => StyleProp<ViewStyle>);
   className?: string;
   accessibilityLabel?: string;
   accessibilityRole?: 'button';
@@ -31,31 +30,24 @@ export function AnimatedPressable({
   testID?: string;
 }) {
   const reduceMotion = useReduceMotion();
-  const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
       disabled={disabled}
-      onPressIn={() => {
-        if (!reduceMotion) scale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
-      }}
-      onPressOut={() => {
-        if (!reduceMotion) scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-      }}
       className={className}
-      style={style}
+      style={({ pressed }) => [
+        typeof style === 'function' ? style({ pressed }) : style,
+        !reduceMotion && pressed && !disabled ? { transform: [{ scale: 0.96 }], opacity: 0.92 } : undefined,
+      ]}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={accessibilityState}
       hitSlop={hitSlop}
       testID={testID}
     >
-      <Animated.View style={[{ width: '100%' }, animStyle]}>
-        {children}
-      </Animated.View>
+      {children}
     </Pressable>
   );
 }
