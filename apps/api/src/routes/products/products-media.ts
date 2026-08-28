@@ -524,9 +524,13 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       const targetPhoto = product.photos.find((p) => p.id === photoId);
       if (!targetPhoto) throw notFound('Product photo');
 
-      await prisma.productPhoto.delete({
-        where: { id: photoId },
-      });
+      // Swallow P2025 (record already gone): a double-tap / stale-list retry
+      // would otherwise surface as a 500 "Something went wrong".
+      try {
+        await prisma.productPhoto.delete({ where: { id: photoId } });
+      } catch (e) {
+        if ((e as { code?: string }).code !== 'P2025') throw e;
+      }
 
       if (targetPhoto.r2_key) {
         try {
@@ -541,10 +545,14 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
         const remaining = product.photos.filter((p) => p.id !== photoId);
         const nextPrimary = remaining[0];
         if (nextPrimary) {
-          await prisma.productPhoto.update({
-            where: { id: nextPrimary.id },
-            data: { is_primary: true },
-          });
+          try {
+            await prisma.productPhoto.update({
+              where: { id: nextPrimary.id },
+              data: { is_primary: true },
+            });
+          } catch (e) {
+            if ((e as { code?: string }).code !== 'P2025') throw e;
+          }
         }
       }
 

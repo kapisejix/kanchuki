@@ -281,8 +281,21 @@ export function useProductAiStudio({
       }
 
       // Save straight to the device gallery — no share sheet. Needs a dev/EAS
-      // build; expo-media-library's native module is absent in Expo Go.
-      const MediaLibrary = await import('expo-media-library')
+      // build; expo-media-library's native module is absent in Expo Go, where
+      // the import resolves to a broken shim (methods undefined).
+      let MediaLibrary: typeof import('expo-media-library')
+      try {
+        MediaLibrary = await import('expo-media-library')
+        if (typeof MediaLibrary.requestPermissionsAsync !== 'function') {
+          throw new Error('native module unavailable')
+        }
+      } catch {
+        Alert.alert(
+          'Not available in Expo Go',
+          'Saving to the gallery needs the installed app build. Open this screen in the built app to download.',
+        )
+        return
+      }
       const { status } = await MediaLibrary.requestPermissionsAsync()
       if (status !== 'granted') {
         Alert.alert('Permission needed', 'Allow photo library access to save this to your gallery.')

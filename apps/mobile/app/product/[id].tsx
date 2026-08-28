@@ -152,7 +152,10 @@ export default function ProductDetailScreen() {
     for (const v of product.variants) {
       if (v.photo_url && !items.some((item) => item.url === v.photo_url)) {
         items.push({
-          id: `variant_${v.id}`,
+          // 'variant-' (hyphen): the API's DELETE/cleanup routes match on
+          // photoId.startsWith('variant-') — an underscore fell through to a
+          // plain-photo delete and 500'd.
+          id: `variant-${v.id}`,
           url: v.photo_url,
           is_primary: false,
           is_variant_preview: true,
