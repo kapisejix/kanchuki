@@ -39,19 +39,18 @@ export function ProductActionsBar({
                 key={opt.value}
                 onPress={() => handleStatusChange(opt.value)}
                 disabled={statusUpdating}
-                className={`flex-1 py-3 rounded-2xl border items-center justify-center ${
-                  isSelected
-                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
-                    : 'bg-lavender-50 border-lavender-200'
-                }`}
+                className="flex-1 py-3 rounded-2xl border items-center justify-center"
+                style={{
+                  backgroundColor: isSelected ? '#231F48' : '#F8F7FC',
+                  borderColor: isSelected ? '#231F48' : '#E0E1F6',
+                }}
               >
                 {statusUpdating && isSelected ? (
                   <ActivityIndicator size="small" color="white" />
                 ) : (
                   <Text
-                    className={`text-xs font-bold ${
-                      isSelected ? 'text-white' : 'text-spaceCadet-900'
-                    }`}
+                    className="text-xs font-bold text-center"
+                    style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
                   >
                     {opt.label}
                   </Text>
