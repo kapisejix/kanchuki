@@ -36,7 +36,6 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
-const BANNER_HEIGHT = SCREEN_WIDTH * 0.35 // 16:5.6 aspect ratio
 
 type Product = {
   id: string
@@ -169,14 +168,13 @@ export default function CatalogScreen() {
   const { colors } = useTheme()
   const columns = useGridColumns()
 
-  // Fetch retailer profile for banner
+  // Fetch retailer profile for the header (logo, shop name, city)
   const { data: retailerData } = useQuery({
     queryKey: ['retailer', 'me'],
     queryFn: () => retailerApi.getMe(),
     staleTime: 60_000,
   })
   const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data as Record<string, any> | undefined
-  const bannerUrl = retailerProfile?.banner_url as string | undefined
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const selectionMode = selectedIds.size > 0
@@ -394,49 +392,10 @@ export default function CatalogScreen() {
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
-      {/* Hero Banner with text overlay */}
-      {bannerUrl ? (
-        <View style={{ width: SCREEN_WIDTH, height: BANNER_HEIGHT }} className="relative">
-          <Image
-            source={{ uri: bannerUrl }}
-            style={{ width: SCREEN_WIDTH, height: BANNER_HEIGHT }}
-            resizeMode="cover"
-          />
-          {/* Dark gradient overlay at bottom for text readability */}
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: BANNER_HEIGHT * 0.5,
-              backgroundColor: 'rgba(35, 31, 72, 0.65)',
-            }}
-          />
-          {/* Shop name overlay */}
-          <View
-            style={{
-              position: 'absolute',
-              bottom: 14,
-              left: 16,
-              right: 16,
-            }}
-          >
-            <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
-              className="text-white text-base font-bold tracking-wide"
-              numberOfLines={1}
-            >
-              {retailerProfile?.shop_name ?? 'My Store'}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
       {/* Header — Discovery Greeting + Scan/Filter icons */}
       <View
         className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center justify-between"
-        style={{ paddingTop: bannerUrl ? 12 : Math.max(insets.top, 24) + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
@@ -506,16 +465,6 @@ export default function CatalogScreen() {
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={
             <View className="gap-3 mb-1">
-              {/* Discovery Marcellus Headline */}
-              <View className="pt-2 pb-1">
-                <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
-                  className="text-2xl font-extrabold text-spaceCadet-900 leading-tight"
-                >
-                  Find the best{'\n'}clothes for your store
-                </Text>
-              </View>
-
               {/* Discovery Search Bar Card */}
               <View className="w-full bg-white rounded-2xl py-2.5 pl-11 pr-12 border border-lavender-200 shadow-sm flex-row items-center relative">
                 <Search size={18} color="#928EB2" style={{ position: 'absolute', left: 14 }} />

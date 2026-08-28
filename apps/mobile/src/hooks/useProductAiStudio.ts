@@ -3,6 +3,7 @@ import { Alert } from 'react-native'
 import { router } from 'expo-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as LegacyFileSystem from 'expo-file-system/legacy'
+import * as Sharing from 'expo-sharing'
 import type { ProductDetail } from '@kanchuki/shared'
 import { productApi, ApiError } from '../lib/api'
 import { growthApi } from '../lib/api/growth'
@@ -280,33 +281,19 @@ export function useProductAiStudio({
         throw new Error(`Download failed with status ${downloadResult.status}`)
       }
 
-      // Save straight to the device gallery — no share sheet. Needs a dev/EAS
-      // build; expo-media-library's native module is absent in Expo Go, where
-      // the import resolves to a broken shim (methods undefined).
-      let MediaLibrary: typeof import('expo-media-library')
-      try {
-        MediaLibrary = await import('expo-media-library')
-        if (typeof MediaLibrary.requestPermissionsAsync !== 'function') {
-          throw new Error('native module unavailable')
-        }
-      } catch {
-        Alert.alert(
-          'Not available in Expo Go',
-          'Saving to the gallery needs the installed app build. Open this screen in the built app to download.',
-        )
+      // OS share sheet (Save to Files, gallery apps, WhatsApp…). expo-sharing
+      // ships in Expo Go and every dev/EAS build — expo-media-library's
+      // ExpoMediaLibraryNext native module does not, and threw
+      // "Cannot find native module 'ExpoMediaLibraryNext'" on import here
+      // (git 31ac7d1, 835cb58).
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Not available', 'Sharing is not available on this device.')
         return
       }
-      const { status } = await MediaLibrary.requestPermissionsAsync()
-      if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow photo library access to save this to your gallery.')
-        return
-      }
-      const asset = await MediaLibrary.createAssetAsync(downloadResult.uri)
-      await MediaLibrary.createAlbumAsync('Kanchuki', asset, false).catch(() => undefined)
-      Alert.alert(
-        'Saved to Gallery',
-        isVideo ? 'Video saved to your gallery.' : 'Image saved to your gallery.',
-      )
+      await Sharing.shareAsync(downloadResult.uri, {
+        mimeType: isVideo ? 'video/mp4' : 'image/jpeg',
+        dialogTitle: isVideo ? 'Save or share video' : 'Save or share image',
+      })
     } catch (err) {
       showError(err, 'Failed to download product media')
     } finally {

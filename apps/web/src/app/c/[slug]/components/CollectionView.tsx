@@ -296,8 +296,6 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     return true;
   });
 
-  const bannerUrl = collection.retailer.banner_url;
-
   return (
     <PageTransitionWrapper>
     <div className="min-h-screen bg-[#F8F7FC] font-sans pb-24">
@@ -370,12 +368,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
 
       {/* ── Main Discovery Content ── */}
       <main className="max-w-md mx-auto px-4 py-4">
-        {/* ── Discovery Headline (Spec #9) ── */}
+        {/* ── Collection summary ── */}
         <div className="mb-4">
-          <h2 className="text-2xl font-extrabold text-[#231F48] font-marcellus leading-tight">
-            Find the best<br />clothes for you
-          </h2>
-          <p className="text-xs text-[#6B4773] font-medium mt-1">
+          <p className="text-xs text-[#6B4773] font-medium">
             {collection.title} · {collection.total} curated items
           </p>
         </div>

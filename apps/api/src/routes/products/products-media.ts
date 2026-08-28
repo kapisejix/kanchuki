@@ -482,7 +482,11 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
         const variant = await prisma.productVariant.findFirst({
           where: { id: variantId, product_id: id, retailer_id: request.retailerId },
         });
-        if (!variant) throw notFound('Variant photo');
+        // Idempotent: already-detached variant photo (double-tap / stale list)
+        // returns success, not 404.
+        if (!variant) {
+          return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
+        }
         const r2Key = variant.r2_key;
         await prisma.productVariant.update({
           where: { id: variantId },
@@ -503,7 +507,9 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
         const photo = await prisma.productPhoto.findFirst({
           where: { id: basePhotoId, product_id: id, retailer_id: request.retailerId },
         });
-        if (!photo) throw notFound('Original photo');
+        if (!photo) {
+          return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
+        }
         const meta = (photo.metadata as Record<string, unknown> | null) ?? {};
         const originalR2Key = meta.original_r2_key as string | undefined;
         const { original_r2_key, original_url, ...restMeta } = meta;
@@ -522,7 +528,13 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
       }
 
       const targetPhoto = product.photos.find((p) => p.id === photoId);
-      if (!targetPhoto) throw notFound('Product photo');
+      // Idempotent: a retry after the row is already gone (double-tap on the
+      // trash icon, or a tap against a stale displayPhotos list before the
+      // post-delete refetch lands) should succeed. The 404 this used to throw
+      // surfaced on the client as "Failed to delete photo".
+      if (!targetPhoto) {
+        return reply.status(200).send({ data: { success: true, deleted_id: photoId } });
+      }
 
       // Swallow P2025 (record already gone): a double-tap / stale-list retry
       // would otherwise surface as a 500 "Something went wrong".
