@@ -11,7 +11,6 @@ import {
   Download,
   Trash2,
   Palette,
-  ChevronLeft,
   Camera,
   Video,
   Sparkles,
@@ -158,26 +157,13 @@ export function ProductMediaCarousel({
           </View>
         )}
 
-        {/* Left arrow */}
-        {displayPhotos.length > 1 && selectedPhotoIndex > 0 && (
-          <AnimatedPressable
-            onPress={() => goToPhoto(selectedPhotoIndex - 1)}
-            accessibilityLabel="Previous photo"
-            accessibilityRole="button"
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 items-center justify-center shadow-md border border-lavender-200"
-            style={{ elevation: 3, zIndex: 10 }}
-          >
-            <ChevronLeft size={20} color="#231F48" />
-          </AnimatedPressable>
-        )}
-
-        {/* Right-side floating thumbnail strip (Point 10 PDP spec) */}
+        {/* Left-side floating thumbnail strip (Point 10 PDP spec) */}
         {displayPhotos.length > 1 && (
           <View
             style={{
               position: 'absolute',
               top: '50%',
-              right: 10,
+              left: 10,
               transform: [{ translateY: -((Math.min(displayPhotos.length, 4) * 44 + (Math.min(displayPhotos.length, 4) - 1) * 6) / 2) }],
               backgroundColor: 'rgba(255, 255, 255, 0.88)',
               borderRadius: 20,

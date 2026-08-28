@@ -1,5 +1,6 @@
 import React from 'react'
 import { View, Text, TextInput, ScrollView } from 'react-native'
+import { Image } from 'expo-image'
 import {
   Check,
   Tag,
@@ -201,30 +202,28 @@ export function ProductAttributesForm({
           {/* Right Column: Size circles */}
           <View className="flex-1">
             <Text className="text-xs font-bold text-heliotrope-600 block mb-2">Size</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row items-center gap-2 py-1">
-                {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => {
-                  const isSelected = selectedSizes.includes(size)
-                  return (
-                    <AnimatedPressable
-                      key={size}
-                      onPress={() => toggleSize(size)}
-                      className="w-8 h-8 rounded-full items-center justify-center"
-                      style={{
-                        backgroundColor: isSelected ? '#231F48' : '#F2F1FA',
-                      }}
+            <View className="flex-row flex-wrap items-center gap-2 py-1">
+              {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => {
+                const isSelected = selectedSizes.includes(size)
+                return (
+                  <AnimatedPressable
+                    key={size}
+                    onPress={() => toggleSize(size)}
+                    className={`w-8 h-8 rounded-full items-center justify-center ${
+                      isSelected ? 'bg-spaceCadet-900' : 'bg-lavender-100'
+                    }`}
+                  >
+                    <Text
+                      className={`text-[11px] font-extrabold ${
+                        isSelected ? 'text-white' : 'text-spaceCadet-900'
+                      }`}
                     >
-                      <Text
-                        className="text-[11px] font-extrabold"
-                        style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
-                      >
-                        {size}
-                      </Text>
-                    </AnimatedPressable>
-                  )
-                })}
-              </View>
-            </ScrollView>
+                      {size}
+                    </Text>
+                  </AnimatedPressable>
+                )
+              })}
+            </View>
           </View>
         </View>
       </View>
@@ -264,56 +263,73 @@ export function ProductAttributesForm({
           <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
             Category
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-2">
-              {categories.map((c) => {
-                const isSelected =
-                  editedCategoryId === c.id || (!editedCategoryId && editedCategory === c.name)
-                return (
-                  <AnimatedPressable
-                    key={c.id}
-                    onPress={() => {
-                      dirty(setEditedCategoryId)(c.id)
-                      dirty(setEditedCategory)(c.name)
-                    }}
-                    className="px-3.5 py-2 rounded-2xl border"
-                    style={{
-                      backgroundColor: isSelected ? '#231F48' : '#F2F1FA',
-                      borderColor: isSelected ? '#231F48' : '#E0E1F6',
-                    }}
+          <View className="flex-row flex-wrap gap-2">
+            {categories.map((c) => {
+              const isSelected =
+                editedCategoryId === c.id || (!editedCategoryId && editedCategory === c.name)
+              return (
+                <AnimatedPressable
+                  key={c.id}
+                  onPress={() => {
+                    dirty(setEditedCategoryId)(c.id)
+                    dirty(setEditedCategory)(c.name)
+                  }}
+                  className={`px-3.5 py-2 rounded-2xl border ${
+                    isSelected
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                      : 'bg-lavender-50 border-lavender-200'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-bold ${
+                      isSelected ? 'text-white' : 'text-spaceCadet-900'
+                    }`}
                   >
-                    <Text
-                      className="text-xs font-bold"
-                      style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
-                    >
-                      {c.name}
-                    </Text>
-                  </AnimatedPressable>
-                )
-              })}
-            </View>
-          </ScrollView>
+                    {c.name}
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
+          </View>
         </View>
 
         {/* Primary Color */}
         <View>
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
             Primary Color
           </Text>
-          <View className="flex-row items-center gap-2">
-            {editedColor ? (
+          <View className="flex-row flex-wrap items-center gap-3">
+            <View className="items-center">
               <View
-                className="w-8 h-8 rounded-full border-2 border-lavender-200"
-                style={{ backgroundColor: resolveFashionColor(editedColor) }}
+                className="w-10 h-10 rounded-full border-2 border-lavender-200"
+                style={{ backgroundColor: resolveFashionColor(editedColor || '#6B4773') }}
               />
-            ) : null}
-            <TextInput
-              value={editedColor}
-              onChangeText={dirty(setEditedColor)}
-              placeholder="e.g. Rani Pink, Mustard, Navy Blue"
-              placeholderTextColor="#928EB2"
-              className="flex-1 text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
-            />
+              <Text
+                className="text-[11px] font-bold text-spaceCadet-900 mt-1 capitalize"
+                numberOfLines={1}
+              >
+                {editedColor || 'Not set'}
+              </Text>
+            </View>
+            {displayPhotos
+              .filter((p) => !p.is_video)
+              .slice(0, 6)
+              .map((photo) => (
+                <AnimatedPressable
+                  key={photo.id}
+                  onPress={() => {
+                    const idx = displayPhotos.findIndex((p) => p.id === photo.id)
+                    if (idx >= 0) goToPhoto(idx)
+                  }}
+                  className="w-12 h-14 rounded-xl overflow-hidden border border-lavender-200"
+                >
+                  <Image
+                    source={{ uri: photo.url }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                  />
+                </AnimatedPressable>
+              ))}
           </View>
         </View>
 
@@ -322,9 +338,8 @@ export function ProductAttributesForm({
           <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
             Pattern / Work
           </Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View className="flex-row gap-2">
-              {PATTERN_TYPES.map((p) => {
+          <View className="flex-row flex-wrap gap-2">
+            {PATTERN_TYPES.map((p) => {
                 const isSelected = editedPattern === p
                 return (
                   <AnimatedPressable
@@ -346,8 +361,7 @@ export function ProductAttributesForm({
                   </AnimatedPressable>
                 )
               })}
-            </View>
-          </ScrollView>
+          </View>
         </View>
 
         {/* Style Silhouettes */}
@@ -356,8 +370,7 @@ export function ProductAttributesForm({
             <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
               Styles / Silhouettes
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2">
+            <View className="flex-row flex-wrap gap-2">
                 {availableStyles.map((s) => {
                   const isSelected = selectedStyles.includes(s.name)
                   return (
@@ -380,8 +393,7 @@ export function ProductAttributesForm({
                     </AnimatedPressable>
                   )
                 })}
-              </View>
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -391,8 +403,7 @@ export function ProductAttributesForm({
             <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
               Fabrics
             </Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2">
+            <View className="flex-row flex-wrap gap-2">
                 {availableFabrics.map((f) => {
                   const isSelected = selectedFabrics.includes(f.name)
                   return (
@@ -415,8 +426,7 @@ export function ProductAttributesForm({
                     </AnimatedPressable>
                   )
                 })}
-              </View>
-            </ScrollView>
+            </View>
           </View>
         )}
 
@@ -432,15 +442,16 @@ export function ProductAttributesForm({
                 <AnimatedPressable
                   key={size}
                   onPress={() => toggleSize(size)}
-                  className="w-12 h-12 rounded-full border items-center justify-center"
-                  style={{
-                    backgroundColor: isSelected ? '#231F48' : '#FFFFFF',
-                    borderColor: isSelected ? '#231F48' : '#E0E1F6',
-                  }}
+                  className={`w-12 h-12 rounded-full border items-center justify-center ${
+                    isSelected
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                      : 'bg-white border-lavender-200'
+                  }`}
                 >
                   <Text
-                    className="text-xs font-bold"
-                    style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
+                    className={`text-xs font-bold ${
+                      isSelected ? 'text-white' : 'text-spaceCadet-900'
+                    }`}
                   >
                     {size}
                   </Text>

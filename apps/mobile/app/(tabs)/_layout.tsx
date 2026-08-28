@@ -105,7 +105,6 @@ export default function TabsLayout() {
                 backgroundColor: '#BB3F95',
                 justifyContent: 'center',
                 alignItems: 'center',
-                marginBottom: 12,
                 shadowColor: '#BB3F95',
                 shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.45,
@@ -120,6 +119,7 @@ export default function TabsLayout() {
             <AnimatedPressable
               {...(props as any)}
               onPress={() => router.push('/product/add')}
+              style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
             />
           ),
           headerShown: false,
