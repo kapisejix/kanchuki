@@ -4,6 +4,8 @@ import { Pressable } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 
+const AnimatedPressableComponent = Animated.createAnimatedComponent(Pressable);
+
 /** Press-scale wrapper (0.96 spring) shared by buttons/cards/icons. Skips the scale under Reduce Motion. */
 export function AnimatedPressable({
   onPress,
@@ -35,27 +37,25 @@ export function AnimatedPressable({
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   return (
-    <Animated.View style={animStyle}>
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        disabled={disabled}
-        onPressIn={() => {
-          if (!reduceMotion) scale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
-        }}
-        onPressOut={() => {
-          if (!reduceMotion) scale.value = withSpring(1, { damping: 15, stiffness: 300 });
-        }}
-        className={className}
-        style={style}
-        accessibilityRole={accessibilityRole}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={accessibilityState}
-        hitSlop={hitSlop}
-        testID={testID}
-      >
-        {children}
-      </Pressable>
-    </Animated.View>
+    <AnimatedPressableComponent
+      onPress={onPress}
+      onLongPress={onLongPress}
+      disabled={disabled}
+      onPressIn={() => {
+        if (!reduceMotion) scale.value = withSpring(0.96, { damping: 15, stiffness: 300 });
+      }}
+      onPressOut={() => {
+        if (!reduceMotion) scale.value = withSpring(1, { damping: 15, stiffness: 300 });
+      }}
+      className={className}
+      style={[animStyle, style]}
+      accessibilityRole={accessibilityRole}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={accessibilityState}
+      hitSlop={hitSlop}
+      testID={testID}
+    >
+      {children}
+    </AnimatedPressableComponent>
   );
 }

@@ -154,7 +154,7 @@ export default function CampaignDetailScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable

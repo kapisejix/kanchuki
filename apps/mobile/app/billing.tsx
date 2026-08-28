@@ -20,7 +20,7 @@ import { WEB_URL } from '../src/lib/web-url';
 const SUPPORT_EMAIL = 'support@kanchuki.app';
 
 export default function BillingScreen() {
-  const { primaryColor, colors } = useTheme();
+  const { primaryColor } = useTheme();
   const insets = useSafeAreaInsets();
 
   const { data: meData } = useQuery({
@@ -30,48 +30,58 @@ export default function BillingScreen() {
   const me = (meData as { data: { plan?: string; plan_status?: string } } | undefined)?.data;
 
   return (
-    <View className="flex-1 bg-sand-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
       <View
-        className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: insets.top + 12 }}
+        className="flex-row items-center px-5 pb-3 bg-white border-b border-lavender-200"
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <AnimatedPressable
           onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
           hitSlop={8}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <ChevronLeft size={24} color={colors.sand[700]} />
+          <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900 ml-3">Plans & Billing</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg font-bold text-spaceCadet-900 ml-3"
+        >
+          Plans & Billing
+        </Text>
       </View>
 
-      <ScrollView className="flex-1 bg-sand-50 px-4 pt-4">
+      <ScrollView className="flex-1 bg-[#F8F7FC] px-4 pt-4">
         {/* Current plan (read-only) */}
-        <View className="bg-white rounded-2xl p-5 border border-sand-100 mb-4">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-4">
           <View className="flex-row items-center gap-2 mb-2">
-            <CreditCard size={18} color={colors.turmeric[600]} />
-            <Text className="font-bold text-sm text-sand-900">
+            <CreditCard size={18} color="#BB3F95" />
+            <Text className="font-bold text-sm text-spaceCadet-900">
               {me?.plan ?? 'Starter'} Plan · {me?.plan_status ?? 'Trial'}
             </Text>
           </View>
-          <Text className="text-xs text-sand-500 leading-relaxed">
+          <Text className="text-xs text-heliotrope-500 leading-relaxed font-medium">
             You&apos;re on the {me?.plan_status === 'ACTIVE' ? 'active' : 'free trial'}{' '}
             {me?.plan ?? 'Starter'} plan — keep using all your features.
           </Text>
         </View>
 
         {/* Plans are managed on the website (Play Store compliance) */}
-        <View className="bg-white rounded-2xl p-5 border border-sand-100">
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
           <View
-            className="w-12 h-12 rounded-2xl items-center justify-center mb-3"
-            style={{ backgroundColor: `${primaryColor}15` }}
+            className="w-12 h-12 rounded-2xl items-center justify-center mb-3 bg-lavender-100 border border-lavender-200"
           >
-            <Globe size={22} color={primaryColor} />
+            <Globe size={22} color="#BB3F95" />
           </View>
-          <Text className="text-base font-bold text-sand-900">Manage plans on kanchuki.app</Text>
-          <Text className="text-xs text-sand-500 leading-relaxed mt-1.5">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-base font-bold text-spaceCadet-900"
+          >
+            Manage plans on kanchuki.app
+          </Text>
+          <Text className="text-xs text-heliotrope-500 leading-relaxed mt-1.5 font-medium">
             Plans, add-ons and billing are managed on the Kanchuki website. Sign in with your
             store&apos;s phone number to upgrade your plan, switch billing period, or buy extra
             units.
@@ -79,9 +89,9 @@ export default function BillingScreen() {
 
           <AnimatedPressable
             onPress={() => void Linking.openURL(`${WEB_URL}/billing`)}
-            className="mt-4 bg-ink-600 py-3.5 rounded-2xl items-center"
+            className="mt-4 bg-spaceCadet-900 py-3.5 rounded-2xl items-center shadow-sm"
           >
-            <Text className="text-white font-semibold text-sm">Manage my plan</Text>
+            <Text className="text-white font-bold text-sm">Manage my plan</Text>
           </AnimatedPressable>
 
           <AnimatedPressable
@@ -92,14 +102,14 @@ export default function BillingScreen() {
             }
             className="mt-3 py-3 flex-row items-center justify-center gap-2"
           >
-            <Mail size={15} color={colors.sand[500]} />
-            <Text className="text-xs text-sand-600 font-medium">
+            <Mail size={15} color="#6B4773" />
+            <Text className="text-xs text-spaceCadet-900 font-medium">
               Questions? Email {SUPPORT_EMAIL}
             </Text>
           </AnimatedPressable>
         </View>
 
-        <Text className="text-xs text-sand-400 text-center mt-6 mb-10">Prices include GST</Text>
+        <Text className="text-xs text-heliotrope-400 text-center mt-6 mb-10">Prices include GST</Text>
       </ScrollView>
     </View>
   );

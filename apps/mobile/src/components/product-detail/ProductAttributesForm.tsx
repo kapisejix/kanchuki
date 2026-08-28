@@ -122,75 +122,113 @@ export function ProductAttributesForm({
 
   return (
     <View className="px-4 py-4 gap-4">
-      {/* Product Display Header & Price */}
-      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-        <Text className="text-xl font-bold text-spaceCadet-900 font-marcellus">
-          {editedName || product.name || 'Luxury Ensemble'}
-        </Text>
-        <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
-          {[product.subtype ?? product.category, product.fabric_estimate].filter(Boolean).join(' · ') || 'Handcrafted Design'}
-        </Text>
-
-        <View className="mt-4 pt-3 border-t border-lavender-200 flex-row items-center justify-between">
-          <View>
-            <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">Selling Price</Text>
-            <View className="flex-row items-center gap-1 mt-0.5">
+      {/* ── Top Title, Price, Color & Size Card (Point 10 PDP Specification) ── */}
+      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm gap-4">
+        {/* Title & Price in single row */}
+        <View className="flex-row items-start justify-between">
+          <View className="flex-1 mr-3">
+            <Text className="text-xl font-bold text-spaceCadet-900 font-marcellus">
+              {editedName || product.name || 'Luxury Ensemble'}
+            </Text>
+            <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
+              {[product.subtype ?? product.category, product.fabric_estimate].filter(Boolean).join(' · ') || 'Handcrafted Design'}
+            </Text>
+          </View>
+          <View className="items-end">
+            <View className="flex-row items-center gap-0.5">
               <Text className="text-xl font-bold text-spaceCadet-900 font-marcellus">₹</Text>
               <TextInput
                 value={price}
                 onChangeText={dirty(setPrice)}
                 placeholder="1500"
                 keyboardType="numeric"
-                className="text-2xl font-bold text-spaceCadet-900 font-marcellus p-0"
+                className="text-xl font-bold text-spaceCadet-900 font-marcellus p-0 min-w-[50px] text-right"
                 placeholderTextColor="#928EB2"
               />
             </View>
-          </View>
-
-          <View className="px-3 py-1.5 rounded-full bg-lavender-100 border border-lavender-200">
-            <Text className="text-[11px] font-bold text-fuchsia-600">In Stock</Text>
+            <View className="px-2 py-0.5 rounded-full bg-lavender-100 border border-lavender-200 mt-1">
+              <Text className="text-[10px] font-bold text-fuchsia-600">In Stock</Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      {/* Color swatches with checkmarks */}
-      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-        <View className="flex-row items-center justify-between mb-3">
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
-            Color Variants
-          </Text>
-          <Text className="text-xs text-heliotrope-500">
-            {editedColor || 'Select'}
-          </Text>
-        </View>
-
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row gap-3 items-center py-1">
-            {product.variants.map((variant) => {
-              const variantPhotoIndex = variant.photo_url
-                ? displayPhotos.findIndex((p) => p.url === variant.photo_url)
-                : -1
-              const isActive = variantPhotoIndex === selectedPhotoIndex
-              const hex = resolveFashionColor(variant.color)
-              return (
-                <AnimatedPressable
-                  key={variant.id}
-                  onPress={() => {
-                    if (variantPhotoIndex >= 0) {
-                      goToPhoto(isActive ? 0 : variantPhotoIndex)
-                    }
-                  }}
-                  className={`w-11 h-11 rounded-full items-center justify-center border-2 ${
-                    isActive ? 'border-fuchsia-500 scale-105' : 'border-lavender-200'
-                  }`}
-                  style={{ backgroundColor: hex }}
-                >
-                  {isActive && <Check size={14} color="#ffffff" strokeWidth={3} />}
-                </AnimatedPressable>
-              )
-            })}
+        {/* 2-Column Row for Color & Size (Point 10 PDP) */}
+        <View className="flex-row gap-4 pt-3 border-t border-lavender-100">
+          {/* Left Column: Color dots */}
+          <View className="flex-1">
+            <Text className="text-xs font-bold text-heliotrope-600 block mb-2">Color</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row items-center gap-2 py-1">
+                {product.variants.length > 0 ? (
+                  product.variants.map((variant) => {
+                    const variantPhotoIndex = variant.photo_url
+                      ? displayPhotos.findIndex((p) => p.url === variant.photo_url)
+                      : -1
+                    const isActive = variantPhotoIndex === selectedPhotoIndex || editedColor === variant.color
+                    const hex = resolveFashionColor(variant.color)
+                    return (
+                      <AnimatedPressable
+                        key={variant.id}
+                        onPress={() => {
+                          dirty(setEditedColor)(variant.color)
+                          if (variantPhotoIndex >= 0) {
+                            goToPhoto(variantPhotoIndex)
+                          }
+                        }}
+                        className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
+                          isActive ? 'border-spaceCadet-900 scale-105 shadow-sm' : 'border-transparent'
+                        }`}
+                        style={{ backgroundColor: hex }}
+                      >
+                        {isActive && <Check size={13} color="#ffffff" strokeWidth={3} />}
+                      </AnimatedPressable>
+                    )
+                  })
+                ) : (
+                  <View className="flex-row items-center gap-2">
+                    <View
+                      className="w-8 h-8 rounded-full border-2 border-spaceCadet-900 items-center justify-center"
+                      style={{ backgroundColor: resolveFashionColor(editedColor || '#6B4773') }}
+                    >
+                      <Check size={13} color="#ffffff" strokeWidth={3} />
+                    </View>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
           </View>
-        </ScrollView>
+
+          {/* Right Column: Size circles */}
+          <View className="flex-1">
+            <Text className="text-xs font-bold text-heliotrope-600 block mb-2">Size</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View className="flex-row items-center gap-2 py-1">
+                {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => {
+                  const isSelected = selectedSizes.includes(size)
+                  return (
+                    <AnimatedPressable
+                      key={size}
+                      onPress={() => toggleSize(size)}
+                      className={`w-8 h-8 rounded-full items-center justify-center ${
+                        isSelected
+                          ? 'bg-spaceCadet-900 shadow-sm'
+                          : 'bg-lavender-100'
+                      }`}
+                    >
+                      <Text
+                        className={`text-[11px] font-extrabold ${
+                          isSelected ? 'text-white' : 'text-spaceCadet-900'
+                        }`}
+                      >
+                        {size}
+                      </Text>
+                    </AnimatedPressable>
+                  )
+                })}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
       </View>
 
       {/* Editable Fields Container */}

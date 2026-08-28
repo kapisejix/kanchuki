@@ -123,7 +123,7 @@ export default function TemplatesScreen() {
       {/* Header */}
       <View
         className="bg-white border-b border-lavender-200 px-5 pb-4"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center gap-3">
@@ -607,7 +607,7 @@ function CreateTemplateModal({
         presentationStyle="pageSheet"
         onRequestClose={() => setProductPickerOpen(false)}
       >
-        <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: insets.top + 12 }}>
+        <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: Math.max(insets.top, 24) + 12 }}>
           <View className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular' }}

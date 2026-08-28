@@ -74,7 +74,7 @@ export default function CatalogTicketsScreen() {
     <View className="flex-1 bg-white">
       <View
         className="bg-white border-b border-sand-100 px-4 pb-4"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">

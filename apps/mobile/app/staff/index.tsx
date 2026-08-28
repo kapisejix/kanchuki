@@ -92,7 +92,7 @@ export default function StaffDashboard() {
       {/* Header */}
       <View
         className="bg-ink-700 px-4 pb-6 rounded-b-3xl"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center justify-between mb-4">
           <View className="flex-row items-center gap-3">

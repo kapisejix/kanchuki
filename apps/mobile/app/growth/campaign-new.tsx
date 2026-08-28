@@ -419,7 +419,7 @@ export default function CampaignFormScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
@@ -699,7 +699,7 @@ export default function CampaignFormScreen() {
             <View className="flex-1 bg-[#F8F7FC]">
               <View
                 className="flex-row items-center justify-between px-5 pb-4 pt-5 bg-white border-b border-lavender-200"
-                style={{ paddingTop: insets.top + 12 }}
+                style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
               >
                 <Text
                   style={{ fontFamily: 'Marcellus_400Regular' }}

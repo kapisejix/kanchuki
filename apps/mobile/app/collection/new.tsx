@@ -75,7 +75,7 @@ export default function NewCollectionScreen() {
     <View className="flex-1 bg-[#F8F7FC]">
       <View
         className="flex-row items-center px-5 pb-3 bg-white border-b border-lavender-200"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <AnimatedPressable
           onPress={() => router.back()}
@@ -103,14 +103,14 @@ export default function NewCollectionScreen() {
             className="bg-lavender-50 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 border border-lavender-200"
             maxLength={200}
           />
-          <View className="flex-row gap-2">
+          <View className="flex-row gap-2.5">
             {EXPIRY_OPTIONS.map((d) => (
               <AnimatedPressable
                 key={d}
                 onPress={() => setExpiresDays(d)}
-                className={`px-3.5 py-1.5 rounded-full border ${
+                className={`flex-1 py-2.5 rounded-2xl border items-center justify-center ${
                   expiresDays === d
-                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
                     : 'bg-white border-lavender-200'
                 }`}
               >

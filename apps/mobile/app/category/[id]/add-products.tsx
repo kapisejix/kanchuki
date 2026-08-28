@@ -61,7 +61,7 @@ export default function AddProductsToCategoryScreen() {
     <View className="flex-1 bg-[#F8F7FC]">
       <View
         className="flex-row items-center px-5 pb-4 bg-white border-b border-lavender-200"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <AnimatedPressable
           onPress={() => router.back()}

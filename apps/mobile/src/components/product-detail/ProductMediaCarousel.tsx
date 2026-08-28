@@ -352,19 +352,17 @@ export function ProductMediaCarousel({
           </View>
         )}
 
-        {/* Dot indicators */}
+        {/* Dot indicators (Point 10 PDP spec) */}
         {displayPhotos.length > 1 && (
-          <View className="absolute bottom-3 left-0 right-0 flex-row justify-center gap-1.5">
+          <View className="absolute bottom-3 left-4 flex-row items-center gap-1.5">
             {displayPhotos.map((p, idx) => (
               <AnimatedPressable
                 key={idx}
                 onPress={() => goToPhoto(idx)}
-                className={`h-2 rounded-full ${
+                className={`h-1.5 rounded-full ${
                   idx === selectedPhotoIndex
                     ? 'bg-fuchsia-500 w-4'
-                    : p.is_video
-                      ? 'bg-spaceCadet-900 w-2'
-                      : 'bg-white/70 w-2'
+                    : 'bg-white/70 w-1.5'
                 }`}
               />
             ))}
@@ -372,71 +370,8 @@ export function ProductMediaCarousel({
         )}
       </View>
 
-      {/* Thumbnail strip */}
-      {displayPhotos.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="px-4 py-3 bg-white border-b border-lavender-200"
-        >
-          <View className="flex-row gap-2.5">
-            {displayPhotos.map((photo, idx) => {
-              const isSelected = idx === selectedPhotoIndex
-              const isVariant = photo.is_variant_preview
-              const isOriginal = photo.is_original_preview
-              const isVideo = photo.is_video
-              return (
-                <AnimatedPressable
-                  key={photo.id}
-                  onPress={() => goToPhoto(idx)}
-                  className={`w-16 h-16 rounded-2xl overflow-hidden border-2 ${
-                    isSelected ? 'border-fuchsia-500' : 'border-lavender-200'
-                  }`}
-                >
-                  {isVideo ? (
-                    <View className="w-full h-full bg-spaceCadet-900 items-center justify-center">
-                      <Clapperboard size={22} color="white" />
-                      <View className="absolute bottom-0 left-0 right-0 bg-black/80 py-0.5">
-                        <Text className="text-white text-[8px] text-center font-bold">
-                          {photo.video_duration ? `${photo.video_duration}s` : 'VIDEO'}
-                        </Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <Image
-                      source={{ uri: displayUrl(photo) }}
-                      style={{ width: '100%', height: '100%' }}
-                      contentFit="cover"
-                    />
-                  )}
-                  {isVariant && (
-                    <View className="absolute bottom-0 left-0 right-0 bg-spaceCadet-900/80 py-0.5">
-                      <Text className="text-white text-[8px] text-center font-medium">
-                        {photo.variant_color ?? ''}
-                      </Text>
-                    </View>
-                  )}
-                  {isOriginal && (
-                    <View className="absolute bottom-0 left-0 right-0 bg-spaceCadet-900/80 py-0.5">
-                      <Text className="text-white text-[8px] text-center font-medium">
-                        Original
-                      </Text>
-                    </View>
-                  )}
-                  {photo.is_primary && !isVariant && !isOriginal && !isVideo && (
-                    <View className="absolute bottom-0 left-0 right-0 bg-fuchsia-600/90 py-0.5">
-                      <Text className="text-white text-[8px] text-center font-bold">Main</Text>
-                    </View>
-                  )}
-                </AnimatedPressable>
-              )
-            })}
-          </View>
-        </ScrollView>
-      )}
-
-      {/* Action buttons row */}
-      <View className="flex-row gap-2 p-3 bg-white">
+      {/* 4 Action Buttons Row (Equal 25% Width Each) */}
+      <View className="flex-row gap-2 px-3.5 py-3 bg-white border-t border-lavender-100">
         <AnimatedPressable
           onPress={() =>
             router.push(`/product/${product.id}/add-photos?existingCount=${product.photos.length}`)
@@ -444,15 +379,15 @@ export function ProductMediaCarousel({
           disabled={product.photos.length >= 10}
           className="flex-1 items-center justify-center gap-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl"
         >
-          <Camera size={18} color="#BB3F95" />
-          <Text className="text-spaceCadet-900 text-[11px] font-bold">Add Photo</Text>
+          <Camera size={16} color="#BB3F95" />
+          <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Photo</Text>
         </AnimatedPressable>
         <AnimatedPressable
           onPress={() => router.push(`/product/${product.id}/add-color`)}
           className="flex-1 items-center justify-center gap-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl"
         >
-          <Palette size={18} color="#BB3F95" />
-          <Text className="text-spaceCadet-900 text-[11px] font-bold">Add Color</Text>
+          <Palette size={16} color="#BB3F95" />
+          <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Color</Text>
         </AnimatedPressable>
         <AnimatedPressable
           onPress={handleProductVideoPress}
@@ -462,9 +397,9 @@ export function ProductMediaCarousel({
           {generateVideoPending || videoGenerating ? (
             <ActivityIndicator size="small" color="#BB3F95" />
           ) : (
-            <Video size={18} color="#BB3F95" />
+            <Video size={16} color="#BB3F95" />
           )}
-          <Text className="text-spaceCadet-900 text-[11px] font-bold">
+          <Text className="text-spaceCadet-900 text-[10px] font-bold">
             {videoGenerating ? 'Building...' : 'Video'}
           </Text>
           {productVideosCount > 0 && !videoGenerating && (
@@ -483,12 +418,16 @@ export function ProductMediaCarousel({
           {studioStarting || studioStatus === 'processing' ? (
             <ActivityIndicator size="small" color="#BB3F95" />
           ) : (
-            <Sparkles size={18} color="#BB3F95" />
+            <Sparkles size={16} color="#BB3F95" />
           )}
-          <Text className="text-spaceCadet-900 text-[11px] font-bold">AI Studio</Text>
-          {studioQuota && !studioQuota.unlimited && (
-            <View className="absolute -top-1.5 -right-1 bg-fuchsia-600 px-1.5 py-0.5 rounded-full shadow-xs">
-              <Text className="text-[9px] font-bold text-white">{studioQuota.remaining}</Text>
+          <Text className="text-spaceCadet-900 text-[10px] font-bold">AI Studio</Text>
+          {!studioQuota?.unlimited && (
+            <View
+              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-xs"
+            >
+              <Text className="text-[9px] font-bold text-white">
+                {studioQuota?.remaining ?? 0}
+              </Text>
             </View>
           )}
         </AnimatedPressable>

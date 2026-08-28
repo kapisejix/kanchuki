@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, MapPin, SlidersHorizontal, X, Trash2, ScanLine, Camera } from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
@@ -154,6 +155,7 @@ const CatalogCard = memo(function CatalogCard({
 // ── Catalog Screen ─────────────────────────────────────────────────
 
 export default function CatalogScreen() {
+  const insets = useSafeAreaInsets()
   const { colors } = useTheme()
   const columns = useGridColumns()
 
@@ -405,7 +407,10 @@ export default function CatalogScreen() {
       ) : null}
 
       {/* Header — scan + filter icons */}
-      <View className="bg-white px-5 py-3 border-b border-lavender-200 flex-row items-center justify-between">
+      <View
+        className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center justify-between"
+        style={{ paddingTop: bannerUrl ? 12 : Math.max(insets.top, 24) + 12 }}
+      >
         <Text
           style={{ fontFamily: 'Marcellus_400Regular' }}
           className="text-lg font-bold text-spaceCadet-900"

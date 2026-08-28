@@ -895,7 +895,7 @@ export default function AddProductScreen() {
       <View className="flex-1 bg-ink-50">
         <View
           className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-          style={{ paddingTop: insets.top + 12 }}
+          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
         >
           <AnimatedPressable
             onPress={() => setStep('pro_review')}
@@ -1073,7 +1073,7 @@ export default function AddProductScreen() {
       {/* Header — fixed outside the scroll area so back/save stay reachable */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
           <ChevronLeft size={24} color={colors.sand[700]} />

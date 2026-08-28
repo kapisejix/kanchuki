@@ -288,7 +288,7 @@ export default function InStoreTryOnScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <AnimatedPressable onPress={() => router.back()} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color={colors.sand[700]} />

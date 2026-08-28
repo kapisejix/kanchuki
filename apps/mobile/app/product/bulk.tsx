@@ -259,7 +259,7 @@ export default function BulkImportScreen() {
       {/* Header */}
       <View
         className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <AnimatedPressable onPress={() => (step === 'importing' ? null : router.back())} disabled={step === 'importing'} accessibilityLabel="Close" accessibilityRole="button">
           <X size={22} color={step === 'importing' ? colors.sand[300] : colors.sand[700]} />

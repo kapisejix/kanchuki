@@ -112,7 +112,7 @@ export default function AiCampaignScreen() {
     >
       <View
         className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200"
-        style={{ paddingTop: insets.top + 12 }}
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
         <View className="flex-row items-center gap-3">
           <AnimatedPressable
