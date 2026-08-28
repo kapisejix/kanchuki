@@ -2,7 +2,21 @@
 
 import type { PublicCollection, PublicProduct } from '@kanchuki/shared';
 import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { Filter, Heart, MessageCircle, Share2, ShoppingBag, Sparkles, Star, Calendar, ChevronRight, LayoutGrid } from 'lucide-react';
+import {
+  Filter,
+  Heart,
+  MessageCircle,
+  Share2,
+  ShoppingBag,
+  Sparkles,
+  Star,
+  Calendar,
+  ChevronRight,
+  LayoutGrid,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -77,6 +91,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   useEffect(() => {
     setFavorites(loadWishlist(slug));
   }, [slug]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<PublicProduct | null>(null);
   const [filterCategory, setFilterCategory] = useState<string | null>(null);
   const [filterPrice, setFilterPrice] = useState<string | null>(null);
@@ -268,64 +283,71 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
     }
   }, [collection.title]);
 
+  const filteredProducts = products.filter((p) => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchName = (p.name ?? '').toLowerCase().includes(q);
+      const matchCat = (p.category ?? '').toLowerCase().includes(q);
+      const matchSubtype = (p.subtype ?? '').toLowerCase().includes(q);
+      const matchColor = (p.primary_color ?? '').toLowerCase().includes(q);
+      const matchLocation = (p.location ?? '').toLowerCase().includes(q);
+      if (!matchName && !matchCat && !matchSubtype && !matchColor && !matchLocation) return false;
+    }
+    return true;
+  });
+
   const bannerUrl = collection.retailer.banner_url;
 
   return (
     <PageTransitionWrapper>
-    <div className="min-h-screen bg-gray-50 font-sans">
-      {/* ── Hero Banner ── */}
-      {bannerUrl && (
-        <div className="relative w-full h-48 md:h-56 overflow-hidden bg-gray-100">
-          <Image
-            src={bannerUrl}
-            alt={`${collection.retailer.shop_name} banner`}
-            fill
-            className="object-cover"
-            priority
-            sizes="100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          <div className="absolute bottom-3 left-4 right-4">
-            <p className="text-white text-xs font-semibold uppercase tracking-wider drop-shadow">
-              {collection.retailer.shop_name} · {collection.retailer.city}
-            </p>
-            <h1 className="text-white text-xl font-bold drop-shadow leading-tight">
-              {collection.title}
-            </h1>
-          </div>
-        </div>
-      )}
-
-      {/* ── Header ── */}
-      <header className={`sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100 ${bannerUrl ? '' : ''}`}>
+    <div className="min-h-screen bg-[#F8F7FC] font-sans pb-24">
+      {/* ── Top Header & Greeting (Spec #9 Discovery) ── */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6]">
         <KanchukiBrandBar />
         <div className="max-w-md mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              {!bannerUrl && (
-                <p className="text-[11px] text-cyan-700/80 font-semibold uppercase tracking-wider truncate">
-                  {collection.retailer.shop_name} · {collection.retailer.city}
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl overflow-hidden bg-[#E0E1F6] border border-[#E0E1F6] flex items-center justify-center flex-shrink-0 shadow-sm">
+                {collection.retailer.logo_url ? (
+                  <Image
+                    src={collection.retailer.logo_url}
+                    alt={collection.retailer.shop_name}
+                    width={40}
+                    height={40}
+                    className="object-cover w-full h-full"
+                  />
+                ) : (
+                  <span className="font-bold text-[#231F48] font-marcellus text-sm">
+                    {collection.retailer.shop_name.slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-[#231F48] truncate">
+                  Hi, Welcome!
                 </p>
-              )}
-              <h1 className={`font-bold leading-tight tracking-tight truncate ${bannerUrl ? 'text-sm text-gray-700' : 'font-display text-lg text-gray-900'}`}>
-                {collection.title}
-              </h1>
+                <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider truncate">
+                  {collection.retailer.shop_name} {collection.retailer.city ? `· ${collection.retailer.city}` : ''}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5 flex-shrink-0">
+
+            <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setShowFilters((v) => !v)}
-                className={`p-2.5 rounded-full transition-all active:scale-90 ${
-                  showFilters
-                    ? 'bg-cyan-50 text-cyan-700 shadow-soft'
-                    : 'text-gray-500 hover:bg-gray-100'
-                } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2`}
+                className={`w-10 h-10 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
+                  showFilters || filterPrice || filterColor
+                    ? 'bg-[#231F48] text-white border-[#231F48]'
+                    : 'bg-white text-[#231F48] border-[#E0E1F6] shadow-sm'
+                }`}
                 aria-label="Toggle filters"
               >
-                <Filter size={18} />
+                <SlidersHorizontal size={18} />
               </button>
+
               <button
                 onClick={() => void handleShare()}
-                className="p-2.5 rounded-full text-gray-500 hover:bg-gray-100 transition-all active:scale-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+                className="w-10 h-10 rounded-2xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center text-[#231F48] hover:bg-[#F8F7FC] transition-all active:scale-90"
                 aria-label="Share collection"
               >
                 <Share2 size={18} />
@@ -333,8 +355,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             </div>
           </div>
 
-          {/* Secondary filters (price / color) — category chips render
-              unconditionally above the grid in CategoryChips. */}
+          {/* Secondary filters (price / color) */}
           {showFilters && (
             <FilterBar
               colors={collection.filters.colors}
@@ -347,86 +368,80 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         </div>
       </header>
 
-      {/* ── Promotion Banner ── */}
-      <div className="max-w-md mx-auto px-3 pt-3">
-        <PromotionBanner storeSlug={store ?? slug} />
-      </div>
-
-      {/* ── Product Grid ── */}
-      <main className="max-w-md mx-auto px-3 py-4">
-        {collection.description && (
-          <p className="text-sm text-gray-600 leading-relaxed mb-4 px-1">
-            {collection.description}
+      {/* ── Main Discovery Content ── */}
+      <main className="max-w-md mx-auto px-4 py-4">
+        {/* ── Discovery Headline (Spec #9) ── */}
+        <div className="mb-4">
+          <h2 className="text-2xl font-extrabold text-[#231F48] font-marcellus leading-tight">
+            Find the best<br />clothes for you
+          </h2>
+          <p className="text-xs text-[#6B4773] font-medium mt-1">
+            {collection.title} · {collection.total} curated items
           </p>
-        )}
+        </div>
 
-        {/* Regional weave/style filters (hidden for now, will display later) */}
-        {REGIONAL_FILTERS_ENABLED && (
-          <RegionalFilters
-            activeFilter={filterRegional}
-            onFilterChange={setFilterRegional}
-          />
-        )}
-
-        {/* Style quiz — show once if not completed */}
-        {!quizDone && !showQuiz && (
-          <button
-            onClick={() => setShowQuiz(true)}
-            className="w-full bg-gradient-to-r from-cyan-50 to-indigo-50 border border-cyan-100 rounded-2xl p-3 mb-4 flex items-center gap-3 hover:from-cyan-100 hover:to-indigo-100 transition-colors"
-          >
-            <span className="text-xl">✨</span>
-            <div className="text-left">
-              <p className="text-xs font-bold text-gray-900">Take a quick style quiz</p>
-              <p className="text-[10px] text-gray-500">Help us suggest outfits you&apos;ll love</p>
-            </div>
-            <ChevronRight size={16} className="text-cyan-400 ml-auto" />
-          </button>
-        )}
-        {showQuiz && !quizDone && (
-          <div className="mb-4">
-            <StyleQuiz
-              storeSlug={store ?? slug}
-              onComplete={() => { setQuizDone(true); setShowQuiz(false) }}
+        {/* ── Discovery Search Bar (Spec #9) ── */}
+        <div className="relative mb-4">
+          <div className="w-full bg-white rounded-2xl py-3 pl-11 pr-12 shadow-sm border border-[#E0E1F6] flex items-center">
+            <Search size={18} className="text-[#928EB2] absolute left-4" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by outfit, fabric, color..."
+              className="w-full text-xs font-semibold text-[#231F48] placeholder-[#928EB2] bg-transparent focus:outline-none"
             />
+            {searchQuery ? (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center text-[#231F48] text-xs absolute right-3 border border-[#E0E1F6]"
+              >
+                <X size={14} />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowFilters((v) => !v)}
+                className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center text-[#231F48] text-xs absolute right-3 border border-[#E0E1F6]"
+              >
+                <SlidersHorizontal size={14} />
+              </button>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Recently viewed products */}
-        <RecentlyViewed
-          storeSlug={store ?? slug}
-          onProductTap={(p) => setSelectedProduct(p as PublicProduct)}
-        />
+        {/* ── Promotion Banner ── */}
+        <div className="mb-4">
+          <PromotionBanner storeSlug={store ?? slug} />
+        </div>
 
-        {/* Always-visible category chip bar (count-bearing, matches the
-            reference browse layout) — independent of the filter toggle. */}
+        {/* Always-visible category chip bar */}
         <div className="mb-4 -mx-1 px-1">
           <CategoryChips
             categories={collection.filters.categories}
             filterCategory={filterCategory}
-            // Static collection total — category chip counts are static server
-            // facets, so the "All" chip must not shrink when other filters apply.
             totalCount={collection.total}
             onCategoryChange={setFilterCategory}
           />
         </div>
 
-        {products.length === 0 ? (
-          <div className="text-center py-20 px-6">
-            <div className="w-16 h-16 rounded-2xl bg-cyan-50 flex items-center justify-center mx-auto mb-4">
-              <ShoppingBag size={26} className="text-cyan-400" />
+        {filteredProducts.length === 0 ? (
+          <div className="text-center py-16 px-6">
+            <div className="w-16 h-16 rounded-3xl bg-white border border-[#E0E1F6] shadow-sm flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag size={26} className="text-[#6B4773]" />
             </div>
-            <p className="text-sm font-medium text-gray-700 mb-1">No products match this filter</p>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-sm font-bold text-[#231F48] mb-1 font-marcellus">No products match this filter</p>
+            <p className="text-xs text-[#6B4773] mb-4">
               Try clearing a filter to see more of the collection
             </p>
             <button
               onClick={() => {
+                setSearchQuery('');
                 setFilterCategory(null);
                 setFilterPrice(null);
                 setFilterColor(null);
                 setFilterRegional(null);
               }}
-              className="text-cyan-700 bg-cyan-50 hover:bg-cyan-100 text-sm font-semibold px-4 py-2 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
+              className="text-[#231F48] bg-white border border-[#E0E1F6] hover:bg-[#F8F7FC] text-xs font-bold px-4 py-2 rounded-full transition-colors shadow-sm"
             >
               Clear filters
             </button>
@@ -436,7 +451,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
             <div
               className={`grid grid-cols-2 gap-3 transition-opacity ${loading ? 'opacity-50' : ''}`}
             >
-              {products.map((product, idx) => (
+              {filteredProducts.map((product, idx) => (
                 <ProductCard
                   key={product.id}
                   product={product}
@@ -596,133 +611,82 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
 
   return (
     <div
-      className={`group bg-white rounded-2xl overflow-hidden shadow-soft border transition-all duration-200 hover:-translate-y-1 hover:shadow-soft-lg ${isSold ? 'border-red-100 opacity-80' : isReserved ? 'border-amber-100' : 'border-gray-100'}`}
+      onClick={onTap}
+      className={`group bg-white rounded-[28px] overflow-hidden shadow-sm hover:shadow-md border border-[#E0E1F6] transition-all p-1.5 cursor-pointer flex flex-col justify-between ${
+        isSold ? 'opacity-75' : ''
+      }`}
     >
-      {/* Photo */}
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onTap}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            onTap();
-          }
-        }}
-        className="relative w-full aspect-[3/4] block cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-inset"
-      >
+      {/* Photo Container */}
+      <div className="relative w-full aspect-[3/4] rounded-[24px] overflow-hidden bg-[#FAF9FE]">
         {product.primary_photo_url ? (
           <Image
             src={product.primary_photo_url}
             alt={product.name ?? product.category ?? 'Product'}
             fill
             sizes="(max-width: 640px) 45vw, 200px"
-            className={`object-cover transition-transform duration-300 group-hover:scale-[1.03] ${isSold ? 'grayscale' : ''}`}
+            className={`object-cover transition-transform duration-300 group-hover:scale-105 ${isSold ? 'grayscale' : ''}`}
             priority={priority}
             loading={priority ? 'eager' : 'lazy'}
           />
         ) : (
-          <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-            <ShoppingBag size={32} className="text-gray-300" />
+          <div className="w-full h-full bg-[#E0E1F6] flex items-center justify-center">
+            <ShoppingBag size={32} className="text-[#6B4773]" />
           </div>
         )}
 
-        {/* Subtype badge — small white pill over the photo (matches the
-            reference card style). Sits below the status ribbon when the
-            product is sold/reserved so both stay readable. */}
-        {badgeLabel && (
-          <span
-            className={`absolute left-2.5 bg-white/95 backdrop-blur-sm text-gray-800 text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full shadow-sm ${
-              isUnavailable ? 'top-11' : 'top-2.5'
-            }`}
-          >
-            {badgeLabel}
-          </span>
-        )}
-
-        {/* Status badge ribbon */}
+        {/* Status badge ribbon (top-left) */}
         {isSold && (
-          <div className="absolute top-2.5 left-2.5 bg-red-500 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
+          <div className="absolute top-2.5 left-2.5 bg-[#560A39]/90 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full shadow-sm backdrop-blur-sm">
             Sold Out
           </div>
         )}
         {isReserved && (
-          <div className="absolute top-2.5 left-2.5 bg-amber-400 text-amber-900 text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full shadow-sm">
+          <div className="absolute top-2.5 left-2.5 bg-amber-500/95 text-white text-[10px] font-bold uppercase tracking-wide px-2.5 py-0.5 rounded-full shadow-sm backdrop-blur-sm">
             Reserved
           </div>
         )}
 
-        {/* Favorite button — hide for SOLD */}
+        {/* Subtype pill if not sold */}
+        {!isUnavailable && badgeLabel && (
+          <span className="absolute top-2.5 left-2.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+            {badgeLabel}
+          </span>
+        )}
+
+        {/* Floating circular heart button at bottom-right of photo (Point 9 Discovery Spec) */}
         {!isSold && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               onFavorite(product.id);
             }}
-            className="absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-white/90 backdrop-blur-sm
-                       flex items-center justify-center shadow-soft transition-transform active:scale-90
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#231F48] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6] hover:scale-110 active:scale-95 transition-all"
             aria-label={isFavorited ? 'Remove from favorites' : 'Add to favorites'}
           >
             <Heart
               size={16}
-              className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
+              className={isFavorited ? 'text-[#BB3F95] fill-[#BB3F95]' : 'text-[#231F48]'}
             />
           </button>
         )}
-
-        {/* Bottom gradient-overlay caption with the product name */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent pt-12 px-2.5 pb-2">
-          <p className="text-white text-xs font-semibold leading-snug line-clamp-2 drop-shadow-sm">
-            {product.name ?? product.category ?? 'Product'}
-          </p>
-        </div>
       </div>
 
-      {/* Try-On button — hide for SOLD, show as disabled for RESERVED */}
-      {TRY_ON_ENABLED && !isUnavailable && (
-        <div className="px-2.5 pt-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onTryOn?.(product);
-            }}
-            className="w-full bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-xs font-semibold
-                       py-2 rounded-xl flex items-center justify-center gap-1.5 transition-colors
-                       focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1"
-          >
-            <Sparkles size={13} />
-            Try On
-          </button>
-        </div>
-      )}
-
-      {/* Info — price line (name now lives in the image caption above) */}
-      <div className="p-2.5 pt-2">
-        <div className="flex items-center gap-1.5">
-          {product.primary_color && (
-            <span
-              className="w-2.5 h-2.5 rounded-full border border-gray-200 flex-shrink-0"
-              style={{ backgroundColor: product.primary_color.toLowerCase() }}
-              title={product.primary_color}
-            />
-          )}
-          <p
-            className={`font-display text-sm font-bold tabular-nums ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}
-          >
+      {/* Info: Title & Price */}
+      <div className="px-2 pt-2.5 pb-1">
+        <p className="text-xs font-bold text-[#231F48] font-sans truncate">
+          {product.name ?? product.category ?? 'Ethnic Wear'}
+        </p>
+        <div className="flex items-center justify-between mt-0.5">
+          <p className="text-xs font-extrabold text-[#231F48] font-sans tabular-nums">
             {formatPriceRange(product.price_min, product.price_max)}
           </p>
           {product.rating_count > 0 && (
-            <span className="flex items-center gap-0.5 ml-auto">
+            <span className="flex items-center gap-0.5">
               <Star size={11} className="text-amber-400 fill-amber-400" />
-              <span className="text-[10px] font-semibold text-gray-600">
+              <span className="text-[10px] font-semibold text-[#6B4773]">
                 {product.avg_rating.toFixed(1)}
               </span>
             </span>
-          )}
-          {isSold && <span className="text-[10px] text-red-400 font-semibold ml-auto">Sold</span>}
-          {isReserved && (
-            <span className="text-[10px] text-amber-500 font-semibold ml-auto">Reserved</span>
           )}
         </div>
       </div>

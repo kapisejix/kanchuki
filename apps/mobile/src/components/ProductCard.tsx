@@ -98,13 +98,13 @@ const ProductCard = memo(function ProductCard({
     <AnimatedPressable
       onPress={onPress}
       onLongPress={onLongPress}
-      className={`bg-white border border-lavender-200 rounded-3xl ${flex ? 'flex-1' : ''}`}
+      className={`bg-white border border-lavender-200 rounded-[28px] ${flex ? 'flex-1' : ''}`}
       style={[{ elevation }, CARD_SHADOW, style]}
     >
-      <View className="rounded-3xl overflow-hidden p-1.5 bg-white">
+      <View className="rounded-[28px] overflow-hidden p-1.5 bg-white">
         {/* Image container */}
         <View
-          className="w-full bg-lavender-100 rounded-2xl overflow-hidden"
+          className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
           style={
             imageHeight
               ? { height: imageHeight }
@@ -132,20 +132,20 @@ const ProductCard = memo(function ProductCard({
 
           {/* Status badge (top-left) */}
           {statusBadge && (
-            <View className="absolute top-2 left-2 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm">
+            <View className="absolute top-2.5 left-2.5 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm">
               <Text className="text-white text-[10px] font-bold uppercase tracking-wider">{statusBadge}</Text>
             </View>
           )}
 
           {/* AI tagging pending indicator (top-right) */}
           {showAIDot && (
-            <View className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-fuchsia-500 border border-white" />
+            <View className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-fuchsia-500 border border-white" />
           )}
 
           {/* WhatsApp catalog sync badge (bottom-right) — F7 */}
           {catalogSyncStatus && (
             <View
-              className="absolute bottom-2 right-2 w-3 h-3 rounded-full border border-white"
+              className="absolute bottom-3 left-3 w-3 h-3 rounded-full border border-white"
               style={{
                 backgroundColor:
                   catalogSyncStatus === 'SUCCESS'
@@ -157,11 +157,11 @@ const ProductCard = memo(function ProductCard({
             />
           )}
 
-          {/* Floating favorite heart button (Point 9 Discovery Spec) */}
-          {onFavorite && (
+          {/* Floating favorite heart / action button (Point 9 Discovery Spec) */}
+          {onFavorite ? (
             <AnimatedPressable
               onPress={onFavorite}
-              className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-2 right-2 shadow-md border border-lavender-200"
+              className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
               style={{ elevation: 3 }}
             >
               <Heart
@@ -170,18 +170,29 @@ const ProductCard = memo(function ProductCard({
                 fill={isFavorite ? "#BB3F95" : "transparent"}
               />
             </AnimatedPressable>
+          ) : (
+            <View
+              className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+              style={{ elevation: 3 }}
+            >
+              <Heart
+                size={16}
+                color={isFavorite ? "#BB3F95" : "#231F48"}
+                fill={isFavorite ? "#BB3F95" : "transparent"}
+              />
+            </View>
           )}
 
           {/* Selected checkmark overlay */}
           {selected && (
-            <View className="absolute top-2 right-2 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm">
+            <View className="absolute top-2.5 right-2.5 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm">
               <Text className="text-white text-xs font-bold">✓</Text>
             </View>
           )}
         </View>
 
         {/* Footer */}
-        <View className="px-2 pt-2 pb-1">
+        <View className="px-2 pt-2.5 pb-1.5">
           {footer}
         </View>
       </View>

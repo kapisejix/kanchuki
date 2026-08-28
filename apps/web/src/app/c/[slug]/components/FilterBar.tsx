@@ -10,10 +10,10 @@ export interface FilterOption {
 }
 
 function chipClass(active: boolean): string {
-  return `flex-shrink-0 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
+  return `flex-shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#231F48] focus-visible:ring-offset-1 ${
     active
-      ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-      : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
+      ? 'bg-[#231F48] text-white border-[#231F48] shadow-sm'
+      : 'bg-white text-[#231F48] border-[#E0E1F6] hover:border-[#BB3F95] hover:text-[#BB3F95]'
   }`
 }
 
@@ -110,11 +110,7 @@ export function FilterBar({
             <button
               key={color.value}
               onClick={() => onColorChange(filterColor === color.value ? null : color.value)}
-              className={`flex-shrink-0 flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1 ${
-                filterColor === color.value
-                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                  : 'bg-white text-gray-600 border-gray-200 hover:border-cyan-200 hover:text-cyan-700'
-              }`}
+              className={`flex-shrink-0 flex items-center gap-1.5 ${chipClass(filterColor === color.value)}`}
             >
               <span
                 className="w-2.5 h-2.5 rounded-full border border-current/30"

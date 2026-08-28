@@ -48,12 +48,25 @@ export default function CategoryListScreen() {
           data={categories}
           keyExtractor={(item) => item.id}
           numColumns={columns}
-          columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 16, gap: 12, flexGrow: 1 }}
+          columnWrapperStyle={{ gap: 14 }}
+          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1 }}
+          ListHeaderComponent={
+            <View className="mb-2">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-2xl font-extrabold text-spaceCadet-900 leading-tight"
+              >
+                Curated Collections{'\n'}for your store
+              </Text>
+              <Text className="text-xs text-heliotrope-500 font-medium mt-1">
+                {categories.length} {categories.length === 1 ? 'category' : 'categories'} configured
+              </Text>
+            </View>
+          }
           renderItem={({ item }: { item: ProductCategory }) => (
             <AnimatedPressable
               onPress={() => router.push(`/category/${item.id}`)}
-              className="flex-1 bg-white rounded-3xl overflow-hidden border border-lavender-200 shadow-sm"
+              className="flex-1 bg-white rounded-[28px] overflow-hidden border border-lavender-200 shadow-sm"
               style={{
                 shadowColor: '#231F48',
                 shadowOffset: { width: 0, height: 4 },
@@ -62,31 +75,33 @@ export default function CategoryListScreen() {
                 elevation: 3,
               }}
             >
-              <View className="w-full aspect-[4/3] bg-lavender-100 relative">
-                {item.image_url ? (
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={{ width: '100%', height: '100%' }}
-                    contentFit="cover"
-                    transition={300}
-                  />
-                ) : (
-                  <View className="w-full h-full items-center justify-center bg-lavender-100">
-                    <FolderKanban size={32} color="#6B4773" />
+              <View className="p-1.5">
+                <View className="w-full aspect-[4/3] bg-lavender-100 rounded-[22px] overflow-hidden relative">
+                  {item.image_url ? (
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={{ width: '100%', height: '100%' }}
+                      contentFit="cover"
+                      transition={300}
+                    />
+                  ) : (
+                    <View className="w-full h-full items-center justify-center bg-lavender-100">
+                      <FolderKanban size={32} color="#6B4773" />
+                    </View>
+                  )}
+                  <View className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-spaceCadet-900/85 backdrop-blur-md shadow-sm">
+                    <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
+                      {item.product_count} {item.product_count === 1 ? 'Item' : 'Items'}
+                    </Text>
                   </View>
-                )}
-                <View className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-spaceCadet-900/80 backdrop-blur-sm">
-                  <Text className="text-[10px] font-bold text-white uppercase tracking-wider">
-                    {item.product_count} {item.product_count === 1 ? 'Item' : 'Items'}
-                  </Text>
                 </View>
               </View>
 
-              <View className="p-3.5 bg-white">
+              <View className="px-3.5 pb-3.5 pt-1 bg-white">
                 <Text className="text-sm font-bold text-spaceCadet-900 font-marcellus truncate" numberOfLines={1}>
                   {item.name}
                 </Text>
-                <Text className="text-[11px] text-heliotrope-500 font-medium mt-0.5">
+                <Text className="text-[11px] text-fuchsia-600 font-bold mt-0.5">
                   Browse collection →
                 </Text>
               </View>

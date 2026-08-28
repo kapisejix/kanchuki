@@ -3,6 +3,7 @@ import { formatPriceRange, COLORS } from '@kanchuki/shared'
 import {
   View,
   Text,
+  TextInput,
   FlatList,
   ScrollView,
   ActivityIndicator,
@@ -13,7 +14,16 @@ import {
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, MapPin, SlidersHorizontal, X, Trash2, ScanLine, Camera } from 'lucide-react-native'
+import {
+  Plus,
+  MapPin,
+  SlidersHorizontal,
+  X,
+  Trash2,
+  ScanLine,
+  Camera,
+  Search,
+} from 'lucide-react-native'
 import ProductCard from '../../src/components/ProductCard'
 import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
@@ -172,6 +182,7 @@ export default function CatalogScreen() {
   const selectionMode = selectedIds.size > 0
   const [deleting, setDeleting] = useState(false)
 
+  const [searchQuery, setSearchQuery] = useState('')
   const [showFilters, setShowFilters] = useState(false)
   const [filterCategory, setFilterCategory] = useState<string | null>(null)
   const [filterPrice, setFilterPrice] = useState<string | null>(null)
@@ -222,7 +233,13 @@ export default function CatalogScreen() {
   const colorOptions = Array.from(
     new Set(unfilteredProducts.map((p) => p.primary_color).filter((c): c is string => !!c)),
   )
-  const activeFilterCount = [filterCategory, filterPrice, filterColor, filterNewArrival ? 'New Arrivals' : null].filter(Boolean).length
+  const activeFilterCount = [
+    filterCategory,
+    filterPrice,
+    filterColor,
+    filterNewArrival ? 'New Arrivals' : null,
+    searchQuery.trim() ? 'Search' : null,
+  ].filter(Boolean).length
 
   // Category shortcut row — one circle per category, thumbnail borrowed from
   // that category's first photographed product (no separate icon asset needed).
@@ -232,6 +249,14 @@ export default function CatalogScreen() {
   }))
 
   const products = unfilteredProducts.filter((p) => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      const matchCat = (p.category ?? '').toLowerCase().includes(q)
+      const matchColor = (p.primary_color ?? '').toLowerCase().includes(q)
+      const matchSection = (p.section?.name ?? '').toLowerCase().includes(q)
+      const matchNotes = (p.location_notes ?? '').toLowerCase().includes(q)
+      if (!matchCat && !matchColor && !matchSection && !matchNotes) return false
+    }
     if (filterCategory && p.category !== filterCategory) return false
     if (filterColor && p.primary_color !== filterColor) return false
     if (filterPrice) {
@@ -246,9 +271,11 @@ export default function CatalogScreen() {
   })
 
   const clearFilters = useCallback(() => {
+    setSearchQuery('')
     setFilterCategory(null)
     setFilterPrice(null)
     setFilterColor(null)
+    setFilterNewArrival(false)
   }, [])
 
   const queryClient = useQueryClient()
@@ -406,21 +433,39 @@ export default function CatalogScreen() {
         </View>
       ) : null}
 
-      {/* Header — scan + filter icons */}
+      {/* Header — Discovery Greeting + Scan/Filter icons */}
       <View
         className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center justify-between"
         style={{ paddingTop: bannerUrl ? 12 : Math.max(insets.top, 24) + 12 }}
       >
-        <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
-          className="text-lg font-bold text-spaceCadet-900"
-        >
-          Catalog ({products.length})
-        </Text>
+        <View className="flex-row items-center gap-3">
+          <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
+            {retailerProfile?.logo_url ? (
+              <Image
+                source={{ uri: retailerProfile.logo_url }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="cover"
+              />
+            ) : (
+              <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+                {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <View>
+            <Text className="text-sm font-bold text-spaceCadet-900">
+              Hi, {retailerProfile?.shop_name ?? 'Store'}!
+            </Text>
+            <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
+              {retailerProfile?.city ?? 'Catalog'} • {products.length} Products
+            </Text>
+          </View>
+        </View>
+
         <View className="flex-row items-center gap-2">
           <AnimatedPressable
             onPress={() => router.push('/product/scan')}
-            className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-white border border-lavender-200 shadow-sm"
             accessibilityLabel="Scan product SKU to mark sold"
             accessibilityRole="button"
           >
@@ -429,12 +474,19 @@ export default function CatalogScreen() {
           <AnimatedPressable
             onPress={() => setShowFilters((v) => !v)}
             className={`w-10 h-10 rounded-2xl items-center justify-center border ${
-              activeFilterCount > 0 ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-100 border-lavender-200'
+              activeFilterCount > 0
+                ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                : 'bg-white border-lavender-200 shadow-sm'
             }`}
             accessibilityLabel="Filters"
             accessibilityRole="button"
           >
             <SlidersHorizontal size={18} color={activeFilterCount > 0 ? 'white' : '#231F48'} />
+            {activeFilterCount > 0 && (
+              <View className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-fuchsia-600 items-center justify-center shadow-sm">
+                <Text className="text-white text-[9px] font-extrabold">{activeFilterCount}</Text>
+              </View>
+            )}
           </AnimatedPressable>
         </View>
       </View>
@@ -453,57 +505,95 @@ export default function CatalogScreen() {
           contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={
-            (categoryImages.length > 0 || showFilters || waSyncStatusByProduct.size > 0) ? (
-              <View className="bg-white rounded-3xl px-4 py-3.5 mb-3 border border-lavender-200 shadow-sm">
-                {/* WhatsApp sync status legend */}
-                {waSyncStatusByProduct.size > 0 && (
-                  <View className="flex-row items-center gap-3 mb-2.5">
-                    <Text className="text-[10px] font-extrabold text-heliotrope-500 uppercase tracking-wide">
-                      WhatsApp sync
-                    </Text>
-                    <LegendDot color="#059669" label="Synced" />
-                    <LegendDot color="#d97706" label="Pending" />
-                    <LegendDot color="#dc2626" label="Error" />
-                  </View>
+            <View className="gap-3 mb-1">
+              {/* Discovery Marcellus Headline */}
+              <View className="pt-2 pb-1">
+                <Text
+                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  className="text-2xl font-extrabold text-spaceCadet-900 leading-tight"
+                >
+                  Find the best{'\n'}clothes for your store
+                </Text>
+              </View>
+
+              {/* Discovery Search Bar Card */}
+              <View className="w-full bg-white rounded-2xl py-2.5 pl-11 pr-12 border border-lavender-200 shadow-sm flex-row items-center relative">
+                <Search size={18} color="#928EB2" style={{ position: 'absolute', left: 14 }} />
+                <TextInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder="Search by category, color, rack..."
+                  placeholderTextColor="#928EB2"
+                  className="w-full text-xs font-semibold text-spaceCadet-900 py-1"
+                />
+                {searchQuery ? (
+                  <AnimatedPressable
+                    onPress={() => setSearchQuery('')}
+                    className="w-7 h-7 rounded-xl bg-lavender-100 flex items-center justify-center absolute right-3 border border-lavender-200"
+                  >
+                    <X size={14} color="#231F48" />
+                  </AnimatedPressable>
+                ) : (
+                  <AnimatedPressable
+                    onPress={() => setShowFilters((v) => !v)}
+                    className="w-7 h-7 rounded-xl bg-[#F8F7FC] flex items-center justify-center absolute right-3 border border-lavender-200"
+                  >
+                    <SlidersHorizontal size={14} color="#231F48" />
+                  </AnimatedPressable>
                 )}
-                {/* Category shortcuts */}
-                {categoryImages.length > 0 && (
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
-                    <View className="flex-row gap-3 py-1">
-                      {categoryImages.map(({ category, photoUrl }) => {
-                        const isActive = filterCategory === category
-                        return (
-                          <AnimatedPressable
-                            key={category}
-                            onPress={() => setFilterCategory(isActive ? null : category)}
-                            className="items-center gap-1.5"
-                            style={{ width: 68 }}
-                          >
-                            <View
-                              className={`w-16 h-16 rounded-3xl overflow-hidden bg-lavender-100 border-2 ${
-                                isActive ? 'border-fuchsia-500' : 'border-lavender-200'
-                              }`}
-                            >
-                              {photoUrl ? (
-                                <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                              ) : (
-                                <View className="flex-1 items-center justify-center">
-                                  <Text className="text-heliotrope-400 text-xl">👗</Text>
-                                </View>
-                              )}
-                            </View>
-                            <Text
-                              className={`text-[10px] text-center font-bold ${isActive ? 'text-fuchsia-600' : 'text-spaceCadet-900'}`}
-                              numberOfLines={1}
-                            >
-                              {category}
-                            </Text>
-                          </AnimatedPressable>
-                        )
-                      })}
+              </View>
+
+              {(categoryImages.length > 0 || showFilters || waSyncStatusByProduct.size > 0) && (
+                <View className="bg-white rounded-3xl px-4 py-3.5 border border-lavender-200 shadow-sm">
+                  {/* WhatsApp sync status legend */}
+                  {waSyncStatusByProduct.size > 0 && (
+                    <View className="flex-row items-center gap-3 mb-2.5">
+                      <Text className="text-[10px] font-extrabold text-heliotrope-500 uppercase tracking-wide">
+                        WhatsApp sync
+                      </Text>
+                      <LegendDot color="#059669" label="Synced" />
+                      <LegendDot color="#d97706" label="Pending" />
+                      <LegendDot color="#dc2626" label="Error" />
                     </View>
-                  </ScrollView>
-                )}
+                  )}
+                  {/* Category shortcuts */}
+                  {categoryImages.length > 0 && (
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
+                      <View className="flex-row gap-3 py-1">
+                        {categoryImages.map(({ category, photoUrl }) => {
+                          const isActive = filterCategory === category
+                          return (
+                            <AnimatedPressable
+                              key={category}
+                              onPress={() => setFilterCategory(isActive ? null : category)}
+                              className="items-center gap-1.5"
+                              style={{ width: 68 }}
+                            >
+                              <View
+                                className={`w-16 h-16 rounded-3xl overflow-hidden bg-lavender-100 border-2 ${
+                                  isActive ? 'border-fuchsia-500' : 'border-lavender-200'
+                                }`}
+                              >
+                                {photoUrl ? (
+                                  <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                                ) : (
+                                  <View className="flex-1 items-center justify-center">
+                                    <Text className="text-heliotrope-400 text-xl">👗</Text>
+                                  </View>
+                                )}
+                              </View>
+                              <Text
+                                className={`text-[10px] text-center font-bold ${isActive ? 'text-fuchsia-600' : 'text-spaceCadet-900'}`}
+                                numberOfLines={1}
+                              >
+                                {category}
+                              </Text>
+                            </AnimatedPressable>
+                          )
+                        })}
+                      </View>
+                    </ScrollView>
+                  )}
 
                 {/* Filter panel — Category, Price, Color */}
                 {showFilters && (
@@ -546,9 +636,10 @@ export default function CatalogScreen() {
                   </View>
                 )}
               </View>
-            ) : null
-          }
-          // ── Performance props ──
+            )}
+          </View>
+        }
+        // ── Performance props ──
           windowSize={7}
           maxToRenderPerBatch={10}
           removeClippedSubviews={true}

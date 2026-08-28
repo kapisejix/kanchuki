@@ -288,21 +288,20 @@ export default function CategoryDetailScreen() {
           data={products}
           keyExtractor={(item) => item.id}
           numColumns={columns}
-          columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 16, gap: 12, flexGrow: 1 }}
+          columnWrapperStyle={{ gap: 14 }}
+          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1 }}
           renderItem={({ item }) => (
             <ProductCard
               imageUrl={item.primary_photo_url}
               onPress={() => router.push(`/product/${item.id}`)}
+              statusBadge={item.status !== 'AVAILABLE' ? item.status : null}
               footer={
-                <View className="p-2 gap-0.5">
-                  <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
-                    {item.category ?? 'Product'} · {item.primary_color ?? '—'}
+                <View className="gap-0.5">
+                  <Text className="text-xs font-bold text-spaceCadet-900 truncate" numberOfLines={1}>
+                    {item.category ?? 'Product'}
+                    {item.primary_color ? ` · ${item.primary_color}` : ''}
                   </Text>
-                  <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
-                    className="text-sm font-bold text-spaceCadet-900"
-                  >
+                  <Text className="text-xs font-extrabold text-spaceCadet-900 mt-0.5">
                     {formatPriceRange(item.price_min, item.price_max)}
                   </Text>
                 </View>
