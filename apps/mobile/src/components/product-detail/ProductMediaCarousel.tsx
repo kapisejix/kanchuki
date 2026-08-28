@@ -3,6 +3,7 @@ import {
   View,
   Text,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
@@ -157,42 +158,41 @@ export function ProductMediaCarousel({
           </View>
         )}
 
-        {/* Floating thumbnail strip (matches #10 Product Details spec in HTML) */}
+        {/* Left-side Floating Thumbnail Strip Container (matches Screenshot & Point 10 PDP spec) */}
         {displayPhotos.length > 1 && (
           <View
-            pointerEvents="box-none"
             style={{
               position: 'absolute',
-              top: '50%',
-              right: 12,
-              transform: [{ translateY: -((Math.min(displayPhotos.length, 4) * 48 + (Math.min(displayPhotos.length, 4) - 1) * 7) / 2) }],
-              backgroundColor: 'rgba(255, 255, 255, 0.88)',
-              borderRadius: 22,
+              top: 54,
+              left: 12,
+              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              borderRadius: 20,
               padding: 5,
-              gap: 7,
-              borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.85)',
+              gap: 6,
+              borderWidth: 1.5,
+              borderColor: 'rgba(255, 255, 255, 0.9)',
               shadowColor: '#231F48',
-              shadowOffset: { width: 0, height: 8 },
-              shadowOpacity: 0.18,
-              shadowRadius: 16,
-              elevation: 10,
-              zIndex: 40,
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.22,
+              shadowRadius: 14,
+              elevation: 20,
+              zIndex: 50,
             }}
           >
             {displayPhotos.slice(0, 4).map((photo, idx) => {
               const isSelected = idx === selectedPhotoIndex
               return (
-                <AnimatedPressable
+                <TouchableOpacity
                   key={photo.id}
+                  activeOpacity={0.75}
                   onPress={() => goToPhoto(idx)}
                   style={{
-                    width: 38,
-                    height: 46,
+                    width: 40,
+                    height: 48,
                     borderRadius: 14,
                     overflow: 'hidden',
-                    borderWidth: 2,
-                    borderColor: isSelected ? '#BB3F95' : 'transparent',
+                    borderWidth: isSelected ? 2.5 : 1,
+                    borderColor: isSelected ? '#BB3F95' : 'rgba(224, 225, 246, 0.8)',
                     backgroundColor: '#FAF9FE',
                   }}
                 >
@@ -201,7 +201,7 @@ export function ProductMediaCarousel({
                     style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                   />
-                </AnimatedPressable>
+                </TouchableOpacity>
               )
             })}
           </View>
