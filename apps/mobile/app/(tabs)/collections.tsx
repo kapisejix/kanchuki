@@ -8,6 +8,7 @@ import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 type Collection = {
   id: string
@@ -84,34 +85,39 @@ function EditCollectionModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
-          <Text className="text-lg font-bold text-sand-900">Edit Collection</Text>
+        <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-lg font-bold text-spaceCadet-900"
+          >
+            Edit Collection
+          </Text>
 
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
               Title
             </Text>
             <TextInput
               value={title}
               onChangeText={setTitle}
               placeholder="Collection name"
-              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={colors.sand[400]}
+              placeholderTextColor="#928EB2"
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
               autoFocus
             />
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
               Expires in (days)
             </Text>
             <TextInput
               value={expiryDays}
               onChangeText={setExpiryDays}
               placeholder="30"
+              placeholderTextColor="#928EB2"
               keyboardType="numeric"
-              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
-              placeholderTextColor={colors.sand[400]}
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
             />
           </View>
 
@@ -119,21 +125,18 @@ function EditCollectionModal({
             <AnimatedPressable
               onPress={onClose}
               disabled={saving}
-              className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center"
+              className="flex-1 bg-lavender-100 py-3.5 rounded-2xl items-center border border-lavender-200"
             >
-              <Text className="text-sand-700 font-semibold">Cancel</Text>
+              <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Cancel</Text>
             </AnimatedPressable>
-            <AnimatedPressable
-              onPress={() => void handleSave()}
-              disabled={saving || !title.trim()}
-              className="flex-1 bg-ink-600 py-3.5 rounded-2xl items-center"
-            >
-              {saving ? (
-                <ActivityIndicator size="small" color="white" />
-              ) : (
-                <Text className="text-white font-semibold">Save</Text>
-              )}
-            </AnimatedPressable>
+            <View className="flex-1">
+              <GradientButton
+                label="Save"
+                onPress={() => void handleSave()}
+                disabled={saving || !title.trim()}
+                loading={saving}
+              />
+            </View>
           </View>
         </View>
       </View>
@@ -156,23 +159,41 @@ const CollectionCard = memo(function CollectionCard({
   onEdit: () => void
   onDelete: () => void
 }) {
-  const { primaryColor, colors } = useTheme()
   return (
-    <AnimatedPressable onPress={onPress} className="bg-white rounded-2xl p-4 border border-sand-100">
+    <AnimatedPressable
+      onPress={onPress}
+      className="bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+      style={{
+        shadowColor: '#231F48',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
+    >
       {/* Title + status */}
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-3">
-          <Text className="text-sm font-bold text-sand-900">{item.title}</Text>
-          <Text className="text-xs text-sand-400 mt-0.5">{item.product_count} products</Text>
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-base font-bold text-spaceCadet-900"
+          >
+            {item.title}
+          </Text>
+          <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
+            {item.product_count} {item.product_count === 1 ? 'product' : 'products'}
+          </Text>
         </View>
         <View
-          className={`px-2 py-0.5 rounded-full ${
-            item.status === 'ACTIVE' ? 'bg-turmeric-100' : 'bg-sand-100'
+          className={`px-2.5 py-0.5 rounded-full border ${
+            item.status === 'ACTIVE'
+              ? 'bg-fuchsia-500/10 border-fuchsia-500/30'
+              : 'bg-lavender-100 border-lavender-200'
           }`}
         >
           <Text
-            className={`text-xs font-medium ${
-              item.status === 'ACTIVE' ? 'text-turmeric-700' : 'text-sand-500'
+            className={`text-[10px] font-bold uppercase tracking-wider ${
+              item.status === 'ACTIVE' ? 'text-fuchsia-600' : 'text-heliotrope-500'
             }`}
           >
             {item.status}
@@ -181,52 +202,52 @@ const CollectionCard = memo(function CollectionCard({
       </View>
 
       {/* Stats row */}
-      <View className="flex-row gap-4 mb-3">
-        <View className="flex-row items-center gap-1">
-          <Eye size={14} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-500">{item.view_count} views</Text>
+      <View className="flex-row gap-4 mb-3.5 py-2 px-3 bg-lavender-50 rounded-2xl border border-lavender-200/60">
+        <View className="flex-row items-center gap-1.5">
+          <Eye size={13} color="#BB3F95" />
+          <Text className="text-xs font-bold text-spaceCadet-900">{item.view_count} views</Text>
         </View>
-        <View className="flex-row items-center gap-1">
-          <MessageCircle size={14} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-500">{item.enquiry_count} enquiries</Text>
+        <View className="flex-row items-center gap-1.5">
+          <MessageCircle size={13} color="#BB3F95" />
+          <Text className="text-xs font-bold text-spaceCadet-900">{item.enquiry_count} enquiries</Text>
         </View>
-        <View className="flex-row items-center gap-1">
-          <Clock size={14} color={colors.sand[400]} />
-          <Text className="text-xs text-sand-400">{daysUntil(item.expires_at)}</Text>
+        <View className="flex-row items-center gap-1.5">
+          <Clock size={13} color="#6B4773" />
+          <Text className="text-xs font-medium text-heliotrope-500">{daysUntil(item.expires_at)}</Text>
         </View>
       </View>
 
       {/* Action buttons row */}
       <View className="flex-row gap-2">
-        {/* Share */}
+        {/* Share on WhatsApp */}
         {item.status === 'ACTIVE' && (
           <AnimatedPressable
             onPress={onShare}
-            className="flex-1 flex-row items-center justify-center gap-2 bg-turmeric-50 border border-turmeric-100 py-2.5 rounded-xl"
+            className="flex-1 flex-row items-center justify-center gap-2 bg-spaceCadet-900 py-2.5 rounded-2xl border border-spaceCadet-900"
           >
-            <Link2 size={14} color={colors.turmeric[600]} />
-            <Text className="text-turmeric-700 text-sm font-semibold">Share</Text>
+            <Link2 size={14} color="#E0E1F6" />
+            <Text className="text-white text-xs font-bold uppercase tracking-wider">Share Link</Text>
           </AnimatedPressable>
         )}
 
         {/* Edit */}
         <AnimatedPressable
           onPress={onEdit}
-          className="flex-row items-center justify-center gap-1.5 bg-ink-50 border border-ink-100 px-3 py-2.5 rounded-xl"
+          className="flex-row items-center justify-center bg-lavender-100 border border-lavender-200 px-3.5 py-2.5 rounded-2xl"
           accessibilityLabel="Edit collection"
           accessibilityRole="button"
         >
-          <Edit size={14} color={primaryColor} />
+          <Edit size={14} color="#231F48" />
         </AnimatedPressable>
 
         {/* Delete */}
         <AnimatedPressable
           onPress={onDelete}
-          className="flex-row items-center justify-center bg-rust-50 border border-rust-100 px-3 py-2.5 rounded-xl"
+          className="flex-row items-center justify-center bg-red-50 border border-red-200 px-3.5 py-2.5 rounded-2xl"
           accessibilityLabel="Delete collection"
           accessibilityRole="button"
         >
-          <Trash2 size={14} color={colors.rust[600]} />
+          <Trash2 size={14} color="#DC2626" />
         </AnimatedPressable>
       </View>
     </AnimatedPressable>
@@ -236,7 +257,6 @@ const CollectionCard = memo(function CollectionCard({
 // ── Collections Screen ─────────────────────────────────────────────
 
 export default function CollectionsScreen() {
-  const { colors } = useTheme()
   const queryClient = useQueryClient()
   const [editTarget, setEditTarget] = useState<Collection | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -311,26 +331,31 @@ export default function CollectionsScreen() {
   const listEmpty = useCallback(
     () => (
       <View className="items-center py-16 px-8">
-        <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
-          <Link2 size={28} color={colors.sand[400]} />
+        <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
+          <Link2 size={28} color="#BB3F95" />
         </View>
-        <Text className="text-sand-700 text-base font-semibold text-center">No collections yet</Text>
-        <Text className="text-sand-400 text-xs text-center mt-1 leading-5">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-spaceCadet-900 text-lg font-bold text-center"
+        >
+          No collections yet
+        </Text>
+        <Text className="text-heliotrope-500 text-xs text-center mt-1 leading-5">
           Create a collection and share it on WhatsApp{'\n'}so customers can browse and enquire.
         </Text>
-        <AnimatedPressable
-          onPress={() => router.push('/collection/new')}
-          className="mt-4 bg-ink-600 px-6 py-3 rounded-xl"
-        >
-          <Text className="text-white text-sm font-semibold">Create Collection</Text>
-        </AnimatedPressable>
+        <View className="mt-5 w-full max-w-xs">
+          <GradientButton
+            label="Create Collection"
+            onPress={() => router.push('/collection/new')}
+          />
+        </View>
       </View>
     ),
-    [colors],
+    [],
   )
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {isLoading && collections.length === 0 ? (
         <CollectionListSkeleton />
       ) : (
@@ -338,9 +363,8 @@ export default function CollectionsScreen() {
           data={collections}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
-          contentContainerStyle={{ padding: 12, gap: 10, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
-          // ── Performance props ──
           windowSize={5}
           maxToRenderPerBatch={10}
           removeClippedSubviews={true}
@@ -351,12 +375,18 @@ export default function CollectionsScreen() {
       {/* FAB */}
       <AnimatedPressable
         onPress={() => router.push('/collection/new')}
-        className="absolute bottom-6 right-4 w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
-        style={{ elevation: 6 }}
+        className="absolute bottom-6 right-5 w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
+        style={{
+          shadowColor: '#BB3F95',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.45,
+          shadowRadius: 10,
+          elevation: 6,
+        }}
         accessibilityLabel="New collection"
         accessibilityRole="button"
       >
-        <Plus size={24} color="white" />
+        <Plus size={24} color="white" strokeWidth={2.5} />
       </AnimatedPressable>
 
       {/* Edit Modal */}

@@ -441,31 +441,31 @@ export function ProductAttributesForm({
 
         {/* Rack / Location in store */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
             Rack / Shelf Location
           </Text>
           <TextInput
             value={location}
             onChangeText={dirty(setLocation)}
             placeholder="e.g. Rack 3, Shelf B"
-            placeholderTextColor={colors.sand[400]}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2.5"
+            placeholderTextColor="#928EB2"
+            className="text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
         </View>
 
         {/* Internal store notes */}
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-1.5">
             Store Notes (Private)
           </Text>
           <TextInput
             value={notes}
             onChangeText={dirty(setNotes)}
             placeholder="Wholesale price, supplier info, restock reminders..."
-            placeholderTextColor={colors.sand[400]}
+            placeholderTextColor="#928EB2"
             multiline
             numberOfLines={3}
-            className="text-sm text-sand-900 bg-sand-50 rounded-xl px-3 py-2.5"
+            className="text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
             style={{ textAlignVertical: 'top' }}
           />
         </View>

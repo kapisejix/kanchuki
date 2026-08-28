@@ -84,22 +84,22 @@ export default function NewCategoryScreen() {
   return (
     <>
       <Stack.Screen options={{ title: 'New Category', headerShown: true }} />
-      <View className="flex-1 bg-ink-50 px-4 py-5 gap-4">
+      <View className="flex-1 bg-[#F8F7FC] px-4 py-5 gap-4">
         <View className="items-center">
           <AnimatedPressable
             onPress={() => void handlePickImage()}
             disabled={uploading}
-            className="w-28 h-28 rounded-2xl bg-white border border-sand-200 items-center justify-center overflow-hidden"
+            className="w-28 h-28 rounded-3xl bg-white border border-lavender-200 items-center justify-center overflow-hidden shadow-sm"
           >
             {uploading ? (
-              <ActivityIndicator color={primaryColor} />
+              <ActivityIndicator color="#BB3F95" />
             ) : imageUrl ? (
               <Image source={{ uri: imageUrl }} style={{ width: 112, height: 112 }} resizeMode="cover" />
             ) : (
-              <ImagePlus size={26} color={colors.sand[400]} />
+              <ImagePlus size={26} color="#6B4773" />
             )}
           </AnimatedPressable>
-          <Text className="text-xs text-sand-400 mt-1.5">
+          <Text className="text-xs text-heliotrope-500 mt-1.5 font-medium">
             {imageUrl ? 'Tap to change photo' : 'Add a cover photo (optional)'}
           </Text>
         </View>
@@ -108,30 +108,35 @@ export default function NewCategoryScreen() {
         {!imageUrl && (
           <AnimatedPressable
             onPress={() => setShowProductPicker(true)}
-            className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-xl border border-sand-100"
+            className="flex-row items-center gap-3 bg-white px-4 py-3 rounded-2xl border border-lavender-200 shadow-sm"
           >
-            <View className="w-10 h-10 rounded-xl items-center justify-center" style={{ backgroundColor: `${primaryColor}1A` }}>
-              <Package size={18} color={primaryColor} />
+            <View className="w-10 h-10 rounded-xl items-center justify-center bg-fuchsia-500/15">
+              <Package size={18} color="#BB3F95" />
             </View>
             <View className="flex-1">
-              <Text className="text-sm font-semibold text-sand-900">Choose from product photos</Text>
-              <Text className="text-xs text-sand-400">Reuse an existing product&apos;s image as the category cover</Text>
+              <Text className="text-sm font-bold text-spaceCadet-900">Choose from product photos</Text>
+              <Text className="text-xs text-heliotrope-500 font-medium">Reuse an existing product&apos;s image as the category cover</Text>
             </View>
           </AnimatedPressable>
         )}
 
         {/* ── Product Picker Modal ── */}
         <Modal visible={showProductPicker} animationType="slide" presentationStyle="pageSheet">
-          <View className="flex-1 bg-ink-50">
-            <View className="flex-row items-center justify-between px-4 py-3 border-b border-sand-100 bg-white">
-              <Text className="text-base font-bold text-sand-900">Select a Product</Text>
+          <View className="flex-1 bg-[#F8F7FC]">
+            <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base font-bold text-spaceCadet-900"
+              >
+                Select a Product
+              </Text>
               <Pressable onPress={() => { setShowProductPicker(false); setSelectedProductId(null) }} className="p-2">
-                <X size={20} color={colors.sand[500]} />
+                <X size={20} color="#6B4773" />
               </Pressable>
             </View>
             {productsLoading ? (
               <View className="flex-1 items-center justify-center">
-                <ActivityIndicator color={primaryColor} />
+                <ActivityIndicator color="#BB3F95" />
               </View>
             ) : (
               <FlatList
@@ -146,18 +151,18 @@ export default function NewCategoryScreen() {
                       setShowProductPicker(false)
                       setShowPhotoPicker(true)
                     }}
-                    className="flex-row items-center gap-3 bg-white rounded-xl p-3 mb-2 border border-sand-100"
+                    className="flex-row items-center gap-3 bg-white rounded-2xl p-3 mb-2 border border-lavender-200 shadow-sm"
                   >
                     {item.primary_photo_url ? (
-                      <Image source={{ uri: item.primary_photo_url }} style={{ width: 48, height: 48, borderRadius: 10 }} resizeMode="cover" />
+                      <Image source={{ uri: item.primary_photo_url }} style={{ width: 48, height: 48, borderRadius: 12 }} resizeMode="cover" />
                     ) : (
-                      <View className="w-12 h-12 rounded-xl bg-sand-100 items-center justify-center">
-                        <Package size={18} color={colors.sand[400]} />
+                      <View className="w-12 h-12 rounded-xl bg-lavender-100 items-center justify-center">
+                        <Package size={18} color="#6B4773" />
                       </View>
                     )}
                     <View className="flex-1 min-w-0">
-                      <Text className="text-sm font-semibold text-sand-900 truncate" numberOfLines={1}>{item.name ?? 'Unnamed'}</Text>
-                      <Text className="text-xs text-sand-400 truncate" numberOfLines={1}>{item.category ?? 'No category'}</Text>
+                      <Text className="text-sm font-bold text-spaceCadet-900 truncate" numberOfLines={1}>{item.name ?? 'Unnamed'}</Text>
+                      <Text className="text-xs text-heliotrope-500 font-medium truncate" numberOfLines={1}>{item.category ?? 'No category'}</Text>
                     </View>
                   </AnimatedPressable>
                 )}
@@ -168,21 +173,27 @@ export default function NewCategoryScreen() {
 
         {/* ── Photo Picker Modal ── */}
         <Modal visible={showPhotoPicker} animationType="slide" presentationStyle="pageSheet">
-          <View className="flex-1 bg-ink-50">
-            <View className="flex-row items-center justify-between px-4 py-3 border-b border-sand-100 bg-white">
-              <Text className="text-base font-bold text-sand-900 truncate flex-1" numberOfLines={1}>{selectedProductName}</Text>
+          <View className="flex-1 bg-[#F8F7FC]">
+            <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-200 bg-white">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-base font-bold text-spaceCadet-900 truncate flex-1"
+                numberOfLines={1}
+              >
+                {selectedProductName}
+              </Text>
               <Pressable onPress={() => { setShowPhotoPicker(false); setSelectedProductId(null) }} className="p-2">
-                <X size={20} color={colors.sand[500]} />
+                <X size={20} color="#6B4773" />
               </Pressable>
             </View>
             {detailLoading ? (
               <View className="flex-1 items-center justify-center">
-                <ActivityIndicator color={primaryColor} />
+                <ActivityIndicator color="#BB3F95" />
               </View>
             ) : productPhotos.length === 0 ? (
               <View className="flex-1 items-center justify-center px-6">
-                <Package size={32} color={colors.sand[300]} />
-                <Text className="text-sm text-sand-400 mt-2">No photos on this product</Text>
+                <Package size={32} color="#928EB2" />
+                <Text className="text-sm text-heliotrope-500 font-medium mt-2">No photos on this product</Text>
               </View>
             ) : (
               <FlatList
@@ -199,7 +210,7 @@ export default function NewCategoryScreen() {
                       setShowPhotoPicker(false)
                       setSelectedProductId(null)
                     }}
-                    className="flex-1 aspect-square rounded-xl overflow-hidden border-2 border-transparent"
+                    className="flex-1 aspect-square rounded-2xl overflow-hidden border-2 border-transparent"
                   >
                     <Image source={{ uri: item.url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                   </AnimatedPressable>
@@ -210,21 +221,21 @@ export default function NewCategoryScreen() {
         </Modal>
 
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
             Category Name
           </Text>
           <TextInput
             value={name}
             onChangeText={setName}
             placeholder="e.g. Wedding Sarees"
-            placeholderTextColor={colors.sand[400]}
-            className="bg-white px-4 py-3 rounded-xl text-sm text-sand-900 border border-sand-100"
+            placeholderTextColor="#928EB2"
+            className="bg-white px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
             maxLength={100}
           />
         </View>
 
         <View>
-          <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+          <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
             Suggestions
           </Text>
           <View className="flex-row flex-wrap gap-2">
@@ -236,12 +247,12 @@ export default function NewCategoryScreen() {
                   onPress={() => setName(cat)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
-                    selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                  className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                   }`}
                 >
                   {selected && <Check size={12} color="white" />}
-                  <Text className={`text-xs font-medium ${selected ? 'text-white' : 'text-sand-600'}`}>
+                  <Text className={`text-xs font-bold ${selected ? 'text-white' : 'text-spaceCadet-900'}`}>
                     {cat}
                   </Text>
                 </AnimatedPressable>

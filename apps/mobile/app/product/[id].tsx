@@ -238,30 +238,36 @@ export default function ProductDetailScreen() {
   }
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Top App Header */}
       <View
-        className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
         <AnimatedPressable
           onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
           hitSlop={8}
           accessibilityLabel="Go back"
           accessibilityRole="button"
         >
-          <ChevronLeft size={24} color={colors.sand[700]} />
+          <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900">Product Details</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900"
+        >
+          Product Details
+        </Text>
         <AnimatedPressable
           onPress={() => void form.handleSave()}
           disabled={form.saving}
-          className="bg-ink-600 px-4 py-2 rounded-xl"
+          className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
         >
           {form.saving ? (
             <ActivityIndicator size="small" color="white" />
           ) : (
-            <Text className="text-white font-semibold text-sm">Save</Text>
+            <Text className="text-white font-bold text-xs uppercase tracking-wider">Save</Text>
           )}
         </AnimatedPressable>
       </View>

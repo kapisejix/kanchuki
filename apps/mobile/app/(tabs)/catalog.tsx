@@ -22,6 +22,7 @@ import { prefetchProductImages } from '../../src/lib/image-prefetch'
 import { enqueueStatusMutation } from '../../src/lib/mutation-queue'
 import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
+import { GradientButton } from '../../src/components/GradientButton'
 
 const SCREEN_WIDTH = Dimensions.get('window').width
 const BANNER_HEIGHT = SCREEN_WIDTH * 0.35 // 16:5.6 aspect ratio
@@ -328,28 +329,33 @@ export default function CatalogScreen() {
       <View className="items-center py-16 px-8">
         {activeFilterCount > 0 ? (
           <>
-            <Text className="text-sand-400 text-sm">
+            <Text className="text-heliotrope-500 text-sm font-medium">
               No products match the filter
             </Text>
-            <AnimatedPressable onPress={clearFilters} className="mt-3 bg-ink-600 px-5 py-2.5 rounded-xl">
-              <Text className="text-white text-sm font-semibold">Clear Filters</Text>
+            <AnimatedPressable onPress={clearFilters} className="mt-3 bg-spaceCadet-900 px-5 py-2.5 rounded-2xl">
+              <Text className="text-white text-xs font-bold uppercase tracking-wider">Clear Filters</Text>
             </AnimatedPressable>
           </>
         ) : (
           <>
-            <View className="w-16 h-16 bg-sand-100 rounded-2xl items-center justify-center mb-4">
-              <Camera size={28} color={colors.sand[400]} />
+            <View className="w-16 h-16 bg-lavender-100 rounded-3xl items-center justify-center mb-4 border border-lavender-200 shadow-sm">
+              <Camera size={28} color="#BB3F95" />
             </View>
-            <Text className="text-sand-700 text-base font-semibold text-center">No products yet</Text>
-            <Text className="text-sand-400 text-xs text-center mt-1 leading-5">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-spaceCadet-900 text-lg font-bold text-center"
+            >
+              No products yet
+            </Text>
+            <Text className="text-heliotrope-500 text-xs text-center mt-1 leading-5">
               Take a photo of any product — AI tags it{'\n'}with category, color, and fabric in seconds.
             </Text>
-            <AnimatedPressable
-              onPress={() => router.push('/product/add')}
-              className="mt-4 bg-ink-600 px-6 py-3 rounded-xl"
-            >
-              <Text className="text-white text-sm font-semibold">Add First Product</Text>
-            </AnimatedPressable>
+            <View className="mt-5 w-full max-w-xs">
+              <GradientButton
+                label="Add First Product"
+                onPress={() => router.push('/product/add')}
+              />
+            </View>
           </>
         )}
       </View>
@@ -358,7 +364,7 @@ export default function CatalogScreen() {
   )
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       {/* Hero Banner with text overlay */}
       {bannerUrl ? (
         <View style={{ width: SCREEN_WIDTH, height: BANNER_HEIGHT }} className="relative">
@@ -375,7 +381,7 @@ export default function CatalogScreen() {
               left: 0,
               right: 0,
               height: BANNER_HEIGHT * 0.5,
-              backgroundColor: 'rgba(0,0,0,0.45)',
+              backgroundColor: 'rgba(35, 31, 72, 0.65)',
             }}
           />
           {/* Shop name overlay */}
@@ -387,36 +393,48 @@ export default function CatalogScreen() {
               right: 16,
             }}
           >
-            <Text className="text-white/80 text-xs font-semibold uppercase tracking-wider" numberOfLines={1}>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-white text-base font-bold tracking-wide"
+              numberOfLines={1}
+            >
               {retailerProfile?.shop_name ?? 'My Store'}
             </Text>
           </View>
         </View>
       ) : null}
 
-      {/* Header — scan (F-025) + filter icons, top right */}
-      <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center justify-end gap-2">
-        <AnimatedPressable
-          onPress={() => router.push('/product/scan')}
-          className="w-10 h-10 rounded-xl items-center justify-center bg-sand-100 border border-sand-100"
-          accessibilityLabel="Scan product SKU to mark sold"
-          accessibilityRole="button"
+      {/* Header — scan + filter icons */}
+      <View className="bg-white px-5 py-3 border-b border-lavender-200 flex-row items-center justify-between">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg font-bold text-spaceCadet-900"
         >
-          <ScanLine size={16} color={colors.sand[600]} />
-        </AnimatedPressable>
-        <AnimatedPressable
-          onPress={() => setShowFilters((v) => !v)}
-          className={`w-10 h-10 rounded-xl items-center justify-center border ${
-            activeFilterCount > 0 ? 'bg-ink-600 border-ink-600' : 'bg-sand-100 border-sand-100'
-          }`}
-          accessibilityLabel="Filters"
-          accessibilityRole="button"
-        >
-          <SlidersHorizontal size={16} color={activeFilterCount > 0 ? 'white' : colors.sand[600]} />
-        </AnimatedPressable>
+          Catalog ({products.length})
+        </Text>
+        <View className="flex-row items-center gap-2">
+          <AnimatedPressable
+            onPress={() => router.push('/product/scan')}
+            className="w-10 h-10 rounded-2xl items-center justify-center bg-lavender-100 border border-lavender-200"
+            accessibilityLabel="Scan product SKU to mark sold"
+            accessibilityRole="button"
+          >
+            <ScanLine size={18} color="#231F48" />
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={() => setShowFilters((v) => !v)}
+            className={`w-10 h-10 rounded-2xl items-center justify-center border ${
+              activeFilterCount > 0 ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-lavender-100 border-lavender-200'
+            }`}
+            accessibilityLabel="Filters"
+            accessibilityRole="button"
+          >
+            <SlidersHorizontal size={18} color={activeFilterCount > 0 ? 'white' : '#231F48'} />
+          </AnimatedPressable>
+        </View>
       </View>
 
-      {/* Product Grid — category shortcuts + filter panel scroll away with it, not sticky */}
+      {/* Product Grid */}
       {listLoading && products.length === 0 ? (
         <ProductGridSkeleton />
       ) : (
@@ -427,15 +445,15 @@ export default function CatalogScreen() {
           renderItem={renderItem}
           numColumns={columns}
           columnWrapperStyle={{ gap: 12 }}
-          contentContainerStyle={{ padding: 12, gap: 12, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 14, gap: 12, flexGrow: 1 }}
           ListEmptyComponent={listEmpty}
           ListHeaderComponent={
             (categoryImages.length > 0 || showFilters || waSyncStatusByProduct.size > 0) ? (
-              <View className="bg-white rounded-2xl px-4 py-3 mb-3">
-                {/* F7 legend — WhatsApp catalog sync badges on product photos */}
+              <View className="bg-white rounded-3xl px-4 py-3.5 mb-3 border border-lavender-200 shadow-sm">
+                {/* WhatsApp sync status legend */}
                 {waSyncStatusByProduct.size > 0 && (
-                  <View className="flex-row items-center gap-3 mb-2">
-                    <Text className="text-[10px] font-semibold text-sand-400 uppercase tracking-wide">
+                  <View className="flex-row items-center gap-3 mb-2.5">
+                    <Text className="text-[10px] font-extrabold text-heliotrope-500 uppercase tracking-wide">
                       WhatsApp sync
                     </Text>
                     <LegendDot color="#059669" label="Synced" />
@@ -443,34 +461,34 @@ export default function CatalogScreen() {
                     <LegendDot color="#dc2626" label="Error" />
                   </View>
                 )}
-                {/* Category shortcuts — medium circles, horizontal scroll */}
+                {/* Category shortcuts */}
                 {categoryImages.length > 0 && (
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-4 px-4">
-                    <View className="flex-row gap-4">
+                    <View className="flex-row gap-3 py-1">
                       {categoryImages.map(({ category, photoUrl }) => {
                         const isActive = filterCategory === category
                         return (
                           <AnimatedPressable
                             key={category}
                             onPress={() => setFilterCategory(isActive ? null : category)}
-                            className="items-center gap-1"
-                            style={{ width: 64 }}
+                            className="items-center gap-1.5"
+                            style={{ width: 68 }}
                           >
                             <View
-                              className={`w-16 h-16 rounded-full overflow-hidden bg-sand-100 border-2 ${
-                                isActive ? 'border-ink-600' : 'border-sand-200'
+                              className={`w-16 h-16 rounded-3xl overflow-hidden bg-lavender-100 border-2 ${
+                                isActive ? 'border-fuchsia-500' : 'border-lavender-200'
                               }`}
                             >
                               {photoUrl ? (
                                 <Image source={{ uri: photoUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                               ) : (
                                 <View className="flex-1 items-center justify-center">
-                                  <Text className="text-sand-300 text-xl">👗</Text>
+                                  <Text className="text-heliotrope-400 text-xl">👗</Text>
                                 </View>
                               )}
                             </View>
                             <Text
-                              className={`text-[10px] text-center ${isActive ? 'text-ink-700 font-semibold' : 'text-sand-600'}`}
+                              className={`text-[10px] text-center font-bold ${isActive ? 'text-fuchsia-600' : 'text-spaceCadet-900'}`}
                               numberOfLines={1}
                             >
                               {category}
@@ -484,17 +502,17 @@ export default function CatalogScreen() {
 
                 {/* Filter panel — Category, Price, Color */}
                 {showFilters && (
-                  <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-sand-100' : ''}>
+                  <View className={categoryImages.length > 0 ? 'mt-3 pt-3 border-t border-lavender-200' : ''}>
                     <View className="flex-row items-center justify-between mb-2">
-                      <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">Filters</Text>
+                      <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide">Filters</Text>
                       <View className="flex-row items-center gap-3">
                         {activeFilterCount > 0 && (
                           <AnimatedPressable onPress={clearFilters}>
-                            <Text className="text-ink-600 text-xs font-medium">Clear all</Text>
+                            <Text className="text-fuchsia-600 text-xs font-bold">Clear all</Text>
                           </AnimatedPressable>
                         )}
                         <AnimatedPressable onPress={() => setShowFilters(false)} accessibilityLabel="Close filters" accessibilityRole="button">
-                          <X size={16} color={colors.sand[400]} />
+                          <X size={16} color="#6B4773" />
                         </AnimatedPressable>
                       </View>
                     </View>
@@ -505,17 +523,17 @@ export default function CatalogScreen() {
                       onSelect={setFilterPrice}
                     />
                     <ChipRow label="Color" options={colorOptions} selected={filterColor} onSelect={setFilterColor} />
-                    {/* New Arrivals — derived flag, no cron, auto-expires at 30 days */}
+                    {/* New Arrivals — derived flag, auto-expires at 30 days */}
                     <View className="mb-2.5">
-                      <Text className="text-xs text-sand-500 mb-1.5">Age</Text>
+                      <Text className="text-xs font-bold text-heliotrope-600 mb-1.5 uppercase tracking-wide">Age</Text>
                       <AnimatedPressable
                         onPress={() => setFilterNewArrival((v) => !v)}
-                        className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
-                          filterNewArrival ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                        className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1 self-start ${
+                          filterNewArrival ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-lavender-200'
                         }`}
                       >
-                        {filterNewArrival && <Text className="text-white text-xs font-medium">✓ </Text>}
-                        <Text className={`text-xs font-medium ${filterNewArrival ? 'text-white' : 'text-sand-600'}`}>
+                        {filterNewArrival && <Text className="text-white text-xs font-bold">✓ </Text>}
+                        <Text className={`text-xs font-bold ${filterNewArrival ? 'text-white' : 'text-spaceCadet-900'}`}>
                           New Arrivals (30d)
                         </Text>
                       </AnimatedPressable>
@@ -535,54 +553,66 @@ export default function CatalogScreen() {
       {/* Selection action bar — replaces the FAB while items are selected */}
       {selectionMode ? (
         <View
-          className="absolute bottom-6 left-4 right-4 bg-sand-900 rounded-2xl px-4 py-3 flex-row items-center justify-between shadow-lg"
-          style={{ elevation: 6 }}
+          className="absolute bottom-6 left-4 right-4 bg-spaceCadet-900 rounded-3xl px-5 py-3.5 flex-row items-center justify-between shadow-lg border border-white/20"
+          style={{
+            shadowColor: '#231F48',
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.35,
+            shadowRadius: 12,
+            elevation: 6,
+          }}
         >
           <AnimatedPressable onPress={clearSelection} disabled={deleting}>
-            <Text className="text-sand-300 text-sm">Cancel</Text>
+            <Text className="text-lavender-200 text-xs font-bold uppercase tracking-wider">Cancel</Text>
           </AnimatedPressable>
-          <Text className="text-white text-sm font-semibold">{selectedIds.size} selected</Text>
+          <Text className="text-white text-sm font-bold font-marcellus">{selectedIds.size} Selected</Text>
           <AnimatedPressable
             onPress={handleBulkDelete}
             disabled={deleting}
-            className="flex-row items-center gap-1.5 bg-rust-600 px-3 py-2 rounded-xl"
+            className="flex-row items-center gap-1.5 bg-red-600 px-3.5 py-2 rounded-2xl"
           >
             {deleting ? (
               <ActivityIndicator size="small" color="white" />
             ) : (
               <>
                 <Trash2 size={14} color="white" />
-                <Text className="text-white text-sm font-semibold">Delete</Text>
+                <Text className="text-white text-xs font-bold">Delete</Text>
               </>
             )}
           </AnimatedPressable>
         </View>
       ) : (
-        /* FAB — quick import menu */
-        <View className="absolute bottom-6 right-4 items-end gap-2">
+        /* FAB — quick add product button */
+        <View className="absolute bottom-6 right-5 items-end gap-2">
           <AnimatedPressable
             onPress={() => router.push('/product/add')}
-            className="w-14 h-14 bg-ink-600 rounded-full items-center justify-center shadow-lg"
-            style={{ elevation: 6 }}
+            className="w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
+            style={{
+              shadowColor: '#BB3F95',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.45,
+              shadowRadius: 10,
+              elevation: 6,
+            }}
             accessibilityLabel="Add product"
             accessibilityRole="button"
           >
-            <Plus size={24} color="white" />
+            <Plus size={24} color="white" strokeWidth={2.5} />
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => router.push('/product/bulk')}
-            className="bg-white/90 px-3 py-1.5 rounded-full border border-sand-200 shadow-sm flex-row items-center gap-1.5"
+            className="bg-white px-3.5 py-1.5 rounded-full border border-lavender-200 shadow-sm flex-row items-center gap-1.5"
             style={{ elevation: 3 }}
           >
-            <Text className="text-xs text-sand-500">Bulk</Text>
+            <Text className="text-xs font-bold text-spaceCadet-900">Bulk</Text>
             <Text className="text-xs">📷</Text>
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => router.push('/product/catalog-import')}
-            className="bg-white/90 px-3 py-1.5 rounded-full border border-sand-200 shadow-sm flex-row items-center gap-1.5"
+            className="bg-white px-3.5 py-1.5 rounded-full border border-lavender-200 shadow-sm flex-row items-center gap-1.5"
             style={{ elevation: 3 }}
           >
-            <Text className="text-xs text-sand-500">Catalog</Text>
+            <Text className="text-xs font-bold text-spaceCadet-900">Catalog</Text>
             <Text className="text-xs">📋</Text>
           </AnimatedPressable>
         </View>

@@ -1,441 +1,603 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Kanchuki — Royal Orchid Luxury Mobile Suite (2026 Edition)</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
-          serif: ['"Marcellus"', 'Georgia', 'serif'],
-          mono: ['"Plus Jakarta Sans"', '-apple-system', 'sans-serif'],
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kanchuki — Royal Orchid Luxury Mobile Suite (2026 Edition)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Marcellus&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Plus Jakarta Sans"', "-apple-system", "sans-serif"],
+              serif: ['"Marcellus"', "Georgia", "serif"],
+              mono: ['"Plus Jakarta Sans"', "-apple-system", "sans-serif"],
+            },
+            colors: {
+              heliotrope: {
+                DEFAULT: "#6B4773",
+                50: "#F7F2F8",
+                100: "#EBDDEE",
+                500: "#6B4773",
+                600: "#5A3962",
+                700: "#492D50",
+              },
+              fuchsia: {
+                DEFAULT: "#BB3F95",
+                400: "#D65CB3",
+                500: "#BB3F95",
+                600: "#A12E7E",
+              },
+              lavender: {
+                DEFAULT: "#E0E1F6",
+                50: "#FAF9FE",
+                100: "#F2F1FA",
+                200: "#E0E1F6",
+                300: "#C8CAEE",
+              },
+              spaceCadet: {
+                DEFAULT: "#231F48",
+                800: "#1D193E",
+                900: "#231F48",
+                950: "#16132F",
+              },
+              tyrian: {
+                DEFAULT: "#560A39",
+                700: "#6D0E49",
+                800: "#560A39",
+                900: "#40062A",
+              },
+            },
+            boxShadow: {
+              "soft-clay":
+                "0 12px 30px -4px rgba(35, 31, 72, 0.06), 0 4px 12px -2px rgba(35, 31, 72, 0.03)",
+              "fuchsia-glow": "0 8px 24px rgba(187, 63, 149, 0.35)",
+              "dock-glow": "0 20px 45px rgba(35, 31, 72, 0.45)",
+            },
+          },
         },
-        colors: {
-          heliotrope: {
-            DEFAULT: '#6B4773',
-            50: '#F7F2F8',
-            100: '#EBDDEE',
-            500: '#6B4773',
-            600: '#5A3962',
-            700: '#492D50',
-          },
-          fuchsia: {
-            DEFAULT: '#BB3F95',
-            400: '#D65CB3',
-            500: '#BB3F95',
-            600: '#A12E7E',
-          },
-          lavender: {
-            DEFAULT: '#E0E1F6',
-            50: '#FAF9FE',
-            100: '#F2F1FA',
-            200: '#E0E1F6',
-            300: '#C8CAEE',
-          },
-          spaceCadet: {
-            DEFAULT: '#231F48',
-            800: '#1D193E',
-            900: '#231F48',
-            950: '#16132F',
-          },
-          tyrian: {
-            DEFAULT: '#560A39',
-            700: '#6D0E49',
-            800: '#560A39',
-            900: '#40062A',
-          }
-        },
-        boxShadow: {
-          'soft-clay': '0 12px 30px -4px rgba(35, 31, 72, 0.06), 0 4px 12px -2px rgba(35, 31, 72, 0.03)',
-          'fuchsia-glow': '0 8px 24px rgba(187, 63, 149, 0.35)',
-          'dock-glow': '0 20px 45px rgba(35, 31, 72, 0.45)',
+      };
+    </script>
+    <style>
+      body {
+        background: #d5d3e5;
+        color: #231f48;
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+
+      .font-marcellus {
+        font-family: "Marcellus", Georgia, serif;
+        letter-spacing: 0.02em;
+      }
+
+      .phone-frame {
+        width: 380px;
+        height: 780px;
+        background: #f8f7fc;
+        border-radius: 50px;
+        box-shadow:
+          0 40px 100px -20px rgba(35, 31, 72, 0.3),
+          0 0 0 12px #ffffff,
+          0 0 0 14px rgba(107, 71, 115, 0.2);
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        transition: all 0.3s ease;
+      }
+
+      .screen-viewport {
+        flex: 1;
+        overflow-y: auto;
+        scrollbar-width: none;
+      }
+      .screen-viewport::-webkit-scrollbar {
+        display: none;
+      }
+
+      .clay-card {
+        background: #ffffff;
+        border-radius: 26px;
+        box-shadow:
+          0 10px 25px -4px rgba(35, 31, 72, 0.05),
+          0 2px 6px -1px rgba(35, 31, 72, 0.03);
+        border: 1px solid rgba(224, 225, 246, 0.9);
+        transition:
+          transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+          box-shadow 0.2s ease;
+      }
+      .clay-card:active {
+        transform: scale(0.98);
+      }
+
+      /* Universal Dashboard Signature Gradient Button */
+      .slide-btn-signature {
+        background: linear-gradient(135deg, #231f48 0%, #560a39 100%);
+        color: #ffffff;
+        border-radius: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px 8px 22px;
+        cursor: pointer;
+        box-shadow: 0 12px 30px rgba(35, 31, 72, 0.3);
+        transition:
+          transform 0.2s ease,
+          opacity 0.2s;
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .slide-btn-signature:active {
+        transform: scale(0.98);
+        opacity: 0.95;
+      }
+
+      /* Compact Centered Signature Gradient Button */
+      .slide-btn-signature-compact {
+        background: linear-gradient(135deg, #231f48 0%, #560a39 100%);
+        color: #ffffff;
+        border-radius: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 24px;
+        cursor: pointer;
+        box-shadow: 0 10px 25px rgba(35, 31, 72, 0.28);
+        transition:
+          transform 0.2s ease,
+          opacity 0.2s;
+        font-family: "Plus Jakarta Sans", sans-serif;
+      }
+      .slide-btn-signature-compact:active {
+        transform: scale(0.98);
+        opacity: 0.95;
+      }
+
+      .floating-dock {
+        position: absolute;
+        bottom: 20px;
+        left: 24px;
+        right: 24px;
+        background: #231f48;
+        border-radius: 32px;
+        padding: 12px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        box-shadow: 0 20px 40px rgba(35, 31, 72, 0.45);
+        z-index: 50;
+        border: 1px solid rgba(224, 225, 246, 0.2);
+      }
+
+      .dock-item {
+        color: #928eb2;
+        transition: all 0.2s;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .dock-item.active {
+        color: #bb3f95;
+      }
+      .dock-item.active .dock-dot {
+        background: #bb3f95;
+        transform: scale(1);
+      }
+
+      /* Animated Line Icons */
+      .anim-icon-pulse {
+        animation: iconPulse 2s infinite ease-in-out;
+      }
+      @keyframes iconPulse {
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.1);
         }
       }
-    }
-  }
-</script>
-<style>
-  body {
-    background: #D5D3E5;
-    color: #231F48;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
 
-  .font-marcellus {
-    font-family: 'Marcellus', Georgia, serif;
-    letter-spacing: 0.02em;
-  }
-  
-  .phone-frame {
-    width: 380px;
-    height: 780px;
-    background: #F8F7FC;
-    border-radius: 50px;
-    box-shadow: 
-      0 40px 100px -20px rgba(35, 31, 72, 0.3),
-      0 0 0 12px #FFFFFF,
-      0 0 0 14px rgba(107, 71, 115, 0.2);
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    transition: all 0.3s ease;
-  }
+      .anim-icon-float {
+        animation: iconFloat 2.5s infinite ease-in-out;
+      }
+      @keyframes iconFloat {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-3px);
+        }
+      }
 
-  .screen-viewport {
-    flex: 1;
-    overflow-y: auto;
-    scrollbar-width: none;
-  }
-  .screen-viewport::-webkit-scrollbar {
-    display: none;
-  }
+      /* Size Selector Circles */
+      .size-circle {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 800;
+        font-family: "Plus Jakarta Sans", sans-serif;
+        background: #e0e1f6;
+        color: #231f48;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      .size-circle.active {
+        background: #231f48;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(35, 31, 72, 0.35);
+      }
 
-  .clay-card {
-    background: #FFFFFF;
-    border-radius: 26px;
-    box-shadow: 0 10px 25px -4px rgba(35, 31, 72, 0.05), 0 2px 6px -1px rgba(35, 31, 72, 0.03);
-    border: 1px solid rgba(224, 225, 246, 0.9);
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
-  }
-  .clay-card:active {
-    transform: scale(0.98);
-  }
+      /* Color Selector Circles */
+      .color-dot {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+      }
+      .color-dot.active {
+        border-color: #231f48;
+        box-shadow: 0 4px 10px rgba(35, 31, 72, 0.2);
+      }
 
-  /* Universal Dashboard Signature Gradient Button */
-  .slide-btn-signature {
-    background: linear-gradient(135deg, #231F48 0%, #560A39 100%);
-    color: #FFFFFF;
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px 12px 8px 22px;
-    cursor: pointer;
-    box-shadow: 0 12px 30px rgba(35, 31, 72, 0.3);
-    transition: transform 0.2s ease, opacity 0.2s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
-  .slide-btn-signature:active {
-    transform: scale(0.98);
-    opacity: 0.95;
-  }
+      .screen-tab.active {
+        background: #231f48;
+        color: #ffffff;
+        box-shadow: 0 10px 25px -4px rgba(35, 31, 72, 0.3);
+      }
 
-  /* Compact Centered Signature Gradient Button */
-  .slide-btn-signature-compact {
-    background: linear-gradient(135deg, #231F48 0%, #560A39 100%);
-    color: #FFFFFF;
-    border-radius: 24px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 24px;
-    cursor: pointer;
-    box-shadow: 0 10px 25px rgba(35, 31, 72, 0.28);
-    transition: transform 0.2s ease, opacity 0.2s;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-  }
-  .slide-btn-signature-compact:active {
-    transform: scale(0.98);
-    opacity: 0.95;
-  }
+      /* Right-side floating thumbnail strip container inside hero */
+      .pdp-right-thumbnails {
+        position: absolute;
+        top: 50%;
+        right: 14px;
+        transform: translateY(-50%);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(16px);
+        border-radius: 24px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        box-shadow: 0 8px 24px rgba(35, 31, 72, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        z-index: 20;
+      }
+      .pdp-thumb-item {
+        width: 42px;
+        height: 48px;
+        border-radius: 16px;
+        overflow: hidden;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s;
+      }
+      .pdp-thumb-item.active {
+        border-color: #bb3f95;
+        transform: scale(1.06);
+        box-shadow: 0 4px 10px rgba(187, 63, 149, 0.35);
+      }
 
-  .floating-dock {
-    position: absolute;
-    bottom: 20px;
-    left: 24px;
-    right: 24px;
-    background: #231F48;
-    border-radius: 32px;
-    padding: 12px 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    box-shadow: 0 20px 40px rgba(35, 31, 72, 0.45);
-    z-index: 50;
-    border: 1px solid rgba(224, 225, 246, 0.2);
-  }
-
-  .dock-item {
-    color: #928EB2;
-    transition: all 0.2s;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  .dock-item.active {
-    color: #BB3F95;
-  }
-  .dock-item.active .dock-dot {
-    background: #BB3F95;
-    transform: scale(1);
-  }
-
-  /* Animated Line Icons */
-  .anim-icon-pulse {
-    animation: iconPulse 2s infinite ease-in-out;
-  }
-  @keyframes iconPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
-  }
-
-  .anim-icon-float {
-    animation: iconFloat 2.5s infinite ease-in-out;
-  }
-  @keyframes iconFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-3px); }
-  }
-
-  /* Size Selector Circles */
-  .size-circle {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 800;
-    font-family: 'Plus Jakarta Sans', sans-serif;
-    background: #E0E1F6;
-    color: #231F48;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-  .size-circle.active {
-    background: #231F48;
-    color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(35, 31, 72, 0.35);
-  }
-
-  /* Color Selector Circles */
-  .color-dot {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    border: 2px solid transparent;
-  }
-  .color-dot.active {
-    border-color: #231F48;
-    box-shadow: 0 4px 10px rgba(35, 31, 72, 0.2);
-  }
-
-  .screen-tab.active {
-    background: #231F48;
-    color: #FFFFFF;
-    box-shadow: 0 10px 25px -4px rgba(35, 31, 72, 0.3);
-  }
-
-  /* Right-side floating thumbnail strip container inside hero */
-  .pdp-right-thumbnails {
-    position: absolute;
-    top: 50%;
-    right: 14px;
-    transform: translateY(-50%);
-    background: rgba(255, 255, 255, 0.85);
-    backdrop-filter: blur(16px);
-    border-radius: 24px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    box-shadow: 0 8px 24px rgba(35, 31, 72, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    z-index: 20;
-  }
-  .pdp-thumb-item {
-    width: 42px;
-    height: 48px;
-    border-radius: 16px;
-    overflow: hidden;
-    cursor: pointer;
-    border: 2px solid transparent;
-    transition: all 0.2s;
-  }
-  .pdp-thumb-item.active {
-    border-color: #BB3F95;
-    transform: scale(1.06);
-    box-shadow: 0 4px 10px rgba(187, 63, 149, 0.35);
-  }
-
-  /* Onboarding Step Connector */
-  .step-connector {
-    height: 3px;
-    flex: 1;
-    border-radius: 9999px;
-    background: #E0E1F6;
-    margin: 0 6px;
-  }
-  .step-connector.active {
-    background: #BB3F95;
-  }
-  .step-bubble {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 800;
-    transition: all 0.2s;
-  }
-  .step-bubble.active {
-    background: #231F48;
-    color: #FFFFFF;
-    box-shadow: 0 4px 12px rgba(35, 31, 72, 0.25);
-  }
-  .step-bubble.completed {
-    background: #BB3F95;
-    color: #FFFFFF;
-  }
-  .step-bubble.upcoming {
-    background: #FFFFFF;
-    color: #928EB2;
-    border: 1px solid #E0E1F6;
-  }
-</style>
-</head>
-<body class="min-h-screen py-8 px-4 md:px-12 flex flex-col items-center">
-
-  <!-- Header & Screen Navigation -->
-  <div class="max-w-6xl w-full mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-[#BFBDD5]">
-    <div>
-      <div class="flex items-center gap-2.5 mb-2">
-        <span class="px-3 py-1 text-xs font-bold tracking-wider uppercase bg-[#BB3F95]/15 text-[#560A39] border border-[#BB3F95]/30 rounded-full">Royal Orchid Suite</span>
-        <div class="flex items-center gap-1.5 ml-2">
-          <span class="w-3.5 h-3.5 rounded-full bg-[#6B4773] border border-white" title="Old Heliotrope"></span>
-          <span class="w-3.5 h-3.5 rounded-full bg-[#BB3F95] border border-white" title="Royal Fuchsia"></span>
-          <span class="w-3.5 h-3.5 rounded-full bg-[#E0E1F6] border border-white" title="Lavender Mist"></span>
-          <span class="w-3.5 h-3.5 rounded-full bg-[#231F48] border border-white" title="Space Cadet"></span>
-          <span class="w-3.5 h-3.5 rounded-full bg-[#560A39] border border-white" title="Tyrian Purple"></span>
+      /* Onboarding Step Connector */
+      .step-connector {
+        height: 3px;
+        flex: 1;
+        border-radius: 9999px;
+        background: #e0e1f6;
+        margin: 0 6px;
+      }
+      .step-connector.active {
+        background: #bb3f95;
+      }
+      .step-bubble {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 800;
+        transition: all 0.2s;
+      }
+      .step-bubble.active {
+        background: #231f48;
+        color: #ffffff;
+        box-shadow: 0 4px 12px rgba(35, 31, 72, 0.25);
+      }
+      .step-bubble.completed {
+        background: #bb3f95;
+        color: #ffffff;
+      }
+      .step-bubble.upcoming {
+        background: #ffffff;
+        color: #928eb2;
+        border: 1px solid #e0e1f6;
+      }
+    </style>
+  </head>
+  <body class="min-h-screen py-8 px-4 md:px-12 flex flex-col items-center">
+    <!-- Header & Screen Navigation -->
+    <div
+      class="max-w-6xl w-full mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-[#BFBDD5]"
+    >
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span
+            class="px-3 py-1 text-xs font-bold tracking-wider uppercase bg-[#BB3F95]/15 text-[#560A39] border border-[#BB3F95]/30 rounded-full"
+            >Royal Orchid Suite</span
+          >
+          <div class="flex items-center gap-1.5 ml-2">
+            <span
+              class="w-3.5 h-3.5 rounded-full bg-[#6B4773] border border-white"
+              title="Old Heliotrope"
+            ></span>
+            <span
+              class="w-3.5 h-3.5 rounded-full bg-[#BB3F95] border border-white"
+              title="Royal Fuchsia"
+            ></span>
+            <span
+              class="w-3.5 h-3.5 rounded-full bg-[#E0E1F6] border border-white"
+              title="Lavender Mist"
+            ></span>
+            <span
+              class="w-3.5 h-3.5 rounded-full bg-[#231F48] border border-white"
+              title="Space Cadet"
+            ></span>
+            <span
+              class="w-3.5 h-3.5 rounded-full bg-[#560A39] border border-white"
+              title="Tyrian Purple"
+            ></span>
+          </div>
         </div>
+        <h1
+          class="text-3xl md:text-4xl font-extrabold text-[#231F48] tracking-tight font-marcellus"
+        >
+          Kanchuki Luxury Screen Showcase
+        </h1>
+        <p class="text-[#6B4773] text-sm mt-1 max-w-2xl font-medium">
+          Interactive Registration Wizard, Settings Tab, Growth Engine,
+          Discovery, and Product Details.
+        </p>
       </div>
-      <h1 class="text-3xl md:text-4xl font-extrabold text-[#231F48] tracking-tight font-marcellus">Kanchuki Luxury Screen Showcase</h1>
-      <p class="text-[#6B4773] text-sm mt-1 max-w-2xl font-medium">Interactive Registration Wizard, Settings Tab, Growth Engine, Discovery, and Product Details.</p>
-    </div>
 
-    <!-- Navigation Switcher -->
-    <div class="flex flex-wrap gap-1.5 bg-[#E0E1F6]/80 p-1.5 rounded-2xl border border-[#C8CAEE]">
-      <button onclick="renderScreen('login')" id="tab-login" class="screen-tab active px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">1. Login (Phone)</button>
-      <button onclick="renderScreen('register')" id="tab-register" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">2. Setup: Shop</button>
-      <button onclick="renderScreen('location')" id="tab-location" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">3. Setup: Location</button>
-      <button onclick="renderScreen('gst')" id="tab-gst" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">4. Setup: GST</button>
-      <button onclick="renderScreen('done')" id="tab-done" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">5. Setup: Done</button>
-      <button onclick="renderScreen('retailer')" id="tab-retailer" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">6. Dashboard</button>
-      <button onclick="renderScreen('growth')" id="tab-growth" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">7. Growth Hub</button>
-      <button onclick="renderScreen('settings')" id="tab-settings" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">8. Settings Tab</button>
-      <button onclick="renderScreen('discover')" id="tab-discover" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">9. Discovery</button>
-      <button onclick="renderScreen('pdp')" id="tab-pdp" class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition">10. Product Details</button>
-    </div>
-  </div>
-
-  <!-- Main Canvas Grid -->
-  <div class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-10 items-center justify-center">
-    
-    <!-- Phone Mockup Device -->
-    <div class="lg:col-span-6 flex justify-center">
-      <div class="phone-frame">
-        
-        <!-- Status Bar -->
-        <div class="pt-3 px-7 pb-2 flex justify-between items-center text-xs font-bold text-[#231F48] select-none z-40">
-          <span>9:41</span>
-          <div class="w-20 h-4 bg-[#231F48]/10 rounded-full flex items-center justify-center">
-            <div class="w-2.5 h-2.5 rounded-full bg-[#231F48]/30 mr-2"></div>
-            <div class="w-1.5 h-1.5 rounded-full bg-[#231F48]/40"></div>
-          </div>
-          <div class="flex items-center gap-1.5 text-[11px] font-bold">
-            <span>5G</span>
-            <span>100%</span>
-          </div>
-        </div>
-
-        <!-- Dynamic Screen Canvas -->
-        <div id="screen-container" class="screen-viewport">
-          <!-- Injected via JavaScript -->
-        </div>
-
-        <!-- Bottom Home Indicator Bar -->
-        <div class="w-full py-2 flex justify-center bg-transparent z-40">
-          <div class="w-32 h-1 bg-[#231F48]/40 rounded-full"></div>
-        </div>
+      <!-- Navigation Switcher -->
+      <div
+        class="flex flex-wrap gap-1.5 bg-[#E0E1F6]/80 p-1.5 rounded-2xl border border-[#C8CAEE]"
+      >
+        <button
+          onclick="renderScreen('login')"
+          id="tab-login"
+          class="screen-tab active px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          1. Login (Phone)
+        </button>
+        <button
+          onclick="renderScreen('register')"
+          id="tab-register"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          2. Setup: Shop
+        </button>
+        <button
+          onclick="renderScreen('location')"
+          id="tab-location"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          3. Setup: Location
+        </button>
+        <button
+          onclick="renderScreen('gst')"
+          id="tab-gst"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          4. Setup: GST
+        </button>
+        <button
+          onclick="renderScreen('done')"
+          id="tab-done"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          5. Setup: Done
+        </button>
+        <button
+          onclick="renderScreen('retailer')"
+          id="tab-retailer"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          6. Dashboard
+        </button>
+        <button
+          onclick="renderScreen('growth')"
+          id="tab-growth"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          7. Growth Hub
+        </button>
+        <button
+          onclick="renderScreen('settings')"
+          id="tab-settings"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          8. Settings Tab
+        </button>
+        <button
+          onclick="renderScreen('discover')"
+          id="tab-discover"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          9. Discovery
+        </button>
+        <button
+          onclick="renderScreen('pdp')"
+          id="tab-pdp"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          10. Product Details
+        </button>
       </div>
     </div>
 
-    <!-- Live Specs & Architecture Panel -->
-    <div class="lg:col-span-6 space-y-5">
-      
-      <div class="clay-card p-6 bg-white border border-[#E0E1F6]">
-        <div class="flex items-center justify-between mb-4">
-          <span class="text-xs font-bold tracking-wider uppercase text-[#BB3F95] bg-[#BB3F95]/10 px-2.5 py-1 rounded-lg border border-[#BB3F95]/20">Active Flow Breakdown</span>
-          <span class="text-xs text-[#6B4773] font-bold">LIVE PREVIEW</span>
-        </div>
-
-        <div class="space-y-4 text-sm text-stone-700">
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-xl bg-[#231F48] flex-shrink-0 flex items-center justify-center text-[#E0E1F6] font-bold text-xs">01</div>
-            <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Login & OTP Authentication</strong>
-              <span class="text-xs text-[#6B4773]">Centered 2-line italic Marcellus tagline, luxury phone number card with +91 country prefix, instant OTP dispatch, and legal consent links.</span>
+    <!-- Main Canvas Grid -->
+    <div
+      class="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-12 gap-10 items-center justify-center"
+    >
+      <!-- Phone Mockup Device -->
+      <div class="lg:col-span-6 flex justify-center">
+        <div class="phone-frame">
+          <!-- Status Bar -->
+          <div
+            class="pt-3 px-7 pb-2 flex justify-between items-center text-xs font-bold text-[#231F48] select-none z-40"
+          >
+            <span>9:41</span>
+            <div
+              class="w-20 h-4 bg-[#231F48]/10 rounded-full flex items-center justify-center"
+            >
+              <div class="w-2.5 h-2.5 rounded-full bg-[#231F48]/30 mr-2"></div>
+              <div class="w-1.5 h-1.5 rounded-full bg-[#231F48]/40"></div>
+            </div>
+            <div class="flex items-center gap-1.5 text-[11px] font-bold">
+              <span>5G</span>
+              <span>100%</span>
             </div>
           </div>
 
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-xl bg-[#BB3F95] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">02</div>
-            <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Shop Details (Step 1)</strong>
-              <span class="text-xs text-[#6B4773]">Shop Name, Owner Name, interactive Specialization category chips, and live auto-slug store web link preview with verification badge.</span>
-            </div>
+          <!-- Dynamic Screen Canvas -->
+          <div id="screen-container" class="screen-viewport">
+            <!-- Injected via JavaScript -->
           </div>
 
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-xl bg-[#560A39] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">03</div>
-            <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Shop Location (Step 2)</strong>
-              <span class="text-xs text-[#6B4773]">Shop address street textarea, City with MapPin icon, 2-column District and State inputs, 6-digit Pincode, and address advice tip.</span>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-xl bg-[#6B4773] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">04</div>
-            <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">GST & Invoicing (Step 3)</strong>
-              <span class="text-xs text-[#6B4773]">15-digit GSTIN with formatting hints, automatic invoice generation explanation card, and dedicated skip button.</span>
-            </div>
-          </div>
-
-          <div class="flex items-start gap-3">
-            <div class="w-7 h-7 rounded-xl bg-emerald-700 flex-shrink-0 flex items-center justify-center text-white font-bold text-xs">05</div>
-            <div>
-              <strong class="text-[#231F48] block font-marcellus text-base">Congratulations (Step 4)</strong>
-              <span class="text-xs text-[#6B4773]">Royal Orchid celebration hero banner in Space Cadet & Tyrian gradient, counter QR code generator, and catalog assistance links.</span>
-            </div>
+          <!-- Bottom Home Indicator Bar -->
+          <div class="w-full py-2 flex justify-center bg-transparent z-40">
+            <div class="w-32 h-1 bg-[#231F48]/40 rounded-full"></div>
           </div>
         </div>
       </div>
 
+      <!-- Live Specs & Architecture Panel -->
+      <div class="lg:col-span-6 space-y-5">
+        <div class="clay-card p-6 bg-white border border-[#E0E1F6]">
+          <div class="flex items-center justify-between mb-4">
+            <span
+              class="text-xs font-bold tracking-wider uppercase text-[#BB3F95] bg-[#BB3F95]/10 px-2.5 py-1 rounded-lg border border-[#BB3F95]/20"
+              >Active Flow Breakdown</span
+            >
+            <span class="text-xs text-[#6B4773] font-bold">LIVE PREVIEW</span>
+          </div>
+
+          <div class="space-y-4 text-sm text-stone-700">
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#231F48] flex-shrink-0 flex items-center justify-center text-[#E0E1F6] font-bold text-xs"
+              >
+                01
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Login & OTP Authentication</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >Centered 2-line italic Marcellus tagline, luxury phone number
+                  card with +91 country prefix, instant OTP dispatch, and legal
+                  consent links.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#BB3F95] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                02
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Shop Details (Step 1)</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >Shop Name, Owner Name, interactive Specialization category
+                  chips, and live auto-slug store web link preview with
+                  verification badge.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#560A39] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                03
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Shop Location (Step 2)</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >Shop address street textarea, City with MapPin icon, 2-column
+                  District and State inputs, 6-digit Pincode, and address advice
+                  tip.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#6B4773] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                04
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >GST & Invoicing (Step 3)</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >15-digit GSTIN with formatting hints, automatic invoice
+                  generation explanation card, and dedicated skip button.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-emerald-700 flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                05
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Congratulations (Step 4)</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >Royal Orchid celebration hero banner in Space Cadet & Tyrian
+                  gradient, counter QR code generator, and catalog assistance
+                  links.</span
+                >
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-  </div>
-
-  <script>
-    const screens = {
-      
-      // 1. LOGIN (PHONE SCREEN)
-      'login': `
+    <script>
+      const screens = {
+        // 1. LOGIN (PHONE SCREEN)
+        login: `
         <div class="p-6 pb-6 bg-[#F8F7FC] flex flex-col justify-between h-full">
           
           <!-- Main Content (Top 30% positioning) -->
@@ -492,8 +654,8 @@
         </div>
       `,
 
-      // 2. REGISTRATION (STEP 1: SHOP DETAILS)
-      'register': `
+        // 2. REGISTRATION (STEP 1: SHOP DETAILS)
+        register: `
         <div class="p-5 pb-10 bg-[#F8F7FC]">
           
           <!-- Top Step Progress Indicator -->
@@ -575,8 +737,8 @@
         </div>
       `,
 
-      // 3. STEP 2: LOCATION
-      'location': `
+        // 3. STEP 2: LOCATION
+        location: `
         <div class="p-5 pb-10 bg-[#F8F7FC]">
           
           <!-- Top Step Progress Indicator -->
@@ -668,8 +830,8 @@
         </div>
       `,
 
-      // 4. STEP 3: GST DETAILS
-      'gst': `
+        // 4. STEP 3: GST DETAILS
+        gst: `
         <div class="p-5 pb-10 bg-[#F8F7FC]">
           
           <!-- Top Step Progress Indicator -->
@@ -738,8 +900,8 @@
         </div>
       `,
 
-      // 5. STEP 4: CONGRATULATIONS / ALL SET
-      'done': `
+        // 5. STEP 4: CONGRATULATIONS / ALL SET
+        done: `
         <div class="p-5 pb-10 bg-[#F8F7FC] flex flex-col items-center">
           
           <!-- Hero Congratulations Gradient Card -->
@@ -791,8 +953,8 @@
         </div>
       `,
 
-      // 2. GROWTH HUB SCREEN (SCR-R10)
-      'growth': `
+        // 2. GROWTH HUB SCREEN (SCR-R10)
+        growth: `
         <div class="p-5 pb-28 bg-[#F8F7FC]">
           
           <!-- Top Bar -->
@@ -903,8 +1065,8 @@
         </div>
       `,
 
-      // 3. SETTINGS SCREEN (SCR-R41 / Profile)
-      'settings': `
+        // 3. SETTINGS SCREEN (SCR-R41 / Profile)
+        settings: `
         <div class="p-5 pb-28 bg-[#F8F7FC]">
           
           <!-- Header -->
@@ -1018,8 +1180,8 @@
         </div>
       `,
 
-      // 4. DISCOVERY
-      'discover': `
+        // 4. DISCOVERY
+        discover: `
         <div class="p-5 pb-28 bg-[#F8F7FC]">
           
           <div class="flex justify-between items-center mb-5">
@@ -1092,8 +1254,8 @@
         </div>
       `,
 
-      // 5. PRODUCT DETAILS
-      'pdp': `
+        // 5. PRODUCT DETAILS
+        pdp: `
         <div class="p-5 pb-10 bg-[#F8F7FC]">
           
           <div class="flex justify-between items-center mb-3">
@@ -1180,8 +1342,8 @@
         </div>
       `,
 
-      // 6. RETAILER DASHBOARD
-      'retailer': `
+        // 6. RETAILER DASHBOARD
+        retailer: `
         <div class="p-5 pb-28 bg-[#F8F7FC]">
           
           <div class="flex justify-between items-center mb-5">
@@ -1262,38 +1424,46 @@
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/></svg>
           </div>
         </div>
-      `
-    };
+      `,
+      };
 
-    function renderScreen(screenKey) {
-      document.querySelectorAll('.screen-tab').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.getElementById('tab-' + screenKey);
-      if (activeBtn) activeBtn.classList.add('active');
-      document.getElementById('screen-container').innerHTML = screens[screenKey];
-    }
+      function renderScreen(screenKey) {
+        document
+          .querySelectorAll(".screen-tab")
+          .forEach((b) => b.classList.remove("active"));
+        const activeBtn = document.getElementById("tab-" + screenKey);
+        if (activeBtn) activeBtn.classList.add("active");
+        document.getElementById("screen-container").innerHTML =
+          screens[screenKey];
+      }
 
-    function switchMainPhoto(el, src) {
-      document.querySelectorAll('.pdp-thumb-item').forEach(t => t.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('main-pdp-hero').src = src;
-    }
+      function switchMainPhoto(el, src) {
+        document
+          .querySelectorAll(".pdp-thumb-item")
+          .forEach((t) => t.classList.remove("active"));
+        el.classList.add("active");
+        document.getElementById("main-pdp-hero").src = src;
+      }
 
-    function selectSize(el) {
-      document.querySelectorAll('.size-circle').forEach(s => s.classList.remove('active'));
-      el.classList.add('active');
-    }
+      function selectSize(el) {
+        document
+          .querySelectorAll(".size-circle")
+          .forEach((s) => s.classList.remove("active"));
+        el.classList.add("active");
+      }
 
-    function selectColor(el) {
-      document.querySelectorAll('.color-dot').forEach(c => {
-        c.classList.remove('active');
-        c.innerHTML = '';
-      });
-      el.classList.add('active');
-      el.innerHTML = '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
-    }
+      function selectColor(el) {
+        document.querySelectorAll(".color-dot").forEach((c) => {
+          c.classList.remove("active");
+          c.innerHTML = "";
+        });
+        el.classList.add("active");
+        el.innerHTML =
+          '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+      }
 
-    // Initialize with Login screen
-    renderScreen('login');
-  </script>
-</body>
+      // Initialize with Login screen
+      renderScreen("login");
+    </script>
+  </body>
 </html>

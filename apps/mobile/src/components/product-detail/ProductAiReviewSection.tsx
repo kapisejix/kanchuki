@@ -22,30 +22,30 @@ export function ProductAiReviewSection({
   return (
     <View className="mx-4 mt-3">
       {!product.ai_tagged && !product.ai_tag_error && (
-        <View className="bg-ink-50 border border-ink-100 rounded-xl px-3 py-2 flex-row items-center gap-2">
-          <ActivityIndicator size="small" color={primaryColor} />
-          <Text className="text-ink-700 text-xs">AI tagging in progress...</Text>
+        <View className="bg-lavender-100 border border-lavender-200 rounded-2xl px-4 py-3 flex-row items-center gap-2.5 shadow-sm">
+          <ActivityIndicator size="small" color="#BB3F95" />
+          <Text className="text-spaceCadet-900 font-bold text-xs">AI auto-tagging in progress...</Text>
         </View>
       )}
 
       {product.ai_tag_error && (
-        <View className="bg-turmeric-50 border border-turmeric-100 rounded-xl px-3 py-2">
+        <View className="bg-amber-50 border border-amber-200 rounded-2xl px-4 py-3 shadow-sm">
           <View className="flex-row items-center justify-between">
-            <Text className="text-turmeric-700 text-xs font-semibold">AI tagging failed</Text>
+            <Text className="text-amber-800 text-xs font-bold">AI auto-tagging failed</Text>
             <AnimatedPressable
               onPress={handleRetag}
               disabled={retagging}
-              className="flex-row items-center gap-1 bg-white px-2 py-1 rounded-lg border border-turmeric-200"
+              className="flex-row items-center gap-1 bg-white px-3 py-1.5 rounded-xl border border-amber-200"
             >
               {retagging ? (
-                <ActivityIndicator size="small" color={primaryColor} />
+                <ActivityIndicator size="small" color="#BB3F95" />
               ) : (
-                <RefreshCw size={12} color={colors.turmeric[700]} />
+                <RefreshCw size={12} color="#92400e" />
               )}
-              <Text className="text-turmeric-800 text-[10px] font-bold">Retry AI</Text>
+              <Text className="text-amber-900 text-[10px] font-bold">Retry AI</Text>
             </AnimatedPressable>
           </View>
-          <Text className="text-turmeric-600 text-[10px] mt-1 leading-relaxed" numberOfLines={3}>
+          <Text className="text-amber-700 text-[10px] mt-1.5 leading-relaxed" numberOfLines={3}>
             {product.ai_tag_error}
           </Text>
         </View>

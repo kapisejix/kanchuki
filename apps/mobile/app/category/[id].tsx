@@ -96,11 +96,16 @@ function EditCategoryModal({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-center px-6">
-        <View className="bg-white rounded-3xl w-full p-6 gap-4">
+        <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-lg">
           <View className="flex-row items-center justify-between">
-            <Text className="text-lg font-bold text-sand-900">Edit Category</Text>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-lg font-bold text-spaceCadet-900"
+            >
+              Edit Category
+            </Text>
             <AnimatedPressable onPress={onClose} accessibilityLabel="Close" accessibilityRole="button">
-              <X size={20} color={colors.sand[400]} />
+              <X size={20} color="#6B4773" />
             </AnimatedPressable>
           </View>
 
@@ -108,41 +113,41 @@ function EditCategoryModal({
             <AnimatedPressable
               onPress={() => void handlePickImage()}
               disabled={uploading}
-              className="w-24 h-24 rounded-2xl bg-sand-50 border border-sand-200 items-center justify-center overflow-hidden"
+              className="w-24 h-24 rounded-2xl bg-lavender-50 border border-lavender-200 items-center justify-center overflow-hidden"
             >
               {uploading ? (
-                <ActivityIndicator color={primaryColor} />
+                <ActivityIndicator color="#BB3F95" />
               ) : imageUrl ? (
                 <Image source={{ uri: imageUrl }} style={{ width: 96, height: 96 }} resizeMode="cover" />
               ) : (
-                <ImagePlus size={22} color={colors.sand[400]} />
+                <ImagePlus size={22} color="#6B4773" />
               )}
             </AnimatedPressable>
-            <Text className="text-[10px] text-sand-400 mt-1.5">Tap to change photo</Text>
+            <Text className="text-[10px] text-heliotrope-500 mt-1.5 font-medium">Tap to change photo</Text>
           </View>
 
           <View>
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide mb-1.5">
+            <Text className="text-xs font-bold text-heliotrope-600 uppercase tracking-wide mb-1.5">
               Category Name
             </Text>
             <TextInput
               value={name}
               onChangeText={setName}
-              className="bg-sand-50 px-4 py-3 rounded-xl text-sm text-sand-900"
+              className="bg-lavender-50 px-4 py-3 rounded-2xl text-sm font-bold text-spaceCadet-900 border border-lavender-200"
               maxLength={100}
             />
           </View>
 
           <View className="flex-row gap-3 mt-2">
-            <AnimatedPressable onPress={onClose} disabled={saving} className="flex-1 bg-sand-100 py-3.5 rounded-2xl items-center">
-              <Text className="text-sand-700 font-semibold">Cancel</Text>
+            <AnimatedPressable onPress={onClose} disabled={saving} className="flex-1 bg-lavender-100 py-3.5 rounded-2xl items-center border border-lavender-200">
+              <Text className="text-spaceCadet-900 font-bold text-xs uppercase tracking-wider">Cancel</Text>
             </AnimatedPressable>
             <View className="flex-1">
               <GradientButton
-                label="Save"
+                label="Save Changes"
                 onPress={() => void handleSave()}
-                disabled={uploading || name.trim().length === 0}
                 loading={saving}
+                disabled={name.trim().length === 0}
               />
             </View>
           </View>
@@ -153,158 +158,189 @@ function EditCategoryModal({
 }
 
 export default function CategoryDetailScreen() {
-  const columns = useGridColumns()
-  const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
   const { id } = useLocalSearchParams<{ id: string }>()
+  const columns = useGridColumns()
   const queryClient = useQueryClient()
-  const [deleting, setDeleting] = useState(false)
-  const [showEdit, setShowEdit] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
-  const { data: catData, isLoading: catLoading } = useQuery({
+  const { data: categoryData, isLoading: categoryLoading } = useQuery({
     queryKey: ['categories', id],
     queryFn: () => categoryApi.get(id),
   })
-  const category = catData?.data
+  const category = categoryData?.data
 
   const { data: productsData, isLoading: productsLoading } = useQuery({
-    queryKey: ['products', 'list', { category_id: id }],
+    queryKey: ['products', 'by-category', id],
     queryFn: () => productApi.list({ category_id: id, limit: 50 }),
-    enabled: !!id,
   })
-  const products = ((productsData as { data: Product[] } | undefined)?.data ?? [])
+  const products = (productsData?.data as unknown as Product[]) ?? []
 
   const handleDelete = () => {
-    Alert.alert(
-      `Delete "${category?.name}"?`,
-      'Products stay in your catalog — they just lose this category label.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true)
-            try {
-              await categoryApi.delete(id)
-              await queryClient.invalidateQueries({ queryKey: ['categories'] })
-              router.back()
-            } catch (err) {
-              showError(err, 'Try again.', 'Delete failed')
-              setDeleting(false)
-            }
-          },
+    Alert.alert('Delete Category', `Are you sure you want to delete "${category?.name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await categoryApi.delete(id)
+            queryClient.invalidateQueries({ queryKey: ['categories'] })
+            router.back()
+          } catch (err) {
+            showError(err, 'Failed to delete category')
+          }
         },
-      ],
+      },
+    ])
+  }
+
+  if (categoryLoading) {
+    return <DetailScreenSkeleton />
+  }
+
+  if (!category) {
+    return (
+      <View className="flex-1 items-center justify-center p-6 bg-[#F8F7FC]">
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg font-bold text-spaceCadet-900"
+        >
+          Category not found
+        </Text>
+        <AnimatedPressable onPress={() => router.back()} className="mt-4 px-6 py-2.5 rounded-full bg-spaceCadet-900">
+          <Text className="text-white font-bold text-xs">Go Back</Text>
+        </AnimatedPressable>
+      </View>
     )
   }
 
-  if (catLoading || !category) {
-    return <DetailScreenSkeleton withPhoto={false} />
-  }
-
   return (
-    <>
-      <View className="flex-1 bg-ink-50">
-        {/* Icon-only header — no title text, matches the rest of the app's
-            custom headers instead of the native Stack header (which showed
-            the previous screen's title as the back-button label). */}
-        <View
-          className="flex-row items-center justify-between px-4 pb-4 bg-white border-b border-sand-100"
-          style={{ paddingTop: insets.top + 12 }}
-        >
-          <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-            <ChevronLeft size={24} color={colors.sand[700]} />
-          </AnimatedPressable>
-          <View className="flex-row items-center gap-4">
-            <AnimatedPressable
-              onPress={() => setShowEdit(true)}
-              hitSlop={8}
-              accessibilityLabel="Edit category name"
-              accessibilityRole="button"
-            >
-              <Pencil size={18} color={primaryColor} />
-            </AnimatedPressable>
-            <AnimatedPressable
-              onPress={handleDelete}
-              disabled={deleting}
-              hitSlop={8}
-              accessibilityLabel="Delete category"
-              accessibilityRole="button"
-            >
-              {deleting ? <ActivityIndicator size="small" color={colors.rust[600]} /> : <Trash2 size={20} color={colors.rust[600]} />}
-            </AnimatedPressable>
-          </View>
-        </View>
-
-        <View className="bg-white px-4 py-3 border-b border-sand-100 flex-row items-center gap-3">
-          <View className="w-14 h-14 rounded-xl bg-sand-100 overflow-hidden items-center justify-center">
-            {category.image_url ? (
-              <Image source={{ uri: category.image_url }} style={{ width: 56, height: 56 }} resizeMode="cover" />
-            ) : (
-              <Text className="text-xl">🗂️</Text>
-            )}
-          </View>
-          <View className="flex-1">
-            <Text className="text-base font-bold text-sand-900">{category.name}</Text>
-            <Text className="text-xs text-sand-500 mt-0.5">
-              {category.product_count} product{category.product_count === 1 ? '' : 's'}
-            </Text>
-          </View>
-        </View>
-
-        {productsLoading ? (
-          <ProductGridSkeleton />
-        ) : (
-          <FlatList
-            key={columns}
-            data={products}
-            keyExtractor={(item) => item.id}
-            numColumns={columns}
-            columnWrapperStyle={{ gap: 10 }}
-            contentContainerStyle={{ padding: 12, gap: 10, flexGrow: 1 }}
-            renderItem={({ item }) => (
-              <ProductCard
-                imageUrl={item.primary_photo_url}
-                onPress={() => router.push(`/product/${item.id}`)}
-                footer={
-                  <View className="p-2.5">
-                    <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
-                      {item.category ?? 'Product'} · {item.primary_color ?? '—'}
-                    </Text>
-                    <Text className="text-xs text-sand-500 mt-0.5">
-                      {formatPriceRange(item.price_min, item.price_max)}
-                    </Text>
-                  </View>
-                }
-              />
-            )}
-            ListEmptyComponent={
-              <View className="items-center py-16">
-                <Text className="text-sand-400 text-sm">No products in this category yet</Text>
-              </View>
-            }
-          />
-        )}
-
+    <View className="flex-1 bg-[#F8F7FC]">
+      {/* Header */}
+      <View
+        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
+        style={{ paddingTop: insets.top + 12 }}
+      >
         <AnimatedPressable
-          onPress={() => router.push(`/category/${id}/add-products`)}
-          className="absolute bottom-6 right-4 flex-row items-center gap-1.5 bg-ink-600 px-4 py-3.5 rounded-full shadow-lg"
-          style={{ elevation: 6 }}
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+          hitSlop={8}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
         >
-          <Plus size={18} color="white" />
-          <Text className="text-white text-sm font-semibold">Add Products</Text>
+          <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
+
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-lg font-bold text-spaceCadet-900 truncate max-w-[200px]"
+          numberOfLines={1}
+        >
+          {category.name}
+        </Text>
+
+        <View className="flex-row items-center gap-2">
+          <AnimatedPressable
+            onPress={() => setEditModalOpen(true)}
+            className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+            accessibilityLabel="Edit category"
+          >
+            <Pencil size={18} color="#231F48" />
+          </AnimatedPressable>
+          <AnimatedPressable
+            onPress={handleDelete}
+            className="w-10 h-10 rounded-full bg-red-50 items-center justify-center border border-red-200"
+            accessibilityLabel="Delete category"
+          >
+            <Trash2 size={18} color="#DC2626" />
+          </AnimatedPressable>
+        </View>
       </View>
 
+      {/* Category Info Banner */}
+      <View className="bg-white px-5 py-3.5 border-b border-lavender-200 flex-row items-center gap-3.5">
+        <View className="w-14 h-14 rounded-2xl bg-lavender-100 border border-lavender-200 overflow-hidden items-center justify-center">
+          {category.image_url ? (
+            <Image source={{ uri: category.image_url }} style={{ width: 56, height: 56 }} resizeMode="cover" />
+          ) : (
+            <Text className="text-xl">🗂️</Text>
+          )}
+        </View>
+        <View className="flex-1">
+          <Text
+            style={{ fontFamily: 'Marcellus_400Regular' }}
+            className="text-base font-bold text-spaceCadet-900"
+          >
+            {category.name}
+          </Text>
+          <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">
+            {products.length} product{products.length === 1 ? '' : 's'} in category
+          </Text>
+        </View>
+      </View>
+
+      {productsLoading ? (
+        <ProductGridSkeleton />
+      ) : (
+        <FlatList
+          key={columns}
+          data={products}
+          keyExtractor={(item) => item.id}
+          numColumns={columns}
+          columnWrapperStyle={{ gap: 12 }}
+          contentContainerStyle={{ padding: 16, gap: 12, flexGrow: 1 }}
+          renderItem={({ item }) => (
+            <ProductCard
+              imageUrl={item.primary_photo_url}
+              onPress={() => router.push(`/product/${item.id}`)}
+              footer={
+                <View className="p-2 gap-0.5">
+                  <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
+                    {item.category ?? 'Product'} · {item.primary_color ?? '—'}
+                  </Text>
+                  <Text
+                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    className="text-sm font-bold text-spaceCadet-900"
+                  >
+                    {formatPriceRange(item.price_min, item.price_max)}
+                  </Text>
+                </View>
+              }
+            />
+          )}
+          ListEmptyComponent={
+            <View className="items-center py-16 px-6">
+              <Text className="text-heliotrope-500 text-sm font-medium">No products in this category yet</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Add Products FAB */}
+      <AnimatedPressable
+        onPress={() => router.push(`/category/${id}/add-products`)}
+        className="absolute bottom-8 right-6 flex-row items-center gap-2 bg-spaceCadet-900 px-5 py-3.5 rounded-full shadow-lg border border-white/20"
+        style={{
+          shadowColor: '#231F48',
+          shadowOffset: { width: 0, height: 6 },
+          shadowOpacity: 0.35,
+          shadowRadius: 10,
+          elevation: 6,
+        }}
+      >
+        <Plus size={18} color="white" strokeWidth={2.5} />
+        <Text className="text-white text-xs font-extrabold uppercase tracking-wider">Add Products</Text>
+      </AnimatedPressable>
+
       <EditCategoryModal
-        visible={showEdit}
+        visible={editModalOpen}
         category={category}
-        onClose={() => setShowEdit(false)}
+        onClose={() => setEditModalOpen(false)}
         onSaved={() => {
           void queryClient.invalidateQueries({ queryKey: ['categories'] })
         }}
       />
-    </>
+    </View>
   )
 }

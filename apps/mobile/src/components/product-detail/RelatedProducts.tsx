@@ -57,22 +57,22 @@ export function RelatedProductsSection({
   if (loadingRelated || related.length === 0) return null
 
   return (
-    <View className="bg-white rounded-2xl p-4 border border-sand-100">
-      <View className="flex-row items-center gap-2 mb-3">
-        <ShoppingBag size={14} color={primaryColor} />
-        <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+    <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
+      <View className="flex-row items-center gap-2 mb-3.5">
+        <ShoppingBag size={15} color="#BB3F95" />
+        <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wide">
           More {category}
         </Text>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View className="flex-row gap-3">
+        <View className="flex-row gap-3 py-1">
           {related.map((rp) => (
             <AnimatedPressable
               key={rp.id}
               onPress={() => onSelect(rp.id)}
               className="w-28"
             >
-              <View className="w-28 h-36 rounded-xl overflow-hidden bg-sand-100 border border-sand-200">
+              <View className="w-28 h-36 rounded-2xl overflow-hidden bg-lavender-100 border border-lavender-200">
                 {rp.primary_photo_url ? (
                   <Image
                     source={{ uri: rp.primary_photo_url }}
@@ -81,20 +81,23 @@ export function RelatedProductsSection({
                   />
                 ) : (
                   <View className="flex-1 items-center justify-center">
-                    <Text className="text-sand-300">👗</Text>
+                    <Text className="text-heliotrope-400 text-2xl">👗</Text>
                   </View>
                 )}
                 {rp.status === 'SOLD' && (
-                  <View className="absolute top-1 left-1 bg-rust-500 rounded-full px-1.5 py-0.5">
-                    <Text className="text-white text-[8px] font-bold">Sold</Text>
+                  <View className="absolute top-1.5 left-1.5 bg-red-600 rounded-full px-2 py-0.5 shadow-sm">
+                    <Text className="text-white text-[8px] font-bold uppercase">Sold</Text>
                   </View>
                 )}
               </View>
-              <Text className="text-xs font-bold text-sand-900 mt-1.5 tabular-nums">
+              <Text
+                style={{ fontFamily: 'Marcellus_400Regular' }}
+                className="text-xs font-bold text-spaceCadet-900 mt-1.5"
+              >
                 {rp.price_min ? `₹${(rp.price_min / 100).toLocaleString('en-IN')}` : ''}
               </Text>
               {rp.primary_color && (
-                <Text className="text-[10px] text-sand-500 truncate">{rp.primary_color}</Text>
+                <Text className="text-[10px] text-heliotrope-500 font-medium truncate">{rp.primary_color}</Text>
               )}
             </AnimatedPressable>
           ))}

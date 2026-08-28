@@ -48,6 +48,7 @@ type RetailerMe = {
   shop_name: string;
   plan: string;
   plan_status: string;
+  city?: string | null;
 };
 
 export default function HomeScreen() {
@@ -94,79 +95,169 @@ export default function HomeScreen() {
       className="flex-1 bg-[#F8F7FC]"
       refreshControl={<RefreshControl refreshing={isLoading} onRefresh={() => void refetch()} />}
     >
+      {/* ── Top Retailer Header & Identity ── */}
+      <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
+        <View className="flex-row items-center gap-3">
+          <View
+            className="w-10 h-10 rounded-2xl bg-tyrian-800 border border-fuchsia-500/30 items-center justify-center shadow-md"
+            style={{
+              shadowColor: '#BB3F95',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.15,
+              shadowRadius: 6,
+              elevation: 3,
+            }}
+          >
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-lavender-200 font-bold text-sm"
+            >
+              {(me?.shop_name ?? 'R').slice(0, 2).toUpperCase()}
+            </Text>
+          </View>
+          <View>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-base font-extrabold text-spaceCadet-900 leading-tight"
+            >
+              {me?.shop_name || 'Your Store'}
+            </Text>
+            <Text className="text-[10px] uppercase tracking-wider text-fuchsia-600 font-extrabold">
+              {me?.city ? `${me.city.toUpperCase()} • ` : ''}{me?.plan ?? 'PRO STORE'}
+            </Text>
+          </View>
+        </View>
+
+        <AnimatedPressable
+          onPress={() => router.push('/settings')}
+          className="w-9 h-9 rounded-2xl bg-white border border-lavender-200 items-center justify-center shadow-sm"
+          accessibilityLabel="Open settings"
+        >
+          <Settings size={16} color="#560A39" />
+        </AnimatedPressable>
+      </View>
+
       {/* ── Signature Gradient Hero (#231F48 to #560A39) ── */}
-      <View className="px-4 pt-4 pb-2">
+      <View className="px-4 pb-3">
         <LinearGradient
           colors={['#231F48', '#560A39']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ borderRadius: 32 }}
-          className="p-5 shadow-lg"
+          style={{
+            borderRadius: 28,
+            padding: 20,
+            shadowColor: '#231F48',
+            shadowOffset: { width: 0, height: 8 },
+            shadowOpacity: 0.28,
+            shadowRadius: 18,
+            elevation: 8,
+          }}
         >
-          {/* Top Retailer Bar */}
-          <View className="flex-row items-center justify-between mb-4">
-            <View className="flex-row items-center gap-3">
-              <View className="w-11 h-11 rounded-2xl bg-tyrian-800 border border-fuchsia-500/40 items-center justify-center shadow-sm">
-                <Text className="text-lavender-200 font-marcellus font-bold text-base">
-                  {(me?.shop_name ?? 'R').charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View>
-                <Text className="text-white text-lg font-bold font-marcellus">
-                  {me?.shop_name ?? 'Your Store'}
-                </Text>
-                <Text className="text-[10px] text-fuchsia-400 font-bold uppercase tracking-wider">
-                  {me?.plan ?? 'PRO STORE'} • ACTIVE
-                </Text>
-              </View>
+          <View className="flex-row justify-between items-start mb-2">
+            <Text className="text-[10px] uppercase tracking-wider font-extrabold text-lavender-200/80">
+              Active Catalog Overview
+            </Text>
+            <View className="px-2 py-0.5 rounded-full bg-fuchsia-500/30 border border-fuchsia-400">
+              <Text className="text-white text-[10px] font-extrabold">+18.4%</Text>
             </View>
-
-            <AnimatedPressable
-              onPress={() => router.push('/settings')}
-              className="w-9 h-9 rounded-2xl bg-white/10 border border-white/20 items-center justify-center"
-            >
-              <Settings size={16} color="#E0E1F6" />
-            </AnimatedPressable>
           </View>
 
-          {/* Monthly Stats in Hero */}
-          <View className="border-t border-white/15 pt-3">
-            <View className="flex-row justify-between items-start mb-1">
-              <Text className="text-[10px] uppercase tracking-wider font-bold text-lavender-200/80">
-                Active Catalog Overview
-              </Text>
-              <View className="px-2 py-0.5 rounded-full bg-fuchsia-500/30 border border-fuchsia-400">
-                <Text className="text-white text-[10px] font-bold">+18.4%</Text>
-              </View>
-            </View>
+          <View className="flex-row items-baseline gap-2 mb-1">
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-3xl font-extrabold text-white tracking-tight"
+            >
+              {stats?.views_this_month ?? 0}
+            </Text>
+            <Text className="text-xs text-lavender-200/80 font-medium">Customer Views</Text>
+          </View>
 
-            <View className="flex-row items-baseline gap-2">
-              <Text className="text-3xl font-extrabold font-marcellus text-white">
-                {stats?.views_this_month ?? 0}
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: 16,
+              marginTop: 14,
+              paddingTop: 12,
+              borderTopWidth: 1,
+              borderTopColor: 'rgba(255, 255, 255, 0.15)',
+            }}
+          >
+            <View style={{ flex: 1 }}>
+              <Text className="text-[9px] text-lavender-200/70 font-extrabold uppercase tracking-wider block">
+                WHATSAPP ENQUIRIES
               </Text>
-              <Text className="text-xs text-lavender-200 font-medium">Customer Views</Text>
+              <Text className="text-white font-extrabold text-sm mt-0.5">
+                {stats?.enquiries_this_month ?? 0} Sent
+              </Text>
             </View>
-
-            <View className="flex-row gap-4 mt-3 pt-2 border-t border-white/10">
-              <View className="flex-1">
-                <Text className="text-[9px] text-lavender-200/70 font-bold uppercase tracking-wider">
-                  ENQUIRIES
-                </Text>
-                <Text className="text-white font-bold text-sm">
-                  {stats?.enquiries_this_month ?? 0} Sent
-                </Text>
-              </View>
-              <View className="flex-1">
-                <Text className="text-[9px] text-lavender-200/70 font-bold uppercase tracking-wider">
-                  ACTIVE PRODUCTS
-                </Text>
-                <Text className="text-white font-bold text-sm">
-                  {stats?.total_products_available ?? 0} SKUs
-                </Text>
-              </View>
+            <View style={{ flex: 1 }}>
+              <Text className="text-[9px] text-lavender-200/70 font-extrabold uppercase tracking-wider block">
+                ACTIVE PRODUCTS
+              </Text>
+              <Text className="text-white font-extrabold text-sm mt-0.5">
+                {stats?.total_products_available ?? 0} in Stock
+              </Text>
             </View>
           </View>
         </LinearGradient>
+      </View>
+
+      {/* ── AI Quick Tools (Matching Preview HTML) ── */}
+      <View className="px-4 pt-2 pb-2">
+        <Text className="text-[11px] font-extrabold text-heliotrope-600 uppercase tracking-wider mb-2 px-1">
+          AI Quick Tools
+        </Text>
+        <View className="flex-row gap-3">
+          <AnimatedPressable
+            onPress={() => router.push('/product/add')}
+            className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+            style={{
+              shadowColor: '#231F48',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.06,
+              shadowRadius: 10,
+              elevation: 2,
+            }}
+          >
+            <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center mb-2">
+              <Camera size={16} color="#BB3F95" />
+            </View>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-sm font-extrabold text-spaceCadet-900"
+            >
+              AI Auto-Tag
+            </Text>
+            <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+              Photo to SKU in 3s
+            </Text>
+          </AnimatedPressable>
+
+          <AnimatedPressable
+            onPress={() => router.push('/growth/backgrounds')}
+            className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+            style={{
+              shadowColor: '#231F48',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.06,
+              shadowRadius: 10,
+              elevation: 2,
+            }}
+          >
+            <View className="w-8 h-8 rounded-xl bg-lavender-200/60 items-center justify-center mb-2">
+              <PackagePlus size={16} color="#560A39" />
+            </View>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular' }}
+              className="text-sm font-extrabold text-spaceCadet-900"
+            >
+              Studio Shoot
+            </Text>
+            <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+              FLUX model backdrops
+            </Text>
+          </AnimatedPressable>
+        </View>
       </View>
 
       {/* ── Scan Barcode / QR Primary CTA ── */}
@@ -398,13 +489,23 @@ function StatCard({
     <AnimatedPressable
       onPress={onPress}
       className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+      style={{
+        shadowColor: '#231F48',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
     >
       <View
         className="w-8 h-8 rounded-xl items-center justify-center mb-2 bg-lavender-100"
       >
         {icon}
       </View>
-      <Text className="text-2xl font-bold text-spaceCadet-900">
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-2xl font-bold text-spaceCadet-900"
+      >
         {value.toLocaleString('en-IN')}
       </Text>
       <Text className="text-xs text-heliotrope-500 font-medium mt-0.5">{label}</Text>
@@ -429,6 +530,13 @@ function QuickAction({
     <AnimatedPressable
       onPress={onPress}
       className="w-[47%] bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm"
+      style={{
+        shadowColor: '#231F48',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 10,
+        elevation: 2,
+      }}
     >
       <View
         className="w-10 h-10 rounded-2xl items-center justify-center mb-2.5"
@@ -436,7 +544,12 @@ function QuickAction({
       >
         {icon}
       </View>
-      <Text className="text-xs font-bold text-spaceCadet-900 font-marcellus">{label}</Text>
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular' }}
+        className="text-xs font-bold text-spaceCadet-900"
+      >
+        {label}
+      </Text>
       <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">{sublabel}</Text>
     </AnimatedPressable>
   );

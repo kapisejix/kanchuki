@@ -72,24 +72,35 @@ export default function NewCollectionScreen() {
   const canCreate = title.trim().length > 0 && selected.size > 0 && !create.isPending
 
   return (
-    <View className="flex-1 bg-ink-50">
+    <View className="flex-1 bg-[#F8F7FC]">
       <View
-        className="flex-row items-center px-4 pb-4 bg-white border-b border-sand-100"
+        className="flex-row items-center px-5 pb-3 bg-white border-b border-lavender-200"
         style={{ paddingTop: insets.top + 12 }}
       >
-        <AnimatedPressable onPress={() => router.back()} hitSlop={8} accessibilityLabel="Go back" accessibilityRole="button">
-          <ChevronLeft size={24} color={colors.sand[700]} />
+        <AnimatedPressable
+          onPress={() => router.back()}
+          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
+          hitSlop={8}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
+          <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
-        <Text className="text-base font-bold text-sand-900 ml-3">New Collection</Text>
+        <Text
+          style={{ fontFamily: 'Marcellus_400Regular' }}
+          className="text-base font-bold text-spaceCadet-900 ml-3"
+        >
+          New Collection
+        </Text>
       </View>
       <View className="flex-1">
-        <View className="bg-white px-4 py-3 border-b border-sand-100 gap-3">
+        <View className="bg-white px-4 py-3.5 border-b border-lavender-200 gap-3">
           <TextInput
             value={title}
             onChangeText={setTitle}
             placeholder="Collection title (e.g. Wedding Specials)"
-            placeholderTextColor={colors.sand[400]}
-            className="bg-sand-100 rounded-xl px-3 py-2.5 text-sm text-sand-900"
+            placeholderTextColor="#928EB2"
+            className="bg-lavender-50 rounded-2xl px-4 py-3 text-sm font-bold text-spaceCadet-900 border border-lavender-200"
             maxLength={200}
           />
           <View className="flex-row gap-2">
@@ -97,15 +108,15 @@ export default function NewCollectionScreen() {
               <AnimatedPressable
                 key={d}
                 onPress={() => setExpiresDays(d)}
-                className={`px-3 py-1.5 rounded-full border ${
+                className={`px-3.5 py-1.5 rounded-full border ${
                   expiresDays === d
-                    ? 'bg-ink-600 border-ink-600'
-                    : 'bg-white border-sand-200'
+                    ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                    : 'bg-white border-lavender-200'
                 }`}
               >
                 <Text
-                  className={`text-xs font-medium ${
-                    expiresDays === d ? 'text-white' : 'text-sand-600'
+                  className={`text-xs font-bold ${
+                    expiresDays === d ? 'text-white' : 'text-spaceCadet-900'
                   }`}
                 >
                   {d} days
@@ -123,8 +134,8 @@ export default function NewCollectionScreen() {
             data={products}
             keyExtractor={(item) => item.id}
             numColumns={columns}
-            contentContainerStyle={{ padding: 12, gap: 10 }}
-            columnWrapperStyle={{ gap: 10 }}
+            contentContainerStyle={{ padding: 14, gap: 12 }}
+            columnWrapperStyle={{ gap: 12 }}
             renderItem={({ item }) => {
               const isSelected = selected.has(item.id)
               return (
@@ -132,16 +143,19 @@ export default function NewCollectionScreen() {
                   imageUrl={item.primary_photo_url}
                   onPress={() => toggle(item.id)}
                   selected={isSelected}
-                  elevation={isSelected ? 3 : 1}
+                  elevation={isSelected ? 4 : 1}
                   imageHeight={144}
-                  style={isSelected ? { borderWidth: 2, borderColor: primaryColor } : undefined}
+                  style={isSelected ? { borderWidth: 2, borderColor: '#BB3F95' } : undefined}
                   placeholderIcon="📷"
                   footer={
-                    <View className="p-2.5">
-                      <Text className="text-xs font-semibold text-sand-900" numberOfLines={1}>
+                    <View className="p-2 gap-0.5">
+                      <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
-                      <Text className="text-xs text-sand-500 mt-0.5">
+                      <Text
+                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        className="text-xs font-bold text-spaceCadet-900"
+                      >
                         {formatPriceRange(item.price_min, item.price_max)}
                       </Text>
                     </View>
@@ -150,7 +164,7 @@ export default function NewCollectionScreen() {
               )
             }}
             ListEmptyComponent={
-              <Text className="text-sand-400 text-sm text-center mt-16">
+              <Text className="text-heliotrope-500 text-sm font-medium text-center mt-16">
                 No available products. Add products first.
               </Text>
             }
@@ -158,8 +172,8 @@ export default function NewCollectionScreen() {
         )}
 
         <View
-          className="bg-white px-4 pt-3 border-t border-sand-100"
-          style={{ paddingBottom: 12 + insets.bottom }}
+          className="bg-white px-4 pt-3.5 border-t border-lavender-200"
+          style={{ paddingBottom: 14 + insets.bottom }}
         >
           <GradientButton
             label={`Create & Share (${selected.size} selected)`}
@@ -168,7 +182,7 @@ export default function NewCollectionScreen() {
             onPress={() => create.mutate()}
           />
           {!canCreate && !create.isPending && (
-            <Text className="text-xs text-sand-400 text-center mt-2">
+            <Text className="text-xs text-heliotrope-500 text-center mt-2 font-medium">
               {title.trim().length === 0
                 ? 'Enter a title above to continue'
                 : selected.size === 0
