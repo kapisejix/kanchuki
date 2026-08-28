@@ -319,6 +319,11 @@ export const R2_PATHS = {
 // the product's pixels identical and generate only the scene (the "own the
 // subject, not the scene" lesson; see docs/PRO-REQUIREMENTS.md §24).
 
+// AI Studio Shoot bills the retailer 8 credits per generated image. The
+// STUDIO_SHOOT quota counter (F-010) still counts images (1 per shoot);
+// this is the credits-per-image multiplier the UI shows the retailer.
+export const STUDIO_CREDITS_PER_IMAGE = 8;
+
 export const STUDIO_TEMPLATES = [
   {
     id: 'studiomodel',

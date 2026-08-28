@@ -18,7 +18,7 @@ import {
   Clapperboard,
   X,
 } from 'lucide-react-native'
-import { resolveFashionColor } from '@kanchuki/shared'
+import { resolveFashionColor, STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
 import type { ProductDetail } from '@kanchuki/shared'
 
@@ -415,10 +415,16 @@ export function ProductMediaCarousel({
           </View>
           {!studioQuota?.unlimited && (
             <View
-              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-xs"
+              className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full shadow-xs"
+              style={{
+                backgroundColor:
+                  (studioQuota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE < STUDIO_CREDITS_PER_IMAGE
+                    ? '#DC2626'
+                    : '#C026D3',
+              }}
             >
               <Text className="text-[9px] font-bold text-white">
-                {studioQuota?.remaining ?? 0}
+                {(studioQuota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE}
               </Text>
             </View>
           )}

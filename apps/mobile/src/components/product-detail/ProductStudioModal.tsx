@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { Image } from 'expo-image'
 import { X, Sparkles, Wand2 } from 'lucide-react-native'
-import { STUDIO_TEMPLATES, STUDIO_MODELS } from '@kanchuki/shared'
+import { STUDIO_TEMPLATES, STUDIO_MODELS, STUDIO_CREDITS_PER_IMAGE } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'
 import { GradientButton } from '../GradientButton'
 
@@ -54,6 +54,18 @@ export function ProductStudioModal({
     }
   }
 
+  // ponytail: quota.remaining is whole images; credits shown = images * 8, so
+  // the displayed value is always a multiple of STUDIO_CREDITS_PER_IMAGE and
+  // "< 4" / "< 8" trigger at the same point (0 images left). Change the 8 in
+  // @kanchuki/shared when the real per-image cost is set.
+  const creditsLeft = quota?.unlimited
+    ? Infinity
+    : (quota?.remaining ?? 0) * STUDIO_CREDITS_PER_IMAGE
+  const limitReached = !quota?.unlimited && creditsLeft < STUDIO_CREDITS_PER_IMAGE
+  const runningLow =
+    !quota?.unlimited && !limitReached && creditsLeft <= STUDIO_CREDITS_PER_IMAGE * 2
+  const imagesLeft = Math.floor(creditsLeft / STUDIO_CREDITS_PER_IMAGE)
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-end">
@@ -70,16 +82,42 @@ export function ProductStudioModal({
           </View>
 
           {/* Subtitle & Quota */}
-          <View className="my-3 flex-row items-center justify-between">
+          <View className="mt-3 mb-2 flex-row items-center justify-between">
             <Text className="text-xs text-sand-500">Transform raw photo into high-fashion catalog</Text>
             {quota && (
-              <View className="bg-turmeric-50 px-2.5 py-1 rounded-full border border-turmeric-200">
-                <Text className="text-turmeric-800 text-[10px] font-bold">
-                  {quota.unlimited ? 'Unlimited' : `${quota.remaining} left`}
+              <View
+                className="px-2.5 py-1 rounded-full border"
+                style={{
+                  backgroundColor: limitReached ? '#FEE2E2' : runningLow ? '#FEF3C7' : '#FEFCE8',
+                  borderColor: limitReached ? '#FCA5A5' : runningLow ? '#FCD34D' : '#FEF08A',
+                }}
+              >
+                <Text
+                  className="text-[10px] font-bold"
+                  style={{ color: limitReached ? '#991B1B' : runningLow ? '#92400E' : '#854D0E' }}
+                >
+                  {quota.unlimited ? 'Unlimited' : `${creditsLeft} credits left`}
                 </Text>
               </View>
             )}
           </View>
+
+          {/* Low-credit / limit-reached banner */}
+          {(limitReached || runningLow) && (
+            <View
+              className="mb-3 px-3 py-2 rounded-xl"
+              style={{ backgroundColor: limitReached ? '#FEE2E2' : '#FEF3C7' }}
+            >
+              <Text
+                className="text-[11px] font-semibold leading-4"
+                style={{ color: limitReached ? '#991B1B' : '#92400E' }}
+              >
+                {limitReached
+                  ? 'AI Studio limit reached. Recharge credits, wait for next month’s billing cycle, or contact the billing team.'
+                  : `Low on AI Studio credits — ${creditsLeft} left (about ${imagesLeft} image${imagesLeft === 1 ? '' : 's'}). Recharge soon.`}
+              </Text>
+            </View>
+          )}
 
           {/* Tabs */}
           <View className="flex-row bg-sand-100 p-1 rounded-xl mb-4">
@@ -178,9 +216,15 @@ export function ProductStudioModal({
 
           {/* Start button */}
           <GradientButton
-            label={starting ? 'Starting...' : 'Generate Studio Shot (10-30s)'}
+            label={
+              limitReached
+                ? 'AI Studio limit reached'
+                : starting
+                  ? 'Starting...'
+                  : 'Generate Studio Shot (10-30s)'
+            }
             onPress={handleStart}
-            disabled={starting}
+            disabled={starting || limitReached}
             colors={[primaryColor, colors.ink[800]]}
           />
         </View>

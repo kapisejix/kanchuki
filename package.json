@@ -81,6 +81,9 @@
       "metro-symbolicate": "0.83.3",
       "metro-transform-plugins": "0.83.3",
       "metro-transform-worker": "0.83.3"
+    },
+    "patchedDependencies": {
+      "react-native-css-interop@0.1.22": "patches/react-native-css-interop@0.1.22.patch"
     }
   },
   "dependencies": {

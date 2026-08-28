@@ -33,14 +33,7 @@ import { WEB_URL } from '../src/lib/web-url';
 type Step = 1 | 2 | 3 | 4;
 const TOTAL_STEPS = 4;
 
-const SPECIALIZATIONS = [
-  'Sarees & Silk',
-  'Bridal Lehengas',
-  'Suits & Kurtis',
-  'Designer Blouses',
-  'Western & Fusion',
-  'Fabrics & Unstitched',
-];
+const SPECIALIZATIONS = ['Women', 'Men', 'Kids'];
 
 function slugify(text: string): string {
   return text
@@ -153,7 +146,7 @@ export default function OnboardingScreen() {
   // ── Form state ──
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
-  const [selectedSpecs, setSelectedSpecs] = useState<string[]>(['Sarees & Silk']);
+  const [selectedSpecs, setSelectedSpecs] = useState<string[]>(['Women']);
   const [shopAddress, setShopAddress] = useState('');
   const [city, setCity] = useState('');
   const [district, setDistrict] = useState('');
@@ -682,7 +675,11 @@ export default function OnboardingScreen() {
 
         {/* Form Container Card */}
         <View className="bg-white border border-lavender-200 rounded-3xl p-5 shadow-sm w-full">
-          {renderContent()}
+          {/* key={step}: each step's subtree is a different shape; without a
+              stable key React diffs step 1's fields against step 2's and
+              react-native-css-interop's dev upgrade-warning path could fire
+              mid-render. Remount cleanly per step instead. */}
+          <View key={step}>{renderContent()}</View>
         </View>
       </ScrollView>
 

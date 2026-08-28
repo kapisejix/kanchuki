@@ -1,0 +1,21 @@
+diff --git a/dist/runtime/native/render-component.js b/dist/runtime/native/render-component.js
+--- a/dist/runtime/native/render-component.js
++++ b/dist/runtime/native/render-component.js
+@@ -122,7 +122,16 @@
+     return AnimatedComponent;
+ }
+ function printUpgradeWarning(warning, originalProps) {
+-    console.log(`CssInterop upgrade warning.\n\n${warning}.\n\nThis warning was caused by a component with the props:\n${stringify(originalProps)}\n\nIf adding or removing sibling components caused this warning you should add a unique "key" prop to your components. https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key\n`);
++    // patched: originalProps can hold throwing getters (e.g. React Navigation's
++    // missing-context sentinel), which turned this dev-only warning into a hard
++    // render crash ("Couldn't find a navigation context"). Serialize safely.
++    let serializedProps;
++    try {
++        serializedProps = stringify(originalProps);
++    } catch {
++        serializedProps = "[props omitted: threw while serializing]";
++    }
++    console.log(`CssInterop upgrade warning.\n\n${warning}.\n\nThis warning was caused by a component with the props:\n${serializedProps}\n\nIf adding or removing sibling components caused this warning you should add a unique "key" prop to your components. https://react.dev/learn/rendering-lists#keeping-list-items-in-order-with-key\n`);
+ }
+ function stringify(object) {
+     const seen = new WeakSet();
