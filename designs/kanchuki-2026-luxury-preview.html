@@ -450,6 +450,20 @@
         >
           10. Product Details
         </button>
+        <button
+          onclick="renderScreen('customer_catalog')"
+          id="tab-customer_catalog"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          11. Customer: Catalog
+        </button>
+        <button
+          onclick="renderScreen('customer_pdp')"
+          id="tab-customer_pdp"
+          class="screen-tab px-3 py-1.5 rounded-xl text-xs font-bold text-[#560A39] transition"
+        >
+          12. Customer: PDP Sheet
+        </button>
       </div>
     </div>
 
@@ -586,6 +600,38 @@
                   >Royal Orchid celebration hero banner in Space Cadet & Tyrian
                   gradient, counter QR code generator, and catalog assistance
                   links.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#BB3F95] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                11
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Customer Catalog & Collections (Web)</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >Store identity header, 5% OFF coupon banner with code copy, AI Style Quiz card, category facet pills, 2-column discovery cards with status badges and wishlisting, and customer bottom floating dock.</span
+                >
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <div
+                class="w-7 h-7 rounded-xl bg-[#231F48] flex-shrink-0 flex items-center justify-center text-white font-bold text-xs"
+              >
+                12
+              </div>
+              <div>
+                <strong class="text-[#231F48] block font-marcellus text-base"
+                  >Customer Product Details & Reviews (Web PDP)</strong
+                >
+                <span class="text-xs text-[#6B4773]"
+                  >4-photo multi-angle carousel with counter badge, price header with wishlist/share, AI Summary card, full product info table, family size selector box, dual action buttons (Select & WhatsApp Enquire), and in-app rating & review submission form.</span
                 >
               </div>
             </div>
@@ -1425,6 +1471,367 @@
           </div>
         </div>
       `,
+
+        // 11. CUSTOMER STOREFRONT CATALOG / PRODUCT LISTING
+        customer_catalog: `
+        <div class="p-5 pb-28 bg-[#F8F7FC] min-h-full">
+          
+          <!-- Top Store Header -->
+          <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#231F48] to-[#560A39] text-white flex items-center justify-center font-marcellus font-bold text-sm shadow-sm border border-[#E0E1F6]">
+                PF
+              </div>
+              <div>
+                <h3 class="text-[10px] uppercase tracking-wider text-[#6B4773] font-extrabold">PRIYA FASHION STORE • CHANDIGARH</h3>
+                <h2 class="text-base font-extrabold text-[#231F48] font-marcellus">Salwar Suits</h2>
+              </div>
+            </div>
+            
+            <div class="flex items-center gap-2">
+              <div class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] cursor-pointer hover:border-[#BB3F95] transition">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+              </div>
+              <div class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] cursor-pointer hover:border-[#BB3F95] transition">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <!-- Promotional Luxury Coupon Card -->
+          <div class="clay-card p-3.5 bg-gradient-to-r from-[#FAF9FE] via-[#FFFFFF] to-[#F2F1FA] border border-[#E0E1F6] mb-3.5 flex items-center justify-between shadow-sm relative overflow-hidden">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95] flex-shrink-0">
+                <svg class="w-4 h-4 anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/></svg>
+              </div>
+              <div>
+                <div class="flex items-center gap-1.5">
+                  <span class="text-xs font-extrabold text-[#231F48]">5% OFF</span>
+                  <span class="text-[10px] text-[#6B4773] font-medium">Use code</span>
+                  <span class="px-2 py-0.5 rounded-md bg-[#231F48] text-white text-[10px] font-bold tracking-wider font-mono">RAKHI2121</span>
+                </div>
+                <p class="text-[10px] text-[#6B4773] font-medium mt-0.5">On minimum cart order of ₹2,000</p>
+              </div>
+            </div>
+            <button class="text-[#928EB2] hover:text-[#231F48] p-1 text-xs">✕</button>
+          </div>
+
+          <!-- Style Quiz Banner -->
+          <div class="clay-card p-3.5 bg-gradient-to-r from-[#231F48] to-[#560A39] text-white rounded-[24px] mb-4 flex items-center justify-between shadow-md cursor-pointer border-0">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-white flex-shrink-0">
+                <svg class="w-4 h-4 anim-icon-float text-[#E0E1F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-white font-marcellus">Take a quick style quiz</h4>
+                <p class="text-[10px] text-[#E0E1F6]/80 font-medium">Help us suggest outfits you'll love</p>
+              </div>
+            </div>
+            <div class="w-7 h-7 rounded-xl bg-white/10 flex items-center justify-center text-white text-xs">
+              <svg class="w-4 h-4 text-[#E0E1F6]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+          </div>
+
+          <!-- Category Chips -->
+          <div class="mb-4">
+            <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+              <span class="text-xs text-[#6B4773] font-bold flex-shrink-0">Category:</span>
+              <button class="flex-shrink-0 text-xs font-bold px-3.5 py-1.5 rounded-full bg-[#231F48] text-white border border-[#231F48] shadow-sm">
+                All (5)
+              </button>
+              <button class="flex-shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-white text-[#231F48] border border-[#E0E1F6] hover:border-[#BB3F95]">
+                Ladies Suit (4)
+              </button>
+              <button class="flex-shrink-0 text-xs font-semibold px-3.5 py-1.5 rounded-full bg-white text-[#231F48] border border-[#E0E1F6] hover:border-[#BB3F95]">
+                Salwar Suits (3)
+              </button>
+            </div>
+          </div>
+
+          <!-- Product Grid (2 columns) -->
+          <div class="grid grid-cols-2 gap-3.5">
+            
+            <!-- Product Card 1 (Lehenga Choli) -->
+            <div class="clay-card p-1.5 group cursor-pointer" onclick="renderScreen('customer_pdp')">
+              <div class="relative w-full aspect-[3/4] rounded-[22px] overflow-hidden bg-[#FAF9FE] mb-2">
+                <img src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <div class="absolute top-2.5 left-2.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                  LEHENGA CHOLI
+                </div>
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#BB3F95] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6]">
+                  <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                </div>
+              </div>
+              <div class="px-2 pb-1.5">
+                <h4 class="text-xs font-bold text-[#231F48] truncate">Pink Embroidered Lehenga</h4>
+                <div class="flex items-center justify-between mt-0.5">
+                  <p class="text-xs font-extrabold text-[#231F48] font-sans">₹4,100</p>
+                  <span class="text-[10px] text-[#6B4773] font-semibold">★ 4.9</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Card 2 (Kurta Set - Sold Out) -->
+            <div class="clay-card p-1.5 group cursor-pointer opacity-85" onclick="renderScreen('customer_pdp')">
+              <div class="relative w-full aspect-[3/4] rounded-[22px] overflow-hidden bg-[#FAF9FE] mb-2">
+                <img src="https://images.unsplash.com/photo-1594633312681-425c7b97ccd1?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover grayscale group-hover:scale-105 transition duration-300" />
+                <div class="absolute top-2.5 left-2.5 bg-[#560A39]/90 text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                  SOLD OUT
+                </div>
+                <div class="absolute top-8 left-2.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">
+                  KURTA SET
+                </div>
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#231F48] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6]">
+                  <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </div>
+              </div>
+              <div class="px-2 pb-1.5">
+                <h4 class="text-xs font-bold text-[#231F48] truncate">Chanderi Silk Kurta Set</h4>
+                <div class="flex items-center justify-between mt-0.5">
+                  <p class="text-xs font-extrabold text-[#6B4773] line-through font-sans">₹2,499</p>
+                  <span class="text-[9px] font-bold text-red-500 uppercase">Sold</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Card 3 (Anarkali Suit) -->
+            <div class="clay-card p-1.5 group cursor-pointer" onclick="renderScreen('customer_pdp')">
+              <div class="relative w-full aspect-[3/4] rounded-[22px] overflow-hidden bg-[#FAF9FE] mb-2">
+                <img src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <div class="absolute top-2.5 left-2.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                  ANARKALI
+                </div>
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#231F48] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6]">
+                  <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </div>
+              </div>
+              <div class="px-2 pb-1.5">
+                <h4 class="text-xs font-bold text-[#231F48] truncate">Floral Georgette Anarkali</h4>
+                <div class="flex items-center justify-between mt-0.5">
+                  <p class="text-xs font-extrabold text-[#231F48] font-sans">₹3,250</p>
+                  <span class="text-[10px] text-[#6B4773] font-semibold">★ 4.8</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Product Card 4 (Sharara Suit) -->
+            <div class="clay-card p-1.5 group cursor-pointer" onclick="renderScreen('customer_pdp')">
+              <div class="relative w-full aspect-[3/4] rounded-[22px] overflow-hidden bg-[#FAF9FE] mb-2">
+                <img src="https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?auto=format&fit=crop&w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                <div class="absolute top-2.5 left-2.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full shadow-sm">
+                  SHARARA SUIT
+                </div>
+                <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#231F48] absolute bottom-3 right-3 shadow-md border border-[#E0E1F6]">
+                  <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                </div>
+              </div>
+              <div class="px-2 pb-1.5">
+                <h4 class="text-xs font-bold text-[#231F48] truncate">Velvet Festive Sharara</h4>
+                <div class="flex items-center justify-between mt-0.5">
+                  <p class="text-xs font-extrabold text-[#231F48] font-sans">₹5,800</p>
+                  <span class="text-[10px] text-[#6B4773] font-semibold">★ 5.0</span>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Customer Floating Bottom Navigation Dock -->
+        <div class="floating-dock">
+          <div class="dock-item active">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/></svg>
+            <span class="text-[9px] font-bold mt-0.5">Catalog</span>
+            <span class="w-1.5 h-1.5 rounded-full bg-[#BB3F95] mt-0.5 dock-dot"></span>
+          </div>
+          <div class="dock-item relative" onclick="renderScreen('customer_pdp')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+            <span class="text-[9px] font-bold mt-0.5">Saved</span>
+            <span class="absolute -top-1 right-1 w-4 h-4 rounded-full bg-[#BB3F95] text-white text-[9px] font-extrabold flex items-center justify-center">1</span>
+          </div>
+          <div class="dock-item text-emerald-400 hover:text-emerald-300" onclick="alert('Opening WhatsApp enquiry with store manager...')">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+            <span class="text-[9px] font-bold mt-0.5 text-emerald-400">Enquire</span>
+          </div>
+        </div>
+        `,
+
+        // 12. CUSTOMER PRODUCT DETAILS (PDP MODAL / SHEET)
+        customer_pdp: `
+        <div class="p-5 pb-12 bg-[#F8F7FC] min-h-full">
+          
+          <!-- Top Sheet Navigation -->
+          <div class="flex justify-between items-center mb-3.5">
+            <button onclick="renderScreen('customer_catalog')" class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] hover:border-[#BB3F95] transition">
+              <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="w-12 h-1 bg-[#231F48]/20 rounded-full"></div>
+            <button onclick="renderScreen('customer_catalog')" class="w-9 h-9 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6] hover:border-[#BB3F95] transition">
+              <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <!-- Hero Image Carousel -->
+          <div class="relative h-80 rounded-[32px] overflow-hidden bg-white shadow-soft-clay mb-4 border border-[#E0E1F6]">
+            <img id="cust-pdp-hero" src="https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?auto=format&fit=crop&w=600&q=80" class="w-full h-full object-cover" />
+            
+            <!-- Left & Right Arrow controls -->
+            <button class="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+            </button>
+            <button class="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </button>
+
+            <!-- Counter Badge -->
+            <div class="absolute bottom-3.5 right-3.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm">
+              4 / 4
+            </div>
+
+            <!-- Dots Indicator -->
+            <div class="absolute bottom-3.5 left-4 flex gap-1.5 items-center">
+              <span class="w-4 h-1.5 rounded-full bg-[#BB3F95]"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-white/80"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-white/80"></span>
+              <span class="w-1.5 h-1.5 rounded-full bg-white/80"></span>
+            </div>
+          </div>
+
+          <!-- Price & Title Section -->
+          <div class="flex justify-between items-start mb-4">
+            <div>
+              <h2 class="text-2xl font-extrabold text-[#231F48] font-sans">₹4,100/-</h2>
+              <p class="text-xs text-[#6B4773] font-bold mt-0.5">Salwar Suits • Festive Collection</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button class="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-soft-clay border border-[#E0E1F6]">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              </button>
+              <button class="w-10 h-10 rounded-2xl bg-[#BB3F95]/10 border border-[#BB3F95]/30 flex items-center justify-center text-[#BB3F95] shadow-soft-clay">
+                <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- AI Summary Card -->
+          <div class="clay-card p-4 bg-gradient-to-br from-[#FAF9FE] to-[#F2F1FA] border border-[#E0E1F6] mb-4 shadow-sm">
+            <div class="flex items-center gap-1.5 mb-1.5">
+              <svg class="w-3.5 h-3.5 text-[#BB3F95] anim-icon-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+              <span class="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">AI Summary</span>
+            </div>
+            <p class="text-xs text-[#231F48] leading-relaxed font-medium">
+              This pink lehenga choli features intricate zari and sequin embroidery, crafted from georgette fabric, perfect for festive celebrations and wedding receptions.
+            </p>
+          </div>
+
+          <!-- Product Specifications Card -->
+          <div class="clay-card p-4 border border-[#E0E1F6] mb-4 space-y-2.5">
+            <div class="flex items-center gap-1.5 mb-1">
+              <svg class="w-3.5 h-3.5 text-[#6B4773]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+              <span class="text-xs font-bold text-[#231F48] uppercase tracking-wider">Product Info</span>
+            </div>
+            <div class="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+              <span class="text-[#6B4773] font-medium">Name</span>
+              <span class="font-bold text-[#231F48]">Pink Embroidered Lehenga Choli</span>
+            </div>
+            <div class="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+              <span class="text-[#6B4773] font-medium">Fabric</span>
+              <span class="font-bold text-[#231F48]">Georgette & Shantoon</span>
+            </div>
+            <div class="flex justify-between text-xs py-1">
+              <span class="text-[#6B4773] font-medium">Work</span>
+              <span class="font-bold text-[#231F48]">Zari & Sequin Embroidery</span>
+            </div>
+          </div>
+
+          <!-- Family Sizing Selector -->
+          <div class="clay-card p-4 border border-[#E0E1F6] mb-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                <h4 class="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
+              </div>
+              <span class="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
+            </div>
+            <p class="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
+            
+            <div class="flex items-center justify-between p-2.5 rounded-2xl bg-[#E0E1F6]/50 border border-[#E0E1F6]">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-[#231F48]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                <span class="text-xs font-bold text-[#231F48]">My Size</span>
+              </div>
+              <span class="text-xs font-extrabold text-[#231F48]">✓</span>
+            </div>
+
+            <div class="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 text-emerald-700" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/></svg>
+                <span class="text-xs font-bold">Your size: XL</span>
+              </div>
+              <span class="text-xs font-extrabold text-emerald-700">✓</span>
+            </div>
+          </div>
+
+          <!-- Dual Action Buttons -->
+          <div class="flex items-center gap-3 mb-5">
+            <button class="flex-1 py-3 rounded-2xl bg-white border border-[#E0E1F6] text-[#231F48] font-bold text-xs flex items-center justify-center gap-2 shadow-sm hover:border-[#BB3F95] transition">
+              <svg class="w-4 h-4 text-amber-500 fill-amber-500" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+              <span>Select</span>
+            </button>
+            <button class="flex-1 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition" onclick="alert('Opening WhatsApp enquiry with store manager...')">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+              <span>Enquire</span>
+            </button>
+          </div>
+
+          <!-- Rate this product Review Form -->
+          <div class="clay-card p-4 border border-[#E0E1F6] space-y-3">
+            <div>
+              <h4 class="text-sm font-extrabold text-[#231F48] font-marcellus">Rate this product</h4>
+              <p class="text-[10px] text-[#6B4773] mt-0.5">How did you like Pink Embroidered Lehenga Choli?</p>
+            </div>
+
+            <!-- Star Rating -->
+            <div class="flex items-center gap-2 text-2xl cursor-pointer select-none">
+              <span class="cust-star-btn text-amber-400" onclick="selectCustomerRating(1)">★</span>
+              <span class="cust-star-btn text-amber-400" onclick="selectCustomerRating(2)">★</span>
+              <span class="cust-star-btn text-amber-400" onclick="selectCustomerRating(3)">★</span>
+              <span class="cust-star-btn text-amber-400" onclick="selectCustomerRating(4)">★</span>
+              <span class="cust-star-btn text-amber-400" onclick="selectCustomerRating(5)">★</span>
+            </div>
+
+            <!-- Review input -->
+            <div>
+              <label class="text-[10px] uppercase tracking-wider font-bold text-[#6B4773] block mb-1">Review (optional)</label>
+              <textarea placeholder="What did you like or dislike?" rows="2" class="w-full bg-[#F8F7FC] rounded-xl p-2.5 text-xs text-[#231F48] border border-[#E0E1F6] focus:outline-none focus:border-[#231F48]"></textarea>
+              <span class="text-[9px] text-[#928EB2] text-right block mt-0.5">0/1000</span>
+            </div>
+
+            <!-- Name and Phone -->
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="text-[10px] uppercase tracking-wider font-bold text-[#6B4773] block mb-1">Name (optional)</label>
+                <input type="text" placeholder="Your name" class="w-full bg-[#F8F7FC] rounded-xl p-2.5 text-xs text-[#231F48] border border-[#E0E1F6] focus:outline-none" />
+              </div>
+              <div>
+                <label class="text-[10px] uppercase tracking-wider font-bold text-[#6B4773] block mb-1">Phone *</label>
+                <input type="tel" placeholder="10-digit mobile" class="w-full bg-[#F8F7FC] rounded-xl p-2.5 text-xs text-[#231F48] border border-[#E0E1F6] focus:outline-none" />
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <input type="checkbox" id="review-terms" class="rounded border-[#E0E1F6] text-[#231F48]" />
+              <label for="review-terms" class="text-[10px] text-[#6B4773]">I agree to Kanchuki's <a href="#" class="underline text-[#231F48]">Privacy Policy</a> and <a href="#" class="underline text-[#231F48]">Terms</a>.</label>
+            </div>
+
+            <div class="slide-btn-signature-compact w-full py-2.5 text-center mt-2 cursor-pointer" onclick="alert('Thank you for rating this product!')">
+              <span class="text-xs font-bold text-white uppercase tracking-wider">Submit Review</span>
+            </div>
+          </div>
+
+        </div>
+        `,
       };
 
       function renderScreen(screenKey) {
@@ -1460,6 +1867,19 @@
         el.classList.add("active");
         el.innerHTML =
           '<svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+      }
+
+      function selectCustomerRating(idx) {
+        const stars = document.querySelectorAll('.cust-star-btn');
+        stars.forEach((star, i) => {
+          if (i < idx) {
+            star.classList.add('text-amber-400');
+            star.classList.remove('text-stone-300');
+          } else {
+            star.classList.remove('text-amber-400');
+            star.classList.add('text-stone-300');
+          }
+        });
       }
 
       // Initialize with Login screen
