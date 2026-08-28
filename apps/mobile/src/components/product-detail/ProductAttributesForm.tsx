@@ -175,10 +175,11 @@ export function ProductAttributesForm({
                             goToPhoto(variantPhotoIndex)
                           }
                         }}
-                        className={`w-8 h-8 rounded-full items-center justify-center border-2 ${
-                          isActive ? 'border-spaceCadet-900 scale-105 shadow-sm' : 'border-transparent'
-                        }`}
-                        style={{ backgroundColor: hex }}
+                        className="w-8 h-8 rounded-full items-center justify-center border-2"
+                        style={{
+                          backgroundColor: hex,
+                          borderColor: isActive ? '#231F48' : 'transparent',
+                        }}
                       >
                         {isActive && <Check size={13} color="#ffffff" strokeWidth={3} />}
                       </AnimatedPressable>
@@ -209,16 +210,14 @@ export function ProductAttributesForm({
                     <AnimatedPressable
                       key={size}
                       onPress={() => toggleSize(size)}
-                      className={`w-8 h-8 rounded-full items-center justify-center ${
-                        isSelected
-                          ? 'bg-spaceCadet-900 shadow-sm'
-                          : 'bg-lavender-100'
-                      }`}
+                      className="w-8 h-8 rounded-full items-center justify-center"
+                      style={{
+                        backgroundColor: isSelected ? '#231F48' : '#F2F1FA',
+                      }}
                     >
                       <Text
-                        className={`text-[11px] font-extrabold ${
-                          isSelected ? 'text-white' : 'text-spaceCadet-900'
-                        }`}
+                        className="text-[11px] font-extrabold"
+                        style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
                       >
                         {size}
                       </Text>
@@ -278,16 +277,15 @@ export function ProductAttributesForm({
                       dirty(setEditedCategoryId)(c.id)
                       dirty(setEditedCategory)(c.name)
                     }}
-                    className={`px-3.5 py-2 rounded-2xl border ${
-                      isSelected
-                        ? 'bg-spaceCadet-900 border-spaceCadet-900'
-                        : 'bg-lavender-50 border-lavender-200'
-                    }`}
+                    className="px-3.5 py-2 rounded-2xl border"
+                    style={{
+                      backgroundColor: isSelected ? '#231F48' : '#F2F1FA',
+                      borderColor: isSelected ? '#231F48' : '#E0E1F6',
+                    }}
                   >
                     <Text
-                      className={`text-xs font-bold ${
-                        isSelected ? 'text-white' : 'text-spaceCadet-900'
-                      }`}
+                      className="text-xs font-bold"
+                      style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
                     >
                       {c.name}
                     </Text>
@@ -435,16 +433,15 @@ export function ProductAttributesForm({
                 <AnimatedPressable
                   key={size}
                   onPress={() => toggleSize(size)}
-                  className={`w-12 h-12 rounded-full border items-center justify-center ${
-                    isSelected
-                      ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
-                      : 'bg-white border-lavender-200'
-                  }`}
+                  className="w-12 h-12 rounded-full border items-center justify-center"
+                  style={{
+                    backgroundColor: isSelected ? '#231F48' : '#FFFFFF',
+                    borderColor: isSelected ? '#231F48' : '#E0E1F6',
+                  }}
                 >
                   <Text
-                    className={`text-xs font-bold ${
-                      isSelected ? 'text-white' : 'text-spaceCadet-900'
-                    }`}
+                    className="text-xs font-bold"
+                    style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
                   >
                     {size}
                   </Text>

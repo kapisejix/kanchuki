@@ -104,25 +104,27 @@ export default function NewCollectionScreen() {
             maxLength={200}
           />
           <View className="flex-row gap-2.5">
-            {EXPIRY_OPTIONS.map((d) => (
-              <AnimatedPressable
-                key={d}
-                onPress={() => setExpiresDays(d)}
-                className={`flex-1 py-2.5 rounded-2xl border items-center justify-center ${
-                  expiresDays === d
-                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
-                    : 'bg-white border-lavender-200'
-                }`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    expiresDays === d ? 'text-white' : 'text-spaceCadet-900'
-                  }`}
+            {EXPIRY_OPTIONS.map((d) => {
+              const active = expiresDays === d
+              return (
+                <AnimatedPressable
+                  key={d}
+                  onPress={() => setExpiresDays(d)}
+                  className="flex-1 py-2.5 rounded-2xl border items-center justify-center"
+                  style={{
+                    backgroundColor: active ? '#231F48' : '#FFFFFF',
+                    borderColor: active ? '#231F48' : '#E0E1F6',
+                  }}
                 >
-                  {d} days
-                </Text>
-              </AnimatedPressable>
-            ))}
+                  <Text
+                    className="text-xs font-bold text-center"
+                    style={{ color: active ? '#FFFFFF' : '#231F48' }}
+                  >
+                    {d} days
+                  </Text>
+                </AnimatedPressable>
+              )
+            })}
           </View>
         </View>
 

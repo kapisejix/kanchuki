@@ -377,31 +377,37 @@ export function ProductMediaCarousel({
             router.push(`/product/${product.id}/add-photos?existingCount=${product.photos.length}`)
           }
           disabled={product.photos.length >= 10}
-          className="flex-1 items-center justify-center gap-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl"
+          className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center"
         >
-          <Camera size={16} color="#BB3F95" />
-          <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Photo</Text>
+          <View className="items-center justify-center gap-1">
+            <Camera size={16} color="#BB3F95" />
+            <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Photo</Text>
+          </View>
         </AnimatedPressable>
         <AnimatedPressable
           onPress={() => router.push(`/product/${product.id}/add-color`)}
-          className="flex-1 items-center justify-center gap-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl"
+          className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center"
         >
-          <Palette size={16} color="#BB3F95" />
-          <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Color</Text>
+          <View className="items-center justify-center gap-1">
+            <Palette size={16} color="#BB3F95" />
+            <Text className="text-spaceCadet-900 text-[10px] font-bold">Add Color</Text>
+          </View>
         </AnimatedPressable>
         <AnimatedPressable
           onPress={handleProductVideoPress}
           disabled={generateVideoPending || videoGenerating}
-          className="flex-1 items-center justify-center gap-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl relative"
+          className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center relative"
         >
-          {generateVideoPending || videoGenerating ? (
-            <ActivityIndicator size="small" color="#BB3F95" />
-          ) : (
-            <Video size={16} color="#BB3F95" />
-          )}
-          <Text className="text-spaceCadet-900 text-[10px] font-bold">
-            {videoGenerating ? 'Building...' : 'Video'}
-          </Text>
+          <View className="items-center justify-center gap-1">
+            {generateVideoPending || videoGenerating ? (
+              <ActivityIndicator size="small" color="#BB3F95" />
+            ) : (
+              <Video size={16} color="#BB3F95" />
+            )}
+            <Text className="text-spaceCadet-900 text-[10px] font-bold">
+              {videoGenerating ? 'Building...' : 'Video'}
+            </Text>
+          </View>
           {productVideosCount > 0 && !videoGenerating && (
             <View
               className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-xs"
@@ -413,14 +419,16 @@ export function ProductMediaCarousel({
         <AnimatedPressable
           onPress={() => setStudioModalOpen(true)}
           disabled={!originalPhoto || studioStarting || studioStatus === 'processing'}
-          className="flex-1 items-center justify-center gap-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl relative"
+          className="flex-1 bg-lavender-50 border border-lavender-200 py-2.5 rounded-2xl items-center justify-center relative"
         >
-          {studioStarting || studioStatus === 'processing' ? (
-            <ActivityIndicator size="small" color="#BB3F95" />
-          ) : (
-            <Sparkles size={16} color="#BB3F95" />
-          )}
-          <Text className="text-spaceCadet-900 text-[10px] font-bold">AI Studio</Text>
+          <View className="items-center justify-center gap-1">
+            {studioStarting || studioStatus === 'processing' ? (
+              <ActivityIndicator size="small" color="#BB3F95" />
+            ) : (
+              <Sparkles size={16} color="#BB3F95" />
+            )}
+            <Text className="text-spaceCadet-900 text-[10px] font-bold">AI Studio</Text>
+          </View>
           {!studioQuota?.unlimited && (
             <View
               className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-fuchsia-600 shadow-xs"

@@ -154,7 +154,13 @@ function AppShell() {
         <Stack.Screen name="product/scan" options={{ presentation: "modal" }} />
         <Stack.Screen name="product/bulk" options={{ presentation: "modal" }} />
         <Stack.Screen name="product/[id]" />
+        <Stack.Screen name="collection/new" />
+        <Stack.Screen name="collection/[id]" />
+        <Stack.Screen name="category/index" />
+        <Stack.Screen name="category/new" />
+        <Stack.Screen name="category/[id]" />
         <Stack.Screen name="customer/add" options={{ presentation: "modal" }} />
+        <Stack.Screen name="customer/[id]" />
         <Stack.Screen
           name="tryon/in-store"
           options={{ presentation: "fullScreenModal" }}
