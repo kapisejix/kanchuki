@@ -88,8 +88,9 @@ const EXTRACT_SCHEMA: AiJsonSchema = {
         type: 'array',
         items: { type: 'string' },
         description:
-          'Garment silhouette/style descriptors if visually identifiable, e.g. "Anarkali Suits", ' +
-          '"Palazzo Suits", "Indo Western", "Sharara Suits". Empty array if not applicable (e.g. a saree).',
+          'Garment silhouette/style descriptors (e.g. "Anarkali Suits", "Straight Cut", ' +
+          '"Palazzo Suits", "Sharara Suits", "Indo Western", "A-Line", "Peplum", "Angrakha", ' +
+          '"Traditional", "Festive", "Bridal", "Contemporary", "Casual"). Always identify and return the style/silhouette for the garment.',
       },
       fabrics: {
         type: 'array',

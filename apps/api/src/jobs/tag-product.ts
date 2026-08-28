@@ -106,6 +106,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         category_id: true,
         styles: true,
         fabrics: true,
+        search_tags: true,
       },
     });
 
@@ -135,6 +136,16 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
         ? await resolveAttributeNames(retailer_id, 'FABRIC', tags.fabrics)
         : current.fabrics;
 
+    const mergedSearchTags = Array.from(
+      new Set([
+        'New Arrivals',
+        ...(current?.search_tags ?? []),
+        ...(tags.search_tags ?? []),
+        ...(tags.category ? [tags.category] : []),
+        ...(tags.subtype ? [tags.subtype] : []),
+      ]),
+    ).filter(Boolean);
+
     const writeProductTags = (sku?: string) =>
       prisma.product.update({
         where: { id: product_id },
@@ -157,7 +168,7 @@ export async function handleTagProduct(data: TaggingJobData): Promise<void> {
           embellishments: tags.embellishments,
           neck_style: tags.neck_style,
           sleeve_type: tags.sleeve_type,
-          search_tags: tags.search_tags,
+          search_tags: mergedSearchTags,
           ...(current?.subtype == null ? { subtype: tags.subtype } : {}),
           ...(current?.name == null ? { name: tags.product_name } : {}),
           ...(current?.description == null ? { description: tags.short_description } : {}),

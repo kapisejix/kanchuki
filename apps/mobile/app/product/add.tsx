@@ -133,7 +133,7 @@ export default function AddProductScreen() {
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
-  const [categoryId, setCategoryId] = useState<string | null>(null)
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const [autoCleanup, setAutoCleanup] = useState(true)
   // F-030: composite a soft drop shadow under the garment during cleanup —
   // product-level default, applied by the background tag job after save.
@@ -173,6 +173,21 @@ export default function AddProductScreen() {
     queryFn: () => categoryApi.list(),
   })
   const categories = categoriesData?.data ?? []
+
+  // Auto-select "New Arrivals" category by default when categories load
+  useEffect(() => {
+    if (categories.length > 0 && selectedCategoryIds.length === 0) {
+      const newArrivalsCat = categories.find(
+        (c) =>
+          c.name.toLowerCase().includes('new arrival') ||
+          c.name.toLowerCase().includes('arrivals') ||
+          c.name.toLowerCase().includes('new'),
+      )
+      if (newArrivalsCat) {
+        setSelectedCategoryIds([newArrivalsCat.id])
+      }
+    }
+  }, [categories])
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
   // the admin default template — no hardcoded option lists).
@@ -454,6 +469,20 @@ export default function AddProductScreen() {
 
     const priceInPaise = price ? Math.round(parseFloat(price) * 100) : undefined
 
+    const primaryCategoryId = selectedCategoryIds[0] ?? undefined
+    const selectedCategoryNames = selectedCategoryIds
+      .map((id) => categories.find((c) => c.id === id)?.name)
+      .filter((n): n is string => Boolean(n))
+
+    const tagsToSave = Array.from(
+      new Set([
+        'New Arrivals',
+        ...selectedCategoryNames,
+        ...selectedStyles,
+        ...selectedFabrics,
+      ]),
+    )
+
     try {
       const created = await productApi.create({
         photo_r2_key: primary.r2_key,
@@ -462,9 +491,9 @@ export default function AddProductScreen() {
         price_max: priceInPaise,
         styles: selectedStyles,
         fabrics: selectedFabrics,
-        search_tags: [],
+        search_tags: tagsToSave,
         sizes: selectedSizes,
-        category_id: categoryId ?? undefined,
+        category_id: primaryCategoryId,
         location_notes: location || undefined,
         notes: notes || undefined,
         auto_cleanup: autoCleanup,
@@ -1190,31 +1219,40 @@ export default function AddProductScreen() {
           />
         </View>
 
-        {/* Category (retailer-curated merchandising group, optional) */}
+        {/* Categories (Retailer-curated merchandising groups - multi-select, New Arrivals auto-selected) */}
         <View className="bg-white rounded-2xl p-4 border border-sand-100">
           <View className="flex-row items-center justify-between mb-3">
-            <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
-              Category
-            </Text>
+            <View>
+              <Text className="text-xs font-semibold text-sand-500 uppercase tracking-wide">
+                Categories (Multi-Select)
+              </Text>
+              <Text className="text-[11px] text-sand-400 mt-0.5">
+                New Arrivals auto-selected · Select related category
+              </Text>
+            </View>
             <AnimatedPressable onPress={() => router.push('/category/new')}>
-              <Text className="text-ink-600 text-xs font-semibold">Manage</Text>
+              <Text className="text-ink-600 text-xs font-semibold">+ New</Text>
             </AnimatedPressable>
           </View>
           {categories.length === 0 ? (
             <Text className="text-xs text-sand-400">
-              No categories yet — tap Manage to create one.
+              No categories yet — tap + New to create one.
             </Text>
           ) : (
             <View className="flex-row flex-wrap gap-2">
               {categories.map((cat) => {
-                const selected = categoryId === cat.id
+                const selected = selectedCategoryIds.includes(cat.id)
                 return (
                   <AnimatedPressable
                     key={cat.id}
-                    onPress={() => setCategoryId(selected ? null : cat.id)}
+                    onPress={() =>
+                      setSelectedCategoryIds((prev) =>
+                        selected ? prev.filter((id) => id !== cat.id) : [...prev, cat.id],
+                      )
+                    }
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
-                    className={`px-3 py-1.5 rounded-full border flex-row items-center gap-1 ${
+                    className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1.5 ${
                       selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
                     }`}
                   >

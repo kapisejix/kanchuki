@@ -96,32 +96,48 @@ export default function TabsLayout() {
         options={{
           title: 'Add',
           tabBarLabel: () => null,
-          tabBarIcon: () => (
-            <View
-              style={{
-                width: 48,
-                height: 48,
-                borderRadius: 24,
-                backgroundColor: '#BB3F95',
-                justifyContent: 'center',
-                alignItems: 'center',
-                shadowColor: '#BB3F95',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.45,
-                shadowRadius: 8,
-                elevation: 6,
-              }}
-            >
-              <Plus color="#ffffff" size={26} strokeWidth={2.5} />
-            </View>
-          ),
-          tabBarButton: (props) => (
-            <AnimatedPressable
-              {...(props as any)}
-              onPress={() => router.push('/product/add')}
-              style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-            />
-          ),
+          tabBarIcon: () => null,
+          tabBarButton: (props) => {
+            const { style, ...rest } = props as any
+            return (
+              <AnimatedPressable
+                {...rest}
+                onPress={() => router.push('/product/add')}
+                style={[
+                  style,
+                  {
+                    flex: 1,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    alignSelf: 'center',
+                    top: -12,
+                  },
+                ]}
+                accessibilityLabel="Add New Product"
+                accessibilityRole="button"
+              >
+                <View
+                  style={{
+                    width: 52,
+                    height: 52,
+                    borderRadius: 26,
+                    backgroundColor: '#BB3F95',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    shadowColor: '#BB3F95',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.5,
+                    shadowRadius: 8,
+                    elevation: 8,
+                    borderWidth: 3,
+                    borderColor: '#231F48',
+                  }}
+                >
+                  <Plus color="#ffffff" size={26} strokeWidth={2.5} />
+                </View>
+              </AnimatedPressable>
+            )
+          },
           headerShown: false,
         }}
       />
