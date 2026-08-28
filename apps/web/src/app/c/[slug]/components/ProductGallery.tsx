@@ -126,63 +126,91 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
               ))}
             </Swiper>
 
-            {/* Variant color badge — bottom-left so it can't collide with the
-                Sold/Reserved ribbon (top-left) or the counter (bottom-right). */}
+            {/* Left-side Floating Thumbnail Strip Container (matches Spec #10 & #12) */}
+            {slideCount > 1 && (
+              <div className="absolute top-1/2 -translate-y-1/2 left-3.5 z-20 bg-white/85 backdrop-blur-md rounded-[20px] p-1.5 flex flex-col gap-2 shadow-lg border border-white/80">
+                {slides.slice(0, 4).map((slide, i) => (
+                  <button
+                    key={slide.url}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goTo(i);
+                    }}
+                    aria-label={slide.color ? `${slide.color} photo` : `Photo ${i + 1}`}
+                    className={`relative w-9 h-11 rounded-[12px] overflow-hidden border-2 transition-all duration-200 ${
+                      i === index
+                        ? 'border-[#BB3F95] scale-105 shadow-sm'
+                        : 'border-transparent opacity-80 hover:opacity-100'
+                    }`}
+                  >
+                    <Image
+                      src={slide.url}
+                      alt=""
+                      fill
+                      sizes="44px"
+                      className="object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Variant color badge */}
             {current?.color && (
-              <div className="absolute bottom-3 left-3 z-10 bg-cyan-600/90 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm pointer-events-none">
-                <Palette size={12} />
+              <div className="absolute top-3 left-3 z-10 bg-[#231F48]/85 text-white text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1.5 backdrop-blur-sm pointer-events-none">
+                <Palette size={12} className="text-[#BB3F95]" />
                 {current.color}
               </div>
             )}
 
             {/* Sold / Reserved ribbon */}
             {sold && (
-              <div className="absolute top-3 left-3 bg-red-500 text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full shadow-sm z-10">
+              <div className="absolute top-3 right-3 bg-rose-600 text-white text-[10px] font-extrabold uppercase tracking-wide px-3 py-1 rounded-full shadow-sm z-10">
                 Sold
               </div>
             )}
             {reserved && (
-              <div className="absolute top-3 left-3 bg-amber-500 text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5 rounded-full shadow-sm z-10">
+              <div className="absolute top-3 right-3 bg-amber-500 text-white text-[10px] font-extrabold uppercase tracking-wide px-3 py-1 rounded-full shadow-sm z-10">
                 Reserved
               </div>
             )}
 
-            {/* Navigation arrows */}
+            {/* Navigation arrow (right) */}
             {slideCount > 1 && (
-              <>
-                {index > 0 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goTo(index - 1);
-                    }}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                    aria-label="Previous photo"
-                  >
-                    <ChevronLeft size={18} className="text-gray-700" />
-                  </button>
-                )}
-                {index < slideCount - 1 && (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      goTo(index + 1);
-                    }}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                    aria-label="Next photo"
-                  >
-                    <ChevronRight size={18} className="text-gray-700" />
-                  </button>
-                )}
-              </>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  goTo(index < slideCount - 1 ? index + 1 : 0);
+                }}
+                className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40 hover:scale-105 transition z-10"
+                aria-label="Next photo"
+              >
+                <ChevronRight size={16} />
+              </button>
             )}
 
             {/* Counter — bottom-right */}
             {slideCount > 1 && (
-              <div className="absolute bottom-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm pointer-events-none">
-                {index + 1} / {slideCount}
+              <div className="absolute bottom-3.5 right-3.5 z-10 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm pointer-events-none">
+                {slideCount} Photos
+              </div>
+            )}
+
+            {/* Dots indicator */}
+            {slideCount > 1 && (
+              <div className="absolute bottom-3.5 left-20 flex gap-1.5 items-center z-10">
+                {slides.map((_, i) => (
+                  <span
+                    key={i}
+                    className={`transition-all duration-200 ${
+                      i === index
+                        ? 'w-4 h-1.5 rounded-full bg-[#BB3F95]'
+                        : 'w-1.5 h-1.5 rounded-full bg-white/80'
+                    }`}
+                  />
+                ))}
               </div>
             )}
           </>
@@ -192,46 +220,6 @@ export function ProductGallery({ photos, variants, alt, isSold, isReserved }: Pr
           </div>
         )}
       </div>
-
-      {/* ── Thumbnail strip (photos + variant photos) ── */}
-      {slideCount > 1 && (
-        <Swiper
-          onSwiper={setThumbsSwiper}
-          slidesPerView="auto"
-          spaceBetween={8}
-          watchSlidesProgress
-          className="mt-2.5 -mx-4 px-4 pb-1"
-        >
-          {slides.map((slide, i) => (
-            <SwiperSlide key={slide.url} style={{ width: 56 }}>
-              <button
-                type="button"
-                onClick={() => goTo(i)}
-                aria-label={slide.color ? `${slide.color} photo` : `Photo ${i + 1}`}
-                className={`relative flex-shrink-0 w-14 aspect-[3/4] rounded-lg overflow-hidden border-2 transition-all ${
-                  i === index
-                    ? 'border-cyan-500 shadow-soft'
-                    : 'border-transparent opacity-70 hover:opacity-100'
-                }`}
-              >
-                <Image
-                  src={slide.url}
-                  alt=""
-                  fill
-                  sizes="56px"
-                  loading="lazy" // Lazy load all thumbnail images
-                  className={`object-cover ${sold ? 'grayscale opacity-80' : ''}`}
-                />
-                {slide.color && (
-                  <span className="absolute bottom-0.5 left-1 text-[7px] font-semibold text-white bg-black/50 rounded px-1 py-px truncate max-w-full">
-                    {slide.color}
-                  </span>
-                )}
-              </button>
-            </SwiperSlide>
-          ))}
-        </Swiper>
-      )}
 
       {/* ── Color chips — tapping one jumps to its photo ── */}
       {variants.length > 0 && (

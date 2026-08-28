@@ -157,26 +157,27 @@ export function ProductMediaCarousel({
           </View>
         )}
 
-        {/* Left-side floating thumbnail strip (Point 10 PDP spec) */}
+        {/* Floating thumbnail strip (matches #10 Product Details spec in HTML) */}
         {displayPhotos.length > 1 && (
           <View
+            pointerEvents="box-none"
             style={{
               position: 'absolute',
               top: '50%',
-              left: 10,
-              transform: [{ translateY: -((Math.min(displayPhotos.length, 4) * 44 + (Math.min(displayPhotos.length, 4) - 1) * 6) / 2) }],
+              right: 12,
+              transform: [{ translateY: -((Math.min(displayPhotos.length, 4) * 48 + (Math.min(displayPhotos.length, 4) - 1) * 7) / 2) }],
               backgroundColor: 'rgba(255, 255, 255, 0.88)',
-              borderRadius: 20,
+              borderRadius: 22,
               padding: 5,
-              gap: 6,
+              gap: 7,
               borderWidth: 1,
-              borderColor: 'rgba(255, 255, 255, 0.8)',
+              borderColor: 'rgba(255, 255, 255, 0.85)',
               shadowColor: '#231F48',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.15,
-              shadowRadius: 10,
-              elevation: 4,
-              zIndex: 20,
+              shadowOffset: { width: 0, height: 8 },
+              shadowOpacity: 0.18,
+              shadowRadius: 16,
+              elevation: 10,
+              zIndex: 40,
             }}
           >
             {displayPhotos.slice(0, 4).map((photo, idx) => {
@@ -186,12 +187,13 @@ export function ProductMediaCarousel({
                   key={photo.id}
                   onPress={() => goToPhoto(idx)}
                   style={{
-                    width: 36,
-                    height: 42,
-                    borderRadius: 12,
+                    width: 38,
+                    height: 46,
+                    borderRadius: 14,
                     overflow: 'hidden',
                     borderWidth: 2,
                     borderColor: isSelected ? '#BB3F95' : 'transparent',
+                    backgroundColor: '#FAF9FE',
                   }}
                 >
                   <Image

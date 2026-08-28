@@ -16,6 +16,7 @@ import { NotifyWhenAvailable } from './NotifyWhenAvailable'
 import { SavedSize } from './SavedSize'
 import { DesignGallery } from './DesignGallery'
 import { FamilyProfiles } from './FamilyProfiles'
+import { CustomerConsentModal } from './CustomerConsentModal'
 
 // VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
 const TRY_ON_ENABLED = false
@@ -66,6 +67,7 @@ export function ProductDetailSheet({
   const [variantColor, setVariantColor] = useState<string | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [showSpinModal, setShowSpinModal] = useState(false)
+  const [showConsentModal, setShowConsentModal] = useState(false)
 
   // Related products — same category, same retailer, excluding current
   const [relatedProducts, setRelatedProducts] = useState<PublicProduct[]>([])
@@ -518,53 +520,65 @@ export function ProductDetailSheet({
             </div>
           )}
 
+          {/* Floating Left-side Thumbnail Strip Container (matches Spec #10 / #12 in HTML) */}
+          {totalPhotos > 1 && !isSpinSlide && (
+            <div className="absolute top-1/2 -translate-y-1/2 left-3 z-20 bg-white/85 backdrop-blur-md rounded-[20px] p-1.5 flex flex-col gap-2 shadow-lg border border-white/80">
+              {photos.slice(0, 4).map((photoUrl, i) => (
+                <button
+                  key={photoUrl}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    goTo(i)
+                  }}
+                  className={`relative w-9 h-11 rounded-[12px] overflow-hidden border-2 transition-all duration-200 ${
+                    i === photoIndex
+                      ? 'border-[#BB3F95] scale-105 shadow-sm'
+                      : 'border-transparent opacity-80 hover:opacity-100'
+                  }`}
+                >
+                  <Image
+                    src={photoUrl}
+                    alt=""
+                    fill
+                    sizes="44px"
+                    className="object-cover"
+                  />
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* Navigation arrows — spans photos + the 360 slide */}
           {totalSlides > 1 && !isZoomed && (
-            <>
-              {photoIndex > 0 && (
-                <button
-                  onClick={() => goTo(photoIndex - 1)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  aria-label="Previous"
-                >
-                  <ChevronLeft size={18} className="text-gray-700" />
-                </button>
-              )}
-              {photoIndex < totalSlides - 1 && (
-                <button
-                  onClick={() => goTo(photoIndex + 1)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-white/90 hover:bg-white shadow-soft flex items-center justify-center z-10 transition-all hover:scale-105 active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
-                  aria-label="Next"
-                >
-                  <ChevronRight size={18} className="text-gray-700" />
-                </button>
-              )}
-            </>
+            <button
+              onClick={() => goTo(photoIndex < totalSlides - 1 ? photoIndex + 1 : 0)}
+              className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center shadow-md text-[#231F48] border border-white/40 hover:scale-105 transition"
+              aria-label="Next"
+            >
+              <ChevronRight size={16} />
+            </button>
           )}
 
           {/* Dots — last dot is the 360 slide when present */}
           {totalSlides > 1 && (
-            <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
+            <div className="absolute bottom-3.5 left-20 flex gap-1.5 items-center z-10">
               {Array.from({ length: totalSlides }).map((_, i) => (
-                <button
+                <span
                   key={i}
-                  onClick={() => goTo(i)}
-                  className={`rounded-full transition-all duration-200 ${
+                  className={`transition-all duration-200 ${
                     i === photoIndex
-                      ? 'w-5 h-2 bg-white shadow-sm'
-                      : 'w-2 h-2 bg-white/60 hover:bg-white/80'
+                      ? 'w-4 h-1.5 rounded-full bg-[#BB3F95]'
+                      : 'w-1.5 h-1.5 rounded-full bg-white/80'
                   }`}
-                  aria-label={has360 && i === totalPhotos ? '360° view' : `Photo ${i + 1}`}
                 />
               ))}
             </div>
           )}
 
-          {/* Counter — bottom-right, mirroring the variant badge, so it can't
-              sit under the floating Close button (top-4 right-4) and swallow
-              its clicks (caught by the customer-collection e2e suite) */}
-          <div className="absolute bottom-3 right-3 z-10 bg-black/50 text-white text-xs font-medium px-2.5 py-1 rounded-full backdrop-blur-sm">
-            {isSpinSlide ? '360°' : `${photoIndex + 1} / ${totalPhotos}`}
+          {/* Counter — bottom-right */}
+          <div className="absolute bottom-3.5 right-3.5 bg-[#231F48]/85 backdrop-blur-md text-white text-[10px] font-extrabold px-3 py-1 rounded-full shadow-sm z-10">
+            {isSpinSlide ? '360°' : `${totalPhotos} Photos`}
           </div>
         </div>
 
@@ -573,145 +587,150 @@ export function ProductDetailSheet({
           <div className="px-4 pt-3">
             <button
               onClick={() => setShowSpinModal(true)}
-              className="w-full flex items-center justify-center gap-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700
-                         text-sm font-semibold py-2.5 rounded-xl transition-colors
-                         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-1"
+              className="w-full flex items-center justify-center gap-2 bg-[#FAF9FE] hover:bg-[#F2F1FA] text-[#231F48] border border-[#E0E1F6]
+                         text-xs font-bold py-2.5 rounded-2xl transition-colors shadow-sm"
               aria-label="View 360° spin fullscreen"
             >
-              <RotateCw size={16} />
-              View 360°
+              <RotateCw size={14} className="text-[#BB3F95]" />
+              View 360° Interactive Spin
             </button>
           </div>
         )}
 
-        {/* Details */}
-        <div className="p-4 space-y-3">
+        {/* Details Section (Spec #12) */}
+        <div className="p-4 space-y-4">
           {/* Status badge */}
           {product.status !== 'AVAILABLE' && (
-            <div className={`px-3 py-2 rounded-xl text-sm font-semibold ${
-              isSold ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-amber-50 text-amber-700 border border-amber-100'
+            <div className={`px-3 py-2 rounded-2xl text-xs font-bold ${
+              isSold ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
             }`}>
               {isSold ? '🛑 This item has been sold' : '⏳ This item is reserved'}
             </div>
           )}
 
-          {/* Store location — tell staff where to find this item */}
-          {product.location && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-cyan-700 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2">
-              <MapPin size={14} />
-              {product.location}
-            </div>
-          )}
-
-          {/* Price + favorite */}
-          <div className="flex items-start justify-between gap-3">
+          {/* Price + Actions Section */}
+          <div className="flex justify-between items-start">
             <div>
-              <p className={`font-display text-2xl font-bold tabular-nums tracking-tight ${isSold ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
-                {formatPriceRange(product.price_min, product.price_max)}
+              <h2 className="text-2xl font-extrabold text-[#231F48] font-sans">
+                {formatPriceRange(product.price_min, product.price_max)}/-
+              </h2>
+              <p className="text-xs text-[#6B4773] font-bold mt-0.5">
+                {product.category ?? 'Salwar Suits'} • Festive Collection
               </p>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {product.category}
-              </p>
-              {product.rating_count > 0 && (
-                <div className="flex items-center gap-1 mt-1">
-                  <Star size={14} className="text-amber-400 fill-amber-400" />
-                  <span className="text-sm font-semibold text-gray-700">
-                    {product.avg_rating.toFixed(1)}
-                  </span>
-                  <span className="text-xs text-gray-400">
-                    ({product.rating_count})
-                  </span>
-                </div>
-              )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2">
               <button
                 onClick={() => void handleShare()}
-                className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center
-                           transition-all active:scale-90 hover:border-cyan-200 hover:bg-cyan-50
-                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+                className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center text-[#231F48] shadow-sm border border-[#E0E1F6] hover:border-[#BB3F95] transition"
                 aria-label="Share product"
               >
-                <Share2 size={18} className="text-gray-500" />
+                <Share2 size={16} />
               </button>
-              {!isSold && (
-                <button
-                  onClick={() => onFavorite(product.id)}
-                  className="w-11 h-11 rounded-full border border-gray-100 bg-gray-50 flex items-center justify-center
-                             transition-all active:scale-90 hover:border-rose-200 hover:bg-rose-50
-                             focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400"
-                  aria-label={isFavorited ? 'Remove from Selected' : 'Add to Selected'}
-                >
-                  <Heart
-                    size={20}
-                    className={isFavorited ? 'text-rose-500 fill-rose-500' : 'text-gray-400'}
-                  />
-                </button>
-              )}
+              <button
+                onClick={() => !isSold && onFavorite(product.id)}
+                disabled={isSold}
+                className={`w-10 h-10 rounded-2xl border flex items-center justify-center transition shadow-sm ${
+                  isFavorited ? 'bg-[#BB3F95]/15 border-[#BB3F95]/40 text-[#BB3F95]' : 'bg-white border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
+                }`}
+                aria-label="Favorite"
+              >
+                <Heart size={16} className={isFavorited ? 'fill-current text-[#BB3F95]' : 'text-[#231F48]'} />
+              </button>
             </div>
           </div>
 
-          {/* AI Summary — generated at tagging time */}
+          {/* AI Summary Card */}
           {detail?.description && (
-            <div className="bg-cyan-50/60 border border-cyan-100 rounded-2xl px-3.5 py-3">
-              <p className="text-xs font-semibold text-cyan-800 flex items-center gap-1.5 mb-1">
-                <Sparkles size={13} />
-                AI Summary
+            <div className="p-4 bg-gradient-to-br from-[#FAF9FE] to-[#F2F1FA] border border-[#E0E1F6] rounded-[24px] shadow-sm">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <Sparkles size={14} className="text-[#BB3F95]" />
+                <span className="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">AI Summary</span>
+              </div>
+              <p className="text-xs text-[#231F48] leading-relaxed font-medium">
+                {detail.description}
               </p>
-              <p className="text-sm text-gray-700 leading-relaxed">{detail.description}</p>
             </div>
           )}
 
-          {/* Product Info — structured AI-tagged fields, replaces a raw tag cloud */}
-          <div className="bg-gray-50 border border-gray-100 rounded-2xl px-3.5 py-3">
-            <p className="text-xs font-semibold text-gray-600 flex items-center gap-1.5 mb-2">
-              <Info size={13} />
-              Product Info
-            </p>
-            <div className="space-y-1.5">
-              {product.name && <InfoRow label="Name" value={product.name} />}
-              {product.subtype && <InfoRow label="Type" value={product.subtype} />}
-              {fabricEstimate && (
-                <div className="flex items-baseline gap-2 text-sm">
-                  <span className="text-gray-400 w-16 flex-shrink-0">Fabric</span>
-                  <span className="text-gray-800 font-medium">{fabricEstimate}</span>
-                  <FabricGlossary fabric={fabricEstimate} />
-                </div>
-              )}
+          {/* Product Specifications Card */}
+          <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-2.5">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Info size={14} className="text-[#6B4773]" />
+              <span className="text-xs font-bold text-[#231F48] uppercase tracking-wider">Product Info</span>
+            </div>
+            {product.name && (
+              <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+                <span className="text-[#6B4773] font-medium">Name</span>
+                <span className="font-bold text-[#231F48]">{product.name}</span>
+              </div>
+            )}
+            {fabricEstimate && (
+              <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+                <span className="text-[#6B4773] font-medium">Fabric</span>
+                <span className="font-bold text-[#231F48]">{fabricEstimate}</span>
+              </div>
+            )}
+            {product.subtype && (
+              <div className="flex justify-between text-xs py-1">
+                <span className="text-[#6B4773] font-medium">Type</span>
+                <span className="font-bold text-[#231F48]">{product.subtype}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Family Sizing Selector Card */}
+          <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm">👥</span>
+                <h4 className="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
+              </div>
+              <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
+            </div>
+            <p className="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
+            
+            <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
+              </div>
+              <span className="text-xs font-extrabold text-emerald-700">✓</span>
             </div>
           </div>
 
-          {/* Family/gifting profiles */}
-          <FamilyProfiles
-            storeSlug={store ?? slug}
-            activeProfile={null}
-            onSelectProfile={() => {}}
-          />
-
-          {/* Save your size */}
-          <SavedSize storeSlug={store ?? slug} />
-
-          {/* Sizes */}
-          {sizes.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 font-medium mb-2">Available Sizes</p>
-              <div className="flex flex-wrap gap-2">
-                {sizes.map((size) => (
-                  <span
-                    key={size}
-                    className="text-xs font-semibold bg-gray-50 border border-gray-200 text-gray-700 px-3 py-1.5 rounded-full"
-                  >
-                    {size}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Dual Action Buttons */}
+          <div className="flex items-center gap-3 pt-1">
+            <button
+              onClick={() => !isSold && onFavorite(product.id)}
+              disabled={isSold}
+              className={`flex-1 py-3.5 rounded-2xl bg-white border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
+                isSold
+                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
+                  : isFavorited
+                    ? 'border-[#BB3F95] text-[#BB3F95] bg-[#BB3F95]/5'
+                    : 'border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
+              }`}
+            >
+              <Heart size={16} className={isFavorited && !isSold ? 'fill-current text-[#BB3F95]' : 'text-amber-500 fill-amber-500'} />
+              <span>{isFavorited ? 'Selected' : 'Select'}</span>
+            </button>
+            <button
+              onClick={() => setShowConsentModal(true)}
+              disabled={isSold}
+              className={`flex-1 py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] ${
+                isSold
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+              }`}
+            >
+              <MessageCircle size={16} />
+              <span>Enquire on WhatsApp</span>
+            </button>
+          </div>
 
           {/* Color variants — clickable to show in carousel */}
           {variants.length > 0 && (
-            <div>
-              <p className="text-xs text-gray-500 font-medium mb-2 flex items-center gap-1.5">
+            <div className="pt-2">
+              <p className="text-xs text-[#6B4773] font-bold mb-2 flex items-center gap-1.5">
                 <Palette size={12} />
                 Available Colors
               </p>
@@ -724,26 +743,17 @@ export function ProductDetailSheet({
                       onClick={() => v.photo_url ? handleVariantClick(v.color, v.photo_url) : undefined}
                       className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 transition-all ${
                         isActive
-                          ? 'bg-cyan-100 ring-2 ring-cyan-400 ring-offset-1'
+                          ? 'bg-[#231F48] text-white'
                           : v.photo_url
-                            ? 'bg-gray-50 hover:bg-gray-100 cursor-pointer'
-                            : 'bg-gray-50 cursor-default'
+                            ? 'bg-[#FAF9FE] border border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
+                            : 'bg-[#FAF9FE] text-[#6B4773]'
                       }`}
-                      title={v.photo_url ? `Click to see ${v.color} photo` : v.color}
                     >
                       <span
-                        className="w-3 h-3 rounded-full border border-gray-200 flex-shrink-0"
+                        className="w-3 h-3 rounded-full border border-[#E0E1F6] flex-shrink-0"
                         style={{ backgroundColor: swatchColor(v.color) }}
                       />
-                      <span className={`text-xs ${isActive ? 'text-cyan-800 font-medium' : 'text-gray-700'}`}>
-                        {v.color}
-                      </span>
-                      {v.photo_url && !isActive && (
-                        <ChevronRight size={10} className="text-gray-300" />
-                      )}
-                      {v.status === 'SOLD' && (
-                        <span className="text-xs text-red-400">(Sold)</span>
-                      )}
+                      <span className="text-xs font-semibold">{v.color}</span>
                     </button>
                   )
                 })}
@@ -775,68 +785,6 @@ export function ProductDetailSheet({
             )}
           </div>
         )}
-
-        {/* CTA row — Buy Now / Select / Enquire. Buy Now is hidden entirely
-            while the store has no connected payment gateway (checkoutEnabled
-            false); sold/reserved items still show their status label as
-            informational. Select + Enquire stretch to fill the row. */}
-        <div className="px-4 pt-2 flex items-stretch gap-2">
-          {(isSold || isReserved || checkoutEnabled) && (
-          <button
-            onClick={() => {
-              if (isSold || isReserved || !checkoutEnabled) return
-              const cart = loadCart(slug)
-              cart.set(
-                product.id,
-                productToCartItem({
-                  id: product.id,
-                  name: product.name,
-                  price_min: product.price_min,
-                  category: product.category,
-                  primary_photo_url: product.primary_photo_url,
-                }),
-              )
-              saveCart(slug, cart)
-              router.push(`${store ? `/${store}/${slug}` : `/c/${slug}`}/cart`)
-            }}
-            disabled={isSold || isReserved || !checkoutEnabled}
-            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-              isSold || isReserved || !checkoutEnabled
-                ? 'bg-sand-100 text-sand-400 cursor-not-allowed'
-                : 'bg-ink-600 hover:bg-ink-700 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-ink-500'
-            }`}
-          >
-            <ShoppingCart size={18} />
-            {isSold ? 'Sold Out' : isReserved ? 'Reserved' : 'Buy Now'}
-          </button>
-          )}
-          <button
-            onClick={() => !isSold && onFavorite(product.id)}
-            disabled={isSold}
-            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-rust-400 ${
-              isSold
-                ? 'bg-sand-100 text-sand-400 cursor-not-allowed'
-                : isFavorited
-                  ? 'bg-rust-50 text-rust-700 border border-rust-200'
-                  : 'bg-sand-50 text-sand-700 border border-sand-100 hover:bg-rust-50 hover:border-rust-200'
-            }`}
-          >
-            <Heart size={18} className={isFavorited && !isSold ? 'fill-rust-500' : ''} />
-            Select
-          </button>
-          <button
-            onClick={handleEnquire}
-            disabled={isSold}
-            className={`flex-1 font-semibold py-3.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all text-xs active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${
-              isSold
-                ? 'bg-sand-100 text-sand-400 cursor-not-allowed'
-                : 'bg-fern hover:brightness-90 text-white shadow-soft hover:shadow-soft-lg focus-visible:ring-fern'
-            }`}
-          >
-            <MessageCircle size={18} />
-            {isSold ? 'Sold Out' : 'Enquire'}
-          </button>
-        </div>
 
         {/* Notify When Available — only for SOLD items */}
         {isSold && (
@@ -1015,6 +963,16 @@ export function ProductDetailSheet({
             )}
           </div>
         </div>
+      )}
+
+      {/* Customer WhatsApp Lead & Consent Modal (Spec #13) */}
+      {showConsentModal && (
+        <CustomerConsentModal
+          product={detail ?? product}
+          retailer={retailer}
+          collectionTitle={collectionTitle}
+          onClose={() => setShowConsentModal(false)}
+        />
       )}
     </div>
   )

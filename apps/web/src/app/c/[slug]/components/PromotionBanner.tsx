@@ -62,53 +62,48 @@ export function PromotionBanner({ storeSlug }: Props) {
   const timeLeft = fmtTimeLeft(promo.ends_at)
 
   return (
-    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl px-4 py-3 mb-4">
+    <div className="bg-gradient-to-r from-[#FAF9FE] via-white to-[#F2F1FA] border border-[#E0E1F6] rounded-[22px] p-3.5 shadow-sm mb-4">
       <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <Tag size={16} className="text-amber-600 flex-shrink-0" />
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-9 h-9 rounded-xl bg-[#BB3F95]/15 flex items-center justify-center text-[#BB3F95] flex-shrink-0">
+            <Tag size={16} className="text-[#BB3F95]" />
+          </div>
           <div className="min-w-0">
-            <p className="text-sm font-bold text-amber-900">
-              {fmtDiscount(promo)}
-            </p>
-            <p className="text-xs text-amber-700 mt-0.5">
-              Use code{' '}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-extrabold text-[#231F48] uppercase tracking-wide">
+                {fmtDiscount(promo)}
+              </span>
+              <span className="text-[10px] text-[#6B4773] font-medium">Use code</span>
               <button
                 onClick={() => void handleCopy(promo.code, promo.id)}
-                className="font-mono font-bold bg-amber-100 hover:bg-amber-200 px-1.5 py-0.5 rounded transition-colors inline-flex items-center gap-1"
+                className="font-mono font-bold text-[10px] bg-[#231F48] text-white hover:bg-[#560A39] px-2 py-0.5 rounded-md transition-colors inline-flex items-center gap-1 shadow-sm"
               >
                 {promo.code}
                 {copiedId === promo.id ? (
-                  <Check size={10} className="text-green-600" />
+                  <Check size={11} className="text-emerald-300" />
                 ) : (
-                  <Copy size={10} className="text-amber-500" />
+                  <Copy size={11} className="text-[#E0E1F6]" />
                 )}
               </button>
-              {promo.min_order_paise && (
-                <span className="text-amber-600 ml-1">
-                  (min ₹{(promo.min_order_paise / 100).toFixed(0)})
-                </span>
-              )}
+            </div>
+            <p className="text-[10px] text-[#6B4773] font-medium mt-0.5">
+              {promo.min_order_paise
+                ? `On minimum cart order of ₹${(promo.min_order_paise / 100).toFixed(0)}`
+                : 'Valid on entire collection'}
+              {timeLeft && ` · ${timeLeft}`}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {timeLeft && (
-            <span className="flex items-center gap-0.5 text-[10px] text-amber-600 font-medium">
-              <Clock size={9} />
-              {timeLeft}
-            </span>
-          )}
-          <button
-            onClick={() => setDismissed(true)}
-            className="w-6 h-6 rounded-full hover:bg-amber-100 flex items-center justify-center transition-colors"
-            aria-label="Dismiss"
-          >
-            <X size={12} className="text-amber-400" />
-          </button>
-        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-[#928EB2] hover:text-[#231F48] p-1 text-xs"
+          aria-label="Dismiss promotion"
+        >
+          <X size={14} />
+        </button>
       </div>
       {promotions.length > 1 && (
-        <p className="text-[10px] text-amber-600 mt-1.5 ml-6">
+        <p className="text-[10px] text-[#6B4773]/70 mt-2 ml-[52px]">
           +{promotions.length - 1} more offer{promotions.length > 2 ? 's' : ''} available
         </p>
       )}

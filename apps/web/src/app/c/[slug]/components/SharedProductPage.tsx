@@ -1,8 +1,8 @@
 'use client';
 
 import type { PublicCollection, PublicProductDetail } from '@kanchuki/shared';
-import { buildEnquiryMessage, buildWhatsAppEnquiryLink, formatPriceRange } from '@kanchuki/shared';
-import { ArrowLeft, Info, MapPin, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import { formatPriceRange } from '@kanchuki/shared';
+import { ArrowLeft, Info, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -10,6 +10,7 @@ import { ContactGate } from '@/app/[store]/components/ContactGate';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { ProductGallery } from './ProductGallery';
 import { ReviewForm } from './StarPicker';
+import { CustomerConsentModal } from './CustomerConsentModal';
 
 interface Props {
   collection: PublicCollection;
@@ -21,22 +22,14 @@ interface Props {
 
 const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
 
-// Shared product link page body — the URL customers forward on WhatsApp. The
-// OG image is the product's own photo (set by the route's generateMetadata)
-// so the WhatsApp preview shows the product, and the primary CTA takes the
-// recipient back into the full catalog.
 export function SharedProductPage({ collection, product, collectionPath }: Props) {
   const router = useRouter();
   const shop = collection.retailer.shop_name;
   const city = collection.retailer.city;
   const isSold = product.status === 'SOLD';
   const isReserved = product.status === 'RESERVED';
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
-  // Gate new visitors behind a name/phone form before showing the product —
-  // same lead capture the store's root page uses (ContactGate), keyed off
-  // the retailer's store slug so it's shared with that flow. Retailers
-  // without a store slug (legacy /c/[slug] only) have no /api/{slug}/leads
-  // route, so they skip gating entirely, same as everywhere else in the app.
   const storeSlug = collection.retailer.public_slug;
   const catalogTarget = storeSlug
     ? collectionPath.startsWith(`/${storeSlug}/categories/`) || collectionPath === `/${storeSlug}/all`
@@ -54,26 +47,12 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
     setNeedsLead(!localStorage.getItem(leadKey(storeSlug)));
   }, [storeSlug]);
 
-  // This page is usually the FIRST page in the tab's history — opened
-  // straight from a WhatsApp link, not navigated to from within the site —
-  // so the native/browser back button has nothing to go back to and exits
-  // with a blank screen. Push a synthetic history entry so the first back
-  // press instead lands on the store's catalog.
   useEffect(() => {
     window.history.pushState({ kanchukiSharedEntry: true }, '', window.location.href);
     const onPopState = () => router.push(catalogTarget);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, [catalogTarget, router]);
-
-  // Server-built WhatsApp enquiry deep link — the recipient can message the
-  // shop about this exact product without any client-side logic.
-  const enquiryMessage = buildEnquiryMessage({
-    shopName: shop,
-    collectionTitle: collection.title,
-    products: [product],
-  });
-  const enquiryUrl = buildWhatsAppEnquiryLink(collection.retailer.phone, enquiryMessage);
 
   const galleryAlt = product.name ?? product.subtype ?? product.category ?? 'Product';
 
@@ -92,32 +71,41 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 font-sans">
+    <div className="min-h-screen bg-[#F8F7FC] font-sans pb-16">
       {/* ── Header — back to the catalog ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-gray-100">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-[#E0E1F6]">
         <KanchukiBrandBar />
-        <div className="max-w-md mx-auto px-4 py-3.5 flex items-center gap-3">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <Link
             href={catalogTarget}
-            className="p-2 -ml-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+            className="w-9 h-9 rounded-2xl bg-white border border-[#E0E1F6] flex items-center justify-center text-[#231F48] shadow-sm hover:border-[#BB3F95] transition"
             aria-label="Back to catalog"
           >
-            <ArrowLeft size={20} />
+            <ArrowLeft size={16} />
           </Link>
-          <div className="min-w-0">
-            <p className="text-[11px] text-cyan-700/80 font-semibold uppercase tracking-wider truncate">
-              {shop}
-              {city ? ` · ${city}` : ''}
-            </p>
-            <h1 className="font-display text-base font-bold text-gray-900 truncate">
-              {collection.title}
-            </h1>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#231F48] to-[#560A39] text-white flex items-center justify-center font-serif font-bold text-xs shadow-sm">
+              {shop.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="min-w-0 text-center">
+              <h1 className="font-bold text-xs text-[#231F48] truncate max-w-[200px]">
+                {shop}
+              </h1>
+              {city && <p className="text-[10px] text-[#6B4773] font-medium">{city}</p>}
+            </div>
           </div>
+          <Link
+            href={catalogTarget}
+            className="w-9 h-9 rounded-2xl bg-white border border-[#E0E1F6] flex items-center justify-center text-[#231F48] shadow-sm hover:border-[#BB3F95] transition"
+            aria-label="Catalog"
+          >
+            <ShoppingBag size={16} />
+          </Link>
         </div>
       </header>
 
-      <main className="max-w-md mx-auto px-4 py-4">
-        {/* ── Swipeable photo/variant gallery ── */}
+      <main className="max-w-md mx-auto px-4 py-4 space-y-4">
+        {/* ── Swipeable photo/variant gallery with floating thumbnail strip ── */}
         <ProductGallery
           photos={product.photos}
           variants={product.variants.map((v) => ({
@@ -130,105 +118,151 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           isReserved={isReserved}
         />
 
-        {/* ── Price + name ── */}
-        <div className="mt-4 space-y-3">
+        {/* ── Price & Title Section (Spec #12) ── */}
+        <div className="flex justify-between items-start pt-1">
           <div>
-            <p
-              className={`font-marcellus text-3xl font-extrabold tabular-nums tracking-tight ${
-                isSold ? 'text-gray-400 line-through' : 'text-[#231F48]'
-              }`}
-            >
-              {formatPriceRange(product.price_min, product.price_max)}
+            <h2 className="text-2xl font-extrabold text-[#231F48] font-sans">
+              {formatPriceRange(product.price_min, product.price_max)}/-
+            </h2>
+            <p className="text-xs text-[#6B4773] font-bold mt-0.5">
+              {product.category ?? 'Salwar Suits'} • Festive Collection
             </p>
-            {(product.name || product.category) && (
-              <h2 className="text-lg font-bold text-[#231F48] font-marcellus mt-1">
-                {product.name ?? product.category}
-              </h2>
-            )}
-            {product.category && product.name && (
-              <p className="text-xs font-bold text-[#6B4773] uppercase tracking-wider">{product.category}</p>
-            )}
             {product.rating_count > 0 && (
               <div className="flex items-center gap-1 mt-1">
-                <Star size={14} className="text-[#BB3F95] fill-[#BB3F95]" />
-                <span className="text-sm font-semibold text-gray-700">
+                <Star size={13} className="text-[#BB3F95] fill-[#BB3F95]" />
+                <span className="text-xs font-bold text-[#231F48]">
                   {product.avg_rating.toFixed(1)}
                 </span>
-                <span className="text-xs text-gray-400">
+                <span className="text-[10px] text-[#6B4773]">
                   ({product.rating_count})
                 </span>
               </div>
             )}
           </div>
-
-          {/* Store location — tell staff where to find this item */}
-          {product.location && (
-            <div className="flex items-center gap-1.5 text-xs font-bold text-[#560A39] bg-[#E0E1F6]/60 border border-[#C8CAEE] rounded-2xl px-3 py-2">
-              <MapPin size={14} />
-              {product.location}
-            </div>
-          )}
-
-          {/* AI Summary */}
-          {product.description && (
-            <div className="bg-white border border-[#E0E1F6] rounded-2xl p-4 shadow-sm">
-              <p className="text-xs font-bold text-[#BB3F95] flex items-center gap-1.5 mb-1 uppercase tracking-wider">
-                <Sparkles size={13} />
-                AI Fabric & Style Summary
-              </p>
-              <p className="text-xs text-[#231F48] leading-relaxed font-medium">{product.description}</p>
-            </div>
-          )}
-
-          {/* Sizes */}
-          {product.sizes.length > 0 && (
-            <div>
-              <p className="text-xs text-[#6B4773] font-bold uppercase tracking-wider mb-2">Available Sizes</p>
-              <div className="flex flex-wrap gap-2">
-                {product.sizes.map((size) => (
-                  <span
-                    key={size}
-                    className="text-xs font-extrabold bg-[#E0E1F6] border border-[#C8CAEE] text-[#231F48] px-3.5 py-1.5 rounded-full"
-                  >
-                    {size}
-                  </span>
-                ))}
-              </div>
+          {product.name && (
+            <div className="text-right">
+              <span className="text-xs font-extrabold text-[#231F48] block truncate max-w-[150px]">
+                {product.name}
+              </span>
+              <span className="text-[10px] text-[#6B4773] font-semibold bg-[#E0E1F6]/60 px-2 py-0.5 rounded-md">
+                {product.subtype ?? 'Ethnic'}
+              </span>
             </div>
           )}
         </div>
 
-        {/* ── CTAs — enquire on WhatsApp + browse the full catalog ── */}
-        {!isSold && (
-          <div className="mt-6 space-y-2.5">
-            <a
-              href={enquiryUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center justify-between px-5 py-3.5 rounded-3xl
-                         bg-gradient-to-r from-[#231F48] to-[#560A39] text-white shadow-lg
-                         transition-all active:scale-[0.98] font-bold text-xs uppercase tracking-wider"
-            >
-              <span>Enquire on WhatsApp</span>
-              <div className="w-8 h-8 rounded-xl bg-[#BB3F95] flex items-center justify-center text-white">
-                <MessageCircle size={16} />
-              </div>
-            </a>
+        {/* ── AI Summary Card ── */}
+        {product.description && (
+          <div className="p-4 bg-gradient-to-br from-[#FAF9FE] to-[#F2F1FA] border border-[#E0E1F6] rounded-[24px] shadow-sm">
+            <div className="flex items-center gap-1.5 mb-1.5">
+              <Sparkles size={14} className="text-[#BB3F95]" />
+              <span className="text-xs font-bold text-[#BB3F95] uppercase tracking-wider">AI Summary</span>
+            </div>
+            <p className="text-xs text-[#231F48] leading-relaxed font-medium">
+              {product.description}
+            </p>
           </div>
         )}
 
-        <Link
-          href={catalogTarget}
-          className="mt-2.5 flex items-center justify-center gap-2 w-full font-bold py-3.5 rounded-3xl
-                     bg-white border border-[#E0E1F6] text-[#231F48] shadow-sm
-                     transition-all active:scale-[0.98] text-xs uppercase tracking-wider"
-        >
-          <ShoppingBag size={16} />
-          View Full Catalog
-        </Link>
+        {/* ── Product Specifications Card ── */}
+        <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-2.5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Info size={14} className="text-[#6B4773]" />
+            <span className="text-xs font-bold text-[#231F48] uppercase tracking-wider">Product Info</span>
+          </div>
+          {product.name && (
+            <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+              <span className="text-[#6B4773] font-medium">Name</span>
+              <span className="font-bold text-[#231F48]">{product.name}</span>
+            </div>
+          )}
+          {product.fabric_estimate && (
+            <div className="flex justify-between text-xs py-1 border-b border-[#E0E1F6]/60">
+              <span className="text-[#6B4773] font-medium">Fabric</span>
+              <span className="font-bold text-[#231F48]">{product.fabric_estimate}</span>
+            </div>
+          )}
+          {product.subtype && (
+            <div className="flex justify-between text-xs py-1">
+              <span className="text-[#6B4773] font-medium">Type</span>
+              <span className="font-bold text-[#231F48]">{product.subtype}</span>
+            </div>
+          )}
+        </div>
 
-        {/* Review Form */}
-        <div className="mt-5">
+        {/* ── Family Sizing Selector Card ── */}
+        <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm">👥</span>
+              <h4 className="text-xs font-bold text-[#231F48]">Shopping for Family?</h4>
+            </div>
+            <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
+          </div>
+          <p className="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
+          
+          <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
+            </div>
+            <span className="text-xs font-extrabold text-emerald-700">✓</span>
+          </div>
+        </div>
+
+        {/* ── Available Sizes ── */}
+        {product.sizes.length > 0 && (
+          <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm">
+            <p className="text-xs text-[#6B4773] font-bold uppercase tracking-wider mb-2.5">Available Sizes</p>
+            <div className="flex flex-wrap gap-2">
+              {product.sizes.map((size) => (
+                <span
+                  key={size}
+                  className="text-xs font-bold bg-[#FAF9FE] border border-[#E0E1F6] text-[#231F48] px-3.5 py-1.5 rounded-xl"
+                >
+                  {size}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ── Dual CTA Action Buttons ── */}
+        {!isSold && (
+          <div className="space-y-3 pt-2">
+            <button
+              onClick={() => setShowConsentModal(true)}
+              className="w-full py-4 px-5 rounded-3xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-between shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                  <MessageCircle size={18} className="fill-current" />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-white block">
+                    Enquire on WhatsApp
+                  </span>
+                  <span className="text-[9px] text-[#E0E1F6]/80 font-medium block">
+                    Direct boutique connect
+                  </span>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
+                →
+              </div>
+            </button>
+
+            <Link
+              href={catalogTarget}
+              className="flex items-center justify-center gap-2 w-full font-bold py-3.5 rounded-3xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-sm hover:border-[#BB3F95] transition text-xs uppercase tracking-wider"
+            >
+              <ShoppingBag size={16} />
+              View Full Catalog
+            </Link>
+          </div>
+        )}
+
+        {/* ── Rate this product Review Form ── */}
+        <div className="pt-2">
           <ReviewForm
             productName={product.name ?? product.category ?? 'this product'}
             retailerId={collection.retailer.id}
@@ -237,21 +271,22 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           />
         </div>
 
-        <p className="text-center text-xs text-gray-400 mt-4">
+        <p className="text-center text-[10px] text-[#6B4773] mt-4">
           Shared from {shop}
-          {city ? `, ${city}` : ''} via Kanchuki
+          {city ? `, ${city}` : ''} via Kanchuki Direct Boutique Connect
         </p>
-        <div className="pb-6" />
       </main>
+
+      {/* Customer WhatsApp Lead & Consent Modal (Spec #13) */}
+      {showConsentModal && (
+        <CustomerConsentModal
+          product={product}
+          retailer={collection.retailer}
+          collectionTitle={collection.title}
+          onClose={() => setShowConsentModal(false)}
+        />
+      )}
     </div>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-baseline gap-2 text-sm">
-      <span className="text-gray-400 w-16 flex-shrink-0">{label}</span>
-      <span className="text-gray-800 font-medium">{value}</span>
-    </div>
-  );
-}
