@@ -11,7 +11,9 @@ export async function fetchProductDetail(productId: string): Promise<PublicProdu
       next: { revalidate: 60 }, // ISR — revalidate every 60s
     });
     if (!res.ok) {
-      console.error(`fetchProductDetail(${productId}): API returned ${res.status} from ${apiUrl}`);
+      // 404 = unknown product id (often bot scanners) — expected, not an error.
+      const log = res.status === 404 ? console.warn : console.error;
+      log(`fetchProductDetail(${productId}): API returned ${res.status} from ${apiUrl}`);
       return null;
     }
     const json = (await res.json()) as { data: PublicProductDetail };

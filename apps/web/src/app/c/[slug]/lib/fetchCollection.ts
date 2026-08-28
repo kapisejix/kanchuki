@@ -24,7 +24,9 @@ export async function fetchCollection(
       next: { revalidate: 60 }, // ISR — revalidate every 60s
     })
     if (!res.ok) {
-      console.error(`fetchCollection(${slug}): API returned ${res.status} from ${apiUrl}`)
+      // 404 = unknown slug (usually bot scanners hitting /install.php etc.) — expected, not an error.
+      const log = res.status === 404 ? console.warn : console.error
+      log(`fetchCollection(${slug}): API returned ${res.status} from ${apiUrl}`)
       return null
     }
     const json = (await res.json()) as { data: PublicCollection }
