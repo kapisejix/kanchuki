@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, ActivityIndicator } from 'react-native'
-import { Sparkles, RefreshCw } from 'lucide-react-native'
+import { RefreshCw } from 'lucide-react-native'
 import { AnimatedPressable } from '../AnimatedPressable'
 import type { ProductDetail } from '@kanchuki/shared'
 

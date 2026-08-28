@@ -1,7 +1,6 @@
 import React from 'react'
 import { View, Text, TextInput, ScrollView } from 'react-native'
 import {
-  Sparkles,
   Check,
   Tag,
 } from 'lucide-react-native'

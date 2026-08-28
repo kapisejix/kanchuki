@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { formatPriceRange, COLORS } from '@kanchuki/shared'
+import { formatPriceRange } from '@kanchuki/shared'
 import {
   View,
   Text,
@@ -16,7 +16,6 @@ import { useGridColumns } from '../../src/hooks/useIsTablet'
 import { GradientButton } from '../../src/components/GradientButton'
 import { productApi, collectionApi } from '../../src/lib/api'
 import { showError } from '../../src/lib/errors'
-import { useTheme } from '../../src/lib/theme'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 
 type Product = {
@@ -33,7 +32,6 @@ const EXPIRY_OPTIONS = [7, 30, 90] as const
 
 export default function NewCollectionScreen() {
   const columns = useGridColumns()
-  const { primaryColor, colors } = useTheme()
   const [title, setTitle] = useState('')
   const [expiresDays, setExpiresDays] = useState<number>(30)
   const [selected, setSelected] = useState<Set<string>>(new Set())

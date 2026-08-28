@@ -1,26 +1,22 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import {
   View,
   Text,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { router } from 'expo-router'
-import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
+import Gallery from 'react-native-awesome-gallery'
 import {
   Download,
   Trash2,
   Palette,
   ChevronLeft,
-  ChevronRight,
   Camera,
   Video,
   Sparkles,
-  Star,
   Clapperboard,
   X,
-  Check,
 } from 'lucide-react-native'
 import { resolveFashionColor } from '@kanchuki/shared'
 import { AnimatedPressable } from '../AnimatedPressable'

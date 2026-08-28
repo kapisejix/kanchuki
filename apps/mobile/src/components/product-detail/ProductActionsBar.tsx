@@ -1,6 +1,6 @@
 import React from 'react'
 import { View, Text, ActivityIndicator } from 'react-native'
-import { Trash2, Check } from 'lucide-react-native'
+import { Trash2 } from 'lucide-react-native'
 import { STATUS_OPTIONS } from './types'
 import { AnimatedPressable } from '../AnimatedPressable'
 import type { ProductDetail, ProductStatus } from '@kanchuki/shared'

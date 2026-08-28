@@ -1,8 +1,4 @@
 import "../global.css";
-// Initialize Sentry crash reporting as early as possible — must run
-// before any component renders so it can capture startup crashes.
-import { initSentry } from "../src/lib/sentry";
-initSentry();
 import {
   Inter_400Regular,
   Inter_500Medium,
@@ -18,32 +14,37 @@ import {
   focusManager,
 } from "@tanstack/react-query";
 import { Stack, router, useRootNavigationState } from "expo-router";
+import * as ExpoSplashScreen from "expo-splash-screen";
 import { vars } from "nativewind";
 import { useEffect, useRef, useState } from "react";
 import { AppState, Platform, Text, TextInput, View } from "react-native";
-import * as ExpoSplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-// Keep the native splash screen visible until fonts + palette are loaded.
-// Must be called at module level (before any component renders).
-ExpoSplashScreen.preventAutoHideAsync();
-import { getToken } from "../src/lib/api";
 import { CatalogDelegateBanner } from "../src/components/CatalogDelegateBanner";
 import { ErrorBoundary } from "../src/components/ErrorBoundary";
 import { NetworkBanner } from "../src/components/NetworkBanner";
 import { useSyncQueue } from "../src/hooks/useSyncQueue";
+import { getToken } from "../src/lib/api";
 import {
   persistQueryCache,
   restoreQueryCache,
 } from "../src/lib/offline-persister";
+import { Sentry, initSentry } from "../src/lib/sentry";
 import { getItem } from "../src/lib/storage";
 import {
   loadPersistedPalette,
   ThemeProvider,
   useTheme,
 } from "../src/lib/theme";
-import { Sentry } from "../src/lib/sentry";
+
+// Initialize Sentry crash reporting as early as possible — must run
+// before any component renders so it can capture startup crashes.
+initSentry();
+
+// Keep the native splash screen visible until fonts + palette are loaded.
+// Must be called at module level (before any component renders).
+ExpoSplashScreen.preventAutoHideAsync();
 
 // ponytail: RN has no CSS-style View→Text font inheritance, and NativeWind's
 // className "inheritance" only covers CSS vars — not fontFamily. Patching the
