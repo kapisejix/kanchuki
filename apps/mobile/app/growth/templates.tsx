@@ -17,7 +17,6 @@ import {
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   RefreshControl,
   ScrollView,
   Text,
@@ -600,14 +599,14 @@ function CreateTemplateModal({
         </ScrollView>
       </View>
 
-      {/* Product picker */}
-      <Modal
-        visible={productPickerOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setProductPickerOpen(false)}
-      >
-        <View className="flex-1 bg-[#F8F7FC]" style={{ paddingTop: Math.max(insets.top, 24) + 12 }}>
+      {/* Product picker — in-tree overlay. A React Native <Modal> renders
+          outside the expo-router navigation context, which crashes on
+          interaction ("Couldn't find a Navigation context"). */}
+      {productPickerOpen && (
+        <View
+          className="absolute inset-0 bg-[#F8F7FC]"
+          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        >
           <View className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200">
             <Text
               style={{ fontFamily: 'Marcellus_400Regular' }}
@@ -679,7 +678,7 @@ function CreateTemplateModal({
             )}
           </ScrollView>
         </View>
-      </Modal>
+      )}
     </View>
   )
 }
