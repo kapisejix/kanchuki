@@ -48,6 +48,27 @@ export function useProductAiStudio({
   const [backgroundSaving, setBackgroundSaving] = useState(false)
   const [photoShadows, setPhotoShadows] = useState<Record<string, boolean>>({})
   const [shadowSaving, setShadowSaving] = useState(false)
+
+  // Admin-curated backdrop library for the per-photo Background picker.
+  const { data: backgroundImagesData } = useQuery({
+    queryKey: ['products', 'background-images'],
+    queryFn: () => productApi.getBackgroundImages(),
+  })
+  const backgroundImages = backgroundImagesData?.data ?? []
+
+  // Seed the currently-viewed photo's background + shadow from what the DB
+  // recorded for the product primary — merge, never replace, so a choice made
+  // this session isn't clobbered by a refetch.
+  useEffect(() => {
+    const primaryId = (product?.photos ?? []).find((p) => p.is_primary)?.id
+    if (!primaryId) return
+    setPhotoBackgrounds((prev) =>
+      primaryId in prev ? prev : { ...prev, [primaryId]: product?.background_image_id ?? null },
+    )
+    setPhotoShadows((prev) =>
+      primaryId in prev ? prev : { ...prev, [primaryId]: product?.add_shadow ?? false },
+    )
+  }, [product?.id, product?.background_image_id, product?.add_shadow, product?.photos])
   const [settingPrimaryId, setSettingPrimaryId] = useState<string | null>(null)
   const [downloadingMedia, setDownloadingMedia] = useState(false)
   const [deletingMedia, setDeletingMedia] = useState(false)
@@ -406,6 +427,7 @@ export function useProductAiStudio({
     handleUseStudioResult,
     handleSetPrimary,
     settingPrimaryId,
+    backgroundImages,
     photoBackgrounds,
     setPhotoBackgrounds,
     backgroundSaving,

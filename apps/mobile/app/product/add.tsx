@@ -134,7 +134,10 @@ export default function AddProductScreen() {
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
-  const [autoCleanup, setAutoCleanup] = useState(true)
+  // Default OFF — the raw photo is saved as-is. The retailer opts into
+  // background removal / contrast backdrop / shadow here or later on the
+  // product detail screen (per-photo Background + Shadow controls).
+  const [autoCleanup, setAutoCleanup] = useState(false)
   // F-030: composite a soft drop shadow under the garment during cleanup —
   // product-level default, applied by the background tag job after save.
   const [addShadow, setAddShadow] = useState(false)

@@ -24,6 +24,7 @@ import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { RelatedProductsSection } from '../../src/components/product-detail/RelatedProducts'
 import { SkuTagModal } from '../../src/components/product-detail/SkuTagModal'
 import { ProductMediaCarousel } from '../../src/components/product-detail/ProductMediaCarousel'
+import { ProductPhotoControls } from '../../src/components/product-detail/ProductPhotoControls'
 import { ProductAttributesForm } from '../../src/components/product-detail/ProductAttributesForm'
 import { ProductAiReviewSection } from '../../src/components/product-detail/ProductAiReviewSection'
 import { ProductActionsBar } from '../../src/components/product-detail/ProductActionsBar'
@@ -338,6 +339,22 @@ export default function ProductDetailScreen() {
           originalPhoto={studio.originalPhoto}
           studioQuota={studio.studioQuota}
           ProductVideoSlide={ProductVideoSlide}
+        />
+
+        {/* Per-photo backdrop + shadow controls (remove/replace background,
+            grounding shadow) — opt-in, applied after upload */}
+        <ProductPhotoControls
+          currentPhoto={currentPhoto}
+          currentPhotoIsOriginal={currentPhotoIsOriginal}
+          currentPhotoIsVariant={currentPhotoIsVariant}
+          backgroundImages={studio.backgroundImages}
+          photoBackgrounds={studio.photoBackgrounds}
+          backgroundSaving={studio.backgroundSaving}
+          handleSetBackground={studio.handleSetBackground}
+          shadowOn={currentPhoto ? studio.shadowFor(currentPhoto.id) : false}
+          shadowSaving={studio.shadowSaving}
+          handleSetShadow={studio.handleSetShadow}
+          primaryColor={primaryColor}
         />
 
         {/* AI Tag Review Status */}

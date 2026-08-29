@@ -164,9 +164,23 @@ export async function generateStudioImage(
   }
 
   const indianModelDesc = resolveIndianModelDescription(product);
+
+  // Fashion-Model path: when the retailer picked a MODEL (not a scene) and the
+  // IDM-VTON path above didn't return (no Fal key / VTON error), build the
+  // prompt from THAT model's identity so Priya/Ananya/Meera/Kabir each render
+  // differently — the old code fell back to one generic string for all models.
+  const modelMeta = options?.modelId ? getStudioModel(options.modelId as string) : undefined;
+  const modelPrompt = modelMeta
+    ? `Place this exact garment onto ${
+        modelMeta.gender === 'male'
+          ? 'a dignified Indian male fashion model'
+          : 'a graceful Indian female fashion model'
+      } styled for "${modelMeta.title}" — ${modelMeta.description}. Full-length editorial catalog photograph, ${modelMeta.pose.replace(/_/g, ' ')} pose, photorealistic 8k fabric texture. The garment shape, exact original colour, dye, pattern and embroidery are 100% preserved with true-tone lighting.`
+    : `A professional ${indianModelDesc} wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`;
+
   let basePrompt: string = template?.prompt ?? (
     options?.modelId
-      ? `A professional ${indianModelDesc} wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`
+      ? modelPrompt
       : `Place this product photo in a professional studio setting with clean lighting: ${templateId}`
   );
 
