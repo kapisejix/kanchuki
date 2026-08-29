@@ -194,6 +194,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 50 | Customer Profile P0-P1 — VTO self-serve enabled, showroom booking form, product review list (social proof), seasonal collections + lookbooks surfacing, promotion/discount alert banner | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
 | 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style quiz, AI Stylist v1 (Claude-powered chat), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
 | 52 | Customer Profile P3 — regional weave/style filters (12 Indian regions), customer referral rewards (code + WhatsApp share), family/gifting mode (save sizes for family members) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` |
+| 53 | Add-Product raw-photo default (auto-clean OFF — raw saved as-is) + restored per-photo Background/Shadow controls on product detail (`ProductPhotoControls`, dropped in the `b0c3747` redesign) + AI Studio Shoot per-model prompts (Fashion Models no longer collapse to one identical image) + Admin backdrop library: delete (`DELETE /admin/background-images/:id` + trash button), click-thumbnail full-size lightbox, AI scene-naming on upload (`name` optional → `runVisionAsk`) | ✅ Built + live | 2026-08-29 | BUILD-LOG §2026-08-29 |
  
 ---
 

@@ -20,6 +20,7 @@ incident, migration, and decision recorded after 2026-07-26.
 | 8 | [F-023 AI Provider Registry](#built-f-023-ai-provider-registry--admin-configurable-tagging-models--per-provider-usage) | Built | 2026-08-01 |
 | 52 | [F-021 Product & Store Ratings](#built-f-021-product--store-ratings) | Built | 2026-08-20 |
 | 53 | [Customer Profile P0-P3 — 16 Features](#built-2026-08-21-customer-profile-p0-p3--all-16-features-shipped) | Built | 2026-08-21 |
+| 54 | [Add-Product raw-photo default + restored per-photo controls + AI Studio model prompts + Admin backdrop delete/lightbox/AI-naming](#built-2026-08-29-add-product-raw-photo-default--restored-per-photo-controls--ai-studio-model-prompts--admin-backdrop-deletelightboxai-naming) | Built | 2026-08-29 |
 | 9 | [F-022 Auto-Post New Arrivals to Google Business Profile](#planned--not-started-f-022-auto-post-new-arrivals-to-google-business-profile) | Planned | — |
 | 10 | [Mobile Accessibility Audit + Harden Pass](#built-mobile-accessibility-audit--harden-pass-appsmobile) | Built | 2026-07-31 |
 | 11 | [Production DB Outage Fix + Purge-Cron Scoped Role](#built-2026-08-02--production-db-outage-fix-pooler-suffix--purge-cron-scoped-role--adminweb-hardening) | Built | 2026-08-02 |
@@ -1405,3 +1406,40 @@ CREATE TABLE "design_references" (
 **⚠️ Pending:** Migration 069 needs `prisma migrate deploy` in production.
 
 **Verified:** `apps/api` tsc clean, `apps/web` tsc clean, `prisma generate` succeeded.
+
+---
+
+## BUILT 2026-08-29: Add-Product raw-photo default + restored per-photo controls + AI Studio model prompts + Admin backdrop delete/lightbox/AI-naming
+
+**PR #8** → `main` as squash `aec7a2b`, plus follow-up fixes `288f865` + `fbf5f1d`. No migration.
+
+### Mobile — Add / Product Detail
+
+| Area | Change | Files |
+|---|---|---|
+| Add-product | `auto_cleanup` default flipped **`true` → `false`**. The raw photo is saved as-is on upload; the retailer opts into background removal / contrast backdrop / shadow (the "AI Studio effect" they were seeing auto-applied). | `apps/mobile/app/product/add.tsx` |
+| Product detail | Restored the per-photo **Background picker + Shadow toggle** — removed in the `b0c3747` Royal Orchid redesign, which split `[id].tsx` into components and dropped the JSX while the `useProductAiStudio` handlers (`handleSetBackground`, `handleSetShadow`, `shadowFor`, `photoBackgrounds`/`photoShadows`) survived unused. Re-added the backdrop-library query + value seeding to the hook; new `ProductPhotoControls` component rendered under the carousel. | `apps/mobile/src/hooks/useProductAiStudio.ts`, `apps/mobile/src/components/product-detail/ProductPhotoControls.tsx` (new), `apps/mobile/app/product/[id].tsx` |
+| AI Studio Shoot — Fashion Models | When the IDM-VTON path didn't return (no `FAL_KEY` / VTON error) all 4 models fell back to **one hardcoded generic prompt** — Priya / Ananya / Meera / Kabir rendered identically. The fallback prompt is now built from the selected model's `title` / `description` / `pose` / `gender`. (Backdrop **Scenes** already carry distinct prompts — unchanged.) | `apps/api/src/lib/studio-shoot.ts` |
+
+### Admin — Background Images (`/admin/background-images`)
+
+| Feature | Detail | Files |
+|---|---|---|
+| Delete | `DELETE /admin/background-images/:id` — hard delete + best-effort R2 object cleanup + audit log. `products_background_image_id_fkey` is `ON DELETE SET NULL` (migration 027), so products using a deleted backdrop fall back to Auto. Trash button per card. | `apps/api/src/routes/admin/admin-media.ts`, `apps/web/src/app/admin/background-images/page.tsx` |
+| AI scene-naming | `POST /admin/background-images` — `name` is now **optional**; when omitted the scene is auto-named via `runVisionAsk` (2–4 word Title Case, e.g. "Royal Palace Courtyard"), reusing the image buffer already fetched for tone classification. Deterministic `Backdrop <YYYY-MM-DD>` fallback. Admin upload no longer sends the raw filename as the name. | same |
+| Lightbox | Thumbnail is now a button — click opens the full `image_url` in a fixed overlay, click anywhere closes. | `apps/web/src/app/admin/background-images/page.tsx` |
+
+### Follow-up fixes
+
+- `288f865` — delete failure toast now shows `HTTP <status> — <body>` instead of a dead-end "Delete failed".
+- `fbf5f1d` — **root cause of the "❌ Delete failed":** `adminMutateOptions()` sets `Content-Type: application/json`; a bodyless `DELETE` then fails Fastify body validation → `500 FST_ERR_VALIDATION "body must be object"`. Now sends `'{}'` (the route ignores the body). **Same latent bug exists in the `admin/ai-providers` and `admin/integrations` DELETE callers — not fixed (not reported).**
+
+### Verified
+
+- `apps/api` + `apps/mobile` + `apps/web` `tsc --noEmit` → clean
+- `vitest run src/routes/products-studio.test.ts src/lib/studio-shoot.test.ts` → 21/21
+- Prod: admin background-image delete confirmed working after redeploy (user).
+
+### Notes
+
+- PR #8 history carries two no-op commits (`a0c8940` + its revert `653e0c1`) — a `git add -A` slip on `docs/tasks/AI Models and Scenes.{html,hmtl}`, then restored byte-identical to `c7477c6`.
