@@ -32,7 +32,7 @@ import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uplo
 import { getStudioModel, getStudioTemplate, type StudioModelId, type StudioTemplateId } from '@kanchuki/shared';
 import { getSecret } from '@kanchuki/db';
 import { AppError } from '../plugins/error-handler.js';
-import { generateFluxProImage, generateFluxSchnellImage, generateIdmVtonTryon, isFalConfigured, resolveFalKey } from './fal-client.js';
+import { generateFluxKontext, generateFluxProImage, generateFluxSchnellImage, generateIdmVtonTryon, isFalConfigured, resolveFalKey } from './fal-client.js';
 import { generateGoogleImagen, isImagenConfigured, resolveGeminiKey } from './imagen-client.js';
 
 const BFL_BASE = 'https://api.bfl.ai/v1';
@@ -197,50 +197,60 @@ export async function generateStudioImage(
     ? ` The garment has ${colorSpec}. CRITICAL COLOR ACCURACY: Absolutely preserve the garment's exact fabric dye, color tone, embroidery, and saturation without any tinting, hue shift, or color alteration. Use neutral 5500K daylight-balanced CRI-98 key lighting on the garment.`
     : ` CRITICAL COLOR ACCURACY: Preserve the garment's exact original color, hue, dye, saturation, and embroidery 100% faithfully to the input photo without color shifting or tinting. Use neutral 5500K daylight-balanced key lighting on the garment.`;
 
-  const promptText = `${basePrompt} ${colorEnforcement}`;
+  // FLUX Kontext is an instruction-edit model: it changes only what the
+  // prompt names and leaves the rest of the pixels alone. Plain flux
+  // img2img (strength 0.65) regenerates most of the frame, and Imagen is
+  // pure text-to-image (it never even receives the input photo) — BOTH
+  // recolour / redraw the garment, which is the "changed the product
+  // colour" bug. So the default path is Kontext only; flux_pro / imagen /
+  // flux_schnell run only when a caller explicitly asks via `engine`.
+  const sceneGuard =
+    'Edit ONLY the background, setting and scene of this photograph. Keep the garment itself pixel-identical to the input: exact same colour, dye, print, pattern, embroidery, fabric, cut, drape and proportions. Do not recolour, restyle or regenerate the clothing.';
+  const promptText = `${sceneGuard} ${basePrompt} ${colorEnforcement}`;
 
-  // 1. Try Fal.ai Flux 1.1 Pro (Top photorealism)
-  if (falKey && (options?.engine === 'flux_pro' || !options?.engine || !geminiKey)) {
+  // Explicit engine override (admin bench / future UI) — attempt it, but
+  // still fall through to Kontext if it errors.
+  if (options?.engine === 'flux_pro' && falKey) {
     try {
-      const res = await generateFluxProImage(promptText, {
-        inputImageUrl,
-        onProgress,
-      });
+      const res = await generateFluxProImage(promptText, { inputImageUrl, onProgress });
       return { status: 'ready', sampleUrl: res.sampleUrl };
     } catch (err) {
-      console.error('[studio-shoot] Flux Pro failed, trying next provider:', err);
-      if (!geminiKey && !bflAuthKey) throw err;
+      console.error('[studio-shoot] flux_pro (explicit) failed, falling back to Kontext:', err);
     }
   }
-
-  // 2. Try Google Imagen 3 (Fast, high-fidelity lighting)
-  if (geminiKey) {
+  if ((options?.engine === 'imagen_3' || options?.engine === 'imagen_3_fast') && geminiKey) {
     try {
       const res = await generateGoogleImagen(promptText, {
-        model: options?.engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
+        model: options.engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
         onProgress,
       });
       return { status: 'ready', base64Data: res.base64Data };
     } catch (err) {
-      console.error('[studio-shoot] Google Imagen 3 failed:', err);
-      if (!falKey && !bflAuthKey) throw err;
+      console.error('[studio-shoot] imagen (explicit) failed, falling back to Kontext:', err);
     }
   }
-
-  // 3. Try Fal.ai Flux Schnell (Budget / Fast preview)
   if (options?.engine === 'flux_schnell' && falKey) {
     try {
-      const res = await generateFluxSchnellImage(promptText, {
-        inputImageUrl,
-        onProgress,
-      });
+      const res = await generateFluxSchnellImage(promptText, { inputImageUrl, onProgress });
       return { status: 'ready', sampleUrl: res.sampleUrl };
     } catch (err) {
-      console.error('[studio-shoot] Flux Schnell failed:', err);
+      console.error('[studio-shoot] flux_schnell (explicit) failed, falling back to Kontext:', err);
     }
   }
 
-  // 4. Fallback to Black Forest Labs FLUX Kontext Pro
+  // DEFAULT: FLUX Kontext via Fal (subject-preserving). Falls through to the
+  // BFL direct API below when Fal errors or only BFL_API_KEY is configured.
+  if (falKey) {
+    try {
+      const res = await generateFluxKontext(promptText, inputImageUrl, onProgress);
+      return { status: 'ready', sampleUrl: res.sampleUrl };
+    } catch (err) {
+      console.error('[studio-shoot] Fal Kontext failed, trying BFL direct:', err);
+      if (!bflAuthKey) throw err;
+    }
+  }
+
+  // Fallback: Black Forest Labs FLUX Kontext Pro (direct API)
   if (!bflAuthKey) {
     throw new AppError(
       'STUDIO_SHOOT_FAILED',

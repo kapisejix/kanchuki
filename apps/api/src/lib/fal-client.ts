@@ -125,6 +125,32 @@ export async function generateFluxImageToImage(
 }
 
 /**
+ * FLUX.1 Kontext [pro] via fal.ai — instruction-based image edit that keeps
+ * everything the prompt does NOT mention (i.e. the garment) pixel-unchanged.
+ * This is the correct model for "swap the scene, keep the product". Plain
+ * flux img2img (strength 0.65) and Imagen (txt2img) both regenerate the
+ * clothing and shift its colour — do not use them for studio shoots.
+ */
+export async function generateFluxKontext(
+  prompt: string,
+  inputImageUrl: string,
+  onProgress?: (p: { progress: number; etaMs: number }) => void,
+): Promise<{ sampleUrl: string }> {
+  return runFalTask(
+    'fal-ai/flux-pro/kontext',
+    {
+      prompt,
+      image_url: inputImageUrl,
+      guidance_scale: 3.5,
+      num_images: 1,
+      output_format: 'jpeg',
+      safety_tolerance: '2',
+    },
+    onProgress,
+  );
+}
+
+/**
  * Run Flux 1.1 Pro image generation.
  */
 export async function generateFluxProImage(

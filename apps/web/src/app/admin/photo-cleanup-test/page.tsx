@@ -524,7 +524,8 @@ export default function PhotoCleanupTestPage() {
                     title="Click to enlarge"
                     onClick={() => setLightbox({ url: r.productUrl, label: 'Input' })}
                   >
-                    <Image src={r.productUrl} alt="input" fill className="object-cover" unoptimized />
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 result URLs render reliably as a plain img; next/image was showing broken tiles here */}
+                    <img src={r.productUrl} alt="input" className="absolute inset-0 w-full h-full object-cover" />
                   </button>
                   <ArrowRight size={14} className="text-gray-400 shrink-0" />
                   <button
@@ -533,7 +534,8 @@ export default function PhotoCleanupTestPage() {
                     title="Click to enlarge"
                     onClick={() => setLightbox({ url: r.resultUrl, label: r.label })}
                   >
-                    <Image src={r.resultUrl} alt="studio result" fill className="object-cover" unoptimized />
+                    {/* eslint-disable-next-line @next/next/no-img-element -- see above */}
+                    <img src={r.resultUrl} alt="studio result" className="absolute inset-0 w-full h-full object-cover" />
                   </button>
                 </div>
                 <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
