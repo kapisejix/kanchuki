@@ -325,67 +325,28 @@ export const R2_PATHS = {
 export const STUDIO_CREDITS_PER_IMAGE = 8;
 
 // Scene-only prompts; generateStudioImage() appends the colour-fidelity
-// tail. Curated list (trimmed 2026-08-29) — shown in both the retailer
-// mobile picker and the admin photo-cleanup-test dropdown. New custom
-// backdrops are staged in docs/tasks/AI Models and Scenes.html first
-// (admin bench custom-prompt box) before being promoted here.
+// tail. Curated list (owner-finalised 2026-08-29, 18 styles) — shown in
+// both the retailer mobile picker and the admin photo-cleanup-test
+// dropdown. The last 10 are custom backdrops staged/tested in
+// docs/tasks/AI Models and Scenes.html; reference images live in
+// docs/photoshoots/background/. preview_image_url is pending public URLs.
 export const STUDIO_TEMPLATES = [
   {
-    id: 'runway',
-    command: '/runway',
-    label: 'Catwalk Runway',
-    description: 'High-fashion catwalk runway setting with dramatic spotlights',
-    preview_image_url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80',
+    id: 'studiomodel',
+    command: '/studiomodel',
+    label: 'Studio Editorial',
+    description: 'High-fashion Indian studio model wearing the outfit with softbox lighting',
+    preview_image_url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80',
     prompt:
-      'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. A graceful Indian fashion model (Indian lady for womenswear / Indian gentleman for menswear / Indian boy for kids) is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
+      'Place this garment naturally onto a professional Indian fashion model in a clean editorial studio. The model has an elegant posture and natural expression. The garment shape, exact original color, dye, pattern, and embroidery are 100% preserved with realistic draping. Color-true 5500K neutral studio softbox lighting with soft grounding shadows. No color shifts.',
   },
   {
-    id: 'editorial_vogue',
-    command: '/editorial',
-    label: 'Vogue Editorial',
-    description: 'Magazine editorial — grey cyclorama, softbox key + hair light',
+    id: 'gradient_hero',
+    command: '/hero',
+    label: 'Gradient Campaign Hero',
+    description: 'Colour-gradient backdrop, beauty light, room for text',
     prompt:
-      'Place this outfit on a graceful Indian fashion model in a high-fashion editorial studio with a seamless mid-grey backdrop, softbox key light and a subtle hair light, confident straight-on pose. The garment shape, drape, exact original colour, pattern and embroidery are 100% preserved.',
-  },
-  {
-    id: 'heritage_street',
-    command: '/street',
-    label: 'Jaipur Heritage Street',
-    description: 'Outdoor — terracotta-pink walls, carved doors, candid stride',
-    prompt:
-      'Place this garment on a graceful Indian fashion model on a Jaipur old-city street with terracotta-pink carved walls, antique wooden doors and brass lanterns, soft morning light, candid mid-stride pose. Exact dyes, weave and embroidery stay faithful to the original.',
-  },
-  {
-    id: 'heritage_library',
-    command: '/indoor',
-    label: 'Grand Heritage Library',
-    description: 'Indoor — wood panelling, tall bookshelves, brass lamps',
-    prompt:
-      'Place this garment on a graceful Indian fashion model inside a grand wood-panelled heritage library with tall bookshelves and brass reading lamps, warm soft interior light behind and neutral light on the subject, poised standing pose. Colour, texture and embroidery preserved exactly.',
-  },
-  {
-    id: 'rooftop_golden',
-    command: '/rooftop',
-    label: 'Golden-Hour Rooftop',
-    description: 'City rooftop, string lights, blurred skyline, sun flare',
-    prompt:
-      'Place this outfit on a graceful Indian fashion model on a chic city rooftop at golden hour with string lights and a blurred skyline, warm sun flare behind, relaxed editorial pose. Neutral light on the fabric keeps the garment colour and detail true.',
-  },
-  {
-    id: 'boutique_showroom',
-    command: '/boutique',
-    label: 'Boutique Showroom',
-    description: 'Indoor — upscale boutique, spot-lit displays, racks bokeh',
-    prompt:
-      'Place this outfit on a graceful Indian fashion model inside an upscale fashion boutique with warm spot-lit displays and clothing racks softly out of focus behind. Even neutral lighting on the garment so its exact colour, pattern and embroidery stay unchanged.',
-  },
-  {
-    id: 'seated_haveli_steps',
-    command: '/sitting',
-    label: 'Seated Haveli Steps',
-    description: 'Pose — seated on carved stone steps, dupatta on lap',
-    prompt:
-      'Place this outfit on a graceful Indian fashion model seated on carved stone haveli steps with the dupatta arranged across the lap, potted palms and a lantern softly out of focus behind, full garment visible. Neutral daylight keeps true colour and zari.',
+      'Place this outfit on a graceful Indian fashion model against a smooth studio colour-gradient backdrop (deep plum to warm rose) with even beauty lighting, centred campaign-hero framing with head-to-hem clearance for text. The garment colour, pattern and embroidery are exactly preserved.',
   },
   {
     id: 'dupatta_motion',
@@ -396,12 +357,125 @@ export const STUDIO_TEMPLATES = [
       'Place this outfit on a graceful Indian fashion model captured mid-motion, turning with the dupatta and skirt caught in the air and a slight wind, soft neutral backdrop with gentle motion blur only in the background. The garment stays sharp with colour, drape and embroidery 100% preserved.',
   },
   {
-    id: 'gradient_hero',
-    command: '/hero',
-    label: 'Gradient Campaign Hero',
-    description: 'Colour-gradient backdrop, beauty light, room for text',
+    id: 'seated_haveli_steps',
+    command: '/sitting',
+    label: 'Seated Haveli Steps',
+    description: 'Pose — seated on carved stone steps, dupatta on lap',
     prompt:
-      'Place this outfit on a graceful Indian fashion model against a smooth studio colour-gradient backdrop (deep plum to warm rose) with even beauty lighting, centred campaign-hero framing with head-to-hem clearance for text. The garment colour, pattern and embroidery are exactly preserved.',
+      'Place this outfit on a graceful Indian fashion model seated on carved stone haveli steps with the dupatta arranged across the lap, potted palms and a lantern softly out of focus behind, full garment visible. Neutral daylight keeps true colour and zari.',
+  },
+  {
+    id: 'boutique_showroom',
+    command: '/boutique',
+    label: 'Boutique Showroom',
+    description: 'Indoor — upscale boutique, spot-lit displays, racks bokeh',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model inside an upscale fashion boutique with warm spot-lit displays and clothing racks softly out of focus behind. Even neutral lighting on the garment so its exact colour, pattern and embroidery stay unchanged.',
+  },
+  {
+    id: 'rooftop_golden',
+    command: '/rooftop',
+    label: 'Golden-Hour Rooftop',
+    description: 'City rooftop, string lights, blurred skyline, sun flare',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model on a chic city rooftop at golden hour with string lights and a blurred skyline, warm sun flare behind, relaxed editorial pose. Neutral light on the fabric keeps the garment colour and detail true.',
+  },
+  {
+    id: 'editorial_vogue',
+    command: '/editorial',
+    label: 'Vogue Editorial',
+    description: 'Magazine editorial — grey cyclorama, softbox key + hair light',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a high-fashion editorial studio with a seamless mid-grey backdrop, softbox key light and a subtle hair light, confident straight-on pose. The garment shape, drape, exact original colour, pattern and embroidery are 100% preserved.',
+  },
+  {
+    id: 'runway',
+    command: '/runway',
+    label: 'Catwalk Runway',
+    description: 'High-fashion catwalk runway setting with dramatic spotlights',
+    preview_image_url: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80',
+    prompt:
+      'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. A graceful Indian fashion model (Indian lady for womenswear / Indian gentleman for menswear / Indian boy for kids) is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
+  },
+  {
+    id: 'blossom_atrium',
+    command: '/blossom_atrium',
+    label: 'Blossom Atrium',
+    description: 'Airy white atrium, cascading pink blossom vines, slat-light shadows',
+    prompt:
+      "Place this outfit on a graceful Indian fashion model in a bright airy white-walled atrium with cascading pink jasmine blossom vines trailing from above and soft window-slat sun shadows across the wall and pale floor, relaxed editorial pose. The garment's exact colour, pattern and embroidery stay 100% unchanged with neutral daylight on the fabric.",
+  },
+  {
+    id: 'bougainvillea_corner',
+    command: '/bougainvillea_corner',
+    label: 'Bougainvillea Corner',
+    description: 'Whitewashed corner wall, purple bougainvillea, petals on the road',
+    prompt:
+      'Place this garment on a graceful Indian fashion model beside a whitewashed street-corner wall with a large purple bougainvillea tree spilling over the top, fallen petals scattered on the road and a zebra crossing, bright blue sky, candid daylight pose. Exact dyes, weave and embroidery stay faithful to the original.',
+  },
+  {
+    id: 'tree_tunnel',
+    command: '/tree_tunnel',
+    label: 'Tree-Tunnel Avenue',
+    description: 'Arching green canopy, cobblestone path, moss strip, tulip beds',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model standing at the centre of a symmetrical tree-tunnel avenue, an arching green canopy overhead, a cobblestone path with a bright green moss strip down the middle and tulip flowerbeds on both sides, soft overcast light. The garment colour, texture and embroidery stay true.',
+  },
+  {
+    id: 'sunset_arch',
+    command: '/sunset_arch',
+    label: 'Sunset Arch Alcove',
+    description: 'Peach & coral arches, glowing golden archway, lit ivy wall',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a warm sculptural interior of peach and coral arched alcoves with a softly glowing golden-yellow archway behind, a lit ivy wall and a rounded boucle seat, potted palms framing. The garment colour and embroidery stay true under neutral key light.',
+  },
+  {
+    id: 'pastel_gradient',
+    command: '/pastel_gradient',
+    label: 'Pastel Gradient Lounge',
+    description: 'Teal-to-blush gradient wall, pink pampas grass, blush rug',
+    prompt:
+      "Place this outfit on a graceful Indian fashion model in a minimalist studio lounge with a smooth teal-to-blush gradient wall, tall pink pampas grass in ceramic vases either side, a pale wood floor and a round blush rug, even soft lighting. The garment's exact colour, pattern and embroidery stay 100% unchanged.",
+  },
+  {
+    id: 'villa_arch',
+    command: '/villa_arch',
+    label: 'Whitewashed Villa Arch',
+    description: 'White villa arch, magenta climbing roses, iron lantern, hill view',
+    prompt:
+      'Place this garment on a graceful Indian fashion model in a whitewashed Mediterranean villa archway framed by magenta climbing roses, a wrought-iron lantern hanging in the arch, terracotta pots and a sunlit stone courtyard with a cypress hedge and hills beyond. Exact garment colour, drape and embroidery preserved.',
+  },
+  {
+    id: 'ocean_arches',
+    command: '/ocean_arches',
+    label: 'Sunlit Ocean Arches',
+    description: 'Yellow & sky-blue arches, mirror floor, ocean horizon, warm glow',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a surreal minimalist hall of tall yellow and sky-blue arches with a glossy mirror-like floor, a single areca palm in a white vase and the ocean horizon visible through an arch, warm sunlit glow. Neutral light on the fabric keeps colour and embroidery true.',
+  },
+  {
+    id: 'mall_concourse',
+    command: '/mall_concourse',
+    label: 'Modern Mall Concourse',
+    description: 'Cream tile floor, glass storefronts, fan-palms, water feature',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a spacious modern shopping-mall concourse with a glossy cream tile floor, tall glass storefronts softly out of focus, potted fan-palms and a low water feature, bright even ceiling light, candid pose. Exact garment colour, pattern and embroidery unchanged.',
+  },
+  {
+    id: 'copper_diamond',
+    command: '/copper_diamond',
+    label: 'Copper Diamond Backdrop',
+    description: 'White brick wall, rose-gold diamond frames, eucalyptus garlands',
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in front of a whitewashed brick wall styled with two nested rose-gold diamond frames, gold floral detailing, trailing eucalyptus-and-white-flower garlands, taper candles and geometric lanterns on a wood floor, soft event lighting. Garment colour and embroidery preserved exactly.',
+  },
+  {
+    id: 'lakeside_deck',
+    command: '/lakeside_deck',
+    label: 'Lakeside Deck View',
+    description: 'Wooden deck, carved balustrade, emerald lake, forested hills',
+    prompt:
+      'Place this garment on a graceful Indian fashion model on a wooden lakeside deck with a carved reddish-brown balustrade, a calm emerald-green lake, forested mountains and a soft overcast sky behind. Diffused daylight keeps the garment colour, drape and embroidery true.',
   },
 ] as const satisfies readonly {
   id: string;

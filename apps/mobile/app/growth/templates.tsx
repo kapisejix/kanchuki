@@ -62,15 +62,24 @@ const TYPE_EMOJI: Record<SocialTemplateType, string> = {
 // Keep the ids in sync with STUDIO_TEMPLATES in @kanchuki/shared — the API
 // resolves this string via getStudioTemplate() and 422s on an unknown id.
 const STUDIO_TEMPLATES = [
-  { id: 'runway', label: 'Catwalk Runway', emoji: '💃' },
-  { id: 'editorial_vogue', label: 'Vogue Editorial', emoji: '📷' },
-  { id: 'heritage_street', label: 'Jaipur Street', emoji: '🧱' },
-  { id: 'heritage_library', label: 'Heritage Library', emoji: '📚' },
-  { id: 'rooftop_golden', label: 'Golden Rooftop', emoji: '🌇' },
-  { id: 'boutique_showroom', label: 'Boutique Showroom', emoji: '🛍️' },
-  { id: 'seated_haveli_steps', label: 'Haveli Steps', emoji: '🪷' },
-  { id: 'dupatta_motion', label: 'Dupatta in Motion', emoji: '🌀' },
+  { id: 'studiomodel', label: 'Studio Editorial', emoji: '🎞️' },
   { id: 'gradient_hero', label: 'Gradient Hero', emoji: '🎨' },
+  { id: 'dupatta_motion', label: 'Dupatta in Motion', emoji: '🌀' },
+  { id: 'seated_haveli_steps', label: 'Haveli Steps', emoji: '🪷' },
+  { id: 'boutique_showroom', label: 'Boutique Showroom', emoji: '🛍️' },
+  { id: 'rooftop_golden', label: 'Golden Rooftop', emoji: '🌇' },
+  { id: 'editorial_vogue', label: 'Vogue Editorial', emoji: '📷' },
+  { id: 'runway', label: 'Catwalk Runway', emoji: '💃' },
+  { id: 'blossom_atrium', label: 'Blossom Atrium', emoji: '🌸' },
+  { id: 'bougainvillea_corner', label: 'Bougainvillea Corner', emoji: '💜' },
+  { id: 'tree_tunnel', label: 'Tree-Tunnel Avenue', emoji: '🌳' },
+  { id: 'sunset_arch', label: 'Sunset Arch Alcove', emoji: '🌅' },
+  { id: 'pastel_gradient', label: 'Pastel Gradient Lounge', emoji: '🩰' },
+  { id: 'villa_arch', label: 'Villa Arch', emoji: '🏛️' },
+  { id: 'ocean_arches', label: 'Ocean Arches', emoji: '🌊' },
+  { id: 'mall_concourse', label: 'Mall Concourse', emoji: '🏬' },
+  { id: 'copper_diamond', label: 'Copper Diamond', emoji: '💠' },
+  { id: 'lakeside_deck', label: 'Lakeside Deck', emoji: '🏞️' },
 ] as const
 
 const OCCASIONS = [
