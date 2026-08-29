@@ -1,6 +1,7 @@
 'use client';
 
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
+import { STUDIO_MODELS, STUDIO_TEMPLATES } from '@kanchuki/shared';
 import { motion } from 'framer-motion';
 import { ArrowRight, ImageOff, Loader2, Shirt, Upload, Wand2 } from 'lucide-react';
 import Image from 'next/image';
@@ -86,6 +87,57 @@ export default function PhotoCleanupTestPage() {
   // uploaded once per session.
   const modelUrlRef = useRef<string | null>(null);
   const tryOnPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // AI Studio Shoot (F-032) — same generateStudioImage() the retailer feature
+  // uses, run synchronously against the uploaded product photo.
+  const [studioTemplate, setStudioTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'studiomodel');
+  const [studioModelId, setStudioModelId] = useState<string>('');
+  const [studioPrompt, setStudioPrompt] = useState<string>('');
+  const [studioBusy, setStudioBusy] = useState(false);
+  const [studioResults, setStudioResults] = useState<
+    { id: string; productUrl: string; resultUrl: string; label: string; ranAt: string }[]
+  >([]);
+
+  const runStudioShoot = async () => {
+    if (!productFile || studioBusy) return;
+    setStudioBusy(true);
+    setError('');
+    try {
+      const productUrl = await uploadToR2(productFile);
+      const res = await fetch(`${API_URL}/v1/admin/photo-cleanup/studio-shoot`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: JSON.stringify({
+          product_url: productUrl,
+          template: studioTemplate,
+          model_id: studioModelId || undefined,
+          prompt: studioPrompt.trim() || undefined,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error?.message ?? 'Studio shoot failed');
+      const label = studioPrompt.trim()
+        ? 'Custom prompt'
+        : studioModelId
+          ? (STUDIO_MODELS.find((m) => m.id === studioModelId)?.title ?? studioModelId)
+          : (STUDIO_TEMPLATES.find((t) => t.id === (json.data.template ?? studioTemplate))?.label ??
+            studioTemplate);
+      setStudioResults((prev) => [
+        {
+          id: crypto.randomUUID(),
+          productUrl,
+          resultUrl: json.data.result_url,
+          label,
+          ranAt: new Date().toLocaleTimeString(),
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Studio shoot failed');
+    } finally {
+      setStudioBusy(false);
+    }
+  };
 
   const productRef = useRef<HTMLInputElement>(null);
   const sampleRef = useRef<HTMLInputElement>(null);
@@ -378,6 +430,120 @@ export default function PhotoCleanupTestPage() {
             </p>
           </div>
         </div>
+      </div>
+
+      {/* AI Studio Shoot — FLUX Kontext / Fal / Imagen cascade (F-032) */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <Wand2 size={18} className="text-fuchsia-500" />
+          <div>
+            <p className="text-sm font-medium text-gray-800">AI Studio Shoot</p>
+            <p className="text-xs text-gray-400">
+              Uses the “Product photo” above. Pick a scene template (or a fashion model), then
+              Generate — same <code className="text-[10px]">generateStudioImage()</code> the retailer
+              app runs, synchronous here. ~10–60s.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="studio-template" className="text-xs text-gray-500">
+              Scene template
+            </label>
+            <select
+              id="studio-template"
+              value={studioTemplate}
+              onChange={(e) => {
+                setStudioTemplate(e.target.value);
+                setStudioModelId('');
+              }}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {STUDIO_TEMPLATES.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.label} ({t.command})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="studio-model" className="text-xs text-gray-500">
+              Fashion model (optional — overrides template)
+            </label>
+            <select
+              id="studio-model"
+              value={studioModelId}
+              onChange={(e) => setStudioModelId(e.target.value)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="">— scene only, no model —</option>
+              {STUDIO_MODELS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title} ({m.gender})
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="studio-prompt" className="text-xs text-gray-500">
+            Custom prompt (optional — overrides template & model; paste a formula from{' '}
+            <code className="text-[10px]">AI Models and Scenes.html</code>)
+          </label>
+          <textarea
+            id="studio-prompt"
+            value={studioPrompt}
+            onChange={(e) => setStudioPrompt(e.target.value)}
+            rows={3}
+            placeholder="Place this outfit in a high-fashion catwalk runway show with overhead spotlights…"
+            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 font-mono"
+          />
+          <p className="text-[10px] text-gray-400">
+            A colour-accuracy sentence is appended automatically so the garment colour stays true.
+          </p>
+        </div>
+        <button
+          onClick={runStudioShoot}
+          disabled={!productFile || studioBusy}
+          className="flex items-center gap-2 px-4 py-2.5 bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
+        >
+          {studioBusy ? <Loader2 size={16} className="animate-spin" /> : <Wand2 size={16} />}
+          Generate studio shoot
+        </button>
+        {studioResults.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            {studioResults.map((r) => (
+              <div
+                key={r.id}
+                className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
+              >
+                <div className="flex items-center gap-1 p-2 bg-gray-50">
+                  <button
+                    type="button"
+                    className="flex-1 aspect-square relative rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity"
+                    title="Click to enlarge"
+                    onClick={() => setLightbox({ url: r.productUrl, label: 'Input' })}
+                  >
+                    <Image src={r.productUrl} alt="input" fill className="object-cover" unoptimized />
+                  </button>
+                  <ArrowRight size={14} className="text-gray-400 shrink-0" />
+                  <button
+                    type="button"
+                    className="flex-1 aspect-square relative rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity"
+                    title="Click to enlarge"
+                    onClick={() => setLightbox({ url: r.resultUrl, label: r.label })}
+                  >
+                    <Image src={r.resultUrl} alt="studio result" fill className="object-cover" unoptimized />
+                  </button>
+                </div>
+                <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
+                  <span className="truncate">{r.label}</span>
+                  <span>{r.ranAt}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 flex flex-wrap items-center gap-6">

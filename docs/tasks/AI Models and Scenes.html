@@ -70,7 +70,7 @@
       <!-- Quick Action Counter Stats -->
       <div class="flex items-center gap-2 text-xs font-semibold">
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
-          🏞️ <strong id="sceneCount">12</strong> Scenes
+          🏞️ <strong id="sceneCount">24</strong> Scenes & FX
         </span>
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
           💃 <strong id="modelCount">18</strong> Fashion Models
@@ -88,10 +88,10 @@
       <!-- Tab Filters -->
       <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
         <button onclick="filterCategory('all')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-[#231F48] text-white" data-filter="all">
-          All Previews (<span id="totalItems">30</span>)
+          All Previews (<span id="totalItems">42</span>)
         </button>
         <button onclick="filterCategory('scene')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="scene">
-          🏞️ Scene Environments (12)
+          🏞️ Scene Environments & FX (24)
         </button>
         <button onclick="filterCategory('female')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="female">
           👗 Female Models (6)
@@ -627,6 +627,204 @@
         garmentFit: "Pure Silk Kurtas, Kashmiri Pashmina Shawls, Achkans, Dhoti",
         description: "Dignified Indian elder patriarch with silver hair, warm expressive eyes, and royal heritage presence for senior ethnic wear.",
         prompt: "Fit this garment onto a dignified 55-year-old Indian elder gentleman named Harish with silver hair and refined posture. 100% preservation of embroidery, color, and fabric weight."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 8: EXTRA FLUX KONTEXT EFFECTS & SCENES
+      // (all editable with flux-kontext-pro — background swap + relight,
+      //  garment pixels preserved. "fx_" entries change grade/format, not place.)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "scene_golden_rooftop",
+        code: "SCENE_GOLDEN_ROOFTOP",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Golden Hour City Rooftop",
+        subtitle: "Open-air rooftop at sunset with hazy skyline bokeh & warm rim light",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80",
+        badge: "Sunset Lifestyle",
+        badgeColor: "badge-amber",
+        garmentFit: "Indo-Western, Co-ords, Cocktail Gowns, Party Kurtas, Fusion",
+        description: "Editorial rooftop at magic hour — warm low sun as a rim light, city skyline melted into soft bokeh, gentle lens flare.",
+        prompt: "Place this outfit on a model on an open-air city rooftop at golden-hour sunset, hazy skyline bokeh and a soft warm rim light behind the model. Keep the garment shape, exact dye color, pattern, and embroidery 100% unchanged; neutral 5500K key light on the fabric with a warm background only."
+      },
+      {
+        id: "scene_rain_neon_street",
+        code: "SCENE_RAIN_NEON",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Rain-Soaked Neon Street",
+        subtitle: "Moody wet-asphalt night street with reflected shop-sign colour",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=80",
+        badge: "Cinematic Night",
+        badgeColor: "badge-purple",
+        garmentFit: "Jackets, Structured Kurtas, Streetwear Fusion, Denim, Capes",
+        description: "Blade-Runner-style monsoon night — wet reflective pavement, out-of-focus neon shop signs, dramatic single key light on the subject.",
+        prompt: "Place this outfit on a model on a moody rain-soaked city street at night, wet reflective asphalt and blurred neon shop-sign bokeh behind. Dramatic single soft key light on the model; keep the garment's exact original colour, texture, and embroidery fully faithful with no colour cast from the neon."
+      },
+      {
+        id: "scene_poolside_resort",
+        code: "SCENE_POOLSIDE_RESORT",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Luxury Poolside Resort",
+        subtitle: "Infinity-pool deck with turquoise water & palm shade",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+        badge: "Resort Wear",
+        badgeColor: "badge-sky",
+        garmentFit: "Resort Kaftans, Kurti Dresses, Linen Sets, Indo-Western, Pastels",
+        description: "Bright vacation mood — infinity pool, turquoise water reflections, palm-frond shade patterns, clean midday daylight.",
+        prompt: "Place this outfit on a model standing on a luxury infinity-pool deck, turquoise water and palm shade behind in soft focus, bright clean daylight. Garment colour, lightweight drape, and print 100% preserved and true-tone."
+      },
+      {
+        id: "scene_desert_dunes",
+        code: "SCENE_DESERT_DUNES",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Rajasthan Desert Dunes",
+        subtitle: "Thar sand dunes at low sun with long shadows & warm haze",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
+        badge: "Desert Editorial",
+        badgeColor: "badge-amber",
+        garmentFit: "Bandhani, Leheriya, Heavy Lehengas, Sherwanis, Angrakhas",
+        description: "Sweeping Jaisalmer sand dunes with rippled texture, low raking sun casting long shadows, warm atmospheric haze on the horizon.",
+        prompt: "Place this outfit on a model standing on rippled Rajasthan desert sand dunes at low sun with long shadows and warm horizon haze. Preserve the garment's exact dye colour, mirror-work, and embroidery 100%; neutral key light on the fabric, warm scene only."
+      },
+      {
+        id: "scene_kerala_houseboat",
+        code: "SCENE_KERALA_BACKWATER",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Kerala Backwater Houseboat",
+        subtitle: "Teak houseboat deck with coconut palms mirrored in still water",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+        badge: "South India Travel",
+        badgeColor: "badge-emerald",
+        garmentFit: "Kasavu Sarees, Cotton Sets, Mundu, Kurta Sets, Handloom",
+        description: "Serene Alleppey backwaters — teak houseboat deck, palm-lined banks mirrored in glassy green water, soft overcast light.",
+        prompt: "Place this outfit on a model on a teak houseboat deck in the Kerala backwaters, palm-lined banks reflected in still green water behind, soft diffused daylight. Garment weave, off-white/gold kasavu tone, and border 100% colour-true."
+      },
+      {
+        id: "scene_grand_library",
+        code: "SCENE_GRAND_LIBRARY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Grand Heritage Library",
+        subtitle: "Wood-panelled library with warm lamplight & tall book stacks",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&auto=format&fit=crop&q=80",
+        badge: "Intellectual Editorial",
+        badgeColor: "badge-purple",
+        garmentFit: "Formal Suits, Bandhgalas, Chikankari Kurtas, Office Ethnic, Blazers",
+        description: "Old-money reading room — dark wood panelling, brass banker's lamps, tall shelves receding into warm shadow.",
+        prompt: "Place this outfit on a model in a grand wood-panelled heritage library with warm brass lamplight and tall book stacks softly blurred behind. Keep the garment colour, tailoring lines, and fabric texture 100% faithful; neutral key light on the subject."
+      },
+      {
+        id: "scene_art_gallery",
+        code: "SCENE_ART_GALLERY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Contemporary Art Gallery",
+        subtitle: "Bright white gallery hall with track lighting & large canvases",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&auto=format&fit=crop&q=80",
+        badge: "Modern Minimal",
+        badgeColor: "badge-sky",
+        garmentFit: "Designer Drapes, Structured Gowns, Avant-Garde, Co-ords, Sarees",
+        description: "Museum-white gallery — polished concrete floor, ceiling track lights, oversized abstract canvases out of focus behind.",
+        prompt: "Place this outfit on a model in a bright white contemporary art gallery with track lighting and large blurred canvases behind. Gallery-neutral even light; garment's exact colour, pattern, and drape preserved 100%."
+      },
+      {
+        id: "scene_mustard_field",
+        code: "SCENE_MUSTARD_FIELD",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Punjab Mustard Field",
+        subtitle: "Endless yellow sarson bloom under wide blue sky",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=800&auto=format&fit=crop&q=80",
+        badge: "Festive Folk",
+        badgeColor: "badge-amber",
+        garmentFit: "Phulkari, Patiala Suits, Lehariya, Kurta Sets, Bhangra/Giddha Wear",
+        description: "Baisakhi mood — bright yellow mustard flowers to the horizon, big open blue sky, gentle breeze movement in fabric.",
+        prompt: "Place this outfit on a model standing in a bright Punjab mustard-flower field under a wide blue sky, shallow depth of field, gentle breeze in the fabric. Garment's phulkari threadwork and exact dye colour 100% preserved and true-tone."
+      },
+      {
+        id: "scene_snowfall_manali",
+        code: "SCENE_SNOWFALL_HILLS",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Himalayan Snowfall",
+        subtitle: "Light snowfall over pines with cold blue ambient & warm subject",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
+        badge: "Winter Collection",
+        badgeColor: "badge-sky",
+        garmentFit: "Velvet Suits, Pashmina Shawls, Bandhgalas, Winter Ethnic, Kaftans",
+        description: "Falling snow over a pine ridge, cold blue ambient light on the scene contrasted with a warm key on the model, soft bokeh flakes.",
+        prompt: "Place this outfit on a model in light Himalayan snowfall over pine trees, cold blue ambient scene with soft falling-snow bokeh, warm neutral key light on the model. Garment's velvet nap, colour depth, and zari 100% preserved."
+      },
+      {
+        id: "fx_gradient_studio",
+        code: "FX_GRADIENT_SEAMLESS",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Coloured Seamless Gradient",
+        subtitle: "Pick an accent — smooth studio gradient sweep (pink / teal / grey)",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80",
+        badge: "Studio FX",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "All Catalog Garments, Campaign Hero Shots, Sale Banners",
+        description: "Clean e-commerce hero look — a smooth seamless gradient sweep behind the subject in a chosen accent colour, soft contact shadow.",
+        prompt: "Replace the background with a smooth seamless studio gradient sweep in a soft [ACCENT COLOUR] tone, subtle vignette, soft contact shadow under the subject. Keep the product/model completely unchanged — exact colour, hue, pattern, and fabric detail. Neutral 5500K light on the garment."
+      },
+      {
+        id: "fx_film_editorial",
+        code: "FX_35MM_FILM",
+        type: "scene",
+        categoryTag: "scene",
+        title: "35mm Film Editorial Grade",
+        subtitle: "Analogue colour, fine grain, gentle halation — Vogue-India look",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+        badge: "Film Look FX",
+        badgeColor: "badge-amber",
+        garmentFit: "Editorial Lookbooks, Lehengas, Sarees, Menswear, Fusion",
+        description: "Post-process grade only — keeps the scene, adds Portra-style analogue colour, soft grain, mild halation on highlights, slight film-gate softness.",
+        prompt: "Apply a 35mm analogue film grade to this photo: Kodak-Portra-style warm colour, fine natural grain, gentle highlight halation, soft edge falloff. Keep composition, model, and garment identical; the garment's true colour must remain readable and accurate under the grade."
+      },
+      {
+        id: "fx_bw_highcontrast",
+        code: "FX_BW_CONTRAST",
+        type: "scene",
+        categoryTag: "scene",
+        title: "B&W High-Contrast",
+        subtitle: "Editorial monochrome — deep blacks, bright highlights, texture pop",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=800&auto=format&fit=crop&q=80",
+        badge: "Monochrome FX",
+        badgeColor: "badge-purple",
+        garmentFit: "Texture-Heavy Weaves, Embroidery Detail, Menswear, Draped Gowns",
+        description: "Convert to a high-contrast black-and-white editorial — deep blacks, controlled highlights, emphasised fabric texture and embroidery relief.",
+        prompt: "Convert this photo to a high-contrast black-and-white fashion editorial: deep blacks, bright controlled highlights, strong micro-contrast to emphasise fabric weave and embroidery. Keep the model, garment shape, and composition identical."
       }
     ];
 

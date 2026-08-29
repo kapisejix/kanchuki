@@ -98,6 +98,10 @@ export async function generateStudioImage(
   options?: {
     engine?: StudioEngine;
     modelId?: StudioModelId | string;
+    /** Free-text prompt that replaces the template prompt (admin test bench —
+     * lets you paste a formula straight from AI Models and Scenes.html). The
+     * colour-accuracy tail is still appended. */
+    customPrompt?: string;
     product?: {
       name?: string | null;
       category?: string | null;
@@ -159,7 +163,7 @@ export async function generateStudioImage(
   }
 
   const template = getStudioTemplate(templateId as string);
-  if (!template && !options?.modelId && !templateId.startsWith('/')) {
+  if (!template && !options?.modelId && !options?.customPrompt && !templateId.startsWith('/')) {
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
   }
 
@@ -178,7 +182,7 @@ export async function generateStudioImage(
       } styled for "${modelMeta.title}" — ${modelMeta.description}. Full-length editorial catalog photograph, ${modelMeta.pose.replace(/_/g, ' ')} pose, photorealistic 8k fabric texture. The garment shape, exact original colour, dye, pattern and embroidery are 100% preserved with true-tone lighting.`
     : `A professional ${indianModelDesc} wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`;
 
-  let basePrompt: string = template?.prompt ?? (
+  let basePrompt: string = options?.customPrompt ?? template?.prompt ?? (
     options?.modelId
       ? modelPrompt
       : `Place this product photo in a professional studio setting with clean lighting: ${templateId}`
@@ -255,7 +259,9 @@ export async function generateStudioImage(
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        prompt: template?.prompt ?? templateId,
+        // Send the fully-assembled prompt (basePrompt + colour tail + any
+        // runway/model/customPrompt tweak) — NOT the bare template string.
+        prompt: promptText,
         input_image: inputImageUrl,
       }),
       signal: AbortSignal.timeout(30_000),

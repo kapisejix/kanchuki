@@ -10,10 +10,11 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { R2_PATHS } from '@kanchuki/shared';
+import { R2_PATHS, getStudioTemplate } from '@kanchuki/shared';
 import { z } from 'zod';
 import { addAdminTryOnJob } from '../../jobs/index.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
+import { downloadCompressAndUpload, generateStudioImage } from '../../lib/studio-shoot.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
@@ -125,6 +126,58 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       return { data: { result_url: publicUrl(key) } };
     }),
   );
+
+  // ─── POST /admin/photo-cleanup/studio-shoot ───────────────────────
+  // AI Studio Shoot test bench — runs the SAME generateStudioImage() the
+  // retailer feature uses (studio-shoot.ts), but synchronously and without
+  // the BullMQ queue / quota / product-row plumbing (admin-only test page,
+  // mirrors /photo-cleanup/run's sync shape). Engine cascade is unchanged:
+  // Fal Flux Pro → Google Imagen 3 → Fal Schnell → BFL FLUX Kontext Pro,
+  // gated by which key is configured. Pass engine:'bfl_kontext' has no
+  // forcing effect today — only BFL_API_KEY-and-nothing-else lands on BFL.
+  server.post('/photo-cleanup/studio-shoot', async (request) => {
+    const body = z
+      .object({
+        product_url: z.string().url(),
+        template: z.string().min(1),
+        engine: z
+          .enum(['flux_pro', 'imagen_3', 'idm_vton', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext'])
+          .optional(),
+        model_id: z.string().optional(),
+        // Free-text prompt (paste a formula from AI Models and Scenes.html) —
+        // overrides the template. Admin test bench only.
+        prompt: z.string().min(1).max(4000).optional(),
+      })
+      .parse(request.body);
+
+    const tpl = getStudioTemplate(body.template);
+    if (!tpl && !body.model_id && !body.prompt) {
+      throw validationError('Unknown studio template. Pick one from the dropdown.', 'template');
+    }
+
+    const result = await generateStudioImage(
+      tpl?.id ?? body.template,
+      body.product_url,
+      undefined,
+      undefined,
+      { engine: body.engine, modelId: body.model_id, customPrompt: body.prompt },
+    );
+    if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
+      throw new AppError(
+        'STUDIO_SHOOT_FAILED',
+        result.error ?? 'The studio shoot could not be generated.',
+        502,
+      );
+    }
+
+    const key = R2_PATHS.photoCleanupTest(`studio-${randomUUID()}.jpg`);
+    const uploaded = await downloadCompressAndUpload(
+      result.base64Data ?? result.sampleUrl!,
+      key,
+      Boolean(result.base64Data),
+    );
+    return { data: { result_url: uploaded.url, template: tpl?.id ?? body.template } };
+  });
 
   // ─── POST /admin/photo-cleanup/tryon ───────────────────────────────
   // "Generate on model" — enqueues the admin-tryon maintenance job, which
