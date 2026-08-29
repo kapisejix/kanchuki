@@ -208,7 +208,11 @@ export default function IntegrationsPage() {
         </div>
         <div className="flex-1 sm:max-w-xs ml-auto">
           <input
-            type="text"
+            type="search"
+            name="integration-key-search"
+            autoComplete="off"
+            data-1p-ignore
+            data-lpignore="true"
             placeholder="Search keys (e.g. FAL, Gemini, Flux)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
