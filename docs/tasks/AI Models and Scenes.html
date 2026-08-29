@@ -70,7 +70,7 @@
       <!-- Quick Action Counter Stats -->
       <div class="flex items-center gap-2 text-xs font-semibold">
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
-          🏞️ <strong id="sceneCount">25</strong> Custom Backdrops
+          🏞️ <strong id="sceneCount">37</strong> Backdrops (25 model · 12 no-model)
         </span>
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
           💃 <strong id="modelCount">18</strong> Fashion Models
@@ -91,7 +91,7 @@
           All Previews (<span id="totalItems">42</span>)
         </button>
         <button onclick="filterCategory('scene')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="scene">
-          🏞️ Custom Backdrops (25)
+          🏞️ Backdrops (37)
         </button>
         <button onclick="filterCategory('female')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="female">
           👗 Female Models (6)
@@ -559,6 +559,207 @@
         garmentFit: "Folded Sets, Dupattas, Accessories, Flat-Lay Garments, Detail Shots",
         description: "A product-shoot set: a low round white textured podium against a textured white wall with a slim gold hoop arch, framed by lush green fern fronds and soft white pampas plumes.",
         prompt: "Place this outfit on a graceful Indian fashion model on a low round white textured podium against a textured white wall with a slim gold hoop arch, framed by lush green fern fronds and soft white pampas plumes, bright even studio light. The garment's exact colour, pattern and embroidery stay 100% unchanged."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 1B: NO-MODEL DISPLAY SCENES (2026-08-29)
+      // Background-swap + relight only — NO person/model added. Assumes the
+      // product photo already shows the garment on a hanger / mannequin /
+      // stand / flat-lay (saree unworn, unstitched suit sets, dupattas).
+      // Mirrors the old white_studio / flat_lay family. imageUrl is a
+      // stand-in from docs/photoshoots/background/ for a visual hint only.
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "nm_studio_hanger_white",
+        code: "SCENE_NM_HANGER_WHITE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "White Studio Hanger",
+        subtitle: "Garment on a wooden hanger, seamless white studio, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/56ac4037c4cf8726c7c1359bafe4c7da.jpg",
+        badge: "No-Model · Studio",
+        badgeColor: "badge-sky",
+        garmentFit: "Kurtas, Kurtis, Suit Sets, Shirts, Sarees on Hanger",
+        description: "The garment stays hung on a plain wooden hanger exactly as shot. Background replaced with a clean seamless white studio wall, soft even light and a subtle contact shadow.",
+        prompt: "Keep this garment displayed exactly as in the photo, hanging on a plain wooden hanger, with absolutely no human model, mannequin body or person anywhere in the frame. Replace only the background and relight: a clean seamless white studio wall behind the hanger, soft even 5500K studio light with a subtle contact shadow. The garment's colour, print, weave and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_dress_form_studio",
+        code: "SCENE_NM_DRESS_FORM",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Studio Dress Form",
+        subtitle: "Garment on a tailor's dress form, neutral studio, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/602059816340bea7cd42950e6d4bee2e.jpg",
+        badge: "No-Model · Mannequin",
+        badgeColor: "badge-purple",
+        garmentFit: "Blouses, Kurtas, Anarkalis, Jackets, Structured Wear",
+        description: "The garment stays fitted on a neutral tailor's dress form / mannequin torso (no head, no limbs). Background replaced with a soft neutral studio backdrop.",
+        prompt: "Keep this garment fitted on a plain neutral tailor's dress form (headless, limbless mannequin torso) exactly as in the photo — no human model, face, hands or skin anywhere in the frame. Replace only the background and relight: a soft neutral grey-beige studio backdrop, even 5500K key light, gentle grounding shadow. The garment's colour, drape, pattern and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_ghost_mannequin",
+        code: "SCENE_NM_GHOST_MANNEQUIN",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Invisible Mannequin",
+        subtitle: "Garment holds its worn shape, hollow inside, white studio",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/602059816340bea7cd42950e6d4bee2e.jpg",
+        badge: "No-Model · Ghost",
+        badgeColor: "badge-sky",
+        garmentFit: "Kurtas, Blouses, Shirts, Jackets, Kids Ethnic",
+        description: "Ghost-mannequin / invisible-mannequin look — the garment keeps a filled 3D worn shape but is hollow inside, no body, no hanger. Clean white studio.",
+        prompt: "Render this garment in an invisible-mannequin (ghost-mannequin) style: it holds a filled, three-dimensional worn shape but is completely hollow inside with no body, no mannequin, no hanger and no person visible. Background is a clean seamless white studio with soft even light and a light contact shadow. The garment's colour, print, weave and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_boutique_rail",
+        code: "SCENE_NM_BOUTIQUE_RAIL",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Boutique Clothes Rail",
+        subtitle: "Garment on a metal clothes rail, warm boutique, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/3395609186c9c8bc5e54dc098fc0f26f.jpg",
+        badge: "No-Model · Boutique",
+        badgeColor: "badge-amber",
+        garmentFit: "Kurta Sets, Suit Sets, Sarees, Dupattas, Daily Ethnic",
+        description: "The garment hangs on a slim metal/wood clothes rail with a few other garments softly out of focus behind. Warm spot-lit boutique interior.",
+        prompt: "Keep this garment hanging on a slim metal-and-wood clothes rail exactly as shot, with a few other garments softly out of focus behind — no human model, mannequin body or person anywhere in the frame. Replace only the background and relight: a warm upscale boutique interior with soft spot lighting. The garment's colour, pattern and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_saree_stand_studio",
+        code: "SCENE_NM_SAREE_STAND",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Draped Saree Stand",
+        subtitle: "Saree draped over a display stand, unworn, indoor studio",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/9df1e0119e9427dd7980cc1a9bc99ae6.jpg",
+        badge: "No-Model · Saree",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Sarees, Dupattas, Stoles, Lehenga Dupattas, Fabric Lengths",
+        description: "The saree stays draped over a wooden saree display stand exactly as shot — pallu falling free, unworn. Background replaced with a soft neutral studio wall.",
+        prompt: "Keep this saree draped over a wooden saree display stand exactly as in the photo — pallu hanging free, garment unworn, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a soft neutral studio wall, even 5500K light, gentle grounding shadow. The saree's colour, weave, zari border and print stay pixel-identical."
+      },
+      {
+        id: "nm_saree_heritage_wall",
+        code: "SCENE_NM_SAREE_HERITAGE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Saree on Heritage Wall",
+        subtitle: "Saree on a stand against a textured heritage wall, outdoor shade",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/38e3e008658d33d82804417a9102c306.jpg",
+        badge: "No-Model · Outdoor",
+        badgeColor: "badge-amber",
+        garmentFit: "Sarees, Dupattas, Handloom Lengths, Kasavu, Silk Yardage",
+        description: "The saree stays draped on a stand, unworn, positioned against a textured terracotta / whitewashed heritage wall in soft outdoor shade.",
+        prompt: "Keep this saree draped on a display stand exactly as shot, unworn, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a textured whitewashed heritage wall with a carved wooden door and soft outdoor shade. The saree's colour, weave, border and print stay pixel-identical."
+      },
+      {
+        id: "nm_unstitched_flatlay",
+        code: "SCENE_NM_UNSTITCHED_FLATLAY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Unstitched Flat-Lay",
+        subtitle: "Unstitched suit set laid flat on linen, top-down, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/355f48f4cbab95a190e3e25f340827b7.jpg",
+        badge: "No-Model · Flat-Lay",
+        badgeColor: "badge-emerald",
+        garmentFit: "Unstitched Suit Sets, Dupatta + Top + Bottom Pieces, Fabric Sets",
+        description: "The unstitched suit pieces (kurta length, bottom, dupatta) stay arranged flat exactly as shot, seen top-down. Background replaced with a neutral linen / stone tabletop.",
+        prompt: "Keep these unstitched suit pieces (kurta fabric, bottom fabric, dupatta) arranged flat exactly as in the photo, viewed straight from above, with no human model, mannequin or person anywhere in the frame. Replace only the surface and relight: a neutral light linen or stone tabletop, soft even 5500K overhead light. The fabrics' colours, prints, weave and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_unstitched_rod",
+        code: "SCENE_NM_UNSTITCHED_ROD",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Unstitched on Brass Rod",
+        subtitle: "Unstitched pieces + dupatta over a brass rod, plaster wall, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/355f48f4cbab95a190e3e25f340827b7.jpg",
+        badge: "No-Model · Hanging Stand",
+        badgeColor: "badge-amber",
+        garmentFit: "Unstitched Suit Sets, Dupattas, Fabric Lengths, Stoles",
+        description: "The unstitched fabric lengths and dupatta stay draped over a slim brass rod / hanging stand exactly as shot, against a warm plaster wall.",
+        prompt: "Keep these unstitched fabric lengths and the dupatta draped over a slim brass rod / hanging stand exactly as in the photo, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a warm textured plaster wall with soft daylight. The fabrics' colours, prints, weave and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_dupatta_drape_stand",
+        code: "SCENE_NM_DUPATTA_STAND",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Dupatta Drape Stand",
+        subtitle: "Single dupatta over a slim stand, coloured backdrop, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/bda9914a98c7557bc199b18e3a38c60e.jpg",
+        badge: "No-Model · Dupatta",
+        badgeColor: "badge-purple",
+        garmentFit: "Dupattas, Stoles, Scarves, Odhnis, Bandhani Lengths",
+        description: "A single dupatta / stole stays draped over a slim vertical stand exactly as shot. Background replaced with a smooth soft-coloured studio backdrop.",
+        prompt: "Keep this single dupatta / stole draped over a slim vertical stand exactly as in the photo, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a smooth soft-mauve studio backdrop, even light, subtle shadow. The dupatta's colour, print, border and weave stay pixel-identical."
+      },
+      {
+        id: "nm_folded_stack_table",
+        code: "SCENE_NM_FOLDED_STACK",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Folded Retail Stack",
+        subtitle: "Neatly folded garments stacked on a wood table, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/486d42b0ce8f319af8048ada6f44c638.jpg",
+        badge: "No-Model · Merchandising",
+        badgeColor: "badge-emerald",
+        garmentFit: "Folded Kurtas, Suit Sets, Sarees, Stoles, Retail Stacks",
+        description: "The folded garment(s) stay stacked exactly as shot on a wooden retail table. Background replaced with a warm boutique interior softly out of focus.",
+        prompt: "Keep the folded garment(s) stacked exactly as in the photo on a wooden retail table, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a warm boutique interior softly out of focus, gentle spot lighting. The garments' colours, prints and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_outdoor_ladder_rail",
+        code: "SCENE_NM_OUTDOOR_LADDER",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Rustic Outdoor Ladder",
+        subtitle: "Garment over a weathered wooden ladder, greenery behind, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/1d2a9bbcff6789ed8beaa54d49f81212.jpg",
+        badge: "No-Model · Outdoor",
+        badgeColor: "badge-emerald",
+        garmentFit: "Cotton Kurtas, Handloom Sarees, Dupattas, Casual Ethnic, Stoles",
+        description: "The garment stays draped over a weathered wooden ladder / rail exactly as shot, set outdoors with soft greenery bokeh behind.",
+        prompt: "Keep this garment draped over a weathered wooden ladder / rail exactly as in the photo, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a calm outdoor garden setting with soft green foliage bokeh and gentle daylight. The garment's colour, weave, print and embroidery stay pixel-identical."
+      },
+      {
+        id: "nm_wall_hook_textured",
+        code: "SCENE_NM_WALL_HOOK",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Textured Wall Hook",
+        subtitle: "Garment on a single wall hook, warm plaster wall, no model",
+        gender: "No Model",
+        ageGroup: "Display Only",
+        imageUrl: "../photoshoots/background/355f48f4cbab95a190e3e25f340827b7.jpg",
+        badge: "No-Model · Studio",
+        badgeColor: "badge-amber",
+        garmentFit: "Kurtas, Kurtis, Dupattas, Sarees on Hanger, Light Ethnic",
+        description: "The garment stays hung from a single wall hook exactly as shot, against a warm textured plaster wall with soft directional daylight.",
+        prompt: "Keep this garment hung from a single wall hook exactly as in the photo, with no human model, mannequin or person anywhere in the frame. Replace only the background and relight: a warm textured plaster wall with soft directional daylight and a faint natural shadow. The garment's colour, print, weave and embroidery stay pixel-identical."
       },
 
       // ══════════════════════════════════════════════════════════════
