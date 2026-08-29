@@ -18,7 +18,7 @@ import * as ImageManipulator from 'expo-image-manipulator'
 import { File } from 'expo-file-system'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { X, ImagePlus, ChevronDown, ChevronLeft, Check } from 'lucide-react-native'
+import { X, ImagePlus, ChevronDown, ChevronLeft, Check, Sparkles } from 'lucide-react-native'
 import {
   productApi,
   categoryApi,
@@ -173,21 +173,6 @@ export default function AddProductScreen() {
     queryFn: () => categoryApi.list(),
   })
   const categories = categoriesData?.data ?? []
-
-  // Auto-select "New Arrivals" category by default when categories load
-  useEffect(() => {
-    if (categories.length > 0 && selectedCategoryIds.length === 0) {
-      const newArrivalsCat = categories.find(
-        (c) =>
-          c.name.toLowerCase().includes('new arrival') ||
-          c.name.toLowerCase().includes('arrivals') ||
-          c.name.toLowerCase().includes('new'),
-      )
-      if (newArrivalsCat) {
-        setSelectedCategoryIds([newArrivalsCat.id])
-      }
-    }
-  }, [categories])
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, seeded from
   // the admin default template — no hardcoded option lists).
@@ -1227,7 +1212,7 @@ export default function AddProductScreen() {
                 Categories (Multi-Select)
               </Text>
               <Text className="text-[11px] text-sand-400 mt-0.5">
-                New Arrivals auto-selected · Select related category
+                New Arrivals auto-checked (21 days) · Choose category below
               </Text>
             </View>
             <AnimatedPressable onPress={() => router.push('/category/new')}>
@@ -1240,6 +1225,17 @@ export default function AddProductScreen() {
             </Text>
           ) : (
             <View className="flex-row flex-wrap gap-2">
+              {/* Auto-selected New Arrivals pill */}
+              <View className="px-3.5 py-1.5 rounded-full border bg-fuchsia-50 border-fuchsia-300 flex-row items-center gap-1.5">
+                <Sparkles size={13} color="#BB3F95" />
+                <Text className="text-xs font-bold text-fuchsia-800">
+                  New Arrivals
+                </Text>
+                <View className="px-1.5 py-0.5 rounded-full bg-fuchsia-200">
+                  <Text className="text-[9px] font-extrabold text-fuchsia-900">Auto 21d</Text>
+                </View>
+              </View>
+
               {categories.map((cat) => {
                 const selected = selectedCategoryIds.includes(cat.id)
                 return (
@@ -1253,7 +1249,7 @@ export default function AddProductScreen() {
                     accessibilityRole="button"
                     accessibilityState={{ selected }}
                     className={`px-3.5 py-1.5 rounded-full border flex-row items-center gap-1.5 ${
-                      selected ? 'bg-ink-600 border-ink-600' : 'bg-white border-sand-200'
+                      selected ? 'bg-spaceCadet-900 border-spaceCadet-900' : 'bg-white border-sand-200'
                     }`}
                   >
                     {selected && <Check size={12} color="white" />}

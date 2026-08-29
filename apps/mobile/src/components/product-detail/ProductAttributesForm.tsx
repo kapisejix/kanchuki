@@ -2,6 +2,7 @@ import React from 'react'
 import { View, Text, TextInput } from 'react-native'
 import { Image } from 'expo-image'
 import {
+  Check,
   Tag,
   Sparkles,
 } from 'lucide-react-native'
@@ -27,6 +28,8 @@ interface ProductAttributesFormProps {
   setSelectedFabrics: React.Dispatch<React.SetStateAction<string[]>>
   selectedSizes: string[]
   setSelectedSizes: React.Dispatch<React.SetStateAction<string[]>>
+  selectedCategoryIds: string[]
+  setSelectedCategoryIds: React.Dispatch<React.SetStateAction<string[]>>
   editedCategory: string | null
   setEditedCategory: (c: string | null) => void
   editedColor: string
@@ -69,6 +72,8 @@ export function ProductAttributesForm({
   setSelectedFabrics,
   selectedSizes,
   setSelectedSizes,
+  selectedCategoryIds,
+  setSelectedCategoryIds,
   editedCategory,
   setEditedCategory,
   editedColor,
@@ -96,6 +101,11 @@ export function ProductAttributesForm({
   goToPhoto,
   onOpenSkuTagModal,
 }: ProductAttributesFormProps) {
+  const createdDate = product.created_at ? new Date(product.created_at) : new Date()
+  const daysAgo = Math.floor((Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24))
+  const isNewArrival = daysAgo >= 0 && daysAgo <= 21
+  const daysLeft = Math.max(0, 21 - daysAgo)
+
   const toggleStyle = (s: string) => {
     dirty(setSelectedStyles)(
       selectedStyles.includes(s)
@@ -190,7 +200,7 @@ export function ProductAttributesForm({
           <TextInput
             value={editedName}
             onChangeText={dirty(setEditedName)}
-            placeholder="e.g. Pink Embroidered Anarkali Suit"
+            placeholder="Product title / name"
             placeholderTextColor="#928EB2"
             className="text-sm text-spaceCadet-900 bg-lavender-50 rounded-2xl border border-lavender-200 px-4 py-3"
           />
@@ -210,28 +220,83 @@ export function ProductAttributesForm({
           />
         </View>
 
-        {/* Category */}
+        {/* Categories (Multi-Select with New Arrivals status) */}
         <View>
-          <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider mb-2">
-            Category
+          <View className="flex-row items-center justify-between mb-1">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+              Categories (Multi-Select)
+            </Text>
+            <Text className="text-[10px] text-heliotrope-500 font-medium">
+              Multi-choice supported
+            </Text>
+          </View>
+          <Text className="text-[11px] text-heliotrope-500 mb-2.5 leading-4">
+            New Arrivals auto-checked for 21 days · Select categories for this item
           </Text>
+
           <View className="flex-row flex-wrap gap-2">
+            {/* New Arrivals virtual category status pill */}
+            <View
+              className={`px-3 py-1.5 rounded-2xl border flex-row items-center gap-1.5 ${
+                isNewArrival
+                  ? 'bg-fuchsia-50 border-fuchsia-300'
+                  : 'bg-lavender-50 border-lavender-200 opacity-60'
+              }`}
+            >
+              <Sparkles size={13} color={isNewArrival ? '#BB3F95' : '#928EB2'} />
+              <Text
+                className={`text-xs font-bold ${
+                  isNewArrival ? 'text-fuchsia-800' : 'text-spaceCadet-400'
+                }`}
+              >
+                New Arrivals
+              </Text>
+              <View
+                className={`px-1.5 py-0.5 rounded-full ${
+                  isNewArrival ? 'bg-fuchsia-200' : 'bg-lavender-200'
+                }`}
+              >
+                <Text
+                  className={`text-[9px] font-extrabold ${
+                    isNewArrival ? 'text-fuchsia-900' : 'text-spaceCadet-500'
+                  }`}
+                >
+                  {isNewArrival ? `${daysLeft}d left` : 'Expired (21d)'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Store Categories */}
             {categories.map((c) => {
               const isSelected =
-                editedCategoryId === c.id || (!editedCategoryId && editedCategory === c.name)
+                selectedCategoryIds.includes(c.id) ||
+                editedCategoryId === c.id ||
+                (!editedCategoryId && editedCategory === c.name)
               return (
                 <AnimatedPressable
                   key={c.id}
                   onPress={() => {
-                    dirty(setEditedCategoryId)(c.id)
-                    dirty(setEditedCategory)(c.name)
+                    const newIds = isSelected
+                      ? selectedCategoryIds.filter((id) => id !== c.id)
+                      : [...selectedCategoryIds, c.id]
+                    dirty(setSelectedCategoryIds)(newIds)
+                    if (newIds.length > 0) {
+                      dirty(setEditedCategoryId)(newIds[0]!)
+                      dirty(setEditedCategory)(
+                        categories.find((cat) => cat.id === newIds[0])?.name ?? null,
+                      )
+                    } else {
+                      dirty(setEditedCategoryId)(null)
+                      dirty(setEditedCategory)(null)
+                    }
                   }}
-                  className={`px-3.5 py-2 rounded-2xl border ${
+                  className={`px-3 py-1.5 rounded-2xl border flex-row items-center gap-1.5 ${
                     isSelected
                       ? 'bg-spaceCadet-900 border-spaceCadet-900'
                       : 'bg-lavender-50 border-lavender-200'
                   }`}
                 >
+                  {isSelected && <Check size={12} color="white" />}
                   <Text
                     className={`text-xs font-bold ${
                       isSelected ? 'text-white' : 'text-spaceCadet-900'

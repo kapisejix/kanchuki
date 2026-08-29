@@ -266,7 +266,7 @@ export default function ProductDetailScreen() {
         <View className="flex-row items-center gap-2">
           {form.isDirty ? (
             <AnimatedPressable
-              onPress={() => void form.handleSave()}
+              onPress={() => void form.handleSave(categories)}
               disabled={form.saving}
               className="bg-spaceCadet-900 px-4 py-2 rounded-2xl"
             >
@@ -364,6 +364,8 @@ export default function ProductDetailScreen() {
           setSelectedFabrics={form.setSelectedFabrics}
           selectedSizes={form.selectedSizes}
           setSelectedSizes={form.setSelectedSizes}
+          selectedCategoryIds={form.selectedCategoryIds}
+          setSelectedCategoryIds={form.setSelectedCategoryIds}
           editedCategory={form.editedCategory}
           setEditedCategory={form.setEditedCategory}
           editedColor={form.editedColor}

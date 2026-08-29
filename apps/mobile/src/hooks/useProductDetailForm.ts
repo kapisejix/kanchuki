@@ -25,6 +25,7 @@ export function useProductDetailForm({
   const [selectedStyles, setSelectedStyles] = useState<string[]>([])
   const [selectedFabrics, setSelectedFabrics] = useState<string[]>([])
   const [selectedSizes, setSelectedSizes] = useState<string[]>([])
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([])
   const [editedCategory, setEditedCategory] = useState<string | null>(null)
   const [editedColor, setEditedColor] = useState<string>('')
   const [editedPattern, setEditedPattern] = useState<string | null>(null)
@@ -77,6 +78,7 @@ export function useProductDetailForm({
     setSelectedStyles(product.styles ?? [])
     setSelectedFabrics(product.fabrics ?? [])
     setSelectedSizes(product.sizes ?? [])
+    setSelectedCategoryIds(product.category_id ? [product.category_id] : [])
     setEditedCategory(product.category ?? null)
     setEditedColor(product.primary_color ?? '')
     setEditedPattern(product.pattern ?? null)
@@ -92,11 +94,31 @@ export function useProductDetailForm({
     void queryClient.invalidateQueries({ queryKey: ['retailer', 'stats'] })
   }, [queryClient])
 
-  const handleSave = async () => {
+  const handleSave = async (categoryList?: Array<{ id: string; name: string }>) => {
     if (!product) return
     setSaving(true)
     try {
       const priceInPaise = price ? Math.round(parseFloat(price) * 100) : undefined
+      const primaryCatId = selectedCategoryIds[0] ?? editedCategoryId ?? undefined
+      const matchedCatName = categoryList && primaryCatId
+        ? categoryList.find((c) => c.id === primaryCatId)?.name
+        : editedCategory
+
+      const selectedCatNames = categoryList
+        ? selectedCategoryIds
+            .map((id) => categoryList.find((c) => c.id === id)?.name)
+            .filter((n): n is string => Boolean(n))
+        : []
+
+      const tagsToSave = Array.from(
+        new Set([
+          ...(product.search_tags ?? []),
+          ...selectedCatNames,
+          ...selectedStyles,
+          ...selectedFabrics,
+        ]),
+      )
+
       await productApi.update(product.id, {
         price_min: priceInPaise,
         price_max: priceInPaise,
@@ -104,15 +126,16 @@ export function useProductDetailForm({
         sku: editedSku || undefined,
         description: editedDescription || undefined,
         subtype: editedSubtype || undefined,
-        category: editedCategory ?? undefined,
+        category: matchedCatName ?? editedCategory ?? undefined,
         primary_color: editedColor || undefined,
         pattern: editedPattern ?? undefined,
-        category_id: editedCategoryId ?? undefined,
+        category_id: primaryCatId ?? null,
         location_notes: location || undefined,
         notes: notes || undefined,
         styles: selectedStyles,
         fabrics: selectedFabrics,
         sizes: selectedSizes,
+        search_tags: tagsToSave,
       })
       invalidate()
       setIsDirty(false)
@@ -206,6 +229,8 @@ export function useProductDetailForm({
     setSelectedFabrics,
     selectedSizes,
     setSelectedSizes,
+    selectedCategoryIds,
+    setSelectedCategoryIds,
     editedCategory,
     setEditedCategory,
     editedColor,

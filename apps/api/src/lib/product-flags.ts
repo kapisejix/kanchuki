@@ -8,7 +8,7 @@
  * AI-tagged (a photo can't reveal stock age or discount status).
  */
 
-export const NEW_ARRIVAL_DAYS = 30;
+export const NEW_ARRIVAL_DAYS = 21;
 
 export function isNewArrival(createdAt: Date | string): boolean {
   const cutoff = new Date();

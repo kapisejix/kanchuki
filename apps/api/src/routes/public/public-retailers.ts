@@ -4,6 +4,7 @@ import { type Prisma, prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { NEW_ARRIVAL_DAYS } from '../../lib/product-flags.js';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 import {
@@ -239,6 +240,18 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         where: { retailer_id: retailer.id, deleted_at: null, status: 'AVAILABLE' },
       });
 
+      // Products added within the last NEW_ARRIVAL_DAYS (21 days)
+      const arrivalCutoff = new Date();
+      arrivalCutoff.setDate(arrivalCutoff.getDate() - NEW_ARRIVAL_DAYS);
+      const newArrivalsCount = await prisma.product.count({
+        where: {
+          retailer_id: retailer.id,
+          deleted_at: null,
+          status: 'AVAILABLE',
+          created_at: { gte: arrivalCutoff },
+        },
+      });
+
       return {
         data: categories
           .filter((c) => c._count.products > 0)
@@ -253,6 +266,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
             };
           }),
         total_products: totalProducts,
+        new_arrivals_count: newArrivalsCount,
       };
     });
   });
@@ -412,17 +426,38 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         };
       }
 
-      const category = await prisma.productCategory.findFirst({
-        where: { id: categoryId, retailer_id: retailer.id },
-        select: { name: true },
-      });
-      if (!category) throw notFound('Category');
+      const isNewArrivals = categoryId === 'new-arrivals';
+      const arrivalCutoff = new Date();
+      arrivalCutoff.setDate(arrivalCutoff.getDate() - NEW_ARRIVAL_DAYS);
 
-      const productWhere: Prisma.ProductWhereInput = {
-        ...buildProductFilterWhere(query),
-        category_id: categoryId,
-        retailer_id: retailer.id,
-      };
+      let categoryTitle = 'New Arrivals';
+      let productWhere: Prisma.ProductWhereInput;
+
+      if (isNewArrivals) {
+        productWhere = {
+          ...buildProductFilterWhere(query),
+          retailer_id: retailer.id,
+          created_at: { gte: arrivalCutoff },
+        };
+      } else {
+        const category = await prisma.productCategory.findFirst({
+          where: { id: categoryId, retailer_id: retailer.id },
+          select: { name: true },
+        });
+        if (!category) throw notFound('Category');
+        categoryTitle = category.name;
+
+        productWhere = {
+          ...buildProductFilterWhere(query),
+          retailer_id: retailer.id,
+          OR: [
+            { category_id: categoryId },
+            { category: category.name },
+            { search_tags: { has: category.name } },
+          ],
+        };
+      }
+
       const take = query.pageSize ?? (query.page ? 12 : undefined);
       const skip = query.page && take ? (query.page - 1) * take : undefined;
 
@@ -440,7 +475,7 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         }),
         prisma.product.count({ where: productWhere }),
         prisma.product.findMany({
-          where: { deleted_at: null, category_id: categoryId, retailer_id: retailer.id },
+          where: productWhere,
           select: { category: true, primary_color: true },
         }),
       ]);
@@ -458,8 +493,8 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
             banner_url: retailer.banner_url ?? null,
             public_slug: retailer.public_slug,
           },
-          title: category.name,
-          description: null,
+          title: categoryTitle,
+          description: isNewArrivals ? 'Fresh additions from the last 21 days' : null,
           expires_at: null,
           products: publicProducts,
           total,

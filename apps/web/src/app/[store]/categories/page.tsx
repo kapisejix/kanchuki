@@ -1,5 +1,5 @@
 import { API_URL as apiUrl } from '@/lib/apiUrl';
-import { LayoutGrid, Store } from 'lucide-react';
+import { LayoutGrid, Sparkles, Store } from 'lucide-react';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -25,6 +25,7 @@ interface StoreCategoriesData {
   storefront_slug: string | null;
   categoryList: PublicCategory[];
   total_products: number;
+  new_arrivals_count: number;
 }
 
 interface Props {
@@ -54,11 +55,13 @@ async function fetchData(store: string): Promise<StoreCategoriesData | null> {
     const categoriesJson = (await categoriesRes.json()) as {
       data: PublicCategory[];
       total_products?: number;
+      new_arrivals_count?: number;
     };
     return {
       ...profile.data,
       categoryList: categoriesJson.data ?? [],
       total_products: categoriesJson.total_products ?? 0,
+      new_arrivals_count: categoriesJson.new_arrivals_count ?? 0,
     };
   } catch {
     return null;
@@ -187,6 +190,32 @@ export default async function StoreCategoriesPage({ params }: Props) {
               </p>
             </div>
           </Link>
+
+          {/* New Arrivals tile (21-day auto window) */}
+          {data.new_arrivals_count > 0 && (
+            <Link
+              href={`/${store}/categories/new-arrivals`}
+              className="group bg-white rounded-[28px] overflow-hidden border border-[#BB3F95]/30 shadow-sm hover:shadow-md transition-all flex flex-col p-1.5"
+            >
+              <div className="w-full aspect-[4/3] bg-gradient-to-br from-[#BB3F95] to-[#8C1D6B] rounded-[24px] relative flex items-center justify-center overflow-hidden">
+                <Sparkles size={32} className="text-white opacity-95 group-hover:scale-110 transition-transform duration-300 animate-pulse" />
+                <div className="absolute top-2.5 right-2.5 px-2.5 py-0.5 rounded-full bg-white/25 backdrop-blur-md">
+                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                    {data.new_arrivals_count} New
+                  </span>
+                </div>
+              </div>
+              <div className="p-3 bg-white flex flex-col justify-between flex-1">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-bold text-[#231F48] font-marcellus truncate">New Arrivals</p>
+                  <span className="px-1.5 py-0.2 rounded-md bg-fuchsia-50 text-[9px] font-bold text-[#BB3F95]">21 Days</span>
+                </div>
+                <p className="text-[11px] text-[#BB3F95] font-bold mt-1">
+                  Fresh catalog →
+                </p>
+              </div>
+            </Link>
+          )}
 
           {data.categoryList.map((cat) => (
             <Link
