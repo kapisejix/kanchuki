@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion } from 'framer-motion'
-import { Image as ImageIcon, Upload, Loader2, Eye, EyeOff } from 'lucide-react'
+import { Image as ImageIcon, Upload, Loader2, Eye, EyeOff, Trash2 } from 'lucide-react'
 import Image from 'next/image'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
 
@@ -59,21 +59,36 @@ export default function BackgroundImagesPage() {
       })
       if (!put.ok) throw new Error('Upload to storage failed')
 
-      const name = file.name.replace(/\.[^.]+$/, '')
+      // No name sent — the API auto-names the scene from the image (AI).
       const create = await fetch(`${API_URL}/v1/admin/background-images`, {
         ...(await adminMutateOptions()),
         method: 'POST',
-        body: JSON.stringify({ name, image_url: data.public_url }),
+        body: JSON.stringify({ image_url: data.public_url }),
       })
       if (!create.ok) throw new Error('Failed to register background image')
+      const { data: created } = await create.json()
 
-      setStatus(`✅ "${name}" added`)
+      setStatus(`✅ "${created?.name ?? 'Background'}" added`)
       await load()
     } catch (err) {
       setStatus(`❌ ${err instanceof Error ? err.message : 'Upload failed'}`)
     } finally {
       setUploading(false)
     }
+  }
+
+  const deleteRow = async (row: BackgroundImage) => {
+    if (!confirm(`Delete "${row.name}"? Products using it fall back to Auto backdrop.`)) return
+    const res = await fetch(`${API_URL}/v1/admin/background-images/${row.id}`, {
+      ...(await adminMutateOptions()),
+      method: 'DELETE',
+    })
+    if (!res.ok) {
+      setStatus('❌ Delete failed')
+      return
+    }
+    setRows((prev) => prev.filter((r) => r.id !== row.id))
+    setStatus(`✅ "${row.name}" deleted`)
   }
 
   const toggleActive = async (row: BackgroundImage) => {
@@ -170,15 +185,24 @@ export default function BackgroundImagesPage() {
             <div className="p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-gray-700 truncate">{row.name}</span>
-                <button
-                  onClick={() => toggleActive(row)}
-                  className={`p-1.5 rounded-lg transition-colors ${
-                    row.is_active ? 'text-cyan-600 hover:bg-cyan-50' : 'text-gray-400 hover:bg-gray-50'
-                  }`}
-                  aria-label={row.is_active ? 'Deactivate' : 'Activate'}
-                >
-                  {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
-                </button>
+                <div className="flex items-center shrink-0">
+                  <button
+                    onClick={() => toggleActive(row)}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      row.is_active ? 'text-cyan-600 hover:bg-cyan-50' : 'text-gray-400 hover:bg-gray-50'
+                    }`}
+                    aria-label={row.is_active ? 'Deactivate' : 'Activate'}
+                  >
+                    {row.is_active ? <Eye size={14} /> : <EyeOff size={14} />}
+                  </button>
+                  <button
+                    onClick={() => deleteRow(row)}
+                    className="p-1.5 rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors"
+                    aria-label="Delete"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
               <div className="flex items-center justify-between gap-2">
                 <span
