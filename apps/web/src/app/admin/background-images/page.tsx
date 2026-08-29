@@ -85,7 +85,8 @@ export default function BackgroundImagesPage() {
       method: 'DELETE',
     })
     if (!res.ok) {
-      setStatus('❌ Delete failed')
+      const detail = await res.text().catch(() => '')
+      setStatus(`❌ Delete failed (HTTP ${res.status})${detail ? ` — ${detail.slice(0, 200)}` : ''}`)
       return
     }
     setRows((prev) => prev.filter((r) => r.id !== row.id))
