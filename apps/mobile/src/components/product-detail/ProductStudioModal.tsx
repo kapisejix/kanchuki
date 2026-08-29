@@ -35,12 +35,12 @@ interface ProductStudioModalProps {
 
 // Local asset thumbnails when bundled, otherwise fallback to remote preview_image_url
 const LOCAL_STUDIO_THUMBNAILS: Record<string, any> = {
-  white_studio: require('../../../../assets/studio-templates/white_studio.png'),
-  warm_luxury: require('../../../../assets/studio-templates/warm_luxury.png'),
-  gold_festive: require('../../../../assets/studio-templates/gold_festive.png'),
-  diwali_lights: require('../../../../assets/studio-templates/diwali_lights.png'),
-  wedding_elegant: require('../../../../assets/studio-templates/wedding_elegant.png'),
-  flat_lay: require('../../../../assets/studio-templates/flat_lay.png'),
+  white_studio: require('../../../assets/studio-templates/white_studio.png'),
+  warm_luxury: require('../../../assets/studio-templates/warm_luxury.png'),
+  gold_festive: require('../../../assets/studio-templates/gold_festive.png'),
+  diwali_lights: require('../../../assets/studio-templates/diwali_lights.png'),
+  wedding_elegant: require('../../../assets/studio-templates/wedding_elegant.png'),
+  flat_lay: require('../../../assets/studio-templates/flat_lay.png'),
 }
 
 export function ProductStudioModal({

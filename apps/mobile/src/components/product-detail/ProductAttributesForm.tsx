@@ -1,8 +1,7 @@
 import React from 'react'
-import { View, Text, TextInput, ScrollView } from 'react-native'
+import { View, Text, TextInput } from 'react-native'
 import { Image } from 'expo-image'
 import {
-  Check,
   Tag,
   Sparkles,
 } from 'lucide-react-native'
