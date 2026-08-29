@@ -424,12 +424,130 @@ export const STUDIO_TEMPLATES = [
     prompt:
       'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, exact original color, pattern, and fabric details. Soft, even, neutral 5500K lighting.',
   },
+
+  // ─── DRAFT styles (2026-08-29) — admin test bench only ───────────
+  // `draft: true` → hidden from the retailer mobile picker
+  // (ProductStudioModal filters them), shown in the admin photo-cleanup-test
+  // dropdown. Prompts are scene-only; generateStudioImage() appends the
+  // colour-fidelity tail. Drop the `draft` flag to ship a style to mobile.
+  // No `audience` tag yet — category auto-filter is separate work
+  // (docs/photoshoots/ChatGPT-style.md §5).
+  {
+    id: 'editorial_vogue',
+    command: '/editorial',
+    label: 'Vogue Editorial',
+    description: 'Magazine editorial — grey cyclorama, softbox key + hair light',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a high-fashion editorial studio with a seamless mid-grey backdrop, softbox key light and a subtle hair light, confident straight-on pose. The garment shape, drape, exact original colour, pattern and embroidery are 100% preserved.',
+  },
+  {
+    id: 'botanical_garden',
+    command: '/garden',
+    label: 'Royal Botanical Garden',
+    description: 'Outdoor — Mughal garden, marble fountain, golden-hour bokeh',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a lush Mughal-style botanical garden with manicured hedges, a marble fountain and blooming flowerbeds, soft golden-hour daylight and greenery bokeh behind. Neutral daylight on the garment keeps its true colour, texture and embroidery.',
+  },
+  {
+    id: 'heritage_street',
+    command: '/street',
+    label: 'Jaipur Heritage Street',
+    description: 'Outdoor — terracotta-pink walls, carved doors, candid stride',
+    draft: true,
+    prompt:
+      'Place this garment on a graceful Indian fashion model on a Jaipur old-city street with terracotta-pink carved walls, antique wooden doors and brass lanterns, soft morning light, candid mid-stride pose. Exact dyes, weave and embroidery stay faithful to the original.',
+  },
+  {
+    id: 'palace_courtyard',
+    command: '/palace',
+    label: 'Royal Palace Courtyard',
+    description: 'Outdoor — Rajasthan palace, sandstone arches, warm evening light',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a Rajasthan palace courtyard with carved sandstone arches and jharokha windows, warm ambient evening light blurred in the background. The garment is lit with neutral key light so colour, zari and embroidery are 100% preserved.',
+  },
+  {
+    id: 'heritage_library',
+    command: '/indoor',
+    label: 'Grand Heritage Library',
+    description: 'Indoor — wood panelling, tall bookshelves, brass lamps',
+    draft: true,
+    prompt:
+      'Place this garment on a graceful Indian fashion model inside a grand wood-panelled heritage library with tall bookshelves and brass reading lamps, warm soft interior light behind and neutral light on the subject, poised standing pose. Colour, texture and embroidery preserved exactly.',
+  },
+  {
+    id: 'rooftop_golden',
+    command: '/rooftop',
+    label: 'Golden-Hour Rooftop',
+    description: 'City rooftop, string lights, blurred skyline, sun flare',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model on a chic city rooftop at golden hour with string lights and a blurred skyline, warm sun flare behind, relaxed editorial pose. Neutral light on the fabric keeps the garment colour and detail true.',
+  },
+  {
+    id: 'boutique_showroom',
+    command: '/boutique',
+    label: 'Boutique Showroom',
+    description: 'Indoor — upscale boutique, spot-lit displays, racks bokeh',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model inside an upscale fashion boutique with warm spot-lit displays and clothing racks softly out of focus behind. Even neutral lighting on the garment so its exact colour, pattern and embroidery stay unchanged.',
+  },
+  {
+    id: 'seated_haveli_steps',
+    command: '/sitting',
+    label: 'Seated Haveli Steps',
+    description: 'Pose — seated on carved stone steps, dupatta on lap',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model seated on carved stone haveli steps with the dupatta arranged across the lap, potted palms and a lantern softly out of focus behind, full garment visible. Neutral daylight keeps true colour and zari.',
+  },
+  {
+    id: 'dupatta_motion',
+    command: '/twirl',
+    label: 'Dupatta in Motion',
+    description: 'Pose — mid-turn, dupatta and skirt caught in the air',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model captured mid-motion, turning with the dupatta and skirt caught in the air and a slight wind, soft neutral backdrop with gentle motion blur only in the background. The garment stays sharp with colour, drape and embroidery 100% preserved.',
+  },
+  {
+    id: 'low_key_dark',
+    command: '/dark',
+    label: 'Dark Dramatic Low-Key',
+    description: 'Near-black backdrop, single side key + rim light',
+    draft: true,
+    prompt:
+      'Place this garment on a graceful Indian fashion model against a near-black seamless backdrop with a single dramatic side key light and a soft rim light on the shoulder. Fabric texture and embroidery catch the light while the exact garment colour is held true with no colour shift.',
+  },
+  {
+    id: 'cinematic_film',
+    command: '/cinematic',
+    label: 'Cinematic Film Grade',
+    description: '35mm film look — moody directional light, shallow DOF',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a cinematic 35mm-film-graded scene with moody directional light and shallow depth of field, muted filmic colour in the environment only. The garment keeps its exact original colour, saturation and embroidery.',
+  },
+  {
+    id: 'gradient_hero',
+    command: '/hero',
+    label: 'Gradient Campaign Hero',
+    description: 'Colour-gradient backdrop, beauty light, room for text',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model against a smooth studio colour-gradient backdrop (deep plum to warm rose) with even beauty lighting, centred campaign-hero framing with head-to-hem clearance for text. The garment colour, pattern and embroidery are exactly preserved.',
+  },
 ] as const satisfies readonly {
   id: string;
   command?: string;
   label: string;
   description: string;
   preview_image_url?: string;
+  /** Draft styles are hidden from the retailer mobile picker (admin test bench only). */
+  draft?: boolean;
   prompt: string;
 }[];
 

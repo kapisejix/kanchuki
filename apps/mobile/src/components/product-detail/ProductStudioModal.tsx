@@ -61,7 +61,9 @@ export function ProductStudioModal({
   onUseResult,
 }: ProductStudioModalProps) {
   const [tab, setTab] = useState<'scenes' | 'models'>('scenes')
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'studiomodel')
+  // Draft styles are admin-test-bench only — hidden from the retailer picker.
+  const sceneTemplates = STUDIO_TEMPLATES.filter((t) => !(t as { draft?: boolean }).draft)
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(sceneTemplates[0]?.id ?? 'studiomodel')
   const [selectedModel, setSelectedModel] = useState<string>(STUDIO_MODELS[0]?.id ?? 'priya_bridal')
 
   const handleStart = () => {
@@ -244,7 +246,7 @@ export function ProductStudioModal({
         <ScrollView className="mb-4" showsVerticalScrollIndicator={false}>
           {tab === 'scenes' ? (
             <View className="gap-3">
-              {STUDIO_TEMPLATES.map((tpl) => {
+              {sceneTemplates.map((tpl) => {
                 const isSelected = selectedTemplate === tpl.id
                 const imgSource =
                   LOCAL_STUDIO_THUMBNAILS[tpl.id] ||
