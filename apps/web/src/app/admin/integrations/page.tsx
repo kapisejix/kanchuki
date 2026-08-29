@@ -97,6 +97,9 @@ export default function IntegrationsPage() {
       const res = await fetch(`${API_URL}/v1/admin/integrations/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'DELETE',
+        // adminMutateOptions() sets Content-Type: application/json — Fastify
+        // 500s on an empty body ("body must be object"). Send an empty object.
+        body: '{}',
       })
       if (!res.ok) {
         const body = await res.json().catch(() => null)

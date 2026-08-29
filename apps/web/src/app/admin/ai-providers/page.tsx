@@ -158,6 +158,9 @@ export default function AiProvidersPage() {
       const res = await fetch(`${API_URL}/v1/admin/ai-providers/${row.id}`, {
         ...(await adminMutateOptions()),
         method: 'DELETE',
+        // adminMutateOptions() sets Content-Type: application/json — Fastify
+        // 500s on an empty body ("body must be object"). Send an empty object.
+        body: '{}',
       })
       if (!res.ok) throw new Error('Delete failed')
       setStatus(`✅ ${row.label} deleted`)
