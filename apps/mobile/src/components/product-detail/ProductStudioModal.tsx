@@ -33,10 +33,15 @@ interface ProductStudioModalProps {
   onUseResult: (setAsMain: boolean) => void
 }
 
-// Template ids are studiomodel / bridalwear / seasoncollection / clothingdetail
-// / runway (see STUDIO_TEMPLATES in @kanchuki/shared). No bundled thumbnails
-// for those yet — the Wand2 placeholder icon is shown instead.
-const STUDIO_TEMPLATE_THUMBNAILS: Record<string, number> = {}
+// Local asset thumbnails when bundled, otherwise fallback to remote preview_image_url
+const LOCAL_STUDIO_THUMBNAILS: Record<string, any> = {
+  white_studio: require('../../../../assets/studio-templates/white_studio.png'),
+  warm_luxury: require('../../../../assets/studio-templates/warm_luxury.png'),
+  gold_festive: require('../../../../assets/studio-templates/gold_festive.png'),
+  diwali_lights: require('../../../../assets/studio-templates/diwali_lights.png'),
+  wedding_elegant: require('../../../../assets/studio-templates/wedding_elegant.png'),
+  flat_lay: require('../../../../assets/studio-templates/flat_lay.png'),
+}
 
 export function ProductStudioModal({
   visible,
@@ -57,7 +62,7 @@ export function ProductStudioModal({
 }: ProductStudioModalProps) {
   const [tab, setTab] = useState<'scenes' | 'models'>('scenes')
   const [selectedTemplate, setSelectedTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'studiomodel')
-  const [selectedModel, setSelectedModel] = useState<string>(STUDIO_MODELS[0]?.id ?? 'indian_female_1')
+  const [selectedModel, setSelectedModel] = useState<string>(STUDIO_MODELS[0]?.id ?? 'priya_bridal')
 
   const handleStart = () => {
     if (tab === 'scenes') {
@@ -217,7 +222,7 @@ export function ProductStudioModal({
             }`}
           >
             <Text
-              className={`text-xs font-bold ${tab === 'scenes' ? 'text-ink-700' : 'text-sand-500'}`}
+              className={`text-xs font-bold ${tab === 'scenes' ? 'text-fuchsia-700' : 'text-sand-500'}`}
             >
               Backdrop Scenes
             </Text>
@@ -229,7 +234,7 @@ export function ProductStudioModal({
             }`}
           >
             <Text
-              className={`text-xs font-bold ${tab === 'models' ? 'text-ink-700' : 'text-sand-500'}`}
+              className={`text-xs font-bold ${tab === 'models' ? 'text-fuchsia-700' : 'text-sand-500'}`}
             >
               Fashion Models
             </Text>
@@ -241,32 +246,40 @@ export function ProductStudioModal({
             <View className="gap-3">
               {STUDIO_TEMPLATES.map((tpl) => {
                 const isSelected = selectedTemplate === tpl.id
+                const imgSource =
+                  LOCAL_STUDIO_THUMBNAILS[tpl.id] ||
+                  (tpl.preview_image_url ? { uri: tpl.preview_image_url } : null)
                 return (
                   <AnimatedPressable
                     key={tpl.id}
                     onPress={() => setSelectedTemplate(tpl.id)}
-                    className={`flex-row items-center p-3 rounded-2xl border-2 gap-3 ${
-                      isSelected ? 'border-ink-600 bg-ink-50/50' : 'border-sand-100 bg-white'
+                    className={`flex-row items-center p-3 rounded-2xl border-2 gap-3.5 ${
+                      isSelected ? 'border-fuchsia-600 bg-fuchsia-50/50' : 'border-sand-100 bg-white'
                     }`}
                   >
-                    {STUDIO_TEMPLATE_THUMBNAILS[tpl.id] ? (
-                      <Image
-                        source={STUDIO_TEMPLATE_THUMBNAILS[tpl.id]}
-                        style={{ width: 56, height: 56 }}
-                        contentFit="cover"
-                        className="rounded-xl"
-                      />
-                    ) : (
-                      <View className="w-14 h-14 rounded-xl bg-sand-100 items-center justify-center">
-                        <Wand2 size={24} color={colors.sand[400]} />
-                      </View>
-                    )}
+                    <View className="w-14 h-14 rounded-xl overflow-hidden bg-sand-100 border border-sand-200 items-center justify-center">
+                      {imgSource ? (
+                        <Image
+                          source={imgSource}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                      ) : (
+                        <Wand2 size={22} color={colors.sand[400]} />
+                      )}
+                    </View>
                     <View className="flex-1">
                       <Text className="text-sm font-bold text-sand-900">{tpl.label}</Text>
-                      <Text className="text-xs text-sand-500 mt-0.5" numberOfLines={2}>
+                      <Text className="text-xs text-sand-500 mt-0.5 leading-4" numberOfLines={2}>
                         {tpl.description}
                       </Text>
                     </View>
+                    {isSelected && (
+                      <View className="w-5 h-5 rounded-full bg-fuchsia-600 items-center justify-center">
+                        <CheckCircle2 size={16} color="white" />
+                      </View>
+                    )}
                   </AnimatedPressable>
                 )
               })}
@@ -275,23 +288,43 @@ export function ProductStudioModal({
             <View className="gap-3">
               {STUDIO_MODELS.map((model) => {
                 const isSelected = selectedModel === model.id
+                const imgSource = model.model_image_url ? { uri: model.model_image_url } : null
                 return (
                   <AnimatedPressable
                     key={model.id}
                     onPress={() => setSelectedModel(model.id)}
-                    className={`flex-row items-center p-3 rounded-2xl border-2 gap-3 ${
-                      isSelected ? 'border-ink-600 bg-ink-50/50' : 'border-sand-100 bg-white'
+                    className={`flex-row items-center p-3 rounded-2xl border-2 gap-3.5 ${
+                      isSelected ? 'border-fuchsia-600 bg-fuchsia-50/50' : 'border-sand-100 bg-white'
                     }`}
                   >
-                    <View className="w-14 h-14 rounded-xl bg-ink-100 items-center justify-center">
-                      <Text className="text-2xl">💃</Text>
+                    <View className="w-14 h-14 rounded-xl overflow-hidden bg-sand-100 border border-sand-200 items-center justify-center">
+                      {imgSource ? (
+                        <Image
+                          source={imgSource}
+                          style={{ width: '100%', height: '100%' }}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                      ) : (
+                        <Text className="text-2xl">💃</Text>
+                      )}
                     </View>
                     <View className="flex-1">
-                      <Text className="text-sm font-bold text-sand-900">{model.name}</Text>
-                      <Text className="text-xs text-sand-500 mt-0.5" numberOfLines={2}>
+                      <View className="flex-row items-center gap-1.5">
+                        <Text className="text-sm font-bold text-sand-900">{model.name}</Text>
+                        <Text className="text-[10px] font-bold text-fuchsia-700 bg-fuchsia-100 px-2 py-0.5 rounded-full">
+                          {model.title}
+                        </Text>
+                      </View>
+                      <Text className="text-xs text-sand-500 mt-0.5 leading-4" numberOfLines={2}>
                         {model.description}
                       </Text>
                     </View>
+                    {isSelected && (
+                      <View className="w-5 h-5 rounded-full bg-fuchsia-600 items-center justify-center">
+                        <CheckCircle2 size={16} color="white" />
+                      </View>
+                    )}
                   </AnimatedPressable>
                 )
               })}

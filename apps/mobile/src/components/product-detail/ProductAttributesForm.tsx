@@ -4,6 +4,7 @@ import { Image } from 'expo-image'
 import {
   Check,
   Tag,
+  Sparkles,
 } from 'lucide-react-native'
 import {
   PATTERN_TYPES,
@@ -122,8 +123,8 @@ export function ProductAttributesForm({
 
   return (
     <View className="px-4 py-4 gap-4">
-      {/* ── Top Title, Price, Color & Size Card (Point 10 PDP Specification) ── */}
-      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm gap-4">
+      {/* ── Top Title & Price Card ── */}
+      <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
         {/* Title & Price in single row */}
         <View className="flex-row items-start justify-between">
           <View className="flex-1 mr-3">
@@ -151,82 +152,34 @@ export function ProductAttributesForm({
             </View>
           </View>
         </View>
+      </View>
 
-        {/* 2-Column Row for Color & Size (Point 10 PDP) */}
-        <View className="flex-row gap-4 pt-3 border-t border-lavender-100">
-          {/* Left Column: Color dots */}
-          <View className="flex-1">
-            <Text className="text-xs font-bold text-heliotrope-600 block mb-2">Color</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row items-center gap-2 py-1">
-                {product.variants.length > 0 ? (
-                  product.variants.map((variant) => {
-                    const variantPhotoIndex = variant.photo_url
-                      ? displayPhotos.findIndex((p) => p.url === variant.photo_url)
-                      : -1
-                    const isActive = variantPhotoIndex === selectedPhotoIndex || editedColor === variant.color
-                    const hex = resolveFashionColor(variant.color)
-                    return (
-                      <AnimatedPressable
-                        key={variant.id}
-                        onPress={() => {
-                          dirty(setEditedColor)(variant.color)
-                          if (variantPhotoIndex >= 0) {
-                            goToPhoto(variantPhotoIndex)
-                          }
-                        }}
-                        className="w-8 h-8 rounded-full items-center justify-center border-2"
-                        style={{
-                          backgroundColor: hex,
-                          borderColor: isActive ? '#231F48' : 'transparent',
-                        }}
-                      >
-                        {isActive && <Check size={13} color="#ffffff" strokeWidth={3} />}
-                      </AnimatedPressable>
-                    )
-                  })
-                ) : (
-                  <View className="flex-row items-center gap-2">
-                    <View
-                      className="w-8 h-8 rounded-full border-2 border-spaceCadet-900 items-center justify-center"
-                      style={{ backgroundColor: resolveFashionColor(editedColor || '#6B4773') }}
-                    >
-                      <Check size={13} color="#ffffff" strokeWidth={3} />
-                    </View>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Right Column: Size circles */}
-          <View className="flex-1">
-            <Text className="text-xs font-bold text-heliotrope-600 block mb-2">Size</Text>
-            <View className="flex-row flex-wrap items-center gap-2 py-1">
-              {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => {
-                const isSelected = selectedSizes.includes(size)
-                return (
-                  <AnimatedPressable
-                    key={size}
-                    onPress={() => toggleSize(size)}
-                    className={`w-8 h-8 rounded-full items-center justify-center ${
-                      isSelected ? 'bg-spaceCadet-900' : 'bg-lavender-100'
-                    }`}
-                  >
-                    <Text
-                      className={`text-[11px] font-extrabold ${
-                        isSelected ? 'text-white' : 'text-spaceCadet-900'
-                      }`}
-                    >
-                      {size}
-                    </Text>
-                  </AnimatedPressable>
-                )
-              })}
+      {/* ── AI Generated Product Summary Card ── */}
+      {(editedDescription || product.description) ? (
+        <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm gap-2">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-1.5">
+              <Sparkles size={16} color="#BB3F95" />
+              <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+                AI Product Summary
+              </Text>
+            </View>
+            <View className="px-2.5 py-0.5 rounded-full bg-fuchsia-50 border border-fuchsia-100">
+              <Text className="text-[10px] font-bold text-fuchsia-600">AI Generated</Text>
             </View>
           </View>
+          <TextInput
+            value={editedDescription}
+            onChangeText={dirty(setEditedDescription)}
+            placeholder="AI generated product summary..."
+            placeholderTextColor="#928EB2"
+            multiline
+            numberOfLines={3}
+            className="text-xs text-spaceCadet-900 leading-relaxed font-medium mt-1 bg-lavender-50 rounded-2xl border border-lavender-200 p-3.5"
+            style={{ textAlignVertical: 'top' }}
+          />
         </View>
-      </View>
+      ) : null}
 
       {/* Editable Fields Container */}
       <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm gap-4">
