@@ -98,7 +98,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     await app.close();
   });
 
-  it('402 FEATURE_UNAVAILABLE for STARTER plan', async () => {
+  it('enqueues for STARTER plan (all plans allowed; quota is the only limiter)', async () => {
     mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'STARTER' });
     const app = await buildApp();
     const res = await app.inject({
@@ -107,9 +107,8 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
       payload: { template: 'white_studio' },
     });
 
-    expect(res.statusCode).toBe(402);
-    expect(res.json().error.code).toBe('FEATURE_UNAVAILABLE');
-    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(202);
+    expect(mockAddStudioShootJob).toHaveBeenCalled();
     await app.close();
   });
 

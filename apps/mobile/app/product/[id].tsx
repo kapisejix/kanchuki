@@ -523,12 +523,20 @@ export default function ProductDetailScreen() {
       {/* AI Studio Shoot Preset Modal */}
       <ProductStudioModal
         visible={studio.studioModalOpen}
-        onClose={() => studio.setStudioModalOpen(false)}
+        onClose={studio.handleCloseStudioModal}
         onStartShoot={studio.handleStartStudioShoot}
         starting={studio.studioStarting}
         quota={studio.studioQuota}
         primaryColor={primaryColor}
         colors={colors}
+        status={studio.studioStatus}
+        progress={studio.studioProgress}
+        etaMs={studio.studioEtaMs}
+        error={studio.studioError}
+        upgradeRequired={studio.studioUpgradeRequired}
+        result={studio.studioResult}
+        onRetry={studio.resetStudioFlow}
+        onUseResult={studio.handleUseStudioResult}
       />
     </View>
   )

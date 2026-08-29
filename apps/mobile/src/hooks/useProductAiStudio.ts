@@ -150,26 +150,30 @@ export function useProductAiStudio({
   ) => {
     const photo = currentPhoto && !currentPhotoIsOriginal ? currentPhoto : originalPhoto
     if (!product || !photo) return
-    setStudioModalOpen(false)
+    // Keep the modal open — it now shows the progress / result / error view
+    // (previously it closed here and the whole flow ran invisibly).
     setStudioStarting(true)
     setStudioError(null)
     setStudioUpgradeRequired(false)
     setStudioResult(null)
+    setStudioProgress(0)
+    setStudioEtaMs(0)
     try {
       const res = await productApi.startStudioShoot(product.id, photo.id, template, options)
       setStudioJob({ jobId: res.data.job_id, photoId: photo.id })
       setStudioStatus('processing')
     } catch (err) {
+      setStudioStatus('failed')
       if (
         err instanceof ApiError &&
         (err.code === 'FEATURE_UNAVAILABLE' || err.code === 'PLAN_LIMIT_EXCEEDED')
       ) {
-        setStudioStatus('failed')
         setStudioError(err.message)
-        setStudioUpgradeRequired(true)
+        setStudioUpgradeRequired(err.code === 'PLAN_LIMIT_EXCEEDED')
       } else {
-        showError(err, 'Could not start the studio shoot')
-        setStudioStatus(null)
+        setStudioError(
+          err instanceof ApiError ? err.message : 'Could not start the studio shoot. Please try again.',
+        )
       }
     } finally {
       setStudioStarting(false)
@@ -224,6 +228,43 @@ export function useProductAiStudio({
       setSettingPrimaryId(null)
     }
   }
+
+  // Reset the studio flow back to the picker (Try Again / after Close).
+  const resetStudioFlow = useCallback(() => {
+    setStudioJob(null)
+    setStudioStatus(null)
+    setStudioError(null)
+    setStudioResult(null)
+    setStudioUpgradeRequired(false)
+    setStudioProgress(0)
+    setStudioEtaMs(0)
+  }, [])
+
+  const handleCloseStudioModal = useCallback(() => {
+    // While a shoot is still running, just hide the modal — keep studioJob /
+    // studioStatus alive so the poll keeps going and drops the finished photo
+    // into the gallery. Reset only once it's settled.
+    if (studioStatus !== 'processing') resetStudioFlow()
+    setStudioModalOpen(false)
+  }, [studioStatus, resetStudioFlow])
+
+  // Result actions: optionally promote the generated photo to primary, then
+  // refresh the product and close. The new photo row already exists (the job
+  // created it) — invalidating the query surfaces it in the carousel.
+  const handleUseStudioResult = useCallback(
+    async (setAsMain: boolean) => {
+      const res = studioResult
+      if (res && setAsMain) {
+        await handleSetPrimary(res.photoId)
+      }
+      if (product) {
+        void queryClient.invalidateQueries({ queryKey: ['products', product.id] })
+        void queryClient.invalidateQueries({ queryKey: ['product', product.id] })
+      }
+      handleCloseStudioModal()
+    },
+    [studioResult, product, queryClient, handleCloseStudioModal],
+  )
 
   const handleSetBackground = async (bgId: string | null) => {
     if (!product || !currentPhoto || currentPhotoIsOriginal || backgroundSaving) return
@@ -360,6 +401,9 @@ export function useProductAiStudio({
     generateVideo,
     handleProductVideoPress,
     handleStartStudioShoot,
+    resetStudioFlow,
+    handleCloseStudioModal,
+    handleUseStudioResult,
     handleSetPrimary,
     settingPrimaryId,
     photoBackgrounds,

@@ -23,7 +23,7 @@ import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
 import { getStudioJobStatus, isStudioShootConfigured } from '../../lib/studio-shoot.js';
 import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
-import { featureUnavailable, notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
+import { notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const StudioShootBodySchema = z.object({
   template: z.string().min(1),
@@ -38,15 +38,8 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
   server.post('/:id/photos/:photoId/studio-shoot', async (request, reply) => {
     const { id, photoId } = request.params as { id: string; photoId: string };
 
-    // Plan gate — Growth/Pro only (spec §24.7).
-    const retailer = await prisma.retailer.findUniqueOrThrow({
-      where: { id: request.retailerId },
-      select: { plan: true },
-    });
-    if (retailer.plan === 'STARTER') {
-      throw featureUnavailable('AI Studio Shoots');
-    }
-
+    // All plans get AI Studio Shoots — the STUDIO_SHOOT quota (admin-set
+    // per-plan image cap at /admin/plan-limits) is the only limiter.
     if (!(await isStudioShootConfigured())) {
       throw serviceUnavailable('AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.');
     }
