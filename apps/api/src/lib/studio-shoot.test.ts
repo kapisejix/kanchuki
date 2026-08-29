@@ -61,7 +61,7 @@ describe('generateStudioImage', () => {
       .mockResolvedValueOnce(jsonResponse({ status: 'Processing' }))
       .mockResolvedValueOnce(jsonResponse({ status: 'Ready', result: { sample: 'https://delivery.bfl.ai/img.jpg' } }));
 
-    const result = await generateStudioImage('white_studio', 'https://r2.example/photo.jpg');
+    const result = await generateStudioImage('runway', 'https://r2.example/photo.jpg');
 
     expect(result).toEqual({ status: 'ready', sampleUrl: 'https://delivery.bfl.ai/img.jpg' });
     const submitCall = mockFetch.mock.calls[0] as unknown as [string, RequestInit];
@@ -71,15 +71,16 @@ describe('generateStudioImage', () => {
     expect(headers['Content-Type']).toBe('application/json');
     const body = JSON.parse(submitCall[1].body as string) as { prompt: string; input_image: string };
     expect(body.input_image).toBe('https://r2.example/photo.jpg');
-    // Template prompt must tell the model to preserve the product.
-    expect(body.prompt).toContain('Keep the product itself completely unchanged');
+    // The assembled prompt must tell the model to preserve the product (scene
+    // guard is prepended for every template).
+    expect(body.prompt).toContain('pixel-identical to the input');
   });
 
   it('maps 402 (out of credits) to a safe AppError', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ error: 'no credits' }, false, 402),
     );
-    await expect(generateStudioImage('white_studio', 'https://r2.example/p.jpg')).rejects.toThrow(
+    await expect(generateStudioImage('runway', 'https://r2.example/p.jpg')).rejects.toThrow(
       /out of credits/i,
     );
   });
@@ -88,7 +89,7 @@ describe('generateStudioImage', () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ error: 'rate limit' }, false, 429),
     );
-    await expect(generateStudioImage('white_studio', 'https://r2.example/p.jpg')).rejects.toThrow(
+    await expect(generateStudioImage('runway', 'https://r2.example/p.jpg')).rejects.toThrow(
       /try again in a minute/i,
     );
   });
@@ -99,7 +100,7 @@ describe('generateStudioImage', () => {
         jsonResponse({ id: 'task_1', polling_url: 'https://api.bfl.ai/v1/get_result?id=task_1' }),
       )
       .mockResolvedValueOnce(jsonResponse({ status: 'Error', error: 'moderation' }));
-    const result = await generateStudioImage('white_studio', 'https://r2.example/p.jpg');
+    const result = await generateStudioImage('runway', 'https://r2.example/p.jpg');
     expect(result.status).toBe('failed');
     expect(result.error).toContain('moderation');
   });
@@ -114,7 +115,7 @@ describe('generateStudioImage', () => {
   it('throws 503 when BFL_API_KEY is unset', async () => {
     vi.stubEnv('BFL_API_KEY', '');
     expect(await isStudioShootConfigured()).toBe(false);
-    await expect(generateStudioImage('white_studio', 'https://r2.example/p.jpg')).rejects.toThrow(
+    await expect(generateStudioImage('runway', 'https://r2.example/p.jpg')).rejects.toThrow(
       /not configured/i,
     );
   });

@@ -90,7 +90,7 @@ export default function PhotoCleanupTestPage() {
 
   // AI Studio Shoot (F-032) — same generateStudioImage() the retailer feature
   // uses, run synchronously against the uploaded product photo.
-  const [studioTemplate, setStudioTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'studiomodel');
+  const [studioTemplate, setStudioTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'runway');
   const [studioModelId, setStudioModelId] = useState<string>('');
   const [studioPrompt, setStudioPrompt] = useState<string>('');
   const [studioBusy, setStudioBusy] = useState(false);

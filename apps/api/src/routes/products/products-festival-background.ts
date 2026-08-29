@@ -150,18 +150,11 @@ export const productsFestivalBackgroundRoutes: FastifyPluginAsync = async (
   );
 };
 
-// Helper function to get appropriate festival template based on season/date
+// Seasonal auto-pick for the festival-background feature. The dedicated
+// festive/wedding backdrop presets (`wedding_elegant`, `gold_festive`) were
+// removed 2026-08-29 when STUDIO_TEMPLATES was trimmed — `seated_haveli_steps`
+// is the closest ornate survivor. Callers can still pass an explicit
+// `templateId` to choose any of the shipped templates.
 function getSeasonalFestivalTemplate(): StudioTemplateId {
-  const now = new Date();
-  const month = now.getMonth(); // 0-11 (Jan-Dec)
-
-  // Wedding season: Oct-Mar (months 9,10,11,0,1,2)
-  if (month >= 9 || month <= 2) {
-    return 'wedding_elegant';
-  }
-
-  // Diwali season: Typically Oct-Nov (months 9,10) but can vary
-  // For simplicity, we'll use wedding_elegant for Oct-Mar and gold_festive for rest
-  // In a real implementation, this would be more sophisticated with regional festivals
-  return 'gold_festive';
+  return 'seated_haveli_steps';
 }

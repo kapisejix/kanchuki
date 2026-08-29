@@ -324,43 +324,12 @@ export const R2_PATHS = {
 // this is the credits-per-image multiplier the UI shows the retailer.
 export const STUDIO_CREDITS_PER_IMAGE = 8;
 
+// Scene-only prompts; generateStudioImage() appends the colour-fidelity
+// tail. Curated list (trimmed 2026-08-29) — shown in both the retailer
+// mobile picker and the admin photo-cleanup-test dropdown. New custom
+// backdrops are staged in docs/tasks/AI Models and Scenes.html first
+// (admin bench custom-prompt box) before being promoted here.
 export const STUDIO_TEMPLATES = [
-  {
-    id: 'studiomodel',
-    command: '/studiomodel',
-    label: 'Studio Editorial',
-    description: 'High-fashion Indian studio model wearing the outfit with softbox lighting',
-    preview_image_url: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Place this garment naturally onto a professional Indian fashion model in a clean editorial studio. The model has an elegant posture and natural expression. The garment shape, exact original color, dye, pattern, and embroidery are 100% preserved with realistic draping. Color-true 5500K neutral studio softbox lighting with soft grounding shadows. No color shifts.',
-  },
-  {
-    id: 'bridalwear',
-    command: '/bridalwear',
-    label: 'Royal Bridal Palace',
-    description: 'Royal wedding palace courtyard setting with warm ambient background',
-    preview_image_url: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with carved arches and gentle ambient evening light in the background bokeh. The garment itself is lit with neutral 5500K color-true key lighting to 100% preserve its exact original fabric color, embroidery, zari work, and hue without amber tinting or color shifts.',
-  },
-  {
-    id: 'seasoncollection',
-    command: '/seasoncollection',
-    label: 'Festive Celebration',
-    description: 'Festive celebration backdrop with warm background marigolds & light bokeh',
-    preview_image_url: 'https://images.unsplash.com/photo-1606293926075-69a00dbfde81?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Place this ethnic garment in a festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents strictly in the background. The garment itself is illuminated with neutral daylight studio lighting, keeping the product shape, exact original color, pattern, and fabric details 100% unaltered.',
-  },
-  {
-    id: 'clothingdetail',
-    command: '/clothingdetail',
-    label: 'Macro Fabric Detail',
-    description: 'Ultra-sharp macro close-up highlighting fine embroidery and weave',
-    preview_image_url: 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on the intricate details with natural soft depth of field and 100% color-true, neutral daylight studio lighting.',
-  },
   {
     id: 'runway',
     command: '/runway',
@@ -371,109 +340,26 @@ export const STUDIO_TEMPLATES = [
       'Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. A graceful Indian fashion model (Indian lady for womenswear / Indian gentleman for menswear / Indian boy for kids) is walking gracefully. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.',
   },
   {
-    id: 'white_studio',
-    command: '/white_studio',
-    label: 'White Studio',
-    description: 'Clean white backdrop, soft even lighting — marketplace ready',
-    preview_image_url: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Replace the background of this product photo with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting. Keep the product itself completely unchanged — exact same color, hue, saturation, pattern, and fabric details with soft natural grounding shadow.',
-  },
-  {
-    id: 'warm_luxury',
-    command: '/warm_luxury',
-    label: 'Warm Luxury',
-    description: 'Rich warm beige backdrop with color-true subject lighting',
-    preview_image_url: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Replace the background of this product photo with a warm, luxurious beige studio backdrop with subtle depth. The product itself is lit with neutral, color-true 5500K studio light so the garment fabric color, dye, and embroidery remain 100% faithful to the original photo with natural grounding shadow.',
-  },
-  {
-    id: 'gold_festive',
-    command: '/gold_festive',
-    label: 'Gold Festive',
-    description: 'Festive gold-tone backdrop (Diwali/wedding ready)',
-    preview_image_url: 'https://images.unsplash.com/photo-1513151233558-d860c5398176?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Replace the background of this product photo with an elegant festive gold-toned backdrop with soft depth. The product itself is illuminated with neutral daylight studio lighting so the exact garment color, fabric shade, and embroidery remain completely unchanged and true to life.',
-  },
-  {
-    id: 'diwali_lights',
-    command: '/diwali_lights',
-    label: 'Diwali Lights',
-    description: 'Diwali-specific backdrop with diyas and rangoli patterns',
-    preview_image_url: 'https://images.unsplash.com/photo-1514517521153-1be72277b32f?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Replace the background of this product photo with a vibrant Diwali backdrop featuring glowing diyas and rangoli patterns strictly in the background. The garment itself is lit with neutral 5500K color-true studio lighting, keeping the product shape, exact color, pattern, and fabric details 100% unaltered.',
-  },
-  {
-    id: 'wedding_elegant',
-    command: '/wedding_elegant',
-    label: 'Wedding Florals',
-    description: 'Elegant wedding backdrop with floral arrangements and draping',
-    preview_image_url: 'https://images.unsplash.com/photo-1519741497674-611481863552?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Replace the background of this product photo with an elegant wedding backdrop featuring soft floral arrangements and pastel draping in the background. The garment itself is lit with neutral daylight studio lighting, keeping its original fabric color, embroidery, and textures 100% faithful to the original photo.',
-  },
-  {
-    id: 'flat_lay',
-    command: '/flat_lay',
-    label: 'Flat-Lay Linen',
-    description: 'Casual flat-lay style on a neutral textured surface',
-    preview_image_url: 'https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=600&auto=format&fit=crop&q=80',
-    prompt:
-      'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, exact original color, pattern, and fabric details. Soft, even, neutral 5500K lighting.',
-  },
-
-  // ─── DRAFT styles (2026-08-29) — admin test bench only ───────────
-  // `draft: true` → hidden from the retailer mobile picker
-  // (ProductStudioModal filters them), shown in the admin photo-cleanup-test
-  // dropdown. Prompts are scene-only; generateStudioImage() appends the
-  // colour-fidelity tail. Drop the `draft` flag to ship a style to mobile.
-  // No `audience` tag yet — category auto-filter is separate work
-  // (docs/photoshoots/ChatGPT-style.md §5).
-  {
     id: 'editorial_vogue',
     command: '/editorial',
     label: 'Vogue Editorial',
     description: 'Magazine editorial — grey cyclorama, softbox key + hair light',
-    draft: true,
     prompt:
       'Place this outfit on a graceful Indian fashion model in a high-fashion editorial studio with a seamless mid-grey backdrop, softbox key light and a subtle hair light, confident straight-on pose. The garment shape, drape, exact original colour, pattern and embroidery are 100% preserved.',
-  },
-  {
-    id: 'botanical_garden',
-    command: '/garden',
-    label: 'Royal Botanical Garden',
-    description: 'Outdoor — Mughal garden, marble fountain, golden-hour bokeh',
-    draft: true,
-    prompt:
-      'Place this outfit on a graceful Indian fashion model in a lush Mughal-style botanical garden with manicured hedges, a marble fountain and blooming flowerbeds, soft golden-hour daylight and greenery bokeh behind. Neutral daylight on the garment keeps its true colour, texture and embroidery.',
   },
   {
     id: 'heritage_street',
     command: '/street',
     label: 'Jaipur Heritage Street',
     description: 'Outdoor — terracotta-pink walls, carved doors, candid stride',
-    draft: true,
     prompt:
       'Place this garment on a graceful Indian fashion model on a Jaipur old-city street with terracotta-pink carved walls, antique wooden doors and brass lanterns, soft morning light, candid mid-stride pose. Exact dyes, weave and embroidery stay faithful to the original.',
-  },
-  {
-    id: 'palace_courtyard',
-    command: '/palace',
-    label: 'Royal Palace Courtyard',
-    description: 'Outdoor — Rajasthan palace, sandstone arches, warm evening light',
-    draft: true,
-    prompt:
-      'Place this outfit on a graceful Indian fashion model in a Rajasthan palace courtyard with carved sandstone arches and jharokha windows, warm ambient evening light blurred in the background. The garment is lit with neutral key light so colour, zari and embroidery are 100% preserved.',
   },
   {
     id: 'heritage_library',
     command: '/indoor',
     label: 'Grand Heritage Library',
     description: 'Indoor — wood panelling, tall bookshelves, brass lamps',
-    draft: true,
     prompt:
       'Place this garment on a graceful Indian fashion model inside a grand wood-panelled heritage library with tall bookshelves and brass reading lamps, warm soft interior light behind and neutral light on the subject, poised standing pose. Colour, texture and embroidery preserved exactly.',
   },
@@ -482,7 +368,6 @@ export const STUDIO_TEMPLATES = [
     command: '/rooftop',
     label: 'Golden-Hour Rooftop',
     description: 'City rooftop, string lights, blurred skyline, sun flare',
-    draft: true,
     prompt:
       'Place this outfit on a graceful Indian fashion model on a chic city rooftop at golden hour with string lights and a blurred skyline, warm sun flare behind, relaxed editorial pose. Neutral light on the fabric keeps the garment colour and detail true.',
   },
@@ -491,7 +376,6 @@ export const STUDIO_TEMPLATES = [
     command: '/boutique',
     label: 'Boutique Showroom',
     description: 'Indoor — upscale boutique, spot-lit displays, racks bokeh',
-    draft: true,
     prompt:
       'Place this outfit on a graceful Indian fashion model inside an upscale fashion boutique with warm spot-lit displays and clothing racks softly out of focus behind. Even neutral lighting on the garment so its exact colour, pattern and embroidery stay unchanged.',
   },
@@ -500,7 +384,6 @@ export const STUDIO_TEMPLATES = [
     command: '/sitting',
     label: 'Seated Haveli Steps',
     description: 'Pose — seated on carved stone steps, dupatta on lap',
-    draft: true,
     prompt:
       'Place this outfit on a graceful Indian fashion model seated on carved stone haveli steps with the dupatta arranged across the lap, potted palms and a lantern softly out of focus behind, full garment visible. Neutral daylight keeps true colour and zari.',
   },
@@ -509,34 +392,14 @@ export const STUDIO_TEMPLATES = [
     command: '/twirl',
     label: 'Dupatta in Motion',
     description: 'Pose — mid-turn, dupatta and skirt caught in the air',
-    draft: true,
     prompt:
       'Place this outfit on a graceful Indian fashion model captured mid-motion, turning with the dupatta and skirt caught in the air and a slight wind, soft neutral backdrop with gentle motion blur only in the background. The garment stays sharp with colour, drape and embroidery 100% preserved.',
-  },
-  {
-    id: 'low_key_dark',
-    command: '/dark',
-    label: 'Dark Dramatic Low-Key',
-    description: 'Near-black backdrop, single side key + rim light',
-    draft: true,
-    prompt:
-      'Place this garment on a graceful Indian fashion model against a near-black seamless backdrop with a single dramatic side key light and a soft rim light on the shoulder. Fabric texture and embroidery catch the light while the exact garment colour is held true with no colour shift.',
-  },
-  {
-    id: 'cinematic_film',
-    command: '/cinematic',
-    label: 'Cinematic Film Grade',
-    description: '35mm film look — moody directional light, shallow DOF',
-    draft: true,
-    prompt:
-      'Place this outfit on a graceful Indian fashion model in a cinematic 35mm-film-graded scene with moody directional light and shallow depth of field, muted filmic colour in the environment only. The garment keeps its exact original colour, saturation and embroidery.',
   },
   {
     id: 'gradient_hero',
     command: '/hero',
     label: 'Gradient Campaign Hero',
     description: 'Colour-gradient backdrop, beauty light, room for text',
-    draft: true,
     prompt:
       'Place this outfit on a graceful Indian fashion model against a smooth studio colour-gradient backdrop (deep plum to warm rose) with even beauty lighting, centred campaign-hero framing with head-to-hem clearance for text. The garment colour, pattern and embroidery are exactly preserved.',
   },
@@ -546,7 +409,7 @@ export const STUDIO_TEMPLATES = [
   label: string;
   description: string;
   preview_image_url?: string;
-  /** Draft styles are hidden from the retailer mobile picker (admin test bench only). */
+  /** Reserved: hides a style from the retailer mobile picker (admin bench only). No rows use it today. */
   draft?: boolean;
   prompt: string;
 }[];

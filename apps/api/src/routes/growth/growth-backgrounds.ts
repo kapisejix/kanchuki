@@ -224,15 +224,28 @@ export const growthBackgroundRoutes: FastifyPluginAsync = async (server) => {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-/** Map an occasion string to a FLUX studio template. */
+/**
+ * Map an occasion string to a studio template id (must exist in
+ * STUDIO_TEMPLATES — getStudioTemplate() 422s on an unknown id).
+ * The festive/diwali/wedding backdrop presets were removed 2026-08-29 when
+ * the list was trimmed to 9; festive occasions now fall back to the ornate
+ * `seated_haveli_steps` scene, everything else to `editorial_vogue`.
+ */
 function getOccasionTemplate(occasion: string): string {
   const lower = occasion.toLowerCase();
-  if (lower.includes('diwali') || lower.includes('light')) return 'diwali_lights';
-  if (lower.includes('wedding') || lower.includes('shaadi')) return 'wedding_elegant';
-  if (lower.includes('festive') || lower.includes('gold')) return 'gold_festive';
-  if (lower.includes('navratri') || lower.includes('durga')) return 'gold_festive';
-  if (lower.includes('eid')) return 'warm_luxury';
-  if (lower.includes('holi')) return 'warm_luxury';
-  // Default
-  return 'white_studio';
+  if (
+    lower.includes('diwali') ||
+    lower.includes('light') ||
+    lower.includes('wedding') ||
+    lower.includes('shaadi') ||
+    lower.includes('festive') ||
+    lower.includes('gold') ||
+    lower.includes('navratri') ||
+    lower.includes('durga') ||
+    lower.includes('eid') ||
+    lower.includes('holi')
+  ) {
+    return 'seated_haveli_steps';
+  }
+  return 'editorial_vogue';
 }

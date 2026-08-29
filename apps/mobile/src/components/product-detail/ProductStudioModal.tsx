@@ -61,9 +61,10 @@ export function ProductStudioModal({
   onUseResult,
 }: ProductStudioModalProps) {
   const [tab, setTab] = useState<'scenes' | 'models'>('scenes')
-  // Draft styles are admin-test-bench only — hidden from the retailer picker.
+  // `draft` is reserved for admin-test-bench-only styles — no rows use it
+  // today (list trimmed to 9 on 2026-08-29), so this passes all of them.
   const sceneTemplates = STUDIO_TEMPLATES.filter((t) => !(t as { draft?: boolean }).draft)
-  const [selectedTemplate, setSelectedTemplate] = useState<string>(sceneTemplates[0]?.id ?? 'studiomodel')
+  const [selectedTemplate, setSelectedTemplate] = useState<string>(sceneTemplates[0]?.id ?? 'runway')
   const [selectedModel, setSelectedModel] = useState<string>(STUDIO_MODELS[0]?.id ?? 'priya_bridal')
 
   const handleStart = () => {
@@ -248,9 +249,10 @@ export function ProductStudioModal({
             <View className="gap-3">
               {sceneTemplates.map((tpl) => {
                 const isSelected = selectedTemplate === tpl.id
+                const previewUrl = (tpl as { preview_image_url?: string }).preview_image_url
                 const imgSource =
                   LOCAL_STUDIO_THUMBNAILS[tpl.id] ||
-                  (tpl.preview_image_url ? { uri: tpl.preview_image_url } : null)
+                  (previewUrl ? { uri: previewUrl } : null)
                 return (
                   <AnimatedPressable
                     key={tpl.id}
