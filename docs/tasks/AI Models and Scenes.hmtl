@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kanchuki AI Studio — Scene & Model Catalog Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-marcellus { font-family: 'Marcellus', serif; }
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(12px);
+    }
+    .badge-fuchsia {
+      background: #FDF2F8;
+      color: #BE185D;
+      border: 1px solid #FBCFE8;
+    }
+    .badge-purple {
+      background: #F5F3FF;
+      color: #6D28D9;
+      border: 1px solid #DDD6FE;
+    }
+    .badge-amber {
+      background: #FFFBEB;
+      color: #B45309;
+      border: 1px solid #FDE68A;
+    }
+    .badge-emerald {
+      background: #ECFDF5;
+      color: #047857;
+      border: 1px solid #A7F3D0;
+    }
+    .badge-sky {
+      background: #F0F9FF;
+      color: #0369A1;
+      border: 1px solid #BAE6FD;
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="bg-[#F8F7FC] text-[#231F48] min-h-screen">
+
+  <!-- ── Top Luxury Navigation ── -->
+  <header class="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-[#E0E1F6] px-6 py-4 shadow-sm">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#231F48] via-[#560A39] to-[#BB3F95] flex items-center justify-center text-white font-marcellus font-bold text-xl shadow-md">
+          K
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold text-[#231F48] font-marcellus tracking-wide">
+            Kanchuki AI Studio
+          </h1>
+          <p class="text-xs text-[#6B4773] font-medium">
+            Next-Gen Scenes & Indian Fashion Model Catalog (All Ages & Genders)
+          </p>
+        </div>
+      </div>
+
+      <!-- Quick Action Counter Stats -->
+      <div class="flex items-center gap-2 text-xs font-semibold">
+        <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
+          🏞️ <strong id="sceneCount">12</strong> Scenes
+        </span>
+        <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
+          💃 <strong id="modelCount">18</strong> Fashion Models
+        </span>
+        <button onclick="exportSelectedJson()" class="px-4 py-1.5 rounded-xl bg-[#231F48] text-white hover:bg-[#BB3F95] transition-colors flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Selected
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Filter & Search Control Bar ── -->
+  <div class="max-w-7xl mx-auto px-6 pt-6 pb-2">
+    <div class="bg-white rounded-3xl p-4 border border-[#E0E1F6] shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+      <!-- Tab Filters -->
+      <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
+        <button onclick="filterCategory('all')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-[#231F48] text-white" data-filter="all">
+          All Previews (<span id="totalItems">30</span>)
+        </button>
+        <button onclick="filterCategory('scene')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="scene">
+          🏞️ Scene Environments (12)
+        </button>
+        <button onclick="filterCategory('female')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="female">
+          👗 Female Models (6)
+        </button>
+        <button onclick="filterCategory('male')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="male">
+          👔 Male Models (4)
+        </button>
+        <button onclick="filterCategory('kids')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="kids">
+          🧒 Kids & Toddlers (4)
+        </button>
+        <button onclick="filterCategory('teen')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="teen">
+          🎒 Teenagers (2)
+        </button>
+        <button onclick="filterCategory('senior')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="senior">
+          👑 35+ & 45+ Mature (4)
+        </button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="relative w-full md:w-72">
+        <i data-lucide="search" class="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+        <input
+          type="text"
+          id="searchInput"
+          oninput="handleSearch()"
+          placeholder="Search scene, model, age, style..."
+          class="w-full pl-10 pr-4 py-2 bg-[#F8F7FC] rounded-2xl border border-[#E0E1F6] text-xs text-[#231F48] placeholder-gray-400 focus:outline-none focus:border-[#BB3F95]"
+        />
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Main Catalog Grid ── -->
+  <main class="max-w-7xl mx-auto px-6 py-6">
+    <div id="catalogGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <!-- Rendered dynamically by JS -->
+    </div>
+  </main>
+
+  <!-- ── Detail Preview Modal ── -->
+  <div id="detailModal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6 border border-[#E0E1F6] shadow-2xl relative">
+      <button onclick="closeModal()" class="absolute top-5 right-5 w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+      
+      <div id="modalContent">
+        <!-- Injected on click -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast Notification ── -->
+  <div id="toast" class="fixed bottom-6 right-6 bg-[#231F48] text-white px-5 py-3 rounded-2xl shadow-xl transform translate-y-20 opacity-0 transition-all duration-300 flex items-center gap-2 z-50 text-xs font-semibold">
+    <i data-lucide="check-circle" class="w-4 h-4 text-[#BB3F95]"></i>
+    <span id="toastMsg">Code copied to clipboard!</span>
+  </div>
+
+  <script>
+    // ── Dataset: Diverse AI Studio Scenes and Indian Models ──
+    const ITEMS = [
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 1: SCENE ENVIRONMENTS (Outdoor, Street, Beach, Nature)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "scene_botanical_garden",
+        code: "SCENE_GARDEN_LUXURY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Royal Botanical Garden",
+        subtitle: "Lush Mughal garden with marble fountains & exotic florals",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=800&auto=format&fit=crop&q=80",
+        badge: "Outdoor Nature",
+        badgeColor: "badge-emerald",
+        garmentFit: "Lehengas, Anarkalis, Kurta Sets, Kids Ethnic, Summer Florals",
+        description: "Lush green heritage botanical garden setting with carved sandstone benches, gentle sunlight filtering through exotic palm canopies, and soft background marigold flowerbeds.",
+        prompt: "Place this outfit naturally onto a model standing in a luxury botanical garden in India with lush manicured greenery, blooming lotus ponds, and soft golden-hour daylight bokeh in the background. Neutral 5500K daylight key light on the garment preserving 100% true fabric color, texture, and embroidery with realistic soft shadows."
+      },
+      {
+        id: "scene_heritage_street",
+        code: "SCENE_STREET_HAVELI",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Jaipur Heritage Street Wall",
+        subtitle: "Pink terracotta walls with ornate Jharokha carved arches",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1477587458883-47145ed94245?w=800&auto=format&fit=crop&q=80",
+        badge: "Urban Heritage",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Kurtis, Short Kurtas, Saree Drapes, Daily Ethnic, Fusion",
+        description: "Iconic Jaipur old-city terracotta pink walls, intricate brass lanterns, and antique wooden doorways creating an authentic Rajasthani street editorial.",
+        prompt: "Place this garment on a model in a vibrant Jaipur heritage street setting with authentic terracotta pink textured walls, antique carved wooden doors, and soft morning ambient sunlight. Garment details, zari work, exact dyes, and embroidery 100% faithful to the original with natural daylight soft shadows."
+      },
+      {
+        id: "scene_mountain_resort",
+        code: "SCENE_MOUNTAIN_VALLEY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Himalayan Mountain Resort",
+        subtitle: "Misty mountain pine valleys and cedar wood terrace deck",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
+        badge: "Scenic Resort",
+        badgeColor: "badge-sky",
+        garmentFit: "Shawls, Velvet Suits, Winter Ethnic, Pashmina, Bandhgalas",
+        description: "Panoramic Himalayan tea-estate resort deck with rolling mist over lush green hills and crisp clean mountain daylight.",
+        prompt: "Place this outfit onto a model on a scenic mountain resort wooden deck in the Himalayas with misty pine-covered ridges and mountain horizons softly blurred in the background. Crisp daylight key lighting preserving the exact garment weave, rich fabric tone, and embroidery without amber tinting."
+      },
+      {
+        id: "scene_beach_luxury",
+        code: "SCENE_BEACH_COASTAL",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Goa Sunset Coastal Beach",
+        subtitle: "Golden hour sands with soft turquoise ocean waves & coconut palms",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+        badge: "Coastal Sunset",
+        badgeColor: "badge-amber",
+        garmentFit: "Pastel Lehengas, Resort Wear, Indo-Western, Kurti Dresses",
+        description: "Serene golden sands of a luxury private beach in Goa with glowing sunset reflections on calm water and swaying palm silhouettes.",
+        prompt: "Place this garment on a model walking on a serene luxury beach at gentle sunset with golden sands and distant turquoise waves in background bokeh. Garment shape, exact dye color, lightweight georgette/chiffon drapes, and embroidery 100% color-true with soft natural grounding shadow."
+      },
+      {
+        id: "scene_modern_art_wall",
+        code: "SCENE_URBAN_ART_WALL",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Modern Contemporary Wall",
+        subtitle: "Textured concrete & minimalist geometric architectural wall",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=80",
+        badge: "Minimalist Modern",
+        badgeColor: "badge-purple",
+        garmentFit: "Co-ords, Contemporary Kurtas, Western Fusion, Shirts",
+        description: "Sleek architectural background with warm beige limewash texture and subtle modern bronze accents for high-fashion lookbooks.",
+        prompt: "Place this outfit on a model in a contemporary architectural setting featuring neutral warm limewash textured concrete walls and soft natural window light. 100% preservation of fabric colors, patterns, stitch lines, and textures."
+      },
+      {
+        id: "scene_palace_courtyard",
+        code: "SCENE_ROYAL_PALACE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Royal Palace Courtyard",
+        subtitle: "Udaipur palace marble courtyard with royal arches & lanterns",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=800&auto=format&fit=crop&q=80",
+        badge: "Royal Wedding",
+        badgeColor: "badge-amber",
+        garmentFit: "Bridal Lehengas, Royal Sherwanis, Heavy Silk Sarees",
+        description: "Magnificent Rajasthani royal palace with white marble floors, hand-carved pillars, and candle-lit brass chandeliers in background bokeh.",
+        prompt: "Place this ethnic outfit in a grand royal Indian palace courtyard with carved arches and gentle ambient evening light in the background bokeh. Neutral 5500K color-true key lighting to 100% preserve garment fabric color, heavy zari work, and hue."
+      },
+      {
+        id: "scene_festive_diwali",
+        code: "SCENE_FESTIVE_DIWALI",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Festive Diya Illumination",
+        subtitle: "Warm festive backdrop with clay diyas & golden marigold torans",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1606293926075-69a00dbfde81?w=800&auto=format&fit=crop&q=80",
+        badge: "Festival of Lights",
+        badgeColor: "badge-amber",
+        garmentFit: "Diwali Outfits, Silk Kurta Sets, Festive Sarees, Kids Ethnic",
+        description: "Glowing Diwali night atmosphere with rows of illuminated clay diyas, rangoli motifs, and marigold garlands strictly in soft background focus.",
+        prompt: "Place this ethnic garment in a festive Diwali celebration backdrop with subtle glowing diya light bokeh and marigold floral accents strictly in the background. Daylight-balanced key light on the garment preserving 100% original color and fabric details."
+      },
+      {
+        id: "scene_catwalk_runway",
+        code: "SCENE_CATWALK_RUNWAY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Catwalk Fashion Runway",
+        subtitle: "Lakme Fashion Week style glossy runway with overhead spotlights",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=800&auto=format&fit=crop&q=80",
+        badge: "High Fashion",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Couture Lehengas, Designer Gowns, Men's Sherwanis, Runway",
+        description: "Glossy black high-fashion runway with dramatic studio spotlights, soft spectator bokeh, and motion-drape styling.",
+        prompt: "Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. Graceful model walking with dramatic realistic draping, 100% color-true lighting."
+      },
+      {
+        id: "scene_studio_editorial",
+        code: "SCENE_STUDIO_EDITORIAL",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Vogue Studio Editorial",
+        subtitle: "Seamless grey/beige studio with professional softbox lighting",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+        badge: "Magazine Cover",
+        badgeColor: "badge-purple",
+        garmentFit: "All Catalog Garments, Suits, Kurtis, Sarees, Menswear",
+        description: "Neutral 5500K studio with soft directional shadows, subtle backdrop gradient, and crisp magazine-grade garment sharpness.",
+        prompt: "Place this garment naturally onto a professional fashion model in a clean editorial studio. Color-true 5500K neutral studio softbox lighting with soft grounding shadows. No color shifts."
+      },
+      {
+        id: "scene_macro_fabric",
+        code: "SCENE_MACRO_FABRIC",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Macro Fabric Detail",
+        subtitle: "Ultra-sharp close-up highlighting fine zari, weave & embroidery",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=800&auto=format&fit=crop&q=80",
+        badge: "Craftsmanship",
+        badgeColor: "badge-emerald",
+        garmentFit: "Embroidery, Banarasi Weave, Zari Borders, Buttons, Prints",
+        description: "Intimate close-up macro focal length highlighting the fine craftsmanship, needlework, thread count, and border motifs.",
+        prompt: "An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on intricate details with natural soft depth of field."
+      },
+      {
+        id: "scene_terrace_cafe",
+        code: "SCENE_TERRACE_CAFE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Chic Rooftop Cafe",
+        subtitle: "Boho aesthetic rooftop terrace with cane furniture & plants",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80",
+        badge: "Casual Lifestyle",
+        badgeColor: "badge-amber",
+        garmentFit: "Short Kurtis, Co-ords, Casual Dresses, Tops, Casual Shirts",
+        description: "Sunlit rooftop cafe with rattan chairs, terracotta planters, and soft aesthetic city skyline bokeh.",
+        prompt: "Place this casual outfit on a model sitting in a chic sunlit rooftop cafe terrace with lush potted plants and warm daylight. Garment colors and cotton/linen textures 100% faithful to the original."
+      },
+      {
+        id: "scene_white_studio",
+        code: "SCENE_WHITE_MARKETPLACE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Clean Marketplace White",
+        subtitle: "Pure 100% seamless white backdrop for Myntra/Amazon listings",
+        gender: "All Genders",
+        ageGroup: "All Ages",
+        imageUrl: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&auto=format&fit=crop&q=80",
+        badge: "Marketplace Standard",
+        badgeColor: "badge-sky",
+        garmentFit: "All Catalog Garments, E-commerce Grid, Marketplace Ready",
+        description: "Seamless white cyclorama studio wall with daylight-balanced CRI-98 studio softbox lighting and soft contact drop shadow.",
+        prompt: "Replace background with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting with soft grounding shadow under the garment. Keep product color 100% identical."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 2: KIDS & TODDLER MODELS (Ages 3 – 12)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "model_kid_girl_aarohi",
+        code: "MODEL_KID_GIRL_01",
+        type: "model",
+        categoryTag: "kids",
+        title: "Aarohi (Kid Girl)",
+        subtitle: "Age 4–6 Years · Indian Girl Model · Cute & Joyful",
+        gender: "Female",
+        ageGroup: "Kids (4-6 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=800&auto=format&fit=crop&q=80",
+        badge: "Kids Girls",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Kids Lehengas, Pattu Pavadai, Frocks, Festive Gowns, Anarkalis",
+        description: "Adorable Indian girl model with sweet natural smile, gentle posture, and traditional hair accessories for kids ethnic wear.",
+        prompt: "Fit this kids garment onto a cute 5-year-old Indian girl model named Aarohi with a joyful natural smile and neat braided hair. Draping proportioned perfectly for a child's silhouette with 100% color accuracy."
+      },
+      {
+        id: "model_kid_boy_aarav",
+        code: "MODEL_KID_BOY_01",
+        type: "model",
+        categoryTag: "kids",
+        title: "Aarav (Kid Boy)",
+        subtitle: "Age 5–7 Years · Indian Boy Model · Smart & Playful",
+        gender: "Male",
+        ageGroup: "Kids (5-7 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1595454223600-91fbdd7ee9a4?w=800&auto=format&fit=crop&q=80",
+        badge: "Kids Boys",
+        badgeColor: "badge-sky",
+        garmentFit: "Kids Kurta-Pajama, Nehru Jackets, Dhoti Sets, Indo-Western",
+        description: "Handsome young Indian boy with neat haircut and cheerful posture, ideal for boys wedding & festive ethnic wear.",
+        prompt: "Fit this boys ethnic garment onto a smart 6-year-old Indian boy model named Aarav with a happy natural expression. Proportioned child fit with true-to-life fabric color and texture."
+      },
+      {
+        id: "model_preteen_girl_diya",
+        code: "MODEL_PRETEEN_GIRL_02",
+        type: "model",
+        categoryTag: "kids",
+        title: "Diya (Pre-Teen Girl)",
+        subtitle: "Age 9–11 Years · Indian Girl Model · Graceful & Confident",
+        gender: "Female",
+        ageGroup: "Pre-Teen (9-11 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1508214751196-bcfd4ca60f91?w=800&auto=format&fit=crop&q=80",
+        badge: "Pre-Teen Girls",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Junior Lehengas, Crop-Top Skirts, Anarkali Suits, Gowns",
+        description: "Graceful 10-year-old Indian girl with expressive eyes and confident posture for growing girls ethnic collections.",
+        prompt: "Fit this garment onto a graceful 10-year-old Indian girl model named Diya with sleek hair and elegant natural posture. Accurate drape and 100% true garment color."
+      },
+      {
+        id: "model_preteen_boy_kabir",
+        code: "MODEL_PRETEEN_BOY_02",
+        type: "model",
+        categoryTag: "kids",
+        title: "Vivaan (Pre-Teen Boy)",
+        subtitle: "Age 10–12 Years · Indian Boy Model · Confident & Sharp",
+        gender: "Male",
+        ageGroup: "Pre-Teen (10-12 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=800&auto=format&fit=crop&q=80",
+        badge: "Pre-Teen Boys",
+        badgeColor: "badge-sky",
+        garmentFit: "Boys Sherwanis, Kurta Sets, Modi Jackets, Pathani Suits",
+        description: "Sharp and dignified 11-year-old Indian boy model, perfect for festive wear and family wedding photo shoots.",
+        prompt: "Fit this garment onto an 11-year-old Indian boy model named Vivaan standing confidently with natural posture. Exact garment color, fabric drape, and sharp embroidery detail."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 3: TEENAGE MODELS (Ages 13 – 19)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "model_teen_girl_ananya",
+        code: "MODEL_TEEN_GIRL_01",
+        type: "model",
+        categoryTag: "teen",
+        title: "Rhea (Teenage Girl)",
+        subtitle: "Age 16–18 Years · Contemporary Indian Teen · Trendy & Vibrant",
+        gender: "Female",
+        ageGroup: "Teen (16-18 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800&auto=format&fit=crop&q=80",
+        badge: "Teen Girls",
+        badgeColor: "badge-purple",
+        garmentFit: "Crop Top Lehengas, Fusion Kurti Sets, Saree Gowns, Co-ords",
+        description: "Youthful Indian teenage model with fresh glowing skin, modern styling, and effortless Gen-Z poise for fusion wear.",
+        prompt: "Fit this outfit onto a stylish 17-year-old Indian teenage girl model named Rhea with natural modern makeup and sleek hair. Flowing realistic fabric drape with 100% color-true lighting."
+      },
+      {
+        id: "model_teen_boy_rohan",
+        code: "MODEL_TEEN_BOY_01",
+        type: "model",
+        categoryTag: "teen",
+        title: "Rohan (Teenage Boy)",
+        subtitle: "Age 17–19 Years · Contemporary Indian Teen · Athletic & Stylish",
+        gender: "Male",
+        ageGroup: "Teen (17-19 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&auto=format&fit=crop&q=80",
+        badge: "Teen Boys",
+        badgeColor: "badge-sky",
+        garmentFit: "Modern Kurtas, Asymmetric Kurtas, Nehru Jackets, Casual Ethnic",
+        description: "Athletic Indian teenage male model with clean grooming and confident youthful posture for modern youth collections.",
+        prompt: "Fit this garment onto a handsome 18-year-old Indian teenage boy model named Rohan with natural expression and confident posture. Flawless fit on shoulders and true fabric hue."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 4: YOUNG ADULT FEMALE MODELS (Ages 20 – 34)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "model_female_priya_bridal",
+        code: "MODEL_FEMALE_ROYAL_BRIDAL",
+        type: "model",
+        categoryTag: "female",
+        title: "Priya (Royal Bridal)",
+        subtitle: "Age 24–27 Years · Royal Bridal Posture · Traditional Elegance",
+        gender: "Female",
+        ageGroup: "Young Adult (20-34)",
+        imageUrl: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=800&auto=format&fit=crop&q=80",
+        badge: "Royal Bridal",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Heavy Bridal Lehengas, Kanjeevaram Sarees, Wedding Gowns",
+        description: "Classic Indian bride persona with regal poise, subtle kundan jewelry, and traditional dupatta draping for bridal couture.",
+        prompt: "Fit this bridal garment onto a royal Indian bridal model named Priya with elegant regal posture, subtle traditional jewelry, and immaculate draping. 100% preservation of heavy zari and color."
+      },
+      {
+        id: "model_female_ananya_saree",
+        code: "MODEL_FEMALE_SAREE_KURTI",
+        type: "model",
+        categoryTag: "female",
+        title: "Ananya (Saree & Kurti)",
+        subtitle: "Age 23–26 Years · Modern Indian Model · Graceful & Versatile",
+        gender: "Female",
+        ageGroup: "Young Adult (20-34)",
+        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
+        badge: "Saree & Kurti",
+        badgeColor: "badge-purple",
+        garmentFit: "Daily Sarees, Anarkalis, Kurti Sets, Casual Ethnic, Office Wear",
+        description: "Graceful modern Indian model with warm expressive smile and versatile styling suited for catalog daily wear.",
+        prompt: "Place this outfit onto a graceful 25-year-old Indian model named Ananya with natural posture and soft makeup. Realistic draping and 100% color-true lighting with no hue shifts."
+      },
+      {
+        id: "model_female_meera_festive",
+        code: "MODEL_FEMALE_FESTIVE_GOWN",
+        type: "model",
+        categoryTag: "female",
+        title: "Meera (Festive & Fusion)",
+        subtitle: "Age 26–29 Years · Vibrant Festive Model · Dynamic & Glamorous",
+        gender: "Female",
+        ageGroup: "Young Adult (20-34)",
+        imageUrl: "https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800&auto=format&fit=crop&q=80",
+        badge: "Festive Glam",
+        badgeColor: "badge-amber",
+        garmentFit: "Festive Anarkalis, Indo-Western Gowns, Sangeet Wear, Shararas",
+        description: "Glamorous festive persona with vibrant energy, ideal for Sangeet, Mehendi, and Diwali cocktail collections.",
+        prompt: "Fit this festive outfit onto a glamorous Indian model named Meera in a celebratory posture with natural hair flow. True-to-life fabric drape and radiant true-tone lighting."
+      },
+      {
+        id: "model_female_tara_curvy",
+        code: "MODEL_FEMALE_PLUS_CURVY",
+        type: "model",
+        categoryTag: "female",
+        title: "Tara (Curvy & Plus Size)",
+        subtitle: "Age 27–32 Years · Body Positive Indian Model · Beautiful Drapes",
+        gender: "Female",
+        ageGroup: "Young Adult (20-34)",
+        imageUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=800&auto=format&fit=crop&q=80",
+        badge: "Plus & Curvy",
+        badgeColor: "badge-emerald",
+        garmentFit: "Plus Size Kurtis (XXL–5XL), Straight Suits, Draped Sarees",
+        description: "Confident curvy Indian female model showcasing how garments flatter natural fuller silhouettes with comfort.",
+        prompt: "Fit this garment onto a confident curvy Indian female model named Tara with graceful posture. Realistic draping for fuller body dimensions with 100% accurate fabric color."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 5: YOUNG ADULT MALE MODELS (Ages 20 – 34)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "model_male_kabir_sherwani",
+        code: "MODEL_MALE_ROYAL_GROOM",
+        type: "model",
+        categoryTag: "male",
+        title: "Kabir (Royal Groom)",
+        subtitle: "Age 27–30 Years · Tall & Dignified · Sherwani & Wedding",
+        gender: "Male",
+        ageGroup: "Young Adult (20-34)",
+        imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&auto=format&fit=crop&q=80",
+        badge: "Royal Groom",
+        badgeColor: "badge-amber",
+        garmentFit: "Sherwanis, Achkans, Wedding Kurtas, Silk Shawls, Safas",
+        description: "Tall, broad-shouldered Indian male model with well-groomed beard and commanding regal posture for groomswear.",
+        prompt: "Fit this menswear garment onto a tall Indian male model named Kabir with athletic build and well-groomed beard. Flawless shoulder tailoring and 100% color-true lighting."
+      },
+      {
+        id: "model_male_aditya_casual",
+        code: "MODEL_MALE_CASUAL_KURTA",
+        type: "model",
+        categoryTag: "male",
+        title: "Aditya (Modern Ethnic)",
+        subtitle: "Age 24–28 Years · Clean Shaven / Light Stubble · Casual Kurtas",
+        gender: "Male",
+        ageGroup: "Young Adult (20-34)",
+        imageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=800&auto=format&fit=crop&q=80",
+        badge: "Modern Ethnic",
+        badgeColor: "badge-sky",
+        garmentFit: "Short Kurtas, Linen Shirts, Nehru Jackets, Cotton Pajamas",
+        description: "Approachable modern Indian male model with relaxed confidence for daily ethnic and festive family wear.",
+        prompt: "Fit this garment onto a handsome Indian male model named Aditya standing with relaxed natural posture. Exact linen/cotton weave texture and true dye color."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 6: MATURE MODELS (Ages 35 – 44 Years)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "model_female_nandini_35",
+        code: "MODEL_FEMALE_MATURE_35",
+        type: "model",
+        categoryTag: "senior",
+        title: "Nandini (Sophisticated 35+)",
+        subtitle: "Age 36–40 Years · Elegant Indian Woman · Silk & Classic Suits",
+        gender: "Female",
+        ageGroup: "Mature (35-44 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800&auto=format&fit=crop&q=80",
+        badge: "Mature 35+",
+        badgeColor: "badge-purple",
+        garmentFit: "Chanderi Suits, Tussar Silk Sarees, Linen Kurtas, Formal Suits",
+        description: "Dignified, sophisticated Indian woman with understated luxury elegance and poise, perfect for premium handloom.",
+        prompt: "Fit this garment onto an elegant 38-year-old Indian woman named Nandini with sophisticated posture and tasteful grooming. Pristine fabric drapes and color accuracy."
+      },
+      {
+        id: "model_male_rajesh_35",
+        code: "MODEL_MALE_MATURE_35",
+        type: "model",
+        categoryTag: "senior",
+        title: "Vikram (Distinguished 35+)",
+        subtitle: "Age 38–42 Years · Distinguished Indian Gentleman · Bandhgala",
+        gender: "Male",
+        ageGroup: "Mature (35-44 Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=800&auto=format&fit=crop&q=80",
+        badge: "Mature 35+",
+        badgeColor: "badge-sky",
+        garmentFit: "Bandhgalas, Heritage Kurtas, Silk Nehru Jackets, Formal Ethnic",
+        description: "Distinguished Indian gentleman with commanding presence, light salt-and-pepper stubble, and executive ethnic elegance.",
+        prompt: "Fit this menswear garment onto a distinguished 40-year-old Indian gentleman named Vikram with tailored posture. 100% preservation of fabric texture and color."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 7: SENIOR & ELDER MODELS (Over 45 Years / 45–60+)
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "model_female_sunita_45",
+        code: "MODEL_FEMALE_SENIOR_45",
+        type: "model",
+        categoryTag: "senior",
+        title: "Sunita (Graceful Matriarch 45+)",
+        subtitle: "Age 48–55 Years · Graceful Elder Woman · Pure Silk & Banarasi",
+        gender: "Female",
+        ageGroup: "Senior (45-60+ Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=800&auto=format&fit=crop&q=80",
+        badge: "Senior 45+",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Banarasi Sarees, Kanjivaram Silks, Velvet Shawls, Elegant Suits",
+        description: "Graceful Indian matriarch with kind smile, classic silver-streaked hair, and unmatched poise in traditional heavy silks.",
+        prompt: "Fit this silk garment onto a graceful 50-year-old Indian elder woman named Sunita with silver-streaked hair and majestic posture. Flawless traditional saree pallu drape with 100% true zari sheen."
+      },
+      {
+        id: "model_male_harish_45",
+        code: "MODEL_MALE_SENIOR_45",
+        type: "model",
+        categoryTag: "senior",
+        title: "Harish (Royal Patriarch 45+)",
+        subtitle: "Age 50–60 Years · Royal Elder Gentleman · Silk Kurta & Shawl",
+        gender: "Male",
+        ageGroup: "Senior (45-60+ Yrs)",
+        imageUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=800&auto=format&fit=crop&q=80",
+        badge: "Senior 45+",
+        badgeColor: "badge-amber",
+        garmentFit: "Pure Silk Kurtas, Kashmiri Pashmina Shawls, Achkans, Dhoti",
+        description: "Dignified Indian elder patriarch with silver hair, warm expressive eyes, and royal heritage presence for senior ethnic wear.",
+        prompt: "Fit this garment onto a dignified 55-year-old Indian elder gentleman named Harish with silver hair and refined posture. 100% preservation of embroidery, color, and fabric weight."
+      }
+    ];
+
+    let currentFilter = 'all';
+    let searchQuery = '';
+    const selectedItemCodes = new Set();
+
+    // ── Render Catalog Cards ──
+    function renderCatalog() {
+      const grid = document.getElementById('catalogGrid');
+      const filtered = ITEMS.filter(item => {
+        const matchesCat = currentFilter === 'all' || 
+          (currentFilter === 'scene' && item.type === 'scene') ||
+          (currentFilter === 'female' && item.type === 'model' && item.gender === 'Female' && !item.categoryTag.includes('kids') && !item.categoryTag.includes('teen') && !item.categoryTag.includes('senior')) ||
+          (currentFilter === 'male' && item.type === 'model' && item.gender === 'Male' && !item.categoryTag.includes('kids') && !item.categoryTag.includes('teen') && !item.categoryTag.includes('senior')) ||
+          (currentFilter === 'kids' && item.categoryTag === 'kids') ||
+          (currentFilter === 'teen' && item.categoryTag === 'teen') ||
+          (currentFilter === 'senior' && item.categoryTag === 'senior');
+
+        const q = searchQuery.toLowerCase().trim();
+        const matchesSearch = !q || 
+          item.title.toLowerCase().includes(q) ||
+          item.subtitle.toLowerCase().includes(q) ||
+          item.code.toLowerCase().includes(q) ||
+          item.garmentFit.toLowerCase().includes(q) ||
+          item.ageGroup.toLowerCase().includes(q);
+
+        return matchesCat && matchesSearch;
+      });
+
+      document.getElementById('totalItems').innerText = filtered.length;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-16 text-center">
+            <div class="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3 text-2xl">🔍</div>
+            <h3 class="text-base font-bold text-gray-800">No scenes or models found</h3>
+            <p class="text-xs text-gray-500 mt-1">Try adjusting your search query or category filters.</p>
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(item => {
+        const isChecked = selectedItemCodes.has(item.code);
+        return `
+          <div class="glass-card rounded-[28px] overflow-hidden border border-[#E0E1F6] shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col group">
+            <!-- Image Frame -->
+            <div class="relative w-full aspect-[4/5] bg-gray-100 overflow-hidden cursor-pointer" onclick="openModal('${item.id}')">
+              <img 
+                src="${item.imageUrl}" 
+                alt="${item.title}" 
+                class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                loading="lazy"
+              />
+              <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-black/20 opacity-80 group-hover:opacity-90 transition-opacity"></div>
+              
+              <!-- Badges on Image -->
+              <div class="absolute top-3 left-3 right-3 flex items-center justify-between">
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${item.badgeColor} shadow-sm backdrop-blur-md">
+                  ${item.badge}
+                </span>
+                <span class="px-2.5 py-0.5 rounded-full text-[9px] font-extrabold bg-black/60 text-white backdrop-blur-md">
+                  ${item.type === 'scene' ? 'SCENE' : item.ageGroup}
+                </span>
+              </div>
+
+              <div class="absolute bottom-3 left-3 right-3 text-white">
+                <p class="text-sm font-extrabold font-marcellus leading-snug drop-shadow-sm">${item.title}</p>
+                <p class="text-[11px] text-gray-200 truncate mt-0.5">${item.subtitle}</p>
+              </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="p-4 bg-white flex-1 flex flex-col justify-between gap-3">
+              <div>
+                <!-- Code Tag & Checkbox -->
+                <div class="flex items-center justify-between gap-2 pb-2 border-b border-gray-100">
+                  <span class="font-mono text-[11px] font-bold text-[#BB3F95] bg-fuchsia-50 px-2 py-0.5 rounded-md truncate max-w-[180px]">
+                    ${item.code}
+                  </span>
+                  <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-[#231F48]" onclick="event.stopPropagation()">
+                    <input 
+                      type="checkbox" 
+                      ${isChecked ? 'checked' : ''} 
+                      onchange="toggleSelect('${item.code}')"
+                      class="w-4 h-4 rounded text-[#BB3F95] focus:ring-[#BB3F95] rounded border-gray-300"
+                    />
+                    <span>Select</span>
+                  </label>
+                </div>
+
+                <!-- Best For Garments -->
+                <div class="mt-2.5">
+                  <p class="text-[10px] uppercase tracking-wider text-gray-400 font-bold">Best Garments:</p>
+                  <p class="text-xs text-[#231F48] font-medium leading-relaxed mt-0.5 line-clamp-2">
+                    ${item.garmentFit}
+                  </p>
+                </div>
+              </div>
+
+              <!-- Quick Action Buttons -->
+              <div class="flex items-center gap-2 pt-2 border-t border-gray-100">
+                <button 
+                  onclick="copyToClipboard('${item.code}', 'Code ${item.code} copied!')"
+                  class="flex-1 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 text-[11px] font-bold text-[#231F48] flex items-center justify-center gap-1 transition-colors"
+                >
+                  <i data-lucide="copy" class="w-3 h-3 text-[#BB3F95]"></i> Code
+                </button>
+                <button 
+                  onclick="copyToClipboard(\`${item.prompt.replace(/`/g, '\\`')}\`, 'Prompt formula copied!')"
+                  class="flex-1 py-1.5 rounded-xl bg-fuchsia-50 hover:bg-fuchsia-100 border border-fuchsia-200 text-[11px] font-bold text-fuchsia-800 flex items-center justify-center gap-1 transition-colors"
+                >
+                  <i data-lucide="sparkles" class="w-3 h-3 text-fuchsia-600"></i> Prompt
+                </button>
+                <button 
+                  onclick="openModal('${item.id}')"
+                  class="w-8 h-8 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 flex items-center justify-center text-gray-600"
+                  title="View Full Spec"
+                >
+                  <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      lucide.createIcons();
+    }
+
+    // ── Filter Category ──
+    function filterCategory(cat) {
+      currentFilter = cat;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        if (btn.getAttribute('data-filter') === cat) {
+          btn.className = "tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-[#231F48] text-white shadow-sm";
+        } else {
+          btn.className = "tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200";
+        }
+      });
+      renderCatalog();
+    }
+
+    // ── Search Handler ──
+    function handleSearch() {
+      searchQuery = document.getElementById('searchInput').value;
+      renderCatalog();
+    }
+
+    // ── Selection Toggle ──
+    function toggleSelect(code) {
+      if (selectedItemCodes.has(code)) {
+        selectedItemCodes.delete(code);
+      } else {
+        selectedItemCodes.add(code);
+      }
+      renderCatalog();
+    }
+
+    // ── Copy to Clipboard ──
+    function copyToClipboard(text, msg = 'Copied to clipboard!') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(msg);
+      }).catch(() => {
+        showToast('Error copying text');
+      });
+    }
+
+    // ── Show Toast ──
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toastMsg').innerText = msg;
+      toast.classList.remove('translate-y-20', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-20', 'opacity-0');
+      }, 2500);
+    }
+
+    // ── Open Detail Modal ──
+    function openModal(id) {
+      const item = ITEMS.find(i => i.id === id);
+      if (!item) return;
+
+      const modal = document.getElementById('detailModal');
+      const content = document.getElementById('modalContent');
+
+      content.innerHTML = `
+        <div class="space-y-4">
+          <div class="flex items-start gap-4">
+            <div class="w-32 h-44 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0 border border-gray-200 shadow-sm">
+              <img src="${item.imageUrl}" alt="${item.title}" class="w-full h-full object-cover" />
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${item.badgeColor}">
+                  ${item.badge}
+                </span>
+                <span class="font-mono text-xs font-bold text-[#BB3F95] bg-fuchsia-50 px-2 py-0.5 rounded-md">
+                  ${item.code}
+                </span>
+              </div>
+              <h2 class="text-xl font-extrabold text-[#231F48] font-marcellus mt-1.5">${item.title}</h2>
+              <p class="text-xs text-[#6B4773] mt-0.5">${item.subtitle}</p>
+              
+              <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-gray-100 text-xs">
+                <div>
+                  <span class="text-gray-400 block text-[10px] font-bold uppercase">Gender:</span>
+                  <span class="font-bold text-[#231F48]">${item.gender}</span>
+                </div>
+                <div>
+                  <span class="text-gray-400 block text-[10px] font-bold uppercase">Age Group:</span>
+                  <span class="font-bold text-[#231F48]">${item.ageGroup}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description -->
+          <div class="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Visual Concept & Atmosphere</h4>
+            <p class="text-xs text-[#231F48] leading-relaxed">${item.description}</p>
+          </div>
+
+          <!-- Garment Suitability -->
+          <div>
+            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Recommended Indian Garment Types</h4>
+            <p class="text-xs font-bold text-[#BB3F95] bg-fuchsia-50 p-3 rounded-xl border border-fuchsia-100">
+              ${item.garmentFit}
+            </p>
+          </div>
+
+          <!-- AI Studio Shoot Prompt Formula -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider">AI Studio Prompt Formula</h4>
+              <button 
+                onclick="copyToClipboard(\`${item.prompt.replace(/`/g, '\\`')}\`, 'Prompt formula copied!')" 
+                class="text-[11px] font-bold text-[#BB3F95] hover:underline flex items-center gap-1"
+              >
+                <i data-lucide="copy" class="w-3 h-3"></i> Copy Prompt
+              </button>
+            </div>
+            <div class="bg-[#231F48] text-gray-100 p-3.5 rounded-2xl font-mono text-[11px] leading-relaxed border border-gray-800 select-all">
+              ${item.prompt}
+            </div>
+          </div>
+
+          <div class="pt-2 flex items-center gap-3">
+            <button 
+              onclick="copyToClipboard('${item.code}', 'Code ${item.code} copied!'); closeModal();" 
+              class="flex-1 py-2.5 rounded-2xl bg-[#231F48] text-white text-xs font-bold hover:bg-[#BB3F95] transition-colors flex items-center justify-center gap-1.5"
+            >
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy Selection Code
+            </button>
+            <button 
+              onclick="closeModal()" 
+              class="px-5 py-2.5 rounded-2xl bg-gray-100 text-gray-700 text-xs font-bold hover:bg-gray-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      `;
+
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('detailModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // ── Export Selected as JSON ──
+    function exportSelectedJson() {
+      const selected = ITEMS.filter(i => selectedItemCodes.has(i.code));
+      if (selected.length === 0) {
+        showToast('Please check the "Select" box on 1 or more items first!');
+        return;
+      }
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(selected, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "selected_ai_scenes_and_models.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast(`Exported ${selected.length} selections!`);
+    }
+
+    // Initialize on load
+    window.addEventListener('DOMContentLoaded', () => {
+      renderCatalog();
+    });
+  </script>
+</body>
+</html>
