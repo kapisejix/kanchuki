@@ -23,6 +23,7 @@ export default function BackgroundImagesPage() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [status, setStatus] = useState('')
+  const [preview, setPreview] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const load = async () => {
@@ -174,14 +175,19 @@ export default function BackgroundImagesPage() {
             key={row.id}
             className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 overflow-hidden"
           >
-            <div className="aspect-square bg-gray-100 relative">
+            <button
+              type="button"
+              onClick={() => setPreview(row.image_url)}
+              className="aspect-square bg-gray-100 relative block w-full cursor-zoom-in"
+              aria-label={`View ${row.name} full size`}
+            >
               <Image
                 src={row.thumbnail_url ?? row.image_url}
                 alt={row.name}
                 fill
                 className={`object-cover ${row.is_active ? '' : 'opacity-40'}`}
               />
-            </div>
+            </button>
             <div className="p-3 flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">
                 <span className="text-xs font-medium text-gray-700 truncate">{row.name}</span>
@@ -241,6 +247,20 @@ export default function BackgroundImagesPage() {
           </p>
         )}
       </div>
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-6 cursor-zoom-out"
+          onClick={() => setPreview(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={preview}
+            alt="Background full size"
+            className="max-h-full max-w-full rounded-lg object-contain shadow-2xl"
+          />
+        </div>
+      )}
     </motion.div>
   )
 }
