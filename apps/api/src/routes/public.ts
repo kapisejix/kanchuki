@@ -12,6 +12,7 @@ import {
   publicStylistRoutes,
   publicDesignRoutes,
   publicStoresRoutes,
+  passportRoutes,
 } from './public/index.js';
 
 export const publicRoutes: FastifyPluginAsync = async (server) => {
@@ -35,4 +36,6 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicStylistRoutes);
   // public-designs — Unstitched Design Gallery browsing
   await server.register(publicDesignRoutes);
+  // passport — Shopper Passport OTP + session (Tasks 2-3)
+  await server.register(passportRoutes, { prefix: '/passport' });
 };

@@ -9,3 +9,4 @@ export { publicStoresRoutes } from './public-stores.js';
 export { publicReviewsRoutes } from './public-reviews.js';
 export { publicStylistRoutes } from './public-stylist.js';
 export { publicDesignRoutes } from './public-designs.js';
+export { passportRoutes } from './passport.js';
