@@ -244,13 +244,12 @@ export const productApi = {
     productId: string,
     photoId: string,
     template: string,
-    options?: { engine?: string; model_id?: string },
   ) =>
     request<{ data: { job_id: string; status: string } }>(
       `/v1/products/${productId}/photos/${photoId}/studio-shoot`,
       {
         method: 'POST',
-        body: JSON.stringify({ template, ...options }),
+        body: JSON.stringify({ template }),
         timeoutMs: 15_000,
       },
     ),

@@ -41,7 +41,7 @@ export function useProductAiStudio({
   const [studioResult, setStudioResult] = useState<{ photoId: string; url: string } | null>(null)
   const [studioProgress, setStudioProgress] = useState<number>(0)
   const [studioEtaMs, setStudioEtaMs] = useState<number>(0)
-  const [studioTab, setStudioTab] = useState<'scenes' | 'models'>('scenes')
+  const [studioTab, setStudioTab] = useState<'product' | 'models'>('product')
 
   // Background and shadow preferences
   const [photoBackgrounds, setPhotoBackgrounds] = useState<Record<string, string | null>>({})
@@ -165,10 +165,7 @@ export function useProductAiStudio({
     )
   }
 
-  const handleStartStudioShoot = async (
-    template: string,
-    options?: { engine?: string; model_id?: string },
-  ) => {
+  const handleStartStudioShoot = async (slug: string) => {
     const photo = currentPhoto && !currentPhotoIsOriginal ? currentPhoto : originalPhoto
     if (!product || !photo) return
     // Keep the modal open — it now shows the progress / result / error view
@@ -180,7 +177,7 @@ export function useProductAiStudio({
     setStudioProgress(0)
     setStudioEtaMs(0)
     try {
-      const res = await productApi.startStudioShoot(product.id, photo.id, template, options)
+      const res = await productApi.startStudioShoot(product.id, photo.id, slug)
       setStudioJob({ jobId: res.data.job_id, photoId: photo.id })
       setStudioStatus('processing')
     } catch (err) {

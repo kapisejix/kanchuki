@@ -556,6 +556,8 @@ export default function ProductDetailScreen() {
         result={studio.studioResult}
         onRetry={studio.resetStudioFlow}
         onUseResult={studio.handleUseStudioResult}
+        productCategory={product.category ?? undefined}
+        productName={product.name ?? undefined}
       />
     </View>
   )
