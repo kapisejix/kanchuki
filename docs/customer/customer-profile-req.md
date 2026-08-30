@@ -223,3 +223,14 @@ Supersedes §11 for near-term scope. Selected: items 1–13 below (P0/P1/P2). It
 **Still deferred:** easy reorder, occasion collections, AI Stylist Chat, full Hindi UI toggle, item 21 (Customer login + cross-store identity / Option C — XL, foundation for items 22–24), items 22–24 (blocked on 21: wishlist cross-store, personalized home feed, "similar from other stores"), item 25 (order tracking + GST invoice download — blocked on Phase I invoicing), item 26 (rental/exchange — explicitly out of scope, logistics complexity).
 
 **Consequence of deferring Option C (item 21):** items 1–13 above stay same-store-scoped where identity would otherwise matter (#8 recently-viewed, #9 restock-notify) — cross-store versions follow once/if item 21 is later approved.
+
+---
+
+### 2026-08-30 — Option C (item 21) + items 22–24 now specced (no code yet)
+
+Full architecture + phased task breakdown written:
+
+- **Design / architecture:** `docs/customer/customer-qr-identity-solution.md` — §1–§14 = "Shopper Passport" (one OTP-verified identity, server-set `HttpOnly` cookie carried across all `kanchuki.com/{store}` QR codes, per-store affirmative contact-share tap, DPDP Rules 2025 corrections). §15–§19 = cross-store activity tracking, unified `CustomerFashionDNA`, pgvector+rules recommendation engine, `/my-profile` + `/my-stores`, profiling-consent controls.
+- **Implementation plan:** `docs/superpowers/plans/2026-08-30-shopper-passport-and-profile.md` — 28 tasks across 8 phases, each tagged with dev/design/planning/testing skills, files, interfaces, test plan, acceptance.
+- **Mapping:** item 21 → Phases 1–2 (Tasks 1–10). Item 22 (cross-store wishlist) → Task 19. Item 23 (personalized home feed) → Task 21. Item 24 ("similar from other stores") → Tasks 20 + 22–23.
+- **Status:** documentation only. Open decisions listed in the spec §13 (a–j). Nothing coded.
