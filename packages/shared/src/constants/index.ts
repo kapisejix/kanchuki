@@ -477,6 +477,243 @@ export const STUDIO_TEMPLATES = [
     prompt:
       'Place this garment on a graceful Indian fashion model on a wooden lakeside deck with a carved reddish-brown balustrade, a calm emerald-green lake, forested mountains and a soft overcast sky behind. Diffused daylight keeps the garment colour, drape and embroidery true.',
   },
+
+  // ─── LEGACY styles restored 2026-08-30 — admin test bench only ───
+  // The pre-branch default AI Studio Shoot styles, brought back with
+  // `draft: true` so the owner can A/B them in the admin photo-cleanup-test
+  // bench against the shipped 18. Hidden from the retailer mobile picker
+  // (ProductStudioModal filters `draft`). Drop the flag to re-ship one.
+  {
+    id: 'bridalwear',
+    command: '/bridalwear',
+    label: 'Royal Bridal Palace',
+    description: 'Royal wedding palace courtyard setting with warm ambient background',
+    draft: true,
+    prompt:
+      'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with carved arches and gentle ambient evening light in the background bokeh. The garment itself is lit with neutral 5500K color-true key lighting to 100% preserve its exact original fabric color, embroidery, zari work, and hue without amber tinting or color shifts.',
+  },
+  {
+    id: 'seasoncollection',
+    command: '/seasoncollection',
+    label: 'Festive Celebration',
+    description: 'Festive celebration backdrop with warm background marigolds & light bokeh',
+    draft: true,
+    prompt:
+      'Place this ethnic garment in a festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents strictly in the background. The garment itself is illuminated with neutral daylight studio lighting, keeping the product shape, exact original color, pattern, and fabric details 100% unaltered.',
+  },
+  {
+    id: 'clothingdetail',
+    command: '/clothingdetail',
+    label: 'Macro Fabric Detail',
+    description: 'Ultra-sharp macro close-up highlighting fine embroidery and weave',
+    draft: true,
+    prompt:
+      'An ultra-detailed macro close-up photograph highlighting the fine craftsmanship, texture, zari embroidery, and fabric weave of this garment. Sharp focus on the intricate details with natural soft depth of field and 100% color-true, neutral daylight studio lighting.',
+  },
+  {
+    id: 'white_studio',
+    command: '/white_studio',
+    label: 'White Studio',
+    description: 'Clean white backdrop, soft even lighting — marketplace ready',
+    draft: true,
+    prompt:
+      'Replace the background of this product photo with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting. Keep the product itself completely unchanged — exact same color, hue, saturation, pattern, and fabric details with soft natural grounding shadow.',
+  },
+  {
+    id: 'warm_luxury',
+    command: '/warm_luxury',
+    label: 'Warm Luxury',
+    description: 'Rich warm beige backdrop with color-true subject lighting',
+    draft: true,
+    prompt:
+      'Replace the background of this product photo with a warm, luxurious beige studio backdrop with subtle depth. The product itself is lit with neutral, color-true 5500K studio light so the garment fabric color, dye, and embroidery remain 100% faithful to the original photo with natural grounding shadow.',
+  },
+  {
+    id: 'gold_festive',
+    command: '/gold_festive',
+    label: 'Gold Festive',
+    description: 'Festive gold-tone backdrop (Diwali/wedding ready)',
+    draft: true,
+    prompt:
+      'Replace the background of this product photo with an elegant festive gold-toned backdrop with soft depth. The product itself is illuminated with neutral daylight studio lighting so the exact garment color, fabric shade, and embroidery remain completely unchanged and true to life.',
+  },
+  {
+    id: 'diwali_lights',
+    command: '/diwali_lights',
+    label: 'Diwali Lights',
+    description: 'Diwali-specific backdrop with diyas and rangoli patterns',
+    draft: true,
+    prompt:
+      'Replace the background of this product photo with a vibrant Diwali backdrop featuring glowing diyas and rangoli patterns strictly in the background. The garment itself is lit with neutral 5500K color-true studio lighting, keeping the product shape, exact color, pattern, and fabric details 100% unaltered.',
+  },
+  {
+    id: 'wedding_elegant',
+    command: '/wedding_elegant',
+    label: 'Wedding Florals',
+    description: 'Elegant wedding backdrop with floral arrangements and draping',
+    draft: true,
+    prompt:
+      'Replace the background of this product photo with an elegant wedding backdrop featuring soft floral arrangements and pastel draping in the background. The garment itself is lit with neutral daylight studio lighting, keeping its original fabric color, embroidery, and textures 100% faithful to the original photo.',
+  },
+  {
+    id: 'flat_lay',
+    command: '/flat_lay',
+    label: 'Flat-Lay Linen',
+    description: 'Casual flat-lay style on a neutral textured surface',
+    draft: true,
+    prompt:
+      'Replace the background of this product photo with a neutral, textured flat-lay surface (like a light linen or stone tabletop), shot from directly above. Keep the product itself completely unchanged — same shape, exact original color, pattern, and fabric details. Soft, even, neutral 5500K lighting.',
+  },
+  {
+    id: 'botanical_garden',
+    command: '/garden',
+    label: 'Royal Botanical Garden',
+    description: 'Outdoor — Mughal garden, marble fountain, golden-hour bokeh',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a lush Mughal-style botanical garden with manicured hedges, a marble fountain and blooming flowerbeds, soft golden-hour daylight and greenery bokeh behind. Neutral daylight on the garment keeps its true colour, texture and embroidery.',
+  },
+  {
+    id: 'heritage_street',
+    command: '/street',
+    label: 'Jaipur Heritage Street',
+    description: 'Outdoor — terracotta-pink walls, carved doors, candid stride',
+    draft: true,
+    prompt:
+      'Place this garment on a graceful Indian fashion model on a Jaipur old-city street with terracotta-pink carved walls, antique wooden doors and brass lanterns, soft morning light, candid mid-stride pose. Exact dyes, weave and embroidery stay faithful to the original.',
+  },
+  {
+    id: 'palace_courtyard',
+    command: '/palace',
+    label: 'Royal Palace Courtyard',
+    description: 'Outdoor — Rajasthan palace, sandstone arches, warm evening light',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a Rajasthan palace courtyard with carved sandstone arches and jharokha windows, warm ambient evening light blurred in the background. The garment is lit with neutral key light so colour, zari and embroidery are 100% preserved.',
+  },
+  {
+    id: 'heritage_library',
+    command: '/indoor',
+    label: 'Grand Heritage Library',
+    description: 'Indoor — wood panelling, tall bookshelves, brass lamps',
+    draft: true,
+    prompt:
+      'Place this garment on a graceful Indian fashion model inside a grand wood-panelled heritage library with tall bookshelves and brass reading lamps, warm soft interior light behind and neutral light on the subject, poised standing pose. Colour, texture and embroidery preserved exactly.',
+  },
+  {
+    id: 'low_key_dark',
+    command: '/dark',
+    label: 'Dark Dramatic Low-Key',
+    description: 'Near-black backdrop, single side key + rim light',
+    draft: true,
+    prompt:
+      'Place this garment on a graceful Indian fashion model against a near-black seamless backdrop with a single dramatic side key light and a soft rim light on the shoulder. Fabric texture and embroidery catch the light while the exact garment colour is held true with no colour shift.',
+  },
+  {
+    id: 'cinematic_film',
+    command: '/cinematic',
+    label: 'Cinematic Film Grade',
+    description: '35mm film look — moody directional light, shallow DOF',
+    draft: true,
+    prompt:
+      'Place this outfit on a graceful Indian fashion model in a cinematic 35mm-film-graded scene with moody directional light and shallow depth of field, muted filmic colour in the environment only. The garment keeps its exact original colour, saturation and embroidery.',
+  },
+
+  // ─── PRODUCT / HANGER studio styles 2026-08-30 — admin test bench only ───
+  // No-model product shots: remove the original hanger from the source photo
+  // and re-present the garment (new hanger / mannequin / flat-lay) against a
+  // studio backdrop. FLUX Kontext instruction-edit — garment pixels locked.
+  // `draft: true` => admin photo-cleanup-test dropdown only.
+  {
+    id: 'studio_pro',
+    command: '/studio',
+    label: 'Professional Studio',
+    description: 'No model — garment on a wooden hanger, seamless mid-grey studio',
+    draft: true,
+    prompt:
+      'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a premium wooden hanger against a seamless mid-grey professional photography studio backdrop, even 5500K softbox lighting, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'studio_white',
+    command: '/white-studio',
+    label: 'Pure White Studio',
+    description: 'No model — garment on a natural wood hanger, pure white backdrop',
+    draft: true,
+    prompt:
+      'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a natural wood hanger against a pure seamless white studio backdrop, bright even 5500K lighting, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'studio_beige',
+    command: '/beige-studio',
+    label: 'Warm Beige Studio',
+    description: 'No model — garment on a wooden hanger, warm beige backdrop',
+    draft: true,
+    prompt:
+      'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a wooden hanger against a warm beige studio backdrop with subtle depth, soft warm-neutral 5500K lighting, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'studio_luxury',
+    command: '/luxury-studio',
+    label: 'Premium Luxury Studio',
+    description: 'No model — garment on a brushed-brass hanger, dark marble wall',
+    draft: true,
+    prompt:
+      'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a brushed-brass hanger against a premium studio wall of dark marble with a subtle spotlight, dramatic soft key lighting, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'studio_minimal',
+    command: '/minimal-studio',
+    label: 'Minimal Clean Studio',
+    description: 'No model — garment on a slim matte-white hanger, empty off-white space',
+    draft: true,
+    prompt:
+      'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a slim matte-white hanger against a minimal off-white background with generous empty space around it, flat even lighting, with a faint natural grounding shadow.',
+  },
+  {
+    id: 'studio_home',
+    command: '/home-studio',
+    label: 'Lifestyle Home Studio',
+    description: 'No model — garment on a wooden hanger, pale wood wall + soft plant',
+    draft: true,
+    prompt:
+      'Product-only lifestyle shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a wooden hanger against a pale wooden wall panel with a trailing plant softly out of focus beside it, warm window daylight, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'studio_boutique',
+    command: '/boutique-rail',
+    label: 'Boutique Rail',
+    description: 'No model — garment on a wooden hanger on a boutique clothing rail',
+    draft: true,
+    prompt:
+      'Product-only shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a wooden hanger on a clothing rail inside an upscale fashion boutique with spot-lit displays and racks softly out of focus behind, warm boutique lighting, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'display_mannequin',
+    command: '/mannequin',
+    label: 'Mannequin Presentation',
+    description: 'No model — garment fitted on a clean white headless mannequin',
+    draft: true,
+    prompt:
+      'Product presentation shot, no living person or fashion model. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then fit the garment naturally onto a clean white headless mannequin form against a seamless white studio backdrop, even 5500K lighting, with a soft natural grounding shadow.',
+  },
+  {
+    id: 'display_flatlay',
+    command: '/flat-lay',
+    label: 'Clothing Flat-Lay',
+    description: 'No model — garment laid flat and styled, shot from directly above',
+    draft: true,
+    prompt:
+      'Product flat-lay shot, no person, model or mannequin. Keep the garment 100% pixel-identical — do not alter its shape, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then lay the garment flat and neatly styled, shot from directly above on a neutral light-grey flat surface, soft even 5500K lighting, with a faint natural shadow.',
+  },
+  {
+    id: 'display_hanger',
+    command: '/hanger',
+    label: 'Styled Hanger',
+    description: 'No model — garment re-hung on a polished walnut hanger, white studio',
+    draft: true,
+    prompt:
+      'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a polished walnut wooden hanger against a seamless white studio backdrop, even 5500K lighting, with a soft natural grounding shadow.',
+  },
 ] as const satisfies readonly {
   id: string;
   command?: string;
