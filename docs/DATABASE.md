@@ -1065,7 +1065,34 @@ CREATE POLICY public_collection_read ON collections
 -- read via a service-role admin API endpoint only.
 ALTER TABLE plan_features ENABLE ROW LEVEL SECURITY;
 -- (no policies defined = default deny for authenticated/anon roles)
+
+-- studio_styles (F-032 style catalog, planned — spec
+-- docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md):
+-- same deny-all pattern as background_images. Admin CRUD via the
+-- service-role admin API; retailers read the plan-filtered subset via
+-- GET /v1/studio-styles (the API filters status=PUBLISHED AND
+-- plans has retailer.plan in the query -- no direct table access).
+-- Hard delete is allowed at the admin layer (matches background_images;
+-- not a BUSINESS_MODELS soft-delete table -- past generations keep their
+-- provenance in ProductPhoto.metadata, no FK to studio_styles).
+ALTER TABLE studio_styles ENABLE ROW LEVEL SECURITY;
+-- (no policies defined = default deny for authenticated/anon roles)
 ```
+
+### `studio_styles` (planned)
+
+Admin-managed AI Studio Shoot style catalog -- replaces the hardcoded
+`STUDIO_TEMPLATES` / `STUDIO_MODELS` constants. Migration `075_studio_styles`
+(owner applies). Columns: `id`, `slug` (unique, == old template id),
+`label`, `description`, `prompt` (server-only, never in the retailer
+payload), `tab` (`StudioStyleTab`: PRODUCT | MODEL), `status`
+(`StudioStyleStatus`: DRAFT | PUBLISHED | HIDDEN), `plans`
+(`SubscriptionPlan[]` -- admin assigns each style to specific tiers, `[]` =
+nobody), `engine` (nullable string, one of the `StudioEngine` set),
+`audience` (`String[]` of `PRODUCT_DEMOGRAPHICS`), `thumbnail_url` +
+`thumbnail_r2_key` (admin-uploaded sample output), `sort_order`,
+`usage_count`, `created_at`, `updated_at`. Index on `status`. Seeded with
+29 rows as DRAFT / unassigned.
 
 ---
 

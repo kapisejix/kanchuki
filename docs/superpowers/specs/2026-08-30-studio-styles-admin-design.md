@@ -193,8 +193,9 @@ studioStyleThumb: (filename: string) => `admin/studio-styles/${filename}`,
 - Resolve `retailer.plan`.
 - Return rows where `status = 'PUBLISHED' AND plans has retailer.plan`,
   ordered `sort_order ASC, created_at ASC`.
-- Payload per row: `slug, label, description, tab, audience, engine,
-  thumbnail_url`. **`prompt` is NOT included** — server-side only.
+- Payload per row: `slug, label, description, tab, audience, thumbnail_url`.
+  **`prompt` and `engine` are NOT included** — server-side only (mobile
+  never needs the engine; the generate-path reads it from the row).
 - Registered wherever the retailer product routes are mounted.
 
 ### `apps/api/src/routes/products/products-studio.ts`
@@ -333,8 +334,10 @@ Client component, mirrors `plan-features/page.tsx` + `background-images`:
   `docs/tasks/AI Models and Scenes.html` formula style), thumbnail upload,
   plan checkboxes. POST → prepend to the list.
 - Sidebar: add `{ href: '/admin/studio-styles', label: 'Studio Styles',
-  icon: ... }` beside "Background Images" in
-  `apps/web/src/app/admin/components/Sidebar.tsx`.
+  icon: Clapperboard }` (lucide-react) beside "Background Images" in
+  `apps/web/src/app/admin/components/Sidebar.tsx`. Match that file's
+  existing entry shape — if it groups entries, put this in the same group
+  as Background Images / Festival Backgrounds.
 
 ---
 
@@ -344,7 +347,7 @@ Client component, mirrors `plan-features/page.tsx` + `background-images`:
 
 Add `getStudioStyles()` → `GET /v1/studio-styles`, typed
 `{ data: StudioStylePublic[] }` where `StudioStylePublic = { slug, label,
-description, tab: 'PRODUCT' | 'MODEL', audience: string[], engine: string | null,
+description, tab: 'PRODUCT' | 'MODEL', audience: string[],
 thumbnail_url: string | null }`. (Type lives in `apps/mobile` or
 `@kanchuki/shared` alongside `Demographic`.)
 
@@ -433,6 +436,31 @@ signature is now `(slug) => void`.
 
 ---
 
+## Skills for implementation
+
+Active for the whole build: **`ponytail:ponytail`** (lazy/minimal — reuse
+`admin-media.ts` / `plan-features` patterns, no new abstractions) and
+**`caveman:caveman`** (terse prose; normal for code/commits/PRs).
+
+Per phase:
+
+| Phase | Skill | Why |
+|-------|-------|-----|
+| Turn this spec into a task plan | `superpowers:writing-plans` | required next step out of brainstorming |
+| Execute the plan | `superpowers:subagent-driven-development` (same session) or `superpowers:executing-plans` (checkpointed) | ordered task execution |
+| §1 schema + migration `075` | `ecc:prisma-patterns`, `supabase:supabase-postgres-best-practices` | enum-array column, safe migration, seed SQL |
+| §2 API logic (plan gate, prompt assembly) | `superpowers:test-driven-development` | branch logic + money/quota-adjacent path — write the test first |
+| §2/§5 debugging a failing test or engine cascade | `superpowers:systematic-debugging` | no guess-fixes |
+| §3 admin route | `ecc:typescript-reviewer` (review), `ecc:api-design` | CRUD + zod validation + audit-log parity |
+| §3 admin page | `frontend-design:frontend-design` + `ecc:react-patterns` | match existing admin page style; mirror `plan-features` grid |
+| §4 mobile picker | `ecc:react-patterns` (RN), keep parity with current `ProductStudioModal` | react-query fetch, tab filter |
+| Before marking any task done | `superpowers:verification-before-completion` | run tsc + the named test suites, check the box only on green |
+| Before PR to `main` | `superpowers:requesting-code-review` + `code-review` slash command | correctness + reuse pass |
+| RTK prefix on all shell (`rtk git`, `rtk vitest run`, `rtk tsc`) | user global CLAUDE.md | token savings |
+
+Migration application stays with the **owner** — the implementer only
+writes `075_studio_styles/migration.sql`.
+
 ## Data flow
 
 ```
@@ -447,6 +475,7 @@ Retailer app
      │
      ▼
    POST /products/:id/photos/:photoId/studio-shoot { template: slug }
+     (retailer never sends prompt/engine — server reads them from the row)
      ├─ studio_styles.findFirst(slug, status=PUBLISHED)  → 422 if missing
      ├─ retailer.plan ∈ style.plans                       → 403 if not
      ├─ checkQuota(STUDIO_SHOOT)                           → 402 if over

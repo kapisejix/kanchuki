@@ -250,13 +250,48 @@ The CI workflow (`.github/workflows/ci.yml`) runs on every push/PR:
 | `quality` | TypeScript check, lint, unit tests |
 | `build` | Production build of API + Web (verifies code compiles for deploy) |
 
-**Deploy to Railway** happens automatically via Railway's GitHub integration:
-1. Push to `main`/`master`
-2. Railway detects the push
+### ⚠️ DEPLOYMENT RULE: GitHub-Only — NO Local `railway up`
+
+**ALL production deploys MUST come from GitHub. Never run `railway up` from a local machine.**
+
+Why: `railway up` from a laptop ships whatever is on *that machine* — not what's on GitHub.
+If the local copy is stale, the deploy ships stale code. Every past "why isn't my change live"
+incident traced back to a local `railway up` that overwrote the GitHub-deployed version.
+
+**The correct deployment flow is:**
+1. Push code to GitHub `main` (via PR merge or direct push)
+2. Railway detects the push (Settings → Source → GitHub repo connected)
 3. Builds only the changed services (via `watchPatterns` in `railway.json`)
 4. Runs `pnpm build --filter=@kanchuki/api` (or `web`)
 5. Starts with `node apps/api/dist/index.js` (API) or `pnpm --filter @kanchuki/web start` (web)
 6. Health check passes → traffic routed to new version
+
+Railway's dashboard confirms the deploy source: **"Deployed via GitHub"** = correct,
+**"Deployed via CLI / railway up"** = someone ran it locally (wrong).
+
+### Manual Deploy (Dashboard Only)
+
+If you need to redeploy without a code change (e.g., env var update):
+1. Go to Railway Dashboard → Service → **Redeploy** button
+2. This re-runs the build from the **last GitHub commit** — not from any local folder
+
+**DO NOT use:**
+```bash
+# ❌ NEVER run these — they ship local files, not GitHub code:
+npx railway up --service @kanchuki/api
+npx railway up --service @kanchuki/web
+railway up --detach --environment production
+```
+
+### Railway GitHub Integration Setup
+
+For Railway to auto-deploy from GitHub:
+1. Railway Dashboard → Project → **Settings** → **Source**
+2. Ensure **GitHub** is connected and the correct repo/branch (`main`) is selected
+3. Enable **Deploy on Push** (auto-deploy when code is pushed to `main`)
+4. Each service should have its **Root Directory** set to `.` (repo root)
+5. Verify: push a small change to `main` and check Railway's Deployments tab —
+   it should say **"Deployed via GitHub"**, not "Deployed via CLI"
 
 > **Note:** Next.js `output: 'standalone'` is intentionally disabled. The
 > standalone mode causes a "Cannot read properties of null (reading 'useContext')"
@@ -264,17 +299,6 @@ The CI workflow (`.github/workflows/ci.yml`) runs on every push/PR:
 > Railway's Nixpacks builder keeps the full `node_modules` in the deployment
 > image, so `pnpm --filter @kanchuki/web start` (which runs `next start`) works
 > correctly.
-
-### Manual Deploy Trigger
-
-```bash
-# If you need to redeploy without a code change:
-# 1. Go to Railway Dashboard
-# 2. Service → Settings → Redeploy
-# Or use Railway CLI:
-npx railway up --service @kanchuki/api
-npx railway up --service @kanchuki/web
-```
 
 ---
 
@@ -289,6 +313,8 @@ npx railway up --service @kanchuki/web
 | 502 Bad Gateway | Health check failing | Check `startCommand` in `railway.json` — ensure path is correct |
 | 502 Bad Gateway — **every** path (`/`, static assets, `/c/{slug}`), with `x-railway-fallback: true` in the response | **Service domain target port ≠ app's listening port** (see §Troubleshooting below) | `railway domain list --service <name>` to compare; `railway domain update --port <PORT> <domain-id> --service <name>` to fix |
 | Prisma schema mismatch | Migrations not run | Run `pnpm exec prisma migrate deploy` from the API service |
+| Changes not live after push to main | Railway not connected to GitHub, or someone deployed from local | Check Railway Deployments tab: "Deployed via GitHub" = good, "Deployed via CLI" = someone ran `railway up` locally. Fix: Railway Settings → Source → connect GitHub repo, enable auto-deploy. **NEVER run `railway up` from a local machine.** |
+| Stale code on production | Local `railway up` overwrote GitHub deploy | Railway Settings → Source → ensure GitHub is connected. Run `git log --oneline -1` on the machine to check if code is current. Deploy from GitHub only. |
 
 ### 502 on every path — domain target port vs Railway `$PORT` mismatch
 
