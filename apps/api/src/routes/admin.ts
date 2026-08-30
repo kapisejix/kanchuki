@@ -27,6 +27,7 @@ import {
   adminDataRoutes,
   adminIntegrationsRoutes,
   adminMediaRoutes,
+  adminStudioStylesRoutes,
   adminMiscRoutes,
   adminModerationRoutes,
   adminPhotoCleanupRoutes,
@@ -223,6 +224,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminSurveyRoutes);
   // admin-media — auto-split module
   await server.register(adminMediaRoutes);
+  // admin-studio-styles — DB-backed AI Studio Shoot style catalog
+  await server.register(adminStudioStylesRoutes);
   // admin-data — auto-split module
   await server.register(adminDataRoutes);
   // admin-integrations — auto-split module
