@@ -470,6 +470,124 @@ describe('POST /v1/public/passport/recently-viewed', () => {
   });
 });
 
+describe('GET /v1/public/passport/wishlist', () => {
+  it('returns 401 when no session', async () => {
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({ method: 'GET', url: '/v1/public/passport/wishlist' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns empty items for valid session', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const mockFindMany = vi.fn().mockResolvedValue([]);
+    // @ts-expect-error - extending mock
+    prisma.customerWishlistItem = { findMany: mockFindMany };
+
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/public/passport/wishlist',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items).toEqual([]);
+    delete (prisma as any).customerWishlistItem;
+  });
+});
+
+describe('POST /v1/public/passport/wishlist', () => {
+  it('returns 401 when no session', async () => {
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/wishlist',
+      payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
+    });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('upserts a wishlist item for valid session', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const mockUpsert = vi.fn().mockResolvedValue({});
+    // @ts-expect-error - extending mock
+    prisma.customerWishlistItem = { upsert: mockUpsert };
+
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/wishlist',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+      payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ok).toBe(true);
+    expect(mockUpsert).toHaveBeenCalledOnce();
+    delete (prisma as any).customerWishlistItem;
+  });
+});
+
+describe('DELETE /v1/public/passport/wishlist/:productId', () => {
+  it('returns 401 when no session', async () => {
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({ method: 'DELETE', url: '/v1/public/passport/wishlist/prod-1' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('deletes wishlist item for valid session', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const mockDeleteMany = vi.fn().mockResolvedValue({ count: 1 });
+    // @ts-expect-error - extending mock
+    prisma.customerWishlistItem = { deleteMany: mockDeleteMany };
+
+    const app = buildApp();
+    await app.ready();
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/v1/public/passport/wishlist/prod-1',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().ok).toBe(true);
+    expect(mockDeleteMany).toHaveBeenCalledOnce();
+    delete (prisma as any).customerWishlistItem;
+  });
+});
+
 describe('POST /v1/public/passport/events', () => {
   it('returns 204 silently when no session', async () => {
     const app = buildApp();

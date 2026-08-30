@@ -619,6 +619,7 @@ model Product {
   collection_items CollectionProduct[]
   interactions     CustomerInteraction[]
   recently_viewed  CustomerRecentlyViewed[]
+  wishlist_items   CustomerWishlistItem[]
   order_items      OrderItem[]
   catalog_item     CatalogItem?
 
@@ -2699,6 +2700,7 @@ model CustomerWishlistItem {
   created_at          DateTime @default(now())
 
   customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  product          Product          @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@unique([customer_account_id, product_id])
   @@index([customer_account_id])
