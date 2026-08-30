@@ -32,6 +32,7 @@ import type { CatalogSyncJobData } from './catalog-sync.js';
 import { handleGenerateLookbook } from './generate-lookbook.js';
 import type { LookbookJobData } from './generate-lookbook.js';
 import { handleInteractionRetention } from './interaction-retention.js';
+import { handleEmbeddingBackfill } from './embedding-backfill.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -390,6 +391,8 @@ export async function startWorkers(): Promise<void> {
         }
         case 'interaction-retention':
           return handleInteractionRetention();
+        case 'embedding-backfill':
+          return handleEmbeddingBackfill();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -488,6 +491,17 @@ export async function startWorkers(): Promise<void> {
     { type: 'weekly' },
     {
       repeat: { pattern: '0 4 * * 0', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Embedding backfill — weekly Sunday at 7:00 AM UTC
+  await getMaintenanceQueue().add(
+    'embedding-backfill',
+    {},
+    {
+      repeat: { pattern: '0 7 * * 0', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
