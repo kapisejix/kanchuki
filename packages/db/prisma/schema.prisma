@@ -2591,6 +2591,15 @@ model CustomerAccount {
   usual_size  String? // feeds cross-store size reco (roadmap N)
   is_verified Boolean  @default(true) // set true only after OTP
 
+  // Explicit preferences (set by shopper in /my-profile)
+  pref_colors    String[]
+  pref_styles    String[]
+  pref_fabrics   String[]
+  pref_occasions String[]
+  budget_min     Int? // paise
+  budget_max     Int? // paise
+  notes          String?
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
