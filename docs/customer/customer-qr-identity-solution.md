@@ -271,18 +271,22 @@ Mitigations, in order:
 
 ---
 
-## 13. Decisions needed
+## 13. Decisions needed — **LOCKED (2026-08-30)**
 
-- **a. Browse-only visit** — anonymous counter only, or a no-phone CRM placeholder lead? (Recommend: anonymous counter.)
-- **b. Passport scope of `name`/`gender`** — collect `gender` at all on the passport? It's optional today; dropping it removes a field and a DPDP edge (children). (Recommend: name optional, gender off the passport, retailer can still ask in CRM.)
-- **c. OTP channel default** — WhatsApp-first (₹0.35–0.50, ~99% w/ SMS fallback, +10–15% conversion) vs SMS-first (₹0.12–0.20, ~88%) ([messagecentral](https://www.messagecentral.com/en-in/blog/sms-otp-pricing-india), [anantya](https://anantya.ai/blog/sms-fallback-for-whatsapp-otp-india/)). (Recommend: WhatsApp-first, SMS fallback — DLT sender-ID for SMS is still pending per CLAUDE.md.)
-- **d. Cookie TTL** — 90 / 180 / 400 days. (Recommend: 180, sliding — refresh on each scan.)
-- **e. Session store** — Redis (fast, already wired, eviction risk) vs DB `PassportSession` table (durable). (Recommend: DB row + Redis cache.)
-- **f. Auto-enter timer on stores 2–10** — allowed for catalog entry only, never for the consent tick. Confirm product wants the timer at all vs an explicit 1-tap.
-- **g. Personalized recommendations default** — ON with clear notice + easy off (recommended, it's core UX), or opt-in OFF. DPDP allows either; a toggle covers withdrawal.
-- **h. Embedding provider** — `ProductEmbedding` is `text-embedding-3-small` (OpenAI) today. Keep it, or move to a self-hosted / Claude-side embedding to avoid a US API dependency for a core feature? (Recommend: keep for v1, revisit if cost/latency bites.)
-- **i. Interaction retention window** — 24 months for raw `CustomerInteraction` rows (recommended). Confirm vs legal.
-- **j. "For You" as home** — does the personalized feed replace the current customer-web landing, or sit as a separate tab? (Recommend: separate tab until CTR is proven.)
+All decisions locked with recommended defaults. Implementation follows.
+
+- **a. Browse-only visit** → **Anonymous counter only.** No phone, no CRM row until a contact-requiring action.
+- **b. Passport scope of `name`/`gender`** → **Name optional, gender off the passport.** Retailer can still ask in CRM. Removes a DPDP edge (children).
+- **c. OTP channel default** → **Option 1: MSG91 web widget** (recommended). Mobile already ships the widget; `verifyMsg91WidgetToken()` already exists server-side (`msg91-otp.ts`). No DLT dependency (MSG91's provisioned route). SMS stays as fallback once DLT clears.
+- **d. Cookie TTL** → **180 days, sliding** — refresh on each scan.
+- **e. Session store** → **DB row + Redis cache.** DB for durability, Redis for hot-path reads.
+- **f. Auto-enter timer on stores 2–10** → **No timer.** Explicit 1-tap only. Timer consent is not valid under DPDP.
+- **g. Personalized recommendations default** → **ON with clear notice + easy off.** Core UX; toggle covers withdrawal.
+- **h. Embedding provider** → **Keep `text-embedding-3-small` for v1.** Revisit if cost/latency bites.
+- **i. Interaction retention window** → **24 months for raw `CustomerInteraction` rows.** Aggregates (affinities, vector) retained while account is active.
+- **j. "For You" as home** → **Separate tab** until CTR is proven.
+- **k. c/[slug] vs [store] surface** → **`[store]` is canonical.** `c/[slug]` stays for backward compat; profile features target `[store]`.
+- **l. Retailer alert** → **Drop for v1.** Retailer sees the new lead in their Customers tab on next app open. No push notification backend exists.
 
 ---
 
