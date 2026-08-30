@@ -29,7 +29,7 @@
 // photoUrlToDisplay inline instead.
 import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { R2_PATHS, type StudioTemplateId } from '@kanchuki/shared';
+import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
 import { incrementUsage } from '../lib/quota.js';
@@ -63,13 +63,20 @@ export interface StudioShootJobData {
   retailer_id: string;
   product_id: string;
   photo_id: string;
-  template: StudioTemplateId | string;
+  /** studio_styles row: slug + resolved prompt + tab (the constant is gone). */
+  slug: string;
+  prompt: string;
+  tab: 'PRODUCT' | 'MODEL';
   engine?: StudioEngine;
-  model_id?: string;
+  /** The scene's allowed demographics (carried for provenance; the target
+   * demographic is inferred from the product inside generateStudioImage). */
+  audience: string[];
+  /** studio_styles.id — used to bump usage_count on success. */
+  style_id: string;
 }
 
 export async function handleStudioShoot(data: StudioShootJobData): Promise<void> {
-  const { job_id, retailer_id, product_id, photo_id, template, engine, model_id } = data;
+  const { job_id, retailer_id, product_id, photo_id, slug, prompt, tab, engine, style_id } = data;
   const startedAt = new Date();
 
   // Estimated total time for studio shoot generation (based on BFL/Fal/Gemini docs)
@@ -124,33 +131,29 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     }
 
     // 2. Generate (async submit + poll inside generateStudioImage).
-    const result = await generateStudioImage(
-      template,
-      displayUrl,
-      (progressInfo) => {
+    const result = await generateStudioImage(displayUrl, {
+      prompt,
+      tab,
+      engine,
+      onProgress: (progressInfo) => {
         setStudioJobStatus(job_id, {
           status: 'processing',
           progress: progressInfo.progress,
           etaMs: progressInfo.etaMs,
         }).catch(() => {});
       },
-      undefined,
-      {
-        engine,
-        modelId: model_id,
-        product: product
-          ? {
-              name: product.name,
-              category: product.category,
-              primary_color: product.primary_color,
-              secondary_colors: product.secondary_colors,
-              fabric: product.fabric_estimate,
-              pattern: product.pattern,
-              embellishments: product.embellishments,
-            }
-          : undefined,
-      },
-    );
+      product: product
+        ? {
+            name: product.name,
+            category: product.category,
+            primary_color: product.primary_color,
+            secondary_colors: product.secondary_colors,
+            fabric: product.fabric_estimate,
+            pattern: product.pattern,
+            embellishments: product.embellishments,
+          }
+        : undefined,
+    });
 
     if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
       await setStudioJobStatus(job_id, {
@@ -181,9 +184,9 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
         metadata: {
           studio: {
             job_id,
-            template,
+            slug,
             engine: engine ?? 'auto',
-            model_id: model_id ?? null,
+            tab,
             source_photo_id: photo.id,
             generated_at: startedAt.toISOString(),
           },
@@ -201,11 +204,15 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     });
 
     // 6. Record BFL credit consumption for the Admin → AI Usage dashboard,
-    // and count it against the retailer's STUDIO_SHOOT plan quota (F-010).
-    recordBflStudioUsage(retailer_id, template);
+    // count it against the retailer's STUDIO_SHOOT plan quota (F-010), and
+    // bump the style's usage_count for the Admin → Studio Styles manager.
+    recordBflStudioUsage(retailer_id, slug);
     incrementUsage(retailer_id, 'STUDIO_SHOOT').catch((err) => {
       console.error(`[studio-shoot] failed to record quota usage for ${retailer_id}:`, err);
     });
+    prisma.studioStyle
+      .update({ where: { id: style_id }, data: { usage_count: { increment: 1 } } })
+      .catch((err) => console.error(`[studio-shoot] usage_count bump failed for ${style_id}:`, err));
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[studio-shoot] job ${job_id} failed:`, err);

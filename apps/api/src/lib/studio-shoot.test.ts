@@ -52,8 +52,24 @@ function jsonResponse(body: unknown, ok = true, status = 200) {
   } as unknown as Response;
 }
 
+/** submit + one Ready poll — the default (BFL-direct) happy path. */
+function bflReadyOnce() {
+  mockFetch
+    .mockResolvedValueOnce(
+      jsonResponse({ id: 'task_1', polling_url: 'https://api.bfl.ai/v1/get_result?id=task_1' }),
+    )
+    .mockResolvedValueOnce(
+      jsonResponse({ status: 'Ready', result: { sample: 'https://delivery.bfl.ai/img.jpg' } }),
+    );
+}
+
+function submitPrompt(): string {
+  const submitCall = mockFetch.mock.calls[0] as unknown as [string, RequestInit];
+  return (JSON.parse(submitCall[1].body as string) as { prompt: string }).prompt;
+}
+
 describe('generateStudioImage', () => {
-  it('submits with x-key + template prompt + input URL, polls to Ready, returns sample', async () => {
+  it('submits with x-key + prompt + input URL, polls to Ready, returns sample', async () => {
     mockFetch
       .mockResolvedValueOnce(
         jsonResponse({ id: 'task_1', polling_url: 'https://api.bfl.ai/v1/get_result?id=task_1' }),
@@ -61,7 +77,10 @@ describe('generateStudioImage', () => {
       .mockResolvedValueOnce(jsonResponse({ status: 'Processing' }))
       .mockResolvedValueOnce(jsonResponse({ status: 'Ready', result: { sample: 'https://delivery.bfl.ai/img.jpg' } }));
 
-    const result = await generateStudioImage('runway', 'https://r2.example/photo.jpg');
+    const result = await generateStudioImage('https://r2.example/photo.jpg', {
+      prompt: 'On a chic city rooftop at golden hour with string lights.',
+      tab: 'MODEL',
+    });
 
     expect(result).toEqual({ status: 'ready', sampleUrl: 'https://delivery.bfl.ai/img.jpg' });
     const submitCall = mockFetch.mock.calls[0] as unknown as [string, RequestInit];
@@ -71,27 +90,46 @@ describe('generateStudioImage', () => {
     expect(headers['Content-Type']).toBe('application/json');
     const body = JSON.parse(submitCall[1].body as string) as { prompt: string; input_image: string };
     expect(body.input_image).toBe('https://r2.example/photo.jpg');
-    // The assembled prompt must tell the model to preserve the product (scene
-    // guard is prepended for every template).
+    // The scene guard is prepended for every generation.
     expect(body.prompt).toContain('pixel-identical to the input');
+  });
+
+  it('PRODUCT tab uses the prompt verbatim (no person clause)', async () => {
+    bflReadyOnce();
+    await generateStudioImage('https://img/1.jpg', {
+      prompt: 'Product-only studio shot on a wooden hanger, seamless white backdrop.',
+      tab: 'PRODUCT',
+    });
+    expect(submitPrompt()).toContain('Product-only studio shot on a wooden hanger');
+    expect(submitPrompt()).not.toMatch(/The person wearing this garment is/);
+  });
+
+  it('MODEL tab injects the demographic person clause', async () => {
+    bflReadyOnce();
+    await generateStudioImage('https://img/1.jpg', {
+      prompt: 'On a chic city rooftop at golden hour with string lights.',
+      tab: 'MODEL',
+      demographic: 'mens',
+    });
+    expect(submitPrompt()).toMatch(/dignified adult Indian man fashion model/);
   });
 
   it('maps 402 (out of credits) to a safe AppError', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ error: 'no credits' }, false, 402),
     );
-    await expect(generateStudioImage('runway', 'https://r2.example/p.jpg')).rejects.toThrow(
-      /out of credits/i,
-    );
+    await expect(
+      generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' }),
+    ).rejects.toThrow(/out of credits/i);
   });
 
   it('maps 429 (active-task cap) to a retryable message', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({ error: 'rate limit' }, false, 429),
     );
-    await expect(generateStudioImage('runway', 'https://r2.example/p.jpg')).rejects.toThrow(
-      /try again in a minute/i,
-    );
+    await expect(
+      generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' }),
+    ).rejects.toThrow(/try again in a minute/i);
   });
 
   it('returns failed when the poll reports Error', async () => {
@@ -100,24 +138,17 @@ describe('generateStudioImage', () => {
         jsonResponse({ id: 'task_1', polling_url: 'https://api.bfl.ai/v1/get_result?id=task_1' }),
       )
       .mockResolvedValueOnce(jsonResponse({ status: 'Error', error: 'moderation' }));
-    const result = await generateStudioImage('runway', 'https://r2.example/p.jpg');
+    const result = await generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' });
     expect(result.status).toBe('failed');
     expect(result.error).toContain('moderation');
-  });
-
-  it('rejects an unknown template id', async () => {
-    await expect(
-      generateStudioImage('nope' as never, 'https://r2.example/p.jpg'),
-    ).rejects.toThrow(/unknown studio template/i);
-    expect(mockFetch).not.toHaveBeenCalled();
   });
 
   it('throws 503 when BFL_API_KEY is unset', async () => {
     vi.stubEnv('BFL_API_KEY', '');
     expect(await isStudioShootConfigured()).toBe(false);
-    await expect(generateStudioImage('runway', 'https://r2.example/p.jpg')).rejects.toThrow(
-      /not configured/i,
-    );
+    await expect(
+      generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' }),
+    ).rejects.toThrow(/not configured/i);
   });
 });
 
