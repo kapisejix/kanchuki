@@ -117,8 +117,14 @@ export default function HomeScreen() {
           </View>
           <View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
-              className="text-base font-extrabold text-spaceCadet-900 leading-tight"
+              style={{
+                fontFamily: 'Marcellus_400Regular',
+                fontSize: 16,
+                lineHeight: 24,
+                letterSpacing: 0.32,
+                fontWeight: '800',
+              }}
+              className="text-base leading-6 tracking-[0.02em] font-extrabold text-spaceCadet-900 font-marcellus"
             >
               {me?.shop_name || 'Your Store'}
             </Text>

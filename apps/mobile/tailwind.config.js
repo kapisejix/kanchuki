@@ -112,6 +112,9 @@ module.exports = {
         'sans-bold': ['Inter_700Bold'],
         marcellus: ['Marcellus_400Regular'],
       },
+      letterSpacing: {
+        brand: '0.02em',
+      },
     },
   },
   plugins: [],

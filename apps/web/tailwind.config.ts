@@ -188,6 +188,10 @@ const config: Config = {
         // layout.tsx) is a semi-mono grotesque — mono fallback keeps the
         // character if the file ever fails to load, not a serif.
         display: ['var(--font-display)', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        marcellus: ["'Marcellus'", 'serif'],
+      },
+      letterSpacing: {
+        brand: '0.02em',
       },
       borderRadius: {
         '2xl': '1rem',

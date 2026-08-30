@@ -62,8 +62,13 @@ export default function TabsLayout() {
           paddingBottom: 10 + insets.bottom,
         },
         headerStyle: { backgroundColor: '#F8F7FC' },
-        headerTintColor: '#231F48',
-        headerTitleStyle: { fontWeight: '700', fontSize: 17, fontFamily: 'Marcellus_400Regular' },
+        headerTitleStyle: {
+          fontWeight: '800',
+          fontSize: 16,
+          lineHeight: 24,
+          letterSpacing: 0.32,
+          fontFamily: 'Marcellus_400Regular',
+        },
         headerShadowVisible: false,
       }}
     >

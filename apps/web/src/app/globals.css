@@ -75,4 +75,13 @@ html.lenis body {
   .text-balance {
     text-wrap: balance;
   }
+
+  .font-brand-title,
+  .brand-heading {
+    font-family: 'Marcellus', serif;
+    font-size: 1rem;
+    line-height: 1.5rem;
+    letter-spacing: 0.02em;
+    font-weight: bolder;
+  }
 }

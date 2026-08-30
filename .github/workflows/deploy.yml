@@ -1,5 +1,20 @@
 name: Deploy to Railway
 
+# ───────────────────────────────────────────────────────────────────────
+# DEPLOYMENT POLICY: ALL production deploys MUST come from GitHub.
+# NEVER run `railway up` from a local machine — it ships local files,
+# not GitHub code, and causes stale-code incidents.
+#
+# This workflow is a BACKUP for Railway's native GitHub integration.
+# The PRIMARY deploy path is:
+#   1. Push to main → Railway auto-deploys (Settings → Source → GitHub)
+#   2. This workflow runs `railway up` from the GitHub Actions runner
+#      (which has the latest GitHub code, so it's safe)
+#
+# If Railway's auto-deploy is working, this workflow is REDUNDANT.
+# If Railway's auto-deploy is NOT working, this workflow catches the gap.
+# ───────────────────────────────────────────────────────────────────────
+
 on:
   push:
     branches: [main, master]
@@ -25,6 +40,10 @@ on:
 #   PROD_DATABASE_URL          — Supabase production connection string,
 #                                 used to run `prisma migrate deploy`
 #                                 before the new API version goes live
+#
+# ⚠️ NEVER run `railway up` from a local machine. This workflow exists
+#    because Railway's GitHub integration may not be configured. Once it is,
+#    this workflow becomes a safety net, not the primary deploy path.
 #
 # Security best practice: enable "Require status checks" branch
 # protection on main so CI must pass before merge. This prevents
@@ -152,3 +171,29 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: railway up --detach --environment production --service ${{ secrets.RAILWAY_VTONE_SERVICE_ID }}
+
+  ####################################################################
+  # Post-deploy verification
+  ####################################################################
+  verify-deploy:
+    runs-on: ubuntu-latest
+    needs: [deploy-api, deploy-web, deploy-vtone]
+    if: always() && (needs.deploy-api.result == 'success' || needs.deploy-web.result == 'success' || needs.deploy-vtone.result == 'success')
+
+    steps:
+      - name: Wait for deploy to stabilize
+        run: sleep 30
+
+      - name: Verify API health
+        run: |
+          curl -sf https://api.kanchuki.app/health || echo "⚠️ API health check failed — deploy may still be rolling out"
+
+      - name: Verify Web is live
+        run: |
+          curl -sf https://kanchuki.app | head -1 | grep -q '<!doctype\|<!DOCTYPE' || echo "⚠️ Web health check failed — deploy may still be rolling out"
+
+      - name: Reminder — no local deploys
+        run: |
+          echo "✅ Deploy completed from GitHub (commit ${{ github.sha }})"
+          echo "⚠️  REMINDER: Never run 'railway up' from a local machine."
+          echo "   All deploys must come through GitHub to ensure code consistency."

@@ -60,6 +60,14 @@ REVOKE DELETE, TRUNCATE
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE ON TABLES TO kanchuki_app;
 
+-- Per-table DELETE exceptions: admin-only global-config tables that have a
+-- genuine hard-delete UI and no soft-delete column / deletion vault (i.e. not
+-- SECURITY §19 user data). The blanket REVOKE above strips DELETE from these,
+-- so re-grant it explicitly. No guard_* trigger covers these tables (037).
+--   background_images — admin backdrop library trash button
+--                       (DELETE /admin/background-images/:id)
+GRANT DELETE ON TABLE background_images TO kanchuki_app;
+
 -- Serial/identity sequences: without USAGE+SELECT, INSERTs that call
 -- nextval() fail with "permission denied for sequence <name>". Cover
 -- existing sequences AND ones created by future migrations:
