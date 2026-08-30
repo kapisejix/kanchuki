@@ -31,6 +31,7 @@ import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
 import { handleGenerateLookbook } from './generate-lookbook.js';
 import type { LookbookJobData } from './generate-lookbook.js';
+import { handleInteractionRetention } from './interaction-retention.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -387,6 +388,8 @@ export async function startWorkers(): Promise<void> {
           const data = job.data as LookbookJobData;
           return handleGenerateLookbook(data);
         }
+        case 'interaction-retention':
+          return handleInteractionRetention();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -485,6 +488,17 @@ export async function startWorkers(): Promise<void> {
     { type: 'weekly' },
     {
       repeat: { pattern: '0 4 * * 0', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Interaction retention — monthly on the 1st at 6:00 AM UTC
+  await getMaintenanceQueue().add(
+    'interaction-retention',
+    {},
+    {
+      repeat: { pattern: '0 6 1 * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
