@@ -70,7 +70,7 @@
       <!-- Quick Action Counter Stats -->
       <div class="flex items-center gap-2 text-xs font-semibold">
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
-          🏞️ <strong id="sceneCount">24</strong> Scenes & FX
+          🏞️ <strong id="sceneCount">22</strong> Scenes
         </span>
         <span class="px-3 py-1.5 rounded-xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-xs">
           💃 <strong id="modelCount">18</strong> Fashion Models
@@ -88,10 +88,10 @@
       <!-- Tab Filters -->
       <div class="flex flex-wrap items-center gap-1.5 w-full md:w-auto">
         <button onclick="filterCategory('all')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-[#231F48] text-white" data-filter="all">
-          All Previews (<span id="totalItems">42</span>)
+          All Previews (<span id="totalItems">40</span>)
         </button>
         <button onclick="filterCategory('scene')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="scene">
-          🏞️ Scene Environments & FX (24)
+          🏞️ Scene Environments (22)
         </button>
         <button onclick="filterCategory('female')" class="tab-btn px-4 py-2 rounded-2xl text-xs font-bold transition-all bg-gray-100 text-gray-700 hover:bg-gray-200" data-filter="female">
           👗 Female Models (6)
@@ -347,6 +347,174 @@
         garmentFit: "All Catalog Garments, E-commerce Grid, Marketplace Ready",
         description: "Seamless white cyclorama studio wall with daylight-balanced CRI-98 studio softbox lighting and soft contact drop shadow.",
         prompt: "Replace background with a clean, seamless white studio backdrop. Neutral 5500K daylight-balanced CRI-98 studio lighting with soft grounding shadow under the garment. Keep product color 100% identical."
+      },
+
+      // ══════════════════════════════════════════════════════════════
+      // SECTION 1B: PRODUCT / HANGER STUDIO STYLES (no model, 2026-08-30)
+      // Remove the original hanger from the source photo, re-present the
+      // garment (new hanger / mannequin / flat-lay) on a studio backdrop.
+      // Also in packages/shared STUDIO_TEMPLATES with `draft: true` — they
+      // show in the /admin/photo-cleanup-test dropdown.
+      // ══════════════════════════════════════════════════════════════
+      {
+        id: "studio_pro",
+        code: "STUDIO_PRO",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Professional Studio",
+        subtitle: "Garment on a wooden hanger, seamless mid-grey studio",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Studio",
+        badgeColor: "badge-amber",
+        garmentFit: "All Catalog Garments, Kurtas, Kurtis, Suits, Dupattas",
+        description: "No model — original hanger removed, garment re-hung on a premium wooden hanger against a seamless mid-grey studio backdrop.",
+        prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a premium wooden hanger against a seamless mid-grey professional photography studio backdrop, even 5500K softbox lighting, with a soft natural grounding shadow."
+      },
+      {
+        id: "studio_white",
+        code: "STUDIO_WHITE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Pure White Studio",
+        subtitle: "Garment on a natural wood hanger, pure white backdrop",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Studio",
+        badgeColor: "badge-sky",
+        garmentFit: "Marketplace Listings, E-commerce Grid, Any Garment",
+        description: "No model — original hanger removed, garment re-hung on a natural wood hanger against a pure seamless white backdrop.",
+        prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a natural wood hanger against a pure seamless white studio backdrop, bright even 5500K lighting, with a soft natural grounding shadow."
+      },
+      {
+        id: "studio_beige",
+        code: "STUDIO_BEIGE",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Warm Beige Studio",
+        subtitle: "Garment on a wooden hanger, warm beige backdrop",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Studio",
+        badgeColor: "badge-amber",
+        garmentFit: "Premium Ethnic, Silk, Occasion Wear, Festive Kurtas",
+        description: "No model — original hanger removed, garment re-hung on a wooden hanger against a warm beige studio backdrop.",
+        prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a wooden hanger against a warm beige studio backdrop with subtle depth, soft warm-neutral 5500K lighting, with a soft natural grounding shadow."
+      },
+      {
+        id: "studio_luxury",
+        code: "STUDIO_LUXURY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Premium Luxury Studio",
+        subtitle: "Garment on a brushed-brass hanger, dark marble wall",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Studio",
+        badgeColor: "badge-purple",
+        garmentFit: "Bridal, Heavy Lehengas, Sherwanis, Statement Pieces",
+        description: "No model — original hanger removed, garment re-hung on a brushed-brass hanger against a dark marble studio wall with a subtle spotlight.",
+        prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a brushed-brass hanger against a premium studio wall of dark marble with a subtle spotlight, dramatic soft key lighting, with a soft natural grounding shadow."
+      },
+      {
+        id: "studio_minimal",
+        code: "STUDIO_MINIMAL",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Minimal Clean Studio",
+        subtitle: "Garment on a slim matte-white hanger, empty off-white space",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Studio",
+        badgeColor: "badge-sky",
+        garmentFit: "Minimalist Catalog, Co-ords, Kurtis, Fusion, Sale Banners",
+        description: "No model — original hanger removed, garment re-hung on a slim matte-white hanger against a minimal off-white background with lots of empty space.",
+        prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a slim matte-white hanger against a minimal off-white background with generous empty space around it, flat even lighting, with a faint natural grounding shadow."
+      },
+      {
+        id: "studio_home",
+        code: "STUDIO_HOME",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Lifestyle Home Studio",
+        subtitle: "Garment on a wooden hanger, pale wood wall + soft plant",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Lifestyle",
+        badgeColor: "badge-emerald",
+        garmentFit: "Daily Ethnic, Cotton Sets, Kurtis, Loungewear, Co-ords",
+        description: "No model — original hanger removed, garment re-hung on a wooden hanger against a pale wooden wall with a trailing plant softly out of focus.",
+        prompt: "Product-only lifestyle shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a wooden hanger against a pale wooden wall panel with a trailing plant softly out of focus beside it, warm window daylight, with a soft natural grounding shadow."
+      },
+      {
+        id: "studio_boutique",
+        code: "STUDIO_BOUTIQUE_RAIL",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Boutique Rail",
+        subtitle: "Garment on a wooden hanger on a boutique clothing rail",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Boutique",
+        badgeColor: "badge-fuchsia",
+        garmentFit: "Boutique Collections, Occasion Wear, Designer Kurtas, Suits",
+        description: "No model — original hanger removed, garment re-hung on a wooden hanger on a rail inside an upscale boutique with racks softly out of focus.",
+        prompt: "Product-only shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a wooden hanger on a clothing rail inside an upscale fashion boutique with spot-lit displays and racks softly out of focus behind, warm boutique lighting, with a soft natural grounding shadow."
+      },
+      {
+        id: "display_mannequin",
+        code: "DISPLAY_MANNEQUIN",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Mannequin Presentation",
+        subtitle: "Garment fitted on a clean white headless mannequin",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1567401893414-76b7b1e5a7a5?w=600&auto=format&fit=crop&q=80",
+        badge: "Mannequin · Studio",
+        badgeColor: "badge-amber",
+        garmentFit: "Structured Kurtas, Jackets, Blouses, Sherwanis, Gowns",
+        description: "No model — original hanger removed, garment fitted onto a clean white headless mannequin against a seamless white backdrop.",
+        prompt: "Product presentation shot, no living person or fashion model. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then fit the garment naturally onto a clean white headless mannequin form against a seamless white studio backdrop, even 5500K lighting, with a soft natural grounding shadow."
+      },
+      {
+        id: "display_flatlay",
+        code: "DISPLAY_FLATLAY",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Clothing Flat-Lay",
+        subtitle: "Garment laid flat and styled, shot from directly above",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1523381294911-8d3cead13475?w=600&auto=format&fit=crop&q=80",
+        badge: "Flat-Lay · Studio",
+        badgeColor: "badge-sky",
+        garmentFit: "Folded Kurtas, Dupattas, Stoles, Unstitched Fabric, Sets",
+        description: "No model — original hanger removed, garment laid flat and neatly styled, shot top-down on a neutral light-grey surface.",
+        prompt: "Product flat-lay shot, no person, model or mannequin. Keep the garment 100% pixel-identical — do not alter its shape, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then lay the garment flat and neatly styled, shot from directly above on a neutral light-grey flat surface, soft even 5500K lighting, with a faint natural shadow."
+      },
+      {
+        id: "display_hanger",
+        code: "DISPLAY_HANGER",
+        type: "scene",
+        categoryTag: "scene",
+        title: "Styled Hanger",
+        subtitle: "Garment re-hung on a polished walnut hanger, white studio",
+        gender: "No Model",
+        ageGroup: "Product Shot",
+        imageUrl: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+        badge: "Hanger · Studio",
+        badgeColor: "badge-amber",
+        garmentFit: "Any Garment — swap hanger material (brass, black, acrylic, velvet)",
+        description: "No model — original hanger removed, garment re-hung on a polished walnut wooden hanger against a seamless white studio. Swap the hanger noun in the prompt to compare materials.",
+        prompt: "Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a polished walnut wooden hanger against a seamless white studio backdrop, even 5500K lighting, with a soft natural grounding shadow."
       },
 
       // ══════════════════════════════════════════════════════════════
@@ -627,204 +795,6 @@
         garmentFit: "Pure Silk Kurtas, Kashmiri Pashmina Shawls, Achkans, Dhoti",
         description: "Dignified Indian elder patriarch with silver hair, warm expressive eyes, and royal heritage presence for senior ethnic wear.",
         prompt: "Fit this garment onto a dignified 55-year-old Indian elder gentleman named Harish with silver hair and refined posture. 100% preservation of embroidery, color, and fabric weight."
-      },
-
-      // ══════════════════════════════════════════════════════════════
-      // SECTION 8: EXTRA FLUX KONTEXT EFFECTS & SCENES
-      // (all editable with flux-kontext-pro — background swap + relight,
-      //  garment pixels preserved. "fx_" entries change grade/format, not place.)
-      // ══════════════════════════════════════════════════════════════
-      {
-        id: "scene_golden_rooftop",
-        code: "SCENE_GOLDEN_ROOFTOP",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Golden Hour City Rooftop",
-        subtitle: "Open-air rooftop at sunset with hazy skyline bokeh & warm rim light",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&auto=format&fit=crop&q=80",
-        badge: "Sunset Lifestyle",
-        badgeColor: "badge-amber",
-        garmentFit: "Indo-Western, Co-ords, Cocktail Gowns, Party Kurtas, Fusion",
-        description: "Editorial rooftop at magic hour — warm low sun as a rim light, city skyline melted into soft bokeh, gentle lens flare.",
-        prompt: "Place this outfit on a model on an open-air city rooftop at golden-hour sunset, hazy skyline bokeh and a soft warm rim light behind the model. Keep the garment shape, exact dye color, pattern, and embroidery 100% unchanged; neutral 5500K key light on the fabric with a warm background only."
-      },
-      {
-        id: "scene_rain_neon_street",
-        code: "SCENE_RAIN_NEON",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Rain-Soaked Neon Street",
-        subtitle: "Moody wet-asphalt night street with reflected shop-sign colour",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=80",
-        badge: "Cinematic Night",
-        badgeColor: "badge-purple",
-        garmentFit: "Jackets, Structured Kurtas, Streetwear Fusion, Denim, Capes",
-        description: "Blade-Runner-style monsoon night — wet reflective pavement, out-of-focus neon shop signs, dramatic single key light on the subject.",
-        prompt: "Place this outfit on a model on a moody rain-soaked city street at night, wet reflective asphalt and blurred neon shop-sign bokeh behind. Dramatic single soft key light on the model; keep the garment's exact original colour, texture, and embroidery fully faithful with no colour cast from the neon."
-      },
-      {
-        id: "scene_poolside_resort",
-        code: "SCENE_POOLSIDE_RESORT",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Luxury Poolside Resort",
-        subtitle: "Infinity-pool deck with turquoise water & palm shade",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
-        badge: "Resort Wear",
-        badgeColor: "badge-sky",
-        garmentFit: "Resort Kaftans, Kurti Dresses, Linen Sets, Indo-Western, Pastels",
-        description: "Bright vacation mood — infinity pool, turquoise water reflections, palm-frond shade patterns, clean midday daylight.",
-        prompt: "Place this outfit on a model standing on a luxury infinity-pool deck, turquoise water and palm shade behind in soft focus, bright clean daylight. Garment colour, lightweight drape, and print 100% preserved and true-tone."
-      },
-      {
-        id: "scene_desert_dunes",
-        code: "SCENE_DESERT_DUNES",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Rajasthan Desert Dunes",
-        subtitle: "Thar sand dunes at low sun with long shadows & warm haze",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
-        badge: "Desert Editorial",
-        badgeColor: "badge-amber",
-        garmentFit: "Bandhani, Leheriya, Heavy Lehengas, Sherwanis, Angrakhas",
-        description: "Sweeping Jaisalmer sand dunes with rippled texture, low raking sun casting long shadows, warm atmospheric haze on the horizon.",
-        prompt: "Place this outfit on a model standing on rippled Rajasthan desert sand dunes at low sun with long shadows and warm horizon haze. Preserve the garment's exact dye colour, mirror-work, and embroidery 100%; neutral key light on the fabric, warm scene only."
-      },
-      {
-        id: "scene_kerala_houseboat",
-        code: "SCENE_KERALA_BACKWATER",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Kerala Backwater Houseboat",
-        subtitle: "Teak houseboat deck with coconut palms mirrored in still water",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
-        badge: "South India Travel",
-        badgeColor: "badge-emerald",
-        garmentFit: "Kasavu Sarees, Cotton Sets, Mundu, Kurta Sets, Handloom",
-        description: "Serene Alleppey backwaters — teak houseboat deck, palm-lined banks mirrored in glassy green water, soft overcast light.",
-        prompt: "Place this outfit on a model on a teak houseboat deck in the Kerala backwaters, palm-lined banks reflected in still green water behind, soft diffused daylight. Garment weave, off-white/gold kasavu tone, and border 100% colour-true."
-      },
-      {
-        id: "scene_grand_library",
-        code: "SCENE_GRAND_LIBRARY",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Grand Heritage Library",
-        subtitle: "Wood-panelled library with warm lamplight & tall book stacks",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&auto=format&fit=crop&q=80",
-        badge: "Intellectual Editorial",
-        badgeColor: "badge-purple",
-        garmentFit: "Formal Suits, Bandhgalas, Chikankari Kurtas, Office Ethnic, Blazers",
-        description: "Old-money reading room — dark wood panelling, brass banker's lamps, tall shelves receding into warm shadow.",
-        prompt: "Place this outfit on a model in a grand wood-panelled heritage library with warm brass lamplight and tall book stacks softly blurred behind. Keep the garment colour, tailoring lines, and fabric texture 100% faithful; neutral key light on the subject."
-      },
-      {
-        id: "scene_art_gallery",
-        code: "SCENE_ART_GALLERY",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Contemporary Art Gallery",
-        subtitle: "Bright white gallery hall with track lighting & large canvases",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=800&auto=format&fit=crop&q=80",
-        badge: "Modern Minimal",
-        badgeColor: "badge-sky",
-        garmentFit: "Designer Drapes, Structured Gowns, Avant-Garde, Co-ords, Sarees",
-        description: "Museum-white gallery — polished concrete floor, ceiling track lights, oversized abstract canvases out of focus behind.",
-        prompt: "Place this outfit on a model in a bright white contemporary art gallery with track lighting and large blurred canvases behind. Gallery-neutral even light; garment's exact colour, pattern, and drape preserved 100%."
-      },
-      {
-        id: "scene_mustard_field",
-        code: "SCENE_MUSTARD_FIELD",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Punjab Mustard Field",
-        subtitle: "Endless yellow sarson bloom under wide blue sky",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1585320806297-9794b3e4eeae?w=800&auto=format&fit=crop&q=80",
-        badge: "Festive Folk",
-        badgeColor: "badge-amber",
-        garmentFit: "Phulkari, Patiala Suits, Lehariya, Kurta Sets, Bhangra/Giddha Wear",
-        description: "Baisakhi mood — bright yellow mustard flowers to the horizon, big open blue sky, gentle breeze movement in fabric.",
-        prompt: "Place this outfit on a model standing in a bright Punjab mustard-flower field under a wide blue sky, shallow depth of field, gentle breeze in the fabric. Garment's phulkari threadwork and exact dye colour 100% preserved and true-tone."
-      },
-      {
-        id: "scene_snowfall_manali",
-        code: "SCENE_SNOWFALL_HILLS",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Himalayan Snowfall",
-        subtitle: "Light snowfall over pines with cold blue ambient & warm subject",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&auto=format&fit=crop&q=80",
-        badge: "Winter Collection",
-        badgeColor: "badge-sky",
-        garmentFit: "Velvet Suits, Pashmina Shawls, Bandhgalas, Winter Ethnic, Kaftans",
-        description: "Falling snow over a pine ridge, cold blue ambient light on the scene contrasted with a warm key on the model, soft bokeh flakes.",
-        prompt: "Place this outfit on a model in light Himalayan snowfall over pine trees, cold blue ambient scene with soft falling-snow bokeh, warm neutral key light on the model. Garment's velvet nap, colour depth, and zari 100% preserved."
-      },
-      {
-        id: "fx_gradient_studio",
-        code: "FX_GRADIENT_SEAMLESS",
-        type: "scene",
-        categoryTag: "scene",
-        title: "Coloured Seamless Gradient",
-        subtitle: "Pick an accent — smooth studio gradient sweep (pink / teal / grey)",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=800&auto=format&fit=crop&q=80",
-        badge: "Studio FX",
-        badgeColor: "badge-fuchsia",
-        garmentFit: "All Catalog Garments, Campaign Hero Shots, Sale Banners",
-        description: "Clean e-commerce hero look — a smooth seamless gradient sweep behind the subject in a chosen accent colour, soft contact shadow.",
-        prompt: "Replace the background with a smooth seamless studio gradient sweep in a soft [ACCENT COLOUR] tone, subtle vignette, soft contact shadow under the subject. Keep the product/model completely unchanged — exact colour, hue, pattern, and fabric detail. Neutral 5500K light on the garment."
-      },
-      {
-        id: "fx_film_editorial",
-        code: "FX_35MM_FILM",
-        type: "scene",
-        categoryTag: "scene",
-        title: "35mm Film Editorial Grade",
-        subtitle: "Analogue colour, fine grain, gentle halation — Vogue-India look",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&auto=format&fit=crop&q=80",
-        badge: "Film Look FX",
-        badgeColor: "badge-amber",
-        garmentFit: "Editorial Lookbooks, Lehengas, Sarees, Menswear, Fusion",
-        description: "Post-process grade only — keeps the scene, adds Portra-style analogue colour, soft grain, mild halation on highlights, slight film-gate softness.",
-        prompt: "Apply a 35mm analogue film grade to this photo: Kodak-Portra-style warm colour, fine natural grain, gentle highlight halation, soft edge falloff. Keep composition, model, and garment identical; the garment's true colour must remain readable and accurate under the grade."
-      },
-      {
-        id: "fx_bw_highcontrast",
-        code: "FX_BW_CONTRAST",
-        type: "scene",
-        categoryTag: "scene",
-        title: "B&W High-Contrast",
-        subtitle: "Editorial monochrome — deep blacks, bright highlights, texture pop",
-        gender: "All Genders",
-        ageGroup: "All Ages",
-        imageUrl: "https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?w=800&auto=format&fit=crop&q=80",
-        badge: "Monochrome FX",
-        badgeColor: "badge-purple",
-        garmentFit: "Texture-Heavy Weaves, Embroidery Detail, Menswear, Draped Gowns",
-        description: "Convert to a high-contrast black-and-white editorial — deep blacks, controlled highlights, emphasised fabric texture and embroidery relief.",
-        prompt: "Convert this photo to a high-contrast black-and-white fashion editorial: deep blacks, bright controlled highlights, strong micro-contrast to emphasise fabric weave and embroidery. Keep the model, garment shape, and composition identical."
       }
     ];
 
@@ -1127,3 +1097,4 @@
   </script>
 </body>
 </html>
+

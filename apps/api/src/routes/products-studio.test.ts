@@ -79,7 +79,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/products/p1/photos/photo_1/studio-shoot',
-      payload: { template: 'white_studio' },
+      payload: { template: 'runway' },
     });
 
     expect(res.statusCode).toBe(202);
@@ -92,7 +92,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
         retailer_id: RETAILER_ID,
         product_id: 'p1',
         photo_id: 'photo_1',
-        template: 'white_studio',
+        template: 'runway',
       }),
     );
     await app.close();
@@ -104,7 +104,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/products/p1/photos/photo_1/studio-shoot',
-      payload: { template: 'white_studio' },
+      payload: { template: 'runway' },
     });
 
     expect(res.statusCode).toBe(202);
@@ -118,7 +118,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/products/p1/photos/photo_1/studio-shoot',
-      payload: { template: 'white_studio' },
+      payload: { template: 'runway' },
     });
 
     expect(res.statusCode).toBe(402);
@@ -159,7 +159,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/products/p1/photos/photo_1/studio-shoot',
-      payload: { template: 'white_studio' },
+      payload: { template: 'runway' },
     });
 
     expect(res.statusCode).toBe(404);
@@ -174,7 +174,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/products/p1/photos/photo_1/studio-shoot',
-      payload: { template: 'white_studio' },
+      payload: { template: 'runway' },
     });
 
     expect(res.statusCode).toBe(503);

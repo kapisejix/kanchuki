@@ -59,13 +59,27 @@ const TYPE_EMOJI: Record<SocialTemplateType, string> = {
   PDF_FLYER: '📄',
 }
 
+// Keep the ids in sync with STUDIO_TEMPLATES in @kanchuki/shared — the API
+// resolves this string via getStudioTemplate() and 422s on an unknown id.
 const STUDIO_TEMPLATES = [
-  { id: 'white_studio', label: 'White Studio', emoji: '⬜' },
-  { id: 'warm_luxury', label: 'Warm Luxury', emoji: '🤎' },
-  { id: 'gold_festive', label: 'Gold Festive', emoji: '✨' },
-  { id: 'diwali_lights', label: 'Diwali Lights', emoji: '🪔' },
-  { id: 'wedding_elegant', label: 'Wedding Elegant', emoji: '💒' },
-  { id: 'flat_lay', label: 'Flat-Lay', emoji: '📏' },
+  { id: 'studiomodel', label: 'Studio Editorial', emoji: '🎞️' },
+  { id: 'gradient_hero', label: 'Gradient Hero', emoji: '🎨' },
+  { id: 'dupatta_motion', label: 'Dupatta in Motion', emoji: '🌀' },
+  { id: 'seated_haveli_steps', label: 'Haveli Steps', emoji: '🪷' },
+  { id: 'boutique_showroom', label: 'Boutique Showroom', emoji: '🛍️' },
+  { id: 'rooftop_golden', label: 'Golden Rooftop', emoji: '🌇' },
+  { id: 'editorial_vogue', label: 'Vogue Editorial', emoji: '📷' },
+  { id: 'runway', label: 'Catwalk Runway', emoji: '💃' },
+  { id: 'blossom_atrium', label: 'Blossom Atrium', emoji: '🌸' },
+  { id: 'bougainvillea_corner', label: 'Bougainvillea Corner', emoji: '💜' },
+  { id: 'tree_tunnel', label: 'Tree-Tunnel Avenue', emoji: '🌳' },
+  { id: 'sunset_arch', label: 'Sunset Arch Alcove', emoji: '🌅' },
+  { id: 'pastel_gradient', label: 'Pastel Gradient Lounge', emoji: '🩰' },
+  { id: 'villa_arch', label: 'Villa Arch', emoji: '🏛️' },
+  { id: 'ocean_arches', label: 'Ocean Arches', emoji: '🌊' },
+  { id: 'mall_concourse', label: 'Mall Concourse', emoji: '🏬' },
+  { id: 'copper_diamond', label: 'Copper Diamond', emoji: '💠' },
+  { id: 'lakeside_deck', label: 'Lakeside Deck', emoji: '🏞️' },
 ] as const
 
 const OCCASIONS = [
@@ -388,7 +402,7 @@ function CreateTemplateModal({
   const [name, setName] = useState('')
   const [templateType, setTemplateType] = useState<SocialTemplateType>('INSTAGRAM_POST')
   const [occasion, setOccasion] = useState('')
-  const [studioTemplate, setStudioTemplate] = useState('gold_festive')
+  const [studioTemplate, setStudioTemplate] = useState('runway')
   const [pickedProducts, setPickedProducts] = useState<{ id: string; name: string | null; primary_photo_url: string | null }[]>([])
   const [productPickerOpen, setProductPickerOpen] = useState(false)
   const [saving, setSaving] = useState(false)
