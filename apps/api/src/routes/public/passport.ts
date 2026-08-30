@@ -22,6 +22,7 @@ import {
   verifyStoredOtp,
 } from '../../lib/msg91-otp.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
+import { recordInteraction, type InteractionType } from '../../lib/passport-activity.js';
 
 // ─── Session helper ───────────────────────────────────────────────
 
@@ -402,6 +403,49 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
     });
 
     return reply.status(200).send({ ok: true });
+  });
+
+  // ─── POST /passport/events ─────────────────────────────────────
+  // Client event beacon — batched behavioral events from the frontend.
+  // Fire-and-forget: returns 204 immediately, swallows DB errors.
+  server.post('/events', async (request, reply) => {
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (!session) {
+      return reply.status(204).send(); // silently drop if unauthenticated
+    }
+
+    const EventsSchema = z.object({
+      events: z
+        .array(
+          z.object({
+            type: z.string(),
+            product_id: z.string().optional(),
+            collection_id: z.string().optional(),
+            retailer_id: z.string(),
+            metadata: z.record(z.unknown()).optional(),
+          }),
+        )
+        .max(50),
+    });
+
+    const body = EventsSchema.safeParse(request.body);
+    if (!body.success) {
+      return reply.status(204).send(); // silently drop invalid payloads
+    }
+
+    // Record each interaction — fire-and-forget
+    for (const event of body.data.events) {
+      recordInteraction({
+        accountId: session.customer_account_id,
+        retailerId: event.retailer_id,
+        productId: event.product_id,
+        collectionId: event.collection_id,
+        type: event.type as InteractionType,
+        metadata: event.metadata,
+      }).catch(() => {});
+    }
+
+    return reply.status(204).send();
   });
 
   // ─── POST /passport/logout ─────────────────────────────────────

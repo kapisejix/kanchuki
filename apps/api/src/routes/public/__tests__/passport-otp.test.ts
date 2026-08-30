@@ -1,9 +1,10 @@
 /**
- * Passport OTP endpoints (Task 2) + session (Task 3).
+ * Passport OTP endpoints (Task 2) + session (Task 3) + events (Task 12).
  *
  * POST /v1/public/passport/otp/send — SMS fallback (widget sends client-side)
  * POST /v1/public/passport/otp/verify — widget JWT or SMS code → session cookie
  * GET  /v1/public/passport/me — returns masked account info from session
+ * POST /v1/public/passport/events — batched client event beacon
  * POST /v1/public/passport/logout — revokes session + clears cookie
  */
 import { randomBytes, createHash } from 'node:crypto';
@@ -379,6 +380,104 @@ describe('GET /v1/public/passport/me', () => {
     });
 
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('POST /v1/public/passport/events', () => {
+  it('returns 204 silently when no session', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/events',
+      payload: { events: [{ type: 'view', retailer_id: 'ret-1' }] },
+    });
+
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('returns 204 for valid events with session', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/events',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+      payload: {
+        events: [
+          { type: 'view', retailer_id: 'ret-1', product_id: 'prod-1' },
+          { type: 'favorite', retailer_id: 'ret-1', product_id: 'prod-2' },
+        ],
+      },
+    });
+
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('returns 204 for invalid payload (silently drops)', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/events',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+      payload: { events: 'not-an-array' },
+    });
+
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('rejects more than 50 events', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const app = buildApp();
+    await app.ready();
+
+    const events = Array.from({ length: 51 }, (_, i) => ({
+      type: 'view',
+      retailer_id: 'ret-1',
+      product_id: `prod-${i}`,
+    }));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/events',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+      payload: { events },
+    });
+
+    expect(res.statusCode).toBe(204); // silently drops invalid
   });
 });
 
