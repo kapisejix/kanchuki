@@ -1308,6 +1308,39 @@ enum BackgroundTone {
   DARK
 }
 
+enum StudioStyleStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum StudioStyleTab {
+  PRODUCT
+  MODEL
+}
+
+model StudioStyle {
+  id               String             @id @default(cuid())
+  slug             String             @unique
+  label            String
+  description      String
+  prompt           String
+  tab              StudioStyleTab
+  status           StudioStyleStatus  @default(DRAFT)
+  plans            SubscriptionPlan[] @default([])
+  engine           String?
+  audience         String[]           @default([])
+  thumbnail_url    String?
+  thumbnail_r2_key String?
+  sort_order       Int                @default(0)
+  usage_count      Int                @default(0)
+  created_at       DateTime           @default(now())
+  updated_at       DateTime           @updatedAt
+
+  @@index([status])
+  @@map("studio_styles")
+}
+
 model PlanLimit {
   id               String            @id @default(cuid())
   plan             SubscriptionPlan
