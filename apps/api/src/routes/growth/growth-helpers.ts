@@ -13,7 +13,7 @@ import { z } from 'zod';
 // (buildAudienceWhere) or a pure predicate (matchesAudience) — the latter
 // keeps the "who is in this audience" logic unit-testable without a DB.
 
-const LEAD_SOURCES = ['MANUAL', 'QR_SCAN', 'STORE_SCAN', 'REFERRAL', 'CAMPAIGN'] as const;
+const LEAD_SOURCES = ['MANUAL', 'QR_SCAN', 'STORE_SCAN', 'REFERRAL', 'CAMPAIGN', 'WHATSAPP_LINK', 'DIRECT_WEB'] as const;
 
 export const AudienceSpecSchema = z.object({
   /** Send to every consented customer (ignores other filters). */

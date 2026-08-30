@@ -348,6 +348,7 @@ model Retailer {
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
   customer_visits       CustomerVisit[]
+  store_visits          CustomerStoreVisit[]
   incentive_rules       IncentiveRule[]
   partners              Partner[]
   partner_events        PartnerEvent[]
@@ -783,7 +784,12 @@ model Customer {
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
 
+  // Shopper Passport — link to global identity (set during backfill Task 6
+  // and on new passport-verified leads Task 5). Nullable until backfill runs.
+  customer_account_id String?
+
   retailer         Retailer              @relation(fields: [retailer_id], references: [id])
+  customer_account CustomerAccount?      @relation(fields: [customer_account_id], references: [id])
   fashion_dna      CustomerFashionDNA?
   interactions     CustomerInteraction[]
   collections_sent Collection[]          @relation("CustomerCollections")
@@ -796,6 +802,7 @@ model Customer {
   @@unique([retailer_id, phone])
   @@index([retailer_id])
   @@index([retailer_id, phone_hash])
+  @@index([customer_account_id])
   @@map("customers")
 }
 
@@ -842,8 +849,8 @@ model CustomerMeasurement {
 }
 
 model CustomerFashionDNA {
-  id          String @id @default(cuid())
-  customer_id String @unique
+  id          String  @id @default(cuid())
+  customer_id String  @unique
   retailer_id String
 
   // pgvector — learned preference vector
@@ -859,8 +866,13 @@ model CustomerFashionDNA {
   confidence_score  Float    @default(0.0)
   last_updated_at   DateTime @default(now())
 
-  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  // Shopper Passport — identity-scoped (Task 15 adds this column)
+  customer_account_id String?
 
+  customer         Customer         @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id])
+
+  @@unique([customer_account_id])
   @@index([retailer_id])
   @@map("customer_fashion_dna")
 }
@@ -872,15 +884,20 @@ model CustomerInteraction {
   product_id    String?
   collection_id String?
 
+  // Shopper Passport — identity-scoped interaction (nullable until backfill)
+  customer_account_id String?
+
   type     String // view | favorite | enquiry | purchase | try_on
   metadata Json?
 
   created_at DateTime @default(now())
 
-  customer Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  product  Product? @relation(fields: [product_id], references: [id])
+  customer         Customer         @relation(fields: [customer_id], references: [id], onDelete: Cascade)
+  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id])
+  product          Product?         @relation(fields: [product_id], references: [id])
 
   @@index([customer_id])
+  @@index([customer_account_id])
   @@index([retailer_id, created_at])
   @@map("customer_interactions")
 }
@@ -1808,6 +1825,8 @@ enum CustomerLeadSource {
   STORE_SCAN
   REFERRAL
   CAMPAIGN
+  WHATSAPP_LINK
+  DIRECT_WEB
 }
 
 enum CampaignType {
@@ -2555,4 +2574,137 @@ model BugReport {
   @@index([severity])
   @@index([created_at])
   @@map("bug_reports")
+}
+
+// ─── SHOPPER PASSPORT (Task 1 — customer-qr-identity-solution.md §7) ──
+// Global customer identity above per-retailer Customer rows.
+// Cookie-based session (Task 3), not Supabase Auth.
+model CustomerAccount {
+  id          String   @id @default(cuid())
+  phone       String   @unique // E.164 +9198...
+  phone_hash  String   @unique // SHA-256 of normalizeIndianPhone — matches Customer.phone_hash
+  name        String?
+  gender      Gender?
+  city        String?
+  state       String?
+  usual_size  String? // feeds cross-store size reco (roadmap N)
+  is_verified Boolean  @default(true) // set true only after OTP
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  // Relations
+  store_visits        CustomerStoreVisit[]
+  customer_links      Customer[]
+  consent_events      ConsentEvent[]
+  interactions        CustomerInteraction[]
+  fashion_dna         CustomerFashionDNA?
+  recently_viewed     CustomerRecentlyViewed[]
+  wishlist_items      CustomerWishlistItem[]
+  store_affinities    StoreAffinity[]
+  passport_sessions   PassportSession[]
+
+  @@map("customer_accounts")
+}
+
+// One row per (shopper, retailer). Tracks scan + per-store consent state.
+model CustomerStoreVisit {
+  id                  String   @id @default(cuid())
+  customer_account_id String
+  retailer_id         String
+  source              CustomerLeadSource @default(QR_SCAN)
+  first_visited_at    DateTime @default(now())
+  last_visited_at     DateTime @default(now())
+  visit_count         Int      @default(1)
+  contact_shared      Boolean  @default(false) // has the raw number been written to this retailer's Customer row
+  whatsapp_consent    Boolean  @default(false) // DPDP: NOT default true
+  whatsapp_consent_at DateTime?
+  is_muted            Boolean  @default(false) // checked at WhatsApp send time
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  retailer         Retailer        @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_account_id, retailer_id])
+  @@index([retailer_id, last_visited_at])
+  @@map("customer_store_visits")
+}
+
+// Append-only consent/withdrawal audit (DPDP record-keeping)
+model ConsentEvent {
+  id                  String   @id @default(cuid())
+  customer_account_id String
+  retailer_id         String?
+  kind                String   // PASSPORT_CREATED | STORE_CONSENT_GRANTED | STORE_MUTED | STORE_CONSENT_WITHDRAWN | PASSPORT_DELETED | PROFILING_ENABLED | PROFILING_DISABLED | DATA_EXPORTED
+  notice_version      String   // which notice text was shown
+  ip_hash             String?
+  user_agent          String?
+  created_at          DateTime @default(now())
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@index([customer_account_id, created_at])
+  @@map("consent_events")
+}
+
+// Passport session (DB row + Redis cache, Task 3)
+model PassportSession {
+  id                  String   @id @default(cuid())
+  customer_account_id String
+  created_at          DateTime @default(now())
+  last_seen_at        DateTime @default(now())
+  expires_at          DateTime
+  revoked_at          DateTime?
+  user_agent          String?
+  ip_hash             String?
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@index([customer_account_id])
+  @@map("passport_sessions")
+}
+
+// Identity-scoped recently-viewed (replaces localStorage same-store tracker)
+model CustomerRecentlyViewed {
+  id                  String   @id @default(cuid())
+  customer_account_id String
+  product_id          String
+  retailer_id         String
+  viewed_at           DateTime @default(now())
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_account_id, product_id])
+  @@index([customer_account_id, viewed_at])
+  @@map("customer_recently_viewed")
+}
+
+// Identity-scoped cross-store favorites (delivers deferred item 22)
+model CustomerWishlistItem {
+  id                  String   @id @default(cuid())
+  customer_account_id String
+  product_id          String
+  retailer_id         String
+  created_at          DateTime @default(now())
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_account_id, product_id])
+  @@index([customer_account_id])
+  @@map("customer_wishlist_items")
+}
+
+// Nightly precomputed store-discovery score per shopper (§16.4)
+model StoreAffinity {
+  id                  String   @id @default(cuid())
+  customer_account_id String
+  retailer_id         String
+  score               Float
+  computed_at         DateTime @default(now())
+
+  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+
+  @@unique([customer_account_id, retailer_id])
+  @@index([customer_account_id, score])
+  @@map("store_affinities")
 }
