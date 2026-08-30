@@ -18,6 +18,8 @@ const {
   mockGetStudioJobStatus,
   mockIsStudioShootConfigured,
   mockCheckQuota,
+  mockStyleFindFirst,
+  mockStyleFindMany,
 } = vi.hoisted(() => ({
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockPhotoFindFirst: vi.fn(),
@@ -26,6 +28,8 @@ const {
   mockGetStudioJobStatus: vi.fn(),
   mockIsStudioShootConfigured: vi.fn(),
   mockCheckQuota: vi.fn(),
+  mockStyleFindFirst: vi.fn(),
+  mockStyleFindMany: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -34,6 +38,10 @@ vi.mock('@kanchuki/db', () => ({
     productPhoto: {
       findFirst: mockPhotoFindFirst,
       create: mockPhotoCreate,
+    },
+    studioStyle: {
+      findFirst: mockStyleFindFirst,
+      findMany: mockStyleFindMany,
     },
   },
 }));
@@ -179,6 +187,25 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
 
     expect(res.statusCode).toBe(503);
     expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('GET /studio-styles', () => {
+  it('returns only PUBLISHED styles the plan allows, without prompt', async () => {
+    mockRetailerFindUniqueOrThrow.mockResolvedValueOnce({ plan: 'STARTER' });
+    mockStyleFindMany.mockResolvedValueOnce([
+      { slug: 'pastel_gradient', label: 'Pastel Gradient Lounge', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/studio-styles' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data[0].slug).toBe('pastel_gradient');
+    expect(body.data[0]).not.toHaveProperty('prompt');
+    expect(mockStyleFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'PUBLISHED', plans: { has: 'STARTER' } } }),
+    );
     await app.close();
   });
 });

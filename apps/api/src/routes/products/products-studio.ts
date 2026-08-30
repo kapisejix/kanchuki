@@ -32,6 +32,22 @@ const StudioShootBodySchema = z.object({
 });
 
 export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /products/studio-styles ────────────────────────────────
+  // The retailer-facing catalog: PUBLISHED styles this plan may use.
+  // Prompt + engine are deliberately omitted (server-side only).
+  server.get('/studio-styles', async (request) => {
+    const retailer = await prisma.retailer.findUniqueOrThrow({
+      where: { id: request.retailerId },
+      select: { plan: true },
+    });
+    const rows = await prisma.studioStyle.findMany({
+      where: { status: 'PUBLISHED', plans: { has: retailer.plan } },
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+      select: { slug: true, label: true, description: true, tab: true, audience: true, thumbnail_url: true },
+    });
+    return { data: rows };
+  });
+
   // ─── POST /products/:id/photos/:photoId/studio-shoot ─────────────
   // Enqueue a studio-shoot generation job. Returns 202 immediately; the
   // mobile app polls GET .../studio-shoot/status?job_id= for the result.
