@@ -618,6 +618,7 @@ model Product {
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
   interactions     CustomerInteraction[]
+  recently_viewed  CustomerRecentlyViewed[]
   order_items      OrderItem[]
   catalog_item     CatalogItem?
 
@@ -2673,6 +2674,7 @@ model CustomerRecentlyViewed {
   viewed_at           DateTime @default(now())
 
   customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  product          Product          @relation(fields: [product_id], references: [id], onDelete: Cascade)
 
   @@unique([customer_account_id, product_id])
   @@index([customer_account_id, viewed_at])

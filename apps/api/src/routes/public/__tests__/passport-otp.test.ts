@@ -11,6 +11,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
+import { prisma } from '@kanchuki/db';
 import { passportRoutes } from '../passport.js';
 
 // ─── Mocks ────────────────────────────────────────────────────────
@@ -380,6 +381,92 @@ describe('GET /v1/public/passport/me', () => {
     });
 
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('GET /v1/public/passport/recently-viewed', () => {
+  it('returns 401 when no session', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({ method: 'GET', url: '/v1/public/passport/recently-viewed' });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns empty items for valid session with no history', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    // Mock recently viewed query
+    const mockFindMany = vi.fn().mockResolvedValue([]);
+    // @ts-expect-error - extending mock
+    prisma.customerRecentlyViewed = { findMany: mockFindMany };
+
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/v1/public/passport/recently-viewed',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items).toEqual([]);
+
+    delete (prisma as any).customerRecentlyViewed;
+  });
+});
+
+describe('POST /v1/public/passport/recently-viewed', () => {
+  it('returns 204 silently when no session', async () => {
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/recently-viewed',
+      payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
+    });
+    expect(res.statusCode).toBe(204);
+  });
+
+  it('upserts a product view for valid session', async () => {
+    const sessionId = randomBytes(32).toString('hex');
+    mockPassportSessionFindUnique.mockResolvedValue({
+      id: sessionId,
+      expires_at: new Date(Date.now() + 86400 * 1000),
+      revoked_at: null,
+      customer_account_id: 'acct_123',
+      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+    });
+    mockPassportSessionUpdate.mockResolvedValue({});
+
+    const mockUpsert = vi.fn().mockResolvedValue({});
+    // @ts-expect-error - extending mock
+    prisma.customerRecentlyViewed = { upsert: mockUpsert };
+
+    const app = buildApp();
+    await app.ready();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/passport/recently-viewed',
+      headers: { cookie: `kanchuki_passport=${sessionId}` },
+      payload: { product_id: 'prod-1', retailer_id: 'ret-1' },
+    });
+
+    expect(res.statusCode).toBe(204);
+    expect(mockUpsert).toHaveBeenCalledOnce();
+
+    delete (prisma as any).customerRecentlyViewed;
   });
 });
 
