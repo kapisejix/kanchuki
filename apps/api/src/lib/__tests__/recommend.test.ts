@@ -53,9 +53,10 @@ describe('rankProducts', () => {
 
     const result = await rankProducts({ surface: 'feed' });
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('prod-1');
-    expect(result[0].photo_url).toBe('https://example.com/photo.jpg');
-    expect(result[0].retailer_name).toBe('Priya');
+    const first = result[0]!;
+    expect(first.id).toBe('prod-1');
+    expect(first.photo_url).toBe('https://example.com/photo.jpg');
+    expect(first.retailer_name).toBe('Priya');
   });
 
   it('uses KNN when preference vector exists', async () => {
@@ -89,7 +90,8 @@ describe('rankProducts', () => {
     });
 
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('prod-1');
+    const first = result[0]!;
+    expect(first.id).toBe('prod-1');
     expect(mockQueryRawUnsafe).toHaveBeenCalledTimes(2);
   });
 
@@ -156,6 +158,7 @@ describe('rankProducts', () => {
     const result = await rankProducts({ accountId: 'acct-1', surface: 'feed' });
     // Followed store product should rank higher (boost +0.10)
     expect(result).toHaveLength(2);
-    expect(result[0].id).toBe('p1');
+    const first = result[0]!;
+    expect(first.id).toBe('p1');
   });
 });
