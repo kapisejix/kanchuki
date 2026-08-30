@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # Kanchuki Web — pnpm/turbo monorepo, explicit Docker build.
 #
 # Nixpacks auto-detect was silently failing to put pnpm on PATH before the
@@ -50,12 +49,7 @@ ENV NEXT_PUBLIC_R2_PUBLIC_URL=$NEXT_PUBLIC_R2_PUBLIC_URL
 ENV NEXT_PUBLIC_MSG91_WIDGET_ID=$NEXT_PUBLIC_MSG91_WIDGET_ID
 ENV NEXT_PUBLIC_MSG91_TOKEN_AUTH=$NEXT_PUBLIC_MSG91_TOKEN_AUTH
 
-# Persist Next.js's incremental build cache across Railway builds. Without this
-# every deploy is a cold `next build` (~3-5 min); with it, an unchanged-deps
-# code push reuses compiled output and drops to ~30-60s. Cache mount needs
-# BuildKit — enabled by the `# syntax` directive at the top.
-RUN --mount=type=cache,target=/app/apps/web/.next/cache \
-    pnpm exec turbo build --filter=@kanchuki/web
+RUN pnpm exec turbo build --filter=@kanchuki/web
 
 EXPOSE 3000
 CMD ["pnpm", "--filter", "@kanchuki/web", "start"]
