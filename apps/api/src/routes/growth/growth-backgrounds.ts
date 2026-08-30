@@ -10,7 +10,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { createId } from '@paralleldrive/cuid2';
 import { hasFeature } from '../../lib/features.js';
-import { isStudioShootConfigured, getStudioJobStatus } from '../../lib/studio-shoot.js';
+import { isStudioShootConfigured, getStudioJobStatus, resolveStudioStyleJob } from '../../lib/studio-shoot.js';
 import { addStudioShootJob } from '../../jobs/index.js';
 import {
   featureUnavailable,
@@ -181,8 +181,9 @@ export const growthBackgroundRoutes: FastifyPluginAsync = async (server) => {
       if (!photo) throw notFound('Product photo');
     }
 
-    // Use the background's occasion to pick a studio template
-    const templateId = getOccasionTemplate(bg.occasion);
+    // Use the background's occasion to pick a studio style slug, then resolve
+    // it against the DB catalog (studio_styles).
+    const styleJob = await resolveStudioStyleJob(getOccasionTemplate(bg.occasion));
 
     const jobId = createId();
     await addStudioShootJob({
@@ -190,7 +191,7 @@ export const growthBackgroundRoutes: FastifyPluginAsync = async (server) => {
       retailer_id: retailerId,
       product_id: body.data.product_id,
       photo_id: photoId,
-      template: templateId as any,
+      ...styleJob,
     });
 
     // Increment usage count

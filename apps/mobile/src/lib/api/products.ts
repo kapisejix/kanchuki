@@ -161,6 +161,20 @@ export const productApi = {
       data: { id: string; name: string; image_url: string; thumbnail_url: string | null }[];
     }>('/v1/products/background-images', { getCacheTtlMs: 60_000 }),
 
+  /** Admin-curated AI Studio Shoot styles this retailer's plan can use.
+   * Cached 60s — the picker falls back to the last response offline. */
+  getStudioStyles: () =>
+    request<{
+      data: {
+        slug: string;
+        label: string;
+        description: string;
+        tab: 'PRODUCT' | 'MODEL';
+        audience: string[];
+        thumbnail_url: string | null;
+      }[];
+    }>('/v1/products/studio-styles', { getCacheTtlMs: 60_000 }),
+
   setBackground: (productId: string, backgroundImageId: string | null) =>
     request<{ data: { background_image_id: string | null; photo_url: string | null } }>(
       `/v1/products/${productId}/background`,
@@ -230,13 +244,12 @@ export const productApi = {
     productId: string,
     photoId: string,
     template: string,
-    options?: { engine?: string; model_id?: string },
   ) =>
     request<{ data: { job_id: string; status: string } }>(
       `/v1/products/${productId}/photos/${photoId}/studio-shoot`,
       {
         method: 'POST',
-        body: JSON.stringify({ template, ...options }),
+        body: JSON.stringify({ template }),
         timeoutMs: 15_000,
       },
     ),

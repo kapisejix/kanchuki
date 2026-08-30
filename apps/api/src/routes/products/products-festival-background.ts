@@ -10,13 +10,17 @@
 // Plan gate: Growth/Pro only (spec §24.7 — studio shoots are included in
 // those plans' AI cost budget). STARTER → 402 FEATURE_UNAVAILABLE.
 import { prisma } from '@kanchuki/db';
-import { getStudioTemplate, type StudioTemplateId } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
-import { getStudioJobStatus, isStudioShootConfigured } from '../../lib/studio-shoot.js';
+import { getStudioJobStatus, isStudioShootConfigured, resolveStudioStyleJob } from '../../lib/studio-shoot.js';
 import { featureUnavailable, notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
+
+// Ornate backdrop the festival flow falls back to when no explicit override is
+// passed. Seeded by migration 078 (studio_styles); the seasonal festive/wedding
+// presets were retired when STUDIO_TEMPLATES was trimmed 2026-08-29.
+const FESTIVAL_FALLBACK_SLUG = 'seated_haveli_steps';
 
 const FestivalBackgroundBodySchema = z.object({
   // Optional: override automatic seasonal selection
@@ -69,22 +73,12 @@ export const productsFestivalBackgroundRoutes: FastifyPluginAsync = async (
       });
       if (!photo) throw notFound('Product photo');
 
-      // Determine template to use: manual override or seasonal auto-selection
-      let templateId: StudioTemplateId | undefined;
-      if (body.data.templateId) {
-        // Manual override
-        templateId = body.data.templateId as StudioTemplateId;
-        const template = getStudioTemplate(templateId);
-        if (!template) {
-          throw validationError(
-            'Unknown studio template. Choose one of the available presets.',
-            'templateId'
-          );
-        }
-      } else {
-        // Automatic seasonal selection
-        templateId = getSeasonalFestivalTemplate();
-      }
+      // Resolve the backdrop from the DB catalog (studio_styles): an explicit
+      // override slug, else the ornate festival fallback. Any status is
+      // accepted — this feature is already Growth/Pro-gated above.
+      const styleJob = await resolveStudioStyleJob(
+        body.data.templateId || FESTIVAL_FALLBACK_SLUG,
+      );
 
       const jobId = createId();
       await addStudioShootJob({
@@ -92,7 +86,7 @@ export const productsFestivalBackgroundRoutes: FastifyPluginAsync = async (
         retailer_id: request.retailerId,
         product_id: id,
         photo_id: photo.id,
-        template: templateId,
+        ...styleJob,
       });
 
       return reply.status(202).send({
@@ -149,12 +143,3 @@ export const productsFestivalBackgroundRoutes: FastifyPluginAsync = async (
     }
   );
 };
-
-// Seasonal auto-pick for the festival-background feature. The dedicated
-// festive/wedding backdrop presets (`wedding_elegant`, `gold_festive`) were
-// removed 2026-08-29 when STUDIO_TEMPLATES was trimmed — `seated_haveli_steps`
-// is the closest ornate survivor. Callers can still pass an explicit
-// `templateId` to choose any of the shipped templates.
-function getSeasonalFestivalTemplate(): StudioTemplateId {
-  return 'seated_haveli_steps';
-}

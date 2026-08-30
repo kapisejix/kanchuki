@@ -885,6 +885,44 @@ Spec: `docs/PRO-REQUIREMENTS.md` §24, roadmap `docs/PLAN.md` (Future slot). Wri
 
 **Not built (Phase B/C — do-not-start still applies):** product video generation (Seedance/Kling), AI Fashion Model. **Remaining real backlog** (from the tasks doc, genuinely unchecked): BFL credit-consumption tracking in job metadata, image size validation (<20MB/<20MP) before BFL submit, GPU detection on the V-Tone box, responsive (non-fixed-3:4) gallery aspect ratio.
 
+### ✅ BUILT 2026-08-30: Studio style catalog → DB-managed + per-plan
+
+Full spec + file-level plan:
+`docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
+
+- **New `studio_styles` table** (migration `075_studio_styles`, owner
+  applies) replaces the hardcoded `STUDIO_TEMPLATES` / `STUDIO_MODELS`
+  constants. Columns: `slug` (== old id), `label`, `description`, `prompt`
+  (server-only), `tab` (PRODUCT / MODEL), `status` (DRAFT / PUBLISHED /
+  HIDDEN), `plans` (`SubscriptionPlan[]` — admin ticks Starter/Growth/Pro
+  per style, no default), `engine` (nullable override), `audience`
+  (demographic tags), `thumbnail_url` (admin-uploaded sample output),
+  `sort_order`, `usage_count`.
+- **Admin → Studio Styles page** (`apps/web/src/app/admin/studio-styles/`)
+  + `apps/api/src/routes/admin/admin-studio-styles.ts` — CRUD, per-row
+  status + plan checkboxes + engine + thumbnail upload (presigned R2,
+  mirrors `admin-media.ts` / background-images), delete, reorder. Audit-logged.
+- **Retailer:** new `GET /v1/studio-styles` (plan-filtered, no prompt in
+  payload). `products-studio.ts` looks up the style by slug + gates on
+  `retailer.plan in style.plans` (403 `FEATURE_UNAVAILABLE`). Job + engine
+  receive `prompt` / `engine` / `tab` from the row.
+- **Mobile `ProductStudioModal`:** two tabs — **Product Only** (`tab=PRODUCT`)
+  and **Models** (`tab=MODEL`, filtered by
+  `demographicForCategory(product)`). Rows keep `Label (/slug)` text +
+  thumbnail. IDM-VTON photo-model path retired.
+- **Seed:** 29 existing styles (21 MODEL + 8 PRODUCT, list in the spec)
+  inserted as DRAFT / unassigned. Owner curates + assigns plans + uploads
+  thumbnails post-deploy — picker is empty until then, by design.
+- Supersedes step 6 of `docs/tasks/ai-studio-shoot-models-scenes.md`.
+- Skills for the build: see the spec's "Skills for implementation" table
+  (`superpowers:writing-plans` then `superpowers:subagent-driven-development`
+  / TDD for the API logic, `ecc:prisma-patterns` +
+  `supabase:supabase-postgres-best-practices` for migration `075`,
+  `frontend-design` for the admin page, `superpowers:requesting-code-review`
+  before the PR).
+
+**Verification:** `admin-studio-styles.test.ts` (7), `products-studio.test.ts` (15), `studio-shoot.test.ts` (9) — all green. `security.test.ts` (24), `admin.login.test.ts` (14) — regression clean. `tsc --noEmit` clean in `packages/shared`, `apps/api`, `apps/mobile`, `apps/web`. Migration `075_studio_styles` written, owner applies.
+
 **How PhotoRoom works (their own engineering blog, verified):** background removal = proprietary on-device segmentation model; AI Backgrounds = diffusion-based **outpainting** (preserves product pixels exactly, invents matching lighting); a from-scratch ~1B-param Transformer latent diffusion model trained on ~90M images (architecture like DiT/PixArt, trained for *editing* not text-to-image) powers Expand/Fill/Erase/upscale/volumetric shadows; sub-second inference via distillation + TensorRT; Video Generator = product-focused image-to-video with 300+ motion templates + Multi-Image Video API (up to 7 refs → 360° spins); AI Fashion Model = lifestyle on-model shots from one product photo (retailers report 25–32% photographer-cost cuts). **Lessons to copy:** own the subject not the scene; one model many features; templates beat free text for SMB retailers; latency is the product.
 
 **How PhotoRoom works (their own engineering blog, verified):** background removal = proprietary on-device segmentation model; AI Backgrounds = diffusion-based **outpainting** (preserves product pixels exactly, invents matching lighting); a from-scratch ~1B-param Transformer latent diffusion model trained on ~90M images (architecture like DiT/PixArt, trained for *editing* not text-to-image) powers Expand/Fill/Erase/upscale/volumetric shadows; sub-second inference via distillation + TensorRT; Video Generator = product-focused image-to-video with 300+ motion templates + Multi-Image Video API (up to 7 refs → 360° spins); AI Fashion Model = lifestyle on-model shots from one product photo (retailers report 25–32% photographer-cost cuts). **Lessons to copy:** own the subject not the scene; one model many features; templates beat free text for SMB retailers; latency is the product.

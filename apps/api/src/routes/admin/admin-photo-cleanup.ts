@@ -10,7 +10,7 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { PRODUCT_DEMOGRAPHICS, R2_PATHS, getStudioTemplate } from '@kanchuki/shared';
+import { PRODUCT_DEMOGRAPHICS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
 import { addAdminTryOnJob } from '../../jobs/index.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
@@ -139,32 +139,35 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         product_url: z.string().url(),
-        template: z.string().min(1),
+        // studio_styles slug — resolved to its prompt/tab. Optional: a
+        // free-text `prompt` alone is also valid on the bench.
+        slug: z.string().optional(),
         engine: z
-          .enum(['flux_pro', 'imagen_3', 'idm_vton', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext'])
+          .enum(['flux_pro', 'imagen_3', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext'])
           .optional(),
-        model_id: z.string().optional(),
         // Demographic override — decides which person the scene renders.
         // Omitted → generateStudioImage infers it from the product category.
         demographic: z.enum(PRODUCT_DEMOGRAPHICS).optional(),
         // Free-text prompt (paste a formula from AI Models and Scenes.html) —
-        // overrides the template. Admin test bench only.
+        // overrides the style's prompt. Admin test bench only.
         prompt: z.string().min(1).max(4000).optional(),
       })
       .parse(request.body);
 
-    const tpl = getStudioTemplate(body.template);
-    if (!tpl && !body.model_id && !body.prompt) {
-      throw validationError('Unknown studio template. Pick one from the dropdown.', 'template');
+    // Bench tests drafts too — no status filter.
+    const style = body.slug
+      ? await prisma.studioStyle.findFirst({ where: { slug: body.slug } })
+      : null;
+    if (!style && !body.prompt) {
+      throw validationError('Provide a slug or a prompt.', 'slug');
     }
 
-    const result = await generateStudioImage(
-      tpl?.id ?? body.template,
-      body.product_url,
-      undefined,
-      undefined,
-      { engine: body.engine, modelId: body.model_id, customPrompt: body.prompt, demographic: body.demographic },
-    );
+    const result = await generateStudioImage(body.product_url, {
+      prompt: body.prompt ?? style!.prompt,
+      tab: style?.tab ?? 'MODEL',
+      engine: body.engine,
+      demographic: body.demographic,
+    });
     if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
       throw new AppError(
         'STUDIO_SHOOT_FAILED',
@@ -179,7 +182,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       key,
       Boolean(result.base64Data),
     );
-    return { data: { result_url: uploaded.url, template: tpl?.id ?? body.template } };
+    return { data: { result_url: uploaded.url, slug: style?.slug ?? null } };
   });
 
   // ─── POST /admin/photo-cleanup/tryon ───────────────────────────────

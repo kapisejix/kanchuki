@@ -16,22 +16,35 @@
 // gates the enqueue here, incrementUsage fires in the job on success
 // (jobs/studio-shoot.ts). Admin sets the per-plan cap at /admin/plan-limits.
 import { prisma } from '@kanchuki/db';
-import { getStudioTemplate, type StudioTemplateId } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
-import { getStudioJobStatus, isStudioShootConfigured } from '../../lib/studio-shoot.js';
+import { getStudioJobStatus, isStudioShootConfigured, type StudioEngine } from '../../lib/studio-shoot.js';
 import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
-import { notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
+import { AppError, notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
 
 const StudioShootBodySchema = z.object({
   template: z.string().min(1),
-  engine: z.enum(['flux_pro', 'imagen_3', 'idm_vton', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext']).optional(),
-  model_id: z.string().optional(),
 });
 
 export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
+  // ─── GET /products/studio-styles ────────────────────────────────
+  // The retailer-facing catalog: PUBLISHED styles this plan may use.
+  // Prompt + engine are deliberately omitted (server-side only).
+  server.get('/studio-styles', async (request) => {
+    const retailer = await prisma.retailer.findUniqueOrThrow({
+      where: { id: request.retailerId },
+      select: { plan: true },
+    });
+    const rows = await prisma.studioStyle.findMany({
+      where: { status: 'PUBLISHED', plans: { has: retailer.plan } },
+      orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
+      select: { slug: true, label: true, description: true, tab: true, audience: true, thumbnail_url: true },
+    });
+    return { data: rows };
+  });
+
   // ─── POST /products/:id/photos/:photoId/studio-shoot ─────────────
   // Enqueue a studio-shoot generation job. Returns 202 immediately; the
   // mobile app polls GET .../studio-shoot/status?job_id= for the result.
@@ -48,11 +61,22 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
 
     const body = StudioShootBodySchema.safeParse(request.body ?? {});
     if (!body.success) {
-      throw validationError(body.error.issues[0]?.message ?? 'Invalid studio template', 'template');
+      throw validationError(body.error.issues[0]?.message ?? 'Invalid studio style', 'template');
     }
-    const template = getStudioTemplate(body.data.template);
-    if (!template && !body.data.model_id) {
-      throw validationError('Unknown studio template. Choose one of the available presets.', 'template');
+
+    // Resolve the style from the DB catalog (studio_styles). Only PUBLISHED
+    // rows are usable; the retailer's plan must be in the row's `plans` array.
+    const style = await prisma.studioStyle.findFirst({
+      where: { slug: body.data.template, status: 'PUBLISHED' },
+    });
+    if (!style) throw validationError('Unknown or unavailable studio style.', 'template');
+
+    const retailer = await prisma.retailer.findUniqueOrThrow({
+      where: { id: request.retailerId },
+      select: { plan: true },
+    });
+    if (!style.plans.includes(retailer.plan)) {
+      throw new AppError('FEATURE_UNAVAILABLE', 'This studio style is not included in your plan.', 403);
     }
 
     // Photo must belong to this retailer's product.
@@ -115,9 +139,12 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       retailer_id: request.retailerId,
       product_id: id,
       photo_id: photo.id,
-      template: (template?.id ?? body.data.template) as StudioTemplateId,
-      engine: body.data.engine,
-      model_id: body.data.model_id,
+      slug: style.slug,
+      prompt: style.prompt,
+      tab: style.tab,
+      engine: (style.engine as StudioEngine | null) ?? undefined,
+      audience: style.audience,
+      style_id: style.id,
     });
 
     return reply.status(202).send({ data: { job_id: jobId, status: 'processing' } });

@@ -18,6 +18,8 @@ const {
   mockGetStudioJobStatus,
   mockIsStudioShootConfigured,
   mockCheckQuota,
+  mockStyleFindFirst,
+  mockStyleFindMany,
 } = vi.hoisted(() => ({
   mockRetailerFindUniqueOrThrow: vi.fn(),
   mockPhotoFindFirst: vi.fn(),
@@ -26,6 +28,8 @@ const {
   mockGetStudioJobStatus: vi.fn(),
   mockIsStudioShootConfigured: vi.fn(),
   mockCheckQuota: vi.fn(),
+  mockStyleFindFirst: vi.fn(),
+  mockStyleFindMany: vi.fn(),
 }));
 
 vi.mock('@kanchuki/db', () => ({
@@ -34,6 +38,10 @@ vi.mock('@kanchuki/db', () => ({
     productPhoto: {
       findFirst: mockPhotoFindFirst,
       create: mockPhotoCreate,
+    },
+    studioStyle: {
+      findFirst: mockStyleFindFirst,
+      findMany: mockStyleFindMany,
     },
   },
 }));
@@ -73,8 +81,19 @@ beforeEach(() => {
   mockCheckQuota.mockResolvedValue(undefined);
 });
 
+const STYLE_ROW = {
+  id: 'st1',
+  slug: 'runway',
+  prompt: 'On a high-fashion catwalk runway with spotlights.',
+  tab: 'MODEL' as const,
+  engine: null,
+  audience: [] as string[],
+  plans: ['STARTER', 'GROWTH', 'PRO'],
+};
+
 describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
-  it('202 + job_id for a Growth retailer with a valid template', async () => {
+  it('202 + job_id for a Growth retailer with a valid style slug', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -92,7 +111,10 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
         retailer_id: RETAILER_ID,
         product_id: 'p1',
         photo_id: 'photo_1',
-        template: 'runway',
+        slug: 'runway',
+        prompt: STYLE_ROW.prompt,
+        tab: 'MODEL',
+        style_id: 'st1',
       }),
     );
     await app.close();
@@ -100,6 +122,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
 
   it('enqueues for STARTER plan (all plans allowed; quota is the only limiter)', async () => {
     mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'STARTER' });
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -109,6 +132,22 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
 
     expect(res.statusCode).toBe(202);
     expect(mockAddStudioShootJob).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('403 FEATURE_UNAVAILABLE when the style is not in the retailer plan', async () => {
+    mockRetailerFindUniqueOrThrow.mockResolvedValue({ plan: 'STARTER' });
+    mockStyleFindFirst.mockResolvedValueOnce({ ...STYLE_ROW, plans: ['PRO'] });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/products/p1/photos/photo_1/studio-shoot',
+      payload: { template: 'runway' },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('FEATURE_UNAVAILABLE');
+    expect(mockAddStudioShootJob).not.toHaveBeenCalled();
     await app.close();
   });
 
@@ -127,7 +166,8 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
     await app.close();
   });
 
-  it('422 for an unknown template', async () => {
+  it('422 for an unknown / unpublished style slug', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(null);
     const app = await buildApp();
     const res = await app.inject({
       method: 'POST',
@@ -154,6 +194,7 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
   });
 
   it('404 when the photo does not belong to this retailer', async () => {
+    mockStyleFindFirst.mockResolvedValueOnce(STYLE_ROW);
     mockPhotoFindFirst.mockResolvedValue(null);
     const app = await buildApp();
     const res = await app.inject({
@@ -179,6 +220,25 @@ describe('POST /products/:id/photos/:photoId/studio-shoot', () => {
 
     expect(res.statusCode).toBe(503);
     expect(mockAddStudioShootJob).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe('GET /studio-styles', () => {
+  it('returns only PUBLISHED styles the plan allows, without prompt', async () => {
+    mockRetailerFindUniqueOrThrow.mockResolvedValueOnce({ plan: 'STARTER' });
+    mockStyleFindMany.mockResolvedValueOnce([
+      { slug: 'pastel_gradient', label: 'Pastel Gradient Lounge', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+    ]);
+    const app = await buildApp();
+    const res = await app.inject({ method: 'GET', url: '/v1/products/studio-styles' });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.data[0].slug).toBe('pastel_gradient');
+    expect(body.data[0]).not.toHaveProperty('prompt');
+    expect(mockStyleFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: 'PUBLISHED', plans: { has: 'STARTER' } } }),
+    );
     await app.close();
   });
 });

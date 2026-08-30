@@ -29,18 +29,10 @@
 // V-Tone admin tool / spin-frame extraction).
 import { Redis } from 'ioredis';
 import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
-import {
-  demographicForCategory,
-  getStudioModel,
-  getStudioTemplate,
-  isNoModelTemplate,
-  type Demographic,
-  type StudioModelId,
-  type StudioTemplateId,
-} from '@kanchuki/shared';
-import { getSecret } from '@kanchuki/db';
+import { demographicForCategory, type Demographic } from '@kanchuki/shared';
+import { getSecret, prisma } from '@kanchuki/db';
 import { AppError } from '../plugins/error-handler.js';
-import { generateFluxKontext, generateFluxProImage, generateFluxSchnellImage, generateIdmVtonTryon, isFalConfigured, resolveFalKey } from './fal-client.js';
+import { generateFluxKontext, generateFluxProImage, generateFluxSchnellImage, resolveFalKey } from './fal-client.js';
 import { generateGoogleImagen, isImagenConfigured, resolveGeminiKey } from './imagen-client.js';
 
 const BFL_BASE = 'https://api.bfl.ai/v1';
@@ -64,10 +56,38 @@ export async function isStudioShootConfigured(): Promise<boolean> {
 export type StudioEngine =
   | 'flux_pro'
   | 'imagen_3'
-  | 'idm_vton'
   | 'flux_schnell'
   | 'imagen_3_fast'
   | 'bfl_kontext';
+
+/** The subset of a studio-shoot job payload that comes from a studio_styles row. */
+export interface StudioStyleJobFields {
+  slug: string;
+  prompt: string;
+  tab: 'PRODUCT' | 'MODEL';
+  engine?: StudioEngine;
+  audience: string[];
+  style_id: string;
+}
+
+/**
+ * Resolve a `studio_styles` slug into the job-payload fields. Throws 422 if the
+ * slug is unknown. Any status is accepted — the retailer route does its own
+ * PUBLISHED + per-plan check before calling this; the internal callers
+ * (festival background, growth backgrounds/social) use curated slugs.
+ */
+export async function resolveStudioStyleJob(slug: string): Promise<StudioStyleJobFields> {
+  const style = await prisma.studioStyle.findFirst({ where: { slug } });
+  if (!style) throw new AppError('VALIDATION_ERROR', `Unknown studio style: ${slug}`, 422);
+  return {
+    slug: style.slug,
+    prompt: style.prompt,
+    tab: style.tab,
+    engine: (style.engine as StudioEngine | null) ?? undefined,
+    audience: style.audience,
+    style_id: style.id,
+  };
+}
 
 export interface StudioGenerationResult {
   status: 'ready' | 'failed';
@@ -105,23 +125,24 @@ function resolveDemographic(
 }
 
 /**
- * Generate studio product photo or AI fashion model draping using the requested or optimal engine.
+ * Generate a studio product photo or AI fashion-model shot for a resolved
+ * prompt (the caller — retailer route, job, or admin bench — pulls the prompt
+ * from a `studio_styles` row).
+ *
+ * `tab: 'MODEL'` injects a demographic-correct person clause and neutralises
+ * any stock "graceful Indian fashion model" wording in the prompt.
+ * `tab: 'PRODUCT'` uses the prompt verbatim (product-only scenes, no person).
  */
 export async function generateStudioImage(
-  templateId: StudioTemplateId | string,
   inputImageUrl: string,
-  onProgress?: (progress: { progress: number; etaMs: number }) => void,
-  inputImageMeta?: { width?: number | null; height?: number | null; sizeBytes?: number | null },
-  options?: {
+  opts: {
+    prompt: string;
+    tab: 'PRODUCT' | 'MODEL';
     engine?: StudioEngine;
-    modelId?: StudioModelId | string;
-    /** Free-text prompt that replaces the template prompt (admin test bench —
-     * lets you paste a formula straight from AI Models and Scenes.html). The
-     * colour-accuracy tail is still appended. */
-    customPrompt?: string;
     /** Demographic override (admin bench). Omitted → inferred from the
-     * product category. Decides which person the scene renders. */
+     * product category. Decides which person a MODEL scene renders. */
     demographic?: Demographic | string;
+    onProgress?: (progress: { progress: number; etaMs: number }) => void;
     product?: {
       name?: string | null;
       category?: string | null;
@@ -133,6 +154,7 @@ export async function generateStudioImage(
     };
   },
 ): Promise<StudioGenerationResult> {
+  const { prompt, tab, engine, onProgress } = opts;
   const falKey = await resolveFalKey();
   const geminiKey = await resolveGeminiKey();
   const bflAuthKey = await resolveBflKey();
@@ -145,7 +167,7 @@ export async function generateStudioImage(
     );
   }
 
-  const product = options?.product;
+  const product = opts.product;
   const colorSpec = [
     product?.primary_color ? `exact primary color is ${product.primary_color}` : '',
     product?.secondary_colors?.length ? `secondary colors are ${product.secondary_colors.join(', ')}` : '',
@@ -157,83 +179,19 @@ export async function generateStudioImage(
     .join(', ');
 
   const demographic = resolveDemographic(
-    typeof options?.demographic === 'string' ? options.demographic : undefined,
+    typeof opts.demographic === 'string' ? opts.demographic : undefined,
     product,
   );
-
-  // IDM-VTON (draping onto a real model photo) only makes sense for the
-  // adult womens/mens models we have photos for. Teen/kids demographics
-  // skip straight to the prompt path — a stock adult VTON result would
-  // otherwise be returned here and never corrected.
-  const vtonEligible = demographic === 'womens' || demographic === 'mens';
-  if ((options?.engine === 'idm_vton' || options?.modelId) && vtonEligible) {
-    const selectedModel = getStudioModel(options?.modelId ?? 'priya_bridal') ?? {
-      model_image_url: 'https://assets.kanchuki.app/models/priya_bridal.jpg',
-      name: 'Priya',
-    };
-
-    if (falKey) {
-      try {
-        const garmentDescription = product?.primary_color
-          ? `Authentic ${product.primary_color} ${product.category || 'ethnic garment'} with exact original color and embroidery preserved`
-          : 'Authentic Indian ethnic wear garment with exact original colors and embroidery preserved';
-
-        const vtonRes = await generateIdmVtonTryon(
-          selectedModel.model_image_url,
-          inputImageUrl,
-          garmentDescription,
-          onProgress,
-        );
-        return { status: 'ready', sampleUrl: vtonRes.sampleUrl };
-      } catch (err) {
-        console.error('[studio-shoot] IDM-VTON failed, attempting prompt model fallback:', err);
-      }
-    }
-  }
-
-  const template = getStudioTemplate(templateId as string);
-  if (!template && !options?.modelId && !options?.customPrompt && !templateId.startsWith('/')) {
-    throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
-  }
-
   const indianModelDesc = PERSON_CLAUSE[demographic];
 
-  // Fashion-Model path: when the retailer picked a MODEL (not a scene) and the
-  // IDM-VTON path above didn't return (no Fal key / VTON error), build the
-  // prompt from THAT model's identity so Priya/Ananya/Meera/Kabir each render
-  // differently — the old code fell back to one generic string for all models.
-  const modelMeta = options?.modelId ? getStudioModel(options.modelId as string) : undefined;
-  const modelPrompt = modelMeta
-    ? `Place this exact garment onto ${
-        modelMeta.gender === 'male'
-          ? 'a dignified Indian male fashion model'
-          : 'a graceful Indian female fashion model'
-      } styled for "${modelMeta.title}" — ${modelMeta.description}. Full-length editorial catalog photograph, ${modelMeta.pose.replace(/_/g, ' ')} pose, photorealistic 8k fabric texture. The garment shape, exact original colour, dye, pattern and embroidery are 100% preserved with true-tone lighting.`
-    : `A professional ${indianModelDesc} wearing this exact garment. High resolution, 8k, photorealistic fabric textures, neutral studio lighting.`;
+  let basePrompt: string = prompt;
 
-  let basePrompt: string = options?.customPrompt ?? template?.prompt ?? (
-    options?.modelId
-      ? modelPrompt
-      : `Place this product photo in a professional studio setting with clean lighting: ${templateId}`
-  );
-
-  // If Catwalk Runway preset, customize the model with the exact Indian demographic
-  if (templateId === 'runway' || (template && template.id === 'runway')) {
-    basePrompt = `Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. ${indianModelDesc} is walking gracefully down the runway. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.`;
-  }
-
-  // Demographic person-swap: the curated scene prompts hardcode
-  // "a graceful Indian fashion model" (an adult woman). For a male /
-  // teen / kids product, force the right person into the scene and
-  // neutralise the stock wording. Skipped for product-only scenes,
-  // custom prompts, the model path, and runway (already handled above).
-  if (
-    template &&
-    !isNoModelTemplate(template) &&
-    !options?.customPrompt &&
-    !options?.modelId &&
-    template.id !== 'runway'
-  ) {
+  // Demographic person-swap: the curated MODEL scene prompts hardcode
+  // "a graceful Indian fashion model" (an adult woman). For a male / teen /
+  // kids product — or an explicit bench demographic — force the right person
+  // into the scene and neutralise the stock wording. PRODUCT scenes have no
+  // person and are used verbatim.
+  if (tab === 'MODEL') {
     basePrompt = basePrompt.replace(
       /a (?:graceful|professional|dignified|charming|elegant|young)[^.,]*?Indian (?:fashion model|lady \/ female fashion model|gentleman \/ male fashion model|lady|gentleman|boy model|woman fashion model|man fashion model)/gi,
       indianModelDesc,
@@ -258,7 +216,7 @@ export async function generateStudioImage(
 
   // Explicit engine override (admin bench / future UI) — attempt it, but
   // still fall through to Kontext if it errors.
-  if (options?.engine === 'flux_pro' && falKey) {
+  if (engine === 'flux_pro' && falKey) {
     try {
       const res = await generateFluxProImage(promptText, { inputImageUrl, onProgress });
       return { status: 'ready', sampleUrl: res.sampleUrl };
@@ -266,10 +224,10 @@ export async function generateStudioImage(
       console.error('[studio-shoot] flux_pro (explicit) failed, falling back to Kontext:', err);
     }
   }
-  if ((options?.engine === 'imagen_3' || options?.engine === 'imagen_3_fast') && geminiKey) {
+  if ((engine === 'imagen_3' || engine === 'imagen_3_fast') && geminiKey) {
     try {
       const res = await generateGoogleImagen(promptText, {
-        model: options.engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
+        model: engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
         onProgress,
       });
       return { status: 'ready', base64Data: res.base64Data };
@@ -277,7 +235,7 @@ export async function generateStudioImage(
       console.error('[studio-shoot] imagen (explicit) failed, falling back to Kontext:', err);
     }
   }
-  if (options?.engine === 'flux_schnell' && falKey) {
+  if (engine === 'flux_schnell' && falKey) {
     try {
       const res = await generateFluxSchnellImage(promptText, { inputImageUrl, onProgress });
       return { status: 'ready', sampleUrl: res.sampleUrl };

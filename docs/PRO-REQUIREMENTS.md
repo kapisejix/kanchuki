@@ -1674,6 +1674,32 @@ and the 2026 image/video model landscape. See `docs/BUILD-LOG.md` (F-032
 entry) for the full research write-up. Roadmap slot: `docs/PLAN.md` (Future,
 post-MVP — after F-031 ships).
 
+### 24.12 Studio style catalog → DB-managed + per-plan — ✅ Built 2026-08-30
+
+Styles now live in the `studio_styles` DB table (migration `075_studio_styles`,
+owner applies), managed from the **Admin → Studio Styles** page:
+
+- Per style: `status` DRAFT / PUBLISHED / HIDDEN, `plans` (Starter / Growth /
+  Pro checkboxes — admin assigns each style to specific tiers, no default),
+  `tab` PRODUCT (no person) / MODEL (person swapped by product demographic),
+  optional `engine` override, `audience` demographic tags, admin-uploaded
+  sample-output `thumbnail`, `sort_order`.
+- Retailer picker: new `GET /v1/studio-styles` (plan-filtered, no prompt in
+  payload). Mobile `ProductStudioModal` becomes **Product Only** / **Models**
+  tabs; Models filtered by `demographicForCategory(product)`. Rows keep the
+  `Label (/slug)` text.
+- IDM-VTON photo-model path (`STUDIO_MODELS`, `getStudioModel`) retired —
+  the Models tab is prompt-based person-swap only.
+- Seed: 29 existing styles (21 MODEL + 8 PRODUCT) inserted as DRAFT /
+  unassigned by migration `075_studio_styles` (owner applies). Owner
+  curates + assigns plans + uploads thumbnails post-deploy; picker is
+  empty until then, by design.
+- `STUDIO_TEMPLATES` / `STUDIO_MODELS` constants deleted from
+  `@kanchuki/shared` (Task 6). Admin bench page migrated to API fetch.
+
+Full spec: `docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
+Supersedes step 6 of `docs/tasks/ai-studio-shoot-models-scenes.md`.
+
 ### 24.1 Problem
 
 Retailers photograph products on a rack or in a plain room — the photo is

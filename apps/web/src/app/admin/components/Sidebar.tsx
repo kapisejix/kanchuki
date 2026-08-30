@@ -56,6 +56,7 @@ import {
   Receipt,
   RefreshCw,
   Bug,
+  Clapperboard,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -100,6 +101,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },
       { label: 'Ratings & Reviews', href: '/admin/ratings', icon: Star },
       { label: 'Photo Cleanup Test', href: '/admin/photo-cleanup-test', icon: Wand2 },
+      { label: 'Studio Styles', href: '/admin/studio-styles', icon: Clapperboard },
     ],
   },
   {

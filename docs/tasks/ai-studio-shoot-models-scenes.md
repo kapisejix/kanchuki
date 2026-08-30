@@ -1,6 +1,6 @@
 # AI Studio Shoot — Demographic Models + Scene Expansion
 
-**Status:** Steps 1–5 BUILT (unmerged, admin-bench only) 2026-08-30 — see BUILD-LOG §2026-08-30 (demographic). Step 6 pending owner testing.
+**Status:** Steps 1–5 BUILT (unmerged, admin-bench only) 2026-08-30 — see BUILD-LOG §2026-08-30 (demographic). **Step 6 ✅ DONE** via the DB-backed style catalog (`docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md` — built 2026-08-30). That work replaces `STUDIO_TEMPLATES`/`STUDIO_MODELS` with a `studio_styles` table + admin manager + per-plan assignment, and folds in the mobile Product/Models tab split + demographic auto-filter that step 6 described. Constants deleted from `@kanchuki/shared`.
 **Created:** 2026-08-30
 **Owner workflow:** build steps 1–5 → owner tests every scene × demographic in the admin bench → owner finalises the subset to ship in the retailer mobile AI Studio → step 6 (mobile auto-filter) + un-draft the chosen scenes.
 
