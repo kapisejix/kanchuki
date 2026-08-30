@@ -5,9 +5,27 @@ import { Loader2, Eye, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getPassport, type PassportSession } from '@/lib/passport-client';
 import { PassportSheet } from './PassportSheet';
+
+// Detect in-app WebView (Paytm, GPay, Instagram, Google Lens) — these have
+// isolated cookie jars where the passport cookie won't persist.
+function isInAppWebView(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent;
+  return (
+    ua.includes('Instagram') ||
+    ua.includes('FBAN') ||
+    ua.includes('FBAV') ||
+    ua.includes('Paytm') ||
+    ua.includes('GoogleApp') ||
+    ua.includes('GPay') ||
+    ua.includes('Snapchat') ||
+    ua.includes('Line/') ||
+    ua.includes('Webview') // generic Android WebView
+  );
+}
 
 // Narrowed to just the fields this form actually renders
 interface GateProfile {
@@ -42,6 +60,9 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // WebView detection
+  const isWebView = useMemo(() => isInAppWebView(), []);
 
   // OTP state
   const [otpStep, setOtpStep] = useState<'phone' | 'otp'>('phone');
@@ -171,6 +192,13 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
     proceed();
   };
 
+  // Open in system browser (deep link out of WebView)
+  const openInBrowser = () => {
+    if (typeof window !== 'undefined') {
+      window.location.href = window.location.href;
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#F8F7FC] flex items-center justify-center">
@@ -203,6 +231,15 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
       className="min-h-screen bg-[#F8F7FC] flex flex-col items-center justify-center px-6 relative"
     >
+      {/* WebView nudge — passport cookie won't persist in in-app browsers */}
+      {isWebView && (
+        <div className="fixed top-0 left-0 right-0 bg-[#231F48] text-white text-xs text-center py-2 px-4 z-50">
+          <span className="opacity-80">For 1-tap access across shops, </span>
+          <button type="button" onClick={openInBrowser} className="underline font-bold">
+            open in Chrome
+          </button>
+        </div>
+      )}
       <Link
         href="/"
         className="absolute top-6 left-6 text-xs font-bold text-[#6B4773] hover:text-[#231F48] flex items-center gap-1 uppercase tracking-wider"
