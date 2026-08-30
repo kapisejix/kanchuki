@@ -109,7 +109,7 @@ export default async function StoreCategoriesPage({ params }: Props) {
         <div className="w-16 h-16 bg-white rounded-3xl items-center justify-center flex border border-[#E0E1F6] shadow-sm">
           <Store size={28} className="text-[#231F48]" />
         </div>
-        <h1 className="text-xl font-bold text-[#231F48] font-marcellus">{data.shop_name}</h1>
+        <h1 className="text-base leading-6 tracking-[0.02em] font-extrabold text-[#231F48] font-marcellus">{data.shop_name}</h1>
         <p className="text-sm text-[#6B4773]">Catalog coming soon.</p>
       </div>
     );

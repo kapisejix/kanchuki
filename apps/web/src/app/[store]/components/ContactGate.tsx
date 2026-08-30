@@ -131,7 +131,7 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
             </div>
           )}
           <div>
-            <h1 className="text-lg font-bold text-[#231F48] font-marcellus">{profile.shop_name}</h1>
+            <h1 className="text-base leading-6 tracking-[0.02em] font-extrabold text-[#231F48] font-marcellus">{profile.shop_name}</h1>
             {profile.city && <p className="text-xs text-[#6B4773] font-medium">{profile.city}</p>}
           </div>
         </div>

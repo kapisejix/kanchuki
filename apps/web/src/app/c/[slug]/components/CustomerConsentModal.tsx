@@ -106,7 +106,7 @@ export function CustomerConsentModal({
               Boutique Direct Connect
             </span>
           </div>
-          <h2 className="text-xl font-extrabold text-[#231F48] font-marcellus leading-tight">
+          <h2 className="text-base leading-6 tracking-[0.02em] font-extrabold text-[#231F48] font-marcellus">
             Enquire on WhatsApp
           </h2>
           <p className="text-xs text-[#6B4773] mt-0.5 font-medium">
