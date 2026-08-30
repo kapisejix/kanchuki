@@ -23,6 +23,50 @@ import {
 } from '../../lib/msg91-otp.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
 
+// ─── Session helper ───────────────────────────────────────────────
+
+function parseCookies(cookieHeader: string): Record<string, string> {
+  return Object.fromEntries(
+    cookieHeader.split(';').map((c) => {
+      const [key, ...val] = c.trim().split('=');
+      return [key!, val.join('=')];
+    }),
+  );
+}
+
+/**
+ * Extract and validate the passport session from the request cookie.
+ * Returns the session + account, or null if unauthenticated/expired.
+ * Slides the session expiry on each valid access.
+ */
+async function getPassportSession(cookieHeader: string) {
+  const cookies = parseCookies(cookieHeader);
+  const sessionId = cookies[COOKIE_NAME];
+  if (!sessionId) return null;
+
+  const session = await prisma.passportSession.findUnique({
+    where: { id: sessionId },
+    include: { customer_account: true },
+  });
+
+  if (!session || session.revoked_at) return null;
+  if (session.expires_at < new Date()) {
+    await prisma.passportSession.delete({ where: { id: sessionId } }).catch(() => {});
+    return null;
+  }
+
+  // Slide expiry on each access
+  await prisma.passportSession.update({
+    where: { id: sessionId },
+    data: {
+      last_seen_at: new Date(),
+      expires_at: new Date(Date.now() + SESSION_TTL_SEC * 1000),
+    },
+  });
+
+  return session;
+}
+
 // ─── Constants ────────────────────────────────────────────────────
 
 const COOKIE_NAME = 'kanchuki_passport';
@@ -224,43 +268,10 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   // Returns the current passport session info. Used by ContactGate
   // to determine returning vs first-time shopper.
   server.get('/me', async (request, reply) => {
-    const cookieHeader = request.headers.cookie || '';
-    const cookies = Object.fromEntries(
-      cookieHeader.split(';').map((c) => {
-        const [key, ...val] = c.trim().split('=');
-        return [key!, val.join('=')];
-      }),
-    );
-    const sessionId = cookies[COOKIE_NAME];
-
-    if (!sessionId) {
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (!session) {
       return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
-
-    // Look up session: Redis first (future), DB fallback
-    const session = await prisma.passportSession.findUnique({
-      where: { id: sessionId },
-      include: { customer_account: true },
-    });
-
-    if (!session || session.revoked_at) {
-      return reply.status(401).send({ error: { code: 'INVALID_SESSION', message: 'Session expired' } });
-    }
-
-    if (session.expires_at < new Date()) {
-      // Expired — clean up
-      await prisma.passportSession.delete({ where: { id: sessionId } });
-      return reply.status(401).send({ error: { code: 'SESSION_EXPIRED', message: 'Session expired' } });
-    }
-
-    // Slide the session expiry (refresh on each access)
-    await prisma.passportSession.update({
-      where: { id: sessionId },
-      data: {
-        last_seen_at: new Date(),
-        expires_at: new Date(Date.now() + SESSION_TTL_SEC * 1000),
-      },
-    });
 
     const acct = session.customer_account;
     return reply.status(200).send({
@@ -272,6 +283,125 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
         city: acct.city,
       },
     });
+  });
+
+  // ─── GET /passport/stores ──────────────────────────────────────
+  // List stores the shopper has visited. Number always masked.
+  server.get('/stores', async (request, reply) => {
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (!session) {
+      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+    }
+
+    const visits = await prisma.customerStoreVisit.findMany({
+      where: { customer_account_id: session.customer_account_id },
+      include: {
+        retailer: {
+          select: { id: true, shop_name: true, city: true, logo_url: true },
+        },
+      },
+      orderBy: { last_visited_at: 'desc' },
+    });
+
+    return reply.status(200).send({
+      stores: visits.map((v) => ({
+        retailer: v.retailer,
+        first_visited_at: v.first_visited_at,
+        last_visited_at: v.last_visited_at,
+        visit_count: v.visit_count,
+        is_muted: v.is_muted,
+        contact_shared: v.contact_shared,
+      })),
+    });
+  });
+
+  // ─── POST /passport/stores/:retailerId/mute ────────────────────
+  // Toggle mute for a store. Muted stores are skipped in WhatsApp sends.
+  server.post('/stores/:retailerId/mute', async (request, reply) => {
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (!session) {
+      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+    }
+
+    const { retailerId } = request.params as { retailerId: string };
+
+    const visit = await prisma.customerStoreVisit.findUnique({
+      where: { customer_account_id_retailer_id: { customer_account_id: session.customer_account_id, retailer_id: retailerId } },
+    });
+    if (!visit) {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Store not found' } });
+    }
+
+    const newMuted = !visit.is_muted;
+    await prisma.customerStoreVisit.update({
+      where: { id: visit.id },
+      data: { is_muted: newMuted },
+    });
+
+    // Write ConsentEvent
+    await prisma.consentEvent.create({
+      data: {
+        customer_account_id: session.customer_account_id,
+        retailer_id: retailerId,
+        kind: newMuted ? 'STORE_MUTED' : 'STORE_UNMUTED',
+        notice_version: CURRENT_NOTICE_VERSION,
+      },
+    });
+
+    return reply.status(200).send({ ok: true, is_muted: newMuted });
+  });
+
+  // ─── POST /passport/stores/:retailerId/remove ──────────────────
+  // Remove contact from a store. Soft-deletes the Customer row,
+  // keeps the visit history with contact_shared=false.
+  server.post('/stores/:retailerId/remove', async (request, reply) => {
+    const session = await getPassportSession(request.headers.cookie || '');
+    if (!session) {
+      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+    }
+
+    const { retailerId } = request.params as { retailerId: string };
+
+    const visit = await prisma.customerStoreVisit.findUnique({
+      where: { customer_account_id_retailer_id: { customer_account_id: session.customer_account_id, retailer_id: retailerId } },
+    });
+    if (!visit) {
+      return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Store not found' } });
+    }
+
+    // Soft-delete the retailer-scoped Customer row for this account
+    const account = session.customer_account;
+    const normalizedPhone = normalizeIndianPhone(account.phone);
+    await prisma.customer.updateMany({
+      where: {
+        retailer_id: retailerId,
+        phone: normalizedPhone,
+        deleted_at: null,
+      },
+      data: { deleted_at: new Date() },
+    });
+
+    // Update visit to reflect withdrawal
+    await prisma.customerStoreVisit.update({
+      where: { id: visit.id },
+      data: {
+        contact_shared: false,
+        whatsapp_consent: false,
+        whatsapp_consent_at: null,
+      },
+    });
+
+    // Write ConsentEvent
+    await prisma.consentEvent.create({
+      data: {
+        customer_account_id: session.customer_account_id,
+        retailer_id: retailerId,
+        kind: 'STORE_CONSENT_WITHDRAWN',
+        notice_version: CURRENT_NOTICE_VERSION,
+      },
+    });
+
+    return reply.status(200).send({ ok: true });
   });
 
   // ─── POST /passport/logout ─────────────────────────────────────
