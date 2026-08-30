@@ -885,10 +885,10 @@ Spec: `docs/PRO-REQUIREMENTS.md` §24, roadmap `docs/PLAN.md` (Future slot). Wri
 
 **Not built (Phase B/C — do-not-start still applies):** product video generation (Seedance/Kling), AI Fashion Model. **Remaining real backlog** (from the tasks doc, genuinely unchecked): BFL credit-consumption tracking in job metadata, image size validation (<20MB/<20MP) before BFL submit, GPU detection on the V-Tone box, responsive (non-fixed-3:4) gallery aspect ratio.
 
-### 📋 PLANNED (spec 2026-08-30, awaiting owner go): Studio style catalog → DB-managed + per-plan
+### ✅ BUILT 2026-08-30: Studio style catalog → DB-managed + per-plan
 
-Design approved, no code yet. Full spec + file-level plan:
-`docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`. Summary:
+Full spec + file-level plan:
+`docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
 
 - **New `studio_styles` table** (migration `075_studio_styles`, owner
   applies) replaces the hardcoded `STUDIO_TEMPLATES` / `STUDIO_MODELS`
@@ -920,6 +920,8 @@ Design approved, no code yet. Full spec + file-level plan:
   `supabase:supabase-postgres-best-practices` for migration `075`,
   `frontend-design` for the admin page, `superpowers:requesting-code-review`
   before the PR).
+
+**Verification:** `admin-studio-styles.test.ts` (7), `products-studio.test.ts` (15), `studio-shoot.test.ts` (9) — all green. `security.test.ts` (24), `admin.login.test.ts` (14) — regression clean. `tsc --noEmit` clean in `packages/shared`, `apps/api`, `apps/mobile`, `apps/web`. Migration `075_studio_styles` written, owner applies.
 
 **How PhotoRoom works (their own engineering blog, verified):** background removal = proprietary on-device segmentation model; AI Backgrounds = diffusion-based **outpainting** (preserves product pixels exactly, invents matching lighting); a from-scratch ~1B-param Transformer latent diffusion model trained on ~90M images (architecture like DiT/PixArt, trained for *editing* not text-to-image) powers Expand/Fill/Erase/upscale/volumetric shadows; sub-second inference via distillation + TensorRT; Video Generator = product-focused image-to-video with 300+ motion templates + Multi-Image Video API (up to 7 refs → 360° spins); AI Fashion Model = lifestyle on-model shots from one product photo (retailers report 25–32% photographer-cost cuts). **Lessons to copy:** own the subject not the scene; one model many features; templates beat free text for SMB retailers; latency is the product.
 

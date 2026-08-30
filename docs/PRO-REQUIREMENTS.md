@@ -1674,11 +1674,10 @@ and the 2026 image/video model landscape. See `docs/BUILD-LOG.md` (F-032
 entry) for the full research write-up. Roadmap slot: `docs/PLAN.md` (Future,
 post-MVP — after F-031 ships).
 
-### 24.12 Studio style catalog → DB-managed + per-plan (spec 2026-08-30, 📋 PLANNED — awaiting owner go)
+### 24.12 Studio style catalog → DB-managed + per-plan — ✅ Built 2026-08-30
 
-The Phase A style list currently lives in the hardcoded `STUDIO_TEMPLATES`
-constant (`packages/shared`). Approved design moves it into a
-`studio_styles` table managed from a new **Admin → Studio Styles** page:
+Styles now live in the `studio_styles` DB table (migration `075_studio_styles`,
+owner applies), managed from the **Admin → Studio Styles** page:
 
 - Per style: `status` DRAFT / PUBLISHED / HIDDEN, `plans` (Starter / Growth /
   Pro checkboxes — admin assigns each style to specific tiers, no default),
@@ -1695,8 +1694,10 @@ constant (`packages/shared`). Approved design moves it into a
   unassigned by migration `075_studio_styles` (owner applies). Owner
   curates + assigns plans + uploads thumbnails post-deploy; picker is
   empty until then, by design.
+- `STUDIO_TEMPLATES` / `STUDIO_MODELS` constants deleted from
+  `@kanchuki/shared` (Task 6). Admin bench page migrated to API fetch.
 
-Full design + file-level plan: `docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
+Full spec: `docs/superpowers/specs/2026-08-30-studio-styles-admin-design.md`.
 Supersedes step 6 of `docs/tasks/ai-studio-shoot-models-scenes.md`.
 
 ### 24.1 Problem
