@@ -2,11 +2,7 @@
 
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
 import {
-  isNoModelTemplate,
   PRODUCT_DEMOGRAPHICS,
-  STUDIO_MODELS,
-  STUDIO_TEMPLATES,
-  studioTemplatesFor,
   type Demographic,
 } from '@kanchuki/shared';
 import { motion } from 'framer-motion';
@@ -104,23 +100,33 @@ export default function PhotoCleanupTestPage() {
   const modelUrlRef = useRef<string | null>(null);
   const tryOnPollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // AI Studio Shoot (F-032) — same generateStudioImage() the retailer feature
-  // uses, run synchronously against the uploaded product photo.
-  const [studioTemplate, setStudioTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'runway');
-  const [studioModelId, setStudioModelId] = useState<string>('');
+  // AI Studio Shoot (F-032) — DB-backed styles from admin studio-styles API.
+  type StudioStyleRow = {
+    id: string; slug: string; label: string; description: string;
+    prompt: string; tab: 'PRODUCT' | 'MODEL'; status: string;
+    plans: string[]; engine: string | null; audience: string[];
+    thumbnail_url: string | null; sort_order: number;
+  };
+  const [studioStyles, setStudioStyles] = useState<StudioStyleRow[]>([]);
+  const [studioSlug, setStudioSlug] = useState<string>('');
   const [studioPrompt, setStudioPrompt] = useState<string>('');
-  // Product demographic — filters the scene dropdown and tells the API
-  // which person to render. '' = show every scene (no filter).
   const [studioDemographic, setStudioDemographic] = useState<'' | Demographic>('');
-  const scenesForPicker = studioDemographic
-    ? studioTemplatesFor(studioDemographic)
-    : STUDIO_TEMPLATES;
-  // If the current scene falls outside the filter, snap to the first allowed one.
+  // Fetch all admin studio styles (any status — bench tests drafts).
   useEffect(() => {
-    if (!scenesForPicker.some((t) => t.id === studioTemplate)) {
-      setStudioTemplate(scenesForPicker[0]?.id ?? 'runway');
+    fetch(`${API_URL}/v1/admin/studio-styles`, adminGetOptions())
+      .then((r) => r.json())
+      .then((json) => setStudioStyles(json.data ?? []))
+      .catch(() => {});
+  }, []);
+  const scenesForPicker = studioDemographic
+    ? studioStyles.filter((s) => s.tab === 'MODEL' && (s.audience.length === 0 || s.audience.includes(studioDemographic)))
+    : studioStyles;
+  // If the current slug falls outside the filter, snap to the first allowed one.
+  useEffect(() => {
+    if (scenesForPicker.length > 0 && !scenesForPicker.some((s) => s.slug === studioSlug)) {
+      setStudioSlug(scenesForPicker[0]?.slug ?? '');
     }
-  }, [scenesForPicker, studioTemplate]);
+  }, [scenesForPicker, studioSlug]);
   const [studioBusy, setStudioBusy] = useState(false);
   const [studioResults, setStudioResults] = useState<
     { id: string; productUrl: string; resultUrl: string; label: string; ranAt: string }[]
@@ -137,8 +143,7 @@ export default function PhotoCleanupTestPage() {
         method: 'POST',
         body: JSON.stringify({
           product_url: productUrl,
-          template: studioTemplate,
-          model_id: studioModelId || undefined,
+          slug: studioSlug || undefined,
           demographic: studioDemographic || undefined,
           prompt: studioPrompt.trim() || undefined,
         }),
@@ -147,10 +152,8 @@ export default function PhotoCleanupTestPage() {
       if (!res.ok) throw new Error(json?.error?.message ?? 'Studio shoot failed');
       const label = studioPrompt.trim()
         ? 'Custom prompt'
-        : studioModelId
-          ? (STUDIO_MODELS.find((m) => m.id === studioModelId)?.title ?? studioModelId)
-          : (STUDIO_TEMPLATES.find((t) => t.id === (json.data.template ?? studioTemplate))?.label ??
-            studioTemplate);
+        : (studioStyles.find((s) => s.slug === (json.data.slug ?? studioSlug))?.label ??
+          studioSlug);
       setStudioResults((prev) => [
         {
           id: crypto.randomUUID(),
@@ -502,46 +505,23 @@ export default function PhotoCleanupTestPage() {
             </label>
             <select
               id="studio-template"
-              value={studioTemplate}
-              onChange={(e) => {
-                setStudioTemplate(e.target.value);
-                setStudioModelId('');
-              }}
+              value={studioSlug}
+              onChange={(e) => setStudioSlug(e.target.value)}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              {scenesForPicker.map((t) => {
-                const aud = (t as { audience?: readonly string[] }).audience;
-                return (
-                  <option key={t.id} value={t.id}>
-                    {t.label} ({t.command}){' '}
-                    {isNoModelTemplate(t)
+              {scenesForPicker.map((s) => (
+                  <option key={s.slug} value={s.slug}>
+                    {s.label} (/{s.slug}){' '}
+                    {s.tab === 'PRODUCT'
                       ? '· product-only'
-                      : aud
-                        ? `· ${aud.join('/')}`
+                      : s.audience.length > 0
+                        ? `· ${s.audience.join('/')}`
                         : '· all models'}
                   </option>
-                );
-              })}
+                ))}
             </select>
           </div>
-          <div className="flex flex-col gap-1">
-            <label htmlFor="studio-model" className="text-xs text-gray-500">
-              Fashion model — advanced override
-            </label>
-            <select
-              id="studio-model"
-              value={studioModelId}
-              onChange={(e) => setStudioModelId(e.target.value)}
-              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
-            >
-              <option value="">— use demographic + scene —</option>
-              {STUDIO_MODELS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title} ({m.gender})
-                </option>
-              ))}
-            </select>
-          </div>
+
         </div>
         <div className="flex flex-col gap-1">
           <label htmlFor="studio-prompt" className="text-xs text-gray-500">
