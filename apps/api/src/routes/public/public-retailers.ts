@@ -857,6 +857,15 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
           },
         });
 
+        // Fire-and-forget: welcome + catalog link via WhatsApp
+        // (Cloud-API retailers only; others see the lead in CRM)
+        import('../../jobs/passport-welcome.js')
+          .then(({ dispatchWelcome }) => dispatchWelcome({
+            account_id: customerId,
+            retailer_id: retailer.id,
+          }))
+          .catch(() => {}); // non-critical — swallow
+
         return reply.status(201).send({ data: customer });
       }
 
