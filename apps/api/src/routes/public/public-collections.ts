@@ -6,6 +6,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
+import { recordInteraction } from '../../lib/passport-activity.js';
 import {
   buildFacets,
   buildProductFilterWhere,
@@ -248,6 +249,15 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
+    // Record passport interaction (fire-and-forget)
+    recordInteraction({
+      retailerId: collection.retailer_id,
+      productId: product_id,
+      collectionId: collection.id,
+      type: 'enquiry',
+      metadata: { collection_slug: slug },
+    }).catch(() => {});
+
     await prisma.collection.update({
       where: { id: collection.id },
       data: { enquiry_count: { increment: 1 } },
@@ -279,7 +289,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
 
     const collection = await prisma.collection.findFirst({
       where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null },
-      select: { id: true },
+      select: { id: true, retailer_id: true },
     });
     if (!collection) return reply.status(204).send();
 
@@ -288,6 +298,15 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       where: { id: collection.id },
       data: { favorite_count: { increment: 1 } },
     });
+
+    // Record passport interaction (fire-and-forget)
+    recordInteraction({
+      retailerId: collection.retailer_id,
+      productId: body.data.product_id,
+      collectionId: collection.id,
+      type: 'favorite',
+      metadata: { collection_slug: slug },
+    }).catch(() => {});
 
     return reply.status(204).send();
   });
