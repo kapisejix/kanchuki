@@ -57,6 +57,15 @@ export async function getPassport(): Promise<PassportSession | null> {
 }
 
 /**
+ * Get the passport session account info (alias for use in layout).
+ * Returns the PassportAccount or null if not authenticated.
+ */
+export async function getPassportSession(): Promise<PassportAccount | null> {
+  const session = await getPassport();
+  return session?.account ?? null;
+}
+
+/**
  * Clear the cached session (e.g. after logout).
  */
 export function clearPassportCache(): void {
