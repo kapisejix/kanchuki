@@ -127,7 +127,8 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 
 ### NEVER Allowed
 - **Modify production environment variables**
-- **Trigger deployments** — manual only via Railway dashboard
+- **Trigger deployments** — only via Railway dashboard Redeploy button or GitHub push; never via `railway up` CLI
+- **Run `railway up` from a local machine** — this ships local files, not GitHub code; causes stale-code incidents. ALL deploys must come from GitHub (push to main → Railway auto-deploys). See `docs/DEPLOY.md` for the correct flow.
 - **Run database migrations** — only from admin dashboard with approval
 - **Execute commands that modify the production database directly**
 - **Modify CI/CD pipeline configuration**
@@ -195,6 +196,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style quiz, AI Stylist v1 (Claude-powered chat), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
 | 52 | Customer Profile P3 — regional weave/style filters (12 Indian regions), customer referral rewards (code + WhatsApp share), family/gifting mode (save sizes for family members) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` |
 | 53 | Add-Product raw-photo default (auto-clean OFF — raw saved as-is) + restored per-photo Background/Shadow controls on product detail (`ProductPhotoControls`, dropped in the `b0c3747` redesign) + AI Studio Shoot per-model prompts (Fashion Models no longer collapse to one identical image) + Admin backdrop library: delete (`DELETE /admin/background-images/:id` + trash button), click-thumbnail full-size lightbox, AI scene-naming on upload (`name` optional → `runVisionAsk`) | ✅ Built + live | 2026-08-29 | BUILD-LOG §2026-08-29 |
+| 54 | AI Studio Shoot — demographic person-swap + scene expansion: product category → `Demographic` (`womens`/`mens`/`teen_girl`/`teen_boy`/`kids_girl`/`kids_boy`), scenes tagged `noModel` (product-only) / `audience` (per-demographic), `generateStudioImage()` swaps the person per demographic, 5 new scenes (Seated Lounge, Male with Car/Bike, Kids Playing, Teen Street), admin bench gets a demographic filter. Steps 1–5 of `docs/tasks/ai-studio-shoot-models-scenes.md`. | 🧪 Built (unmerged) — admin-bench only, owner testing; step 6 = un-draft + mobile auto-filter | 2026-08-30 | BUILD-LOG §2026-08-30 (demographic) |
  
 ---
 

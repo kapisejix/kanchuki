@@ -29,7 +29,15 @@
 // V-Tone admin tool / spin-frame extraction).
 import { Redis } from 'ioredis';
 import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
-import { getStudioModel, getStudioTemplate, type StudioModelId, type StudioTemplateId } from '@kanchuki/shared';
+import {
+  demographicForCategory,
+  getStudioModel,
+  getStudioTemplate,
+  isNoModelTemplate,
+  type Demographic,
+  type StudioModelId,
+  type StudioTemplateId,
+} from '@kanchuki/shared';
 import { getSecret } from '@kanchuki/db';
 import { AppError } from '../plugins/error-handler.js';
 import { generateFluxKontext, generateFluxProImage, generateFluxSchnellImage, generateIdmVtonTryon, isFalConfigured, resolveFalKey } from './fal-client.js';
@@ -74,17 +82,26 @@ const POLL_TIMEOUT_MS = 180_000;
 const POLL_INTERVALS_MS = [1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 3_000, 3_000, 5_000, 5_000, 10_000, 10_000, 15_000, 15_000];
 
 /**
- * Determine the appropriate Indian fashion model demographic based on the garment category and title.
+ * The person to render for each product demographic. Fed into every
+ * model scene so a male / teen / kids product no longer renders as an
+ * adult woman (the old hardcoded "graceful Indian fashion model").
  */
-function resolveIndianModelDescription(product?: { category?: string | null; name?: string | null }): string {
-  const combined = `${product?.category ?? ''} ${product?.name ?? ''}`.toLowerCase();
-  if (/(men|gents|sherwani|kurta pajama|kurta pyjama|nehru jacket|bandhgala|dhoti|menswear)/i.test(combined) && !/(women|ladies)/i.test(combined)) {
-    return 'an elegant Indian gentleman / male fashion model';
-  }
-  if (/(kid|boy|child|toddler)/i.test(combined)) {
-    return 'a charming young Indian boy model';
-  }
-  return 'a graceful Indian lady / female fashion model';
+const PERSON_CLAUSE: Record<Demographic, string> = {
+  womens: 'a graceful adult Indian woman fashion model',
+  mens: 'a dignified adult Indian man fashion model',
+  teen_girl: 'an Indian teenage girl model, about 15 years old',
+  teen_boy: 'an Indian teenage boy model, about 15 years old',
+  kids_girl: 'a young Indian girl child model, about 6 years old',
+  kids_boy: 'a young Indian boy child model, about 6 years old',
+};
+
+/** Explicit demographic (admin bench) wins; otherwise infer from the product. */
+function resolveDemographic(
+  explicit: string | undefined,
+  product?: { category?: string | null; name?: string | null },
+): Demographic {
+  if (explicit && explicit in PERSON_CLAUSE) return explicit as Demographic;
+  return demographicForCategory(product?.category, product?.name);
 }
 
 /**
@@ -102,6 +119,9 @@ export async function generateStudioImage(
      * lets you paste a formula straight from AI Models and Scenes.html). The
      * colour-accuracy tail is still appended. */
     customPrompt?: string;
+    /** Demographic override (admin bench). Omitted → inferred from the
+     * product category. Decides which person the scene renders. */
+    demographic?: Demographic | string;
     product?: {
       name?: string | null;
       category?: string | null;
@@ -136,8 +156,17 @@ export async function generateStudioImage(
     .filter(Boolean)
     .join(', ');
 
-  // If engine is IDM-VTON (Virtual Fashion Model) or modelId is specified
-  if (options?.engine === 'idm_vton' || options?.modelId) {
+  const demographic = resolveDemographic(
+    typeof options?.demographic === 'string' ? options.demographic : undefined,
+    product,
+  );
+
+  // IDM-VTON (draping onto a real model photo) only makes sense for the
+  // adult womens/mens models we have photos for. Teen/kids demographics
+  // skip straight to the prompt path — a stock adult VTON result would
+  // otherwise be returned here and never corrected.
+  const vtonEligible = demographic === 'womens' || demographic === 'mens';
+  if ((options?.engine === 'idm_vton' || options?.modelId) && vtonEligible) {
     const selectedModel = getStudioModel(options?.modelId ?? 'priya_bridal') ?? {
       model_image_url: 'https://assets.kanchuki.app/models/priya_bridal.jpg',
       name: 'Priya',
@@ -167,7 +196,7 @@ export async function generateStudioImage(
     throw new AppError('STUDIO_SHOOT_FAILED', 'Unknown studio template', 422);
   }
 
-  const indianModelDesc = resolveIndianModelDescription(product);
+  const indianModelDesc = PERSON_CLAUSE[demographic];
 
   // Fashion-Model path: when the retailer picked a MODEL (not a scene) and the
   // IDM-VTON path above didn't return (no Fal key / VTON error), build the
@@ -191,6 +220,25 @@ export async function generateStudioImage(
   // If Catwalk Runway preset, customize the model with the exact Indian demographic
   if (templateId === 'runway' || (template && template.id === 'runway')) {
     basePrompt = `Place this outfit in a high-fashion catwalk runway show with overhead spotlights and soft blurred audience bokeh in the background. ${indianModelDesc} is walking gracefully down the runway. The garment shape, drape, exact original color, embroidery, and texture are 100% preserved with true-tone lighting.`;
+  }
+
+  // Demographic person-swap: the curated scene prompts hardcode
+  // "a graceful Indian fashion model" (an adult woman). For a male /
+  // teen / kids product, force the right person into the scene and
+  // neutralise the stock wording. Skipped for product-only scenes,
+  // custom prompts, the model path, and runway (already handled above).
+  if (
+    template &&
+    !isNoModelTemplate(template) &&
+    !options?.customPrompt &&
+    !options?.modelId &&
+    template.id !== 'runway'
+  ) {
+    basePrompt = basePrompt.replace(
+      /a (?:graceful|professional|dignified|charming|elegant|young)[^.,]*?Indian (?:fashion model|lady \/ female fashion model|gentleman \/ male fashion model|lady|gentleman|boy model|woman fashion model|man fashion model)/gi,
+      indianModelDesc,
+    );
+    basePrompt = `The person wearing this garment is ${indianModelDesc}. ${basePrompt}`;
   }
 
   const colorEnforcement = colorSpec

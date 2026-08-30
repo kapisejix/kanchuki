@@ -1443,3 +1443,56 @@ CREATE TABLE "design_references" (
 ### Notes
 
 - PR #8 history carries two no-op commits (`a0c8940` + its revert `653e0c1`) — a `git add -A` slip on `docs/tasks/AI Models and Scenes.{html,hmtl}`, then restored byte-identical to `c7477c6`.
+
+---
+
+## BUILT (unmerged, admin-bench only) 2026-08-30: AI Studio Shoot — demographic person-swap + scene expansion
+
+Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No migration, no commit yet — owner tests every scene × demographic in the admin bench, then finalises the shipped subset (step 6: mobile auto-filter + un-draft).
+
+**Problem:** every model scene hardcoded "a graceful Indian fashion model" (an adult woman), and the retailer had to separately pick a fashion model. A male / kids / teen product rendered as a woman unless a `STUDIO_MODELS` entry was chosen.
+
+**Fix:** the product's AI-tagged **category** derives a *demographic*; the scene template describes only the setting; `generateStudioImage()` swaps the person in. Scenes are tagged product-only (`noModel`) or restricted to demographics (`audience`).
+
+### `packages/shared/src/constants/index.ts`
+
+| Add | Detail |
+|---|---|
+| `PRODUCT_DEMOGRAPHICS` + `Demographic` | `womens \| mens \| teen_girl \| teen_boy \| kids_girl \| kids_boy` |
+| `demographicForCategory(category, name)` | keyword heuristic on the category/name string; ambiguous → `womens` (today's default). Generic kidswear → `kids_boy` (tester flips to girl in the bench). |
+| `STUDIO_TEMPLATES` element type | new optional `noModel?: boolean`, `audience?: readonly Demographic[]` |
+| `isNoModelTemplate(t)` | `noModel === true` OR prompt already forbids a person ("Replace the background of this product photo…", "Product-only shot, no person…", macro rows) |
+| `studioTemplatesFor(demo)` | `isNoModelTemplate(t) \|\| !t.audience \|\| t.audience.includes(demo)` |
+| Tags | `audience: ['womens']` → `dupatta_motion`, `seated_haveli_steps`, `bridalwear`. `noModel: true` → `seasoncollection`, `display_hanger` (the rest of the product-only rows are caught by `isNoModelTemplate`'s prompt check). |
+| 5 new scenes (all `draft: true`) | `seated_lounge` (Seated Lounge, universal), `male_with_car` / `male_with_bike` (`['mens','teen_boy']`), `kids_playing` (`['kids_boy','kids_girl']`), `teen_street` (`['teen_girl','teen_boy']`) |
+
+`STUDIO_MODELS` + `getStudioModel` untouched — the IDM-VTON / retailer fashion-model path still uses them.
+
+### `apps/api/src/lib/studio-shoot.ts`
+
+- `PERSON_CLAUSE: Record<Demographic, string>` (adult woman / adult man / teenage girl ~15 / teenage boy ~15 / girl child ~6 / boy child ~6).
+- `generateStudioImage` options: new optional `demographic?: Demographic | string`. Omitted → `demographicForCategory(product.category, product.name)`.
+- Dead `resolveIndianModelDescription` removed; `runway` + no-template paths now use `PERSON_CLAUSE[demographic]`.
+- Non-`noModel` model scenes: regex-swap the stock "graceful Indian fashion model" phrasing to the demographic clause **and** prepend `"The person wearing this garment is <clause>."` (belt-and-braces — the prepend steers even if the regex misses). Skipped for `customPrompt`, `modelId`, `runway`, and product-only scenes.
+- IDM-VTON branch gated to `demographic === 'womens' | 'mens'` — teen/kids skip straight to the prompt path (a stock adult VTON result would otherwise be returned and never corrected).
+
+### `apps/api/src/routes/admin/admin-photo-cleanup.ts`
+
+- `POST /admin/photo-cleanup/studio-shoot` body: new optional `demographic: z.enum(PRODUCT_DEMOGRAPHICS)`, passed straight to `generateStudioImage`.
+
+### `apps/web/src/app/admin/photo-cleanup-test/page.tsx`
+
+- New **Product demographic** `<select>` (6 + "— any / all scenes —"). Filters the scene dropdown via `studioTemplatesFor()`; snaps the selection to the first allowed scene when the current one falls outside the filter.
+- Scene `<option>` labels carry a hint: `· product-only` / `· mens/teen_boy` / `· all models`.
+- Old "Fashion model" dropdown relabelled **"Fashion model — advanced override"**.
+- Sends `demographic` in the `/studio-shoot` POST body.
+
+### Verified
+
+- `@kanchuki/shared` rebuilt; `apps/api` + `apps/web` `tsc --noEmit` → clean.
+- `vitest run src/lib/studio-shoot.test.ts src/routes/admin/admin-photo-cleanup.test.ts src/routes/products-studio.test.ts` → 25/25.
+
+### Not done (step 6, after owner testing)
+
+- Un-draft the finalised scene set.
+- Mobile auto-filter in `apps/mobile/src/components/product-detail/ProductStudioModal.tsx` — `product.category` → `demographicForCategory` → `studioTemplatesFor`, no manual demographic pick for the retailer.

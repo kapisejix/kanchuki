@@ -324,12 +324,58 @@ export const R2_PATHS = {
 // this is the credits-per-image multiplier the UI shows the retailer.
 export const STUDIO_CREDITS_PER_IMAGE = 8;
 
+// ─── Product demographic (derived from the AI-tagged category) ───────
+// AI Studio Shoot no longer asks "which model?" — the product's category
+// string tells us who wears it, and the scene picker is filtered to the
+// scenes that suit that demographic. This is a heuristic keyword match
+// (no schema field); ambiguous input falls back to 'womens' (today's
+// default). The admin bench lets the tester override it manually.
+export const PRODUCT_DEMOGRAPHICS = [
+  'womens',
+  'mens',
+  'teen_girl',
+  'teen_boy',
+  'kids_girl',
+  'kids_boy',
+] as const;
+export type Demographic = (typeof PRODUCT_DEMOGRAPHICS)[number];
+
+export function demographicForCategory(category?: string | null, name?: string | null): Demographic {
+  const s = `${category ?? ''} ${name ?? ''}`.toLowerCase();
+  const kid = /\b(kid|kids|kid'?s|child|children|toddler|infant|baby)\b/.test(s) || /\bfrock\b/.test(s);
+  const teen = /\b(teen|teens|teenage|teenager|junior)\b/.test(s);
+  const girl = /\b(girl|girls|girl'?s)\b/.test(s);
+  const boy = /\b(boy|boys|boy'?s)\b/.test(s);
+  const mens =
+    /\b(men'?s|mens|gents?|male|sherwani|nehru jacket|bandhgala|pathani|menswear|waistcoat)\b/.test(s) ||
+    /\bkurta paja?ma\b/.test(s) ||
+    /\bkurta pyjama\b/.test(s) ||
+    /\bdhoti kurta\b/.test(s);
+  const womensHint =
+    /\b(women'?s|woman|ladies|lady|saree|sari|lehenga|choli|kurti|anarkali|sharara|salwar|blouse|gown)\b/.test(s);
+
+  if (teen && girl) return 'teen_girl';
+  if (teen && boy) return 'teen_boy';
+  if (kid && girl) return 'kids_girl';
+  if (kid && boy) return 'kids_boy';
+  if (kid) return 'kids_boy'; // generic kidswear → boy bucket; tester can switch to girl in the bench
+  if (mens && !womensHint) return 'mens';
+  return 'womens';
+}
+
 // Scene-only prompts; generateStudioImage() appends the colour-fidelity
 // tail. Curated list (owner-finalised 2026-08-29, 18 styles) — shown in
 // both the retailer mobile picker and the admin photo-cleanup-test
 // dropdown. The last 10 are custom backdrops staged/tested in
 // docs/tasks/AI Models and Scenes.html; reference images live in
 // docs/photoshoots/background/. preview_image_url is pending public URLs.
+//
+// 2026-08-30 — demographic tags:
+//   noModel: true    → product-only scene (no person). Always offered,
+//                      regardless of the product's demographic.
+//   audience: [...]   → scene only fits these demographics. Omitted =
+//                      fits every demographic (person swapped by
+//                      generateStudioImage() from the product category).
 export const STUDIO_TEMPLATES = [
   {
     id: 'studiomodel',
@@ -353,6 +399,7 @@ export const STUDIO_TEMPLATES = [
     command: '/twirl',
     label: 'Dupatta in Motion',
     description: 'Pose — mid-turn, dupatta and skirt caught in the air',
+    audience: ['womens'],
     prompt:
       'Place this outfit on a graceful Indian fashion model captured mid-motion, turning with the dupatta and skirt caught in the air and a slight wind, soft neutral backdrop with gentle motion blur only in the background. The garment stays sharp with colour, drape and embroidery 100% preserved.',
   },
@@ -361,6 +408,7 @@ export const STUDIO_TEMPLATES = [
     command: '/sitting',
     label: 'Seated Haveli Steps',
     description: 'Pose — seated on carved stone steps, dupatta on lap',
+    audience: ['womens'],
     prompt:
       'Place this outfit on a graceful Indian fashion model seated on carved stone haveli steps with the dupatta arranged across the lap, potted palms and a lantern softly out of focus behind, full garment visible. Neutral daylight keeps true colour and zari.',
   },
@@ -489,6 +537,7 @@ export const STUDIO_TEMPLATES = [
     label: 'Royal Bridal Palace',
     description: 'Royal wedding palace courtyard setting with warm ambient background',
     draft: true,
+    audience: ['womens'],
     prompt:
       'Place this ethnic outfit in a royal Indian palace courtyard setting (Rajasthan heritage architecture) with carved arches and gentle ambient evening light in the background bokeh. The garment itself is lit with neutral 5500K color-true key lighting to 100% preserve its exact original fabric color, embroidery, zari work, and hue without amber tinting or color shifts.',
   },
@@ -498,6 +547,7 @@ export const STUDIO_TEMPLATES = [
     label: 'Festive Celebration',
     description: 'Festive celebration backdrop with warm background marigolds & light bokeh',
     draft: true,
+    noModel: true,
     prompt:
       'Place this ethnic garment in a festive celebration backdrop with subtle glowing diya light bokeh and marigold floral accents strictly in the background. The garment itself is illuminated with neutral daylight studio lighting, keeping the product shape, exact original color, pattern, and fabric details 100% unaltered.',
   },
@@ -711,8 +761,63 @@ export const STUDIO_TEMPLATES = [
     label: 'Styled Hanger',
     description: 'No model — garment re-hung on a polished walnut hanger, white studio',
     draft: true,
+    noModel: true,
     prompt:
       'Product-only studio shot, no person, model or mannequin anywhere in the frame. Keep the garment 100% pixel-identical — do not alter its shoulders, neckline, sleeves, colour, print or embroidery. Remove the original hanger, hook, clips and pegs, then hang the garment on a polished walnut wooden hanger against a seamless white studio backdrop, even 5500K lighting, with a soft natural grounding shadow.',
+  },
+
+  // ─── DEMOGRAPHIC scenes 2026-08-30 — admin test bench only (draft) ───
+  // New scenes for male / teen / kids products. generateStudioImage()
+  // swaps the person per the product's demographic; `audience` limits
+  // the scene to where it makes sense.
+  {
+    id: 'seated_lounge',
+    command: '/lounge',
+    label: 'Seated Lounge',
+    description: 'Model seated on a mid-century sofa / accent chair, styled cushions, window light',
+    draft: true,
+    prompt:
+      'Place this outfit on the model seated on a mid-century sofa with styled cushions and an accent chair beside, a neutral plaster wall behind, soft directional window light and a pale rug underfoot, relaxed candid pose. The garment shape, exact original colour, pattern and embroidery are 100% preserved with true-tone lighting.',
+  },
+  {
+    id: 'male_with_car',
+    command: '/car',
+    label: 'Male with Car',
+    description: 'Model beside a premium car on an open road, golden hour',
+    draft: true,
+    audience: ['mens', 'teen_boy'],
+    prompt:
+      'Place this outfit on the model standing beside a glossy premium sedan on an open coastal road at golden hour, one hand resting on the roof, warm low sun with a soft lens flare, blurred asphalt and hills behind. The garment shape, exact original colour, pattern and embroidery are 100% preserved with true-tone lighting.',
+  },
+  {
+    id: 'male_with_bike',
+    command: '/bike',
+    label: 'Male with Bike',
+    description: 'Model beside a classic motorcycle on a city street',
+    draft: true,
+    audience: ['mens', 'teen_boy'],
+    prompt:
+      'Place this outfit on the model beside a classic chrome-and-black motorcycle on a quiet city street, one foot on the kerb, warm afternoon light, blurred shopfronts and parked cars behind. The garment shape, exact original colour, pattern and embroidery are 100% preserved with true-tone lighting.',
+  },
+  {
+    id: 'kids_playing',
+    command: '/kids-play',
+    label: 'Kids Playing Outdoors',
+    description: 'Child mid-play in a sunny park, candid, greenery bokeh',
+    draft: true,
+    audience: ['kids_boy', 'kids_girl'],
+    prompt:
+      'Place this outfit on the child mid-play in a sunny park, running across bright green grass with arms out and a joyful expression, soft bokeh of trees and a swing set behind, warm afternoon daylight. The garment shape, exact original colour, pattern and embroidery are 100% preserved with true-tone lighting.',
+  },
+  {
+    id: 'teen_street',
+    command: '/teen-street',
+    label: 'Teen Street Style',
+    description: 'Teen model against a painted-mural brick wall, streetwear stance',
+    draft: true,
+    audience: ['teen_girl', 'teen_boy'],
+    prompt:
+      'Place this outfit on the model against a colourful painted-mural brick wall on an urban street, a relaxed streetwear stance with hands in pockets, bright overcast daylight, blurred bicycles and string lights behind. The garment shape, exact original colour, pattern and embroidery are 100% preserved with true-tone lighting.',
   },
 ] as const satisfies readonly {
   id: string;
@@ -722,6 +827,10 @@ export const STUDIO_TEMPLATES = [
   preview_image_url?: string;
   /** Reserved: hides a style from the retailer mobile picker (admin bench only). No rows use it today. */
   draft?: boolean;
+  /** Product-only scene (no person). Always offered regardless of demographic. */
+  noModel?: boolean;
+  /** Scene only fits these demographics. Omitted = fits all. */
+  audience?: readonly Demographic[];
   prompt: string;
 }[];
 
@@ -730,6 +839,33 @@ export type StudioTemplateId = (typeof STUDIO_TEMPLATES)[number]['id'];
 export function getStudioTemplate(id: string): (typeof STUDIO_TEMPLATES)[number] | undefined {
   const normalized = id.startsWith('/') ? id.slice(1) : id;
   return STUDIO_TEMPLATES.find((t) => t.id === normalized || t.command === `/${normalized}`);
+}
+
+/**
+ * True when a scene renders the garment with NO person — either the row
+ * carries `noModel: true`, or its prompt already forbids a model
+ * (the curated "Replace the background of this product photo…" /
+ * "Product-only shot, no person…" / macro rows). generateStudioImage()
+ * skips the demographic person-swap for these.
+ */
+export function isNoModelTemplate(t: { noModel?: boolean; prompt: string }): boolean {
+  return (
+    t.noModel === true ||
+    /\bno (?:living )?person\b|\bproduct[- ](?:only|presentation|flat-lay)\b|\bno model\b|replace the background of this product photo|macro close-up/i.test(
+      t.prompt,
+    )
+  );
+}
+
+/**
+ * Scenes to offer for a product of the given demographic: every
+ * product-only scene, plus every model scene that either has no
+ * `audience` restriction or lists this demographic.
+ */
+export function studioTemplatesFor(demo: Demographic): readonly (typeof STUDIO_TEMPLATES)[number][] {
+  return STUDIO_TEMPLATES.filter(
+    (t) => isNoModelTemplate(t) || !('audience' in t) || (t as { audience?: readonly Demographic[] }).audience?.includes(demo),
+  );
 }
 
 // ─── AI Fashion Models (Virtual Try-On / IDM-VTON) ───────────────

@@ -10,7 +10,7 @@ import type { FastifyPluginAsync } from 'fastify';
 
 import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
-import { R2_PATHS, getStudioTemplate } from '@kanchuki/shared';
+import { PRODUCT_DEMOGRAPHICS, R2_PATHS, getStudioTemplate } from '@kanchuki/shared';
 import { z } from 'zod';
 import { addAdminTryOnJob } from '../../jobs/index.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
@@ -144,6 +144,9 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
           .enum(['flux_pro', 'imagen_3', 'idm_vton', 'flux_schnell', 'imagen_3_fast', 'bfl_kontext'])
           .optional(),
         model_id: z.string().optional(),
+        // Demographic override — decides which person the scene renders.
+        // Omitted → generateStudioImage infers it from the product category.
+        demographic: z.enum(PRODUCT_DEMOGRAPHICS).optional(),
         // Free-text prompt (paste a formula from AI Models and Scenes.html) —
         // overrides the template. Admin test bench only.
         prompt: z.string().min(1).max(4000).optional(),
@@ -160,7 +163,7 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       body.product_url,
       undefined,
       undefined,
-      { engine: body.engine, modelId: body.model_id, customPrompt: body.prompt },
+      { engine: body.engine, modelId: body.model_id, customPrompt: body.prompt, demographic: body.demographic },
     );
     if (result.status !== 'ready' || (!result.sampleUrl && !result.base64Data)) {
       throw new AppError(

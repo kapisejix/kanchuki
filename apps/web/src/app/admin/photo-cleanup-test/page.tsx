@@ -1,7 +1,14 @@
 'use client';
 
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch';
-import { STUDIO_MODELS, STUDIO_TEMPLATES } from '@kanchuki/shared';
+import {
+  isNoModelTemplate,
+  PRODUCT_DEMOGRAPHICS,
+  STUDIO_MODELS,
+  STUDIO_TEMPLATES,
+  studioTemplatesFor,
+  type Demographic,
+} from '@kanchuki/shared';
 import { motion } from 'framer-motion';
 import { ArrowRight, ImageOff, Loader2, Shirt, Upload, Wand2 } from 'lucide-react';
 import Image from 'next/image';
@@ -41,6 +48,15 @@ const VTONE_CATEGORIES = [
   { value: 'bottoms', label: 'Bottoms / Pants / Skirt' },
   { value: 'one-pieces', label: 'One-piece / Kurta / Dress / Suit set' },
 ] as const;
+
+const DEMOGRAPHIC_LABELS: Record<string, string> = {
+  womens: 'Womens',
+  mens: 'Mens',
+  teen_girl: 'Teen girl',
+  teen_boy: 'Teen boy',
+  kids_girl: 'Kids girl',
+  kids_boy: 'Kids boy',
+};
 
 // ponytail: presign-then-PUT straight to R2, same pattern as the existing
 // background-images admin page — no multipart parsing on the API.
@@ -93,6 +109,18 @@ export default function PhotoCleanupTestPage() {
   const [studioTemplate, setStudioTemplate] = useState<string>(STUDIO_TEMPLATES[0]?.id ?? 'runway');
   const [studioModelId, setStudioModelId] = useState<string>('');
   const [studioPrompt, setStudioPrompt] = useState<string>('');
+  // Product demographic — filters the scene dropdown and tells the API
+  // which person to render. '' = show every scene (no filter).
+  const [studioDemographic, setStudioDemographic] = useState<'' | Demographic>('');
+  const scenesForPicker = studioDemographic
+    ? studioTemplatesFor(studioDemographic)
+    : STUDIO_TEMPLATES;
+  // If the current scene falls outside the filter, snap to the first allowed one.
+  useEffect(() => {
+    if (!scenesForPicker.some((t) => t.id === studioTemplate)) {
+      setStudioTemplate(scenesForPicker[0]?.id ?? 'runway');
+    }
+  }, [scenesForPicker, studioTemplate]);
   const [studioBusy, setStudioBusy] = useState(false);
   const [studioResults, setStudioResults] = useState<
     { id: string; productUrl: string; resultUrl: string; label: string; ranAt: string }[]
@@ -111,6 +139,7 @@ export default function PhotoCleanupTestPage() {
           product_url: productUrl,
           template: studioTemplate,
           model_id: studioModelId || undefined,
+          demographic: studioDemographic || undefined,
           prompt: studioPrompt.trim() || undefined,
         }),
       });
@@ -445,10 +474,31 @@ export default function PhotoCleanupTestPage() {
             </p>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="studio-demographic" className="text-xs text-gray-500">
+              Product demographic
+            </label>
+            <select
+              id="studio-demographic"
+              value={studioDemographic}
+              onChange={(e) => setStudioDemographic(e.target.value as '' | Demographic)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              <option value="">— any / all scenes —</option>
+              {PRODUCT_DEMOGRAPHICS.map((d) => (
+                <option key={d} value={d}>
+                  {DEMOGRAPHIC_LABELS[d]}
+                </option>
+              ))}
+            </select>
+            <p className="text-[10px] text-gray-400">
+              Filters the scene list + tells the API which person to render.
+            </p>
+          </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="studio-template" className="text-xs text-gray-500">
-              Scene template
+              Scene template ({scenesForPicker.length})
             </label>
             <select
               id="studio-template"
@@ -459,16 +509,24 @@ export default function PhotoCleanupTestPage() {
               }}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              {STUDIO_TEMPLATES.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.label} ({t.command})
-                </option>
-              ))}
+              {scenesForPicker.map((t) => {
+                const aud = (t as { audience?: readonly string[] }).audience;
+                return (
+                  <option key={t.id} value={t.id}>
+                    {t.label} ({t.command}){' '}
+                    {isNoModelTemplate(t)
+                      ? '· product-only'
+                      : aud
+                        ? `· ${aud.join('/')}`
+                        : '· all models'}
+                  </option>
+                );
+              })}
             </select>
           </div>
           <div className="flex flex-col gap-1">
             <label htmlFor="studio-model" className="text-xs text-gray-500">
-              Fashion model (optional — overrides template)
+              Fashion model — advanced override
             </label>
             <select
               id="studio-model"
@@ -476,7 +534,7 @@ export default function PhotoCleanupTestPage() {
               onChange={(e) => setStudioModelId(e.target.value)}
               className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
             >
-              <option value="">— scene only, no model —</option>
+              <option value="">— use demographic + scene —</option>
               {STUDIO_MODELS.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.title} ({m.gender})
