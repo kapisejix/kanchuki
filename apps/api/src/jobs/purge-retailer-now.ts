@@ -73,6 +73,31 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     retailerId,
     retailerId,
   );
+  // Marketing & growth-engine R2 assets (festival backgrounds, lookbooks,
+  // social templates, bug report screenshots, product videos).
+  const [festivalR2, lookbookR2, socialTemplateR2, bugReportR2, productVideoR2] =
+    await Promise.all([
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT image_r2_key AS r2_key FROM festival_backgrounds WHERE retailer_id = $1 AND image_r2_key IS NOT NULL',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT output_r2_key AS r2_key FROM lookbooks WHERE retailer_id = $1 AND output_r2_key IS NOT NULL',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT image_r2_key AS r2_key FROM social_templates WHERE retailer_id = $1 AND image_r2_key IS NOT NULL',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT screenshot_r2_key AS r2_key FROM bug_reports WHERE retailer_id = $1 AND screenshot_r2_key IS NOT NULL',
+        retailerId,
+      ),
+      db.$queryRawUnsafe<{ r2_key: string | null }[]>(
+        'SELECT r2_key FROM product_videos WHERE retailer_id = $1',
+        retailerId,
+      ),
+    ]);
   const r2Keys = [
     ...photos.map((r) => r.r2_key),
     ...spinFrames.map((r) => r.r2_key),
@@ -81,6 +106,11 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     ...categoryCovers.map((r) => r.r2_key),
     ...measurementPhotos.map((r) => r.r2_key),
     ...trainingPhotos.map((r) => r.r2_key),
+    ...festivalR2.map((r) => r.r2_key),
+    ...lookbookR2.map((r) => r.r2_key),
+    ...socialTemplateR2.map((r) => r.r2_key),
+    ...bugReportR2.map((r) => r.r2_key),
+    ...productVideoR2.map((r) => r.r2_key),
     retailer?.logo_r2_key,
     retailer?.banner_r2_key,
     retailer?.kyc_gst_r2_key,
@@ -95,9 +125,11 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM product_spin_frames WHERE product_id IN (SELECT id FROM products WHERE retailer_id = $1);',
     'DELETE FROM product_embeddings WHERE retailer_id = $1;',
     'DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE retailer_id = $1);',
+    'DELETE FROM partner_referrals WHERE partner_id IN (SELECT id FROM partners WHERE retailer_id = $1);',
     'DELETE FROM collection_products WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
     'DELETE FROM collection_views WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
     'DELETE FROM collection_enquiries WHERE collection_id IN (SELECT id FROM collections WHERE retailer_id = $1);',
+    'DELETE FROM campaign_sends WHERE retailer_id = $1;',
     'DELETE FROM try_on_usage_logs WHERE retailer_id = $1;',
     // Consent-gated training copies are keyed to the retailer's try_on_jobs
     // (no FK — delete explicitly BEFORE the jobs they reference, or the
@@ -107,14 +139,32 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM customer_interactions WHERE retailer_id = $1;',
     'DELETE FROM customer_measurements WHERE retailer_id = $1;',
     'DELETE FROM customer_fashion_dna WHERE retailer_id = $1;',
+    'DELETE FROM customer_visits WHERE retailer_id = $1;',
     'DELETE FROM subscription_payments WHERE retailer_id = $1;',
     'DELETE FROM size_chart_rows WHERE size_chart_id IN (SELECT id FROM size_charts WHERE retailer_id = $1);',
+    'DELETE FROM referral_credits WHERE retailer_id = $1;',
+    'DELETE FROM referrals WHERE retailer_id = $1;',
     'DELETE FROM orders WHERE retailer_id = $1;',
     'DELETE FROM collections WHERE retailer_id = $1;',
     'DELETE FROM customers WHERE retailer_id = $1;',
     'DELETE FROM products WHERE retailer_id = $1;',
     'DELETE FROM subscriptions WHERE retailer_id = $1;',
     'DELETE FROM size_charts WHERE retailer_id = $1;',
+    'DELETE FROM campaigns WHERE retailer_id = $1;',
+    'DELETE FROM promotions WHERE retailer_id = $1;',
+    'DELETE FROM suppliers WHERE retailer_id = $1;',
+    'DELETE FROM supplier_transactions WHERE retailer_id = $1;',
+    'DELETE FROM bookings WHERE retailer_id = $1;',
+    'DELETE FROM partners WHERE retailer_id = $1;',
+    'DELETE FROM partner_events WHERE retailer_id = $1;',
+    'DELETE FROM incentive_rules WHERE retailer_id = $1;',
+    'DELETE FROM festival_backgrounds WHERE retailer_id = $1;',
+    'DELETE FROM lookbooks WHERE retailer_id = $1;',
+    'DELETE FROM social_templates WHERE retailer_id = $1;',
+    'DELETE FROM channel_syncs WHERE retailer_id = $1;',
+    'DELETE FROM product_reviews WHERE retailer_id = $1;',
+    'DELETE FROM store_reviews WHERE retailer_id = $1;',
+    'DELETE FROM bug_reports WHERE retailer_id = $1;',
     'DELETE FROM support_tickets WHERE retailer_id = $1;',
     'DELETE FROM ai_usage_logs WHERE retailer_id = $1;',
     'DELETE FROM quota_addon_purchases WHERE retailer_id = $1;',
@@ -130,8 +180,10 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM social_posts WHERE retailer_id = $1;',
     'DELETE FROM social_accounts WHERE retailer_id = $1;',
     'DELETE FROM product_attributes WHERE retailer_id = $1;',
-    // retailer_limit_overrides / retailer_payment_account have onDelete: Cascade
-    // in the schema — Postgres removes them automatically with the row below.
+    // retailer_limit_overrides / retailer_payment_account / catalog_items /
+    // catalog_sync_logs / customer_store_visits / store_affinities have
+    // onDelete: Cascade in the schema — Postgres removes them automatically
+    // with the row below.
     'DELETE FROM retailers WHERE id = $1;',
   ];
 

@@ -88,7 +88,7 @@ export default function BillingScreen() {
           </Text>
 
           <AnimatedPressable
-            onPress={() => void Linking.openURL(`${WEB_URL}/billing`)}
+            onPress={() => router.push('/plan-select')}
             className="mt-4 bg-spaceCadet-900 py-3.5 rounded-2xl items-center shadow-sm"
           >
             <Text className="text-white font-bold text-sm">Manage my plan</Text>

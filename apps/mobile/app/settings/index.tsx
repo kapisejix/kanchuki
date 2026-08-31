@@ -916,10 +916,11 @@ function DeleteAccountModal({
             Delete Account
           </Text>
           <Text className="text-sm text-sand-600 leading-relaxed">
-            This will deactivate your account and archive all collections.
+            This will permanently delete your account and ALL associated data —
+            products, customers, collections, orders, staff, and settings.
             {"\n\n"}
-            Products, customers, and billing records are retained for audit
-            purposes.{"\n\n"}
+            This action cannot be undone. You can sign up again with the same
+            phone number after deletion.{"\n\n"}
             Type DELETE to confirm.
           </Text>
           <TextInput
@@ -1369,7 +1370,7 @@ export default function SettingsScreen() {
                 icon={<CreditCard size={18} color={colors.turmeric[500]} />}
                 label="Plans & Billing"
                 subtitle={`${retailer?.plan ?? "STARTER"} · ${retailer?.plan_status ?? "TRIAL"}`}
-                onPress={() => router.push("/billing")}
+                onPress={() => router.push("/plan-select")}
               />
 
               <SettingsRow

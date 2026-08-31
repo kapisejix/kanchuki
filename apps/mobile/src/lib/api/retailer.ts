@@ -95,7 +95,7 @@ export const retailerApi = {
 
   disconnectWhatsAppApi: () => request<void>('/v1/retailers/me/whatsapp-api', { method: 'DELETE' }),
 
-  /** F-009: Soft-delete the retailer account */
+  /** Hard-delete the retailer account and all associated data */
   delete: () => request<void>('/v1/retailers/me', { method: 'DELETE' }),
 
   /** F-010: Get usage vs limits for all metered resources */
