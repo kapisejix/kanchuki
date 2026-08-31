@@ -63,6 +63,15 @@ export async function recordInteraction(args: RecordInteractionArgs): Promise<vo
     return;
   }
 
+  // If profiling is disabled for this account, skip behavioral writes
+  if (accountId) {
+    const account = await prisma.customerAccount.findUnique({
+      where: { id: accountId },
+      select: { profiling_enabled: true },
+    });
+    if (account && !account.profiling_enabled) return;
+  }
+
   try {
     // Use the retailer-scoped customer ID if available, otherwise use a
     // placeholder for the passport-only path (retailer_id is always present)

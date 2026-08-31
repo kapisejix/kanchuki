@@ -2602,6 +2602,10 @@ model CustomerAccount {
   budget_max     Int? // paise
   notes          String?
 
+  // Personalization toggle — when false, behavioral writes (view/favorite/
+  // search) are suppressed and the preference vector is frozen/cleared.
+  profiling_enabled Boolean @default(true)
+
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
   deleted_at DateTime?
