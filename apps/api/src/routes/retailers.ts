@@ -16,6 +16,7 @@ import {
   retailersIntegrationsRoutes,
   retailersRatingsRoutes,
   retailersBugReportRoutes,
+  retailersVisitorTasteRoutes,
 } from "./retailers/index.js";
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
@@ -47,4 +48,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersRatingsRoutes);
   // retailers-bug-reports — retailer-submitted bug reports from the mobile app
   await server.register(retailersBugReportRoutes);
+  // retailers-visitor-taste — aggregate customer taste analytics (Task 28)
+  await server.register(retailersVisitorTasteRoutes);
 };
