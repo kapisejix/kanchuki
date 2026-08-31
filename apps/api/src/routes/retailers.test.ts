@@ -746,9 +746,16 @@ describe('POST /retailers/me/banner-upload-url', () => {
   });
 
   it('returns 503 when Meta credentials are not configured', async () => {
+    // /me/social/connect intentionally degrades to a demo auth_url when creds
+    // are absent; /me/social/callback still enforces the not-configured guard
+    // (before it touches OAuth state), so assert 503 there.
     mockResolveMetaCredentials.mockResolvedValue(null);
     const app = await buildApp();
-    const res = await app.inject({ method: 'GET', url: '/v1/retailers/me/social/connect' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/social/callback',
+      payload: { code: 'auth-code', state: 'oauth-state' },
+    });
     expect(res.statusCode).toBe(503);
     await app.close();
   });

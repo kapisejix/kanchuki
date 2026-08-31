@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { growthAiCampaignRoutes } from './growth-ai-campaign.js';
 import { growthBackgroundRoutes } from './growth-backgrounds.js';
 import { growthBookingRoutes } from './growth-bookings.js';
+import { growthCampaignAnalyticsRoutes } from './growth-campaign-analytics.js';
 import { growthCampaignRoutes } from './growth-campaigns.js';
 import { growthGstRoutes } from './growth-gst.js';
 import { growthIncentiveRoutes } from './growth-incentives.js';
@@ -32,6 +33,7 @@ export const growthRoutes: FastifyPluginAsync = async (server) => {
   await server.register(growthAiCampaignRoutes);
   await server.register(growthBackgroundRoutes); // Phase 4 — festival background library
   await server.register(growthCampaignRoutes);
+  await server.register(growthCampaignAnalyticsRoutes); // R — campaign analytics + G — reactivation suggestions
   await server.register(growthGstRoutes); // GST Report (retailer-facing)
   await server.register(growthIncentiveRoutes);
   await server.register(growthLookbookRoutes); // Phase 6 — lookbook generator

@@ -1,4 +1,5 @@
-// Shopper Passport — OTP send/verify routes (Task 2 + Task 3).
+// Shopper Passport — OTP send/verify + session, store list, preferences,
+// and DPDP data-rights (export/erasure).
 //
 // Two verification channels, both backed by the existing msg91-otp.ts lib:
 //   1. MSG91 web widget: the client loads the widget, sends OTP, verifies
@@ -8,10 +9,13 @@
 //      sendOtpViaMsg91(), and verifies against the Redis entry.
 //
 // On successful verification: upsert CustomerAccount, mint a passport
-// session (Task 3 — HttpOnly cookie), return { ok, account_id, is_new }.
+// session (HttpOnly cookie), return { ok, account_id, is_new }.
+//
+// Passport-scoped activity (recently-viewed, events, wishlist) lives in
+// passport-account.ts. Shared session/cookie helpers in passport-helpers.ts.
 
 import { randomBytes, createHash } from 'node:crypto';
-import { prisma, type Prisma } from '@kanchuki/db';
+import { prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -21,62 +25,18 @@ import {
   verifyMsg91WidgetToken,
   verifyStoredOtp,
 } from '../../lib/msg91-otp.js';
-import { getCurrentNoticeVersion } from '../../lib/notice-versions.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
-import { recordInteraction, type InteractionType } from '../../lib/passport-activity.js';
-
-// ─── Session helper ───────────────────────────────────────────────
-
-function parseCookies(cookieHeader: string): Record<string, string> {
-  return Object.fromEntries(
-    cookieHeader.split(';').map((c) => {
-      const [key, ...val] = c.trim().split('=');
-      return [key!, val.join('=')];
-    }),
-  );
-}
-
-/**
- * Extract and validate the passport session from the request cookie.
- * Returns the session + account, or null if unauthenticated/expired.
- * Slides the session expiry on each valid access.
- */
-async function getPassportSession(cookieHeader: string) {
-  const cookies = parseCookies(cookieHeader);
-  const sessionId = cookies[COOKIE_NAME];
-  if (!sessionId) return null;
-
-  const session = await prisma.passportSession.findUnique({
-    where: { id: sessionId },
-    include: { customer_account: true },
-  });
-
-  if (!session || session.revoked_at) return null;
-  if (session.expires_at < new Date()) {
-    await prisma.passportSession.delete({ where: { id: sessionId } }).catch(() => {});
-    return null;
-  }
-
-  // Slide expiry on each access
-  await prisma.passportSession.update({
-    where: { id: sessionId },
-    data: {
-      last_seen_at: new Date(),
-      expires_at: new Date(Date.now() + SESSION_TTL_SEC * 1000),
-    },
-  });
-
-  return session;
-}
-
-// ─── Constants ────────────────────────────────────────────────────
-
-const COOKIE_NAME = 'kanchuki_passport';
-const SESSION_TTL_DAYS = 180;
-const SESSION_TTL_SEC = SESSION_TTL_DAYS * 24 * 60 * 60;
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'kanchuki.com';
-const COOKIE_SECURE = process.env.NODE_ENV === 'production';
-const CURRENT_NOTICE_VERSION = getCurrentNoticeVersion();
+import {
+  COOKIE_NAME,
+  CURRENT_NOTICE_VERSION,
+  SESSION_TTL_SEC,
+  clearPassportCookie,
+  getPassportSession,
+  maskPhone,
+  parseCookies,
+  phoneHash,
+  setPassportCookie,
+} from './passport-helpers.js';
 
 // ─── Schemas ──────────────────────────────────────────────────────
 
@@ -105,40 +65,6 @@ const VerifyOtpSchema = z.object({
     .regex(/^\d{6}$/, 'OTP must be 6 digits')
     .optional(),
 });
-
-// ─── Helpers ──────────────────────────────────────────────────────
-
-function phoneHash(phone: string): string {
-  return createHash('sha256').update(normalizeIndianPhone(phone)).digest('hex');
-}
-
-function maskPhone(phone: string): string {
-  // Show last 4 digits: 9876543210 → 98765-XXXXX
-  const normalized = normalizeIndianPhone(phone);
-  const last4 = normalized.slice(-4);
-  return `XXXXX${last4}`;
-}
-
-function setPassportCookie(
-  reply: { header: (name: string, value: string) => void },
-  sessionId: string,
-): void {
-  // HttpOnly, Secure, SameSite=Lax, Domain=kanchuki.com — survives Safari ITP.
-  // No PII in the cookie — just an opaque session id.
-  const parts = [
-    `${COOKIE_NAME}=${sessionId}`,
-    'HttpOnly',
-    'SameSite=Lax',
-    `Max-Age=${SESSION_TTL_SEC}`,
-    `Path=/`,
-  ];
-  if (COOKIE_SECURE) parts.push('Secure');
-  // Only set Domain in production — dev environments may not be on kanchuki.com
-  if (process.env.NODE_ENV === 'production') {
-    parts.push(`Domain=${COOKIE_DOMAIN}`);
-  }
-  reply.header('Set-Cookie', parts.join('; '));
-}
 
 // ─── Routes ───────────────────────────────────────────────────────
 
@@ -238,7 +164,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       });
     }
 
-    // ── Mint session (Task 3) ──
+    // ── Mint session ──
     const sessionId = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + SESSION_TTL_SEC * 1000);
 
@@ -406,229 +332,10 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
     return reply.status(200).send({ ok: true });
   });
 
-  // ─── GET /passport/recently-viewed ─────────────────────────────
-  // Returns recently viewed products across all stores for this passport.
-  server.get('/recently-viewed', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
-    }
-
-    const query = (request.query as { limit?: string });
-    const limit = Math.min(parseInt(query.limit || '20', 10) || 20, 50);
-
-    const items = await prisma.customerRecentlyViewed.findMany({
-      where: { customer_account_id: session.customer_account_id },
-      orderBy: { viewed_at: 'desc' },
-      take: limit,
-      include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            category: true,
-            primary_color: true,
-            price_min: true,
-            price_max: true,
-            photos: { where: { is_primary: true }, select: { url: true }, take: 1 },
-            retailer: { select: { id: true, shop_name: true, public_slug: true } },
-          },
-        },
-      },
-    });
-
-    return reply.status(200).send({
-      items: items.map((item) => ({
-        id: item.product_id,
-        name: item.product.name,
-        category: item.product.category,
-        primary_color: item.product.primary_color,
-        price_min: item.product.price_min,
-        price_max: item.product.price_max,
-        photo_url: item.product.photos[0]?.url ?? null,
-        retailer: item.product.retailer,
-        viewed_at: item.viewed_at.toISOString(),
-      })),
-    });
-  });
-
-  // ─── POST /passport/recently-viewed ────────────────────────────
-  // Record a product view. Upserts by (customer_account_id, product_id).
-  server.post('/recently-viewed', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(204).send(); // silently drop
-    }
-
-    const body = z.object({ product_id: z.string(), retailer_id: z.string() }).safeParse(request.body);
-    if (!body.success) return reply.status(204).send();
-
-    await prisma.customerRecentlyViewed.upsert({
-      where: {
-        customer_account_id_product_id: {
-          customer_account_id: session.customer_account_id,
-          product_id: body.data.product_id,
-        },
-      },
-      create: {
-        customer_account_id: session.customer_account_id,
-        product_id: body.data.product_id,
-        retailer_id: body.data.retailer_id,
-      },
-      update: { viewed_at: new Date() },
-    });
-
-    return reply.status(204).send();
-  });
-
-  // ─── POST /passport/events ─────────────────────────────────────
-  // Client event beacon — batched behavioral events from the frontend.
-  // Fire-and-forget: returns 204 immediately, swallows DB errors.
-  server.post('/events', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(204).send(); // silently drop if unauthenticated
-    }
-
-    const EventsSchema = z.object({
-      events: z
-        .array(
-          z.object({
-            type: z.string(),
-            product_id: z.string().optional(),
-            collection_id: z.string().optional(),
-            retailer_id: z.string(),
-            metadata: z.record(z.unknown()).optional(),
-          }),
-        )
-        .max(50),
-    });
-
-    const body = EventsSchema.safeParse(request.body);
-    if (!body.success) {
-      return reply.status(204).send(); // silently drop invalid payloads
-    }
-
-    // Record each interaction — fire-and-forget
-    for (const event of body.data.events) {
-      recordInteraction({
-        accountId: session.customer_account_id,
-        retailerId: event.retailer_id,
-        productId: event.product_id,
-        collectionId: event.collection_id,
-        type: event.type as InteractionType,
-        metadata: event.metadata,
-      }).catch(() => {});
-    }
-
-    return reply.status(204).send();
-  });
-
-  // ─── GET /passport/wishlist ────────────────────────────────────
-  // List saved/wishlisted products across all stores.
-  server.get('/wishlist', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
-    }
-
-    const items = await prisma.customerWishlistItem.findMany({
-      where: { customer_account_id: session.customer_account_id },
-      orderBy: { created_at: 'desc' },
-      include: {
-        product: {
-          select: {
-            id: true,
-            name: true,
-            category: true,
-            primary_color: true,
-            price_min: true,
-            price_max: true,
-            photos: { where: { is_primary: true }, select: { url: true }, take: 1 },
-            retailer: { select: { id: true, shop_name: true, public_slug: true } },
-          },
-        },
-      },
-    });
-
-    return reply.status(200).send({
-      items: items.map((item) => ({
-        id: item.id,
-        product_id: item.product_id,
-        product: {
-          id: item.product.id,
-          name: item.product.name,
-          category: item.product.category,
-          primary_color: item.product.primary_color,
-          price_min: item.product.price_min,
-          price_max: item.product.price_max,
-          photo_url: item.product.photos[0]?.url ?? null,
-          retailer: item.product.retailer,
-        },
-        created_at: item.created_at.toISOString(),
-      })),
-    });
-  });
-
-  // ─── POST /passport/wishlist ───────────────────────────────────
-  // Add a product to the wishlist.
-  server.post('/wishlist', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
-    }
-
-    const body = z.object({ product_id: z.string(), retailer_id: z.string() }).safeParse(request.body);
-    if (!body.success) throw validationError('Invalid body');
-
-    await prisma.customerWishlistItem.upsert({
-      where: {
-        customer_account_id_product_id: {
-          customer_account_id: session.customer_account_id,
-          product_id: body.data.product_id,
-        },
-      },
-      create: {
-        customer_account_id: session.customer_account_id,
-        product_id: body.data.product_id,
-        retailer_id: body.data.retailer_id,
-      },
-      update: {}, // already exists, no-op
-    });
-
-    return reply.status(200).send({ ok: true });
-  });
-
-  // ─── DELETE /passport/wishlist/:productId ───────────────────────
-  // Remove a product from the wishlist.
-  server.delete('/wishlist/:productId', async (request, reply) => {
-    const session = await getPassportSession(request.headers.cookie || '');
-    if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
-    }
-
-    const { productId } = request.params as { productId: string };
-
-    await prisma.customerWishlistItem.deleteMany({
-      where: {
-        customer_account_id: session.customer_account_id,
-        product_id: productId,
-      },
-    });
-
-    return reply.status(200).send({ ok: true });
-  });
-
   // ─── POST /passport/logout ─────────────────────────────────────
   // Revokes the current session and clears the cookie.
   server.post('/logout', async (request, reply) => {
-    const cookieHeader = request.headers.cookie || '';
-    const cookies = Object.fromEntries(
-      cookieHeader.split(';').map((c) => {
-        const [key, ...val] = c.trim().split('=');
-        return [key!, val.join('=')];
-      }),
-    );
+    const cookies = parseCookies(request.headers.cookie || '');
     const sessionId = cookies[COOKIE_NAME];
 
     if (sessionId) {
@@ -638,19 +345,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       });
     }
 
-    // Clear the cookie
-    const parts = [
-      `${COOKIE_NAME}=`,
-      'HttpOnly',
-      'SameSite=Lax',
-      'Max-Age=0',
-      'Path=/',
-    ];
-    if (COOKIE_SECURE) parts.push('Secure');
-    if (process.env.NODE_ENV === 'production') {
-      parts.push(`Domain=${COOKIE_DOMAIN}`);
-    }
-    reply.header('Set-Cookie', parts.join('; '));
+    clearPassportCookie(reply);
 
     return reply.status(200).send({ ok: true });
   });
@@ -891,19 +586,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       data: { revoked_at: new Date() },
     });
 
-    // Clear the cookie
-    const parts = [
-      `${COOKIE_NAME}=`,
-      'HttpOnly',
-      'SameSite=Lax',
-      'Max-Age=0',
-      'Path=/',
-    ];
-    if (COOKIE_SECURE) parts.push('Secure');
-    if (process.env.NODE_ENV === 'production') {
-      parts.push(`Domain=${COOKIE_DOMAIN}`);
-    }
-    reply.header('Set-Cookie', parts.join('; '));
+    clearPassportCookie(reply);
 
     return reply.status(200).send({ ok: true });
   });

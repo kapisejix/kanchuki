@@ -8,6 +8,9 @@ vi.mock('@kanchuki/db', () => ({
     customerInteraction: {
       create: vi.fn().mockResolvedValue({ id: 'mock-interaction-id' }),
     },
+    customerAccount: {
+      findUnique: vi.fn().mockResolvedValue({ profiling_enabled: true }),
+    },
   },
 }));
 
@@ -87,6 +90,15 @@ describe('recordInteraction', () => {
         type: 'view',
       })
     ).resolves.toBeUndefined();
+  });
+
+  it('should not throw when the profiling lookup fails (fire-and-forget)', async () => {
+    (prisma.customerAccount.findUnique as any).mockRejectedValueOnce(new Error('DB error'));
+
+    await expect(
+      recordInteraction({ accountId: 'account-123', retailerId: 'ret-789', type: 'view' })
+    ).resolves.toBeUndefined();
+    expect(prisma.customerInteraction.create).not.toHaveBeenCalled();
   });
 
   it('should warn and skip for unknown interaction type', async () => {
