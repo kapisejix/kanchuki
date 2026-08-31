@@ -114,71 +114,84 @@ export function CollectionListSkeleton({ count = 5 }: { count?: number }) {
 
 export function HomeScreenSkeleton() {
   return (
-    <ScrollView className="flex-1 bg-ink-50">
-      {/* Hero banner */}
-      <View className="bg-ink-600 px-4 pt-4 pb-8 rounded-b-3xl">
+    <ScrollView className="flex-1 bg-[#F8F7FC]">
+      {/* Top retailer header */}
+      <View className="px-5 pt-4 pb-3 flex-row items-center justify-between">
         <View className="flex-row items-center gap-3">
-          <Skeleton
-            className="w-12 h-12 rounded-2xl"
-            style={{ backgroundColor: `${COLORS.cotton}30` }}
-          />
+          <Skeleton className="w-10 h-10 rounded-2xl" />
           <View className="gap-1.5">
-            <Skeleton
-              className="h-3 w-24 rounded-md"
-              style={{ backgroundColor: `${COLORS.cotton}30` }}
-            />
-            <Skeleton
-              className="h-5 w-40 rounded-md"
-              style={{ backgroundColor: `${COLORS.cotton}30` }}
-            />
+            <Skeleton className="h-4 w-32 rounded-md" />
+            <Skeleton className="h-2.5 w-20 rounded-md" />
           </View>
         </View>
-        <Skeleton
-          className="h-6 w-52 rounded-lg mt-4"
-          style={{ backgroundColor: `${COLORS.cotton}30` }}
-        />
+        <Skeleton className="w-9 h-9 rounded-2xl" />
+      </View>
+
+      {/* Gradient hero card */}
+      <View className="px-4 pb-3">
+        <Skeleton className="h-36 rounded-3xl" style={{ backgroundColor: '#231F4820' }} />
+      </View>
+
+      {/* Quick Tools */}
+      <View className="px-4 pt-2 pb-2">
+        <Skeleton className="h-2.5 w-24 mb-2" />
+        <View className="flex-row gap-3">
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 gap-2">
+            <Skeleton className="w-10 h-10 rounded-2xl" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-2 w-20" />
+          </View>
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 gap-2">
+            <Skeleton className="w-10 h-10 rounded-2xl" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-2 w-20" />
+          </View>
+        </View>
+        <View className="flex-row gap-3 mt-3">
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 gap-2">
+            <Skeleton className="w-10 h-10 rounded-2xl" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-2 w-20" />
+          </View>
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 gap-2">
+            <Skeleton className="w-10 h-10 rounded-2xl" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="h-2 w-20" />
+          </View>
+        </View>
+      </View>
+
+      {/* CTA button */}
+      <View className="px-4 py-2">
+        <Skeleton className="h-12 rounded-2xl" />
       </View>
 
       {/* Stats row */}
-      <View className="px-4 pt-4 pb-2 -mt-4">
-        <Skeleton className="h-3 w-24 mb-3" />
+      <View className="px-4 pt-3 pb-2">
+        <Skeleton className="h-2.5 w-32 mb-2.5" />
         <View className="flex-row gap-3">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200">
+            <Skeleton className="w-8 h-8 rounded-xl mb-2" />
+            <Skeleton className="h-7 w-14" />
+            <Skeleton className="h-2.5 w-12 mt-1" />
+          </View>
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200">
+            <Skeleton className="w-8 h-8 rounded-xl mb-2" />
+            <Skeleton className="h-7 w-14" />
+            <Skeleton className="h-2.5 w-12 mt-1" />
+          </View>
         </View>
         <View className="flex-row gap-3 mt-3">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-        </View>
-      </View>
-
-      {/* Trending */}
-      <View className="px-4 py-2">
-        <Skeleton className="h-3 w-32 mb-3" />
-        <View className="gap-2">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <View
-              key={i}
-              className="bg-white rounded-2xl p-3 border border-sand-100 flex-row items-center justify-between"
-            >
-              <Skeleton className="h-4 w-40" />
-              <Skeleton className="h-3 w-12" />
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Quick Actions */}
-      <View className="px-4 py-2">
-        <Skeleton className="h-3 w-28 mb-3" />
-        <View className="flex-row flex-wrap gap-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <View key={i} className="w-[47%] bg-white rounded-2xl p-4 border border-sand-100 gap-2">
-              <Skeleton className="w-10 h-10 rounded-xl" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-3 w-20" />
-            </View>
-          ))}
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200">
+            <Skeleton className="w-8 h-8 rounded-xl mb-2" />
+            <Skeleton className="h-7 w-14" />
+            <Skeleton className="h-2.5 w-12 mt-1" />
+          </View>
+          <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200">
+            <Skeleton className="w-8 h-8 rounded-xl mb-2" />
+            <Skeleton className="h-7 w-14" />
+            <Skeleton className="h-2.5 w-12 mt-1" />
+          </View>
         </View>
       </View>
     </ScrollView>

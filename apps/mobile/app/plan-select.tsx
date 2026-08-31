@@ -26,37 +26,28 @@ import { billingApi, retailerApi } from '../src/lib/api';
 import { useTheme } from '../src/lib/theme';
 import { WEB_URL } from '../src/lib/web-url';
 
-const PLAN_META = {
-  STARTER: {
-    name: 'Starter',
-    price: '₹999/mo',
-    annualPrice: '₹9,999/yr',
-    icon: Star,
-    color: '#6B4773',
-    features: '500 products · 50 collection links',
-    highlights: ['500 Products', '50 Collection Links/mo', 'Basic AI Tagging', 'WhatsApp Sharing'],
-  },
-  GROWTH: {
-    name: 'Growth',
-    price: '₹2,499/mo',
-    annualPrice: '₹24,999/yr',
-    icon: Crown,
-    color: '#7C3AED',
-    features: '2,000 products · 100 try-ons · Unlimited links',
-    highlights: ['2,000 Products', 'Unlimited Collection Links', '100 Try-On Credits/mo', 'Priority Support'],
-  },
-  PRO: {
-    name: 'Pro',
-    price: '₹4,999/mo',
-    annualPrice: '₹49,999/yr',
-    icon: Sparkles,
-    color: '#BB3F95',
-    features: 'Unlimited products · 500 try-ons · WhatsApp API',
-    highlights: ['Unlimited Products', 'Unlimited Everything', '500 Try-On Credits/mo', 'WhatsApp Business API', 'Custom Branding'],
-  },
-} as const;
+const PLAN_UI: Record<string, { name: string; icon: typeof Star; color: string }> = {
+  STARTER: { name: 'Starter', icon: Star, color: '#6B4773' },
+  GROWTH: { name: 'Growth', icon: Crown, color: '#7C3AED' },
+  PRO: { name: 'Pro', icon: Sparkles, color: '#BB3F95' },
+};
 
-type PlanKey = keyof typeof PLAN_META;
+type PlanKey = keyof typeof PLAN_UI;
+
+/** Build feature highlights from the API-provided plan limits */
+function buildHighlights(limits?: {
+  max_products: number | null;
+  max_customers: number | null;
+  try_on_credits: number;
+}): string[] {
+  if (!limits) return [];
+  const h: string[] = [];
+  h.push(limits.max_products == null ? 'Unlimited Products' : `${limits.max_products.toLocaleString('en-IN')} Products`);
+  if (limits.try_on_credits > 0) h.push(`${limits.try_on_credits} Try-On Credits/mo`);
+  h.push('Basic AI Tagging');
+  h.push('WhatsApp Sharing');
+  return h;
+}
 
 export default function PlanSelectScreen() {
   const { primaryColor } = useTheme();
@@ -84,7 +75,7 @@ export default function PlanSelectScreen() {
 
   const handleSelectPlan = async (plan: PlanKey) => {
     if (plan === currentPlan && !isCancelled) {
-      Alert.alert('Current Plan', `You're already on the ${PLAN_META[plan].name} plan.`);
+      Alert.alert('Current Plan', `You're already on the ${PLAN_UI[plan].name} plan.`);
       return;
     }
 
@@ -92,7 +83,7 @@ export default function PlanSelectScreen() {
       // Active paid subscription — need to cancel first, then subscribe to new plan
       Alert.alert(
         'Switch Plan',
-        `To switch to ${PLAN_META[plan].name}, you'll need to cancel your current ${PLAN_META[currentPlan].name} subscription first. Your current plan stays active until the billing period ends.\n\nProceed to cancel and switch?`,
+        `To switch to ${PLAN_UI[plan].name}, you'll need to cancel your current ${PLAN_UI[currentPlan].name} subscription first. Your current plan stays active until the billing period ends.\n\nProceed to cancel and switch?`,
         [
           { text: 'Cancel', style: 'cancel' },
           {
@@ -170,7 +161,7 @@ export default function PlanSelectScreen() {
           <View className="flex-row items-center gap-2">
             <CheckCircle2 size={16} color="#16A34A" />
             <Text className="text-xs font-bold text-spaceCadet-900">
-              Current: {PLAN_META[currentPlan]?.name ?? currentPlan} · {planStatus}
+              Current: {PLAN_UI[currentPlan]?.name ?? currentPlan} · {planStatus}
             </Text>
           </View>
           {isTrial && sub?.trial_ends_at && (
@@ -230,15 +221,18 @@ export default function PlanSelectScreen() {
             )}
 
             {/* Paid Plans */}
-            {(Object.keys(PLAN_META) as PlanKey[]).map((planKey) => {
-              const meta = PLAN_META[planKey];
+            {(Object.keys(PLAN_UI) as PlanKey[]).map((planKey) => {
+              const meta = PLAN_UI[planKey];
+              const planData = plansData?.data?.find((p) => p.plan === planKey);
               const Icon = meta.icon;
               const isCurrent = planKey === currentPlan && !isCancelled;
-              const planData = plansData?.data?.find((p) => p.plan === planKey);
               const price = selectedPeriod === 'monthly'
                 ? planData?.pricing.monthly ?? 0
                 : planData?.pricing.annual ?? 0;
-              const priceDisplay = `₹${(price / 100).toLocaleString('en-IN')}`;
+              const priceDisplay = price > 0
+                ? `₹${(price / 100).toLocaleString('en-IN')}`
+                : '—';
+              const highlights = buildHighlights(planData?.limits);
 
               return (
                 <AnimatedPressable
@@ -280,7 +274,7 @@ export default function PlanSelectScreen() {
                         className="text-[11px] mt-0.5 font-medium"
                         style={{ color: isCurrent ? '#D4B8E8' : '#6B4773' }}
                       >
-                        {selectedPeriod === 'annual' ? meta.annualPrice : meta.price}
+                        {price > 0 ? `${priceDisplay}/mo` : 'Loading…'}
                         {isCurrent ? ' · Active' : ''}
                       </Text>
                     </View>
@@ -295,7 +289,7 @@ export default function PlanSelectScreen() {
 
                   {/* Feature highlights */}
                   <View className="flex-row flex-wrap gap-1.5">
-                    {meta.highlights.map((f) => (
+                    {highlights.map((f) => (
                       <View
                         key={f}
                         className="rounded-full px-2.5 py-1"
