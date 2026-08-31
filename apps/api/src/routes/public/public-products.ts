@@ -38,7 +38,6 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
           },
           include: {
             photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] },
-            spin_frames: { orderBy: { frame_index: 'asc' } },
             variants: true,
             videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'asc' }] },
             section: { select: { name: true } },
@@ -76,14 +75,11 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             primary_photo_url: primaryPhoto
               ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)
               : '',
-            has_360: p.spin_frames.length > 0,
+            has_360: false,
             avg_rating: p.avg_rating,
             rating_count: p.rating_count,
             photos: await Promise.all(
               visiblePhotos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
-            ),
-            spin_frames: await Promise.all(
-              p.spin_frames.map(async (f) => await displayUrl(f.url, f.r2_key)),
             ),
             variants: await Promise.all(
               availableVariants.map(async (v) => ({
@@ -144,7 +140,7 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
           include: {
             photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
             section: { select: { name: true } },
-            _count: { select: { spin_frames: true } },
+            _count: { select: { photos: true } },
           },
         });
 

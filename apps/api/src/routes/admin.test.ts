@@ -21,7 +21,6 @@ const {
   mockCollectionViewCount,
   mockCollectionEnquiryCount,
   mockStaffUpdateMany,
-  mockTryOnUsageAggregate,
   mockSubscriptionFindMany,
   mockCustomerFindMany,
   mockTransaction,
@@ -58,7 +57,7 @@ const {
   mockCollectionViewCount: vi.fn(),
   mockCollectionEnquiryCount: vi.fn(),
   mockStaffUpdateMany: vi.fn(),
-  mockTryOnUsageAggregate: vi.fn(),
+
   mockSubscriptionFindMany: vi.fn(),
   mockCustomerFindMany: vi.fn(),
   mockTransaction: vi.fn((ops: unknown) =>
@@ -153,7 +152,7 @@ vi.mock('@kanchuki/db', () => ({
     collectionView: { count: mockCollectionViewCount },
     collectionEnquiry: { count: mockCollectionEnquiryCount },
     staff: { updateMany: mockStaffUpdateMany },
-    tryOnUsageLog: { aggregate: mockTryOnUsageAggregate },
+
     subscription: { findMany: mockSubscriptionFindMany },
     customer: { findMany: mockCustomerFindMany },
     $transaction: mockTransaction,
@@ -469,7 +468,6 @@ describe('GET /admin/customers', () => {
         consent_given: true,
         created_at: new Date('2026-07-10'),
         retailer: { id: 'retailer_1', shop_name: 'Test Shop', city: 'Test City' },
-        _count: { measurements: 2 },
       },
     ]);
 
@@ -482,7 +480,6 @@ describe('GET /admin/customers', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toHaveLength(1);
-    expect(res.json().data[0].measurement_count).toBe(2);
     expect(res.json().data[0].retailer.shop_name).toBe('Test Shop');
     await app.close();
   });
@@ -503,9 +500,6 @@ describe('GET /admin/retailers/:id', () => {
       ...fakeRetailer,
       _count: { products: 5, customers: 3, collections: 2, staff: 1 },
     });
-    mockTryOnUsageAggregate
-      .mockResolvedValueOnce({ _count: 2, _sum: { cost_usd: 0.01 } })
-      .mockResolvedValueOnce({ _count: 10, _sum: { cost_usd: 0.05 } });
     mockProductFindMany.mockResolvedValue([
       {
         id: 'prod_1',
@@ -533,9 +527,7 @@ describe('GET /admin/retailers/:id', () => {
     expect(data.customer_count).toBe(3);
     expect(data.collection_count).toBe(2);
     expect(data.staff_count).toBe(1);
-    expect(data.try_on.this_month.count).toBe(2);
-    expect(data.try_on.this_month.cost_usd).toBe(0.01);
-    expect(data.try_on.total.count).toBe(10);
+
     expect(data.recent_products).toHaveLength(1);
     expect(data.recent_products[0].name).toBe('Pink Kurti');
     await app.close();
@@ -561,9 +553,6 @@ describe('GET /admin/retailers/:id', () => {
       ...fakeRetailer,
       _count: { products: 0, customers: 0, collections: 0, staff: 0 },
     });
-    mockTryOnUsageAggregate
-      .mockResolvedValueOnce({ _count: 0, _sum: { cost_usd: null } })
-      .mockResolvedValueOnce({ _count: 0, _sum: { cost_usd: null } });
     mockProductFindMany.mockResolvedValue([]);
 
     const app = await buildApp();
@@ -574,8 +563,7 @@ describe('GET /admin/retailers/:id', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().data.try_on.this_month.count).toBe(0);
-    expect(res.json().data.try_on.this_month.cost_usd).toBe(0);
+
     await app.close();
   });
 });
@@ -841,7 +829,6 @@ describe('POST /admin/retailers/:id/change-plan', () => {
         plan: 'STARTER',
         max_products: 500,
         max_customers: 999999,
-        try_on_credits: 0,
       }),
     });
     await app.close();
@@ -940,7 +927,7 @@ describe('POST /admin/retailers/:id/change-plan', () => {
 
 describe('GET /admin/usage', () => {
   it('returns usage stats with MRR calculated from subscriptions', async () => {
-    mockTryOnUsageAggregate.mockResolvedValue({ _count: 5, _sum: { cost_usd: 0.025 } });
+
     mockSubscriptionFindMany.mockResolvedValue([
       { amount_inr: 99900, billing_period: 'monthly' },
       { amount_inr: 999900, billing_period: 'annual' },
@@ -960,13 +947,12 @@ describe('GET /admin/usage', () => {
     expect(res.json().data.trial_retailers).toBe(3);
     expect(res.json().data.active_subscriptions).toBe(3);
     expect(res.json().data.mrr_inr).toBe(433125);
-    expect(res.json().data.try_on_this_month).toBe(5);
-    expect(res.json().data.try_on_cost_usd).toBe(0.025);
+
     await app.close();
   });
 
   it('returns zero MRR when no active subscriptions exist', async () => {
-    mockTryOnUsageAggregate.mockResolvedValue({ _count: 0, _sum: { cost_usd: null } });
+
     mockSubscriptionFindMany.mockResolvedValue([]);
     mockRetailerCount.mockResolvedValueOnce(0).mockResolvedValueOnce(0);
 
@@ -980,7 +966,7 @@ describe('GET /admin/usage', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data.mrr_inr).toBe(0);
     expect(res.json().data.active_subscriptions).toBe(0);
-    expect(res.json().data.try_on_cost_usd).toBe(0);
+
     await app.close();
   });
 });

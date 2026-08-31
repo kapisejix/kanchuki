@@ -52,26 +52,9 @@ enum EnquiryStatus {
   CLOSED
 }
 
-enum TryOnStatus {
-  QUEUED
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum MeasurementSource {
-  PHOTO // derived from front+back photo via MediaPipe Pose
-  MANUAL // entered directly via inch-tape
-}
-
 enum Gender {
   MALE
   FEMALE
-}
-
-enum SizeChartCategory {
-  UPPER // Kurtas, Tops, Anarkalis, Dresses — bust/waist/hip
-  LOWER // Pants, Palazzos, Skirts — waist/hip/length
 }
 
 // Merchandising audience segment for Category/Style/Occasion/Fabric taxonomy
@@ -131,22 +114,30 @@ enum TicketType {
 enum PlanFeatureKey {
   BULK_ONBOARDING_IMPORT
   CUSTOM_BACKGROUND_LIBRARY
+  // @deprecated - removed in migration 082
   SPIN_360
+  // @deprecated - removed in migration 082
   VIRTUAL_TRY_ON
   WHATSAPP_BUSINESS_API
   WHATSAPP_CATALOG_SYNC
+  // @deprecated - removed in migration 082
   CHECKOUT_CART
   DATA_EXPORT_CSV
   CUSTOM_BRANDING
   GHOST_MANNEQUIN_AI
+  // @deprecated - removed in migration 082
   RAZORPAY_ROUTE
   API_ACCESS
   PRIORITY_AI_QUEUE
   MULTI_STORE
   GROWTH_ENGINE
+  // @deprecated - removed in migration 082
   PARTNER_NETWORK
+  // @deprecated - removed in migration 082
   INCENTIVE_ENGINE
+  // @deprecated - removed in migration 082
   FESTIVAL_BACKGROUNDS
+  // @deprecated - removed in migration 082
   LOOKBOOK_GENERATOR
   SOCIAL_TEMPLATES
   CHANNEL_SYNC
@@ -157,6 +148,7 @@ enum PlanFeatureKey {
 enum QuotaResourceType {
   PRODUCT_UPLOAD
   AI_TAGGING_CALL
+  // @deprecated - removed in migration 082
   TRY_ON
   IMAGE_CROP
   BG_REMOVAL
@@ -219,8 +211,6 @@ model Retailer {
   kyc_rejection_reason    String?
 
   // Customer referral program config (roadmap C).
-  referral_enabled      Boolean @default(false)
-  referral_reward_paise Int     @default(0)
 
 // Meta WhatsApp Business API — retailer's own credentials, bring-your-own.
    // When set, collection bulk-send uses this instead of the one-by-one wa.me
@@ -288,7 +278,6 @@ model Retailer {
   // Usage limits (snapshot from plan, avoids join on every request)
   max_products    Int @default(500)
   max_customers   Int @default(999999)
-  try_on_credits  Int @default(0)
   max_staff_seats Int @default(3) // 3 free, additional seats ₹199/mo (PRO-REQUIREMENTS.md §6)
 
   // Razorpay
@@ -330,8 +319,6 @@ model Retailer {
   product_categories    ProductCategory[]
   product_attributes    ProductAttribute[]
   subscriptions         Subscription[]
-  try_on_usage          TryOnUsageLog[]
-  size_charts           SizeChart[]
   limit_overrides       RetailerLimitOverride[]
   usage_counters        UsageCounter[]
   quota_addon_purchases QuotaAddonPurchase[]
@@ -343,18 +330,9 @@ model Retailer {
   support_owner         TeamMember?             @relation("SupportedRetailers", fields: [support_owner_id], references: [id])
   suspended_by          TeamMember?             @relation("SuspendedRetailers", fields: [suspended_by_id], references: [id])
   support_tickets       SupportTicket[]
-  payment_account       RetailerPaymentAccount?
-  orders                Order[]
   social_accounts       SocialAccount[]
   social_posts          SocialPost[]
-  customer_visits       CustomerVisit[]
   store_visits          CustomerStoreVisit[]
-  store_affinities      StoreAffinity[]
-  incentive_rules       IncentiveRule[]
-  partners              Partner[]
-  partner_events        PartnerEvent[]
-  festival_backgrounds  FestivalBackground[]
-  lookbooks             Lookbook[]
   social_templates      SocialTemplate[]
   channel_syncs         ChannelSync[]
   product_reviews       ProductReview[]
@@ -375,52 +353,6 @@ model Retailer {
   
 
 // ─── SMART INCENTIVE ENGINE ────────────────────────────────────────
-model CustomerVisit {
-   id          String   @id @default(cuid())
-   retailer    Retailer @relation(fields: [retailer_id], references: [id])
-   retailer_id String
-   customer    Customer @relation(fields: [customer_id], references: [id])
-   customer_id String
-   visit_at    DateTime @default(now())
-
-   @@index([retailer_id])
-   @@index([customer_id])
-   @@map("customer_visits")
-}
-
-model IncentiveRule {
-   id             String   @id @default(cuid())
-   retailer       Retailer @relation(fields: [retailer_id], references: [id])
-   retailer_id    String
-   name           String
-   description    String?
-   trigger_type   IncentiveTriggerType
-   discount_type  IncentiveDiscountType
-   discount_value Int // in paise
-   conditions     Json? // for loyalty tier: { min_spent: 10000, min_visits: 5 }
-   active         Boolean @default(true)
-   starts_at      DateTime?
-   ends_at        DateTime?
-
-   created_at DateTime @default(now())
-   updated_at DateTime @updatedAt
-
-   @@index([retailer_id])
-   @@map("incentive_rules")
-}
-
-enum IncentiveTriggerType {
-   FIRST_VISIT
-   BIRTHDAY
-   ANNIVERSARY
-   LOYALTY_TIER
-}
-
-enum IncentiveDiscountType {
-   PERCENT
-   FIXED_AMOUNT
-}
-
 
 // ─── STORE STRUCTURE ─────────────────────────────────────────────
 model StoreSection {
@@ -578,8 +510,6 @@ model Product {
 
   // 360-degree spin view state — null until a spin video is uploaded.
   // 'processing' | 'ready' | 'failed', set by the frame-extraction job.
-  spin_status String?
-  spin_error  String?
 
   // F-011: retailer-picked backdrop from the admin-curated library, applied
   // by cleanupProductPhoto() in place of the default white flatten. Null =
@@ -614,14 +544,11 @@ model Product {
   photos           ProductPhoto[]
   videos           ProductVideo[]
   reviews          ProductReview[]
-  spin_frames      ProductSpinFrame[]
   variants         ProductVariant[]
   embedding        ProductEmbedding?
   collection_items CollectionProduct[]
-  interactions     CustomerInteraction[]
   recently_viewed  CustomerRecentlyViewed[]
   wishlist_items   CustomerWishlistItem[]
-  order_items      OrderItem[]
   catalog_item     CatalogItem?
 
   @@unique([retailer_id, sku])
@@ -671,23 +598,6 @@ model ProductPhoto {
 
   @@index([product_id])
   @@map("product_photos")
-}
-
-model ProductSpinFrame {
-  id          String @id @default(cuid())
-  product_id  String
-  retailer_id String
-
-  url         String
-  r2_key      String
-  frame_index Int
-
-  created_at DateTime @default(now())
-
-  product Product @relation(fields: [product_id], references: [id], onDelete: Cascade)
-
-  @@index([product_id])
-  @@map("product_spin_frames")
 }
 
 model ProductVariant {
@@ -793,14 +703,9 @@ model Customer {
 
   retailer         Retailer              @relation(fields: [retailer_id], references: [id])
   customer_account CustomerAccount?      @relation(fields: [customer_account_id], references: [id])
-  fashion_dna      CustomerFashionDNA?
-  interactions     CustomerInteraction[]
   collections_sent Collection[]          @relation("CustomerCollections")
-  measurements     CustomerMeasurement[]
-  visits           CustomerVisit[]
   product_reviews  ProductReview[]
   store_reviews    StoreReview[]
-  partner_referrals PartnerReferral[]
 
   @@unique([retailer_id, phone])
   @@index([retailer_id])
@@ -810,100 +715,6 @@ model Customer {
 }
 
 // ─── CUSTOMER MEASUREMENTS (Phase 1 — VTO fit input) ────────────
-
-model CustomerMeasurement {
-  id          String @id @default(cuid())
-  customer_id String
-  retailer_id String
-
-  source MeasurementSource
-
-  height_cm Float
-  bust_cm   Float?
-  waist_cm  Float?
-  hip_cm    Float?
-
-  // Lower body (pant/salwar fit)
-  pant_waist_cm Float?
-  pant_hip_cm   Float?
-  inseam_cm     Float?
-
-  // Photo path only — originals deleted right after landmark extraction
-  front_photo_r2_key  String?
-  back_photo_r2_key   String?
-  photo_deleted_at    DateTime?
-  pose_landmarks_json Json?
-  confidence_score    Float?
-
-  // Customer consent to capture/use these photos — required for the PHOTO
-  // source path, always false for MANUAL (no photo taken).
-  consent_given Boolean   @default(false)
-  consent_at    DateTime?
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  customer    Customer   @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  try_on_jobs TryOnJob[]
-
-  @@index([customer_id])
-  @@index([retailer_id])
-  @@map("customer_measurements")
-}
-
-model CustomerFashionDNA {
-  id          String  @id @default(cuid())
-  customer_id String  @unique
-  retailer_id String
-
-  // pgvector — learned preference vector
-  preference_vector Unsupported("vector(1536)")?
-
-  color_affinities    Json @default("{}")
-  style_affinities    Json @default("{}")
-  fabric_affinities   Json @default("{}")
-  occasion_affinities Json @default("{}")
-  budget_range        Json @default("{}")
-
-  interaction_count Int      @default(0)
-  confidence_score  Float    @default(0.0)
-  last_updated_at   DateTime @default(now())
-
-  // Shopper Passport — identity-scoped (Task 15 adds this column)
-  customer_account_id String?
-
-  customer         Customer         @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id])
-
-  @@unique([customer_account_id])
-  @@index([retailer_id])
-  @@map("customer_fashion_dna")
-}
-
-model CustomerInteraction {
-  id            String  @id @default(cuid())
-  customer_id   String
-  retailer_id   String
-  product_id    String?
-  collection_id String?
-
-  // Shopper Passport — identity-scoped interaction (nullable until backfill)
-  customer_account_id String?
-
-  type     String // view | favorite | enquiry | purchase | try_on
-  metadata Json?
-
-  created_at DateTime @default(now())
-
-  customer         Customer         @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  customer_account CustomerAccount? @relation(fields: [customer_account_id], references: [id])
-  product          Product?         @relation(fields: [product_id], references: [id])
-
-  @@index([customer_id])
-  @@index([customer_account_id])
-  @@index([retailer_id, created_at])
-  @@map("customer_interactions")
-}
 
 // ─── COLLECTIONS ─────────────────────────────────────────────────
 
@@ -1199,99 +1010,16 @@ model AdminCommissionExpense {
 
 // ─── VIRTUAL TRY-ON (Phase 1 ready) ─────────────────────────────
 
-model TryOnJob {
-  id          String @id @default(cuid())
-  retailer_id String
-
-  product_id            String
-  measurement_id        String? // measurement snapshot used to scale/fit garment
-  customer_photo_r2_key String
-  result_r2_key         String?
-  result_url            String?
-
-  status        TryOnStatus @default(QUEUED)
-  error_message String?
-
-  api_provider String
-  api_job_id   String?
-  api_cost_usd Float?
-
-  queued_at    DateTime  @default(now())
-  started_at   DateTime?
-  completed_at DateTime?
-
-  customer_photo_deleted_at DateTime?
-  result_expires_at         DateTime?
-
-  // Customer opted in (explicit checkbox, separate from the required
-  // processing consent) to let Kanchuki keep a copy of this try-on's photos
-  // for model training. Default false — training storage never happens
-  // silently. See TrainingPhotoConsent and docs/SECURITY.md §3b.
-  consent_to_training Boolean @default(false)
-
-  measurement CustomerMeasurement? @relation(fields: [measurement_id], references: [id])
-
-  @@index([retailer_id])
-  @@index([status])
-  @@map("try_on_jobs")
-}
-
 // ─── TRAINING DATA (consent-gated, admin-only — NOT retailer-visible) ──
 // Deliberately has no retailer_id and no retailer-facing RLS policy (see
 // migration 008). Populated only when TryOnJob.consent_to_training was true
 // at job-submission time. Distinct from TryOnJob's own photo lifecycle —
 // TryOnJob's customer_photo_r2_key still gets deleted per the existing
 // privacy promise; this is a separate, deliberately-retained copy.
-model TrainingPhotoConsent {
-  id            String @id @default(cuid())
-  try_on_job_id String @unique
-
-  customer_photo_r2_key String
-  garment_photo_r2_key  String
-  result_r2_key         String?
-
-  consent_version String // matches the consent copy text shown at capture time
-  source          TryOnSource
-
-  // Random token returned to the customer via the try-on result screen.
-  // The customer presents this token at /consent/revoke to prove ownership
-  // and request deletion of their training-data copy — no login needed.
-  // See docs/PRO-REQUIREMENTS.md F-102d and docs/SECURITY.md §3b.
-  revocation_token String @unique @default(cuid())
-
-  consented_at DateTime @default(now())
-
-  @@map("training_photo_consents")
-}
 
 // ─── TRY-ON USAGE LOGS ───────────────────────────────────────────
 // Tracks per-retailer GPU usage for billing/quotas.
 // This is the single source of truth for try-on cost tracking.
-
-enum TryOnSource {
-  IN_STORE // Shopkeeper-initiated from the mobile app
-  REMOTE // Customer-initiated from the web collection page
-}
-
-model TryOnUsageLog {
-  id            String @id @default(cuid())
-  retailer_id   String
-  try_on_job_id String
-  product_id    String
-
-  cost_usd Float // Estimated GPU cost (CatVTON ~$0.005)
-  source   TryOnSource // How the try-on was triggered
-
-  created_at   DateTime  @default(now())
-  completed_at DateTime?
-
-  retailer Retailer @relation(fields: [retailer_id], references: [id])
-
-  @@index([retailer_id])
-  @@index([retailer_id, created_at])
-  @@index([created_at])
-  @@map("try_on_usage_logs")
-}
 
 // ─── QUOTA & LIMITS (F-010) ──────────────────────────────────────
 // Admin-configurable limits per plan/resource + per-retailer overrides,
@@ -1469,46 +1197,6 @@ model QuotaAddonPurchase {
 
 // ─── SIZE CHARTS (F-102c — size recommendation, no GPU cost) ────
 
-model SizeChart {
-  id          String            @id @default(cuid())
-  retailer_id String
-  category    SizeChartCategory
-  name        String            @default("Default")
-
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  retailer Retailer       @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
-  rows     SizeChartRow[]
-
-  @@unique([retailer_id, category])
-  @@index([retailer_id])
-  @@map("size_charts")
-}
-
-model SizeChartRow {
-  id            String @id @default(cuid())
-  size_chart_id String
-
-  size_label String // S, M, L, XL, XXL, 3XL ... 10XL
-  sort_order Int // S=1, M=2, ... — lets lookup walk to the nearest size
-
-  bust_min_cm   Float?
-  bust_max_cm   Float?
-  waist_min_cm  Float?
-  waist_max_cm  Float?
-  hip_min_cm    Float?
-  hip_max_cm    Float?
-  length_min_cm Float? // inseam/length, LOWER category only
-  length_max_cm Float?
-
-  size_chart SizeChart @relation(fields: [size_chart_id], references: [id], onDelete: Cascade)
-
-  @@unique([size_chart_id, size_label])
-  @@index([size_chart_id])
-  @@map("size_chart_rows")
-}
-
 // ─── AUDIT LOG ───────────────────────────────────────────────────
 
 model AuditLog {
@@ -1533,107 +1221,6 @@ model AuditLog {
 // ─── L2 ECOMMERCE CHECKOUT (F-302) ──────────────────────────────
 // Stage A — Direct-to-Retailer: each retailer connects their own Razorpay
 // account. Existence of an active row here IS the L1/L2 tier gate.
-
-enum PaymentMode {
-  DIRECT // Stage A — retailer's own Razorpay account
-  ROUTE  // Stage B — Razorpay Linked Account (future)
-}
-
-enum OrderStatus {
-  PENDING_PAYMENT
-  PAID
-  CANCELLED
-  REFUNDED
-  FULFILLED
-}
-
-enum RouteOnboardingStatus {
-  PENDING
-  ACTIVE
-  REJECTED
-}
-
-model RetailerPaymentAccount {
-  id          String      @id @default(cuid())
-  retailer_id String      @unique
-  payment_mode PaymentMode @default(DIRECT)
-
-  // Stage A (DIRECT) — encrypted via packages/db/src/secrets.ts
-  // encryptSecret()/decryptSecret() (AES-256-GCM, same mechanism as F-012)
-  razorpay_key_id                 String?  // public-ish, plaintext ok
-  razorpay_key_secret_encrypted   String?  // AES-256-GCM
-  razorpay_webhook_secret_encrypted String? // AES-256-GCM
-
-  // Stage B (ROUTE) — future Razorpay Linked Account
-  razorpay_linked_account_id String?
-  route_status                RouteOnboardingStatus?
-  onboarding_url               String?
-
-  is_active   Boolean   @default(false)
-  verified_at DateTime?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-
-  retailer Retailer @relation(fields: [retailer_id], references: [id])
-
-  @@map("retailer_payment_accounts")
-}
-
-model Order {
-  id            String      @id @default(cuid())
-  retailer_id   String
-  collection_id String?     // which collection link the customer bought from
-
-  // Anonymous checkout — no reusable Address entity, per-order snapshot
-  customer_name    String
-  customer_phone   String
-  shipping_address Json  // { line1, line2?, city, state, pincode }
-
-  status OrderStatus @default(PENDING_PAYMENT)
-
-  // Amounts in paise (same convention as Product.price_min/max)
-  subtotal_amount Int
-  gst_amount      Int
-  total_amount    Int
-
-  payment_mode PaymentMode  // snapshotted from RetailerPaymentAccount at create time
-  razorpay_order_id   String? @unique
-  razorpay_payment_id String?
-
-gst_invoice_number String?
-   gst_invoice_pdf_r2_key String?
-   gst_invoice_pdf_url String?
-
-   created_at   DateTime  @default(now())
-   updated_at   DateTime  @updatedAt
-   paid_at      DateTime?
-   cancelled_at DateTime?
-
-  retailer Retailer    @relation(fields: [retailer_id], references: [id])
-  items    OrderItem[]
-  partner_referrals PartnerReferral[]
-
-  @@index([retailer_id])
-  @@index([status])
-  @@map("orders")
-}
-
-model OrderItem {
-  id         String @id @default(cuid())
-  order_id   String
-  product_id String
-
-  // Snapshotted at order time — retailer catalog price/name can change later
-  product_name_snapshot String?
-  price_snapshot         Int
-  quantity               Int @default(1) // always 1 — one Product row = one garment
-
-  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [product_id], references: [id])
-
-  @@index([order_id])
-  @@map("order_items")
-}
 
 // ─── INTEGRATION SETTINGS ──────────────────────────────────────────
 // Admin-managed, encrypted third-party credentials (F-012). Replaces the
@@ -1856,23 +1443,6 @@ enum PromotionDiscountType {
   FIXED
 }
 
-enum SupplierTransactionKind {
-  ORDER
-  PAYMENT
-}
-
-enum BookingStatus {
-  REQUESTED
-  CONFIRMED
-  CANCELLED
-  COMPLETED
-}
-
-enum ReferralCreditStatus {
-  PENDING
-  CREDITED
-}
-
 // Festival calendar (roadmap D). Numeric auto-increment id — admins add/
 // edit/delete rows freely (state/region-wise offers with start/end dates),
 // so the id carries no semantic meaning. Campaigns snapshot festival_name.
@@ -1976,226 +1546,18 @@ model Promotion {
 }
 
 // Supplier directory + transaction ledger (roadmap K).
-model Supplier {
-  id           String @id @default(cuid())
-  retailer_id  String
-  name         String
-  phone        String?
-  city         String?
-  notes        String?
-  pending_amount_paise Int @default(0)
-
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-
-  @@index([retailer_id])
-  @@map("suppliers")
-}
-
-model SupplierTransaction {
-  id               String                  @id @default(cuid())
-  supplier_id      String
-  retailer_id      String
-  kind             SupplierTransactionKind
-  amount_paise     Int
-  note             String?
-  transaction_date DateTime @default(now())
-
-  created_at DateTime @default(now())
-
-  @@index([supplier_id])
-  @@index([retailer_id, transaction_date])
-  @@map("supplier_transactions")
-}
 
 // Showroom / try-on room booking (roadmap L). Public create, retailer confirms.
-model Booking {
-  id          String        @id @default(cuid())
-  retailer_id String
-  customer_id String? // loose pointer — set when a known customer books
-  name        String
-  phone       String
-  starts_at   DateTime
-  ends_at     DateTime
-  status      BookingStatus @default(REQUESTED)
-  note        String?
-
-  created_at DateTime  @default(now())
-  updated_at DateTime  @updatedAt
-
-  @@index([retailer_id, status])
-  @@index([retailer_id, starts_at])
-  @@map("bookings")
-}
 
 // Customer referral program (roadmap C).
-model Referral {
-   id           String @id @default(cuid())
-   retailer_id  String
-   customer_id  String // loose pointer — the referrer
-   code         String @unique
-   reward_paise Int    @default(0) // credited to BOTH parties on first purchase
-   clicks       Int    @default(0)
-   signups      Int    @default(0)
-
-   created_at DateTime  @default(now())
-   updated_at DateTime  @updatedAt
-
-   @@index([retailer_id])
-   @@map("referrals")
-}
-
-model ReferralCredit {
-   id           String                @id @default(cuid())
-   retailer_id  String
-   referral_id  String
-   customer_id  String // loose pointer — who receives the credit
-   amount_paise Int
-   status       ReferralCreditStatus  @default(PENDING)
-
-   created_at DateTime @default(now())
-
-   @@index([customer_id])
-   @@index([referral_id])
-   @@map("referral_credits")
-}
 
 // Partner Network Manager (roadmap P) — B2B partnerships with salons, tailors, etc.
-enum PartnerType {
-   SALON
-   TAILOR
-   STYLIST
-   MAKEUP_ARTIST
-   OTHER
-}
-
-enum CommissionType {
-   FIXED_AMOUNT
-   PERCENTAGE_OF_SALE
-}
-
-enum PartnerReferralStatus {
-   PENDING
-   PAID
-   CANCELLED
-}
-
-model Partner {
-   id             String   @id @default(cuid())
-   retailer_id    String
-   name           String
-   type           PartnerType
-   contact_person String?
-   phone          String?
-   email          String?
-   address        String?
-   // Referral tracking
-   referral_code  String   @unique
-   is_active      Boolean  @default(true)
-   // Commission structure
-   commission_rate Int     // percentage (0-100) of referred sale
-   commission_type CommissionType @default(PERCENTAGE_OF_SALE)
-   fixed_commission_paise Int? // if commission_type is FIXED_AMOUNT
-   created_at DateTime  @default(now())
-   updated_at DateTime  @updatedAt
-
-   retailer Retailer @relation(fields: [retailer_id], references: [id])
-   referrals PartnerReferral[]
-   events    PartnerEvent[]
-
-   @@index([retailer_id])
-   @@index([referral_code])
-   @@map("partners")
-}
-
-model PartnerReferral {
-   id              String   @id @default(cuid())
-   partner_id      String
-   // The referred customer (end user who purchased)
-   customer_id     String
-   // Optional: track what was purchased
-   order_id        String?
-   // Commission earned
-   commission_paise Int
-   status          PartnerReferralStatus @default(PENDING)
-   created_at DateTime  @default(now())
-   updated_at DateTime  @updatedAt
-
-   partner   Partner   @relation(fields: [partner_id], references: [id])
-   customer  Customer  @relation(fields: [customer_id], references: [id])
-   order     Order?    @relation(fields: [order_id], references: [id])
-
-   @@index([partner_id])
-   @@index([customer_id])
-   @@index([status])
-   @@map("partner_referrals")
-}
 
 // Co-hosted events with partners
-model PartnerEvent {
-   id           String   @id @default(cuid())
-   retailer_id  String
-   partner_id   String
-   name         String
-   description  String?
-   starts_at    DateTime
-   ends_at      DateTime?
-   location     String?
-   // Whether this is a virtual or in-person event
-   is_virtual   Boolean  @default(false)
-   // Promotion details
-   discount_code String? // Special discount code for event attendees
-   discount_paise Int?   // Amount of discount
-   is_active    Boolean  @default(true)
-   created_at DateTime  @default(now())
-   updated_at DateTime  @updatedAt
-
-   retailer Retailer @relation(fields: [retailer_id], references: [id])
-   partner  Partner   @relation(fields: [partner_id], references: [id])
-
-   @@index([retailer_id])
-   @@index([partner_id])
-   @@index([starts_at])
-   @@map("partner_events")
-}
 
 // ─── FESTIVAL BACKGROUND LIBRARY ──────────────────────────────────
 // Admin-curated seasonal background images for AI Studio Shoots.
 // Retailers apply them via POST /products/:id/photos/:photoId/festival-background.
-model FestivalBackground {
-  id          String   @id @default(cuid())
-  retailer_id String
-  retailer    Retailer @relation(fields: [retailer_id], references: [id])
-
-  // Background metadata
-  name        String   // e.g. "Diwali Gold Sparkle"
-  description String?
-  image_url   String   // R2 URL of the background image
-  image_r2_key String? // R2 storage key for deletion
-  thumbnail_url String? // Smaller preview version
-
-  // Seasonal/festival tagging
-  occasion    String   // e.g. "Diwali", "Wedding", "Eid", "Navratri"
-  season      String?  // e.g. "autumn", "winter", "spring"
-  region      String?  // e.g. "north_india", "south_india", "all"
-
-  // Scheduling
-  is_active   Boolean  @default(true)
-  valid_from  DateTime? // When this background becomes available
-  valid_to    DateTime? // When it expires
-  priority    Int      @default(0) // Higher = shown first in admin
-
-  // Usage stats
-  usage_count Int      @default(0) // How many times applied
-
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([retailer_id])
-  @@index([occasion])
-  @@index([is_active, valid_from, valid_to])
-  @@map("festival_backgrounds")
-}
 
 enum ProductVideoSource {
   UPLOAD
@@ -2290,51 +1652,6 @@ model CatalogSyncLog {
 // ─── LOOKBOOK GENERATOR ──────────────────────────────────────────
 // Retailer-curated product lookbooks: pick 3-10 products → AI generates
 // styled lookbook with layout, captions, and export to Instagram/WA/PDF.
-model Lookbook {
-  id          String   @id @default(cuid())
-  retailer_id String
-  retailer    Retailer @relation(fields: [retailer_id], references: [id])
-
-  name        String   // e.g. "Diwali Collection 2026"
-  description String?
-  cover_url   String?  // Cover image URL
-  format      LookbookFormat @default(CAROUSEL)
-  status      LookbookStatus @default(DRAFT)
-
-  // Product references (stored as JSON array of IDs)
-  product_ids String[] // Array of product IDs included
-
-  // Output
-  output_url  String?  // Generated lookbook URL (HTML/PDF)
-  output_r2_key String?
-  thumbnail_url String?
-
-  // Sharing
-  share_url   String?  // Public shareable link
-  view_count  Int      @default(0)
-  share_count Int      @default(0)
-
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  @@index([retailer_id])
-  @@index([status])
-  @@map("lookbooks")
-}
-
-enum LookbookFormat {
-  CAROUSEL   // Instagram carousel style
-  GRID       // Grid layout
-  EDITORIAL  // Magazine-style
-  PDF        // Downloadable PDF
-}
-
-enum LookbookStatus {
-  DRAFT
-  GENERATING
-  READY
-  FAILED
-}
 
 // ─── AI SOCIAL MEDIA TEMPLATES ───────────────────────────────────
 // Admin-managed template presets for social media image generation.
@@ -2614,11 +1931,8 @@ model CustomerAccount {
   store_visits        CustomerStoreVisit[]
   customer_links      Customer[]
   consent_events      ConsentEvent[]
-  interactions        CustomerInteraction[]
-  fashion_dna         CustomerFashionDNA?
   recently_viewed     CustomerRecentlyViewed[]
   wishlist_items      CustomerWishlistItem[]
-  store_affinities    StoreAffinity[]
   passport_sessions   PassportSession[]
 
   @@map("customer_accounts")
@@ -2713,17 +2027,3 @@ model CustomerWishlistItem {
 }
 
 // Nightly precomputed store-discovery score per shopper (§16.4)
-model StoreAffinity {
-  id                  String   @id @default(cuid())
-  customer_account_id String
-  retailer_id         String
-  score               Float
-  computed_at         DateTime @default(now())
-
-  customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
-  retailer         Retailer         @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
-
-  @@unique([customer_account_id, retailer_id])
-  @@index([customer_account_id, score])
-  @@map("store_affinities")
-}

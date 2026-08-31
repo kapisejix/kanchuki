@@ -169,13 +169,6 @@ export default function TabsLayout() {
           tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
         }}
       />
-      {/* Hidden tabs — accessible via direct link / router.push, but omitted from footer bar */}
-      <Tabs.Screen
-        name="orders"
-        options={{
-          href: null,
-        }}
-      />
       <Tabs.Screen
         name="customers"
         options={{

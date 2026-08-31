@@ -10,7 +10,6 @@ import {
 } from '../../jobs/catalog-sync.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
-import { notifyNewArrival, notifyRestock, notifyPriceDrop } from '../../lib/recommendation-triggers.js';
 import {
   forbidden,
   notFound,
@@ -130,10 +129,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       } catch {}
     });
 
-    // Fire-and-forget: notify consented customers about the new arrival
-    notifyNewArrival(retailerId, product.id, product.name || 'New product').catch((err) => {
-      request.log.error({ err, product_id: product.id }, 'Failed to send new-arrival notifications');
-    });
+    // New-arrival notification removed — notification system dropped
 
     return reply.status(201).send({ data: product });
   });
@@ -211,7 +207,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       include: {
         photos: { orderBy: { sort_order: 'asc' } },
         videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'desc' }] },
-        spin_frames: { orderBy: { frame_index: 'asc' } },
         variants: true,
         section: { select: { name: true } },
       },
@@ -243,14 +238,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       })),
     );
 
-    // Generate presigned URLs for spin frames (same fallback as photos)
-    const spinFramesWithUrls = await Promise.all(
-      (product.spin_frames ?? []).map(async (frame) => ({
-        ...frame,
-        url: (await photoUrlToDisplay({ url: frame.url, r2_key: frame.r2_key })) ?? frame.url,
-      })),
-    );
-
     // Generate presigned URLs for variant photos using their r2_key
     const variantsWithUrls = await Promise.all(
       (product.variants ?? []).map(async (variant) => {
@@ -268,7 +255,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         ...product,
         photos: photosWithUrls,
         videos: videosWithUrls,
-        spin_frames: spinFramesWithUrls,
         variants: variantsWithUrls,
       },
     };
@@ -397,22 +383,7 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     // Fire-and-forget: restock / price-drop notifications
     const productName = updated.name || 'A product';
 
-    // Restock: was SOLD, now AVAILABLE
-    if (
-      body.data.status === 'AVAILABLE' &&
-      existing.status === 'SOLD'
-    ) {
-      notifyRestock(request.retailerId, id, productName).catch((err) => {
-        request.log.error({ err, product_id: id }, 'Failed to send restock notifications');
-      });
-    }
-
-    // Price drop: price_min decreased
-    if (body.data.price_min != null && existing.price_min != null && body.data.price_min < existing.price_min) {
-      notifyPriceDrop(request.retailerId, id, productName, existing.price_min, body.data.price_min).catch((err) => {
-        request.log.error({ err, product_id: id }, 'Failed to send price-drop notifications');
-      });
-    }
+    // Restock / price-drop notifications removed — notification system dropped
 
     return { data: updated };
   });

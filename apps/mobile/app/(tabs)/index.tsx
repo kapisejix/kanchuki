@@ -22,7 +22,7 @@ import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { AnimatedPressable } from '../../src/components/AnimatedPressable';
 import { GradientButton } from '../../src/components/GradientButton';
 import { HomeScreenSkeleton } from '../../src/components/Skeleton';
-import { categoryApi, ordersApi, retailerApi } from '../../src/lib/api';
+import { categoryApi, retailerApi } from '../../src/lib/api';
 import { useTheme } from '../../src/lib/theme';
 
 type RankedProduct = {
@@ -67,11 +67,6 @@ export default function HomeScreen() {
     queryFn: () => retailerApi.getStats(),
   });
 
-  const { data: ordersData } = useQuery({
-    queryKey: ['orders'],
-    queryFn: () => ordersApi.list(),
-  });
-
   const { data: categoriesData } = useQuery({
     queryKey: ['categories', 'list'],
     queryFn: () => categoryApi.list(),
@@ -79,10 +74,6 @@ export default function HomeScreen() {
 
   const me = (meData as { data: RetailerMe } | undefined)?.data;
   const stats = (statsData as { data: Stats } | undefined)?.data;
-  const allOrders = ordersData?.data ?? [];
-  const pendingOrders = allOrders.filter(
-    (o) => o.status === 'PENDING_PAYMENT' || o.status === 'PAID',
-  ).length;
   const categories = categoriesData?.data ?? [];
   const isLoading = meLoading || statsLoading;
 
@@ -399,7 +390,7 @@ export default function HomeScreen() {
             <QuickAction
               icon={<ShoppingBag size={20} color="#560A39" />}
               label="Orders"
-              sublabel={pendingOrders > 0 ? `${pendingOrders} pending` : 'Manage fulfillment'}
+              sublabel={'Manage your store'}
               onPress={() => router.push('/(tabs)/orders')}
               accent="#E0E1F6"
             />

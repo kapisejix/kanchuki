@@ -1,5 +1,13 @@
 # Kanchuki — India Retailer Growth & Profitability Roadmap
 
+> **Feature teardown (`chore/remove-unwanted-features`, 2026-08-31, migration 082):**
+> Roadmap rows **C** (Referral Program), **K** (Supplier Management) and **L**
+> (Showroom Booking) were removed entirely; **N** (Size & Fit) lost its
+> size-chart recommendation engine (usual-size capture + plus sizes stay).
+> `customer_interactions` was also dropped — reactivation (G), inventory alerts
+> (J) and campaign/seasonal analytics (R) now compute from favorites, enquiries
+> and `total_purchases` only. Authoritative list: `docs/database/no-feature-want.md`.
+
 **Status:** ✅ **Backend + full mobile UI BUILT 2026-08-17** (all growth modules ship under `/v1/growth/*`, gated behind the `GROWTH_ENGINE` plan feature; every roadmap module below has a live retailer screen in the mobile app). **M, N, R, S completed 2026-08-17** (BUILD-LOG §47). **E (AI Campaign Assistant) completed 2026-08-18** (BUILD-LOG §48). **Migrations:** 055–058 + 060–063 **applied and verified** (growth tables/enum/plan-rows live; Phase II catalog tables + WHATSAPP_CATALOG_SYNC feature live; `customers.usual_size` column live; `retailers.preferred_locale` column live). **P (WhatsApp native catalog) completed 2026-08-18** (BUILD-LOG §49, Phase II — catalog sync engine, API, webhook, admin monitor, mobile UI). **R seasonal analytics (wedding-season vs daily-wear) completed 2026-08-18** (BUILD-LOG §51). **S auto-built variant collection links completed 2026-08-18** (BUILD-LOG §49 — HIDDEN collection status + variant sync on campaign create/edit + variant links in send response). **i18n data groundwork completed 2026-08-18** (BUILD-LOG §50 — preferred_locale + SUPPORTED_LOCALES). **Not built:** Instagram Business publishing; future work: M native mic + UI language toggle. See `docs/BUILD-LOG.md` §44–51. Full remaining-work task list: `docs/20-August-changes.md`.  
 **Date:** August 2026  
 **Scope:** India-only small retailers  
@@ -13,17 +21,17 @@
 |---|---|---|
 | A | Kanchuki Store Directory | ✅ Built (pre-existing `/stores`, city filter + search + admin featured pins) |
 | B | QR Code Lead Capture | ✅ Built (`customers.source` + `QR_SCAN` stamp on public contact gate) |
-| C | Referral Program Engine | ✅ Built (backend + mobile UI) |
+| C | Referral Program Engine | ❌ REMOVED — `chore/remove-unwanted-features` (2026-08-31, migration 082): `referrals` / `referral_credits` tables + routes + mobile UI deleted |
 | D | Festival Campaign Automation | ✅ Built (admin calendar + campaign CRUD/send + mobile UI) |
 | E | AI Campaign Assistant | ✅ Built (NLP intent → audience/product filters → WhatsApp message template + save-to-campaign) |
 | F | Smart Promotion / Discount Engine | ✅ Built (backend + mobile UI) |
 | G | Customer Reactivation Campaigns | ✅ Built (backend + mobile UI) |
 | I | GST-Ready Invoicing | ✅ Built — PDF generation + HSN mapping (see `PRO-REQUIREMENTS.md §F-304`) |
 | J | Intelligence + Reorder Alerts | ✅ Built (signal-based alerts + mobile UI) |
-| K | Supplier Management | ✅ Built (backend + mobile UI) |
-| L | Showroom / Try-On Room Booking | ✅ Built (backend + mobile UI + public self-service booking) |
+| K | Supplier Management | ❌ REMOVED — `chore/remove-unwanted-features` (2026-08-31, migration 082): `suppliers` / `supplier_transactions` tables + routes + mobile UI deleted |
+| L | Showroom / Try-On Room Booking | ❌ REMOVED — `chore/remove-unwanted-features` (2026-08-31, migration 082): `bookings` table + routes + mobile/web UI deleted |
 | M | Multi-Language AI | ✅ Built — descriptions + campaign/WhatsApp messages in 7 languages (placeholders preserved) + AI-search screen (Hindi/Hinglish, voice via keyboard dictation). Native in-app mic + PWA/retailer UI language toggle: future work |
-| N | Indian Size & Fit System | ✅ Built — usual-size quick capture, per-customer size recommendation (usual → purchase history → size chart), plus sizes XS + 4XL–8XL, unstitched/blouse flags. Migration 058 applied. |
+| N | Indian Size & Fit System | ⚠️ Partly removed — `usual_size` quick capture + plus sizes + unstitched/blouse flags stay; the size-chart recommendation engine (`size_charts` / `size_chart_rows`) was removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). |
 | P | WhatsApp Native Catalog Sync | ✅ Built (Phase II: DB schema + sync engine + API + webhook + admin monitor + retailer mobile UI — see `docs/tasks/PHASE-II-WHATSAPP-CATALOG-BREAKDOWN.md`) |
 | Q | Video Product Support | ✅ Built (backend + mobile UI) |
 | R | Campaign Analytics by Region / Festival | ✅ Built — campaign analytics screen: festival, customer segment, hour-of-day opens, category, video-vs-photo, A/B results, seasonal (wedding vs daily-wear) comparison (BUILD-LOG §51). |
@@ -385,7 +393,7 @@ These four gaps are where the next wave of features must land.
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
 | Kanchuki Store Directory | Medium | High | **P0** | ✅ Built (pre-existing) |
-| Referral Program Engine | Medium | High | **P1** | ✅ Built |
+| Referral Program Engine | Medium | High | **P1** | ❌ REMOVED (2026-08-31, migration 082) |
 | Festival Campaign Templates | Medium | High | **P0** | ✅ Built (admin calendar + campaigns) |
 | Smart Promotion Engine | Medium | Medium | **P1** | ✅ Built |
 
@@ -394,8 +402,8 @@ These four gaps are where the next wave of features must land.
 | Feature | Effort | Impact | Priority | Status |
 |---|---|---|---|---|
 | GST-Ready Invoicing | Medium | High | **P1** | ✅ Built (PDF + HSN mapping) |
-| Supplier Management | Low | Medium | **P2** | ✅ Built |
-| Showroom Booking | Low | Low | **P2** | ✅ Built |
+| Supplier Management | Low | Medium | **P2** | ❌ REMOVED (2026-08-31, migration 082) |
+| Showroom Booking | Low | Low | **P2** | ❌ REMOVED (2026-08-31, migration 082) |
 
 ### Sprint Block D — Localization & Scale (6 weeks)
 

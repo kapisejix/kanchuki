@@ -23,7 +23,7 @@ import {
 } from '../../lib/msg91-otp.js';
 import { getCurrentNoticeVersion } from '../../lib/notice-versions.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
-import { recordInteraction, type InteractionType } from '../../lib/passport-activity.js';
+// recordInteraction removed — customerInteractions model dropped
 
 // ─── Session helper ───────────────────────────────────────────────
 
@@ -509,17 +509,8 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(204).send(); // silently drop invalid payloads
     }
 
-    // Record each interaction — fire-and-forget
-    for (const event of body.data.events) {
-      recordInteraction({
-        accountId: session.customer_account_id,
-        retailerId: event.retailer_id,
-        productId: event.product_id,
-        collectionId: event.collection_id,
-        type: event.type as InteractionType,
-        metadata: event.metadata,
-      }).catch(() => {});
-    }
+    // Interactions recording removed — customerInteractions model dropped
+    // for (const event of body.data.events) { ... }
 
     return reply.status(204).send();
   });
@@ -794,17 +785,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    const interactions = await prisma.customerInteraction.findMany({
-      where: { customer_account_id: accountId },
-      select: {
-        retailer_id: true,
-        product_id: true,
-        type: true,
-        created_at: true,
-      },
-      orderBy: { created_at: 'desc' },
-      take: 1000,
-    });
+    const interactions: { retailer_id: string; product_id: string | null; type: string; created_at: Date }[] = [];
 
     const wishlist = await prisma.customerWishlistItem.findMany({
       where: { customer_account_id: accountId },

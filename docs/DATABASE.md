@@ -7,11 +7,26 @@
 
 ---
 
+> **⚠️ This document is a secondary reference. `packages/db/prisma/schema.prisma`
+> is authoritative.** The feature teardown (`chore/remove-unwanted-features`,
+> migration `082_remove_unwanted_features`, 2026-08-31) dropped 24 tables —
+> `try_on_jobs`, `try_on_usage_logs`, `training_photo_consents`,
+> `customer_measurements`, `customer_fashion_dna`, `customer_interactions`,
+> `store_affinities`, `orders`, `order_items`, `retailer_payment_accounts`,
+> `size_charts`, `size_chart_rows`, `product_spin_frames`, `incentive_rules`,
+> `suppliers`, `supplier_transactions`, `bookings`, `referrals`,
+> `referral_credits`, `partners`, `partner_referrals`, `partner_events`,
+> `festival_backgrounds`, `lookbooks`, `customer_visits` — plus the columns
+> `retailers.try_on_credits` / `referral_enabled` / `referral_reward_paise` and
+> `products.spin_status` / `spin_error`, and 15 now-dead enums. SDL blocks and
+> ERD lines below that reference those tables are historical. Full breakdown:
+> `docs/database/no-feature-want.md`.
+
 ## Design Principles
 
 1. **Row-Level Security (RLS):** Every retailer's data is isolated at DB level. `retailer_id` on every table, RLS policy enforces it.
 2. **JSONB for flexible metadata:** Product attributes are domain-specific and evolving. Use `metadata JSONB` rather than 30 columns.
-3. **pgvector for AI:** Product embeddings and customer Fashion DNA stored natively. No separate vector DB needed at MVP scale.
+3. **pgvector for AI:** Product embeddings stored natively (`product_embeddings`). No separate vector DB needed at MVP scale. *(Customer Fashion DNA vectors removed 2026-08-31.)*
 4. **Soft delete:** Never hard-delete business records. `deleted_at TIMESTAMP` flag.
 5. **Audit trail:** `created_at`, `updated_at` on all tables. `updated_by` where ownership matters.
 
@@ -33,21 +48,14 @@ collections ──── collection_products (M:M via join table)
 collections ──── collection_views (1:many, analytics)
 collections ──── collection_enquiries (1:many)
 
-customers ──── customer_fashion_dna (1:1, Phase 1)
-customers ──── customer_interactions (1:many)
-customers ──── customer_measurements (1:many, Phase 1 — VTO fit input)
-
-try_on_jobs ──── customer_measurements (M:1, optional — measurement snapshot used for fit)
-
 wholesalers ──── wholesaler_catalogs (Phase 2)
 manufacturers ──── manufacturer_designs (Phase 2)
 
 subscriptions ──── subscription_events (billing history)
-try_on_jobs (Phase 1, ephemeral)
 
-retailers ──── retailer_payment_accounts (1:1, Phase 3 — F-302/F-307)
-retailers ──── orders (1:many, Phase 3 — F-302)
-orders ──── order_items (1:many, Phase 3 — F-302)
+# customer_fashion_dna, customer_interactions, customer_measurements,
+# try_on_jobs, retailer_payment_accounts, orders, order_items — REMOVED
+# 2026-08-31 (migration 082). See banner above.
 ```
 
 ---

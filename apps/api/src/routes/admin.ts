@@ -36,11 +36,7 @@ import {
   adminStorageRoutes,
   adminCommissionRoutes,
   adminFestivalsRoutes,
-  adminIncentiveRoutes,
-  adminPartnerRoutes,
   adminWhatsAppCatalogRoutes,
-  adminFestivalBackgroundsRoutes,
-  adminLookbookRoutes,
   adminSocialTemplateRoutes,
   adminGstRoutes,
   adminAggregatorRoutes,
@@ -243,16 +239,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   // admin-commission — 3% monthly-commission pool + expense ledger
   await server.register(adminCommissionRoutes);
   await server.register(adminFestivalsRoutes);
-  // admin-incentives — Smart Incentive Engine management
-  await server.register(adminIncentiveRoutes);
-  // admin-partners — Partner Network Manager oversight
-  await server.register(adminPartnerRoutes);
   // admin-whatsapp-catalog — Phase II WhatsApp catalog sync monitor
   await server.register(adminWhatsAppCatalogRoutes);
-  // admin-festival-backgrounds — Seasonal background library management
-  await server.register(adminFestivalBackgroundsRoutes);
-  // admin-lookbooks — Lookbook Generator management
-  await server.register(adminLookbookRoutes);
   // admin-social-templates — AI Social Media Templates management
   await server.register(adminSocialTemplateRoutes);
   // admin-gst — GST report dashboard + transaction list

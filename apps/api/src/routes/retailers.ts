@@ -3,7 +3,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
   retailersCatalogUploadRoutes,
-  retailersPartnersRoutes,
   retailersProfileRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
@@ -38,8 +37,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersCatalogUploadRoutes);
   // retailers-social — F-031 social media publishing
   await server.register(retailersSocialRoutes);
-  // retailers-partners — F-03? Partner Network Manager (Phase 2)
-  await server.register(retailersPartnersRoutes);
   // retailers-aggregators — Phase 7 Aggregator / Marketplace Sync
   await server.register(retailersAggregatorRoutes);
   // retailers-integrations — Platform API credentials (GMB, FB Ads, Google Ads)

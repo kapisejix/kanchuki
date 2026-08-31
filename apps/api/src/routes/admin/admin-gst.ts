@@ -1,22 +1,19 @@
 // Admin GST Report Dashboard (Phase 8).
 //
-// Queries existing Order.gst_amount / Order.gst_invoice_number data to provide
+// Queries SubscriptionPayment.gst_amount / gst_invoice_number data to provide
 // a GST overview, monthly breakdown, and per-retailer summaries.
-// No new schema needed — GST fields already exist on the Order model.
 //
 // SECURITY: guarded by adminAuthPreHandler (admin key + CSRF).
 
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { validationError } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
 export const adminGstRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
 
   // ─── GET /admin/gst/summary ─────────────────────────────────────
-  // Overall GST summary: total taxable, total GST, total orders, invoiced count.
   server.get('/gst/summary', async (request) => {
     const q = z
       .object({
@@ -40,42 +37,39 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       }
     }
 
-    // Only include completed/paid orders
-    where.status = { in: ['PAID', 'DELIVERED', 'COMPLETED'] };
+    where.status = 'success';
 
-    const result = await prisma.order.aggregate({
+    const result = await prisma.subscriptionPayment.aggregate({
       where,
-      _sum: { subtotal_amount: true, gst_amount: true, total_amount: true },
-      _count: { id: true },
+      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true },
+      _count: true,
     });
 
-    const invoicedCount = await prisma.order.count({
+    const invoicedCount = await prisma.subscriptionPayment.count({
       where: { ...where, gst_invoice_number: { not: null } },
     });
 
-    const subtotal = result._sum.subtotal_amount ?? 0;
+    const subtotal = result._sum.amount_excluding_gst ?? 0;
     const totalGst = result._sum.gst_amount ?? 0;
-    const totalSales = result._sum.total_amount ?? 0;
+    const totalSales = result._sum.amount_inr ?? 0;
+    const totalOrders = result._count;
 
     return {
       data: {
-        total_orders: result._count.id,
+        total_orders: totalOrders,
         invoiced_orders: invoicedCount,
-        pending_invoices: result._count.id - invoicedCount,
-        // Amounts in paise → convert to rupees for display
-        total_taxable: Math.round(subtotal / 100),
-        total_gst: Math.round(totalGst / 100),
-        total_sales: Math.round(totalSales / 100),
-        // Estimated CGST/SGST/IGST split (50/50 for intra-state, 100% IGST for inter-state)
-        estimated_cgst: Math.round(totalGst / 200),
-        estimated_sgst: Math.round(totalGst / 200),
-        estimated_igst: 0, // Simplified — real split needs state comparison
+        pending_invoices: totalOrders - invoicedCount,
+        total_taxable: subtotal,
+        total_gst: totalGst,
+        total_sales: totalSales,
+        estimated_cgst: Math.round(totalGst / 2),
+        estimated_sgst: Math.round(totalGst / 2),
+        estimated_igst: 0,
       },
     };
   });
 
   // ─── GET /admin/gst/monthly ─────────────────────────────────────
-  // Monthly breakdown for the current/selected year.
   server.get('/gst/monthly', async (request) => {
     const q = z
       .object({
@@ -90,18 +84,17 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
 
     const where: Record<string, unknown> = {
       created_at: { gte: startOfYear, lt: endOfYear },
-      status: { in: ['PAID', 'DELIVERED', 'COMPLETED'] },
+      status: 'success',
     };
     if (q.success && q.data.retailer_id) where.retailer_id = q.data.retailer_id;
 
-    const monthlyData = await prisma.order.groupBy({
+    const monthlyData = await prisma.subscriptionPayment.groupBy({
       by: ['created_at'],
       where,
-      _sum: { subtotal_amount: true, gst_amount: true, total_amount: true },
-      _count: { id: true },
+      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true },
+      _count: true,
     });
 
-    // Aggregate by month
     const months: Record<number, { taxable: number; gst: number; sales: number; orders: number }> = {};
     for (let m = 0; m < 12; m++) {
       months[m] = { taxable: 0, gst: 0, sales: 0, orders: 0 };
@@ -111,19 +104,19 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       const m = new Date(row.created_at).getMonth();
       const entry = months[m];
       if (entry) {
-        entry.taxable += (row._sum?.subtotal_amount ?? 0) as number;
+        entry.taxable += (row._sum?.amount_excluding_gst ?? 0) as number;
         entry.gst += (row._sum?.gst_amount ?? 0) as number;
-        entry.sales += (row._sum?.total_amount ?? 0) as number;
-        entry.orders += (row._count?.id ?? 0) as number;
+        entry.sales += (row._sum?.amount_inr ?? 0) as number;
+        entry.orders += (row._count ?? 0) as number;
       }
     }
 
     const result = Object.entries(months).map(([m, data]) => ({
       month: parseInt(m) + 1,
       month_name: new Date(year, parseInt(m)).toLocaleString('en-IN', { month: 'short' }),
-      taxable: Math.round(data.taxable / 100),
-      gst: Math.round(data.gst / 100),
-      sales: Math.round(data.sales / 100),
+      taxable: data.taxable,
+      gst: data.gst,
+      sales: data.sales,
       orders: data.orders,
     }));
 
@@ -131,7 +124,6 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── GET /admin/gst/by-retailer ─────────────────────────────────
-  // Per-retailer GST breakdown for the selected period.
   server.get('/gst/by-retailer', async (request) => {
     const q = z
       .object({
@@ -142,7 +134,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.query);
 
     const where: Record<string, unknown> = {
-      status: { in: ['PAID', 'DELIVERED', 'COMPLETED'] },
+      status: 'success',
     };
 
     if (q.success) {
@@ -159,16 +151,15 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
 
     const limit = q.success && q.data.limit ? q.data.limit : 20;
 
-    const byRetailer = await prisma.order.groupBy({
+    const byRetailer = await prisma.subscriptionPayment.groupBy({
       by: ['retailer_id'],
       where,
-      _sum: { subtotal_amount: true, gst_amount: true, total_amount: true },
-      _count: { id: true },
+      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true },
+      _count: true,
       orderBy: { _sum: { gst_amount: 'desc' } },
       take: limit,
     });
 
-    // Fetch retailer names
     const retailerIds = byRetailer.map((r) => r.retailer_id);
     const retailers = await prisma.retailer.findMany({
       where: { id: { in: retailerIds } },
@@ -183,10 +174,10 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         shop_name: info?.shop_name ?? 'Unknown',
         city: info?.city ?? '',
         gstin: info?.gstin ?? null,
-        orders: r._count.id,
-        taxable: Math.round((r._sum.subtotal_amount ?? 0) / 100),
-        gst: Math.round((r._sum.gst_amount ?? 0) / 100),
-        sales: Math.round((r._sum.total_amount ?? 0) / 100),
+        payments: r._count,
+        taxable: r._sum.amount_excluding_gst ?? 0,
+        gst: r._sum.gst_amount ?? 0,
+        sales: r._sum.amount_inr ?? 0,
       };
     });
 
@@ -194,7 +185,6 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── GET /admin/gst/transactions ─────────────────────────────────
-  // Individual GST transactions (orders with GST data) for the period.
   server.get('/gst/transactions', async (request) => {
     const q = z
       .object({
@@ -208,7 +198,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.query);
 
     const where: Record<string, unknown> = {
-      status: { in: ['PAID', 'DELIVERED', 'COMPLETED'] },
+      status: 'success',
     };
 
     if (q.success) {
@@ -231,40 +221,29 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const limit = q.success && q.data.limit ? q.data.limit : 50;
     const skip = (page - 1) * limit;
 
-    const [orders, total] = await Promise.all([
-      prisma.order.findMany({
+    const [payments, total] = await Promise.all([
+      prisma.subscriptionPayment.findMany({
         where,
-        select: {
-          id: true,
-          customer_name: true,
-          customer_phone: true,
-          subtotal_amount: true,
-          gst_amount: true,
-          total_amount: true,
-          gst_invoice_number: true,
-          created_at: true,
-          retailer: { select: { id: true, shop_name: true, gstin: true } },
-        },
+        include: { subscription: { include: { retailer: { select: { id: true, shop_name: true, gstin: true } } } } },
         orderBy: { created_at: 'desc' },
         skip,
         take: limit,
       }),
-      prisma.order.count({ where }),
+      prisma.subscriptionPayment.count({ where }),
     ]);
 
     return {
       data: {
-        transactions: orders.map((o) => ({
-          id: o.id,
-          customer: o.customer_name,
-          taxable: Math.round(o.subtotal_amount / 100),
-          gst: Math.round(o.gst_amount / 100),
-          total: Math.round(o.total_amount / 100),
-          invoice_number: o.gst_invoice_number,
-          has_invoice: !!o.gst_invoice_number,
-          date: o.created_at,
-          retailer: o.retailer.shop_name,
-          gstin: o.retailer.gstin,
+        transactions: payments.map((p) => ({
+          id: p.id,
+          retailer: p.subscription.retailer.shop_name,
+          gstin: p.subscription.retailer.gstin,
+          taxable: p.amount_excluding_gst ?? 0,
+          gst: p.gst_amount ?? 0,
+          total: p.amount_inr,
+          invoice_number: p.gst_invoice_number,
+          has_invoice: !!p.gst_invoice_number,
+          date: p.created_at,
         })),
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
       },

@@ -1,39 +1,21 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
-import { handleAdminTryOn } from './admin-tryon.js';
-import type { AdminTryOnJobData } from './admin-tryon.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
-import { handleCleanupTrainingData } from './cleanup-training-data.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
-import { handleExpirePendingOrders } from './expire-pending-orders.js';
-import { handleExtractMeasurement } from './extract-measurement.js';
-import type { MeasurementJobData } from './extract-measurement.js';
-import { handleExtractSpinFrames } from './extract-spin-frames.js';
-import type { SpinFrameJobData } from './extract-spin-frames.js';
 import { handleGenerateEmbedding } from './generate-embedding.js';
 import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
 import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
-// handleProcessTryOn, handleUpdateFashionDNA: paused, see startWorkers() below.
-// Re-enable: uncomment these imports + the matching Worker block.
 import { handleMeasureR2Storage } from './measure-r2-storage.js';
-// import { handleProcessTryOn } from './process-tryon.js';
-import type { TryOnJobData } from './process-tryon.js';
 import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
 import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
-// import { handleUpdateFashionDNA } from './update-fashion-dna.js';
-import type { FashionDNAJobData } from './update-fashion-dna.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
-import { handleGenerateLookbook } from './generate-lookbook.js';
-import type { LookbookJobData } from './generate-lookbook.js';
-import { handleInteractionRetention } from './interaction-retention.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
-import { handleStoreAffinity } from './store-affinity.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -44,8 +26,6 @@ export function getRedis(): Redis {
     connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
       maxRetriesPerRequest: null, // required by BullMQ
     });
-    // Eviction policy (noeviction) is set on the Redis provider directly —
-    // managed plans reject CONFIG SET from the client.
   }
   return connection;
 }
@@ -54,10 +34,6 @@ export function getRedis(): Redis {
 
 let taggingQueue: Queue | null = null;
 let embeddingQueue: Queue | null = null;
-let measurementQueue: Queue | null = null;
-let tryOnQueue: Queue | null = null;
-let fashionDNAQueue: Queue | null = null;
-let spinFrameQueue: Queue | null = null;
 let studioShootQueue: Queue | null = null;
 let catalogSyncQueue: Queue | null = null;
 let maintenanceQueue: Queue | null = null;
@@ -72,26 +48,6 @@ function getEmbeddingQueue(): Queue {
   return embeddingQueue;
 }
 
-function getMeasurementQueue(): Queue {
-  measurementQueue ??= new Queue(QUEUES.MEASUREMENT_EXTRACTION, { connection: getRedis() });
-  return measurementQueue;
-}
-
-function getTryOnQueue(): Queue {
-  tryOnQueue ??= new Queue(QUEUES.TRY_ON, { connection: getRedis() });
-  return tryOnQueue;
-}
-
-function getFashionDNAQueue(): Queue {
-  fashionDNAQueue ??= new Queue(QUEUES.FASHION_DNA, { connection: getRedis() });
-  return fashionDNAQueue;
-}
-
-function getSpinFrameQueue(): Queue {
-  spinFrameQueue ??= new Queue(QUEUES.SPIN_FRAME_EXTRACTION, { connection: getRedis() });
-  return spinFrameQueue;
-}
-
 function getStudioShootQueue(): Queue {
   studioShootQueue ??= new Queue(QUEUES.STUDIO_SHOOT, { connection: getRedis() });
   return studioShootQueue;
@@ -102,9 +58,6 @@ function getCatalogSyncQueue(): Queue {
   return catalogSyncQueue;
 }
 
-// Shared by cleanup / order-expiry / purge / backup — all cron-only, low-volume.
-// One queue + one Worker dispatching on job.name beats 4 Workers each holding
-// their own duplicated Redis connection.
 function getMaintenanceQueue(): Queue {
   maintenanceQueue ??= new Queue(QUEUES.MAINTENANCE, { connection: getRedis() });
   return maintenanceQueue;
@@ -112,21 +65,12 @@ function getMaintenanceQueue(): Queue {
 
 // ─── Job Producers ────────────────────────────────────────────────
 
-export async function addFashionDNAJob(data: FashionDNAJobData): Promise<void> {
-  await getFashionDNAQueue().add('update-fashion-dna', data, {
-    attempts: 2,
-    backoff: { type: 'exponential', delay: 5000 },
-    removeOnComplete: { count: 1000 },
-    removeOnFail: { count: 100 },
-  });
-}
-
 export interface TaggingJobData {
   product_id: string;
   retailer_id: string;
   photo_url: string;
   r2_key: string;
-  auto_cleanup?: boolean; // crop + white-background cleanup; retailer-toggleable, default true
+  auto_cleanup?: boolean;
 }
 
 export interface EmbeddingJobData {
@@ -152,41 +96,10 @@ export async function addEmbeddingJob(data: EmbeddingJobData): Promise<void> {
   });
 }
 
-export async function addMeasurementJob(data: MeasurementJobData): Promise<void> {
-  await getMeasurementQueue().add('extract-measurement', data, {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 5000 },
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 50 },
-  });
-}
-
-export async function addTryOnJob(data: TryOnJobData): Promise<void> {
-  await getTryOnQueue().add('process-tryon', data, {
-    attempts: 2,
-    backoff: { type: 'exponential', delay: 5000 },
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 20 },
-  });
-}
-
-export async function addSpinFrameJob(data: SpinFrameJobData): Promise<void> {
-  await getSpinFrameQueue().add('extract-spin-frames', data, {
-    attempts: 2,
-    backoff: { type: 'exponential', delay: 5000 },
-    removeOnComplete: { count: 100 },
-    removeOnFail: { count: 50 },
-  });
-}
-
 export interface CompressR2ImagesJobData {
-  /** 'admin' = manual trigger from the Storage Report page, 'schedule' = cron. */
   triggered_by?: 'schedule' | 'admin';
 }
 
-// On-demand trigger for the maintenance worker's compress-r2-images case —
-// used by the admin Storage Report "Run compression now" button so a pass can
-// be forced after a bulk import instead of waiting for the 4:30 AM cron.
 export async function addCompressR2ImagesJob(data?: CompressR2ImagesJobData): Promise<void> {
   await getMaintenanceQueue().add('compress-r2-images', data ?? {}, {
     removeOnComplete: { count: 10 },
@@ -194,34 +107,13 @@ export async function addCompressR2ImagesJob(data?: CompressR2ImagesJobData): Pr
   });
 }
 
-// On-demand trigger for the maintenance worker's measure-r2-storage case —
-// used by the admin Storage Report "Re-measure" button to recompute live R2
-// storage totals without waiting for anything scheduled.
 export async function addMeasureR2StorageJob(): Promise<void> {
-  await getMaintenanceQueue().add(
-    'measure-r2-storage',
-    {},
-    {
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  );
-}
-
-// On-demand trigger for the maintenance worker's admin-tryon case — used by
-// the admin Photo Cleanup Test "Generate on model" button. The job runs the
-// self-hosted Fashion V-Tone pipeline (30-60s CPU) so the page enqueues +
-// polls instead of holding an HTTP request open across inference.
-export async function addAdminTryOnJob(data: AdminTryOnJobData): Promise<void> {
-  await getMaintenanceQueue().add('admin-tryon', data, {
-    removeOnComplete: { count: 20 },
-    removeOnFail: { count: 20 },
+  await getMaintenanceQueue().add('measure-r2-storage', {}, {
+    removeOnComplete: { count: 10 },
+    removeOnFail: { count: 10 },
   });
 }
 
-// F-033 Slice 1: on-demand ffmpeg Ken Burns slideshow from a product's
-// existing photos. Same on-demand maintenance-queue pattern as admin-tryon —
-// no dedicated queue/worker for a low-volume, button-triggered job.
 export async function addKenBurnsVideoJob(data: KenBurnsVideoJobData): Promise<void> {
   await getMaintenanceQueue().add('generate-ken-burns-video', data, {
     removeOnComplete: { count: 50 },
@@ -229,19 +121,6 @@ export async function addKenBurnsVideoJob(data: KenBurnsVideoJobData): Promise<v
   });
 }
 
-// Lookbook HTML/PDF rendering. Same on-demand maintenance-queue pattern —
-// generates styled HTML + PDF from lookbook product data.
-export async function addLookbookJob(data: LookbookJobData): Promise<void> {
-  await getMaintenanceQueue().add('generate-lookbook', data, {
-    removeOnComplete: { count: 50 },
-    removeOnFail: { count: 20 },
-  });
-}
-
-// F-032 Phase A: AI studio-shoot generation. Own queue + Worker with bounded
-// concurrency (BFL caps active tasks — see STUDIO_SHOOT_CONCURRENCY). No retries:
-// each run burns real BFL credits, so a failed job surfaces as status
-// 'failed' and the retailer retries deliberately (a fresh generation).
 export async function addStudioShootJob(data: StudioShootJobData): Promise<void> {
   await getStudioShootQueue().add('studio-shoot', data, {
     removeOnComplete: { count: 100 },
@@ -249,8 +128,6 @@ export async function addStudioShootJob(data: StudioShootJobData): Promise<void>
   });
 }
 
-// Phase II: WhatsApp native catalog sync. Sync jobs for product catalog.
-// CatalogSyncJobData type + handleCatalogSync live in ./catalog-sync.ts.
 export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<string> {
   const job = await getCatalogSyncQueue().add('catalog-sync', data, {
     attempts: 3,
@@ -266,7 +143,6 @@ export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<strin
 export async function startWorkers(): Promise<void> {
   const redis = getRedis();
 
-  // AI tagging worker (concurrency 3 — respect Claude rate limits)
   const taggingWorker = new Worker(
     QUEUES.AI_TAGGING,
     async (job) => {
@@ -276,7 +152,6 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 3 },
   );
 
-  // Embedding worker (concurrency 5 — OpenAI has generous limits)
   const embeddingWorker = new Worker(
     QUEUES.EMBEDDINGS,
     async (job) => {
@@ -286,51 +161,6 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 5 },
   );
 
-  // Measurement extraction worker (concurrency 2 — MediaPipe Pose is CPU-bound)
-  const measurementWorker = new Worker(
-    QUEUES.MEASUREMENT_EXTRACTION,
-    async (job) => {
-      const data = job.data as MeasurementJobData;
-      await handleExtractMeasurement(data);
-    },
-    { connection: redis, concurrency: 2 },
-  );
-
-  // Try-on, Fashion DNA workers: PAUSED (not needed yet).
-  // Jobs still queue via addTryOnJob/addFashionDNAJob (routes untouched) but
-  // sit unprocessed until re-enabled. To re-enable: uncomment the 2 handler
-  // imports above and the Worker block below.
-  // const tryOnWorker = new Worker(
-  //   QUEUES.TRY_ON,
-  //   async (job) => {
-  //     const data = job.data as TryOnJobData;
-  //     await handleProcessTryOn(data);
-  //   },
-  //   { connection: redis, concurrency: 2 },
-  // );
-  //
-  // const fashionDNAWorker = new Worker(
-  //   QUEUES.FASHION_DNA,
-  //   async (job) => {
-  //     const data = job.data as FashionDNAJobData;
-  //     await handleUpdateFashionDNA(data);
-  //   },
-  //   { connection: redis, concurrency: 2 },
-  // );
-
-  // Spin-frame extraction worker (concurrency 1 — ffmpeg is CPU/IO bound)
-  const spinFrameWorker = new Worker(
-    QUEUES.SPIN_FRAME_EXTRACTION,
-    async (job) => {
-      const data = job.data as SpinFrameJobData;
-      await handleExtractSpinFrames(data);
-    },
-    { connection: redis, concurrency: 1 },
-  );
-
-  // AI studio-shoot worker (F-032 Phase A) — bounded concurrency to respect
-  // BFL's 24-active-task cap (see STUDIO_SHOOT_CONCURRENCY). No retries:
-  // each run costs real BFL credits.
   const studioShootWorker = new Worker(
     QUEUES.STUDIO_SHOOT,
     async (job) => {
@@ -340,8 +170,6 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: STUDIO_SHOOT_CONCURRENCY },
   );
 
-  // Phase II: WhatsApp native catalog sync worker. Low concurrency (1-2) to
-  // respect Meta API rate limits. Retries with exponential backoff.
   const catalogSyncWorker = new Worker(
     QUEUES.CATALOG_SYNC,
     async (job) => {
@@ -351,19 +179,12 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 2 },
   );
 
-  // Maintenance worker — cleanup / order-expiry / purge / backup, all cron-only
-  // and low-volume. One Worker dispatching on job.name instead of 4 separate
-  // Workers, each of which would hold its own duplicated Redis connection.
   const maintenanceWorker = new Worker(
     QUEUES.MAINTENANCE,
     async (job) => {
       switch (job.name) {
-        case 'cleanup-training-data':
-          return handleCleanupTrainingData();
         case 'backfill-missing-ai-fields':
           return handleBackfillMissingAiFields();
-        case 'expire-pending-orders':
-          return handleExpirePendingOrders();
         case 'purge-soft-deleted':
           return handlePurgeSoftDeleted();
         case 'backup-database': {
@@ -376,26 +197,14 @@ export async function startWorkers(): Promise<void> {
         }
         case 'measure-r2-storage':
           return handleMeasureR2Storage();
-        case 'admin-tryon': {
-          const data = job.data as AdminTryOnJobData;
-          return handleAdminTryOn(data);
-        }
         case 'catalog-daily-full-sync':
           return handleDailyCatalogSync();
         case 'generate-ken-burns-video': {
           const data = job.data as KenBurnsVideoJobData;
           return handleGenerateKenBurnsVideo(data);
         }
-        case 'generate-lookbook': {
-          const data = job.data as LookbookJobData;
-          return handleGenerateLookbook(data);
-        }
-        case 'interaction-retention':
-          return handleInteractionRetention();
         case 'embedding-backfill':
           return handleEmbeddingBackfill();
-        case 'store-affinity':
-          return handleStoreAffinity();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -403,10 +212,7 @@ export async function startWorkers(): Promise<void> {
     { connection: redis, concurrency: 1 },
   );
 
-  // Schedules below are idempotent — BullMQ deduplicates by job name + repeat
-  // key, so multiple restarts don't create duplicate schedules.
-
-  // Purge soft-deleted records daily at 1:30 AM UTC (before cleanup at 2:00 AM)
+  // Purge soft-deleted records daily at 1:30 AM UTC
   await getMaintenanceQueue().add(
     'purge-soft-deleted',
     {},
@@ -417,21 +223,7 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
-  // Cleanup training data daily at 2:00 AM UTC
-  await getMaintenanceQueue().add(
-    'cleanup-training-data',
-    {},
-    {
-      repeat: { pattern: '0 2 * * *', limit: 1 },
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  );
-
-  // AI-fields backfill (2026-08-04): re-queue tag jobs for products tagged
-  // before migration 043 so name/subtype/SKU/description backfill themselves.
-  // Runs 30 min after cleanup; each run is capped (250 jobs) and idempotent,
-  // so repeated daily runs drain the backlog without flooding the AI queue.
+  // AI-fields backfill daily at 2:30 AM UTC
   await getMaintenanceQueue().add(
     'backfill-missing-ai-fields',
     {},
@@ -453,10 +245,7 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
-  // R2 image compression pass daily at 4:30 AM UTC (after the backups at
-  // 3:00/4:00 AM). Re-compresses any image that landed in the bucket over
-  // 80KB since the last pass — bulk imports and legacy objects that bypass
-  // the client/server compression paths. In-place overwrite, URLs unchanged.
+  // R2 image compression pass daily at 4:30 AM UTC
   await getMaintenanceQueue().add(
     'compress-r2-images',
     {},
@@ -467,16 +256,7 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
-  // WhatsApp catalog full-sync daily — default 5:00 AM UTC (30 min after the
-  // image compression pass, before India store hours), configurable per
-  // deployment via CATALOG_SYNC_CRON (standard 5-field cron expression, e.g.
-  // '0 5 * * *' or '30 1 * * *'). Enqueues one full-sync job per retailer with
-  // sync enabled + a configured WhatsApp Business API — a reconciliation
-  // safety net so catalogs refresh even with zero product activity (auto-sync
-  // on edits covers the active case). Note: changing CATALOG_SYNC_CRON on a
-  // live deployment creates a new repeat schedule — the old one must be
-  // removed from Redis (BullMQ dedupes by job name + repeat key) if the run
-  // time should move rather than duplicate.
+  // WhatsApp catalog full-sync daily
   const catalogSyncCron = process.env.CATALOG_SYNC_CRON ?? '0 5 * * *';
   await getMaintenanceQueue().add(
     'catalog-daily-full-sync',
@@ -488,23 +268,12 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
-  // Weekly backup Sunday at 4:00 AM UTC (staggered 1h after daily)
+  // Weekly backup Sunday at 4:00 AM UTC
   await getMaintenanceQueue().add(
     'backup-database',
     { type: 'weekly' },
     {
       repeat: { pattern: '0 4 * * 0', limit: 1 },
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  );
-
-  // Store affinity — nightly at 3:00 AM UTC
-  await getMaintenanceQueue().add(
-    'store-affinity',
-    {},
-    {
-      repeat: { pattern: '0 3 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
@@ -521,42 +290,12 @@ export async function startWorkers(): Promise<void> {
     },
   );
 
-  // Interaction retention — monthly on the 1st at 6:00 AM UTC
-  await getMaintenanceQueue().add(
-    'interaction-retention',
-    {},
-    {
-      repeat: { pattern: '0 6 1 * *', limit: 1 },
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  );
-
-  // Pending-order expiry every 5 minutes
-  await getMaintenanceQueue().add(
-    'expire-pending-orders',
-    {},
-    {
-      repeat: { pattern: '*/5 * * * *', limit: 1 },
-      removeOnComplete: { count: 10 },
-      removeOnFail: { count: 10 },
-    },
-  );
-
   taggingWorker.on('failed', (job, err) => {
     console.error(`[jobs] tag-product failed ${job?.id}:`, err.message);
   });
 
   embeddingWorker.on('failed', (job, err) => {
     console.error(`[jobs] generate-embedding failed ${job?.id}:`, err.message);
-  });
-
-  measurementWorker.on('failed', (job, err) => {
-    console.error(`[jobs] extract-measurement failed ${job?.id}:`, err.message);
-  });
-
-  spinFrameWorker.on('failed', (job, err) => {
-    console.error(`[jobs] extract-spin-frames failed ${job?.id}:`, err.message);
   });
 
   studioShootWorker.on('failed', (job, err) => {

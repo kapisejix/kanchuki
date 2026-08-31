@@ -5,21 +5,18 @@ export const PLAN_LIMITS = {
     max_products: 500,
     max_customers: Number.POSITIVE_INFINITY,
     max_collection_links_per_month: 50,
-    try_on_credits: 0,
     whatsapp_api: false,
   },
   GROWTH: {
     max_products: 2000,
     max_customers: Number.POSITIVE_INFINITY,
     max_collection_links_per_month: Number.POSITIVE_INFINITY,
-    try_on_credits: 100,
     whatsapp_api: false,
   },
   PRO: {
     max_products: Number.POSITIVE_INFINITY,
     max_customers: Number.POSITIVE_INFINITY,
     max_collection_links_per_month: Number.POSITIVE_INFINITY,
-    try_on_credits: 500,
     whatsapp_api: true,
   },
 } as const;
@@ -47,18 +44,6 @@ export const PRODUCT_CATEGORIES = [
   'Kids Ethnic Wear',
   'Readymade Suit',
   'Other',
-] as const;
-
-// Categories where a retailer can tag separate upper/lower garment photos so
-// try-on chains two V-Tone calls (tops → bottoms) instead of treating the
-// whole outfit as one region (see packages/ai/src/tryon.ts, PRO-REQUIREMENTS.md F-102).
-// Saree is deliberately excluded — it's one continuous drape, not two
-// separate garment pieces, so there's no natural upper/lower photo split.
-export const PIECE_TAGGABLE_CATEGORIES = [
-  'Ladies Suit',
-  'Readymade Suit',
-  "Men's Kurta Pajama",
-  'Lehenga',
 ] as const;
 
 export const PRODUCT_TYPES = ['Unstitched', 'Semi-Stitched', 'Readymade'] as const;
@@ -474,10 +459,6 @@ export const ADDON_PRICING: Record<
     { label: 'Extra 100 AI tags', unit_label: 'tags', pack_size: 100, price_paise: 14900 },
     { label: 'Extra 500 AI tags', unit_label: 'tags', pack_size: 500, price_paise: 59900 },
   ],
-  TRY_ON: [
-    { label: 'Extra 10 try-ons', unit_label: 'try-ons', pack_size: 10, price_paise: 9900 },
-    { label: 'Extra 50 try-ons', unit_label: 'try-ons', pack_size: 50, price_paise: 39900 },
-  ],
   IMAGE_CROP: [
     { label: 'Extra 100 crops', unit_label: 'crops', pack_size: 100, price_paise: 9900 },
   ],
@@ -494,10 +475,6 @@ export const ADDON_PRICING: Record<
 export const QUEUES = {
   AI_TAGGING: 'kanchuki-ai-tagging',
   EMBEDDINGS: 'kanchuki-embeddings',
-  TRY_ON: 'kanchuki-try-on',
-  MEASUREMENT_EXTRACTION: 'kanchuki-measurement-extraction',
-  FASHION_DNA: 'kanchuki-fashion-dna',
-  SPIN_FRAME_EXTRACTION: 'kanchuki-spin-frame-extraction',
   // F-032 Phase A: AI studio-shoot generation (FLUX Kontext API). Own queue
   // (not MAINTENANCE) — it's a retailer-facing, potentially concurrent hot
   // path, and BFL caps active tasks (24 for kontext-pro / 6 for kontext-max),

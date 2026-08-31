@@ -2,25 +2,17 @@ import { useQuery } from '@tanstack/react-query'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import {
-  BookOpen,
   CalendarHeart,
   ChevronLeft,
   ChevronRight,
-  DoorOpen,
-  Gift,
-  Handshake,
   Languages,
   Link2,
   Megaphone,
-  Share2,
-  Star,
   PackageSearch,
-  Palette,
   Percent,
   Plug,
   Receipt,
-  Sparkles,
-  Truck,
+  Star,
   Users,
   Video,
   Wand2,
@@ -40,26 +32,18 @@ const TYPE_LABEL: Record<CampaignType, string> = {
   AB_TEST: 'A/B Test',
 }
 
-// Every growth module now has a live screen. Each card routes to its module.
+// Growth modules — only features that remain after the teardown
 const GROWTH_MODULES = [
   { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
-  { icon: Users, label: 'Referrals', hint: 'Customers bring customers', href: '/growth/referrals' as const },
+  { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/growth/customers' as const },
   { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers', href: '/growth/promotions' as const },
-  { icon: Truck, label: 'Suppliers', hint: 'Orders & pending payments', href: '/growth/suppliers' as const },
-  { icon: DoorOpen, label: 'Try-on Bookings', hint: 'In-store slot booking', href: '/growth/bookings' as const },
   { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders', href: '/growth/inventory' as const },
   { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
   { icon: Languages, label: 'AI Translate', hint: 'Hindi & regional descriptions', href: '/growth/translate' as const },
   { icon: Link2, label: 'Marketplace Sync', hint: 'Meesho, Instamojo & more', href: '/growth/aggregators' as const },
-  { icon: Gift, label: 'Incentives', hint: 'Automated rewards & loyalty', href: '/growth/incentives' as const },
-  { icon: Handshake, label: 'Partners', hint: 'Salons, tailors & stylists', href: '/growth/partners' as const },
-  { icon: Share2, label: 'Social Templates', hint: 'AI-powered social posts', href: '/growth/templates' as const },
-  { icon: BookOpen, label: 'Lookbooks', hint: 'Curated product collections', href: '/growth/lookbook' as const },
-  { icon: Sparkles, label: 'Festival Backgrounds', hint: 'Seasonal product overlays', href: '/growth/backgrounds' as const },
   { icon: Star, label: 'Ratings & Reviews', hint: 'Customer feedback & Google reviews', href: '/growth/ratings' as const },
   { icon: Receipt, label: 'GST Report', hint: 'Tax summary & invoices', href: '/growth/gst' as const },
   { icon: Plug, label: 'Integrations', hint: 'GMB, Facebook & Google Ads', href: '/growth/integrations' as const },
-  { icon: Palette, label: 'Customer Taste', hint: 'What your shoppers prefer', href: '/growth/taste-analytics' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {
@@ -128,7 +112,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
       )}
 
       <ScrollView className="flex-1 px-4 pt-4" contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Hero Campaign Performance Card (Point 7 Growth Spec) */}
+        {/* Hero Campaign Performance Card */}
         <LinearGradient
           colors={['#231F48', '#560A39']}
           start={{ x: 0, y: 0 }}
@@ -198,86 +182,28 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           </View>
         </LinearGradient>
 
-        {/* Revenue Accelerators (2x2 Grid matching Point 7) */}
+        {/* Revenue Accelerators — AI Campaigns only */}
         <Text className="text-xs uppercase tracking-wider text-heliotrope-600 font-extrabold mb-3 px-1">
           Revenue Accelerators
         </Text>
         <View className="gap-3 mb-5">
-          <View className="flex-row gap-3">
-            <AnimatedPressable
-              onPress={() => router.push('/growth/ai-campaign')}
-              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+          <AnimatedPressable
+            onPress={() => router.push('/growth/ai-campaign')}
+            className="bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
+          >
+            <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center text-fuchsia-600 mb-2">
+              <Wand2 size={16} color="#BB3F95" />
+            </View>
+            <Text
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+              className="text-xs font-bold text-spaceCadet-900"
             >
-              <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center text-fuchsia-600 mb-2">
-                <Wand2 size={16} color="#BB3F95" />
-              </View>
-              <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xs font-bold text-spaceCadet-900"
-              >
-                AI Campaigns
-              </Text>
-              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
-                Festival copy & blasts
-              </Text>
-            </AnimatedPressable>
-
-            <AnimatedPressable
-              onPress={() => router.push('/growth/bookings')}
-              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
-            >
-              <View className="w-8 h-8 rounded-xl bg-lavender-100 items-center justify-center mb-2">
-                <DoorOpen size={16} color="#560A39" />
-              </View>
-              <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xs font-bold text-spaceCadet-900"
-              >
-                Showroom Trials
-              </Text>
-              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
-                VIP bridal slots
-              </Text>
-            </AnimatedPressable>
-          </View>
-
-          <View className="flex-row gap-3">
-            <AnimatedPressable
-              onPress={() => router.push('/growth/lookbook')}
-              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
-            >
-              <View className="w-8 h-8 rounded-xl bg-lavender-100 items-center justify-center mb-2">
-                <BookOpen size={16} color="#560A39" />
-              </View>
-              <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xs font-bold text-spaceCadet-900"
-              >
-                Lookbooks
-              </Text>
-              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
-                PDF catalog shares
-              </Text>
-            </AnimatedPressable>
-
-            <AnimatedPressable
-              onPress={() => router.push('/growth/referrals')}
-              className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
-            >
-              <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center mb-2">
-                <Users size={16} color="#BB3F95" />
-              </View>
-              <Text
-                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                className="text-xs font-bold text-spaceCadet-900"
-              >
-                Referral Engine
-              </Text>
-              <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
-                Tailor & salon network
-              </Text>
-            </AnimatedPressable>
-          </View>
+              AI Campaigns
+            </Text>
+            <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
+              Festival copy & blasts
+            </Text>
+          </AnimatedPressable>
         </View>
 
         {/* Primary CTA: Create New Campaign */}
@@ -416,7 +342,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           </AnimatedPressable>
         )}
 
-        {/* All growth modules — each opens its live screen */}
+        {/* All growth modules */}
         <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider px-1 mb-3">
           Growth Suite & Accelerators
         </Text>

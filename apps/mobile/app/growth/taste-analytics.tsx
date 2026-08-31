@@ -69,7 +69,7 @@ export default function TasteAnalyticsScreen() {
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['visitor-taste'],
-    queryFn: () => retailerApi.request<{ data: TasteData }>('/v1/retailers/me/visitor-taste'),
+    queryFn: async () => { const res = await retailerApi.getVisitorTaste(); return res as unknown as { data: TasteData }; },
     staleTime: 60_000,
   })
 
@@ -80,7 +80,7 @@ export default function TasteAnalyticsScreen() {
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3">
         <AnimatedPressable onPress={() => router.back()}>
-          <ChevronLeft size={24} color={colors.spaceCadet900} />
+          <ChevronLeft size={24} color={colors.spaceCadet['900']} />
         </AnimatedPressable>
         <Text className="text-lg font-bold text-spaceCadet-900 flex-1">Customer Taste Profile</Text>
       </View>

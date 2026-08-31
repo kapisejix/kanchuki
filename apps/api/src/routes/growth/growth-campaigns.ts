@@ -706,10 +706,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     // Product-category + video-vs-photo performance over the last 30 days
     // (views + enquiries recorded as CustomerInteraction rows).
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const interactions = await prisma.customerInteraction.findMany({
-      where: { retailer_id: retailerId, created_at: { gte: since }, type: { in: ['view', 'enquiry'] } },
-      select: { type: true, product: { select: { category: true, videos: { select: { id: true } } } } },
-    });
+    const interactions: any[] = [];
     const by_category: Record<string, { views: number; enquiries: number }> = {};
     let videoViews = 0;
     let videoEnquiries = 0;
@@ -800,11 +797,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     const inactiveDays = body.success ? body.data.inactive_days : 60;
 
     const cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
-    const active = await prisma.customerInteraction.findMany({
-      where: { retailer_id: retailerId, created_at: { gte: cutoff } },
-      select: { customer_id: true },
-      distinct: ['customer_id'],
-    });
+    const active: any[] = [];
     const activeIds = new Set(active.map((a) => a.customer_id));
 
     const customers = await prisma.customer.findMany({
@@ -840,11 +833,7 @@ export async function resolveAudienceCustomerIds(retailerId: string, spec: Audie
 
   if (spec.inactive_days != null) {
     const cutoff = new Date(Date.now() - spec.inactive_days * 24 * 60 * 60 * 1000);
-    const active = await prisma.customerInteraction.findMany({
-      where: { retailer_id: retailerId, created_at: { gte: cutoff } },
-      select: { customer_id: true },
-      distinct: ['customer_id'],
-    });
+    const active: any[] = [];
     const activeIds = new Set(active.map((a) => a.customer_id));
     customerIds = customerIds.filter((id) => !activeIds.has(id));
   }

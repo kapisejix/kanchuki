@@ -269,29 +269,15 @@ Body: { "product_id": "clxxx", "viewer_token": "anon_session_id" }
 
 ---
 
-### Virtual Try-On (Phase 1)
+### Virtual Try-On — REMOVED
 
-```
-POST /try-on/upload-url     # Get presigned URL for customer photo upload
-Body: { content_type: "image/jpeg" }
-
-POST /try-on/jobs
-Body: {
-  "product_id": "clxxx",
-  "customer_photo_r2_key": "try_on_jobs/abc/input.jpg",
-  "collection_id": "clccc"   // optional — for analytics
-}
-Response: { "job_id": "cljob", "status": "queued", "estimated_seconds": 25 }
-
-GET  /try-on/jobs/:id        # Poll status
-Response: {
-  "status": "completed",  // "queued" | "processing" | "completed" | "failed"
-  "result_url": "https://...",   // signed URL, 24h expiry
-  "api_cost_usd": 0.08
-}
-
-DELETE /try-on/jobs/:id/result   # Customer requests early deletion of result
-```
+Removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). The
+`/try-on/*` and `/consent/*` route trees, the `try_on_jobs` / `try_on_usage_logs`
+/ `training_photo_consents` / `customer_measurements` tables and the
+`kanchuki:try-on` queue no longer exist. Also removed in the same pass:
+`/checkout/*` (orders), `/size-charts/*`, `/for-you`, and the growth
+sub-routes for incentives, suppliers, bookings, customer referrals, lookbooks
+and festival backgrounds. See `docs/database/no-feature-want.md`.
 
 ---
 
@@ -325,7 +311,6 @@ All under `/admin` — requires admin role JWT:
 ```
 GET  /admin/retailers        # All retailers + usage stats
 GET  /admin/retailers/:id    # Retailer detail
-POST /admin/retailers/:id/credit-tryon  # Grant try-on credits
 GET  /admin/metrics          # Platform-wide metrics
 GET  /admin/jobs             # BullMQ job queue status
 ```
@@ -351,17 +336,7 @@ Queue: kanchuki:embeddings
   Attempts: 3
   OnComplete: update product_embeddings table
 
-Queue: kanchuki:try-on
-  Job: process-try-on
-  Payload: { job_id, product_id, customer_photo_r2_key }
-  Priority: high
-  Attempts: 2
-  Timeout: 120000ms (2 minutes)
-  OnComplete: upload result to R2, delete input photo, update job record
-  OnFail: mark job as failed, delete input photo regardless
-
 Queue: kanchuki:cleanup
-  Job: delete-expired-tryon-results (cron: every hour)
   Job: delete-soft-deleted-records (cron: daily at 2am IST)
   Job: refresh-collection-stats (cron: every 5 minutes)
 ```

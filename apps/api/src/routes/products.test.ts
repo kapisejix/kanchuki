@@ -116,7 +116,7 @@ vi.mock('@kanchuki/shared', () => ({
 
 vi.mock('../jobs/index.js', () => ({
   addEmbeddingJob: vi.fn(),
-  addSpinFrameJob: vi.fn(),
+
   addTaggingJob: vi.fn(),
 }));
 
@@ -296,7 +296,7 @@ describe('GET /products — F-025 SKU lookup', () => {
     occasions: [],
     location_notes: null,
     status: 'AVAILABLE',
-    _count: { spin_frames: 0 },
+    _count: {},
   };
 
   it('filters by exact SKU, normalizing lowercase scan input to uppercase', async () => {

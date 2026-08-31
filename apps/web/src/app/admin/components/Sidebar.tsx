@@ -80,8 +80,6 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { label: 'Retailers', href: '/admin/retailers', icon: Store },
       { label: 'Customers', href: '/admin/customers', icon: Users },
-      { label: 'Partners', href: '/admin/partners', icon: Handshake },
-      { label: 'Incentives', href: '/admin/incentives', icon: Gift },
       { label: 'Aggregators', href: '/admin/aggregators', icon: RefreshCw },
       { label: 'WhatsApp Catalog', href: '/admin/whatsapp-catalog', icon: MessageCircle },
     ],
@@ -93,9 +91,7 @@ const NAV_ITEMS: NavItem[] = [
       { label: 'Default Categories', href: '/admin/default-categories', icon: LayoutGrid },
       { label: 'Default Attributes', href: '/admin/default-attributes', icon: Tags },
       { label: 'Backgrounds', href: '/admin/background-images', icon: ImageIcon },
-      { label: 'Festival Backgrounds', href: '/admin/festival-backgrounds', icon: Sparkles },
       { label: 'Festivals', href: '/admin/festivals', icon: CalendarDays },
-      { label: 'Lookbooks', href: '/admin/lookbooks', icon: BookOpen },
       { label: 'Social Templates', href: '/admin/social-templates', icon: Share2 },
       { label: 'Social Publishing', href: '/admin/social', icon: Megaphone },
       { label: 'Catalog Upload Tiers', href: '/admin/catalog-upload-tiers', icon: Package },

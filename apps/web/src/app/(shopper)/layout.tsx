@@ -81,14 +81,6 @@ export default function ShopperLayout({
             >
               My Stores
             </Link>
-            <Link
-              href="/for-you"
-              className={`text-stone-600 hover:text-stone-900 transition-colors ${
-                pathname === '/for-you' ? 'text-amber-600 font-medium' : ''
-              }`}
-            >
-              For You
-            </Link>
           </nav>
         </div>
       </header>

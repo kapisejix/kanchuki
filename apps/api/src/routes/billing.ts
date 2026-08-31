@@ -712,8 +712,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
               plan_expires_at: end,
               max_products: Number.isFinite(limits.max_products) ? limits.max_products : 999999,
               max_customers: Number.isFinite(limits.max_customers) ? limits.max_customers : 999999,
-              try_on_credits: limits.try_on_credits,
-            },
+                          },
           }),
           ...(event.event === 'subscription.charged' && event.payload.payment
             ? [

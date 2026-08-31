@@ -19,13 +19,22 @@ Phase 3: Full Commerce Month 13–18  WhatsApp automation + payments + GST + mul
 
 ---
 
+> **Feature teardown (`chore/remove-unwanted-features`, 2026-08-31).** Virtual
+> Try-On, Fashion DNA AI matching, L2 checkout/orders, size recommendation,
+> showroom bookings, customer referrals, customer-interaction tracking,
+> lookbooks, 360° spin, partner network, festival backgrounds and the incentive
+> engine were removed (migration 082). Roadmap rows and "BUILT" notes below that
+> reference them are historical. Authoritative list: `docs/database/no-feature-want.md`.
+
+---
+
 **BUILT (2026-08-03):** AI tagging expansion (subtype/SKU/description/name auto-generation, photo-slider fix, color-tap detection, catalog listing redesign) — backend + web catalog redesign + mobile edit screen all shipped and verified. Full detail: `CLAUDE.md` "Built" section, `docs/PRO-REQUIREMENTS.md` §13.
 
 **BUILT (2026-08-17):** Admin Commission Tracker — 3% of each month's successful subscription payments shown as a commission pool in the admin dashboard, with a two-tab `/admin/commission` page (Monthly Summary table + Expenditure grid, add-expense modal, row detail popup) and an expense ledger (migration `053_admin_commission`). Plus retailer auth Login/Create Account toggle on the mobile phone screen (one OTP flow — two screens would be identical). Specs: `docs/PRO-REQUIREMENTS.md` §25–26.
 
 **BUILT 2026-08-17:** India Retailer Growth Engine — backend + full mobile UI for the growth roadmap (`docs/INDIA-RETAILER-GROWTH.md`): 10 modules under `/v1/growth/*` (festival/reactivation/A-B campaigns, promotions, referrals, suppliers, showroom bookings, inventory alerts, product videos, AI translate, AI search — **khata + udhar removed from scope same day**) + public referral/booking endpoints + migration `055_growth_engine` (11 tables), all gated behind the `GROWTH_ENGINE` plan feature. Full mobile UI: growth hub, campaigns (list/create/edit/detail/send), referrals, promotions, suppliers, bookings, inventory alerts, videos, AI translate, AI search, campaign analytics — + admin festival calendar CRUD + `/admin/festivals` page. **Roadmap M, N, R, S completed** (BUILD-LOG §47): campaign-message translation + AI-search screen, usual-size capture + size recommendation + plus sizes, campaign analytics screen, collection A/B with significance. **Migrations 055–058 applied + verified.** AI Campaign Assistant (Roadmap E) built 2026-08-18 (BUILD-LOG §48). i18n data groundwork (preferred_locale + SUPPORTED_LOCALES) built 2026-08-18 (BUILD-LOG §50). Seasonal analytics (wedding-season vs daily-wear) built 2026-08-18 (BUILD-LOG §51). Spec: `docs/PRO-REQUIREMENTS.md` §27, build table: BUILD-LOG §44–51.
 
-**BUILT 2026-08-21:** Customer Profile P0-P3 — 16 features across the customer-facing web app (spec: `docs/customer/customer-profile-req.md`). P0: VTO self-serve enabled. P1: Showroom booking form, reviews/ratings social proof, seasonal collections surfacing, lookbooks surfacing, promotion alert banner. P2: Fabric glossary (25+ Indian fabrics), recently viewed row, restock notification, saved size capture, 5-question style quiz, AI Stylist v1 (Claude-powered), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery). P3: Regional weave/style filters (12 regions), customer referral rewards, family/gifting mode. Build table: BUILD-LOG §53.
+**BUILT 2026-08-21:** Customer Profile P2 — customer-facing web app (spec: `docs/customer/customer-profile-req.md`). Fabric glossary (25+ Indian fabrics), recently viewed row, restock notification, saved size capture, 5-question style quiz, AI Stylist v1 (Claude-powered), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery). Build table: BUILD-LOG §53. *(P0/P1/P3 items — VTO self-serve, showroom booking, lookbooks, customer referral rewards — removed in `chore/remove-unwanted-features` 2026-08-31.)*
 
 ---
 

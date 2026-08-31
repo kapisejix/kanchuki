@@ -13,7 +13,6 @@ import {
   publicDesignRoutes,
   publicStoresRoutes,
   passportRoutes,
-  forYouRoutes,
   publicSearchRoutes,
   discoverStoresRoutes,
 } from './public/index.js';
@@ -41,8 +40,6 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicDesignRoutes);
   // passport — Shopper Passport OTP + session (Tasks 2-3)
   await server.register(passportRoutes, { prefix: '/passport' });
-  // for-you — personalized product feed (Task 21)
-  await server.register(forYouRoutes);
   // public-search — cross-retailer product search (Task 22)
   await server.register(publicSearchRoutes);
   // discover-stores — store discovery with affinity scores (Task 23)
