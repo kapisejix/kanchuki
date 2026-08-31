@@ -60,7 +60,7 @@ describe('hardDeleteRetailer', () => {
     vi.restoreAllMocks()
   })
 
-  it('deletes the RESTRICT-FK tables (product_attributes, social_accounts, social_posts) before the retailer row', async () => {
+  it('deletes the RESTRICT-FK tables (product_attributes, social_accounts, social_posts, retailer_payment_accounts) before the retailer row', async () => {
     await hardDeleteRetailer('retailer_1')
 
     const statements = executedStatements()
@@ -71,6 +71,7 @@ describe('hardDeleteRetailer', () => {
       'DELETE FROM product_attributes',
       'DELETE FROM social_accounts',
       'DELETE FROM social_posts',
+      'DELETE FROM retailer_payment_accounts',
       'DELETE FROM subscriptions',
       'DELETE FROM support_tickets',
       'DELETE FROM quota_addon_purchases',
@@ -82,6 +83,7 @@ describe('hardDeleteRetailer', () => {
       'DELETE FROM products',
     ]) {
       const idx = statements.findIndex((s) => s.startsWith(table))
+
       expect(idx, `expected ${table} in delete list`).toBeGreaterThanOrEqual(0)
       expect(idx, `${table} must be deleted before retailers`).toBeLessThan(retailerDelete)
     }

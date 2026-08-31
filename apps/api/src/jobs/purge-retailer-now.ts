@@ -180,10 +180,10 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM social_posts WHERE retailer_id = $1;',
     'DELETE FROM social_accounts WHERE retailer_id = $1;',
     'DELETE FROM product_attributes WHERE retailer_id = $1;',
-    // retailer_limit_overrides / retailer_payment_account / catalog_items /
-    // catalog_sync_logs / customer_store_visits / store_affinities have
-    // onDelete: Cascade in the schema — Postgres removes them automatically
-    // with the row below.
+    'DELETE FROM retailer_payment_accounts WHERE retailer_id = $1;',
+    // retailer_limit_overrides / catalog_items / catalog_sync_logs /
+    // customer_store_visits / store_affinities have onDelete: Cascade in
+    // the schema — Postgres removes them automatically with the row below.
     'DELETE FROM retailers WHERE id = $1;',
   ];
 
