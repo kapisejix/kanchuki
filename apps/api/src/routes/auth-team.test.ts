@@ -120,9 +120,12 @@ describe('POST /auth/otp/verify — TeamMember (Kanchuki agent) login', () => {
     // SECURITY: no refresh_token for a team JWT (no Supabase session behind it)
     expect(body.data.refresh_token).toBeUndefined();
     expect(body.data.retailer).toBeUndefined();
-    // The critical guard: an agent's phone must never create a Retailer row.
-    expect(mockRetailerFindUnique).not.toHaveBeenCalled();
+    // The critical guard: an agent's phone must never create or mutate a
+    // Retailer row. (auth.ts reads retailer.findUnique up front so an existing
+    // retailer owner takes precedence — a harmless lookup; the row WRITE paths
+    // are what must stay untouched for a TeamMember phone.)
     expect(mockRetailerUpsert).not.toHaveBeenCalled();
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
     // The token is signed with the team secret, not a Supabase token.
     expect(mockSignTeamToken).toHaveBeenCalledWith({
       sub: 'tm_1',

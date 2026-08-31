@@ -62,6 +62,8 @@ incident, migration, and decision recorded after 2026-07-26.
 | 49 | [Phase II — WhatsApp Native Catalog Sync](#built-2026-08-18-phase-ii--whatsapp-native-catalog-sync-f-307--roadmap-p) | Built | 2026-08-18 |
 | 50 | [Roadmap M — i18n Data Groundwork](#built-2026-08-18-roadmap-m--i18n-data-groundwork-deferred-post-launch) | Built | 2026-08-18 |
 | 51 | [Roadmap R — Seasonal Analytics](#built-2026-08-18-roadmap-r--seasonal-analytics-wedding-season-vs-daily-wear) | Built | 2026-08-18 |
+| 55 | [Onboarding Plan Selection Step](#built-2026-08-31-onboarding-plan-selection-step) | Built | 2026-08-31 |
+| 56 | [Admin bodyless-POST 400 fix — unsuspend/feature/unfeature (Fastify v5 empty JSON body)](#fixed-2026-08-31-admin-bodyless-post-400--unsuspendfeatureunfeature-fastify-v5-empty-json-body) | Fixed | 2026-08-31 |
 
 ---
 
@@ -1534,3 +1536,76 @@ Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No
 
 - Un-draft the finalised scene set.
 - Mobile auto-filter in `apps/mobile/src/components/product-detail/ProductStudioModal.tsx` — `product.category` → `demographicForCategory` → `studioTemplatesFor`, no manual demographic pick for the retailer.
+
+---
+
+## Built: 2026-08-31 — Onboarding Plan Selection Step
+
+**Built 2026-08-31** — commit `779f941`. Retailer onboarding flow gains a mandatory plan-selection screen (step 4) inserted between GST and the "You're All Set" completion step.
+
+### Motivation
+
+New retailers had no plan-selection moment during onboarding — they landed on the dashboard as STARTER/trial with no context about what they could access. The product owner requested a mandatory step after GST, before the final screen, with 4 options: a free Demo (full Pro access) and the three real plans.
+
+### Flow change
+
+| Before | After |
+|--------|-------|
+| Step 1: Shop → Step 2: Location → Step 3: GST → Step 4: Done | Step 1: Shop → Step 2: Location → Step 3: GST → **Step 4: Choose Plan** → Step 5: Done |
+
+- `Step` type: `1\|2\|3\|4` → `1\|2\|3\|4\|5`; `TOTAL_STEPS` 4 → 5.
+- `StepIndicator` renders dots for steps 1–4 (not 5 — the Done screen is a celebration, not a progress point).
+- Back handler + bottom bar labels extended for the new step 4.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `apps/mobile/app/onboarding.tsx` | New `STEP_META[4]` ("Choose Your Plan"); old Done moved to key 5. Step 4 UI: prominent "Start Free Demo" card (Zap icon, dark bg when selected) + divider "or pick a plan" + 3 paid plan cards (Star/Crown/Sparkles icons, prices ₹999/₹2,499/₹4,999). `canProceed()` requires `selectedPlan !== null` for step 4. `handleNext()` step-4 branch: `retailerApi.updateOnboarding(4, undefined, { demo_plan: true })` for DEMO, plain `updateOnboarding(4)` for real plans. Step 5 "Done" shows selected plan badge. Bottom bar: step 3 → "Save & Proceed to Plan". |
+| `apps/mobile/src/lib/api/retailer.ts` | `updateOnboarding` third param: `extra?: { demo_plan?: boolean }` — spread into the PATCH body. |
+| `apps/api/src/routes/retailers/retailers-settings.ts` | PATCH `/me/onboarding` schema: optional `demo_plan: z.boolean()`. When `demo_plan: true`: sets `plan='PRO'`, `plan_status='TRIAL'`, `max_products=999999`, `max_customers=999999`, `try_on_credits=500`. Audit log includes `demo_plan_activated: true`. |
+| `apps/api/src/routes/retailers.test.ts` | 2 new tests: `demo_plan: true` sets PRO + limits; absent `demo_plan` doesn't touch plan fields. |
+
+### Demo plan behaviour
+
+- No Razorpay, no payment link, no ₹3 verification.
+- Demo retailers get `plan='PRO'` + `plan_status='TRIAL'` + full Pro limits immediately.
+- Real plan selection (Starter/Growth/Pro) stores the choice but defers payment to the website billing flow (Play Store compliance — in-app purchase UI removed 2026-08-10).
+
+### Verified
+
+- `apps/api` tsc → clean.
+- `apps/mobile` tsc → clean.
+- `npx vitest run src/routes/retailers.test.ts` → 35/35 (33 existing + 2 new).
+- `npx vitest run src/routes/security.test.ts` → 24/24.
+
+---
+
+## Fixed: 2026-08-31 — Admin bodyless-POST 400 — unsuspend/feature/unfeature (Fastify v5 empty JSON body)
+
+**Symptom:** admin panel "Unsuspend Account" showed "Failed to unsuspend" (rendered in a green success-styled banner). Same latent break on "Feature"/"Unfeature" store pins and `POST /customers/:id/unblock`.
+
+### Root cause
+
+`adminMutateOptions()` (`apps/web/src/lib/admin-fetch.ts`) always sets `Content-Type: application/json`. The unsuspend/feature/unfeature buttons `fetch` with `method: 'POST'` and **no body**. `fetch` still sends the header, and Fastify v5 rejects `application/json` + empty body with **`FST_ERR_CTP_EMPTY_JSON_BODY` 400 before any route handler or auth preHandler runs** — so no DB write, no audit-log row. `suspend` was unaffected only because it sends `body: JSON.stringify({ reason })`.
+
+Confirmed against prod: `curl -X POST .../unsuspend -H 'Content-Type: application/json'` (no body) → `400 FST_ERR_CTP_EMPTY_JSON_BODY`; with `-d '{}'` → `403` (auth), i.e. the route/handler are fine. Ruled out at the prod DB: column presence/nullability, table + column `GRANT`s for `kanchuki_app`, RLS (`kanchuki_app` has `BYPASSRLS`), triggers/constraints — the raw `UPDATE` runs clean.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `apps/api/src/plugins/empty-json-body.ts` | **new** — `parseJsonAllowEmpty`: empty/whitespace body → `{}`, malformed JSON → 400. |
+| `apps/api/src/plugins/empty-json-body.test.ts` | **new** — 5 unit tests (empty, whitespace, Buffer, valid, malformed). |
+| `apps/api/src/index.ts` | Registers the parser on the root server (`addContentTypeParser('application/json', { parseAs: 'string' }, parseJsonAllowEmpty)`) right after `Fastify({...})`. Webhook route plugins (`billing.ts`, `checkout-webhook.ts`, `whatsapp-catalog.ts`) keep their own **encapsulated** raw-body parser — unaffected. Fixes all bodyless admin mutations (present + future); Zod still guards routes that need real fields. |
+| `apps/web/src/app/admin/retailers/[id]/page.tsx` | (1) Action-feedback banner was hardcoded green + `BadgeCheck` for every message — errors looked like successes. Added `actionErr` state; banner renders red + `AlertTriangle` on failure. `actionErr` set in every `catch`, cleared at each action start. (2) `/unsuspend`, `/feature`, `/unfeature` handlers now read `j?.error?.message` from the response instead of a blind `throw new Error('Failed to …')`. |
+
+### Verified
+
+- New `parseJsonAllowEmpty` test → 5/5.
+- `apps/api` tsc → clean. `apps/web` tsc → clean.
+- `npx vitest run src/routes/admin.test.ts src/routes/security.test.ts src/routes/admin.login.test.ts` → 106/106 (one first-run flake on the TOTP 30s-window case-insensitive-login test; green on rerun, and green alone).
+
+### Not done
+
+- Not deployed — branch `fix/mobile-typecheck-taste-analytics`; reaches prod via merge to `main` → Railway auto-deploy.

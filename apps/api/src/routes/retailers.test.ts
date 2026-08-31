@@ -746,9 +746,16 @@ describe('POST /retailers/me/banner-upload-url', () => {
   });
 
   it('returns 503 when Meta credentials are not configured', async () => {
+    // /me/social/connect intentionally degrades to a demo auth_url when creds
+    // are absent; /me/social/callback still enforces the not-configured guard
+    // (before it touches OAuth state), so assert 503 there.
     mockResolveMetaCredentials.mockResolvedValue(null);
     const app = await buildApp();
-    const res = await app.inject({ method: 'GET', url: '/v1/retailers/me/social/connect' });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/retailers/me/social/callback',
+      payload: { code: 'auth-code', state: 'oauth-state' },
+    });
     expect(res.statusCode).toBe(503);
     await app.close();
   });
@@ -815,6 +822,53 @@ describe('POST /retailers/me/banner-upload-url', () => {
       payload: { post_type: 'SINGLE_PRODUCT', product_id: 'prod_1' },
     });
     expect(res.statusCode).toBe(404);
+    await app.close();
+  });
+});
+
+describe('PATCH /retailers/me/onboarding — demo_plan', () => {
+  it('sets plan to PRO with TRIAL status when demo_plan: true', async () => {
+    mockRetailerUpdate.mockResolvedValue({
+      onboarding_step: 4,
+      onboarding_completed: false,
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/retailers/me/onboarding',
+      payload: { step: 4, demo_plan: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockRetailerUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          plan: 'PRO',
+          plan_status: 'TRIAL',
+          max_products: 999999,
+          max_customers: 999999,
+          try_on_credits: 500,
+          onboarding_step: 4,
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('does not set plan fields when demo_plan is not sent', async () => {
+    mockRetailerUpdate.mockResolvedValue({
+      onboarding_step: 3,
+      onboarding_completed: false,
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/retailers/me/onboarding',
+      payload: { step: 3 },
+    });
+    expect(res.statusCode).toBe(200);
+    const callData = mockRetailerUpdate.mock.calls[0]?.[0]?.data;
+    expect(callData).not.toHaveProperty('plan');
+    expect(callData).not.toHaveProperty('plan_status');
     await app.close();
   });
 });

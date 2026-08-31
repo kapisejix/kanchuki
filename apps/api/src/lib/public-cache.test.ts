@@ -55,7 +55,7 @@ describe('publicCacheGetOrCompute', () => {
 
   it('miss computes, stores with a jittered EX TTL, and releases the lock', async () => {
     const redis = new FakeRedis();
-    vi.spyOn(Math, 'random').mockReturnValue(0.999); // jitter ≈ 50% → 60 + floor(29.97) = 89
+    vi.spyOn(Math, 'random').mockReturnValue(0.999); // jitter ≈ 50% → 15 + floor(7.49) = 22 (BASE_TTL_SEC=15)
     const compute = vi.fn(async () => ({ n: 42 }));
 
     const value = await publicCacheGetOrCompute(redis, 'k', compute);
@@ -64,7 +64,7 @@ describe('publicCacheGetOrCompute', () => {
     expect(compute).toHaveBeenCalledTimes(1);
     expect(redis.store.get('k')).toBe(JSON.stringify({ n: 42 }));
     expect(redis.lastSet?.mode).toBe('EX');
-    expect(redis.lastSet?.ttl).toBe(89);
+    expect(redis.lastSet?.ttl).toBe(22);
     expect(redis.store.has('k:lock')).toBe(false); // lock released
   });
 
@@ -75,7 +75,7 @@ describe('publicCacheGetOrCompute', () => {
 
     await publicCacheGetOrCompute(redis, 'k', compute);
 
-    expect(redis.lastSet?.ttl).toBe(60);
+    expect(redis.lastSet?.ttl).toBe(15); // BASE_TTL_SEC
   });
 
   it('single-flight: concurrent callers trigger exactly one compute', async () => {

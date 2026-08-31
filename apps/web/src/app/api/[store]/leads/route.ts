@@ -13,7 +13,12 @@ export async function POST(
   try {
     const res = await fetch(`${API_URL}/v1/public/retailers/${store}/leads`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        // Forward the passport session cookie — the API's passport path
+        // derives the shopper identity from it, not from the request body.
+        cookie: request.headers.get('cookie') ?? '',
+      },
       body: JSON.stringify(body),
     });
     const data = await res.json();

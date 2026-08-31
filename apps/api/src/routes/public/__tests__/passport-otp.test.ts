@@ -13,6 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
 import { prisma } from '@kanchuki/db';
 import { passportRoutes } from '../passport.js';
+import { passportAccountRoutes } from '../passport-account.js';
 
 // ─── Mocks ────────────────────────────────────────────────────────
 
@@ -65,6 +66,7 @@ function buildApp() {
   const app = Fastify();
   app.setErrorHandler(errorHandler);
   app.register(passportRoutes, { prefix: '/v1/public/passport' });
+  app.register(passportAccountRoutes, { prefix: '/v1/public/passport' });
   return app;
 }
 

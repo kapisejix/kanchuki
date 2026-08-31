@@ -8,11 +8,13 @@ import {
   publicNearMeRoutes,
   publicProductsRoutes,
   publicRetailersRoutes,
+  publicRetailersMarketingRoutes,
   publicReviewsRoutes,
   publicStylistRoutes,
   publicDesignRoutes,
   publicStoresRoutes,
   passportRoutes,
+  passportAccountRoutes,
   forYouRoutes,
   publicSearchRoutes,
   discoverStoresRoutes,
@@ -27,6 +29,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicProductsRoutes);
   // public-retailers — auto-split module
   await server.register(publicRetailersRoutes);
+  // public-retailers-marketing — promotions/lookbooks/collections + lead capture
+  await server.register(publicRetailersMarketingRoutes);
   // public-catalog-payment — auto-split module
   await server.register(publicCatalogPaymentRoutes);
   // public-near-me — geo-search for nearby retailers
@@ -41,6 +45,8 @@ export const publicRoutes: FastifyPluginAsync = async (server) => {
   await server.register(publicDesignRoutes);
   // passport — Shopper Passport OTP + session (Tasks 2-3)
   await server.register(passportRoutes, { prefix: '/passport' });
+  // passport-account — recently-viewed / events / wishlist (split from passport)
+  await server.register(passportAccountRoutes, { prefix: '/passport' });
   // for-you — personalized product feed (Task 21)
   await server.register(forYouRoutes);
   // public-search — cross-retailer product search (Task 22)

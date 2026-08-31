@@ -16,6 +16,7 @@ import {
   Phone,
   MapPin,
   BadgeCheck,
+  AlertTriangle,
   Clock,
   ChevronRight,
   Shield,
@@ -109,6 +110,8 @@ export default function RetailerDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [actionMsg, setActionMsg] = useState('')
+  // Whether actionMsg is an error (renders red) vs a success (renders green).
+  const [actionErr, setActionErr] = useState(false)
   const [extendDays, setExtendDays] = useState(14)
   const [actionLoading, setActionLoading] = useState(false)
   // F-010: override state
@@ -122,15 +125,23 @@ export default function RetailerDetailPage() {
   const [suspendedReason, setSuspendedReason] = useState('')
   const [showSuspendDialog, setShowSuspendDialog] = useState(false)
   const [suspendReasonInput, setSuspendReasonInput] = useState('')
+  // Hard-delete (Super Admin only). Requires typing the shop name to confirm.
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('')
+  const isSuperAdmin =
+    typeof window !== 'undefined' && sessionStorage.getItem('admin_role') === 'SUPER_ADMIN'
   // Store-directory pin: featured stores sort to the top of /stores
   const [isFeatured, setIsFeatured] = useState(false)
+  // Admin-editable ₹/plan pricing (paise, monthly) — never hardcoded here.
+  const [planMonthly, setPlanMonthly] = useState<Record<string, number>>({})
 
   useEffect(() => {
     async function load() {
       try {
-        const [retailerRes, overridesRes] = await Promise.all([
+        const [retailerRes, overridesRes, pricingRes] = await Promise.all([
           fetch(`${API_URL}/v1/admin/retailers/${id}`, adminGetOptions()),
           fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, adminGetOptions()),
+          fetch(`${API_URL}/v1/admin/plan-pricing`, adminGetOptions()),
         ])
         if (!retailerRes.ok) throw new Error('Retailer not found')
         const retailerJson = await retailerRes.json()
@@ -138,6 +149,17 @@ export default function RetailerDetailPage() {
         setIsSuspended(retailerJson.data.is_suspended ?? false)
         setSuspendedReason(retailerJson.data.suspended_reason ?? '')
         setIsFeatured(retailerJson.data.is_featured ?? false)
+        if (pricingRes.ok) {
+          const pricingJson = await pricingRes.json()
+          setPlanMonthly(
+            Object.fromEntries(
+              (pricingJson.data ?? []).map((r: { plan: string; monthly_paise: number }) => [
+                r.plan,
+                r.monthly_paise,
+              ]),
+            ),
+          )
+        }
         if (overridesRes.ok) {
           const overridesJson = await overridesRes.json()
           setOverrides(overridesJson.data ?? [])
@@ -154,7 +176,7 @@ export default function RetailerDetailPage() {
 
   const extendTrial = async () => {
     if (!retailer) return
-    setActionMsg('')
+    setActionMsg(''); setActionErr(false)
     setActionLoading(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/extend-trial`, {
@@ -169,7 +191,7 @@ export default function RetailerDetailPage() {
       )
       setActionMsg(`Trial extended by ${extendDays} days`)
     } catch (err) {
-      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+      setActionMsg(err instanceof Error ? err.message : 'Action failed'); setActionErr(true)
     } finally {
       setActionLoading(false)
     }
@@ -178,7 +200,7 @@ export default function RetailerDetailPage() {
   // F-010: override CRUD handlers
   const saveOverride = async () => {
     setOverrideSaving(true)
-    setActionMsg('')
+    setActionMsg(''); setActionErr(false)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/overrides`, {
         ...(await adminMutateOptions()),
@@ -200,14 +222,14 @@ export default function RetailerDetailPage() {
       setOverrideForm({ resource_type: 'PRODUCT_UPLOAD', limit_per_period: '', period: 'MONTH', reason: '' })
       setActionMsg('Override saved')
     } catch (err) {
-      setActionMsg(err instanceof Error ? err.message : 'Save failed')
+      setActionMsg(err instanceof Error ? err.message : 'Save failed'); setActionErr(true)
     } finally {
       setOverrideSaving(false)
     }
   }
 
   const deleteOverride = async (overrideId: string) => {
-    setActionMsg('')
+    setActionMsg(''); setActionErr(false)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${id}/overrides/${overrideId}`, {
         ...(await adminMutateOptions()),
@@ -217,13 +239,20 @@ export default function RetailerDetailPage() {
       setOverrides((prev) => prev.filter((o) => o.id !== overrideId))
       setActionMsg('Override removed — retailer falls back to plan default')
     } catch (err) {
-      setActionMsg(err instanceof Error ? err.message : 'Delete failed')
+      setActionMsg(err instanceof Error ? err.message : 'Delete failed'); setActionErr(true)
     }
+  }
+
+  // "₹2,499 Growth" from the admin-editable price map; name-only until it loads.
+  const planLabel = (plan: string): string => {
+    const name = plan.charAt(0) + plan.slice(1).toLowerCase()
+    const paise = planMonthly[plan]
+    return paise != null ? `₹${(paise / 100).toLocaleString('en-IN')} ${name}` : name
   }
 
   const changePlan = async (plan: string) => {
     if (!retailer) return
-    setActionMsg('')
+    setActionMsg(''); setActionErr(false)
     setActionLoading(true)
     try {
       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/change-plan`, {
@@ -236,9 +265,9 @@ export default function RetailerDetailPage() {
       setRetailer((prev) =>
         prev ? { ...prev, plan: json.data.plan, plan_status: json.data.plan_status } : prev
       )
-      setActionMsg(`Plan changed to ${plan === 'STARTER' ? '₹999 Starter' : plan === 'GROWTH' ? '₹2,499 Growth' : '₹4,999 Pro'}`)
+      setActionMsg(`Plan changed to ${planLabel(plan)}`)
     } catch (err) {
-      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+      setActionMsg(err instanceof Error ? err.message : 'Action failed'); setActionErr(true)
     } finally {
       setActionLoading(false)
     }
@@ -325,9 +354,13 @@ export default function RetailerDetailPage() {
             initial={{ opacity: 0, y: -10, height: 0 }}
             animate={{ opacity: 1, y: 0, height: 'auto' }}
             exit={{ opacity: 0, y: -10, height: 0 }}
-            className="bg-green-50/80 backdrop-blur border border-green-200 text-green-700 text-sm rounded-xl px-4 py-3 flex items-center gap-2"
+            className={`${
+              actionErr
+                ? 'bg-red-50/80 border-red-200 text-red-700'
+                : 'bg-green-50/80 border-green-200 text-green-700'
+            } backdrop-blur border text-sm rounded-xl px-4 py-3 flex items-center gap-2`}
           >
-            <BadgeCheck size={16} />
+            {actionErr ? <AlertTriangle size={16} /> : <BadgeCheck size={16} />}
             {actionMsg}
           </motion.div>
         )}
@@ -485,19 +518,22 @@ export default function RetailerDetailPage() {
               {isSuspended ? (
                 <motion.button
                   onClick={async () => {
-                    setActionMsg('')
+                    setActionMsg(''); setActionErr(false)
                     setActionLoading(true)
                     try {
                       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/unsuspend`, {
                         ...(await adminMutateOptions()),
                         method: 'POST',
                       })
-                      if (!res.ok) throw new Error('Failed to unsuspend')
+                      if (!res.ok) {
+                        const j = await res.json().catch(() => null)
+                        throw new Error(j?.error?.message ?? 'Failed to unsuspend')
+                      }
                       setIsSuspended(false)
                       setSuspendedReason('')
                       setActionMsg('Retailer unsuspended — they can now log in and their collection links are active again')
                     } catch (err) {
-                      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                      setActionMsg(err instanceof Error ? err.message : 'Action failed'); setActionErr(true)
                     } finally {
                       setActionLoading(false)
                     }
@@ -524,6 +560,67 @@ export default function RetailerDetailPage() {
                   Reason: {suspendedReason}
                 </p>
               )}
+
+              {/* Hard delete — Super Admin only. Removes the row, phone number
+                  and all data; the phone can then register fresh. Irreversible
+                  (F-016 vault keeps a snapshot). */}
+              {isSuperAdmin && (
+                !showDeleteDialog ? (
+                  <button
+                    onClick={() => { setShowDeleteDialog(true); setDeleteConfirmInput(''); setActionMsg(''); setActionErr(false) }}
+                    className="w-full mt-1 border border-red-300 text-red-700 hover:bg-red-50 text-sm font-semibold px-4 py-2.5 rounded-xl transition-all"
+                  >
+                    🗑️ Delete Store Permanently
+                  </button>
+                ) : (
+                  <div className="border border-red-200 rounded-xl p-3 bg-red-50/60 space-y-2">
+                    <p className="text-xs text-red-700 leading-relaxed">
+                      Permanently deletes <span className="font-semibold">{retailer.shop_name || 'this store'}</span> —
+                      row, phone number and every product, customer, collection and order. Cannot be undone.
+                      Type the shop name to confirm.
+                    </p>
+                    <input
+                      value={deleteConfirmInput}
+                      onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                      placeholder={retailer.shop_name || 'shop name'}
+                      className="w-full border border-red-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/40"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setShowDeleteDialog(false); setDeleteConfirmInput('') }}
+                        className="flex-1 bg-white border border-gray-200 text-gray-600 text-sm font-semibold py-2 rounded-lg hover:bg-gray-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        disabled={actionLoading || deleteConfirmInput.trim() !== (retailer.shop_name || '').trim()}
+                        onClick={async () => {
+                          setActionMsg(''); setActionErr(false)
+                          setActionLoading(true)
+                          try {
+                            const res = await fetch(`${API_URL}/v1/admin/retailers`, {
+                              ...(await adminMutateOptions()),
+                              method: 'DELETE',
+                              body: JSON.stringify({ ids: [retailer.id] }),
+                            })
+                            if (!res.ok) {
+                              const j = await res.json().catch(() => null)
+                              throw new Error(j?.error?.message ?? 'Failed to delete')
+                            }
+                            window.location.href = '/admin/retailers'
+                          } catch (err) {
+                            setActionMsg(err instanceof Error ? err.message : 'Delete failed'); setActionErr(true)
+                            setActionLoading(false)
+                          }
+                        }}
+                        className="flex-1 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold py-2 rounded-lg disabled:opacity-40"
+                      >
+                        {actionLoading ? 'Deleting…' : 'Delete Forever'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              )}
             </div>
 
             <hr className="my-4 border-gray-100" />
@@ -535,18 +632,21 @@ export default function RetailerDetailPage() {
               {isFeatured ? (
                 <motion.button
                   onClick={async () => {
-                    setActionMsg('')
+                    setActionMsg(''); setActionErr(false)
                     setActionLoading(true)
                     try {
                       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/unfeature`, {
                         ...(await adminMutateOptions()),
                         method: 'POST',
                       })
-                      if (!res.ok) throw new Error('Failed to unfeature')
+                      if (!res.ok) {
+                        const j = await res.json().catch(() => null)
+                        throw new Error(j?.error?.message ?? 'Failed to unfeature')
+                      }
                       setIsFeatured(false)
                       setActionMsg('Store removed from the featured directory — it returns to normal ordering')
                     } catch (err) {
-                      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                      setActionMsg(err instanceof Error ? err.message : 'Action failed'); setActionErr(true)
                     } finally {
                       setActionLoading(false)
                     }
@@ -562,18 +662,21 @@ export default function RetailerDetailPage() {
               ) : (
                 <motion.button
                   onClick={async () => {
-                    setActionMsg('')
+                    setActionMsg(''); setActionErr(false)
                     setActionLoading(true)
                     try {
                       const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/feature`, {
                         ...(await adminMutateOptions()),
                         method: 'POST',
                       })
-                      if (!res.ok) throw new Error('Failed to feature')
+                      if (!res.ok) {
+                        const j = await res.json().catch(() => null)
+                        throw new Error(j?.error?.message ?? 'Failed to feature')
+                      }
                       setIsFeatured(true)
                       setActionMsg('Store pinned to the top of the public directory and homepage teaser')
                     } catch (err) {
-                      setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                      setActionMsg(err instanceof Error ? err.message : 'Action failed'); setActionErr(true)
                     } finally {
                       setActionLoading(false)
                     }
@@ -635,7 +738,7 @@ export default function RetailerDetailPage() {
                     <button
                       onClick={async () => {
                         if (!suspendReasonInput.trim()) return
-                        setActionMsg('')
+                        setActionMsg(''); setActionErr(false)
                         setActionLoading(true)
                         try {
                           const res = await fetch(`${API_URL}/v1/admin/retailers/${retailer.id}/suspend`, {
@@ -649,7 +752,7 @@ export default function RetailerDetailPage() {
                           setShowSuspendDialog(false)
                           setActionMsg('Retailer suspended — they can no longer log in and their collection links show as unavailable')
                         } catch (err) {
-                          setActionMsg(err instanceof Error ? err.message : 'Action failed')
+                          setActionMsg(err instanceof Error ? err.message : 'Action failed'); setActionErr(true)
                         } finally {
                           setActionLoading(false)
                         }
@@ -713,9 +816,7 @@ export default function RetailerDetailPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <span>
-                        {plan === 'STARTER' ? '₹999 Starter' : plan === 'GROWTH' ? '₹2,499 Growth' : '₹4,999 Pro'}
-                      </span>
+                      <span>{planLabel(plan)}</span>
                       {retailer.plan === plan && (
                         <span className="text-[10px] font-medium text-cyan-600 bg-cyan-100/50 px-1.5 py-0.5 rounded-full">
                           Current
