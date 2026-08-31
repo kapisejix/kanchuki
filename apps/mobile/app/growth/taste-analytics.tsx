@@ -9,8 +9,7 @@ import { ChevronLeft, Palette, Shirt, Sparkles, Wallet } from 'lucide-react-nati
 import { ActivityIndicator, RefreshControl, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
-import { retailerApi } from '../../src/lib/api'
-import { useTheme } from '../../src/lib/theme'
+import { request } from '../../src/lib/api'
 
 interface TasteData {
   total_visitors: number
@@ -64,12 +63,11 @@ function Section({ icon, title, children }: { icon: React.ReactNode; title: stri
 }
 
 export default function TasteAnalyticsScreen() {
-  const { colors } = useTheme()
   const insets = useSafeAreaInsets()
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['visitor-taste'],
-    queryFn: () => retailerApi.request<{ data: TasteData }>('/v1/retailers/me/visitor-taste'),
+    queryFn: () => request<{ data: TasteData }>('/v1/retailers/me/visitor-taste'),
     staleTime: 60_000,
   })
 
@@ -80,7 +78,7 @@ export default function TasteAnalyticsScreen() {
       {/* Header */}
       <View className="flex-row items-center gap-3 px-4 py-3">
         <AnimatedPressable onPress={() => router.back()}>
-          <ChevronLeft size={24} color={colors.spaceCadet900} />
+          <ChevronLeft size={24} color="#231F48" />
         </AnimatedPressable>
         <Text className="text-lg font-bold text-spaceCadet-900 flex-1">Customer Taste Profile</Text>
       </View>
