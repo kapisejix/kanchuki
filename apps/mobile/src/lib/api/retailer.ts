@@ -109,7 +109,4 @@ export const retailerApi = {
         source: 'plan' | 'override' | 'unlimited'
       }[]
     }>('/v1/retailers/me/usage', { getCacheTtlMs: 30_000 }),
-
-  getVisitorTaste: () =>
-    request<{ data: unknown }>('/v1/retailers/me/visitor-taste', { getCacheTtlMs: 60_000 }),
 }

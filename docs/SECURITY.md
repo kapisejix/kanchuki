@@ -371,89 +371,19 @@ Before each major release:
 
 ## 11. L2 Ecommerce Checkout — Retailer Payment Credentials — REMOVED
 
-**Status:** Removed in `chore/remove-unwanted-features` (2026-08-31, migration
-082). The `orders` / `order_items` / `retailer_payment_accounts` tables, the
-`/checkout/*` route tree and all customer cart/checkout UI are gone; retailer
-Razorpay credentials are no longer stored. The rest of this section is retained
-for historical context only. Kanchuki's own Razorpay account still handles
-subscription billing (§ Billing) — that path is unchanged.
+Removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). The
+`orders` / `order_items` / `retailer_payment_accounts` tables, the enums
+`PaymentMode` / `RouteOnboardingStatus` / `OrderStatus`, the `/checkout/*` and
+`/public/webhooks/razorpay` route trees, and all customer cart/checkout UI are
+gone; retailer Razorpay credentials are no longer stored or accepted. Kanchuki's
+own Razorpay account still handles **subscription billing** (see the Billing
+section) — that path is unchanged, as is the `IntegrationSetting` /
+`encryptSecret()` machinery it shares with F-012.
 
-### 11.1 Why direct-to-retailer first (Stage A)
-
-Kanchuki's own Razorpay account (used for subscription billing today) must **never** touch a retailer's sale money. If it did — even transiently — that's acting as a payment aggregator under RBI rules, which requires a PA license (slow, expensive, not something to back into by accident). Stage A avoids this entirely: each retailer's checkout money flows through *their own* Razorpay account, using *their own* KYC. Kanchuki only stores the credentials needed to call the Razorpay API on the retailer's behalf and to verify webhooks — it never custodies funds.
-
-Stage B (Razorpay Route, F-307) intentionally reintroduces Kanchuki as merchant-of-record for lower retailer friction — that's a deliberate compliance trade-off to make consciously later, not a default. Before enabling Stage B for real money: confirm current RBI marketplace-payment guidance with Razorpay support and legal counsel. Do not treat Route's marketing description as a substitute for that sign-off.
-
-### 11.2 Credential storage — reuses F-012, does not reinvent it
-
-`RetailerPaymentAccount.razorpay_key_secret_encrypted` and `.razorpay_webhook_secret_encrypted` use the exact same `encryptSecret()`/`decryptSecret()` functions from `packages/db/src/secrets.ts` (AES-256-GCM, keyed by the existing `ENCRYPTION_MASTER_KEY` env var) that F-012's admin-managed `IntegrationSetting` table already uses. The difference is scope, not mechanism: `IntegrationSetting` is one row per platform-wide key name (admin-only writes); `RetailerPaymentAccount` is one row per retailer (retailer-authenticated writes, scoped to their own `retailer_id` like every other retailer table).
-
-- `razorpay_key_id` is not secret (Razorpay's own docs treat it as safe to expose client-side, same as a Stripe publishable key) — stored plaintext, returned to the client to initialize Razorpay Checkout.js.
-- `razorpay_key_secret` and the webhook secret are always encrypted at rest, never returned to any client, never logged.
-- Same masking convention as F-012's admin UI (`maskSecret()` — show only the last 4 characters) applies to any retailer-facing "connected account" display.
-- RLS: `RetailerPaymentAccount` follows the standard retailer-isolation policy (§2) — a retailer can only read/write their own row. No cross-retailer read path, including for Super Admin support tooling (support should see *that* an account is connected, never the decrypted secret).
-
-### 11.3 Webhook signature verification — verify before trusting anything in the payload
-
-Razorpay's webhook POSTs to `/v1/public/webhooks/razorpay` are **not** scoped to a specific retailer in the URL — a naive design would trust a `retailer_id` path/query param to pick which webhook secret to verify against, which lets an attacker point the verification at a *different* retailer's (weaker or attacker-known) secret. Instead:
-
-```
-1. Parse payload.payment.entity.order_id (Razorpay's own field, present on every payment webhook)
-2. Look up the local Order by razorpay_order_id — this is the ONLY trusted way to find which retailer this webhook belongs to
-3. Load that Order's retailer's RetailerPaymentAccount.razorpay_webhook_secret_encrypted, decrypt it
-4. Verify the request signature (HMAC-SHA256 over the raw body) against THAT secret, using crypto.timingSafeEqual — same pattern as the existing Meta webhook validator in §6
-5. Only after signature verification passes: read event type, update Order.status, mark Product SOLD
-```
-
-If the `order_id` doesn't resolve to a local `Order`, or the signature check fails, respond 400 and do nothing else — never branch on payload contents before verification succeeds.
-
-### 11.4 Checkout PII (address, phone)
-
-- Shipping address is a per-order snapshot (`Order.shipping_address` JSON), not a reusable customer-profile entity — no customer account exists anywhere else in this app, so there is nothing to attach a reusable address to. Same "retailer-owned, not shared cross-tenant" principle as existing `Customer` PII (§9) applies to `Order.customer_name`/`customer_phone`.
-- Retention: same 7-year GST/IT compliance window as `SubscriptionPayment` (see `docs/DATABASE.md` retention table) — orders are financial records, not marketing data, so they don't get the shorter customer-interaction retention windows.
-- If a retailer disconnects their payment account, delete (not soft-delete) the encrypted key/secret columns immediately — a disconnected credential has no legitimate reason to persist, unlike business records which are soft-deleted by convention (§ Design Principles, `docs/DATABASE.md`).
-
-### 11.5 Resolved items (previously flagged as open, now implemented)
-
-- **Rate limiting on webhook/create-order** — ✅ **Implemented.**
-  - `POST /public/checkout/create-order`: per-IP rate limit (5/min).
-  - `POST /public/checkout/verify-payment`: per-IP rate limit (10/min).
-  - `POST /public/webhooks/razorpay`: per-IP rate limit (30/min).
-  - `GET /public/orders/:id`: per-IP rate limit (30/min).
-  - All checkout endpoints are gated.
-
-- **Audit logging for payment-account connect/disconnect** — ✅ **Implemented.**
-  - `CONNECT_PAYMENT_ACCOUNT` and `DISCONNECT_PAYMENT_ACCOUNT` logged with before-state, actor, IP.
-  - Order status transitions logged via `request.log.info` (structured logging).
-
-### 11.5b Open items (remain unresolved)
-
-- Legal review of the Stage B (Route) compliance posture before enabling it for any retailer
-
-### 11.6 Payment integrity — never trust the client for money
-
-- **Amount tampering.** Server recomputes total from `OrderItem` × snapshotted `Product.price_min`. Client-submitted total is never trusted.
-- **Fake "success" callback.** Client-side handler must never flip `Order.status` to `PAID`. Only server-side HMAC verification or webhook can transition the status.
-- **Webhook replay.** Idempotent status transitions (only `PENDING_PAYMENT → PAID`). Webhooks with stale timestamps rejected.
-- **Webhook source spoofing.** Signature verification (§11.3) + allowlist of Razorpay source IPs at Cloudflare edge.
-
-### 11.7 Inventory race condition (double-sell)
-
-Atomic `updateMany` with `WHERE status = 'AVAILABLE'` inside a transaction. Read-then-write (TOCTOU) prevented by conditional update + rowcount check.
-
-### 11.8 Retailer account takeover
-
-- Step-up OTP re-authentication on connect/change/disconnect of payment account.
-- Out-of-band SMS notification to retailer's registered phone on payment account change.
-- Audit log every connect/change/disconnect with before/after state.
-
-### 11.9 PCI-DSS scope
-
-Razorpay Checkout.js (hosted iframe) — raw card numbers never touch Kanchuki servers. SAQ-A tier maintained.
-
-### 11.10 Anonymous order lookup (IDOR)
-
-Phone number required as second factor before rendering order details. Wrong phone → 404 (same error as "not found"). Phone not echoed in response. `timingSafeEqual` prevents response-time oracle attacks. ✅ **Tested (7 automated tests).**
+If retailer-facing checkout is rebuilt later, the RBI payment-aggregator
+constraint still applies: Kanchuki's billing account must never custody a
+retailer's sale money without a PA licence or a Razorpay Route
+merchant-of-record arrangement signed off by legal.
 
 ---
 

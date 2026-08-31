@@ -145,18 +145,6 @@ enum EnquiryStatus {
   CLOSED
 }
 
-enum TryOnStatus {
-  QUEUED
-  PROCESSING
-  COMPLETED
-  FAILED
-}
-
-enum MeasurementSource {
-  PHOTO   // derived from front+back photo via pose estimation
-  MANUAL  // entered directly via inch-tape
-}
-
 // ─────────────────────────────────────────────
 // CORE: RETAILERS
 // ─────────────────────────────────────────────
@@ -186,7 +174,6 @@ model Retailer {
   // Limits (derived from plan, but cached here for fast checks)
   max_products    Int     @default(500)
   max_customers   Int     @default(200)
-  try_on_credits  Int     @default(0)
   
   // Razorpay
   razorpay_customer_id    String?
@@ -434,89 +421,8 @@ model Customer {
   @@map("customers")
 }
 
-// Phase 1: Body measurements for VTO fit — either photo-derived or manual (inch-tape)
-model CustomerMeasurement {
-  id          String  @id @default(cuid())
-  customer_id String
-  retailer_id String  // denormalized for RLS
-  
-  source      MeasurementSource
-  
-  // Core (upper body / kurta-suit fit)
-  height_cm   Decimal
-  bust_cm     Decimal?
-  waist_cm    Decimal?
-  hip_cm      Decimal?
-  
-  // Lower body (pant/salwar fit)
-  pant_waist_cm Decimal?
-  pant_hip_cm   Decimal?
-  inseam_cm     Decimal?
-  
-  // Photo path only — originals deleted right after landmark extraction
-  front_photo_r2_key  String?
-  back_photo_r2_key   String?
-  photo_deleted_at    DateTime?
-  pose_landmarks_json Json?    // MediaPipe keypoints, kept for re-scale if height corrected
-  confidence_score    Float?   // 0-1, photo-derived estimate quality
-  
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  
-  customer    Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  try_on_jobs TryOnJob[]
-  
-  @@index([customer_id])
-  @@index([retailer_id])
-  @@map("customer_measurements")
-}
-
-// Phase 1: AI-learned preference vector
-model CustomerFashionDNA {
-  id          String  @id @default(cuid())
-  customer_id String  @unique
-  retailer_id String
-  
-  // Learned preference vector (pgvector, 1536-dim)
-  preference_vector Unsupported("vector(1536)")?
-  
-  // Computed scores (0.0 – 1.0)
-  color_affinities   Json  // {"Pink": 0.87, "Maroon": 0.65, ...}
-  style_affinities   Json  // {"Party Wear": 0.9, "Casual": 0.3}
-  fabric_affinities  Json  // {"Cotton": 0.75, ...}
-  occasion_affinities Json // {"Wedding": 0.9, "Office": 0.2}
-  budget_range       Json  // {"min": 1500, "max": 5000, "sweet_spot": 2500}
-  
-  // Meta
-  interaction_count  Int @default(0)
-  confidence_score   Float @default(0.0) // 0-1, how confident AI is
-  last_updated_at    DateTime @default(now())
-  
-  customer    Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  
-  @@index([retailer_id])
-  @@map("customer_fashion_dna")
-}
-
-model CustomerInteraction {
-  id          String  @id @default(cuid())
-  customer_id String
-  retailer_id String
-  product_id  String?
-  collection_id String?
-  
-  type        String  // "view" | "favorite" | "enquiry" | "purchase" | "try_on"
-  metadata    Json?   // {"dwell_ms": 3400, "color_selected": "Pink"}
-  
-  created_at  DateTime @default(now())
-  
-  customer    Customer @relation(fields: [customer_id], references: [id], onDelete: Cascade)
-  product     Product? @relation(fields: [product_id], references: [id])
-  
-  @@index([customer_id])
-  @@index([retailer_id, created_at])
-  @@map("customer_interactions")
-}
+// CustomerMeasurement, CustomerFashionDNA, CustomerInteraction — REMOVED
+// 2026-08-31 (migration 082). See banner at the top of this file.
 
 // ─────────────────────────────────────────────
 // COLLECTIONS (WhatsApp Share Links)
@@ -798,42 +704,7 @@ model SubscriptionPayment {
   @@map("subscription_payments")
 }
 
-// ─────────────────────────────────────────────
-// VIRTUAL TRY-ON (Phase 1)
-// ─────────────────────────────────────────────
-
-model TryOnJob {
-  id          String  @id @default(cuid())
-  retailer_id String
-  
-  product_id  String
-  measurement_id String?  // optional — measurement snapshot used to scale/fit garment
-  customer_photo_r2_key String  // ephemeral — deleted after processing
-  result_r2_key String?         // result — deleted after 24h
-  result_url  String?
-  
-  status      TryOnStatus @default(QUEUED)
-  error_message String?
-  
-  api_provider String  // "vton" — self-hosted Fashion V-Tone engine
-  api_job_id  String?  // external job ID
-  api_cost_usd Float?  // cost in USD for this job
-  
-  measurement CustomerMeasurement? @relation(fields: [measurement_id], references: [id])
-  
-  // Timing
-  queued_at   DateTime @default(now())
-  started_at  DateTime?
-  completed_at DateTime?
-  
-  // Ephemeral cleanup
-  customer_photo_deleted_at DateTime?  // MUST be deleted after job
-  result_expires_at DateTime?          // result URL expires in 24h
-  
-  @@index([retailer_id])
-  @@index([status])
-  @@map("try_on_jobs")
-}
+// VIRTUAL TRY-ON — model TryOnJob REMOVED 2026-08-31 (migration 082).
 
 // ─────────────────────────────────────────────
 // PLAN FEATURE MATRIX (F-013, planned)
@@ -899,114 +770,11 @@ model AuditLog {
 }
 
 // ─────────────────────────────────────────────
-// L2 ECOMMERCE CHECKOUT (Phase 3 — F-302/F-307)
-// Planned only — decided 2026-07-24, no migration written yet.
+// L2 ECOMMERCE CHECKOUT — REMOVED 2026-08-31 (migration 082).
+// enums PaymentMode / RouteOnboardingStatus / OrderStatus and models
+// RetailerPaymentAccount / Order / OrderItem are all gone. Subscription
+// billing (Subscription / SubscriptionPayment above) is unaffected.
 // ─────────────────────────────────────────────
-
-enum PaymentMode {
-  DIRECT  // Stage A — retailer's own Razorpay account, keys stored here (encrypted)
-  ROUTE   // Stage B — Razorpay Linked Account, Kanchuki's account is merchant-of-record
-}
-
-enum RouteOnboardingStatus {
-  PENDING
-  ACTIVE
-  REJECTED
-}
-
-enum OrderStatus {
-  PENDING_PAYMENT
-  PAID
-  CANCELLED
-  REFUNDED
-  FULFILLED
-}
-
-// One row per retailer who has turned on checkout. Existence of an ACTIVE
-// row here is the whole L1/L2 gate — no separate feature-flag column.
-model RetailerPaymentAccount {
-  id          String      @id @default(cuid())
-  retailer_id String      @unique
-  payment_mode PaymentMode @default(DIRECT)
-
-  // Stage A (DIRECT) — reuses packages/db/src/secrets.ts encryptSecret()/
-  // decryptSecret() (AES-256-GCM, same mechanism as F-012 IntegrationSetting)
-  // but keyed per-retailer here instead of the global admin-only table.
-  razorpay_key_id                 String?  // public-ish, not secret — plaintext ok
-  razorpay_key_secret_encrypted   String?  // AES-256-GCM, same format as IntegrationSetting.encrypted_value
-  razorpay_webhook_secret_encrypted String? // used to verify Stage A webhook signatures
-
-  // Stage B (ROUTE)
-  razorpay_linked_account_id String?
-  route_status                RouteOnboardingStatus?
-  onboarding_url               String?  // Razorpay-hosted KYC link, short-lived
-
-  is_active   Boolean   @default(false)
-  verified_at DateTime?
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
-
-  retailer    Retailer @relation(fields: [retailer_id], references: [id])
-
-  @@map("retailer_payment_accounts")
-}
-
-model Order {
-  id            String      @id @default(cuid())
-  retailer_id   String
-  collection_id String?     // which collection link the customer bought from, if any
-
-  // No reusable Address entity — checkout is anonymous (no customer login
-  // anywhere else in this app), so the address is a one-time order snapshot,
-  // not a profile a customer could reuse.
-  customer_name    String
-  customer_phone   String
-  shipping_address Json     // { line1, line2?, city, state, pincode }
-
-  status OrderStatus @default(PENDING_PAYMENT)
-
-  // Amounts in paise, same convention as Product.price_min/max
-  subtotal_amount Int
-  gst_amount      Int
-  total_amount    Int
-
-  payment_mode PaymentMode  // snapshotted from RetailerPaymentAccount at order-create time
-  razorpay_order_id   String? @unique
-  razorpay_payment_id String?
-
-  gst_invoice_number String?
-
-  created_at   DateTime  @default(now())
-  updated_at   DateTime  @updatedAt
-  paid_at      DateTime?
-  cancelled_at DateTime?
-
-  retailer Retailer    @relation(fields: [retailer_id], references: [id])
-  items    OrderItem[]
-
-  @@index([retailer_id])
-  @@index([status])
-  @@map("orders")
-}
-
-model OrderItem {
-  id         String @id @default(cuid())
-  order_id   String
-  product_id String
-
-  // Snapshotted at order time — retailer catalog price/name can change later
-  product_name_snapshot String?
-  price_snapshot         Int
-  quantity               Int @default(1) // practically always 1 — see F-302 note:
-                                          // one Product row = one physical garment
-                                          // (AVAILABLE/SOLD), not a stock-count SKU
-
-  order   Order   @relation(fields: [order_id], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [product_id], references: [id])
-
-  @@index([order_id])
-  @@map("order_items")
-}
 ```
 
 ---
@@ -1024,10 +792,7 @@ CREATE INDEX idx_product_embeddings_vector ON product_embeddings
   USING ivfflat (embedding vector_cosine_ops)
   WITH (lists = 100);  -- adjust based on product count
 
--- Customer DNA similarity
-CREATE INDEX idx_customer_dna_vector ON customer_fashion_dna 
-  USING ivfflat (preference_vector vector_cosine_ops)
-  WITH (lists = 50);
+-- (customer_fashion_dna vector index removed 2026-08-31 — migration 082)
 ```
 
 ### Composite Indexes for Common Queries
@@ -1108,17 +873,14 @@ nobody), `engine` (nullable string, one of the `StudioEngine` set),
 
 | Data | Retention | Trigger |
 |------|-----------|---------|
-| Customer photos (VTO input) | **Deleted immediately after job completes** | TryOnJob.completed_at set |
-| Measurement photos (front/back input) | **Deleted immediately after landmark extraction** | CustomerMeasurement.photo_deleted_at set |
-| VTO result images | 24 hours | Cron job cleanup |
 | Product photos | Retained while product active | Product.deleted_at marks removal |
 | Collection views | 90 days | Cron cleanup of old view records |
 | Audit logs | 3 years | Regulatory compliance |
 | Payment records | 7 years | GST/IT compliance |
 | Soft-deleted records | 30 days then hard delete | Cron cleanup |
-| Orders (F-302, planned) | 7 years | Same GST/IT compliance window as SubscriptionPayment |
-| Retailer Razorpay keys (F-302, planned) | Until retailer disconnects the account | Deleted, not soft-deleted — see `docs/SECURITY.md` §11 |
 | Deletion Vault records (F-016, planned) | Indefinite by default | Written at soft-delete time; hard-purge only via manual audited admin action, never automatic |
+
+*(VTO/measurement photo + order retention rows removed 2026-08-31 — migration 082.)*
 
 ---
 
@@ -1201,7 +963,7 @@ $$ LANGUAGE plpgsql;
   `TRUNCATE` compatibility, since `TRUNCATE` operates at the statement level
   and cannot fire row-level triggers.
 
-**Tables protected (8 triggers):**
+**Tables protected:**
 
 | Table | Trigger Name | Purpose |
 |-------|-------------|---------|
@@ -1210,9 +972,9 @@ $$ LANGUAGE plpgsql;
 | `retailers` | `guard_retailers_delete` | Protect account records — use `deleted_at` instead |
 | `collections` | `guard_collections_delete` | Protect collection links — use `deleted_at` instead |
 | `staff` | `guard_staff_delete` | Protect staff accounts — use `is_active = false` instead |
-| `orders` | `guard_orders_delete` | Protect order history (GST compliance) |
-| `order_items` | `guard_order_items_delete` | Protect order line items |
 | `product_variants` | `guard_product_variants_delete` | Protect color variants — use soft-delete instead |
+
+*(`orders` / `order_items` guards removed 2026-08-31 — migration 082.)*
 
 **To apply the migration:**
 ```bash

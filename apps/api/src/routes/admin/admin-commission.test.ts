@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import Fastify from 'fastify';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
 import { adminCommissionRoutes, commissionOf, monthRange, periodKey } from './admin-commission.js';
 
@@ -100,6 +100,15 @@ function csrfHeadersNoBody() {
 beforeEach(() => {
   process.env.ADMIN_API_KEY = ADMIN_KEY;
   vi.clearAllMocks();
+  // Freeze the clock — the /overview and /export windows are relative to "now"
+  // and every fixture in this suite is dated 2026-08. Without this the suite
+  // breaks on the 1st of each month.
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  vi.setSystemTime(new Date('2026-08-17T10:00:00.000Z'));
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 // ─── Pure helpers ──────────────────────────────────────────────────
