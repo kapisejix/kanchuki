@@ -12,3 +12,4 @@ export { publicDesignRoutes } from './public-designs.js';
 export { passportRoutes } from './passport.js';
 export { forYouRoutes } from './for-you.js';
 export { publicSearchRoutes } from './public-search.js';
+export { discoverStoresRoutes } from './discover-stores.js';

@@ -33,6 +33,7 @@ import { handleGenerateLookbook } from './generate-lookbook.js';
 import type { LookbookJobData } from './generate-lookbook.js';
 import { handleInteractionRetention } from './interaction-retention.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
+import { handleStoreAffinity } from './store-affinity.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -393,6 +394,8 @@ export async function startWorkers(): Promise<void> {
           return handleInteractionRetention();
         case 'embedding-backfill':
           return handleEmbeddingBackfill();
+        case 'store-affinity':
+          return handleStoreAffinity();
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -491,6 +494,17 @@ export async function startWorkers(): Promise<void> {
     { type: 'weekly' },
     {
       repeat: { pattern: '0 4 * * 0', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // Store affinity — nightly at 3:00 AM UTC
+  await getMaintenanceQueue().add(
+    'store-affinity',
+    {},
+    {
+      repeat: { pattern: '0 3 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },
