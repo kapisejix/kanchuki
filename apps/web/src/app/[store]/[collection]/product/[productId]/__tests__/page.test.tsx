@@ -137,15 +137,16 @@ describe('[store]/[collection]/product/[productId] shared product route', () => 
       }),
     ).resolves.toBeUndefined()
 
-    // The product itself renders.
-    expect(screen.getByText('Maroon Anarkali Suit')).toBeInTheDocument()
+    // The product itself renders (name shows in the header + the info card).
+    expect(screen.getAllByText('Maroon Anarkali Suit').length).toBeGreaterThan(0)
     // Both CTAs point at the real browse page (All Products), never the
     // pseudo-slug URL (which has no page behind it). Assert on hrefs — the
     // next/link mock drops aria-label, so the icon-only back link has no
     // accessible name.
     const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'))
     expect(hrefs).toContain('/meera-sarees/all')
-    expect(hrefs.filter((h) => h === '/meera-sarees/all')).toHaveLength(2)
+    // 2 header links (back + bag) + the "View Full Catalog" CTA.
+    expect(hrefs.filter((h) => h === '/meera-sarees/all')).toHaveLength(3)
     expect(hrefs).not.toContain('/meera-sarees/all-meera-sarees')
   })
 
