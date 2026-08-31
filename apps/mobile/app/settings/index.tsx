@@ -894,11 +894,13 @@ function DeleteAccountModal({
     setDeleting(true);
     try {
       await retailerApi.delete();
-      onDeleted();
-    } catch (err) {
-      showError(err, "Failed to delete account");
-      setDeleting(false);
+    } catch {
+      // Best-effort: even if the server-side delete fails, clean up
+      // locally so the user is logged out and can re-register.
     }
+    // Always clean up locally — clear token, storage, cache, and navigate
+    // away regardless of whether the API call succeeded.
+    onDeleted();
   };
 
   const isConfirmed = confirm.trim().toUpperCase() === "DELETE";
