@@ -232,6 +232,22 @@ describe('POST /public/retailers/:slug/leads', () => {
     await app.close();
   });
 
+  it('rejects the passport path without a session cookie (401, no CRM write)', async () => {
+    mockRetailerFindFirst.mockResolvedValue({ id: 'retailer_1' });
+
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/public/retailers/test-shop-ab12/leads',
+      // Identity claimed in the body must never be trusted without a session.
+      payload: { customer_account_id: 'acct_victim', share_contact: true },
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(mockCustomerUpsert).not.toHaveBeenCalled();
+    await app.close();
+  });
+
   it('upserts a consented customer and returns 201', async () => {
     mockRetailerFindFirst.mockResolvedValue({ id: 'retailer_1' });
     mockCustomerUpsert.mockResolvedValue({ id: 'cust_1', name: 'Test Customer' });

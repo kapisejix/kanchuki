@@ -8,6 +8,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
+import { getPassportSession } from './passport-helpers.js';
 
 export const publicRetailersMarketingRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /public/retailers/:slug/promotions ────────────────────
@@ -191,9 +192,10 @@ export const publicRetailersMarketingRoutes: FastifyPluginAsync = async (server)
   // ─── POST /public/retailers/:slug/leads ──────────────────────────
   // QR profile contact gate. Two paths:
   //   1. Legacy: { name, phone, gender, consent } — unverified form entry
-  //   2. Passport: { customer_account_id, share_contact } — verified identity
-  //      from the Shopper Passport. On share_contact: upserts the retailer-
-  //      scoped Customer from the CustomerAccount + writes ConsentEvent.
+  //   2. Passport: { share_contact } — verified identity taken from the
+  //      cookie-bound Shopper Passport session (NOT from the request body).
+  //      On share_contact: upserts the retailer-scoped Customer from the
+  //      CustomerAccount + writes ConsentEvent.
   server.post('/retailers/:slug/leads', async (request, reply) => {
     const { slug } = request.params as { slug: string };
 
@@ -211,17 +213,21 @@ export const publicRetailersMarketingRoutes: FastifyPluginAsync = async (server)
     const body = request.body as Record<string, unknown>;
 
     // ── Passport path: verified identity ──
-    if (body.customer_account_id && typeof body.customer_account_id === 'string') {
-      const shareContact = body.share_contact === true;
-      const customerId = body.customer_account_id;
-
-      // Verify the account exists
-      const account = await prisma.customerAccount.findUnique({
-        where: { id: customerId, deleted_at: null },
-      });
-      if (!account) {
-        throw validationError('Invalid passport session');
+    // The client signals a passport submission with `customer_account_id`, but
+    // that field is NOT trusted for auth — the identity is taken from the
+    // cookie-bound passport session. Otherwise any caller could force a
+    // victim's contact + consent into an arbitrary retailer's CRM by guessing
+    // an account id.
+    if (body.customer_account_id != null || body.share_contact != null) {
+      const session = await getPassportSession(request.headers.cookie || '');
+      if (!session || session.customer_account.deleted_at) {
+        return reply.status(401).send({
+          error: { code: 'NO_SESSION', message: 'Passport session required to share contact' },
+        });
       }
+      const shareContact = body.share_contact === true;
+      const customerId = session.customer_account_id;
+      const account = session.customer_account;
 
       // Upsert the CustomerStoreVisit
       const existingVisit = await prisma.customerStoreVisit.findUnique({
