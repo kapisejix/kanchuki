@@ -181,6 +181,13 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM social_accounts WHERE retailer_id = $1;',
     'DELETE FROM product_attributes WHERE retailer_id = $1;',
     'DELETE FROM retailer_payment_accounts WHERE retailer_id = $1;',
+    // IncentiveRule.retailer_id is an FK with NO onDelete: Cascade (schema
+    // ~L393) — omitting it threw incentive_rules_retailer_id_fkey and rolled
+    // back the whole delete (retailer + phone survived). ProductVideo.retailer_id
+    // is a bare scalar (no FK) so it never blocked, but its rows were orphaned —
+    // R2 keys for them are already collected above, so purge the rows too.
+    'DELETE FROM incentive_rules WHERE retailer_id = $1;',
+    'DELETE FROM product_videos WHERE retailer_id = $1;',
     // retailer_limit_overrides / catalog_items / catalog_sync_logs /
     // customer_store_visits / store_affinities have onDelete: Cascade in
     // the schema — Postgres removes them automatically with the row below.

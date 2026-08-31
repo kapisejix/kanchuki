@@ -58,6 +58,19 @@
           "project": "kanchuki-retailer",
           "dryRun": false
         }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "//": "App-to-app Facebook Page connect (no web OAuth, no OTP). appID + clientToken come from the Meta App Dashboard (Settings → Basic for the ID, Settings → Advanced → Client token). scheme MUST be fb<appID>. Requires an EAS/dev build — the SDK is a native module (not in Expo Go). See docs/social-connect-native.md.",
+          "appID": "REPLACE_WITH_FACEBOOK_APP_ID",
+          "clientToken": "REPLACE_WITH_FACEBOOK_CLIENT_TOKEN",
+          "displayName": "Kanchuki",
+          "scheme": "fbREPLACE_WITH_FACEBOOK_APP_ID",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true
+        }
       ]
     ],
     "experiments": {

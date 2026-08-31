@@ -8,7 +8,11 @@ export const retailerApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  updateOnboarding: (step: number, completed?: boolean, extra?: { demo_plan?: boolean }) =>
+  updateOnboarding: (
+    step: number,
+    completed?: boolean,
+    extra?: { demo_plan?: boolean; plan?: 'STARTER' | 'GROWTH' | 'PRO' },
+  ) =>
     request<{ data: { onboarding_step: number; onboarding_completed: boolean } }>(
       '/v1/retailers/me/onboarding',
       { method: 'PATCH', body: JSON.stringify({ step, completed, ...extra }) },
