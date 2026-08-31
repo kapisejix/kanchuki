@@ -349,6 +349,7 @@ model Retailer {
   social_posts          SocialPost[]
   customer_visits       CustomerVisit[]
   store_visits          CustomerStoreVisit[]
+  store_affinities      StoreAffinity[]
   incentive_rules       IncentiveRule[]
   partners              Partner[]
   partner_events        PartnerEvent[]
@@ -2716,6 +2717,7 @@ model StoreAffinity {
   computed_at         DateTime @default(now())
 
   customer_account CustomerAccount @relation(fields: [customer_account_id], references: [id], onDelete: Cascade)
+  retailer         Retailer         @relation(fields: [retailer_id], references: [id], onDelete: Cascade)
 
   @@unique([customer_account_id, retailer_id])
   @@index([customer_account_id, score])
