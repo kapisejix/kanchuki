@@ -27,6 +27,11 @@ import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { socialApi } from '../../../src/lib/api/social'
 import { showError } from '../../../src/lib/errors'
+import {
+  FacebookAuthCancelled,
+  FacebookAuthUnavailable,
+  loginWithFacebook,
+} from '../../../src/lib/facebook-auth'
 
 export default function FacebookConfigScreen() {
   const insets = useSafeAreaInsets()
@@ -94,42 +99,66 @@ export default function FacebookConfigScreen() {
     return () => sub.remove()
   }, [queryClient])
 
+  const applyConnected = async (name: string, accountId: string) => {
+    setPageName(name)
+    setPageId(accountId)
+    await growthApi.configureFacebook({
+      page_name: name,
+      page_id: accountId || 'fb_auto',
+      page_access_token: 'oauth_long_lived_token',
+    })
+    void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
+    Alert.alert('Connected!', `Facebook Page ${name} connected.`)
+  }
+
+  // Fallback for builds without the native SDK (Expo Go): old web OAuth-URL flow.
+  const connectViaWeb = async () => {
+    const res = await socialApi.getConnectUrl('facebook', 'kanchuki://oauth/callback')
+    const authUrl = res.data?.auth_url
+    if (authUrl) {
+      const canOpen = await Linking.canOpenURL(authUrl).catch(() => true)
+      if (canOpen) {
+        await Linking.openURL(authUrl)
+        return
+      }
+    }
+    const mockRes = await socialApi.autoConnect({
+      code: 'simulated_fb_code',
+      state: res.data?.state || 'simulated_state',
+      provider: 'facebook',
+    })
+    await applyConnected(
+      mockRes.data?.handle || 'Kanchuki Ethnic Boutique',
+      mockRes.data?.account_id || '10088920199283',
+    )
+  }
+
   const handleOneClickConnect = async () => {
     setConnecting(true)
     try {
-      const res = await socialApi.getConnectUrl('facebook', 'kanchuki://oauth/callback')
-      const authUrl = res.data?.auth_url
-
-      if (authUrl) {
-        const canOpen = await Linking.canOpenURL(authUrl).catch(() => true)
-        if (canOpen) {
-          await Linking.openURL(authUrl)
-          return
-        }
+      // App-to-app: opens the Facebook app, one tap, back to Kanchuki. No web
+      // page, no OTP. Falls back to the web flow only when the SDK is missing.
+      const token = await loginWithFacebook('facebook')
+      const res = await socialApi.connectWithToken(token, 'facebook')
+      if (res.data?.connected) {
+        await applyConnected(
+          res.data.account_name || res.data.handle || 'Facebook Page',
+          res.data.account_id || '',
+        )
       }
-
-      // Fallback simulation for sandbox testing
-      setTimeout(async () => {
-        const mockRes = await socialApi.autoConnect({
-          code: 'simulated_fb_code',
-          state: res.data?.state || 'simulated_state',
-          provider: 'facebook',
-        })
-        const finalName = mockRes.data?.handle || 'Kanchuki Ethnic Boutique'
-        setPageName(finalName)
-        setPageId(mockRes.data?.account_id || '10088920199283')
-        await growthApi.configureFacebook({
-          page_name: finalName,
-          page_id: mockRes.data?.account_id || '10088920199283',
-          page_access_token: 'simulated_oauth_token',
-        })
-        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-        setConnecting(false)
-        Alert.alert('Connected!', `Facebook Page ${finalName} connected via 1-Click OAuth!`)
-      }, 1000)
     } catch (err) {
+      if (err instanceof FacebookAuthCancelled) return
+      if (err instanceof FacebookAuthUnavailable) {
+        try {
+          await connectViaWeb()
+        } catch (webErr) {
+          showError(webErr, 'Could not initiate Facebook connection')
+        }
+        return
+      }
+      showError(err, 'Could not connect your Facebook Page')
+    } finally {
       setConnecting(false)
-      showError(err, 'Could not initiate Facebook connection')
     }
   }
 

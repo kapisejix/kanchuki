@@ -34,6 +34,26 @@ export const socialApi = {
       )}`,
     ),
 
+  /**
+   * Native FB SDK path — exchange a short-lived on-device user token for a
+   * stored Page (server calls fb_exchange_token, then listPages/upsert).
+   * No OAuth code, no redirect URI, no web page, no OTP.
+   */
+  connectWithToken: (accessToken: string, provider: 'facebook' | 'instagram' = 'facebook') =>
+    request<{
+      data: {
+        connected: boolean
+        provider: string
+        handle?: string
+        account_id?: string
+        account_name?: string
+      }
+    }>('/v1/retailers/me/social/connect-native', {
+      method: 'POST',
+      body: JSON.stringify({ access_token: accessToken, provider }),
+      timeoutMs: 30_000,
+    }),
+
   autoConnect: (payload: {
     code: string;
     state: string;

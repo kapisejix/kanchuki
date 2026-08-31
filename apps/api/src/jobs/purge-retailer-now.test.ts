@@ -71,6 +71,7 @@ describe('hardDeleteRetailer', () => {
       'DELETE FROM product_attributes',
       'DELETE FROM social_accounts',
       'DELETE FROM social_posts',
+      'DELETE FROM product_videos',
       'DELETE FROM subscriptions',
       'DELETE FROM support_tickets',
       'DELETE FROM quota_addon_purchases',

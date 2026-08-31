@@ -133,6 +133,34 @@ export async function exchangeCodeForToken(
   return { accessToken: longBody.access_token as string, expiresAt };
 }
 
+/**
+ * Turn a short-lived user token — e.g. the one the native Facebook SDK returns
+ * on-device after the retailer taps "Continue" in the FB app — into a
+ * long-lived (~60d) user token. Same fb_exchange_token step as
+ * exchangeCodeForToken, minus the code→token leg the SDK already did. No
+ * redirect_uri involved, so this works with the app-to-app SDK flow (no web
+ * OAuth dialog, no https callback, no phone OTP).
+ */
+export async function exchangeUserTokenForLongLived(
+  meta: MetaCredentials,
+  shortToken: string,
+): Promise<{ accessToken: string; expiresAt: Date }> {
+  const res = await fetch(
+    `${GRAPH_BASE}/oauth/access_token?${new URLSearchParams({
+      grant_type: 'fb_exchange_token',
+      client_id: meta.appId,
+      client_secret: meta.appSecret,
+      fb_exchange_token: shortToken,
+    })}`,
+  );
+  const body = (await res.json()) as Record<string, unknown>;
+  if (!res.ok || typeof body.access_token !== 'string') {
+    throw new MetaApiError('Failed to obtain a long-lived token', 400, 'OAUTH_EXCHANGE_FAILED');
+  }
+  const expiresIn = typeof body.expires_in === 'number' ? body.expires_in : 51_840_000;
+  return { accessToken: body.access_token, expiresAt: new Date(Date.now() + expiresIn * 1000) };
+}
+
 export interface MetaInstagramAccount {
   id: string;
   username: string;

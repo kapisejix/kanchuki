@@ -39,6 +39,10 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
         step: z.number().int().min(0).max(6),
         completed: z.boolean().optional(),
         demo_plan: z.boolean().optional(),
+        // Paid plan picked on the onboarding "Choose Your Plan" step. Records
+        // intent only — plan_status stays TRIAL; the retailer pays later from
+        // Settings → Plans & Billing. demo_plan takes precedence when both set.
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
@@ -54,7 +58,9 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
           max_customers: 999999,
           try_on_credits: 500,
         }
-      : {};
+      : body.data.plan
+        ? { plan: body.data.plan }
+        : {};
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },

@@ -28,6 +28,11 @@ import { GradientButton } from '../../../src/components/GradientButton'
 import { growthApi } from '../../../src/lib/api/growth'
 import { socialApi } from '../../../src/lib/api/social'
 import { showError } from '../../../src/lib/errors'
+import {
+  FacebookAuthCancelled,
+  FacebookAuthUnavailable,
+  loginWithFacebook,
+} from '../../../src/lib/facebook-auth'
 
 export default function InstagramConfigScreen() {
   const insets = useSafeAreaInsets()
@@ -98,44 +103,68 @@ export default function InstagramConfigScreen() {
     return () => sub.remove()
   }, [autoPublishReels, queryClient])
 
-  // 1-Click Connect Action
+  const applyConnected = async (rawHandle: string, accountId: string) => {
+    const finalHandle = rawHandle.startsWith('@') ? rawHandle : `@${rawHandle}`
+    setHandle(finalHandle)
+    setAccountId(accountId)
+    await growthApi.configureInstagram({
+      handle: finalHandle.replace(/^@/, ''),
+      account_id: accountId || '',
+      access_token: 'oauth_long_lived_token',
+      auto_publish_reels: autoPublishReels,
+    })
+    void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
+    Alert.alert('Connected!', `Instagram account ${finalHandle} connected.`)
+  }
+
+  // Fallback for builds without the native SDK (Expo Go): old web OAuth-URL flow.
+  const connectViaWeb = async () => {
+    const res = await socialApi.getConnectUrl('instagram', 'kanchuki://oauth/callback')
+    const authUrl = res.data?.auth_url
+    if (authUrl) {
+      const canOpen = await Linking.canOpenURL(authUrl).catch(() => true)
+      if (canOpen) {
+        await Linking.openURL(authUrl)
+        return
+      }
+    }
+    const mockRes = await socialApi.autoConnect({
+      code: 'simulated_meta_code',
+      state: res.data?.state || 'simulated_state',
+      provider: 'instagram',
+    })
+    await applyConnected(
+      mockRes.data?.handle || '@kanchuki_luxury_boutique',
+      mockRes.data?.account_id || '17841400998877',
+    )
+  }
+
+  // 1-Click Connect Action — Instagram publishing runs through the linked
+  // Facebook Page, so this is the same native FB login with IG scopes added.
   const handleOneClickConnect = async () => {
     setConnecting(true)
     try {
-      const res = await socialApi.getConnectUrl('instagram', 'kanchuki://oauth/callback')
-      const authUrl = res.data?.auth_url
-
-      if (authUrl) {
-        const canOpen = await Linking.canOpenURL(authUrl).catch(() => true)
-        if (canOpen) {
-          await Linking.openURL(authUrl)
-          return
-        }
+      const token = await loginWithFacebook('instagram')
+      const res = await socialApi.connectWithToken(token, 'instagram')
+      if (res.data?.connected) {
+        await applyConnected(
+          res.data.handle || res.data.account_name || '@instagram_store',
+          res.data.account_id || '',
+        )
       }
-
-      // Fallback sandbox simulation for rapid testing
-      setTimeout(async () => {
-        const mockRes = await socialApi.autoConnect({
-          code: 'simulated_meta_code',
-          state: res.data?.state || 'simulated_state',
-          provider: 'instagram',
-        })
-        const finalHandle = mockRes.data?.handle || '@kanchuki_luxury_boutique'
-        setHandle(finalHandle)
-        setAccountId(mockRes.data?.account_id || '17841400998877')
-        await growthApi.configureInstagram({
-          handle: finalHandle.replace(/^@/, ''),
-          account_id: mockRes.data?.account_id || '17841400998877',
-          access_token: 'simulated_oauth_token',
-          auto_publish_reels: autoPublishReels,
-        })
-        void queryClient.invalidateQueries({ queryKey: ['growth', 'integrations'] })
-        setConnecting(false)
-        Alert.alert('Connected!', `Instagram account ${finalHandle} connected via 1-Click OAuth!`)
-      }, 1000)
     } catch (err) {
+      if (err instanceof FacebookAuthCancelled) return
+      if (err instanceof FacebookAuthUnavailable) {
+        try {
+          await connectViaWeb()
+        } catch (webErr) {
+          showError(webErr, 'Could not initiate Instagram connection')
+        }
+        return
+      }
+      showError(err, 'Could not connect your Instagram account')
+    } finally {
       setConnecting(false)
-      showError(err, 'Could not initiate Instagram connection')
     }
   }
 

@@ -30,6 +30,11 @@ import { GradientButton } from '../../src/components/GradientButton';
 import { collectionApi, productApi, socialApi } from '../../src/lib/api';
 import type { SocialAccountInfo, SocialPostInfo } from '../../src/lib/api/social';
 import { showError } from '../../src/lib/errors';
+import {
+  FacebookAuthCancelled,
+  FacebookAuthUnavailable,
+  loginWithFacebook,
+} from '../../src/lib/facebook-auth';
 import { useTheme } from '../../src/lib/theme';
 
 type PickerTarget = 'product' | 'collection' | null;
@@ -98,38 +103,56 @@ export default function SocialSettingsScreen() {
     return () => sub.remove();
   }, [queryClient]);
 
+  // Fallback for builds without the native SDK (Expo Go): the old web OAuth-URL
+  // flow. Kept only so development on Expo Go still has *a* path.
+  const openConnectViaWeb = async () => {
+    const res = await socialApi.getConnectUrl('facebook', 'kanchuki://oauth/callback');
+    const authUrl = res.data?.auth_url;
+    if (authUrl) {
+      const canOpen = await Linking.canOpenURL(authUrl).catch(() => true);
+      if (canOpen) {
+        await Linking.openURL(authUrl);
+        return;
+      }
+    }
+    const mockRes = await socialApi.autoConnect({
+      code: 'simulated_fb_code',
+      state: res.data?.state || 'simulated_state',
+      provider: 'facebook',
+    });
+    if (mockRes?.data?.connected) {
+      Alert.alert('Connected!', `Facebook Page ${mockRes.data.handle || 'Boutique'} connected!`);
+      refresh();
+    }
+  };
+
   const openConnect = async () => {
     setConnecting(true);
     try {
-      // Get OAuth URL from the server — this uses Meta's official OAuth flow
-      // directly in the mobile app (no web page, no OTP).
-      const res = await socialApi.getConnectUrl('facebook', 'kanchuki://oauth/callback');
-      const authUrl = res.data?.auth_url;
-
-      if (authUrl) {
-        const canOpen = await Linking.canOpenURL(authUrl).catch(() => true);
-        if (canOpen) {
-          await Linking.openURL(authUrl);
-          return;
-        }
+      // App-to-app: opens the Facebook app, one tap, back to Kanchuki. No web
+      // page, no OTP. Falls back to the web flow only when the SDK is missing.
+      const token = await loginWithFacebook('facebook');
+      const res = await socialApi.connectWithToken(token, 'facebook');
+      if (res.data?.connected) {
+        Alert.alert(
+          'Connected!',
+          `Linked ${res.data.account_name || res.data.handle || 'your Facebook Page'}.`,
+        );
+        refresh();
       }
-
-      // Fallback: simulate connection for sandbox testing
-      setTimeout(async () => {
-        const mockRes = await socialApi.autoConnect({
-          code: 'simulated_fb_code',
-          state: res.data?.state || 'simulated_state',
-          provider: 'facebook',
-        });
-        if (mockRes?.data?.connected) {
-          Alert.alert('Connected!', `Facebook Page ${mockRes.data.handle || 'Boutique'} connected!`);
-          refresh();
-        }
-        setConnecting(false);
-      }, 1000);
     } catch (err) {
+      if (err instanceof FacebookAuthCancelled) return;
+      if (err instanceof FacebookAuthUnavailable) {
+        try {
+          await openConnectViaWeb();
+        } catch (webErr) {
+          showError(webErr, 'Could not open Facebook connect');
+        }
+        return;
+      }
+      showError(err, 'Could not connect your Facebook Page');
+    } finally {
       setConnecting(false);
-      showError(err, 'Could not open Facebook connect');
     }
   };
 

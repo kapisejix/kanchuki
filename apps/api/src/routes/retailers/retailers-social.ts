@@ -32,6 +32,7 @@ import {
   MetaApiError,
   buildOAuthUrl,
   exchangeCodeForToken,
+  exchangeUserTokenForLongLived,
   listInstagramAccounts,
   listPages,
   publishLinkPost,
@@ -325,6 +326,136 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
         },
       };
     }
+  });
+
+  // ─── POST /retailers/me/social/connect-native — native FB SDK token ──
+  // The mobile app opens the Facebook app (react-native-fbsdk-next), the
+  // retailer taps "Continue", and the SDK hands back a short-lived USER token
+  // on-device — no web OAuth dialog, no https redirect, no phone OTP. This
+  // route swaps it for a long-lived token and stores the retailer's first
+  // Page. Mirrors the Facebook branch of /social/auto-connect (which takes an
+  // OAuth *code* instead of a token).
+  server.post('/me/social/connect-native', async (request) => {
+    const body = z
+      .object({
+        access_token: z.string().min(20),
+        provider: z.enum(['facebook', 'instagram']).default('facebook'),
+      })
+      .safeParse(request.body);
+    if (!body.success) throw validationError('A Facebook access_token is required');
+
+    const meta = await resolveMetaCredentials();
+    if (!meta) throw serviceUnavailable('Social publishing is not configured yet');
+
+    const { accessToken, expiresAt } = await exchangeUserTokenForLongLived(
+      meta,
+      body.data.access_token,
+    );
+
+    if (body.data.provider === 'instagram') {
+      const igAccounts = await listInstagramAccounts(accessToken);
+      const primaryIg = igAccounts[0];
+      if (!primaryIg) {
+        throw new AppError(
+          'NO_IG_FOUND',
+          'No Instagram Business account is linked to your Facebook Page. Link one in the Facebook app, then try again.',
+          404,
+        );
+      }
+      const handle = primaryIg.username ? `@${primaryIg.username}` : '@instagram_store';
+      const name = primaryIg.name || 'Instagram Business Account';
+      const account = await prisma.socialAccount.upsert({
+        where: {
+          retailer_id_platform_platform_account_id: {
+            retailer_id: request.retailerId,
+            platform: 'INSTAGRAM',
+            platform_account_id: primaryIg.id,
+          },
+        },
+        create: {
+          retailer_id: request.retailerId,
+          platform: 'INSTAGRAM',
+          platform_account_id: primaryIg.id,
+          platform_account_name: `${handle} (${name})`,
+          access_token_encrypted: await encryptSecret(accessToken),
+          token_expires_at: expiresAt,
+        },
+        update: {
+          platform_account_name: `${handle} (${name})`,
+          access_token_encrypted: await encryptSecret(accessToken),
+          token_expires_at: expiresAt,
+          is_active: true,
+        },
+      });
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'retailer',
+          actor_id: request.retailerId,
+          action: 'connect',
+          resource_type: 'SocialAccount',
+          resource_id: account.id,
+          metadata: { platform: 'INSTAGRAM', via: 'native_sdk', platform_account_id: primaryIg.id },
+          ip_address: request.ip,
+        },
+      });
+      return {
+        data: { connected: true, provider: 'instagram', handle, account_id: primaryIg.id, account_name: name },
+      };
+    }
+
+    const pages = await listPages(accessToken);
+    const primaryPage = pages[0];
+    if (!primaryPage) {
+      throw new AppError(
+        'NO_PAGES_FOUND',
+        'No Facebook Pages found on this account. Create or get admin access to a Page, then try again.',
+        404,
+      );
+    }
+    const pageToken = primaryPage.access_token || accessToken;
+    const account = await prisma.socialAccount.upsert({
+      where: {
+        retailer_id_platform_platform_account_id: {
+          retailer_id: request.retailerId,
+          platform: 'FACEBOOK',
+          platform_account_id: primaryPage.id,
+        },
+      },
+      create: {
+        retailer_id: request.retailerId,
+        platform: 'FACEBOOK',
+        platform_account_id: primaryPage.id,
+        platform_account_name: primaryPage.name,
+        access_token_encrypted: await encryptSecret(pageToken),
+        token_expires_at: expiresAt,
+      },
+      update: {
+        platform_account_name: primaryPage.name,
+        access_token_encrypted: await encryptSecret(pageToken),
+        token_expires_at: expiresAt,
+        is_active: true,
+      },
+    });
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'retailer',
+        actor_id: request.retailerId,
+        action: 'connect',
+        resource_type: 'SocialAccount',
+        resource_id: account.id,
+        metadata: { platform: 'FACEBOOK', via: 'native_sdk', platform_account_id: primaryPage.id },
+        ip_address: request.ip,
+      },
+    });
+    return {
+      data: {
+        connected: true,
+        provider: 'facebook',
+        handle: primaryPage.name,
+        account_id: primaryPage.id,
+        account_name: primaryPage.name,
+      },
+    };
   });
 
   // ─── POST /retailers/me/social/callback — exchange code + list Pages ─
