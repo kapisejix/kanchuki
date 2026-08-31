@@ -62,6 +62,7 @@ incident, migration, and decision recorded after 2026-07-26.
 | 49 | [Phase II — WhatsApp Native Catalog Sync](#built-2026-08-18-phase-ii--whatsapp-native-catalog-sync-f-307--roadmap-p) | Built | 2026-08-18 |
 | 50 | [Roadmap M — i18n Data Groundwork](#built-2026-08-18-roadmap-m--i18n-data-groundwork-deferred-post-launch) | Built | 2026-08-18 |
 | 51 | [Roadmap R — Seasonal Analytics](#built-2026-08-18-roadmap-r--seasonal-analytics-wedding-season-vs-daily-wear) | Built | 2026-08-18 |
+| 55 | [Onboarding Plan Selection Step](#built-2026-08-31-onboarding-plan-selection-step) | Built | 2026-08-31 |
 
 ---
 
@@ -1534,3 +1535,45 @@ Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No
 
 - Un-draft the finalised scene set.
 - Mobile auto-filter in `apps/mobile/src/components/product-detail/ProductStudioModal.tsx` — `product.category` → `demographicForCategory` → `studioTemplatesFor`, no manual demographic pick for the retailer.
+
+---
+
+## Built: 2026-08-31 — Onboarding Plan Selection Step
+
+**Built 2026-08-31** — commit `779f941`. Retailer onboarding flow gains a mandatory plan-selection screen (step 4) inserted between GST and the "You're All Set" completion step.
+
+### Motivation
+
+New retailers had no plan-selection moment during onboarding — they landed on the dashboard as STARTER/trial with no context about what they could access. The product owner requested a mandatory step after GST, before the final screen, with 4 options: a free Demo (full Pro access) and the three real plans.
+
+### Flow change
+
+| Before | After |
+|--------|-------|
+| Step 1: Shop → Step 2: Location → Step 3: GST → Step 4: Done | Step 1: Shop → Step 2: Location → Step 3: GST → **Step 4: Choose Plan** → Step 5: Done |
+
+- `Step` type: `1\|2\|3\|4` → `1\|2\|3\|4\|5`; `TOTAL_STEPS` 4 → 5.
+- `StepIndicator` renders dots for steps 1–4 (not 5 — the Done screen is a celebration, not a progress point).
+- Back handler + bottom bar labels extended for the new step 4.
+
+### Files changed
+
+| File | Change |
+|------|--------|
+| `apps/mobile/app/onboarding.tsx` | New `STEP_META[4]` ("Choose Your Plan"); old Done moved to key 5. Step 4 UI: prominent "Start Free Demo" card (Zap icon, dark bg when selected) + divider "or pick a plan" + 3 paid plan cards (Star/Crown/Sparkles icons, prices ₹999/₹2,499/₹4,999). `canProceed()` requires `selectedPlan !== null` for step 4. `handleNext()` step-4 branch: `retailerApi.updateOnboarding(4, undefined, { demo_plan: true })` for DEMO, plain `updateOnboarding(4)` for real plans. Step 5 "Done" shows selected plan badge. Bottom bar: step 3 → "Save & Proceed to Plan". |
+| `apps/mobile/src/lib/api/retailer.ts` | `updateOnboarding` third param: `extra?: { demo_plan?: boolean }` — spread into the PATCH body. |
+| `apps/api/src/routes/retailers/retailers-settings.ts` | PATCH `/me/onboarding` schema: optional `demo_plan: z.boolean()`. When `demo_plan: true`: sets `plan='PRO'`, `plan_status='TRIAL'`, `max_products=999999`, `max_customers=999999`, `try_on_credits=500`. Audit log includes `demo_plan_activated: true`. |
+| `apps/api/src/routes/retailers.test.ts` | 2 new tests: `demo_plan: true` sets PRO + limits; absent `demo_plan` doesn't touch plan fields. |
+
+### Demo plan behaviour
+
+- No Razorpay, no payment link, no ₹3 verification.
+- Demo retailers get `plan='PRO'` + `plan_status='TRIAL'` + full Pro limits immediately.
+- Real plan selection (Starter/Growth/Pro) stores the choice but defers payment to the website billing flow (Play Store compliance — in-app purchase UI removed 2026-08-10).
+
+### Verified
+
+- `apps/api` tsc → clean.
+- `apps/mobile` tsc → clean.
+- `npx vitest run src/routes/retailers.test.ts` → 35/35 (33 existing + 2 new).
+- `npx vitest run src/routes/security.test.ts` → 24/24.
