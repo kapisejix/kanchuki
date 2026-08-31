@@ -8,10 +8,10 @@ export const retailerApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  updateOnboarding: (step: number, completed?: boolean) =>
+  updateOnboarding: (step: number, completed?: boolean, extra?: { demo_plan?: boolean }) =>
     request<{ data: { onboarding_step: number; onboarding_completed: boolean } }>(
       '/v1/retailers/me/onboarding',
-      { method: 'PATCH', body: JSON.stringify({ step, completed }) },
+      { method: 'PATCH', body: JSON.stringify({ step, completed, ...extra }) },
     ),
   getSections: () => request<{ data: unknown[] }>('/v1/retailers/me/sections', { getCacheTtlMs: 120_000 }),
   createSection: (data: { name: string; type: string; parent_id?: string }) =>

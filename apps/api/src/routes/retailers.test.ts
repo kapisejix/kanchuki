@@ -818,3 +818,50 @@ describe('POST /retailers/me/banner-upload-url', () => {
     await app.close();
   });
 });
+
+describe('PATCH /retailers/me/onboarding — demo_plan', () => {
+  it('sets plan to PRO with TRIAL status when demo_plan: true', async () => {
+    mockRetailerUpdate.mockResolvedValue({
+      onboarding_step: 4,
+      onboarding_completed: false,
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/retailers/me/onboarding',
+      payload: { step: 4, demo_plan: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(mockRetailerUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          plan: 'PRO',
+          plan_status: 'TRIAL',
+          max_products: 999999,
+          max_customers: 999999,
+          try_on_credits: 500,
+          onboarding_step: 4,
+        }),
+      }),
+    );
+    await app.close();
+  });
+
+  it('does not set plan fields when demo_plan is not sent', async () => {
+    mockRetailerUpdate.mockResolvedValue({
+      onboarding_step: 3,
+      onboarding_completed: false,
+    });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/retailers/me/onboarding',
+      payload: { step: 3 },
+    });
+    expect(res.statusCode).toBe(200);
+    const callData = mockRetailerUpdate.mock.calls[0]?.[0]?.data;
+    expect(callData).not.toHaveProperty('plan');
+    expect(callData).not.toHaveProperty('plan_status');
+    await app.close();
+  });
+});
