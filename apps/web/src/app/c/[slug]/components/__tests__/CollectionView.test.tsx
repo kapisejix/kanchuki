@@ -134,7 +134,7 @@ describe('CollectionView favorites survive a client-side route change', () => {
 
   it('rehydrates favorites from localStorage after a route-change remount', () => {
     const { rerender } = render(pageElement('/c/festive-edit'))
-    expect(screen.getByRole('heading', { name: 'Festive Edit' })).toBeInTheDocument()
+    expect(screen.getByText(/Festive Edit ·/)).toBeInTheDocument()
 
     // Favorite product 1. The card photo div also has role="button" with the
     // accessible name "Festive Design 1 Add to favorites" (img alt + nested

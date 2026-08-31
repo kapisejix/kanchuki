@@ -27,8 +27,8 @@ describe('ProductGallery', () => {
         alt="Kurta Set"
       />,
     );
-    // 3 photos + 1 variant photo = 4 slides → counter shows 1 / 4
-    expect(container.textContent).toContain('1 / 4');
+    // 3 photos + 1 variant photo = 4 slides → live region reads "Photo 1 of 4"
+    expect(container.textContent).toContain('Photo 1 of 4');
     // Multi-slide controls appear: arrows + a thumbnail for slide 2
     expect(screen.getByRole('button', { name: 'Next photo' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Photo 2' })).toBeInTheDocument();
@@ -52,8 +52,8 @@ describe('ProductGallery', () => {
     // Chip exists for the photo variant; Teal (no photo) is a static chip.
     const maroonChip = screen.getByRole('button', { name: 'Maroon' });
     fireEvent.click(maroonChip);
-    // Variant slide is last → counter shows 4 / 4
-    expect(container.textContent).toContain('4 / 4');
+    // Variant slide is last → live region reads "Photo 4 of 4, Maroon"
+    expect(container.textContent).toContain('Photo 4 of 4');
   });
 
   it('opens the fullscreen lightbox on photo click and closes it', () => {
