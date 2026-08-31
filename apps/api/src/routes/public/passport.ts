@@ -21,6 +21,7 @@ import {
   verifyMsg91WidgetToken,
   verifyStoredOtp,
 } from '../../lib/msg91-otp.js';
+import { getCurrentNoticeVersion } from '../../lib/notice-versions.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
 import { recordInteraction, type InteractionType } from '../../lib/passport-activity.js';
 
@@ -75,7 +76,7 @@ const SESSION_TTL_DAYS = 180;
 const SESSION_TTL_SEC = SESSION_TTL_DAYS * 24 * 60 * 60;
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'kanchuki.com';
 const COOKIE_SECURE = process.env.NODE_ENV === 'production';
-const CURRENT_NOTICE_VERSION = '1.0';
+const CURRENT_NOTICE_VERSION = getCurrentNoticeVersion();
 
 // ─── Schemas ──────────────────────────────────────────────────────
 
