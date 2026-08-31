@@ -63,6 +63,8 @@ incident, migration, and decision recorded after 2026-07-26.
 | 50 | [Roadmap M — i18n Data Groundwork](#built-2026-08-18-roadmap-m--i18n-data-groundwork-deferred-post-launch) | Built | 2026-08-18 |
 | 51 | [Roadmap R — Seasonal Analytics](#built-2026-08-18-roadmap-r--seasonal-analytics-wedding-season-vs-daily-wear) | Built | 2026-08-18 |
 | 55 | [Feature Teardown — Remove Unwanted Features](#55-feature-teardown--remove-unwanted-features) | Built | 2026-08-31 |
+| 56 | [Onboarding Plan Selection Step](#built-2026-08-31-onboarding-plan-selection-step) | Built | 2026-08-31 |
+| 57 | [Admin bodyless-POST 400 fix — unsuspend/feature/unfeature (Fastify v5 empty JSON body)](#fixed-2026-08-31-admin-bodyless-post-400--unsuspendfeatureunfeature-fastify-v5-empty-json-body) | Fixed | 2026-08-31 |
 
 ---
 
@@ -1605,3 +1607,34 @@ Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No
 
 - Migration `082` not applied to production (applied manually by owner)
 - Doc updates to BUILD-LOG, PRO-REQUIREMENTS, PLAN, INDIA-RETAILER-GROWTH, DATABASE, API, SECURITY, DESIGN — partially complete (see this entry + CLAUDE.md)
+
+---
+
+## Fixed: 2026-08-31 — Admin bodyless-POST 400 — unsuspend/feature/unfeature (Fastify v5 empty JSON body)
+
+**Symptom:** admin panel "Unsuspend Account" showed "Failed to unsuspend" (rendered in a green success-styled banner). Same latent break on "Feature"/"Unfeature" store pins and `POST /customers/:id/unblock`.
+
+### Root cause
+
+`adminMutateOptions()` (`apps/web/src/lib/admin-fetch.ts`) always sets `Content-Type: application/json`. The unsuspend/feature/unfeature buttons `fetch` with `method: 'POST'` and **no body**. `fetch` still sends the header, and Fastify v5 rejects `application/json` + empty body with **`FST_ERR_CTP_EMPTY_JSON_BODY` 400 before any route handler or auth preHandler runs** — so no DB write, no audit-log row. `suspend` was unaffected only because it sends `body: JSON.stringify({ reason })`.
+
+Confirmed against prod: `curl -X POST .../unsuspend -H 'Content-Type: application/json'` (no body) → `400 FST_ERR_CTP_EMPTY_JSON_BODY`; with `-d '{}'` → `403` (auth), i.e. the route/handler are fine. Ruled out at the prod DB: column presence/nullability, table + column `GRANT`s for `kanchuki_app`, RLS (`kanchuki_app` has `BYPASSRLS`), triggers/constraints — the raw `UPDATE` runs clean.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `apps/api/src/plugins/empty-json-body.ts` | **new** — `parseJsonAllowEmpty`: empty/whitespace body → `{}`, malformed JSON → 400. |
+| `apps/api/src/plugins/empty-json-body.test.ts` | **new** — 5 unit tests (empty, whitespace, Buffer, valid, malformed). |
+| `apps/api/src/index.ts` | Registers the parser on the root server (`addContentTypeParser('application/json', { parseAs: 'string' }, parseJsonAllowEmpty)`) right after `Fastify({...})`. Webhook route plugins (`billing.ts`, `checkout-webhook.ts`, `whatsapp-catalog.ts`) keep their own **encapsulated** raw-body parser — unaffected. Fixes all bodyless admin mutations (present + future); Zod still guards routes that need real fields. |
+| `apps/web/src/app/admin/retailers/[id]/page.tsx` | (1) Action-feedback banner was hardcoded green + `BadgeCheck` for every message — errors looked like successes. Added `actionErr` state; banner renders red + `AlertTriangle` on failure. `actionErr` set in every `catch`, cleared at each action start. (2) `/unsuspend`, `/feature`, `/unfeature` handlers now read `j?.error?.message` from the response instead of a blind `throw new Error('Failed to …')`. |
+
+### Verified
+
+- New `parseJsonAllowEmpty` test → 5/5.
+- `apps/api` tsc → clean. `apps/web` tsc → clean.
+- `npx vitest run src/routes/admin.test.ts src/routes/security.test.ts src/routes/admin.login.test.ts` → 106/106 (one first-run flake on the TOTP 30s-window case-insensitive-login test; green on rerun, and green alone).
+
+### Not done
+
+- Not deployed — branch `fix/mobile-typecheck-taste-analytics`; reaches prod via merge to `main` → Railway auto-deploy.

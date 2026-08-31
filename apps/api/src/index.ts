@@ -9,6 +9,7 @@ import Fastify from 'fastify';
 
 import { getRedis, startWorkers } from './jobs/index.js';
 import { authPlugin } from './plugins/auth.js';
+import { parseJsonAllowEmpty } from './plugins/empty-json-body.js';
 import { errorHandler } from './plugins/error-handler.js';
 import { adminSettingsRoutes } from './routes/admin-settings.js';
 import { adminRoutes } from './routes/admin.js';
@@ -62,6 +63,12 @@ const server = Fastify({
   // in audit logs instead of the proxy's internal address (10.x.x.x).
   trustProxy: process.env.NODE_ENV === 'production',
 });
+
+// Tolerate an empty `application/json` body (parse as {}) instead of Fastify
+// v5's default 400 FST_ERR_CTP_EMPTY_JSON_BODY — see plugins/empty-json-body.ts.
+// Webhook route plugins register their own encapsulated raw-body parser, which
+// still overrides this within their subtree.
+server.addContentTypeParser('application/json', { parseAs: 'string' }, parseJsonAllowEmpty);
 
 // ─── Global Supabase Client (for auth verification) ──────────────
 
