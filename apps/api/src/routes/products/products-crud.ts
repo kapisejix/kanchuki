@@ -10,6 +10,7 @@ import {
 } from '../../jobs/catalog-sync.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
+import { notifyNewArrival, notifyRestock, notifyPriceDrop } from '../../lib/recommendation-triggers.js';
 import {
   forbidden,
   notFound,
@@ -127,6 +128,11 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
           },
         });
       } catch {}
+    });
+
+    // Fire-and-forget: notify consented customers about the new arrival
+    notifyNewArrival(retailerId, product.id, product.name || 'New product').catch((err) => {
+      request.log.error({ err, product_id: product.id }, 'Failed to send new-arrival notifications');
     });
 
     return reply.status(201).send({ data: product });
@@ -387,6 +393,26 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         ip_address: request.ip,
       },
     });
+
+    // Fire-and-forget: restock / price-drop notifications
+    const productName = updated.name || 'A product';
+
+    // Restock: was SOLD, now AVAILABLE
+    if (
+      body.data.status === 'AVAILABLE' &&
+      existing.status === 'SOLD'
+    ) {
+      notifyRestock(request.retailerId, id, productName).catch((err) => {
+        request.log.error({ err, product_id: id }, 'Failed to send restock notifications');
+      });
+    }
+
+    // Price drop: price_min decreased
+    if (body.data.price_min != null && existing.price_min != null && body.data.price_min < existing.price_min) {
+      notifyPriceDrop(request.retailerId, id, productName, existing.price_min, body.data.price_min).catch((err) => {
+        request.log.error({ err, product_id: id }, 'Failed to send price-drop notifications');
+      });
+    }
 
     return { data: updated };
   });
