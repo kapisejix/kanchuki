@@ -4,6 +4,7 @@ import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { hardDeleteRetailer } from '../../jobs/purge-retailer-now.js';
 import { buildStoreUrl } from '../../lib/store-urls.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -300,8 +301,9 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── DELETE /retailers/me ───────────────────────────────────────
-  // F-009: Soft-delete the retailer account. Collections become inaccessible.
-  // Products/customers/billing records are retained for audit/GST compliance.
+  // Hard-delete the retailer and ALL related data (products, customers,
+  // collections, staff, orders, marketing data — everything). The phone
+  // number is released so the retailer can sign up fresh.
   server.delete('/me', async (request, reply) => {
     const retailerId = request.retailerId;
 
@@ -310,58 +312,29 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!existing) throw notFound('Retailer');
 
-    // Fetch collections before archiving for vault snapshots
-    const collectionsBeforeDelete = await prisma.collection.findMany({
-      where: { retailer_id: retailerId, deleted_at: null },
-    });
-
-    // Soft-delete retailer + archive all collections + deactivate staff
-    await Promise.all([
-      prisma.retailer.update({
-        where: { id: retailerId },
-        data: { deleted_at: new Date() },
-      }),
-      prisma.collection.updateMany({
-        where: { retailer_id: retailerId, deleted_at: null },
-        data: { deleted_at: new Date(), status: 'ARCHIVED' },
-      }),
-      prisma.staff.updateMany({
-        where: { retailer_id: retailerId, is_active: true },
-        data: { is_active: false },
-      }),
-    ]);
-
-    // F-016: Vault snapshot of the deleted retailer (fire-and-forget)
+    // Vault snapshot before hard-delete (fire-and-forget, best-effort)
     vaultDelete({
       source_table: 'retailers',
       source_id: retailerId,
       retailer_id: retailerId,
       payload: existing as unknown as Record<string, unknown>,
-      delete_reason: 'user_delete',
+      delete_reason: 'user_self_delete',
       deleted_by: retailerId,
     });
-    // F-016: Vault snapshot of each archived collection (fire-and-forget)
-    Promise.allSettled(
-      collectionsBeforeDelete.map((c) =>
-        vaultDelete({
-          source_table: 'collections',
-          source_id: c.id,
-          retailer_id: retailerId,
-          payload: c as unknown as Record<string, unknown>,
-          delete_reason: 'user_delete',
-          deleted_by: retailerId,
-        }),
-      ),
-    );
+
+    // Hard-delete: removes retailer + every FK-linked row in one transaction.
+    // Uses the scoped purge role (SECURITY §19) with the allow_hard_delete
+    // guardrail bypass.
+    await hardDeleteRetailer(retailerId);
 
     await prisma.auditLog.create({
       data: {
         actor_type: 'retailer',
         actor_id: request.retailerId,
-        action: 'delete',
+        action: 'HARD_DELETE',
         resource_type: 'Retailer',
         resource_id: retailerId,
-        metadata: { soft_delete: true },
+        metadata: { hard_delete: true, phone: existing.phone },
         ip_address: request.ip,
       },
     });

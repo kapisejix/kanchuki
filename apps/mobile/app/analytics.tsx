@@ -446,7 +446,7 @@ export default function AnalyticsScreen() {
               max={analytics.plan.max_customers}
             />
             <AnimatedPressable
-              onPress={() => router.push('/billing')}
+              onPress={() => router.push('/plan-select')}
               className="mt-3 bg-spaceCadet-900 py-3 rounded-2xl items-center"
             >
               <Text className="text-white text-xs font-bold uppercase tracking-wider">
