@@ -37,6 +37,8 @@ export default function MyProfilePage() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
   const [personalizationEnabled, setPersonalizationEnabled] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     loadProfile()
@@ -218,7 +220,19 @@ export default function MyProfilePage() {
             <input
               type="checkbox"
               checked={personalizationEnabled}
-              onChange={(e) => setPersonalizationEnabled(e.target.checked)}
+              onChange={async (e) => {
+                const enabled = e.target.checked
+                setPersonalizationEnabled(enabled)
+                try {
+                  await fetch('/api/passport/preferences', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ profiling_enabled: enabled }),
+                  })
+                } catch {
+                  setPersonalizationEnabled(!enabled)
+                }
+              }}
               className="h-4 w-4 text-amber-600 rounded"
             />
           </label>
@@ -229,11 +243,53 @@ export default function MyProfilePage() {
       <section className="bg-white rounded-lg border border-stone-200 p-6">
         <h2 className="text-lg font-medium text-stone-900 mb-3">Your Data</h2>
         <div className="space-y-3">
-          <button className="w-full text-left px-4 py-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors text-sm text-stone-700">
-            📥 Download my data
+          <button
+            onClick={async () => {
+              setExporting(true)
+              try {
+                const res = await fetch('/api/passport/export')
+                if (res.status === 429) {
+                  alert('You can only export your data once per day.')
+                  return
+                }
+                if (!res.ok) throw new Error('Export failed')
+                const data = await res.json()
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = `kanchuki-data-${new Date().toISOString().slice(0, 10)}.json`
+                a.click()
+                URL.revokeObjectURL(url)
+              } catch (err) {
+                alert('Failed to export data. Please try again.')
+              } finally {
+                setExporting(false)
+              }
+            }
+            disabled={exporting}
+            className="w-full text-left px-4 py-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors text-sm text-stone-700 disabled:opacity-50"
+          >
+            {exporting ? '⏳ Exporting...' : '📥 Download my data'}
           </button>
-          <button className="w-full text-left px-4 py-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors text-sm text-red-600">
-            🗑️ Delete my account
+          <button
+            onClick={async () => {
+              if (!confirm('Are you sure you want to delete your account? This action cannot be undone.')) return
+              setDeleting(true)
+              try {
+                const res = await fetch('/api/passport/delete', { method: 'POST' })
+                if (!res.ok) throw new Error('Delete failed')
+                window.location.href = '/'
+              } catch (err) {
+                alert('Failed to delete account. Please try again.')
+              } finally {
+                setDeleting(false)
+              }
+            }
+            disabled={deleting}
+            className="w-full text-left px-4 py-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-sm text-red-600 disabled:opacity-50"
+          >
+            {deleting ? '⏳ Deleting...' : '🗑️ Delete my account'}
           </button>
         </div>
         <p className="text-xs text-stone-400 mt-3">

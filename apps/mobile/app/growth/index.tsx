@@ -15,6 +15,7 @@ import {
   Share2,
   Star,
   PackageSearch,
+  Palette,
   Percent,
   Plug,
   Receipt,
@@ -58,6 +59,7 @@ const GROWTH_MODULES = [
   { icon: Star, label: 'Ratings & Reviews', hint: 'Customer feedback & Google reviews', href: '/growth/ratings' as const },
   { icon: Receipt, label: 'GST Report', hint: 'Tax summary & invoices', href: '/growth/gst' as const },
   { icon: Plug, label: 'Integrations', hint: 'GMB, Facebook & Google Ads', href: '/growth/integrations' as const },
+  { icon: Palette, label: 'Customer Taste', hint: 'What your shoppers prefer', href: '/growth/taste-analytics' as const },
 ]
 
 function isFeatureUnavailable(err: unknown): boolean {
