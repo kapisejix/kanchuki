@@ -38,15 +38,30 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
       .object({
         step: z.number().int().min(0).max(6),
         completed: z.boolean().optional(),
+        demo_plan: z.boolean().optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    // When demo_plan is set, grant PRO-level access with TRIAL status — no
+    // payment required. This lets new retailers explore every feature during
+    // onboarding before committing to a paid plan.
+    const demoPlanData = body.data.demo_plan
+      ? {
+          plan: 'PRO' as const,
+          plan_status: 'TRIAL' as const,
+          max_products: 999999,
+          max_customers: 999999,
+          try_on_credits: 500,
+        }
+      : {};
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
       data: {
         onboarding_step: body.data.step,
         ...(body.data.completed === true ? { onboarding_completed: true } : {}),
+        ...demoPlanData,
       },
       select: { onboarding_step: true, onboarding_completed: true },
     });
@@ -58,7 +73,11 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
         action: 'update',
         resource_type: 'Retailer',
         resource_id: request.retailerId,
-        metadata: { onboarding_step: body.data.step, completed: body.data.completed ?? false },
+        metadata: {
+          onboarding_step: body.data.step,
+          completed: body.data.completed ?? false,
+          ...(body.data.demo_plan ? { demo_plan_activated: true } : {}),
+        },
         ip_address: request.ip,
       },
     });

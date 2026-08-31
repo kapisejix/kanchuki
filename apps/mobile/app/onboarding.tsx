@@ -5,12 +5,15 @@ import {
   Building2,
   CheckCircle2,
   ChevronLeft,
+  Crown,
   FileText,
   MapPin,
   QrCode,
   Sparkles,
+  Star,
   Truck,
   User,
+  Zap,
 } from 'lucide-react-native';
 import { useCallback, useEffect, useState } from 'react';
 import {
@@ -30,8 +33,8 @@ import { GradientButton } from '../src/components/GradientButton';
 import { retailerApi } from '../src/lib/api';
 import { WEB_URL } from '../src/lib/web-url';
 
-type Step = 1 | 2 | 3 | 4;
-const TOTAL_STEPS = 4;
+type Step = 1 | 2 | 3 | 4 | 5;
+const TOTAL_STEPS = 5;
 
 const SPECIALIZATIONS = ['Women', 'Men', 'Kids'];
 
@@ -62,6 +65,11 @@ const STEP_META: Record<Step, { label: string; title: string; subtitle: string }
     subtitle: 'Optional — add your GSTIN now to enable automatic GST invoice generation.',
   },
   4: {
+    label: 'Plan',
+    title: 'Choose Your Plan',
+    subtitle: 'Pick a plan to unlock Kanchuki features. Start with a free demo or choose a paid plan.',
+  },
+  5: {
     label: 'Done',
     title: "You're All Set!",
     subtitle: 'Your digital luxury catalog is ready. Start adding products or create your store QR.',
@@ -78,7 +86,7 @@ function StepIndicator({
 }) {
   return (
     <View className="flex-row items-center justify-between px-2 pt-3 pb-2">
-      {([1, 2, 3] as Step[]).map((s, i) => {
+      {([1, 2, 3, 4] as Step[]).map((s, i) => {
         const isActive = s === currentStep;
         const isPast = s < currentStep;
         return (
@@ -154,6 +162,7 @@ export default function OnboardingScreen() {
   const [pincode, setPincode] = useState('');
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
   const toggleSpec = (spec: string) => {
     setSelectedSpecs((prev) =>
@@ -166,8 +175,9 @@ export default function OnboardingScreen() {
     if (step === 1) return shopName.trim().length >= 2;
     if (step === 2) return shopAddress.trim().length >= 2 || city.trim().length >= 2;
     if (step === 3) return true; // GST is optional
+    if (step === 4) return selectedPlan !== null; // must pick a plan
     return true;
-  }, [step, shopName, shopAddress, city]);
+  }, [step, shopName, shopAddress, city, selectedPlan]);
 
   const goToStep = useCallback((s: Step) => {
     setStep(s);
@@ -223,7 +233,15 @@ export default function OnboardingScreen() {
         return;
       }
 
-      // Final step — save full profile and redirect
+      if (step === 4) {
+        // Save plan selection — demo plan sends demo_plan flag to the API
+        const isDemo = selectedPlan === 'DEMO';
+        await retailerApi.updateOnboarding(4, undefined, isDemo ? { demo_plan: true } : undefined);
+        goToStep(nextStep);
+        return;
+      }
+
+      // Final step (5) — save full profile and redirect
       await saveFinalStep();
       setShowConfetti(true);
       setTimeout(() => {
@@ -247,7 +265,7 @@ export default function OnboardingScreen() {
       pincode: pincode.trim() || undefined,
       gstin: gstin.trim() || undefined,
     });
-    const onboardingRes = await retailerApi.updateOnboarding(TOTAL_STEPS, true);
+    const onboardingRes = await retailerApi.updateOnboarding(TOTAL_STEPS as number, true);
     queryClient.setQueryData(['retailer', 'me'], (old) => {
       const oldData = (old as { data?: Record<string, unknown> } | undefined)?.data;
       return {
@@ -553,6 +571,146 @@ export default function OnboardingScreen() {
 
       case 4:
         return (
+          <View className="w-full">
+            {/* Demo Plan — top CTA */}
+            <AnimatedPressable
+              onPress={() => setSelectedPlan('DEMO')}
+              accessibilityLabel="Start Free Demo — full Pro access"
+              accessibilityRole="button"
+              accessibilityState={{ selected: selectedPlan === 'DEMO' }}
+              className="w-full rounded-2xl p-4 mb-4 border-2"
+              style={{
+                backgroundColor: selectedPlan === 'DEMO' ? '#231F48' : '#FAF9FE',
+                borderColor: selectedPlan === 'DEMO' ? '#BB3F95' : '#E0E1F6',
+              }}
+            >
+              <View className="flex-row items-center gap-3">
+                <View
+                  className="w-12 h-12 rounded-xl items-center justify-center"
+                  style={{
+                    backgroundColor: selectedPlan === 'DEMO' ? 'rgba(187,63,149,0.2)' : '#F3EAFF',
+                  }}
+                >
+                  <Zap size={24} color={selectedPlan === 'DEMO' ? '#BB3F95' : '#6B4773'} />
+                </View>
+                <View className="flex-1">
+                  <Text
+                    className="text-sm font-extrabold"
+                    style={{ color: selectedPlan === 'DEMO' ? '#FFFFFF' : '#231F48' }}
+                  >
+                    Start Free Demo
+                  </Text>
+                  <Text
+                    className="text-xs mt-0.5 font-medium"
+                    style={{ color: selectedPlan === 'DEMO' ? '#D4B8E8' : '#6B4773' }}
+                  >
+                    Full Pro access · No payment needed · Try everything
+                  </Text>
+                </View>
+                {selectedPlan === 'DEMO' ? (
+                  <CheckCircle2 size={22} color="#BB3F95" />
+                ) : (
+                  <Text className="text-heliotrope-400 text-lg">○</Text>
+                )}
+              </View>
+            </AnimatedPressable>
+
+            {/* Divider */}
+            <View className="flex-row items-center gap-3 mb-4">
+              <View className="flex-1 h-px bg-lavender-200" />
+              <Text className="text-[11px] text-heliotrope-400 font-bold uppercase tracking-wider">
+                or pick a plan
+              </Text>
+              <View className="flex-1 h-px bg-lavender-200" />
+            </View>
+
+            {/* Paid plans */}
+            {([
+              {
+                key: 'STARTER',
+                name: 'Starter',
+                price: '₹999/mo',
+                icon: Star,
+                color: '#6B4773',
+                features: '500 products · 50 collection links',
+              },
+              {
+                key: 'GROWTH',
+                name: 'Growth',
+                price: '₹2,499/mo',
+                icon: Crown,
+                color: '#7C3AED',
+                features: '2,000 products · 100 try-ons · Unlimited links',
+              },
+              {
+                key: 'PRO',
+                name: 'Pro',
+                price: '₹4,999/mo',
+                icon: Sparkles,
+                color: '#BB3F95',
+                features: 'Unlimited products · 500 try-ons · WhatsApp API',
+              },
+            ] as const).map((plan) => {
+              const isSelected = selectedPlan === plan.key;
+              const Icon = plan.icon;
+              return (
+                <AnimatedPressable
+                  key={plan.key}
+                  onPress={() => setSelectedPlan(plan.key)}
+                  accessibilityLabel={`${plan.name} plan — ${plan.price}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  className="w-full rounded-2xl p-4 mb-3 border-2"
+                  style={{
+                    backgroundColor: isSelected ? '#231F48' : '#FAF9FE',
+                    borderColor: isSelected ? plan.color : '#E0E1F6',
+                  }}
+                >
+                  <View className="flex-row items-center gap-3">
+                    <View
+                      className="w-10 h-10 rounded-xl items-center justify-center"
+                      style={{
+                        backgroundColor: isSelected ? `${plan.color}33` : '#F3EAFF',
+                      }}
+                    >
+                      <Icon size={20} color={isSelected ? plan.color : '#6B4773'} />
+                    </View>
+                    <View className="flex-1">
+                      <View className="flex-row items-center gap-2">
+                        <Text
+                          className="text-sm font-extrabold"
+                          style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
+                        >
+                          {plan.name}
+                        </Text>
+                        <Text
+                          className="text-xs font-bold"
+                          style={{ color: isSelected ? plan.color : '#928EB2' }}
+                        >
+                          {plan.price}
+                        </Text>
+                      </View>
+                      <Text
+                        className="text-[11px] mt-0.5 font-medium"
+                        style={{ color: isSelected ? '#D4B8E8' : '#6B4773' }}
+                      >
+                        {plan.features}
+                      </Text>
+                    </View>
+                    {isSelected ? (
+                      <CheckCircle2 size={20} color={plan.color} />
+                    ) : (
+                      <Text className="text-heliotrope-400 text-lg">○</Text>
+                    )}
+                  </View>
+                </AnimatedPressable>
+              );
+            })}
+          </View>
+        );
+
+      case 5:
+        return (
           <View className="items-center w-full">
             <LinearGradient
               colors={['#231F48', '#560A39']}
@@ -567,16 +725,27 @@ export default function OnboardingScreen() {
                 You&apos;re All Set!
               </Text>
               <Text className="text-xs text-lavender-200 mt-1 text-center font-medium">
-                Your digital luxury catalog is ready to receive customers.
+                {selectedPlan === 'DEMO'
+                  ? 'Demo Pro access activated — explore every feature!'
+                  : 'Your digital luxury catalog is ready to receive customers.'}
               </Text>
             </LinearGradient>
 
             <View className="w-full gap-3">
-              <GradientButton
-                label="Go to Dashboard →"
-                onPress={() => void handleNext()}
-                loading={saving}
-              />
+            <GradientButton
+              label="Go to Dashboard →"
+              onPress={() => void handleNext()}
+              loading={saving}
+            />
+
+            {/* Show selected plan badge */}
+            {selectedPlan && (
+              <View className="items-center mt-2 mb-1">
+                <Text className="text-[11px] text-heliotrope-500 font-medium">
+                  {selectedPlan === 'DEMO' ? '🎭 Demo Pro' : `⭐ ${selectedPlan.charAt(0) + selectedPlan.slice(1).toLowerCase()} Plan`}
+                </Text>
+              </View>
+            )}
 
               <AnimatedPressable
                 onPress={() => void handleCreateStoreQr()}
@@ -705,7 +874,9 @@ export default function OnboardingScreen() {
                     ? 'Save & Proceed to Location'
                     : step === 2
                       ? 'Save & Proceed to GST'
-                      : 'Complete Setup →'
+                      : step === 3
+                        ? 'Save & Proceed to Plan'
+                        : 'Complete Setup →'
               }
               onPress={() => void handleNext()}
               disabled={!canProceed() || showConfetti || saving}
