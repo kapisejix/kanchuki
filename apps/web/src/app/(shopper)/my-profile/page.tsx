@@ -266,7 +266,7 @@ export default function MyProfilePage() {
               } finally {
                 setExporting(false)
               }
-            }
+            }}
             disabled={exporting}
             className="w-full text-left px-4 py-3 bg-stone-50 rounded-lg hover:bg-stone-100 transition-colors text-sm text-stone-700 disabled:opacity-50"
           >
@@ -285,7 +285,7 @@ export default function MyProfilePage() {
               } finally {
                 setDeleting(false)
               }
-            }
+            }}
             disabled={deleting}
             className="w-full text-left px-4 py-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-sm text-red-600 disabled:opacity-50"
           >
