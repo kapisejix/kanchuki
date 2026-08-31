@@ -118,7 +118,7 @@ export default function LookbookScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Digital Lookbooks
@@ -148,7 +148,7 @@ export default function LookbookScreen() {
               <BookOpen size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               No Lookbooks Yet
@@ -231,7 +231,7 @@ export default function LookbookScreen() {
                       <View className="flex-row items-center gap-2 flex-1 mr-2">
                         <FormatIcon size={16} color="#BB3F95" />
                         <Text
-                          style={{ fontFamily: 'Marcellus_400Regular' }}
+                          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                           className="text-base font-bold text-spaceCadet-900"
                           numberOfLines={1}
                         >
@@ -407,7 +407,7 @@ function CreateLookbookModal({
       <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 max-h-[85%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900 mb-4"
           >
             New Lookbook
@@ -583,7 +583,7 @@ function LookbookDetailModal({
             <View className="flex-row items-center gap-2 mb-1.5">
               <FormatIcon size={18} color="#BB3F95" />
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-lg font-bold text-spaceCadet-900 flex-1"
               >
                 {lookbook.name}

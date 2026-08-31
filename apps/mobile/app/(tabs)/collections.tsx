@@ -87,7 +87,7 @@ function EditCollectionModal({
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-lg font-bold text-spaceCadet-900"
           >
             Edit Collection
@@ -175,7 +175,7 @@ const CollectionCard = memo(function CollectionCard({
       <View className="flex-row items-start justify-between mb-2">
         <View className="flex-1 mr-3">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900"
           >
             {item.title}
@@ -335,7 +335,7 @@ export default function CollectionsScreen() {
           <Link2 size={28} color="#BB3F95" />
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-spaceCadet-900 text-lg font-bold text-center"
         >
           No collections yet

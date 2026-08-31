@@ -125,7 +125,10 @@ export function ReviewForm({
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Failed to submit review')
+        // API errors come back either as { error: { message } } (errorHandler)
+        // or { error: "<string>" } (eligibility 403) — handle both.
+        const msg = typeof data.error === 'string' ? data.error : data.error?.message
+        throw new Error(msg || 'Failed to submit review')
       }
 
       const data = await res.json()

@@ -118,7 +118,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Growth Engine
@@ -154,7 +154,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
           </View>
           <View className="flex-row items-baseline gap-2">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-3xl font-extrabold text-white tracking-tight"
             >
               42.8%
@@ -212,7 +212,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <Wand2 size={16} color="#BB3F95" />
               </View>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xs font-bold text-spaceCadet-900"
               >
                 AI Campaigns
@@ -230,7 +230,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <DoorOpen size={16} color="#560A39" />
               </View>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xs font-bold text-spaceCadet-900"
               >
                 Showroom Trials
@@ -250,7 +250,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <BookOpen size={16} color="#560A39" />
               </View>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xs font-bold text-spaceCadet-900"
               >
                 Lookbooks
@@ -268,7 +268,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                 <Users size={16} color="#BB3F95" />
               </View>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xs font-bold text-spaceCadet-900"
               >
                 Referral Engine
@@ -359,7 +359,7 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
                     </View>
                     <View className="flex-1">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base font-bold text-spaceCadet-900"
                       >
                         {campaigns.length} {campaigns.length === 1 ? 'Campaign' : 'Campaigns'}

@@ -190,7 +190,7 @@ export default function OrdersScreen() {
             <PackageCheck size={28} color="#BB3F95" />
           </View>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-spaceCadet-900 text-xl font-bold text-center"
           >
             No orders {filter ? `with status "${filter}"` : 'yet'}
@@ -238,7 +238,7 @@ export default function OrdersScreen() {
                   <View className="flex-row items-center gap-2 mb-1">
                     <User size={14} color="#BB3F95" />
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-base font-bold text-spaceCadet-900"
                     >
                       {order.customer_name ?? 'Customer'}
@@ -263,7 +263,7 @@ export default function OrdersScreen() {
                         {item.product_name_snapshot ?? `Product #${item.product_id.slice(0, 8)}`}
                       </Text>
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-xs font-bold text-spaceCadet-900"
                       >
                         ₹{(item.price_snapshot / 100).toLocaleString('en-IN')}
@@ -282,7 +282,7 @@ export default function OrdersScreen() {
                   <View className="flex-row items-center justify-between">
                     <Text className="text-xs font-bold text-heliotrope-500 uppercase tracking-wider">Total</Text>
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-lg font-bold text-spaceCadet-900"
                     >
                       ₹{(order.total_amount / 100).toLocaleString('en-IN')}

@@ -99,7 +99,7 @@ function EditCategoryModal({
         <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-lg">
           <View className="flex-row items-center justify-between">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-lg font-bold text-spaceCadet-900"
             >
               Edit Category
@@ -203,7 +203,7 @@ export default function CategoryDetailScreen() {
     return (
       <View className="flex-1 items-center justify-center p-6 bg-[#F8F7FC]">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg font-bold text-spaceCadet-900"
         >
           Category not found
@@ -233,7 +233,7 @@ export default function CategoryDetailScreen() {
         </AnimatedPressable>
 
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg font-bold text-spaceCadet-900 truncate max-w-[200px]"
           numberOfLines={1}
         >
@@ -269,7 +269,7 @@ export default function CategoryDetailScreen() {
         </View>
         <View className="flex-1">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900"
           >
             {category.name}

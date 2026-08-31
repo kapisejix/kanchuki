@@ -150,7 +150,7 @@ export default function TemplatesScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Social Templates
@@ -180,7 +180,7 @@ export default function TemplatesScreen() {
               <Share2 size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               No templates yet
@@ -261,7 +261,7 @@ export default function TemplatesScreen() {
                     <View className="flex-row items-center gap-2 flex-1 mr-2">
                       <Text className="text-base">{TYPE_EMOJI[t.template_type]}</Text>
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base font-bold text-spaceCadet-900"
                         numberOfLines={1}
                       >
@@ -448,7 +448,7 @@ function CreateTemplateModal({
       <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 max-h-[85%] border-t border-lavender-200">
         <ScrollView showsVerticalScrollIndicator={false}>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900 mb-4"
           >
             New Social Template
@@ -623,7 +623,7 @@ function CreateTemplateModal({
         >
           <View className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-lavender-200">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-lg font-bold text-spaceCadet-900"
             >
               Select Designs{pickedProducts.length > 0 ? ` (${pickedProducts.length})` : ''}
@@ -825,7 +825,7 @@ function TemplateDetailModal({
             <View className="flex-row items-center gap-2 mb-1">
               <Text className="text-base">{TYPE_EMOJI[template.template_type]}</Text>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-lg font-bold text-spaceCadet-900 flex-1"
               >
                 {template.name}

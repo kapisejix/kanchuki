@@ -108,7 +108,7 @@ export default function PhoneScreen() {
 
           {/* Headline in Marcellus font */}
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-lg font-bold text-spaceCadet-900 text-center tracking-tight mb-1"
           >
             Aap ki <Text style={{ color: '#BB3F95' }}>Dukan</Text>,{' '}

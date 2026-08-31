@@ -70,7 +70,7 @@ export default function AddCustomerScreen() {
           <X size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900"
         >
           New Customer

@@ -73,7 +73,7 @@ export default function AddProductsToCategoryScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-xl font-bold text-spaceCadet-900 ml-3"
         >
           Add Products to Category
@@ -104,7 +104,7 @@ export default function AddProductsToCategoryScreen() {
                 footer={
                   <View className="p-3">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-xs font-bold text-spaceCadet-900"
                       numberOfLines={1}
                     >

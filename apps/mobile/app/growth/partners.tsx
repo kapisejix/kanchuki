@@ -97,7 +97,7 @@ export default function PartnersScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Partner Network
@@ -127,7 +127,7 @@ export default function PartnersScreen() {
               <Handshake size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               No Partners Yet
@@ -159,7 +159,7 @@ export default function PartnersScreen() {
                     </View>
                     <View className="flex-1">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base font-bold text-spaceCadet-900"
                         numberOfLines={1}
                       >
@@ -284,7 +284,7 @@ function CreatePartnerModal({
     >
       <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-xl font-bold text-spaceCadet-900 mb-5"
         >
           Add Partner

@@ -36,13 +36,21 @@ export default function TabsLayout() {
   // first and renders the dashboard.
   useEffect(() => {
     if (!meLoading && !meFetching) {
-      if (meError || onboardingCompleted === false) {
+      if (meError) {
+        // getMe failed — token cleared (logout) or invalid. Go to Login, NOT
+        // the onboarding/Setup-Shop screen (that's only for a real signup that
+        // hasn't finished the form).
+        router.replace('/auth/phone')
+      } else if (onboardingCompleted === false) {
         router.replace('/onboarding')
       }
     }
   }, [meLoading, meFetching, meError, onboardingCompleted])
 
-  if (meLoading || meFetching || onboardingCompleted === false || meError) {
+  // Only block the first load. A background refetch (staleTime expiry) must not
+  // unmount <Tabs> — doing so swallowed the tap that triggered it, forcing a
+  // second tap to actually navigate.
+  if (meLoading || onboardingCompleted === false || meError) {
     return (
       <View className="flex-1 items-center justify-center bg-[#F8F7FC]">
         <ActivityIndicator color={primaryColor} />
@@ -82,7 +90,7 @@ export default function TabsLayout() {
           headerTitle: () => (
             <Image
               source={require('../../assets/kanchuki-full-logo.png')}
-              style={{ width: 140, height: 28 }}
+              style={{ width: 105, height: 21 }}
               resizeMode="contain"
             />
           ),

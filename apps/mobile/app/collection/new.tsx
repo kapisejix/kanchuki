@@ -85,7 +85,7 @@ export default function NewCollectionScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900 ml-3"
         >
           New Collection
@@ -153,7 +153,7 @@ export default function NewCollectionScreen() {
                         {item.category ?? 'Product'} · {item.primary_color ?? '—'}
                       </Text>
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-xs font-bold text-spaceCadet-900"
                       >
                         {formatPriceRange(item.price_min, item.price_max)}

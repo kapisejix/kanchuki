@@ -130,7 +130,7 @@ export default function MeasurementCaptureScreen() {
             <Ruler size={28} color="#BB3F95" />
           </View>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-2xl font-bold text-spaceCadet-900"
           >
             Body Measurement
@@ -353,7 +353,7 @@ export default function MeasurementCaptureScreen() {
       <View className="flex-1 bg-[#231F48] items-center justify-center gap-5">
         <ActivityIndicator size="large" color="#BB3F95" />
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-white text-xl font-bold"
         >
           Uploading photos...
@@ -371,7 +371,7 @@ export default function MeasurementCaptureScreen() {
         <Check size={28} color="#BB3F95" />
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-2xl font-bold text-spaceCadet-900 text-center"
       >
         Measurement Queued

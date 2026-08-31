@@ -542,17 +542,24 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
       // Non-critical — the next manual Sync Now reconciles
     });
 
-    await prisma.auditLog.create({
-      data: {
-        actor_type: 'retailer',
-        actor_id: request.retailerId,
-        action: 'delete',
-        resource_type: 'Product',
-        resource_id: id,
-        metadata: { previous_status: existing.status },
-        ip_address: request.ip,
-      },
-    });
+    // Bookkeeping — the product is already soft-deleted above. An audit-write
+    // failure (schema drift, pool exhaustion, …) must not turn a successful
+    // delete into a 500 "Something went wrong".
+    try {
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'retailer',
+          actor_id: request.retailerId,
+          action: 'delete',
+          resource_type: 'Product',
+          resource_id: id,
+          metadata: { previous_status: existing.status },
+          ip_address: request.ip,
+        },
+      });
+    } catch (err) {
+      request.log.error({ err, productId: id }, 'product delete: audit log write failed');
+    }
 
     return reply.status(204).send();
   });

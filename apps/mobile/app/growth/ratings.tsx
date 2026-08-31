@@ -102,7 +102,7 @@ export default function RatingsScreen() {
           </AnimatedPressable>
           <View className="flex-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Ratings & Reputation
@@ -187,7 +187,7 @@ function SummaryTab({
       {/* Store rating overview */}
       <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900 mb-3"
         >
           Overall Boutique Rating
@@ -195,7 +195,7 @@ function SummaryTab({
         <View className="flex-row items-center gap-4">
           <View className="items-center">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-4xl font-bold text-spaceCadet-900"
             >
               {summary.store.avg_rating.toFixed(1)}
@@ -250,7 +250,7 @@ function SummaryTab({
           </View>
           <View className="flex-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-sm font-bold text-spaceCadet-900"
             >
               Google & JustDial Review Link
@@ -265,7 +265,7 @@ function SummaryTab({
       {summary.top_products.length > 0 && (
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900 mb-3.5"
           >
             Top Rated Designs
@@ -280,7 +280,7 @@ function SummaryTab({
                 </View>
                 <View className="flex-1">
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-sm font-bold text-spaceCadet-900"
                     numberOfLines={1}
                   >
@@ -303,7 +303,7 @@ function SummaryTab({
       {summary.recent_reviews.length > 0 && (
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900 mb-3.5"
           >
             Recent Customer Feedback
@@ -356,7 +356,7 @@ function ProductReviewsTab({
           <MessageSquare size={28} color="#BB3F95" />
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg font-bold text-spaceCadet-900"
         >
           No design reviews yet
@@ -382,7 +382,7 @@ function ProductReviewsTab({
             )}
           </View>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900"
             numberOfLines={1}
           >
@@ -416,7 +416,7 @@ function StoreReviewsTab({
           <Store size={28} color="#BB3F95" />
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg font-bold text-spaceCadet-900"
         >
           No boutique reviews yet

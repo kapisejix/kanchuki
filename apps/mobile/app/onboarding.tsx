@@ -349,11 +349,16 @@ export default function OnboardingScreen() {
                       onPress={() => toggleSpec(spec)}
                       accessibilityLabel={spec}
                       accessibilityState={{ selected: isSelected }}
-                      /* ponytail: static className + conditional style. A className whose class *set*
-                         changes after mount trips react-native-css-interop@0.1.22's dev-only
-                         upgrade-warning path, which crashes on JSON.stringify of the element tree. */
-                      className="px-3.5 py-2 rounded-2xl border"
+                      /* ponytail: all styling inline — no className. react-native-css-interop
+                         merges a static className with a conditional `style` inconsistently
+                         (the selected dark background sometimes lost to the class layer), and
+                         a className whose class *set* changes after mount also trips its
+                         dev-only upgrade-warning crash. Inline style sidesteps both. */
                       style={{
+                        paddingHorizontal: 14,
+                        paddingVertical: 8,
+                        borderRadius: 16,
+                        borderWidth: 1,
                         backgroundColor: isSelected ? '#231F48' : '#FAF9FE',
                         borderColor: isSelected ? '#231F48' : '#E0E1F6',
                       }}

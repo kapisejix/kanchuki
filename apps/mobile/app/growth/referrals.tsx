@@ -144,7 +144,7 @@ export default function ReferralsScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900"
           >
             Referral Program
@@ -306,7 +306,7 @@ export default function ReferralsScreen() {
               <Ticket size={24} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-base font-bold text-spaceCadet-900"
             >
               No referral codes yet
@@ -324,7 +324,7 @@ export default function ReferralsScreen() {
                   <View className="flex-row items-center justify-between mb-2">
                     <View className="flex-1 mr-2">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base font-bold text-spaceCadet-900"
                         numberOfLines={1}
                       >
@@ -345,7 +345,7 @@ export default function ReferralsScreen() {
                   <View className="flex-row gap-2.5 mt-2.5">
                     <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-lg font-bold text-spaceCadet-900"
                       >
                         {r.clicks}
@@ -354,7 +354,7 @@ export default function ReferralsScreen() {
                     </View>
                     <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-lg font-bold text-spaceCadet-900"
                       >
                         {r.signups}
@@ -363,7 +363,7 @@ export default function ReferralsScreen() {
                     </View>
                     <View className="flex-1 bg-lavender-50 rounded-2xl p-3 border border-lavender-200 items-center">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-lg font-bold text-spaceCadet-900"
                       >
                         {formatPaiseShort(r.reward_paise)}

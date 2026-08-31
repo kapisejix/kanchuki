@@ -78,7 +78,7 @@ export default function GstScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               GST Filing Ledger
@@ -94,7 +94,7 @@ export default function GstScreen() {
               <ChevronLeft size={14} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-sm font-bold text-spaceCadet-900 px-2 text-center"
             >
               {selectedYear}
@@ -242,7 +242,7 @@ function SummaryTab({
       {/* GST Breakdown */}
       <View className="bg-white rounded-3xl border border-lavender-200 p-5 mb-3.5 shadow-sm">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900 mb-3.5"
         >
           GST Breakdown (Estimated)
@@ -255,7 +255,7 @@ function SummaryTab({
             <View className="flex-row items-center justify-between">
               <Text className="text-sm font-bold text-spaceCadet-900">Total GST Liability</Text>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base font-bold text-fuchsia-700"
               >
                 {inr(summary.total_gst)}
@@ -268,7 +268,7 @@ function SummaryTab({
       {/* Invoice status */}
       <View className="bg-white rounded-3xl border border-lavender-200 p-5 shadow-sm">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900 mb-3.5"
         >
           Invoice Fulfillment Status
@@ -277,7 +277,7 @@ function SummaryTab({
           <View className="flex-1 items-center py-3.5 bg-emerald-50 rounded-2xl border border-emerald-200">
             <CheckCircle size={20} color="#16a34a" />
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-emerald-700 mt-1"
             >
               {summary.invoiced_orders}
@@ -287,7 +287,7 @@ function SummaryTab({
           <View className="flex-1 items-center py-3.5 bg-amber-50 rounded-2xl border border-amber-200">
             <Clock size={20} color="#d97706" />
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-amber-700 mt-1"
             >
               {summary.pending_invoices}
@@ -312,7 +312,7 @@ function MonthlyTab({
   return (
     <View className="px-4 pt-2">
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-base font-bold text-spaceCadet-900 mb-3.5"
       >
         Monthly GST Breakdown — {monthly.year}
@@ -326,7 +326,7 @@ function MonthlyTab({
           >
             <View className="flex-row items-center justify-between mb-2">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base font-bold text-spaceCadet-900"
               >
                 {m.month_name}
@@ -349,7 +349,7 @@ function MonthlyTab({
                 Sales: {inr(m.sales)}
               </Text>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-sm font-bold text-fuchsia-700"
               >
                 GST: {inr(m.gst)}
@@ -377,7 +377,7 @@ function TransactionsTab({
     <View className="px-4 pt-2">
       <View className="flex-row items-center justify-between mb-3.5">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900"
         >
           Invoices ({transactions.pagination.total})
@@ -438,14 +438,14 @@ function TxRow({
     <View className="bg-white rounded-3xl border border-lavender-200 p-4 shadow-sm">
       <View className="flex-row items-center justify-between mb-1.5">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900"
           numberOfLines={1}
         >
           {tx.customer ?? 'Walk-in Client'}
         </Text>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900"
         >
           {inr(tx.total)}
@@ -498,7 +498,7 @@ function StatCard({
         <Text className="text-[10px] font-bold text-heliotrope-500 uppercase tracking-wider">{label}</Text>
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-xl font-bold text-spaceCadet-900"
         numberOfLines={1}
       >

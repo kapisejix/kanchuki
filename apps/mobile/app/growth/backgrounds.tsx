@@ -94,7 +94,7 @@ export default function BackgroundsScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Festival Backgrounds
@@ -116,7 +116,7 @@ export default function BackgroundsScreen() {
               <Sparkles size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               No backgrounds available
@@ -223,7 +223,7 @@ export default function BackgroundsScreen() {
                   <View className="flex-row items-center gap-1 mb-1">
                     <Text className="text-xs">{getOccasionEmoji(bg.occasion)}</Text>
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-sm font-bold text-spaceCadet-900 flex-1"
                       numberOfLines={1}
                     >
@@ -306,7 +306,7 @@ function BackgroundDetailModal({
             <View className="flex-row items-center gap-2 mb-1.5">
               <Text className="text-lg">{getOccasionEmoji(bg.occasion)}</Text>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xl font-bold text-spaceCadet-900 flex-1"
               >
                 {bg.name}
@@ -437,7 +437,7 @@ function ApplyBackgroundModal({
     >
       <View className="bg-white rounded-t-3xl w-full px-5 pt-6 pb-8 border-t border-lavender-200">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-xl font-bold text-spaceCadet-900 mb-1"
         >
           Apply Festive Backdrop

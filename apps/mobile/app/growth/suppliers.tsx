@@ -41,7 +41,7 @@ export default function SuppliersScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Supplier Ledger
@@ -70,7 +70,7 @@ export default function SuppliersScreen() {
             Total Outstanding to Suppliers
           </Text>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-3xl font-bold text-white mt-1.5"
           >
             {formatPaiseShort(totalPending)}
@@ -92,7 +92,7 @@ export default function SuppliersScreen() {
               <Store size={24} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-base font-bold text-spaceCadet-900"
             >
               No Suppliers Added
@@ -121,7 +121,7 @@ export default function SuppliersScreen() {
                   </View>
                   <View className="flex-1">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-base font-bold text-spaceCadet-900"
                       numberOfLines={1}
                     >
@@ -133,7 +133,7 @@ export default function SuppliersScreen() {
                   </View>
                   <View className="items-end">
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className={`text-base font-bold ${s.pending_amount_paise > 0 ? 'text-fuchsia-700' : 'text-spaceCadet-900'}`}
                     >
                       {formatPaiseShort(s.pending_amount_paise)}

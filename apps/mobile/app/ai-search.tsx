@@ -80,7 +80,7 @@ export default function AiSearchScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900 flex-1"
           >
             AI Vernacular Search
@@ -130,7 +130,7 @@ export default function AiSearchScreen() {
               <View className="flex-row items-center gap-2 mb-1.5">
                 <Sparkles size={18} color="#BB3F95" />
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className="text-white text-base font-bold"
                 >
                   Describe Designs in Natural Language
@@ -225,7 +225,7 @@ export default function AiSearchScreen() {
                     )}
                     <View className="p-3">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-sm font-bold text-spaceCadet-900"
                         numberOfLines={1}
                       >
@@ -234,7 +234,7 @@ export default function AiSearchScreen() {
                       <View className="flex-row items-center justify-between mt-1">
                         {p.price_min != null ? (
                           <Text
-                            style={{ fontFamily: 'Marcellus_400Regular' }}
+                            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                             className="text-xs font-bold text-spaceCadet-900"
                           >
                             {formatPaiseShort(p.price_min)}

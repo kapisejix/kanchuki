@@ -50,7 +50,7 @@ function AlertCard({ alert }: { alert: InventoryAlert }) {
         </Text>
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-base font-bold text-spaceCadet-900"
         numberOfLines={1}
       >
@@ -124,7 +124,7 @@ export default function InventoryScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900"
           >
             Inventory Intelligence
@@ -151,7 +151,7 @@ export default function InventoryScreen() {
             </Text>
           </View>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-white text-lg font-bold mt-1"
           >
             {alerts.length} {alerts.length === 1 ? 'Design' : 'Designs'} Worth Acting On
@@ -159,7 +159,7 @@ export default function InventoryScreen() {
           <View className="flex-row gap-2 mt-4">
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xl font-bold text-white"
               >
                 {counts.high_velocity + counts.top_performer}
@@ -168,7 +168,7 @@ export default function InventoryScreen() {
             </View>
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xl font-bold text-white"
               >
                 {counts.dead_stock}
@@ -177,7 +177,7 @@ export default function InventoryScreen() {
             </View>
             <View className="flex-1 bg-white/10 rounded-2xl p-3 items-center border border-white/10">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xl font-bold text-white"
               >
                 {counts.unlisted}
@@ -199,7 +199,7 @@ export default function InventoryScreen() {
               <PackageSearch size={26} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-lg font-bold text-spaceCadet-900"
             >
               All Signals Healthy
@@ -215,7 +215,7 @@ export default function InventoryScreen() {
                 s.items.length > 0 && (
                   <View key={s.key}>
                     <Text
-                      style={{ fontFamily: 'Marcellus_400Regular' }}
+                      style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                       className="text-base font-bold text-spaceCadet-900 px-1 mb-3"
                     >
                       {s.title}
