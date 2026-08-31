@@ -52,7 +52,7 @@ const CustomerCard = memo(function CustomerCard({
       {/* Avatar */}
       <View className="w-12 h-12 rounded-2xl bg-[#560A39] items-center justify-center flex-shrink-0 border border-[#BB3F95]/30">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-[#E0E1F6] font-bold text-lg"
         >
           {item.name.charAt(0).toUpperCase()}
@@ -144,7 +144,7 @@ export default function CustomersScreen() {
               <Users size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-spaceCadet-900 text-lg font-bold text-center"
             >
               No customers yet

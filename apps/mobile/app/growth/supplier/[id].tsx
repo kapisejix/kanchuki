@@ -125,7 +125,7 @@ export default function SupplierDetailScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900 flex-1"
             numberOfLines={1}
           >
@@ -169,7 +169,7 @@ export default function SupplierDetailScreen() {
             Pending Balance
           </Text>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-3xl font-bold text-white mt-1.5"
           >
             {formatPaiseShort(supplier.pending_amount_paise)}
@@ -180,7 +180,7 @@ export default function SupplierDetailScreen() {
         {/* Add transaction */}
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm mb-5">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900 mb-3.5"
           >
             Log Transaction Entry
@@ -251,7 +251,7 @@ export default function SupplierDetailScreen() {
                   </Text>
                 </View>
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className={`text-base font-bold ${t.kind === 'ORDER' ? 'text-spaceCadet-900' : 'text-fuchsia-700'}`}
                 >
                   {t.kind === 'ORDER' ? '' : '− '}

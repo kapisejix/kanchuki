@@ -84,4 +84,11 @@ html.lenis body {
     letter-spacing: 0.02em;
     font-weight: bolder;
   }
+
+  /* Every Marcellus heading/title carries the brand spacing + weight;
+     size/line-height stay per-element. */
+  .font-marcellus {
+    letter-spacing: 0.02em;
+    font-weight: bolder;
+  }
 }

@@ -91,7 +91,7 @@ export function RelatedProductsSection({
                 )}
               </View>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-xs font-bold text-spaceCadet-900 mt-1.5"
               >
                 {rp.price_min ? `₹${(rp.price_min / 100).toLocaleString('en-IN')}` : ''}

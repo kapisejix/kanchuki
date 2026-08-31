@@ -103,7 +103,7 @@ function EditModal({
       <View className="flex-1 bg-black/50 items-center justify-center px-6">
         <View className="bg-white rounded-3xl w-full p-6 gap-4 border border-lavender-200 shadow-xl">
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-lg font-bold text-spaceCadet-900"
           >
             Edit Collection
@@ -262,7 +262,7 @@ function ShareModal({
           {bulkResult ? (
             <View className="items-center py-6 gap-3">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base font-bold text-spaceCadet-900"
               >
                 Sent via WhatsApp Business API
@@ -278,7 +278,7 @@ function ShareModal({
           ) : queue ? (
             <View className="items-center py-6 gap-3">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-base font-bold text-spaceCadet-900"
               >
                 Message {queueIndex + 1} of {queue.length}
@@ -299,7 +299,7 @@ function ShareModal({
           ) : (
             <>
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-lg font-bold text-spaceCadet-900 mb-3"
               >
                 Share with Customers
@@ -441,7 +441,7 @@ export default function CollectionDetailScreen() {
         </AnimatedPressable>
 
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg font-bold text-spaceCadet-900 truncate max-w-[200px]"
           numberOfLines={1}
         >
@@ -580,7 +580,7 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
           {icon}
         </View>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-xl font-bold text-spaceCadet-900"
         >
           {value.toLocaleString('en-IN')}

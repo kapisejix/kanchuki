@@ -611,7 +611,7 @@ export function ProductDetailSheet({
           <div className="flex justify-between items-start">
             <div>
               <h2 className="text-2xl font-extrabold text-[#231F48] font-sans">
-                {formatPriceRange(product.price_min, product.price_max)}/-
+                {formatPriceRange(product.price_min, product.price_max)}
               </h2>
               <p className="text-xs text-[#6B4773] font-bold mt-0.5">
                 {product.category ?? 'Salwar Suits'} • Festive Collection
@@ -722,7 +722,7 @@ export function ProductDetailSheet({
               }`}
             >
               <MessageCircle size={16} />
-              <span>Enquire on WhatsApp</span>
+              <span>Enquire Now</span>
             </button>
           </div>
 

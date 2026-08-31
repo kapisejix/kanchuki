@@ -16,10 +16,11 @@
 //      keys written at the same instant don't all refetch at one boundary.
 import { Redis } from 'ioredis';
 
-// 60s base TTL is the invalidation strategy: product/collection/suspension
-// changes from the retailer side appear on the storefront within a minute,
-// without any cross-service cache-busting plumbing.
-const BASE_TTL_SEC = 60;
+// Short base TTL is the invalidation strategy: product/collection/suspension
+// changes from the retailer side appear on the storefront within ~15–25s
+// (base + jitter), without any cross-service cache-busting plumbing. Was 60s —
+// dropped to 15s because retailers reported edits taking too long to show.
+const BASE_TTL_SEC = 15;
 const JITTER_FRACTION = 0.5; // 0–50% over the base TTL, per key at write time
 const LOCK_TTL_MS = 5_000; // NX lock TTL — a crashed recomputer self-releases
 const DEFAULT_LOCK_WAIT_MS = 2_500; // how long non-winners wait before computing

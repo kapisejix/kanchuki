@@ -457,7 +457,15 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
                 className="mt-0.5"
               />
               <span className="text-[11px] text-[#6B4773] leading-relaxed">
-                I agree to receive personalized collection updates from {profile.shop_name} on WhatsApp.
+                I agree to receive personalized collection updates from {profile.shop_name} on WhatsApp, and accept Kanchuki&apos;s{' '}
+                <Link href="/privacy" target="_blank" className="text-[#BB3F95] font-bold underline">
+                  Privacy Policy
+                </Link>{' '}
+                and{' '}
+                <Link href="/terms" target="_blank" className="text-[#BB3F95] font-bold underline">
+                  Terms of Service
+                </Link>
+                .
               </span>
             </label>
 

@@ -524,7 +524,7 @@ export default function AddProductScreen() {
         'Product Added!',
         'AI is tagging your product in the background. Want to add a 360° spin view now?',
         [
-          { text: 'Skip', style: 'cancel', onPress: () => router.back() },
+          { text: 'Skip', style: 'cancel', onPress: () => router.replace('/(tabs)/catalog') },
           {
             text: 'Add Spin View',
             onPress: () => router.replace(`/product/${productId}/spin-video`),

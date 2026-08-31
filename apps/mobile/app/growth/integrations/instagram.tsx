@@ -217,7 +217,7 @@ export default function InstagramConfigScreen() {
           </AnimatedPressable>
           <View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Instagram Integration

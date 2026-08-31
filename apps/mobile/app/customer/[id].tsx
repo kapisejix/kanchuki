@@ -343,7 +343,7 @@ export default function CustomerDetailScreen() {
           <View className="flex-row items-center gap-3.5 mb-4">
             <View className="w-14 h-14 rounded-2xl bg-[#560A39] items-center justify-center border border-[#BB3F95]/30 flex-shrink-0">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-[#E0E1F6] font-bold text-xl"
               >
                 {name.charAt(0).toUpperCase() || '?'}
@@ -354,7 +354,7 @@ export default function CustomerDetailScreen() {
                 value={name}
                 onChangeText={setName}
                 placeholder="Customer name"
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-lg font-bold text-spaceCadet-900"
                 placeholderTextColor="#928EB2"
               />
@@ -404,7 +404,7 @@ export default function CustomerDetailScreen() {
         <View className="flex-row gap-3">
           <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm items-center">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-2xl font-bold text-spaceCadet-900"
             >
               {customer.total_purchases}
@@ -413,7 +413,7 @@ export default function CustomerDetailScreen() {
           </View>
           <View className="flex-1 bg-white rounded-3xl p-4 border border-lavender-200 shadow-sm items-center">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-2xl font-bold text-spaceCadet-900"
             >
               {formatPrice(customer.total_spent)}
@@ -479,7 +479,7 @@ export default function CustomerDetailScreen() {
                       </Text>
                       {product.price_min != null && (
                         <Text
-                          style={{ fontFamily: 'Marcellus_400Regular' }}
+                          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                           className="text-xs font-bold text-spaceCadet-900"
                         >
                           {formatPrice(product.price_min)}
@@ -724,7 +724,7 @@ export default function CustomerDetailScreen() {
                 <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3 flex-1">
                   <Text className="text-[10px] text-heliotrope-500 font-bold uppercase tracking-wider">Upper Size</Text>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-base font-bold text-spaceCadet-900 mt-0.5"
                   >
                     {upperSize.size_label}
@@ -735,7 +735,7 @@ export default function CustomerDetailScreen() {
                 <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3 flex-1">
                   <Text className="text-[10px] text-heliotrope-500 font-bold uppercase tracking-wider">Lower Size</Text>
                   <Text
-                    style={{ fontFamily: 'Marcellus_400Regular' }}
+                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                     className="text-base font-bold text-spaceCadet-900 mt-0.5"
                   >
                     {lowerSize.size_label}
@@ -814,7 +814,7 @@ export default function CustomerDetailScreen() {
               <X size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-base font-bold text-spaceCadet-900"
             >
               Manual Measurements

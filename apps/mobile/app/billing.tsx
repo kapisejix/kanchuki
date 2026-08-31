@@ -46,7 +46,7 @@ export default function BillingScreen() {
           <ChevronLeft size={20} color="#231F48" />
         </AnimatedPressable>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-lg font-bold text-spaceCadet-900 ml-3"
         >
           Plans & Billing
@@ -76,7 +76,7 @@ export default function BillingScreen() {
             <Globe size={22} color="#BB3F95" />
           </View>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-base font-bold text-spaceCadet-900"
           >
             Manage plans on kanchuki.app

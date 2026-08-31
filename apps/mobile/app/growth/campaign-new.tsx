@@ -102,7 +102,7 @@ function Section({
   return (
     <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-base font-bold text-spaceCadet-900 mb-3.5"
       >
         {title}
@@ -436,7 +436,7 @@ export default function CampaignFormScreen() {
             )}
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900"
           >
             {isEdit ? 'Edit Campaign' : 'New Campaign'}
@@ -702,7 +702,7 @@ export default function CampaignFormScreen() {
                 style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
               >
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className="text-lg font-bold text-spaceCadet-900"
                 >
                   Variant {variantPicker} · Products

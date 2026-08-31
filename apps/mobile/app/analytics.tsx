@@ -86,7 +86,7 @@ const StatCard = memo(function StatCard({
         </View>
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-2xl font-bold text-spaceCadet-900"
       >
         {value}
@@ -171,7 +171,7 @@ function CategoryBreakdown({
             />
             <Text className="flex-1 text-sm font-bold text-spaceCadet-900">{d.category}</Text>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xs font-bold text-spaceCadet-900"
             >
               {d.count} ({pct}%)
@@ -206,7 +206,7 @@ const CollectionCard = memo(function CollectionCard({
     >
       <View className="flex-row items-start justify-between mb-3">
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-base font-bold text-spaceCadet-900 flex-1 mr-2"
           numberOfLines={1}
         >
@@ -268,7 +268,7 @@ function PlanUsageBar({
       <View className="flex-row justify-between items-center mb-1.5">
         <Text className="text-xs font-bold text-spaceCadet-900">{label}</Text>
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-xs font-bold text-spaceCadet-900"
         >
           {current} / {max >= 999999 ? '∞' : max.toLocaleString('en-IN')}
@@ -320,7 +320,7 @@ export default function AnalyticsScreen() {
         style={{ paddingTop: insets.top + 16 }}
       >
         <Text
-          style={{ fontFamily: 'Marcellus_400Regular' }}
+          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
           className="text-2xl font-bold text-spaceCadet-900"
         >
           Store Analytics

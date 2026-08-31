@@ -122,7 +122,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         <div className="flex justify-between items-start pt-1">
           <div>
             <h2 className="text-2xl font-extrabold text-[#231F48] font-sans">
-              {formatPriceRange(product.price_min, product.price_max)}/-
+              {formatPriceRange(product.price_min, product.price_max)}
             </h2>
             <p className="text-xs text-[#6B4773] font-bold mt-0.5">
               {product.category ?? 'Salwar Suits'} • Festive Collection
@@ -231,24 +231,10 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           <div className="space-y-3 pt-2">
             <button
               onClick={() => setShowConsentModal(true)}
-              className="w-full py-4 px-5 rounded-3xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-between shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
+              className="w-full py-4 px-5 rounded-3xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                  <MessageCircle size={18} className="fill-current" />
-                </div>
-                <div className="text-left">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-white block">
-                    Enquire on WhatsApp
-                  </span>
-                  <span className="text-[9px] text-[#E0E1F6]/80 font-medium block">
-                    Direct boutique connect
-                  </span>
-                </div>
-              </div>
-              <div className="w-8 h-8 rounded-xl bg-[#BB3F95] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                →
-              </div>
+              <MessageCircle size={18} className="fill-current text-emerald-400" />
+              <span className="text-sm font-extrabold text-white">Enquire Now</span>
             </button>
 
             <Link

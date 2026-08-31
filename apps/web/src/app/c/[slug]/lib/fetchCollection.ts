@@ -21,7 +21,7 @@ export async function fetchCollection(
     : ''
   try {
     const res = await fetch(`${apiUrl}/v1/public/collections/${slug}${qs}`, {
-      next: { revalidate: 60 }, // ISR — revalidate every 60s
+      next: { revalidate: 15 }, // ISR — short window so retailer edits show fast
     })
     if (!res.ok) {
       // 404 = unknown slug (usually bot scanners hitting /install.php etc.) — expected, not an error.

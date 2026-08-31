@@ -53,7 +53,7 @@ export default function CategoryListScreen() {
           ListHeaderComponent={
             <View className="mb-2">
               <Text
-                style={{ fontFamily: 'Marcellus_400Regular' }}
+                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                 className="text-2xl font-extrabold text-spaceCadet-900 leading-tight"
               >
                 Curated Collections{'\n'}for your store

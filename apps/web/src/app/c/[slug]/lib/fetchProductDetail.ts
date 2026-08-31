@@ -8,7 +8,7 @@ import type { PublicProductDetail } from '@kanchuki/shared';
 export async function fetchProductDetail(productId: string): Promise<PublicProductDetail | null> {
   try {
     const res = await fetch(`${apiUrl}/v1/public/products/${productId}`, {
-      next: { revalidate: 60 }, // ISR — revalidate every 60s
+      next: { revalidate: 15 }, // ISR — short window so retailer edits show fast
     });
     if (!res.ok) {
       // 404 = unknown product id (often bot scanners) — expected, not an error.

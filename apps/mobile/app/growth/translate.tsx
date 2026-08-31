@@ -127,7 +127,7 @@ export default function TranslateScreen() {
             <ChevronLeft size={20} color="#231F48" />
           </AnimatedPressable>
           <Text
-            style={{ fontFamily: 'Marcellus_400Regular' }}
+            style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
             className="text-xl font-bold text-spaceCadet-900 flex-1"
           >
             {picked ? picked.name ?? 'Item' : 'AI Multilingual Studio'}
@@ -193,7 +193,7 @@ export default function TranslateScreen() {
                   <Megaphone size={18} color="#BB3F95" />
                 )}
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className="text-white text-base font-bold"
                 >
                   {mode === 'description'
@@ -240,7 +240,7 @@ export default function TranslateScreen() {
                           </View>
                           <View className="flex-1 mr-2">
                             <Text
-                              style={{ fontFamily: 'Marcellus_400Regular' }}
+                              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                               className="text-base font-bold text-spaceCadet-900"
                               numberOfLines={1}
                             >
@@ -288,7 +288,7 @@ export default function TranslateScreen() {
                             </View>
                             <View className="flex-1 mr-2">
                               <Text
-                                style={{ fontFamily: 'Marcellus_400Regular' }}
+                                style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                                 className="text-base font-bold text-spaceCadet-900"
                                 numberOfLines={1}
                               >
@@ -400,7 +400,7 @@ export default function TranslateScreen() {
             <View className="bg-white rounded-3xl p-5 border border-lavender-200 mt-4 shadow-sm">
               <View className="flex-row items-center justify-between mb-2.5 pb-2 border-b border-lavender-100">
                 <Text
-                  style={{ fontFamily: 'Marcellus_400Regular' }}
+                  style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                   className="text-sm font-bold text-spaceCadet-900"
                 >
                   {mode === 'description' ? 'Generated Description' : 'Translated Message'} ·{' '}

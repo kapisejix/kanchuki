@@ -369,7 +369,7 @@ export default function CatalogScreen() {
               <Camera size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-spaceCadet-900 text-lg font-bold text-center"
             >
               No products yet

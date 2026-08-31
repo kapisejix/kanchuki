@@ -109,7 +109,7 @@ export default function HomeScreen() {
             }}
           >
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-lavender-200 font-bold text-sm"
             >
               {(me?.shop_name ?? 'R').slice(0, 2).toUpperCase()}
@@ -170,7 +170,7 @@ export default function HomeScreen() {
 
           <View className="flex-row items-baseline gap-2 mb-1">
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-3xl font-extrabold text-white tracking-tight"
             >
               {stats?.views_this_month ?? 0}
@@ -208,61 +208,44 @@ export default function HomeScreen() {
         </LinearGradient>
       </View>
 
-      {/* ── AI Quick Tools (Matching Preview HTML) ── */}
+      {/* ── Quick Tools ── */}
       <View className="px-4 pt-2 pb-2">
         <Text className="text-[11px] font-extrabold text-heliotrope-600 uppercase tracking-wider mb-2 px-1">
-          AI Quick Tools
+          Quick Tools
         </Text>
-        <View className="flex-row gap-3">
-          <AnimatedPressable
-            onPress={() => router.push('/product/add')}
-            className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
-            style={{
-              shadowColor: '#231F48',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.06,
-              shadowRadius: 10,
-              elevation: 2,
-            }}
-          >
-            <View className="w-8 h-8 rounded-xl bg-fuchsia-500/15 items-center justify-center mb-2">
-              <Camera size={16} color="#BB3F95" />
-            </View>
-            <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
-              className="text-sm font-extrabold text-spaceCadet-900"
-            >
-              AI Auto-Tag
-            </Text>
-            <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
-              Photo to SKU in 3s
-            </Text>
-          </AnimatedPressable>
-
-          <AnimatedPressable
-            onPress={() => router.push('/growth/backgrounds')}
-            className="flex-1 bg-white p-4 rounded-3xl border border-lavender-200 shadow-sm"
-            style={{
-              shadowColor: '#231F48',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.06,
-              shadowRadius: 10,
-              elevation: 2,
-            }}
-          >
-            <View className="w-8 h-8 rounded-xl bg-lavender-200/60 items-center justify-center mb-2">
-              <PackagePlus size={16} color="#560A39" />
-            </View>
-            <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
-              className="text-sm font-extrabold text-spaceCadet-900"
-            >
-              Studio Shoot
-            </Text>
-            <Text className="text-[10px] text-heliotrope-500 mt-0.5 font-medium">
-              FLUX model backdrops
-            </Text>
-          </AnimatedPressable>
+        <View className="gap-3">
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<Package size={20} color="#BB3F95" />}
+              label="Active Products"
+              sublabel={`${stats?.total_products_available ?? 0} in stock`}
+              onPress={() => router.push('/catalog')}
+              accent="#E0E1F6"
+            />
+            <QuickAction
+              icon={<QrCode size={20} color="#560A39" />}
+              label="Store QR Code"
+              sublabel="Scan to view catalog"
+              onPress={() => router.push('/store-profile')}
+              accent="#E0E1F6"
+            />
+          </View>
+          <View className="flex-row gap-3">
+            <QuickAction
+              icon={<MessageCircle size={20} color="#BB3F95" />}
+              label="Social Media"
+              sublabel="Connect & post"
+              onPress={() => router.push('/growth/integrations')}
+              accent="#E0E1F6"
+            />
+            <QuickAction
+              icon={<BarChart3 size={20} color="#560A39" />}
+              label="Analytics"
+              sublabel="Views, enquiries & stats"
+              onPress={() => router.push('/analytics')}
+              accent="#E0E1F6"
+            />
+          </View>
         </View>
       </View>
 
@@ -299,7 +282,7 @@ export default function HomeScreen() {
         <View className="flex-row gap-3 mt-3">
           <StatCard
             icon={<Package size={16} color="#BB3F95" />}
-            label="Active SKUs"
+            label="Active Products"
             value={stats?.total_products_available ?? 0}
             color="#231F48"
             onPress={() => router.push('/catalog')}
@@ -524,7 +507,7 @@ function StatCard({
         {icon}
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-2xl font-bold text-spaceCadet-900"
       >
         {value.toLocaleString('en-IN')}
@@ -566,7 +549,7 @@ function QuickAction({
         {icon}
       </View>
       <Text
-        style={{ fontFamily: 'Marcellus_400Regular' }}
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
         className="text-xs font-bold text-spaceCadet-900"
       >
         {label}

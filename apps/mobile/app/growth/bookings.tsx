@@ -88,7 +88,7 @@ export default function BookingsScreen() {
               <ChevronLeft size={20} color="#231F48" />
             </AnimatedPressable>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               Try-on Bookings
@@ -145,7 +145,7 @@ export default function BookingsScreen() {
               <DoorOpen size={28} color="#BB3F95" />
             </View>
             <Text
-              style={{ fontFamily: 'Marcellus_400Regular' }}
+              style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
               className="text-xl font-bold text-spaceCadet-900"
             >
               No Bookings
@@ -172,7 +172,7 @@ export default function BookingsScreen() {
                   <View className="flex-row items-center justify-between mb-2.5">
                     <View className="flex-1 mr-2">
                       <Text
-                        style={{ fontFamily: 'Marcellus_400Regular' }}
+                        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
                         className="text-base font-bold text-spaceCadet-900"
                         numberOfLines={1}
                       >
