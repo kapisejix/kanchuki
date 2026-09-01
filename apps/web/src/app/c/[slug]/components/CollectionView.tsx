@@ -647,7 +647,7 @@ function ProductCard({ product, isFavorited, onFavorite, onTap, priority, onTryO
             <span className="flex items-center gap-0.5">
               <Star size={11} className="text-amber-400 fill-amber-400" />
               <span className="text-[10px] font-semibold text-[#6B4773]">
-                {product.avg_rating.toFixed(1)}
+                {(product.avg_rating ?? 0).toFixed(1)}
               </span>
             </span>
           )}
