@@ -330,7 +330,6 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
         resource_type: z.enum([
           'PRODUCT_UPLOAD',
           'AI_TAGGING_CALL',
-          'TRY_ON',
           'IMAGE_CROP',
           'BG_REMOVAL',
           'API_REQUEST',
@@ -718,24 +717,39 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
           ? new Date(rzpSub.current_end * 1000)
           : periodEnd(start);
 
-        // Look up retailer state + platform GST profile for invoice
+        // A payment row + GST invoice is created ONLY for subscription.charged
+        // that carries a payment entity. subscription.activated (sent
+        // separately by Razorpay) just flips status — it must never allocate
+        // an invoice number.
+        const payment =
+          event.event === 'subscription.charged' ? (event.payload.payment?.entity ?? null) : null;
+
+        // Look up retailer state + platform GST profile for the invoice split.
         const [retailer, gstProfile] = await Promise.all([
           prisma.retailer.findUnique({ where: { id: retailerId }, select: { state: true } }),
           prisma.platformGstProfile.findUnique({ where: { id: 'singleton' } }),
         ]);
+        const buyerStateCode = retailer?.state ? resolveStateCode(retailer.state) : null;
         const gst = computeSubscriptionGst({
           basePaise: subscription.amount_inr,
-          buyerStateCode: retailer?.state ? resolveStateCode(retailer.state) : null,
+          buyerStateCode,
           sellerStateCode: gstProfile?.state_code ?? null,
         });
-        const invoiceNo = await allocateInvoiceNumber(gstProfile?.invoice_prefix ?? 'KAN');
+        // GST invoice format wants the coded place of supply ("27-Maharashtra");
+        // fall back to the raw state name, then null.
+        const placeOfSupply = buyerStateCode
+          ? `${buyerStateCode}-${retailer?.state}`
+          : (retailer?.state ?? null);
 
-        const [updatedPayment] = await prisma.$transaction([
-          prisma.subscription.update({
+        // One transaction: status updates + (for a charge) idempotent payment
+        // insert with the invoice number allocated INSIDE the same txn, so a
+        // rollback never burns a number.
+        const newPaymentId = await prisma.$transaction(async (tx) => {
+          await tx.subscription.update({
             where: { id: subscription.id },
             data: { status: 'ACTIVE', current_period_start: start, current_period_end: end },
-          }),
-          prisma.retailer.update({
+          });
+          await tx.retailer.update({
             where: { id: retailerId },
             data: {
               plan,
@@ -743,38 +757,54 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
               plan_expires_at: end,
               max_products: Number.isFinite(limits.max_products) ? limits.max_products : 999999,
               max_customers: Number.isFinite(limits.max_customers) ? limits.max_customers : 999999,
-                          },
-          }),
-          ...(event.event === 'subscription.charged' && event.payload.payment
-            ? [
-                prisma.subscriptionPayment.create({
-                  data: {
-                    subscription_id: subscription.id,
-                    retailer_id: retailerId,
-                    amount_inr: event.payload.payment.entity.amount,
-                    status: 'success',
-                    razorpay_payment_id: event.payload.payment.entity.id,
-                    razorpay_order_id: event.payload.payment.entity.order_id,
-                    paid_at: new Date(),
-                    // GST columns — pre-computed above with real state codes
-                    amount_excluding_gst: gst.basePaise,
-                    gst_amount: gst.gstTotal,
-                    gst_rate: gst.rate,
-                    cgst_amount: gst.cgst || null,
-                    sgst_amount: gst.sgst || null,
-                    igst_amount: gst.igst || null,
-                    sac_code: gst.sac,
-                    place_of_supply: retailer?.state ?? null,
-                    gst_invoice_number: invoiceNo,
-                  },
-                }),
-              ]
-            : []),
-        ]);
+            },
+          });
 
-        // Enqueue GST invoice PDF generation (async — don't block webhook)
-        if (event.event === 'subscription.charged' && updatedPayment) {
-          addGenerateGstInvoiceJob({ payment_id: updatedPayment.id }).catch((err) => {
+          if (!payment) return null;
+
+          // Idempotent on razorpay_payment_id — Razorpay redelivers
+          // subscription.charged (at-least-once). A duplicate must not throw
+          // and must not allocate a second invoice number.
+          const existing = await tx.subscriptionPayment.findUnique({
+            where: { razorpay_payment_id: payment.id },
+            select: { id: true },
+          });
+          if (existing) return null;
+
+          const invoiceNo = await allocateInvoiceNumber(
+            gstProfile?.invoice_prefix ?? 'KAN',
+            new Date(),
+            tx,
+          );
+
+          const created = await tx.subscriptionPayment.create({
+            data: {
+              subscription_id: subscription.id,
+              retailer_id: retailerId,
+              amount_inr: payment.amount,
+              status: 'success',
+              razorpay_payment_id: payment.id,
+              razorpay_order_id: payment.order_id,
+              paid_at: new Date(),
+              // GST columns — computed above with real state codes
+              amount_excluding_gst: gst.basePaise,
+              gst_amount: gst.gstTotal,
+              gst_rate: gst.rate,
+              cgst_amount: gst.cgst || null,
+              sgst_amount: gst.sgst || null,
+              igst_amount: gst.igst || null,
+              sac_code: gst.sac,
+              place_of_supply: placeOfSupply,
+              gst_invoice_number: invoiceNo,
+            },
+            select: { id: true },
+          });
+          return created.id;
+        });
+
+        // Enqueue GST invoice PDF generation (async — never block the webhook).
+        if (newPaymentId) {
+          addGenerateGstInvoiceJob({ payment_id: newPaymentId }).catch((err) => {
             console.error('[billing] Failed to enqueue GST invoice job:', err);
           });
         }

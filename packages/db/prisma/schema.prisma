@@ -973,9 +973,10 @@ model SubscriptionPayment {
   cgst_amount          Int?     // CGST in paise (intra-state)
   sgst_amount          Int?     // SGST in paise (intra-state)
   igst_amount          Int?     // IGST in paise (inter-state)
-  place_of_supply      String?  // buyer state code
+  place_of_supply      String?  // buyer place of supply, "27-Maharashtra"
   sac_code             String?  // "998314"
-  invoice_pdf_url      String?  // R2 URL
+  invoice_pdf_url      String?  // legacy public URL (no longer written; use invoice_r2_key)
+  invoice_r2_key       String?  // private R2 object key — served via presigned URL only
   invoice_generated_at DateTime?
 
   paid_at    DateTime?

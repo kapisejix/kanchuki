@@ -1781,3 +1781,27 @@ New table: `GstInvoiceSequence` — gap-free per-FY counter (`financial_year` PK
 - `docs/PRO-REQUIREMENTS.md` §6 Billing Rules (monthly-only, CGST/SGST/IGST split)
 - `docs/BUILD-LOG.md` §59 (this entry)
 - `docs/tasks/subscription-gst-and-monthly-pricing.md` — spec/task doc
+
+### §59.1 — Post-review hardening (2026-09-02, code-review `docs/tasks/2026-09-01.md`)
+
+Ten findings from the GST-engine review, all fixed:
+
+| # | Fix |
+|---|-----|
+| H1 | Invoice number is now allocated **inside** the same `prisma.$transaction` that inserts the payment row (`billing.ts` webhook rewritten to interactive-txn form) — a rollback no longer burns a number. `allocateInvoiceNumber()` takes an optional `tx` client. |
+| M1 | Webhook is idempotent on `razorpay_payment_id` — a redelivered `subscription.charged` finds the existing row inside the txn and skips both allocation and insert. |
+| M2 | `subscription.activated` no longer allocates an invoice number — allocation is gated on `subscription.charged` + a `payload.payment` entity. |
+| M3 | `allocateInvoiceNumber()` replaced `SELECT … FOR UPDATE` + branch with a single `INSERT … ON CONFLICT (financial_year) DO UPDATE … RETURNING` — no PK-violation race on the first invoice of a new FY. |
+| H3 | Invoice PDFs upload to a **random-UUID** R2 key stored in `subscription_payments.invoice_r2_key` (migration `087`); download routes return a **300-second presigned URL** (`getDownloadPresignedUrl`) instead of a permanent public URL. `R2_PATHS.gstInvoice(retailerId, token)`. Web `InvoiceList` fetches a fresh signed URL per click; ready-flag is `invoice_generated_at`. |
+| M4 | `handleGenerateGstInvoice` now **throws** (was `return`) on missing payment / GST columns / platform GST profile, so BullMQ retries. New `backfill-gst-invoices` maintenance cron (daily 06:00 UTC) re-enqueues any `status='success'` payment with `invoice_generated_at IS NULL`. |
+| M5 | `place_of_supply` now stores the coded form `"27-Maharashtra"` (was the raw state name). |
+| L1 | Shared BullMQ infra extracted to `apps/api/src/jobs/queue.ts` (`getRedis` + queue getters); `generate-gst-invoice.ts` reuses `getMaintenanceQueue()` instead of opening its own Redis connection + Queue. `jobs/index.ts` re-exports `getRedis`. |
+| L2 | Invoice-meta block in `gst-invoice-pdf.ts` renders label + value on one line (`continued: true`); unused `metaY` removed. |
+
+Also: removed the dead `TRY_ON` addon resource from the `/billing/addon-checkout` zod enum (teardown residue — `ADDON_PRICING` has had no `TRY_ON` key since migration 082) and updated its two stale tests.
+
+**Watermark sweep:** no watermark-removal code exists anywhere in the tree.
+
+New tests: `billing.test.ts` — 4 webhook cases (single allocation, duplicate-charge idempotency, activated-no-allocation, bad signature). API tsc clean; `billing.test.ts` 20/20, `gst.test.ts` 10/10, `gst-invoice-number.test.ts` 8/8, `security.test.ts` 6/6, `admin.login.test.ts` 14/14.
+
+**Migrations to apply (admin dashboard):** `086` (GST columns + `gst_invoice_sequences`), `087` (`subscription_payments.invoice_r2_key`).

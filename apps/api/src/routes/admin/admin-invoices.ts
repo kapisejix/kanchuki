@@ -3,6 +3,7 @@
 // GET /admin/invoices/:retailer_id            — list invoices for a retailer
 // GET /admin/invoices/:retailer_id/:id/pdf    — presigned download URL
 import { prisma } from '@kanchuki/db';
+import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import type { FastifyPluginAsync } from 'fastify';
 
 export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
@@ -85,7 +86,7 @@ export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
         sgst_amount: true,
         igst_amount: true,
         gst_invoice_number: true,
-        invoice_pdf_url: true,
+        invoice_generated_at: true,
         paid_at: true,
         status: true,
         place_of_supply: true,
@@ -114,13 +115,14 @@ export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {
 
     const payment = await prisma.subscriptionPayment.findFirst({
       where: { id },
-      select: { invoice_pdf_url: true },
+      select: { invoice_r2_key: true },
     });
 
-    if (!payment?.invoice_pdf_url) {
+    if (!payment?.invoice_r2_key) {
       return reply.code(404).send({ error: 'Invoice not found or PDF not yet generated' });
     }
 
-    return reply.send({ url: payment.invoice_pdf_url });
+    const url = await getDownloadPresignedUrl(payment.invoice_r2_key, 300);
+    return reply.send({ url });
   });
 };

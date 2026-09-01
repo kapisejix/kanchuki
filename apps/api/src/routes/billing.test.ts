@@ -14,39 +14,78 @@ const {
   mockRetailerLimitOverrideFindUnique,
   mockPlanLimitFindUnique,
   mockUsageCounterUpsert,
-  mockTransaction,
-} = vi.hoisted(() => ({
-  mockRetailerFindUnique: vi.fn(),
-  mockQuotaAddonPurchaseCreate: vi.fn(),
-  mockQuotaAddonPurchaseFindFirst: vi.fn(),
-  mockQuotaAddonPurchaseUpdate: vi.fn(),
-  mockRetailerLimitOverrideFindUnique: vi.fn(),
-  mockPlanLimitFindUnique: vi.fn(),
-  mockUsageCounterUpsert: vi.fn(),
-  mockTransaction: vi.fn((ops: unknown) =>
-    Array.isArray(ops) ? Promise.all(ops) : (ops as () => unknown)(),
-  ),
-}));
+  mockSubscriptionFindUnique,
+  mockSubscriptionUpdate,
+  mockRetailerUpdate,
+  mockPlatformGstProfileFindUnique,
+  mockSubscriptionPaymentFindUnique,
+  mockSubscriptionPaymentCreate,
+  mockQueryRaw,
+  prismaMock,
+} = vi.hoisted(() => {
+  const p: Record<string, unknown> = {};
+  const m = {
+    mockRetailerFindUnique: vi.fn(),
+    mockQuotaAddonPurchaseCreate: vi.fn(),
+    mockQuotaAddonPurchaseFindFirst: vi.fn(),
+    mockQuotaAddonPurchaseUpdate: vi.fn(),
+    mockRetailerLimitOverrideFindUnique: vi.fn(),
+    mockPlanLimitFindUnique: vi.fn(),
+    mockUsageCounterUpsert: vi.fn(),
+    mockSubscriptionFindUnique: vi.fn(),
+    mockSubscriptionUpdate: vi.fn(),
+    mockRetailerUpdate: vi.fn(),
+    mockPlatformGstProfileFindUnique: vi.fn(),
+    mockSubscriptionPaymentFindUnique: vi.fn(),
+    mockSubscriptionPaymentCreate: vi.fn(),
+    mockQueryRaw: vi.fn(),
+    prismaMock: p,
+  };
+  Object.assign(p, {
+    retailer: {
+      findUnique: m.mockRetailerFindUnique,
+      findUniqueOrThrow: m.mockRetailerFindUnique,
+      update: m.mockRetailerUpdate,
+    },
+    quotaAddonPurchase: {
+      create: m.mockQuotaAddonPurchaseCreate,
+      findFirst: m.mockQuotaAddonPurchaseFindFirst,
+      update: m.mockQuotaAddonPurchaseUpdate,
+    },
+    retailerLimitOverride: { findUnique: m.mockRetailerLimitOverrideFindUnique },
+    planLimit: { findUnique: m.mockPlanLimitFindUnique },
+    usageCounter: { upsert: m.mockUsageCounterUpsert },
+    subscription: { findUnique: m.mockSubscriptionFindUnique, update: m.mockSubscriptionUpdate },
+    platformGstProfile: { findUnique: m.mockPlatformGstProfileFindUnique },
+    subscriptionPayment: {
+      findUnique: m.mockSubscriptionPaymentFindUnique,
+      create: m.mockSubscriptionPaymentCreate,
+    },
+    auditLog: { create: vi.fn() },
+    $queryRaw: m.mockQueryRaw,
+    // Array form runs the ops; callback form gets the same mock as `tx`.
+    $transaction: vi.fn((ops: unknown) =>
+      Array.isArray(ops)
+        ? Promise.all(ops)
+        : (ops as (tx: unknown) => unknown)(p),
+    ),
+  });
+  return m;
+});
 
 // ─── Mock @kanchuki/db ───────────────────────────────────────────
 
 vi.mock('@kanchuki/db', () => ({
   vaultDelete: vi.fn(),
   getSecret: vi.fn().mockResolvedValue('rzp_test_key_secret'),
-  prisma: {
-    retailer: { findUnique: mockRetailerFindUnique, findUniqueOrThrow: mockRetailerFindUnique },
-    quotaAddonPurchase: {
-      create: mockQuotaAddonPurchaseCreate,
-      findFirst: mockQuotaAddonPurchaseFindFirst,
-      update: mockQuotaAddonPurchaseUpdate,
-    },
-    retailerLimitOverride: { findUnique: mockRetailerLimitOverrideFindUnique },
-    planLimit: { findUnique: mockPlanLimitFindUnique },
-    usageCounter: { upsert: mockUsageCounterUpsert },
-    auditLog: { create: vi.fn() },
-    $transaction: mockTransaction,
-  },
+  prisma: prismaMock,
   Prisma: {},
+}));
+
+// GST invoice job is fire-and-forget from the webhook — stub it so the test
+// doesn't spin up a real BullMQ queue / Redis connection.
+vi.mock('../jobs/generate-gst-invoice.js', () => ({
+  addGenerateGstInvoiceJob: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ─── Test Helpers ─────────────────────────────────────────────────
@@ -82,7 +121,6 @@ describe('GET /v1/billing/addon-pricing', () => {
     const data = res.json().data;
     expect(data).toHaveProperty('PRODUCT_UPLOAD');
     expect(data).toHaveProperty('AI_TAGGING_CALL');
-    expect(data).toHaveProperty('TRY_ON');
     expect(data).toHaveProperty('IMAGE_CROP');
     expect(data).toHaveProperty('BG_REMOVAL');
     expect(data).toHaveProperty('API_REQUEST');
@@ -162,7 +200,7 @@ describe('POST /v1/billing/addon-checkout', () => {
     await app.close();
   });
 
-  it('creates a payment link for TRY_ON resource', async () => {
+  it('creates a payment link for a second-tier pack', async () => {
     mockRetailerFindUnique.mockResolvedValue({
       phone: RETAILER_PHONE,
       shop_name: RETAILER_SHOP,
@@ -184,15 +222,15 @@ describe('POST /v1/billing/addon-checkout', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/v1/billing/addon-checkout',
-      payload: { resource_type: 'TRY_ON', pack_index: 1 }, // 50 try-ons
+      payload: { resource_type: 'AI_TAGGING_CALL', pack_index: 1 }, // 500 tags
     });
 
     globalThis.fetch = originalFetch;
 
     expect(res.statusCode).toBe(200);
     const checkoutBody = res.json() as { data: { quantity: number; amount_paise: number } };
-    expect(checkoutBody.data.quantity).toBe(50);
-    expect(checkoutBody.data.amount_paise).toBe(39900);
+    expect(checkoutBody.data.quantity).toBe(500);
+    expect(checkoutBody.data.amount_paise).toBe(59900);
     await app.close();
   });
 
@@ -523,6 +561,126 @@ describe('GET /v1/billing/addon-callback', () => {
     expect(mockUsageCounterUpsert).toHaveBeenCalled();
     // Verify we checked override (not plan limit)
     expect(mockRetailerLimitOverrideFindUnique).toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+// ─── POST /v1/billing/webhook (subscription.charged / .activated) ─
+
+describe('POST /v1/billing/webhook', () => {
+  const RZP_SUB_ID = 'sub_rzp_1';
+
+  function signedRequest(body: object) {
+    const raw = JSON.stringify(body);
+    const signature = createHmac('sha256', 'rzp_test_key_secret').update(raw).digest('hex');
+    return { raw, signature };
+  }
+
+  function chargedEvent(paymentId = 'pay_1') {
+    return {
+      event: 'subscription.charged',
+      created_at: Math.floor(Date.now() / 1000),
+      payload: {
+        subscription: { entity: { id: RZP_SUB_ID, current_start: 0, current_end: 0 } },
+        payment: {
+          entity: { id: paymentId, order_id: 'order_1', amount: 117882, status: 'captured' },
+        },
+      },
+    };
+  }
+
+  function primeHappyPath() {
+    mockSubscriptionFindUnique.mockResolvedValue({
+      id: 'db_sub_1',
+      retailer_id: RETAILER_ID,
+      plan: 'STARTER',
+      amount_inr: 99900,
+    });
+    mockRetailerFindUnique.mockResolvedValue({ state: 'Maharashtra' });
+    mockPlatformGstProfileFindUnique.mockResolvedValue({ state_code: '27', invoice_prefix: 'KAN' });
+    mockSubscriptionUpdate.mockResolvedValue({});
+    mockRetailerUpdate.mockResolvedValue({});
+    mockQueryRaw.mockResolvedValue([{ last_number: 1 }]);
+    mockSubscriptionPaymentCreate.mockResolvedValue({ id: 'pay_row_1' });
+  }
+
+  it('subscription.charged: allocates exactly one invoice number and writes the coded place of supply', async () => {
+    primeHappyPath();
+    mockSubscriptionPaymentFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(chargedEvent());
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockQueryRaw).toHaveBeenCalledTimes(1); // one invoice-number allocation
+    expect(mockSubscriptionPaymentCreate).toHaveBeenCalledTimes(1);
+    const createArg = mockSubscriptionPaymentCreate.mock.calls[0]?.[0] as {
+      data: { place_of_supply: string; gst_invoice_number: string; razorpay_payment_id: string };
+    };
+    expect(createArg.data.place_of_supply).toBe('27-Maharashtra');
+    expect(createArg.data.gst_invoice_number).toBe('KAN/26-27/000001');
+    await app.close();
+  });
+
+  it('duplicate subscription.charged (same payment id): no second row, no burned invoice number', async () => {
+    primeHappyPath();
+    mockSubscriptionPaymentFindUnique.mockResolvedValue({ id: 'pay_row_1' }); // already recorded
+
+    const app = await buildApp();
+    const { raw, signature } = signedRequest(chargedEvent('pay_1'));
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockQueryRaw).not.toHaveBeenCalled(); // no allocation on replay
+    expect(mockSubscriptionPaymentCreate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('subscription.activated: flips status but never allocates an invoice number', async () => {
+    primeHappyPath();
+    mockSubscriptionPaymentFindUnique.mockResolvedValue(null);
+
+    const app = await buildApp();
+    const activated = {
+      event: 'subscription.activated',
+      created_at: Math.floor(Date.now() / 1000),
+      payload: { subscription: { entity: { id: RZP_SUB_ID, current_start: 0, current_end: 0 } } },
+    };
+    const { raw, signature } = signedRequest(activated);
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': signature, 'content-type': 'application/json' },
+      payload: raw,
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockQueryRaw).not.toHaveBeenCalled();
+    expect(mockSubscriptionPaymentCreate).not.toHaveBeenCalled();
+    expect(mockSubscriptionUpdate).toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects a bad signature', async () => {
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/v1/billing/webhook',
+      headers: { 'x-razorpay-signature': 'deadbeef', 'content-type': 'application/json' },
+      payload: JSON.stringify(chargedEvent()),
+    });
+    expect(res.statusCode).toBe(401);
     await app.close();
   });
 });

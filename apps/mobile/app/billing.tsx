@@ -109,7 +109,9 @@ export default function BillingScreen() {
           </AnimatedPressable>
         </View>
 
-        <Text className="text-xs text-heliotrope-400 text-center mt-6 mb-10">Prices include GST</Text>
+        <Text className="text-xs text-heliotrope-400 text-center mt-6 mb-10">
+          Prices are ex-GST — 18% GST is added at checkout
+        </Text>
       </ScrollView>
     </View>
   );

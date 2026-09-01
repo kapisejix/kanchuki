@@ -422,7 +422,7 @@ function LoginCard({
 
       <p className="mt-6 flex items-center justify-center gap-1.5 text-center text-xs text-sand-500">
         <ShieldCheck size={13} />
-        Secured by Razorpay · Prices include GST
+        Secured by Razorpay · Prices shown are ex-GST; 18% GST added at checkout
       </p>
     </div>
   );
@@ -505,7 +505,7 @@ interface Invoice {
   sgst_amount: number | null;
   igst_amount: number | null;
   gst_invoice_number: string | null;
-  invoice_pdf_url: string | null;
+  invoice_generated_at: string | null;
   paid_at: string | null;
   status: string;
   place_of_supply: string | null;
@@ -517,10 +517,20 @@ function InvoiceList({ token }: { token: string }) {
 
   useEffect(() => {
     void apiCall<Invoice[]>('/retailers/me/invoices', token)
-      .then(setInvoices)
+      .then((rows) => setInvoices(rows ?? []))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [token]);
+
+  // Invoice PDFs are private — fetch a fresh short-lived signed URL per click.
+  const openInvoicePdf = async (id: string) => {
+    try {
+      const { url } = await apiCall<{ url: string }>(`/retailers/me/invoices/${id}/pdf`, token);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      /* not ready yet — button only shows once invoice_generated_at is set */
+    }
+  };
 
   if (loading || !invoices.length) return null;
 
@@ -563,15 +573,14 @@ function InvoiceList({ token }: { token: string }) {
                     {formatPriceSafe(inv.amount_inr)}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {inv.invoice_pdf_url ? (
-                      <a
-                        href={inv.invoice_pdf_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                    {inv.invoice_generated_at ? (
+                      <button
+                        type="button"
+                        onClick={() => void openInvoicePdf(inv.id)}
                         className="inline-flex items-center gap-1 rounded-lg border border-sand-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 transition-colors hover:border-sand-300"
                       >
                         PDF ↓
-                      </a>
+                      </button>
                     ) : (
                       <span className="text-[11px] text-sand-400">Pending</span>
                     )}
@@ -882,7 +891,7 @@ function Dashboard({
 
       <div className="mt-10 flex flex-col items-center gap-2 border-t border-sand-100 pt-6 pb-4">
         <p className="flex items-center gap-1.5 text-xs text-sand-500">
-          <ShieldCheck size={13} /> Secured by Razorpay · Prices include GST
+          <ShieldCheck size={13} /> Secured by Razorpay · Prices shown are ex-GST; 18% GST added at checkout
         </p>
         <a
           href={`mailto:${SUPPORT_EMAIL}?subject=Billing%20help`}

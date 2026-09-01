@@ -1,7 +1,10 @@
 # Subscription Billing — Monthly-Only Pricing + GST Engine & Invoice PDF
 
-**Status:** 📋 Spec / task list — nothing built. Do NOT start coding from this file.
-Run the brainstorm first (see *Starter Prompt* at the bottom).
+**Status:** ✅ Built — commit `91144cb` (2026-09-01), hardened 2026-09-02 after code
+review (`docs/tasks/2026-09-01.md`, 10 findings fixed — see `docs/BUILD-LOG.md`
+§59 + §59.1). Migrations `086` + `087` to be applied from the admin dashboard.
+This file is kept as the design record; the sections below are the spec as
+written before the build, not a live to-do list.
 
 **Created:** 2026-09-01
 **Owner:** platform / billing
