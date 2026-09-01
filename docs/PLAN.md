@@ -340,4 +340,4 @@ See `docs/PRO-REQUIREMENTS.md` §10.9–10.11 for full spec.
 | **Backup database (second PostgreSQL instance)** | **₹3,000** | **₹12,000** |
 | **Total** | **₹3,63,000** | **₹14,52,000** |
 
-**Break-even:** 145 Growth plan retailers (₹2,499 × 145 = ₹3,62,355/month)
+**Break-even:** 37 Growth plan retailers (₹9,999 × 37 = ₹3,69,963/month)

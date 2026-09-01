@@ -24,9 +24,9 @@ export const PLAN_LIMITS = {
 // ─── Plan Pricing (paise) ─────────────────────────────────────────
 
 export const PLAN_PRICING = {
-  STARTER: { monthly: 99900, annual: 999900 }, // ₹999/mo, ₹9999/yr
-  GROWTH: { monthly: 249900, annual: 2499900 }, // ₹2499/mo, ₹24999/yr
-  PRO: { monthly: 499900, annual: 4999900 }, // ₹4999/mo, ₹49999/yr
+  STARTER: { monthly: 499900 }, // ₹4,999/mo base (ex-GST); retailer pays base + 18%
+  GROWTH: { monthly: 999900 }, // ₹9,999/mo base (ex-GST)
+  PRO: { monthly: 1499900 }, // ₹14,999/mo base (ex-GST)
 } as const;
 
 // ─── Indian Ethnic Wear Categories ───────────────────────────────
@@ -295,6 +295,8 @@ export const R2_PATHS = {
     `retailers/${retailerId}/products/${productId}/studio/${filename}`,
   lookbookOutput: (retailerId: string, lookbookId: string, filename: string) =>
     `retailers/${retailerId}/lookbooks/${lookbookId}/${filename}`,
+  gstInvoice: (retailerId: string, invoiceNo: string) =>
+    `invoices/subscription/${retailerId}/${invoiceNo}.pdf`,
 } as const;
 
 // ─── F-032 AI Studio Shoots — template presets (2026-08-13) ───────

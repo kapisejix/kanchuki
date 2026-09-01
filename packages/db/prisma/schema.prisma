@@ -965,9 +965,18 @@ model SubscriptionPayment {
   razorpay_payment_id String? @unique
   razorpay_order_id   String?
 
-  amount_excluding_gst Int?
-  gst_amount           Int?
-  gst_invoice_number   String?
+  // GST columns — populated on subscription.charged webhook
+  amount_excluding_gst Int?     // base price (ex-GST)
+  gst_amount           Int?     // total GST in paise
+  gst_invoice_number   String?  // gap-free per-FY, e.g. KAN/26-27/000123
+  gst_rate             Decimal? @db.Decimal(4, 4) // 0.1800
+  cgst_amount          Int?     // CGST in paise (intra-state)
+  sgst_amount          Int?     // SGST in paise (intra-state)
+  igst_amount          Int?     // IGST in paise (inter-state)
+  place_of_supply      String?  // buyer state code
+  sac_code             String?  // "998314"
+  invoice_pdf_url      String?  // R2 URL
+  invoice_generated_at DateTime?
 
   paid_at    DateTime?
   created_at DateTime  @default(now())
@@ -1110,12 +1119,46 @@ model PlanLimit {
 model PlanPricing {
   id            String           @id @default(cuid())
   plan          SubscriptionPlan @unique
-  monthly_paise Int
-  annual_paise  Int
+  monthly_paise Int              // base price in paise (ex-GST)
 
   updated_at DateTime @updatedAt
 
   @@map("plan_pricing")
+}
+
+// ─── PLATFORM GST PROFILE (seller identity for invoices) ──────────
+// Singleton table — one row stores Kanchuki's GST registration details
+// used on every GST invoice PDF. Admin-editable via PUT /admin/gst-profile.
+
+model PlatformGstProfile {
+  id               String @id @default("singleton")
+  company_name     String // legal name
+  gstin            String // 15-char GSTIN
+  address_line1    String
+  address_line2    String?
+  city             String
+  state            String // state name (e.g. "Maharashtra")
+  state_code       String // 2-digit code (e.g. "27")
+  pan              String? // optional, for reference
+  invoice_prefix   String @default("KAN") // e.g. KAN/26-27/000123
+
+  updated_at DateTime @updatedAt
+
+  @@map("platform_gst_profile")
+}
+
+// ─── GST INVOICE SEQUENCE (gap-free per-FY counter) ──────────────
+// One row per financial year, incremented in a Prisma interactive txn
+// (SELECT ... FOR UPDATE) so concurrent webhooks can't collide.
+// Format: KAN/YY-YY/NNNNNN (e.g. KAN/26-27/000123)
+
+model GstInvoiceSequence {
+  financial_year String @id // e.g. "26-27"
+  last_number    Int    @default(0)
+
+  updated_at DateTime @updatedAt
+
+  @@map("gst_invoice_sequences")
 }
 
 // ─── PLAN FEATURE MATRIX (F-013) ─────────────────────────────────

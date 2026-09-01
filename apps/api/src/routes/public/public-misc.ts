@@ -57,7 +57,6 @@ export const publicMiscRoutes: FastifyPluginAsync = async (server) => {
         return {
           plan,
           monthly: row?.monthly_paise ?? PLAN_PRICING[plan].monthly,
-          annual: row?.annual_paise ?? PLAN_PRICING[plan].annual,
         };
       });
 

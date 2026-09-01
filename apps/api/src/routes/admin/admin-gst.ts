@@ -41,7 +41,14 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
 
     const result = await prisma.subscriptionPayment.aggregate({
       where,
-      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true },
+      _sum: {
+        amount_excluding_gst: true,
+        gst_amount: true,
+        amount_inr: true,
+        cgst_amount: true,
+        sgst_amount: true,
+        igst_amount: true,
+      },
       _count: true,
     });
 
@@ -62,9 +69,9 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         total_taxable: subtotal,
         total_gst: totalGst,
         total_sales: totalSales,
-        estimated_cgst: Math.round(totalGst / 2),
-        estimated_sgst: Math.round(totalGst / 2),
-        estimated_igst: 0,
+        cgst: result._sum.cgst_amount ?? 0,
+        sgst: result._sum.sgst_amount ?? 0,
+        igst: result._sum.igst_amount ?? 0,
       },
     };
   });
@@ -91,13 +98,13 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const monthlyData = await prisma.subscriptionPayment.groupBy({
       by: ['created_at'],
       where,
-      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true },
+      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true, cgst_amount: true, sgst_amount: true, igst_amount: true },
       _count: true,
     });
 
-    const months: Record<number, { taxable: number; gst: number; sales: number; orders: number }> = {};
+    const months: Record<number, { taxable: number; gst: number; cgst: number; sgst: number; igst: number; sales: number; orders: number }> = {};
     for (let m = 0; m < 12; m++) {
-      months[m] = { taxable: 0, gst: 0, sales: 0, orders: 0 };
+      months[m] = { taxable: 0, gst: 0, cgst: 0, sgst: 0, igst: 0, sales: 0, orders: 0 };
     }
 
     for (const row of monthlyData) {
@@ -106,6 +113,9 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       if (entry) {
         entry.taxable += (row._sum?.amount_excluding_gst ?? 0) as number;
         entry.gst += (row._sum?.gst_amount ?? 0) as number;
+        entry.cgst += (row._sum?.cgst_amount ?? 0) as number;
+        entry.sgst += (row._sum?.sgst_amount ?? 0) as number;
+        entry.igst += (row._sum?.igst_amount ?? 0) as number;
         entry.sales += (row._sum?.amount_inr ?? 0) as number;
         entry.orders += (row._count ?? 0) as number;
       }
@@ -116,6 +126,9 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
       month_name: new Date(year, parseInt(m)).toLocaleString('en-IN', { month: 'short' }),
       taxable: data.taxable,
       gst: data.gst,
+      cgst: data.cgst,
+      sgst: data.sgst,
+      igst: data.igst,
       sales: data.sales,
       orders: data.orders,
     }));
@@ -154,7 +167,7 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const byRetailer = await prisma.subscriptionPayment.groupBy({
       by: ['retailer_id'],
       where,
-      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true },
+      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true, cgst_amount: true, sgst_amount: true, igst_amount: true },
       _count: true,
       orderBy: { _sum: { gst_amount: 'desc' } },
       take: limit,
@@ -177,6 +190,9 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
         payments: r._count,
         taxable: r._sum.amount_excluding_gst ?? 0,
         gst: r._sum.gst_amount ?? 0,
+        cgst: r._sum.cgst_amount ?? 0,
+        sgst: r._sum.sgst_amount ?? 0,
+        igst: r._sum.igst_amount ?? 0,
         sales: r._sum.amount_inr ?? 0,
       };
     });

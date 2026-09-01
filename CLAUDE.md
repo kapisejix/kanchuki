@@ -71,13 +71,13 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 
 ## Pricing Model
 
-| Plan | Monthly | Annual |
-|------|---------|--------|
-| Starter | ₹999 | ₹9,999 |
-| Growth | ₹2,499 | ₹24,999 |
-| Pro | ₹4,999 | ₹49,999 |
+| Plan | Monthly (base, ex-GST) |
+|------|------------------------|
+| Starter | ₹4,999 |
+| Growth | ₹9,999 |
+| Pro | ₹14,999 |
 
-Payment: Razorpay (UPI first). Annual discount 20%.
+Payment: Razorpay (UPI first). Retailer pays base + 18% GST. **Source of truth: Admin → Plan Limits & Pricing (`plan_pricing` table).**
 
 ---
 
@@ -197,8 +197,8 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 54 | AI Studio Shoot — demographic person-swap + scene expansion: product category → `Demographic` (`womens`/`mens`/`teen_girl`/`teen_boy`/`kids_girl`/`kids_boy`), scenes tagged `noModel` (product-only) / `audience` (per-demographic), `generateStudioImage()` swaps the person per demographic, 5 new scenes (Seated Lounge, Male with Car/Bike, Kids Playing, Teen Street), admin bench gets a demographic filter. Steps 1–5 of `docs/tasks/ai-studio-shoot-models-scenes.md`. | 🧪 Built (unmerged) — admin-bench only, owner testing; step 6 = un-draft + mobile auto-filter | 2026-08-30 | BUILD-LOG §2026-08-30 (demographic) |
 | 55 | Feature Teardown — removed 24+ tables (checkout/orders, VTO, Fashion DNA, customer_interactions, store_affinities, bookings, referrals, lookbooks, spin-frame, size-recommend, partner-referrals, intention-finding, ghost-mannequin, studio-shoot job infra) + 17 dead enums + orphaned columns + plan-matrix rows via migration 082; gutted API/web/mobile routes, jobs, tests, shared constants, Prisma schema | ✅ Built | 2026-08-31 | `chore/remove-unwanted-features`, `docs/database/no-feature-want.md` |
 | 56 | Onboarding Plan Selection — mandatory step 4 after GST, before "Done"; Demo (full Pro, no payment) + Starter/Growth/Pro cards; `demo_plan: true` grants PRO/TRIAL limits | ✅ Built | 2026-08-31 | BUILD-LOG §55 |
-| 57 | Admin bodyless-POST 400 fix — unsuspend/feature/unfeature 400'd on Fastify v5 empty JSON body (`adminMutateOptions()` always sends `Content-Type: application/json`); tolerant `parseJsonAllowEmpty` parser + red error banner + real API error surfaced | ✅ Fixed | 2026-08-31 | BUILD-LOG §56 |
-| 58 | Post-Teardown Recovery (PR #16) — 12 commits: avg_rating crash fix (`undefined.toFixed` on catalog pages), QR export deprecation fix, stale expo-router screen cleanup, direct gallery save via `expo-media-library`, onboarding plan selection + hard-delete retailer + in-app plan switch + DB-driven prices + native FB/IG OAuth + dashboard layout + OTP error surfacing + onboarding security gate + photo-delete permission fix (migration 083, GRANT DELETE on `product_photos`) | ✅ Merged | 2026-09-01 | BUILD-LOG §56, PR #16 |
+| 57 | Admin bodyless-POST 400 fix — unsuspend/feature/unfeature 400'd on Fastify v5 empty JSON body (`adminMutateOptions()` always sends `Content-Type: application/json`); tolerant `parseJsonAllowEmpty` parser + red error banner + real API error surfaced | ✅ Fixed | 2026-08-31 | BUILD-LOG §56 || 58 | Post-Teardown Recovery (PR #16) — 12 commits: avg_rating crash fix (`undefined.toFixed` on catalog pages), QR export deprecation fix, stale expo-router screen cleanup, direct gallery save via `expo-media-library`, onboarding plan selection + hard-delete retailer + in-app plan switch + DB-driven prices + native FB/IG OAuth + dashboard layout + OTP error surfacing + onboarding security gate + photo-delete permission fix (migration 083, GRANT DELETE on `product_photos`) | ✅ Merged | 2026-09-01 | BUILD-LOG §56, PR #16 |
+| 59 | Monthly-Only Pricing + GST Engine — removed annual plans (PLAN_PRICING monthly-only, billing_period dropped, RAZORPAY_PLAN_IDS to 3, setup-plans creates monthly at gross base×1.18), removed annual toggle from web/mobile/marketing, DB `annual_paise` dropped (migration 085), base price is now ex-GST, `computeSubscriptionGst()` helper with CGST/SGST/IGST split, `GstInvoiceSequence` for gap-free invoice numbers, GST invoice PDF (pdfkit) + R2 upload + download routes, retailer/admin invoice list pages, GST reports wired to real CGST/SGST/IGST columns | ✅ Built | 2026-09-01 | BUILD-LOG §59, docs/tasks/subscription-gst-and-monthly-pricing.md |
  
 ---
 

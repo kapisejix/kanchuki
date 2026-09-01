@@ -12,3 +12,4 @@ export { retailersAggregatorRoutes } from "./retailers-aggregators.js";
 export { retailersIntegrationsRoutes } from "./retailers-integrations.js";
 export { retailersRatingsRoutes } from "./retailers-ratings.js";
 export { retailersBugReportRoutes } from "./retailers-bug-reports.js";
+export { retailersInvoicesRoutes } from "./retailers-invoices.js";

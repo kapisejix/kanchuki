@@ -38,6 +38,7 @@ incident, migration, and decision recorded after 2026-07-26.
 | 23 | [Fashion V-Tone LIVE on Railway](#built-2026-08-06-fashion-v-tone-live-on-railway--generate-on-model-admin-tool) | Built | 2026-08-06 |
 | 24 | [Featured Stores](#built-2026-08-11-featured-stores--admin-curated-pins-float-to-the-top-of-stores--homepage-teaser) | Built | 2026-08-11 |
 | 25 | [Colabs-inspired marketing redesign](#built-2026-08-11-colabs-inspired-marketing-redesign--new-palette-marquee-logo-mattersemimono-headings) | Built | 2026-08-11 |
+| 59 | [Monthly-Only Pricing + GST Engine](#built-2026-09-01--monthly-only-pricing--gst-engine) | Built | 2026-09-01 |
 | 26 | [INCIDENT: test-retailer cleanup deleted live R2 photos](#incident--fix-2026-08-11-test-retailer-cleanup-deleted-a-live-retailers-r2-photos-priya-cloth-house) | Incident | 2026-08-11 |
 | 27 | [Fashion V-Tone moved to Hetzner CX43](#migrated-2026-08-06-fashion-v-tone-moved-off-railway--self-hosted-on-hetzner-cx43) | Migrated | 2026-08-06 |
 | 28 | [Multi-Photo Ken Burns Effect](#planned--not-started-multi-photo-ken-burns-effect-product-photos--pseudo-video) | Planned | — |
@@ -1715,3 +1716,68 @@ Confirmed against prod: `curl -X POST .../unsuspend -H 'Content-Type: applicatio
 - Photo-delete GRANT needs to be applied from Supabase dashboard (can't run through pooler)
 - Demo access has no expiry
 - `plan` writes straight to `retailer.plan` (reviewer wants separate `intended_plan` column)
+
+---
+
+## §59 — Monthly-Only Pricing + GST Engine
+
+**Status:** ✅ **Built** (2026-09-01)
+
+Two coupled billing changes: drop annual plans (monthly-only) and make plan price GST-exclusive with full GST invoice PDF generation.
+
+### Part A — Monthly-Only Pricing
+
+| Change | Detail |
+|--------|--------|
+| `PLAN_PRICING` constant | Removed `annual` key; only `monthly` remains per tier. Base price is ex-GST (`packages/shared/src/constants/index.ts`) |
+| `PlanPricing` schema | `annual_paise` column dropped — migration `085_drop_annual_paise` |
+| `RAZORPAY_PLAN_IDS` | Reduced from 6 env vars to 3 (`RAZORPAY_PLAN_STARTER_MONTHLY` / `_GROWTH_MONTHLY` / `_PRO_MONTHLY`) |
+| `setup-plans` endpoint | `POST /admin/billing/setup-plans` now creates 3 monthly Razorpay plans at **gross** (`base × 1.18`) |
+| Billing page (web) | Annual toggle, annual price labels, savings % removed from `billing/page.tsx`, `pricing/page.tsx`, `PricingTable.tsx`, `MarketingSections.tsx` |
+| Admin billing page | Annual column removed from `admin/billing/page.tsx`, `admin/plan-limits/page.tsx` |
+| Mobile plan-select | Annual toggle removed from `plan-select.tsx`, `billing.ts` API client |
+| `billing.ts` subscription creation | `billing_period` removed from schema; `total_count` always monthly; `periodEnd()` monthly-only |
+
+### Part B — GST Engine + Invoice PDF
+
+| File | What it does |
+|------|-------------|
+| `apps/api/src/lib/gst.ts` | `computeSubscriptionGst()` — flat 18% (SAC 998314), intra-state → CGST+SGST split, inter-state → IGST. Unknown state codes default to inter-state (safer). All paise integers, `Math.round`, remainder to SGST. |
+| `apps/api/src/lib/gst.test.ts` | 11 unit tests: intra/inter-state, rounding remainder, zero/edge, large amounts |
+| `apps/api/src/lib/gst-invoice-number.ts` | `allocateInvoiceNumber()` — gap-free per-FY counter via Prisma interactive txn (`SELECT … FOR UPDATE`). Format: `KAN/YY-YY/NNNNNN` |
+| `apps/api/src/lib/gst-invoice-number.test.ts` | FY date-math tests + format verification |
+| `apps/api/src/lib/gst-invoice-pdf.ts` | `buildGstInvoicePdf()` — pdfkit A4 PDF with seller block, buyer block, line item (SAC 998314), CGST/SGST or IGST rows, total in figures + words (Indian Crore/Lakh), "Reverse charge: No", place of supply |
+| `apps/api/src/jobs/generate-gst-invoice.ts` | BullMQ maintenance queue job: reads payment + retailer + platform GST profile → builds PDF → uploads to R2 (`invoices/subscription/<retailerId>/<invoiceNo>.pdf`) → updates `SubscriptionPayment.invoice_pdf_url`. Idempotent (skips if URL already set). 3 retries, exponential backoff. |
+| `apps/api/src/routes/billing.ts` | Webhook `subscription.charged`: calls `computeSubscriptionGst()` with `Retailer.state` + seller state, writes `amount_excluding_gst`, `gst_amount`, `cgst_amount`, `sgst_amount`, `igst_amount`, `gst_rate`, `sac_code`, `place_of_supply`, `gst_invoice_number`. Enqueues `generate-gst-invoice` job. |
+| `apps/api/src/routes/admin/admin-gst-profile.ts` | `GET/PUT /admin/gst-profile` — upserts singleton `PlatformGstProfile` (company_name, GSTIN with 15-char regex validation, address, state, state_code, PAN, invoice_prefix). Audit-logged. |
+| `apps/api/src/routes/admin/admin-invoices.ts` | `GET /admin/invoices` — list all invoices with GST breakdown. `GET /admin/invoices/:retailer_id/:id/pdf` — presigned R2 download URL |
+| `apps/api/src/routes/admin/admin-gst.ts` | Updated to read real `cgst_amount`/`sgst_amount`/`igst_amount` columns instead of estimating `gst/2` |
+| `apps/api/src/routes/retailers/retailers-invoices.ts` | `GET /me/invoices` — retailer's own invoice list with GST breakdown. `GET /me/invoices/:id/pdf` — presigned download URL (scoped to retailer) |
+| `apps/api/src/routes/growth/growth-gst.ts` | Retailer-facing GST report: now reads real CGST/SGST/IGST columns |
+| `apps/web/src/app/billing/page.tsx` | New `InvoiceList` component: table with invoice number, date, base, GST, total, PDF download button |
+| `apps/web/src/app/admin/billing/page.tsx` | Admin billing: monthly-only pricing display |
+| `apps/web/src/app/admin/plan-limits/page.tsx` | Admin plan limits: annual column removed, monthly-only |
+| `apps/mobile/app/plan-select.tsx` | Mobile plan selection: annual toggle removed |
+| `packages/db/prisma/migrations/085_drop_annual_paise/migration.sql` | `ALTER TABLE plan_pricing DROP COLUMN IF EXISTS annual_paise` |
+
+### Schema additions (on `SubscriptionPayment`)
+
+New columns populated by the webhook: `gst_rate`, `cgst_amount`, `sgst_amount`, `igst_amount`, `place_of_supply`, `sac_code`, `invoice_pdf_url`, `invoice_generated_at`. Existing `amount_excluding_gst`, `gst_amount`, `gst_invoice_number` (previously never populated) now filled on every charge.
+
+New table: `PlatformGstProfile` (singleton, admin-editable) — company GST identity for invoice header.
+
+New table: `GstInvoiceSequence` — gap-free per-FY counter (`financial_year` PK, `last_number`, `updated_at`).
+
+### Tests
+
+- `gst.ts`: 11 unit tests (intra/inter-state, rounding, edge cases)
+- `gst-invoice-number.ts`: FY date-math + format tests
+- `billing.test.ts`: updated for monthly-only shape
+- `admin.test.ts`: updated for monthly-only pricing
+
+### Docs updated
+
+- `CLAUDE.md` §59 index entry + Pricing Model table (monthly only, base ex-GST)
+- `docs/PRO-REQUIREMENTS.md` §6 Billing Rules (monthly-only, CGST/SGST/IGST split)
+- `docs/BUILD-LOG.md` §59 (this entry)
+- `docs/tasks/subscription-gst-and-monthly-pricing.md` — spec/task doc

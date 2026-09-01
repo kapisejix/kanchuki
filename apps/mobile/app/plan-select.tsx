@@ -11,7 +11,6 @@ import {
   Star,
   Zap,
 } from 'lucide-react-native';
-import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -53,7 +52,7 @@ export default function PlanSelectScreen() {
   const { primaryColor } = useTheme();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const [selectedPeriod, setSelectedPeriod] = useState<'monthly' | 'annual'>('monthly');
+
   const [switching, setSwitching] = useState(false);
 
   const { data: subData, isLoading: subLoading } = useQuery({
@@ -93,7 +92,7 @@ export default function PlanSelectScreen() {
               try {
                 await billingApi.cancel();
                 // After cancellation, create new subscription
-                const result = await billingApi.subscribe(plan, selectedPeriod);
+                const result = await billingApi.subscribe(plan);
                 if (result.data?.checkout_url) {
                   await Linking.openURL(result.data.checkout_url);
                 }
@@ -115,7 +114,7 @@ export default function PlanSelectScreen() {
     // Trial or cancelled — can subscribe directly
     setSwitching(true);
     try {
-      const result = await billingApi.subscribe(plan, selectedPeriod);
+      const result = await billingApi.subscribe(plan);
       if (result.data?.checkout_url) {
         await Linking.openURL(result.data.checkout_url);
       }
@@ -176,43 +175,7 @@ export default function PlanSelectScreen() {
           )}
         </View>
 
-        {/* Billing Period Toggle */}
-        <View className="flex-row bg-white rounded-2xl p-1 mb-4 border border-lavender-200">
-          <AnimatedPressable
-            onPress={() => setSelectedPeriod('monthly')}
-            className="flex-1 py-2.5 rounded-xl items-center overflow-hidden"
-          >
-            {selectedPeriod === 'monthly' ? (
-              <LinearGradient
-                colors={['#231F48', '#560A39']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ flex: 1, width: '100%', borderRadius: 10, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text className="text-xs font-bold text-white">Monthly</Text>
-              </LinearGradient>
-            ) : (
-              <Text className="text-xs font-bold text-heliotrope-500">Monthly</Text>
-            )}
-          </AnimatedPressable>
-          <AnimatedPressable
-            onPress={() => setSelectedPeriod('annual')}
-            className="flex-1 py-2.5 rounded-xl items-center overflow-hidden"
-          >
-            {selectedPeriod === 'annual' ? (
-              <LinearGradient
-                colors={['#231F48', '#560A39']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={{ flex: 1, width: '100%', borderRadius: 10, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' }}
-              >
-                <Text className="text-xs font-bold text-white">Annual <Text className="text-[10px]">Save 20%</Text></Text>
-              </LinearGradient>
-            ) : (
-              <Text className="text-xs font-bold text-heliotrope-500">Annual <Text className="text-[10px]">Save 20%</Text></Text>
-            )}
-          </AnimatedPressable>
-        </View>
+
 
         {isLoading ? (
           <View className="items-center py-10">
@@ -244,9 +207,7 @@ export default function PlanSelectScreen() {
               const planData = plansData?.data?.find((p) => p.plan === planKey);
               const Icon = meta.icon;
               const isCurrent = planKey === currentPlan && !isCancelled;
-              const price = selectedPeriod === 'monthly'
-                ? planData?.pricing.monthly ?? 0
-                : planData?.pricing.annual ?? 0;
+              const price = planData?.pricing.monthly ?? 0;
               const priceDisplay = price > 0
                 ? `₹${(price / 100).toLocaleString('en-IN')}`
                 : '—';

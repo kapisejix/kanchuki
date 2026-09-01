@@ -11,7 +11,7 @@ export const billingApi = {
     request<{
       data: {
         plan: string;
-        pricing: { monthly: number; annual: number };
+        pricing: { monthly: number };
         limits: {
           max_products: number | null;
           max_customers: number | null;
@@ -31,12 +31,12 @@ export const billingApi = {
       };
     }>('/v1/billing/subscription', { getCacheTtlMs: 30_000 }),
 
-  subscribe: (plan: string, billingPeriod: 'monthly' | 'annual') =>
+  subscribe: (plan: string) =>
     request<{ data: { razorpay_subscription_id: string; checkout_url: string } }>(
       '/v1/billing/subscription',
       {
         method: 'POST',
-        body: JSON.stringify({ plan, billing_period: billingPeriod }),
+        body: JSON.stringify({ plan }),
       },
     ),
 

@@ -5,16 +5,16 @@ const API_URL = process.env['NEXT_PUBLIC_API_URL'] ?? 'http://localhost:3001'
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO'
 
-async function getPlanPricing(): Promise<Record<Plan, { monthly: number; annual: number }>> {
+async function getPlanPricing(): Promise<Record<Plan, { monthly: number }>> {
   try {
     const res = await fetch(`${API_URL}/v1/public/pricing`, { next: { revalidate: 60 } })
     if (!res.ok) return PLAN_PRICING
     const json = await res.json()
-    const rows: { plan: Plan; monthly: number; annual: number }[] = json.data ?? []
+    const rows: { plan: Plan; monthly: number }[] = json.data ?? []
     if (rows.length === 0) return PLAN_PRICING
-    return Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly, annual: r.annual }])) as Record<
+    return Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly }])) as Record<
       Plan,
-      { monthly: number; annual: number }
+      { monthly: number }
     >
   } catch {
     return PLAN_PRICING
@@ -54,10 +54,10 @@ const OLD_WAY = [
 
 const FAQ = [
   { q: 'Is there really no credit card for the trial?', a: 'Correct. Start free, and only pay when you\'re sure it works for your shop.' },
-  { q: 'Can I switch plans later?', a: 'Yes — upgrade or downgrade anytime. Annual plans get 20% off.' },
+  { q: 'Can I switch plans later?', a: 'Yes — upgrade or downgrade anytime.' },
   { q: 'What happens when I hit a product limit?', a: 'You can buy an add-on pack for that month, or upgrade the plan. Nothing gets deleted.' },
   { q: 'Is GST added on top?', a: 'Prices include GST invoicing — you get proper invoices for every payment.' },
-  { q: 'Do you offer a discount for the first year?', a: 'Annual billing gives 20% off automatically.' },
+
 ]
 
 const jsonLd = {

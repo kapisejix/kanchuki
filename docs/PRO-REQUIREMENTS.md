@@ -459,7 +459,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 #### F-010: Quota & Limits System (Admin-Configurable, Cross-Resource)
 **Status:** ✅ **Built**
 
-**Priority:** P0 — blocks safe monetization; see CLAUDE.md Key Risk #4 (AI cost per try-on, margin tight at ₹999/month plan)
+**Priority:** P0 — blocks safe monetization; see CLAUDE.md Key Risk #4 (AI cost per try-on, margin tight at ₹4,999/month Starter plan)
 
 **Problem solved:** Limits are no longer hardcoded columns on `Retailer`. Every metered resource (product upload, AI tagging, try-on, image crop, bg-removal, API request) has a shared quota gate — no new column per resource ever needed.
 
@@ -471,7 +471,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 - `QuotaResourceType` enum: `PRODUCT_UPLOAD, AI_TAGGING_CALL, TRY_ON, IMAGE_CROP, BG_REMOVAL, API_REQUEST, STUDIO_SHOOT` (STUDIO_SHOOT added 2026-08-21, no seed rows — fails open until an admin sets a cap)
 - `apps/api/src/lib/quota.ts` — `checkQuota()` fails open when no `plan_limits` row exists (graceful for unconfigured resources); `periodStart()` calculates DAY/MONTH/LIFETIME boundaries
 - `effectiveLimit()` checks `retailer_limit_overrides` first, falls back to `plan_limits` via retailer's plan
-- `plan_pricing` table (added 2026-08-21): `(plan, monthly_paise, annual_paise)` — admin-editable ₹ pricing, replaces the hardcoded `PLAN_PRICING` shared constant (which remains as the fallback when a plan has no row yet)
+- `plan_pricing` table (added 2026-08-21, annual removed 2026-09-01): `(plan, monthly_paise)` — admin-editable base price (ex-GST), replaces the hardcoded `PLAN_PRICING` shared constant (which remains as the fallback when a plan has no row yet). Retailer pays base + 18% GST.
 
 **Wired into routes:** `products.ts` (PRODUCT_UPLOAD, BG_REMOVAL), `tag-product.ts` (AI_TAGGING_CALL, BG_REMOVAL), `tryon.ts` (TRY_ON), `catalog-import.ts` (IMAGE_CROP, AI_TAGGING_CALL, PRODUCT_UPLOAD), `products-studio.ts` (STUDIO_SHOOT — F-032 FLUX Kontext studio shoots, added 2026-08-21)
 
@@ -874,11 +874,13 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 ## 6. Pricing & Billing Requirements
 
 ### Subscription Plans
-| Plan | Monthly | Annual | Products | Customers | Collection Links/mo | Try-ons/mo |
-|------|---------|--------|----------|-----------|-------------------|-----------|
-| Starter | ₹999 | ₹9,999 | 500 | 200 | 50 | 0 (Phase 2) |
-| Growth | ₹2,499 | ₹24,999 | 2,000 | 1,000 | Unlimited | 100 |
-| Pro | ₹4,999 | ₹49,999 | Unlimited | Unlimited | Unlimited | 500 |
+| Plan | Monthly (base, ex-GST) | Products | Customers | Collection Links/mo | Try-ons/mo |
+|------|------------------------|----------|-----------|-------------------|-----------|
+| Starter | ₹4,999 | 500 | 200 | 50 | 0 (Phase 2) |
+| Growth | ₹9,999 | 2,000 | 1,000 | Unlimited | 100 |
+| Pro | ₹14,999 | Unlimited | Unlimited | Unlimited | 500 |
+
+> Retailer pays base + 18% GST. Source of truth: Admin → Plan Limits & Pricing.
 
 ### Add-ons
 - Extra 50 try-ons: ₹299
@@ -888,10 +890,10 @@ All Indian retail software must support GST invoicing. Kanchuki must:
 
 ### Billing Rules
 - Payment via Razorpay (UPI, cards, netbanking) — **live on web billing `kanchuki.app/billing` since 2026-08-10**; the Android app has no in-app purchases (Play Billing compliance — subscriptions/add-ons are sold on the website, see `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`). Launch remains free-trial-first
-- Annual plans: 20% discount built in
+- Monthly billing only (annual plans removed 2026-09-01)
 - 14-day free trial (Growth features), no credit card
 - Auto-renewal with advance notice
-- GST invoice generated for every subscription payment
+- GST invoice generated for every subscription payment — CGST/SGST for intra-state, IGST for inter-state
 - Currency: INR only
 
 ---
@@ -1344,7 +1346,7 @@ Beyond retailer/customer management, permission matrix, and DB guardrails, worth
 
 - **Maintenance mode / platform-wide banner** — take the customer PWA into a read-only or "back soon" state during a migration, without a deploy
 - **Fraud/abuse thresholds** — auto-flag (not auto-block) unusual patterns: one retailer creating 500 products in an hour, one customer hitting checkout on 20 different retailers in a day, repeated failed OTP attempts
-- **AI cost budget alerts** — per Key Risk #4 (CLAUDE.md) — admin-set monthly ₹ ceiling on Claude Vision/try-on spend with email alert at 80%/100%, since margin is already tight at ₹999/month
+- **AI cost budget alerts** — per Key Risk #4 (CLAUDE.md) — admin-set monthly ₹ ceiling on Claude Vision/try-on spend with email alert at 80%/100%, since margin is tight at ₹4,999/month Starter plan
 - **Uploaded-photo content moderation** — spot-check or auto-flag queue for inappropriate uploads (product photos are public on collection links)
 - **Retailer impersonation / "view as"** for support — admin can see exactly what a retailer sees, logged, time-limited, without knowing their password
 - **Terms of Service / consent-copy version tracking** — F-102d already needs legal review of consent text; admin should be able to publish a new version and see which retailers/customers accepted which version

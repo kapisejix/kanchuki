@@ -4,7 +4,7 @@
 import { formatPrice } from '@kanchuki/shared';
 
 export type PlanKey = 'STARTER' | 'GROWTH' | 'PRO';
-export type BillingPeriod = 'monthly' | 'annual';
+export type BillingPeriod = 'monthly';
 
 export const PLAN_ORDER: PlanKey[] = ['STARTER', 'GROWTH', 'PRO'];
 
@@ -13,10 +13,10 @@ export function planLabel(plan: string): string {
   return plan.charAt(0) + plan.slice(1).toLowerCase();
 }
 
-/** ₹999/mo or ₹9,999/yr — full amount, never abbreviated. */
-export function planPriceLabel(paise: number, period: BillingPeriod): string {
+/** ₹4,999/mo — full amount, never abbreviated. */
+export function planPriceLabel(paise: number): string {
   const full = formatPrice(paise).replace('/-', '');
-  return period === 'monthly' ? `${full}/mo` : `${full}/yr`;
+  return `${full}/mo`;
 }
 
 export function planStatusLabel(status?: string | null): string {
@@ -41,13 +41,7 @@ export function formatDate(iso?: string | null): string {
   return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-/** Annual discount vs 12× monthly, as a whole percent (0 when not cheaper). */
-export function annualSavingsPercent(monthlyPaise: number, annualPaise: number): number {
-  if (!monthlyPaise || !annualPaise) return 0;
-  const twelve = monthlyPaise * 12;
-  if (annualPaise >= twelve) return 0;
-  return Math.round(((twelve - annualPaise) / twelve) * 100);
-}
+
 
 /** Addon packs grouped by resource, rendered in this display order. */
 export const ADDON_GROUP_ORDER = [

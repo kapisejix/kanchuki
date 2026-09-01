@@ -15,6 +15,7 @@ import {
   retailersIntegrationsRoutes,
   retailersRatingsRoutes,
   retailersBugReportRoutes,
+  retailersInvoicesRoutes,
 } from "./retailers/index.js";
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
@@ -44,4 +45,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersRatingsRoutes);
   // retailers-bug-reports — retailer-submitted bug reports from the mobile app
   await server.register(retailersBugReportRoutes);
+  // retailers-invoices — GST invoice list + PDF download
+  await server.register(retailersInvoicesRoutes);
 };

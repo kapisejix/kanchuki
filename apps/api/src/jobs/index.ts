@@ -16,6 +16,7 @@ import { handleTagProduct } from './tag-product.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
+import { handleGenerateGstInvoice, type GenerateGstInvoiceJobData } from './generate-gst-invoice.js';
 
 // ─── Redis Connection ──────────────────────────────────────────────
 
@@ -205,6 +206,10 @@ export async function startWorkers(): Promise<void> {
         }
         case 'embedding-backfill':
           return handleEmbeddingBackfill();
+        case 'generate-gst-invoice': {
+          const data = job.data as GenerateGstInvoiceJobData;
+          return handleGenerateGstInvoice(data);
+        }
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }

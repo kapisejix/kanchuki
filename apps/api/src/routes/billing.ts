@@ -4,24 +4,17 @@ import { ADDON_PRICING, PLAN_LIMITS, PLAN_PRICING } from '@kanchuki/shared';
 import type { FastifyPluginAsync, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import { notFound, validationError } from '../plugins/error-handler.js';
+import { computeSubscriptionGst } from '../lib/gst.js';
+import { allocateInvoiceNumber } from '../lib/gst-invoice-number.js';
+import { addGenerateGstInvoiceJob } from '../jobs/generate-gst-invoice.js';
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO';
-type Period = 'monthly' | 'annual';
 
-// Razorpay plan ids are created once in the Razorpay dashboard and mapped here
-const RAZORPAY_PLAN_IDS: Record<Plan, Record<Period, string | undefined>> = {
-  STARTER: {
-    monthly: process.env.RAZORPAY_PLAN_STARTER_MONTHLY,
-    annual: process.env.RAZORPAY_PLAN_STARTER_ANNUAL,
-  },
-  GROWTH: {
-    monthly: process.env.RAZORPAY_PLAN_GROWTH_MONTHLY,
-    annual: process.env.RAZORPAY_PLAN_GROWTH_ANNUAL,
-  },
-  PRO: {
-    monthly: process.env.RAZORPAY_PLAN_PRO_MONTHLY,
-    annual: process.env.RAZORPAY_PLAN_PRO_ANNUAL,
-  },
+// Razorpay plan ids — monthly only (annual removed 2026-09-01)
+const RAZORPAY_PLAN_IDS: Record<Plan, string | undefined> = {
+  STARTER: process.env.RAZORPAY_PLAN_STARTER_MONTHLY,
+  GROWTH: process.env.RAZORPAY_PLAN_GROWTH_MONTHLY,
+  PRO: process.env.RAZORPAY_PLAN_PRO_MONTHLY,
 };
 
 // ponytail: raw fetch instead of razorpay SDK — we need 2 endpoints, SDK adds a dep
@@ -57,19 +50,46 @@ async function verifyWebhookSignature(rawBody: string, signature: string): Promi
   return hexEquals(expected, signature);
 }
 
-function periodEnd(start: Date, period: Period): Date {
+function periodEnd(start: Date): Date {
   const end = new Date(start);
-  if (period === 'annual') end.setFullYear(end.getFullYear() + 1);
-  else end.setMonth(end.getMonth() + 1);
+  end.setMonth(end.getMonth() + 1);
   return end;
+}
+
+// State name → 2-digit code mapping for GST intra/inter-state detection.
+// Only the states we actually encounter from retailer.address fields.
+const STATE_CODE_MAP: Record<string, string> = {
+  'Andhra Pradesh': '37', 'Arunachal Pradesh': '12', Assam: '18',
+  Bihar: '10', Chhattisgarh: '22', Goa: '30', Gujarat: '24',
+  Haryana: '06', 'Himachal Pradesh': '02', Jharkhand: '20',
+  Karnataka: '29', Kerala: '32', 'Madhya Pradesh': '23',
+  Maharashtra: '27', Manipur: '14', Meghalaya: '17', Mizoram: '15',
+  Nagaland: '13', Odisha: '21', Punjab: '03', Rajasthan: '08',
+  Sikkim: '11', 'Tamil Nadu': '33', Telangana: '36', Tripura: '16',
+  'Uttar Pradesh': '09', Uttarakhand: '05', 'West Bengal': '19',
+  Delhi: '07', 'Jammu & Kashmir': '01', Ladakh: '38',
+};
+
+/** Resolve a state name to its 2-digit GST code, or null if unknown. */
+function resolveStateCode(state: string | null | undefined): string | null {
+  if (!state) return null;
+  // Exact match
+  const code = STATE_CODE_MAP[state];
+  if (code) return code;
+  // Case-insensitive fallback
+  const lower = state.toLowerCase();
+  for (const [name, c] of Object.entries(STATE_CODE_MAP)) {
+    if (name.toLowerCase() === lower) return c;
+  }
+  return null;
 }
 
 // Admin-editable via PUT /admin/plan-pricing (plan_pricing table). Missing
 // row (nothing edited yet) falls back to the shared-package default so
 // pricing never breaks before an admin touches the new table.
-async function getPlanPricing(plan: Plan): Promise<{ monthly: number; annual: number }> {
+async function getPlanPricing(plan: Plan): Promise<{ monthly: number }> {
   const row = await prisma.planPricing.findUnique({ where: { plan } });
-  if (row) return { monthly: row.monthly_paise, annual: row.annual_paise };
+  if (row) return { monthly: row.monthly_paise };
   return PLAN_PRICING[plan];
 }
 
@@ -87,7 +107,6 @@ function jsonLimits(plan: Plan) {
 
 const CreateSubscriptionSchema = z.object({
   plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
-  billing_period: z.enum(['monthly', 'annual']).default('monthly'),
 });
 
 interface RazorpaySubscription {
@@ -158,11 +177,11 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) {
       throw validationError(body.error.issues[0]?.message ?? 'Validation failed');
     }
-    const { plan, billing_period } = body.data;
+    const { plan } = body.data;
 
-    const planId = RAZORPAY_PLAN_IDS[plan][billing_period];
+    const planId = RAZORPAY_PLAN_IDS[plan];
     if (!planId) {
-      throw validationError(`Razorpay plan not configured for ${plan} ${billing_period}`);
+      throw validationError(`Razorpay plan not configured for ${plan}`);
     }
 
     const retailer = await prisma.retailer.findUnique({
@@ -182,10 +201,10 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       method: 'POST',
       body: JSON.stringify({
         plan_id: planId,
-        total_count: billing_period === 'annual' ? 10 : 120,
+        total_count: 120, // monthly only, 10 years
         customer_notify: 1,
         start_at: Math.floor(startAt / 1000),
-        notes: { retailer_id: request.retailerId, plan, billing_period },
+        notes: { retailer_id: request.retailerId, plan },
       }),
     });
 
@@ -197,8 +216,8 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
           retailer_id: request.retailerId,
           plan,
           status: 'TRIAL',
-          billing_period,
-          amount_inr: pricing[billing_period],
+          billing_period: 'monthly',
+          amount_inr: pricing.monthly,
           razorpay_subscription_id: rzpSub.id,
           razorpay_plan_id: planId,
           current_period_start: now,
@@ -218,7 +237,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
         action: 'create',
         resource_type: 'Subscription',
         resource_id: rzpSub.id,
-        metadata: { plan, billing_period },
+        metadata: { plan, billing_period: 'monthly' },
         ip_address: request.ip,
       },
     });
@@ -697,9 +716,21 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
         const start = rzpSub.current_start ? new Date(rzpSub.current_start * 1000) : new Date();
         const end = rzpSub.current_end
           ? new Date(rzpSub.current_end * 1000)
-          : periodEnd(start, subscription.billing_period as Period);
+          : periodEnd(start);
 
-        await prisma.$transaction([
+        // Look up retailer state + platform GST profile for invoice
+        const [retailer, gstProfile] = await Promise.all([
+          prisma.retailer.findUnique({ where: { id: retailerId }, select: { state: true } }),
+          prisma.platformGstProfile.findUnique({ where: { id: 'singleton' } }),
+        ]);
+        const gst = computeSubscriptionGst({
+          basePaise: subscription.amount_inr,
+          buyerStateCode: retailer?.state ? resolveStateCode(retailer.state) : null,
+          sellerStateCode: gstProfile?.state_code ?? null,
+        });
+        const invoiceNo = await allocateInvoiceNumber(gstProfile?.invoice_prefix ?? 'KAN');
+
+        const [updatedPayment] = await prisma.$transaction([
           prisma.subscription.update({
             where: { id: subscription.id },
             data: { status: 'ACTIVE', current_period_start: start, current_period_end: end },
@@ -725,11 +756,28 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
                     razorpay_payment_id: event.payload.payment.entity.id,
                     razorpay_order_id: event.payload.payment.entity.order_id,
                     paid_at: new Date(),
+                    // GST columns — pre-computed above with real state codes
+                    amount_excluding_gst: gst.basePaise,
+                    gst_amount: gst.gstTotal,
+                    gst_rate: gst.rate,
+                    cgst_amount: gst.cgst || null,
+                    sgst_amount: gst.sgst || null,
+                    igst_amount: gst.igst || null,
+                    sac_code: gst.sac,
+                    place_of_supply: retailer?.state ?? null,
+                    gst_invoice_number: invoiceNo,
                   },
                 }),
               ]
             : []),
         ]);
+
+        // Enqueue GST invoice PDF generation (async — don't block webhook)
+        if (event.event === 'subscription.charged' && updatedPayment) {
+          addGenerateGstInvoiceJob({ payment_id: updatedPayment.id }).catch((err) => {
+            console.error('[billing] Failed to enqueue GST invoice job:', err);
+          });
+        }
         break;
       }
 

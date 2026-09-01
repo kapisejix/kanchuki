@@ -32,7 +32,6 @@ import { type ColorAccent } from '@/components/site/accents'
 // ── Types ─────────────────────────────────────────────────────────
 
 type PlanName = 'Starter' | 'Growth' | 'Pro'
-type Period = 'monthly' | 'annual'
 
 interface FaqItem {
   q: string
@@ -431,11 +430,10 @@ function TestimonialsSection() {
 // ── Pricing ────────────────────────────────────────────────────────
 
 function PricingSection() {
-  const [period, setPeriod] = useState<Period>('monthly')
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-60px' })
   const [pricing, setPricing] = useState(
-    PLAN_PRICING as Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: number; annual: number }>,
+    PLAN_PRICING as Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: number }>,
   )
 
   useEffect(() => {
@@ -443,11 +441,11 @@ function PricingSection() {
     fetch(`${apiUrl}/v1/public/pricing`)
       .then((r) => r.json())
       .then((res) => {
-        const rows: { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly: number; annual: number }[] = res?.data ?? []
+        const rows: { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly: number }[] = res?.data ?? []
         if (rows.length === 0) return
-        setPricing(Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly, annual: r.annual }])) as Record<
+        setPricing(Object.fromEntries(rows.map((r) => [r.plan, { monthly: r.monthly }])) as Record<
           'STARTER' | 'GROWTH' | 'PRO',
-          { monthly: number; annual: number }
+          { monthly: number }
         >)
       })
       .catch(() => {})
@@ -459,28 +457,20 @@ function PricingSection() {
         <AnimatedSection>
           <SectionHeader tag="Pricing" title="Simple pricing in INR" subtitle="No hidden costs. Pay via UPI, cards, or netbanking. 14-day free trial on any plan." />
         </AnimatedSection>
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={isInView ? { opacity: 1, y: 0 } : {}} transition={{ duration: 0.4, delay: 0.2 }} className="flex items-center justify-center gap-4 mb-10">
-          <button onClick={() => setPeriod('monthly')} className={`text-sm font-medium transition-colors ${period === 'monthly' ? 'text-carbon' : 'text-carbon/40'}`}>Monthly</button>
-          <button onClick={() => setPeriod(period === 'monthly' ? 'annual' : 'monthly')} className={`relative w-12 h-6 rounded-full transition-colors ${period === 'annual' ? 'bg-cobalt-600' : 'bg-carbon/20'}`} aria-label="Toggle billing period">
-            <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${period === 'annual' ? 'translate-x-6' : ''}`} />
-          </button>
-          <button onClick={() => setPeriod('annual')} className={`text-sm font-medium transition-colors ${period === 'annual' ? 'text-carbon' : 'text-carbon/40'}`}>Annual <span className="text-cobalt-600 font-semibold">(Save 20%)</span></button>
-        </motion.div>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-3 gap-6 lg:gap-8">
           {PLANS.map((plan) => {
             const planPricing = pricing[plan.planKey]
-            const price = (period === 'monthly' ? planPricing.monthly : planPricing.annual) / 100
-            const periodLabel = period === 'monthly' ? '/mo' : '/yr'
+            const price = planPricing.monthly / 100
             return (
               <motion.div key={plan.name} variants={fadeUp} className={`relative rounded-2xl p-6 sm:p-8 border transition-all duration-300 ${plan.highlight ? 'border-carbon bg-carbon text-cream shadow-[0_20px_48px_-16px_rgba(6,6,6,0.5)]' : 'border-carbon/10 bg-white hover:border-carbon/25 hover:-translate-y-0.5'}`}>
                 {plan.highlight && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-volt text-carbon text-xs font-semibold px-4 py-1 rounded-full">MOST POPULAR</div>}
                 <h3 className={`font-display text-xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}>{plan.name}</h3>
                 <div className={`font-display text-3xl sm:text-4xl font-semibold mb-1 ${plan.highlight ? 'text-cream' : 'text-carbon'}`}>
                   <span className="inline-flex items-center"><IndianRupee size={22} strokeWidth={1.5} className={plan.highlight ? 'text-cream/80' : 'text-carbon/40'} />{price.toLocaleString('en-IN')}</span>
-                  <span className={`text-base font-normal ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>{periodLabel}</span>
+                  <span className={`text-base font-normal ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>/mo</span>
                 </div>
                 <div className={`text-sm mb-6 ${plan.highlight ? 'text-cream/60' : 'text-carbon/40'}`}>
-                  {period === 'annual' ? `₹${(planPricing.annual / 12 / 100).toLocaleString('en-IN')}/mo billed annually` : `₹${(planPricing.monthly / 100).toLocaleString('en-IN')}/mo billed monthly`}
+                  {`₹${(planPricing.monthly / 100).toLocaleString('en-IN')}/mo billed monthly`}
                 </div>
                 <ul className="space-y-3 mb-8">
                   {plan.features.map((f) => (

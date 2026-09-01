@@ -29,7 +29,6 @@ type PlanPricing = {
   id: string
   plan: Plan
   monthly_paise: number
-  annual_paise: number
 }
 
 const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
@@ -48,7 +47,7 @@ const PERIODS: Period[] = ['DAY', 'MONTH', 'LIFETIME']
 type CellState = { limit_per_period: string; period: Period }
 
 // Rupees as strings while editing — paise only at the API boundary.
-type PriceCellState = { monthly: string; annual: string }
+type PriceCellState = { monthly: string }
 const paiseToRupees = (paise: number) => String(paise / 100)
 const rupeesToPaise = (rupees: string) => Math.round(Number(rupees) * 100)
 
@@ -60,9 +59,9 @@ export default function PlanLimitsPage() {
   const [loading, setLoading] = useState(true)
 
   const [priceCells, setPriceCells] = useState<Record<Plan, PriceCellState>>({
-    STARTER: { monthly: '', annual: '' },
-    GROWTH: { monthly: '', annual: '' },
-    PRO: { monthly: '', annual: '' },
+    STARTER: { monthly: '' },
+    GROWTH: { monthly: '' },
+    PRO: { monthly: '' },
   })
   const [savingPrice, setSavingPrice] = useState<Plan | null>(null)
 
@@ -94,7 +93,6 @@ export default function PlanLimitsPage() {
         for (const row of pricingData) {
           next[row.plan] = {
             monthly: paiseToRupees(row.monthly_paise),
-            annual: paiseToRupees(row.annual_paise),
           }
         }
         return next
@@ -107,8 +105,8 @@ export default function PlanLimitsPage() {
 
   const savePrice = async (plan: Plan) => {
     const cell = priceCells[plan]
-    if (cell.monthly.trim() === '' || cell.annual.trim() === '') {
-      setStatus('❌ Enter both monthly and annual price')
+    if (cell.monthly.trim() === '') {
+      setStatus('❌ Enter monthly price')
       return
     }
     setSavingPrice(plan)
@@ -120,7 +118,6 @@ export default function PlanLimitsPage() {
         body: JSON.stringify({
           plan,
           monthly_paise: rupeesToPaise(cell.monthly),
-          annual_paise: rupeesToPaise(cell.annual),
         }),
       })
       if (!res.ok) throw new Error('Save failed')
@@ -217,16 +214,15 @@ export default function PlanLimitsPage() {
           <h2 className="text-sm font-semibold text-gray-900">Plan Pricing</h2>
         </div>
         <p className="text-xs text-gray-500 mb-4">
-          ₹ per month/year. Changing this does not re-price existing Razorpay subscription
-          plans — re-run &quot;Setup Razorpay Plans&quot; and update the RAZORPAY_PLAN_* env vars after
-          editing.
+          Base price per month (ex-GST). Razorpay charges base + 18% GST. Changing this does not re-price
+          existing Razorpay subscription plans — re-run &quot;Setup Razorpay Plans&quot; and update the
+          RAZORPAY_PLAN_* env vars after editing.
         </p>
         <table className="w-full text-sm mb-2">
           <thead>
             <tr className="border-b border-gray-100">
               <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Plan</th>
-              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Monthly (₹)</th>
-              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Annual (₹)</th>
+              <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Monthly (₹, base ex-GST)</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
@@ -244,16 +240,7 @@ export default function PlanLimitsPage() {
                     className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
                   />
                 </td>
-                <td className="px-3 py-2">
-                  <input
-                    type="number"
-                    value={priceCells[plan].annual}
-                    onChange={(e) =>
-                      setPriceCells((prev) => ({ ...prev, [plan]: { ...prev[plan], annual: e.target.value } }))
-                    }
-                    className="w-24 px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
-                  />
-                </td>
+
                 <td className="px-3 py-2">
                   <button
                     onClick={() => savePrice(plan)}

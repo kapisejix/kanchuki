@@ -33,15 +33,15 @@ type Usage = {
 }
 
 type PlanLimit = { plan: 'STARTER' | 'GROWTH' | 'PRO'; resource_type: string; limit_per_period: number }
-type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number; annual_paise: number }
+type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number }
 
 // Same fallback convention as billing.ts: a missing plan-pricing/plan-limit
 // row means the DB hasn't been seeded for that plan yet, so show the
 // documented default instead of blank.
-const PRICING_FALLBACK: Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: string; annual: string; products: string }> = {
-  STARTER: { monthly: '₹999/mo', annual: '₹9,999/yr', products: '500' },
-  GROWTH: { monthly: '₹2,499/mo', annual: '₹24,999/yr', products: '2,000' },
-  PRO: { monthly: '₹4,999/mo', annual: '₹49,999/yr', products: '∞' },
+const PRICING_FALLBACK: Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: string; products: string }> = {
+  STARTER: { monthly: '₹4,999/mo', products: '500' },
+  GROWTH: { monthly: '₹9,999/mo', products: '2,000' },
+  PRO: { monthly: '₹14,999/mo', products: '∞' },
 }
 const PLAN_LABEL: Record<'STARTER' | 'GROWTH' | 'PRO', string> = {
   STARTER: 'Starter',
@@ -92,7 +92,6 @@ export default function BillingPage() {
     return {
       plan: PLAN_LABEL[plan],
       monthly: pricing ? `${paise(pricing.monthly_paise)}/mo` : fallback.monthly,
-      annual: pricing ? `${paise(pricing.annual_paise)}/yr` : fallback.annual,
       // -1 means unlimited (same convention as plan-limits.tsx) — no row also means unlimited.
       products: products ? (products.limit_per_period === -1 ? '∞' : products.limit_per_period.toLocaleString('en-IN')) : fallback.products,
     }
@@ -108,7 +107,7 @@ export default function BillingPage() {
       })
       if (!res.ok) throw new Error('Setup failed')
       const json = await res.json()
-      setSetupStatus(`✅ Created ${json.data.created}/6 Razorpay plans successfully`)
+      setSetupStatus(`✅ Created ${json.data.created}/3 Razorpay plans successfully`)
     } catch (err) {
       setSetupStatus(`❌ ${err instanceof Error ? err.message : 'Setup failed'}`)
     } finally {
@@ -180,7 +179,7 @@ export default function BillingPage() {
       <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
         <h2 className="text-sm font-semibold text-gray-900 mb-1">Razorpay Plans</h2>
         <p className="text-xs text-gray-500 mb-4">
-          Create the 6 Razorpay billing plans (3 tiers × monthly/annual) after configuring RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.
+          Create the 3 Razorpay monthly billing plans after configuring RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.
         </p>
 
         <div className="flex items-center gap-3">
@@ -231,8 +230,7 @@ export default function BillingPage() {
             <thead>
               <tr className="border-b border-gray-100">
                 <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Plan</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Monthly</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Annual</th>
+                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Monthly (base ex-GST)</th>
                 <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Products</th>
               </tr>
             </thead>
@@ -247,7 +245,6 @@ export default function BillingPage() {
                 >
                   <td className="px-3 py-3 font-semibold text-gray-900">{row.plan}</td>
                   <td className="px-3 py-3 text-right text-gray-600">{row.monthly}</td>
-                  <td className="px-3 py-3 text-right text-gray-600">{row.annual}</td>
                   <td className="px-3 py-3 text-right text-gray-600">{row.products}</td>
                 </motion.tr>
               ))}

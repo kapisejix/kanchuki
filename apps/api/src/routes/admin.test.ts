@@ -926,12 +926,10 @@ describe('POST /admin/retailers/:id/change-plan', () => {
 // ─── GET /admin/usage ─────────────────────────────────────────────
 
 describe('GET /admin/usage', () => {
-  it('returns usage stats with MRR calculated from subscriptions', async () => {
-
-    mockSubscriptionFindMany.mockResolvedValue([
-      { amount_inr: 99900, billing_period: 'monthly' },
-      { amount_inr: 999900, billing_period: 'annual' },
-      { amount_inr: 249900, billing_period: 'monthly' },
+  it('returns usage stats with MRR calculated from subscriptions', async () => {    mockSubscriptionFindMany.mockResolvedValue([
+      { amount_inr: 499900 }, // Starter ₹4,999/mo base
+      { amount_inr: 999900 }, // Growth ₹9,999/mo base
+      { amount_inr: 1499900 }, // Pro ₹14,999/mo base
     ]);
     mockRetailerCount.mockResolvedValueOnce(3).mockResolvedValueOnce(10);
 
@@ -942,11 +940,12 @@ describe('GET /admin/usage', () => {
       headers: authedHeaders(),
     });
 
+
     expect(res.statusCode).toBe(200);
     expect(res.json().data.total_retailers).toBe(10);
     expect(res.json().data.trial_retailers).toBe(3);
     expect(res.json().data.active_subscriptions).toBe(3);
-    expect(res.json().data.mrr_inr).toBe(433125);
+    expect(res.json().data.mrr_inr).toBe(2999700); // 499900 + 999900 + 1499900
 
     await app.close();
   });

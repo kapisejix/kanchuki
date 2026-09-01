@@ -20,65 +20,58 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
 
   // ─── POST /admin/billing/setup-plans ────────────────────────────
-  // Auto-creates all 6 Razorpay plans (3 plans × monthly/annual).
+  // Auto-creates 3 monthly Razorpay plans at gross (base + 18% GST).
   // Run once after setting RAZORPAY_KEY_ID + RAZORPAY_KEY_SECRET.
   // Creates plans, prints the IDs as env var settings, does NOT modify DB.
   server.post('/billing/setup-plans', async (request) => {
-    const created: Record<string, { id: string; period: string }> = {};
+    const created: Record<string, { id: string }> = {};
     const razorpayKeyId = (await getSecret('RAZORPAY_KEY_ID')) ?? '';
     const razorpayKeySecret = (await getSecret('RAZORPAY_KEY_SECRET')) ?? '';
 
     for (const planKey of ['STARTER', 'GROWTH', 'PRO'] as const) {
       const pricingRow = await prisma.planPricing.findUnique({ where: { plan: planKey } });
-      for (const period of ['monthly', 'annual'] as const) {
-        const amountPaise = pricingRow
-          ? period === 'monthly'
-            ? pricingRow.monthly_paise
-            : pricingRow.annual_paise
-          : PLAN_PRICING[planKey][period];
-        const name = `${planKey} ${period === 'monthly' ? 'Monthly' : 'Annual'}`;
+      // Base price in paise (ex-GST). DB row is source of truth; fallback to shared constant.
+      const basePaise = pricingRow?.monthly_paise ?? PLAN_PRICING[planKey].monthly;
+      // Razorpay charges a fixed amount — must include 18% GST (gross)
+      const grossPaise = Math.round(basePaise * 1.18);
 
-        const res = await fetch('https://api.razorpay.com/v1/plans', {
-          method: 'POST',
-          headers: {
-            Authorization: `Basic ${Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString('base64')}`,
-            'Content-Type': 'application/json',
+      const res = await fetch('https://api.razorpay.com/v1/plans', {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString('base64')}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          period: 'monthly',
+          interval: 1,
+          item: {
+            name: `Kanchuki ${planKey} Monthly`,
+            description: `Kanchuki ${planKey} plan — monthly billing`,
+            amount: grossPaise,
+            currency: 'INR',
           },
-          body: JSON.stringify({
-            period: period === 'monthly' ? 'monthly' : 'yearly',
-            interval: 1,
-            item: {
-              name: `Kanchuki ${name}`,
-              description: `Kanchuki ${planKey} plan — ${period} billing`,
-              amount: amountPaise,
-              currency: 'INR',
-            },
-            notes: {
-              plan: planKey,
-              billing_period: period,
-            },
-          }),
-        });
+          notes: {
+            plan: planKey,
+            billing_period: 'monthly',
+          },
+        }),
+      });
 
-        if (!res.ok) {
-          const body = await res.text();
-          request.log.error(
-            { planKey, period, status: res.status, body },
-            'Razorpay plan creation failed',
-          );
-          continue;
-        }
-
-        const plan = (await res.json()) as { id: string };
-        created[`RAZORPAY_PLAN_${planKey}_${period === 'monthly' ? 'MONTHLY' : 'ANNUAL'}`] = {
-          id: plan.id,
-          period,
-        };
+      if (!res.ok) {
+        const body = await res.text();
+        request.log.error(
+          { planKey, status: res.status, body },
+          'Razorpay plan creation failed',
+        );
+        continue;
       }
+
+      const plan = (await res.json()) as { id: string };
+      created[`RAZORPAY_PLAN_${planKey}_MONTHLY`] = { id: plan.id };
     }
 
     const count = Object.keys(created).length;
-    request.log.info({ created }, `Created ${count}/6 Razorpay plans`);
+    request.log.info({ created }, `Created ${count}/3 Razorpay monthly plans`);
 
     let envSnippet = '# Razorpay plan IDs — set these in your environment\n';
     for (const [key, val] of Object.entries(created)) {
@@ -91,7 +84,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     return {
       data: {
         created: count,
-        total: 6,
+        total: 3,
         env_vars: created,
         env_snippet: envSnippet,
       },
@@ -165,6 +158,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /admin/plan-pricing ─────────────────────────────────────
   // Admin-editable ₹/plan pricing, replaces the hardcoded PLAN_PRICING
   // constant. Missing row falls back to that constant (see billing.ts).
+  // Monthly only — base price is ex-GST, retailer pays base + 18%.
   server.get('/plan-pricing', async () => {
     const rows = await prisma.planPricing.findMany({ orderBy: { plan: 'asc' } });
     const byPlan = new Map(rows.map((r) => [r.plan, r]));
@@ -176,19 +170,18 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
         byPlan.get(plan) ?? {
           plan,
           monthly_paise: PLAN_PRICING[plan].monthly,
-          annual_paise: PLAN_PRICING[plan].annual,
         },
     );
     return { data };
   });
 
   // ─── PUT /admin/plan-pricing ─────────────────────────────────────
+  // Monthly only — base price is ex-GST, Razorpay charges gross (base * 1.18).
   server.put('/plan-pricing', async (request) => {
     const body = z
       .object({
         plan: z.enum(['STARTER', 'GROWTH', 'PRO']),
         monthly_paise: z.number().int().min(0),
-        annual_paise: z.number().int().min(0),
       })
       .parse(request.body);
 
@@ -197,7 +190,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     const row = await prisma.planPricing.upsert({
       where: { plan: body.plan },
       create: body,
-      update: { monthly_paise: body.monthly_paise, annual_paise: body.annual_paise },
+      update: { monthly_paise: body.monthly_paise },
     });
 
     await prisma.auditLog.create({
@@ -207,8 +200,8 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
         resource_type: 'PlanPricing',
         resource_id: body.plan,
         metadata: {
-          before: prev ? { monthly_paise: prev.monthly_paise, annual_paise: prev.annual_paise } : null,
-          after: { monthly_paise: body.monthly_paise, annual_paise: body.annual_paise },
+          before: prev ? { monthly_paise: prev.monthly_paise } : null,
+          after: { monthly_paise: body.monthly_paise },
         },
         ip_address: request.ip,
       },
@@ -529,16 +522,13 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
     const [activeSubscriptions, trialCount, totalRetailers] = await Promise.all([
       prisma.subscription.findMany({
         where: { status: 'ACTIVE' },
-        select: { amount_inr: true, billing_period: true },
+        select: { amount_inr: true },
       }),
       prisma.retailer.count({ where: { plan_status: 'TRIAL', deleted_at: null } }),
       prisma.retailer.count({ where: { deleted_at: null } }),
     ]);
 
-    const mrr = activeSubscriptions.reduce((sum: number, sub) => {
-      const monthlyAmount = sub.billing_period === 'annual' ? sub.amount_inr / 12 : sub.amount_inr;
-      return sum + monthlyAmount;
-    }, 0);
+    const mrr = activeSubscriptions.reduce((sum: number, sub) => sum + sub.amount_inr, 0);
 
     return {
       data: {

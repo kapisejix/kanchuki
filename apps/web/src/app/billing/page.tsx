@@ -29,7 +29,6 @@ import {
   ADDON_GROUP_ORDER,
   type BillingPeriod,
   type PlanKey,
-  annualSavingsPercent,
   formatDate,
   planLabel,
   planPriceLabel,
@@ -91,7 +90,7 @@ async function refreshAccessToken(): Promise<boolean> {
 
 interface PlanInfo {
   plan: string;
-  pricing: { monthly: number; annual: number };
+  pricing: { monthly: number };
   limits: Record<string, number | null>;
 }
 
@@ -101,7 +100,6 @@ interface SubscriptionInfo {
   trial_ends_at: string | null;
   plan_expires_at: string | null;
   subscription: {
-    billing_period?: string | null;
     amount_inr?: number | null;
     current_period_end?: string | null;
   } | null;
@@ -435,21 +433,18 @@ function LoginCard({
 function PlanCard({
   plan,
   pricing,
-  period,
   current,
   active,
   busy,
   onChoose,
 }: {
   plan: string;
-  pricing: { monthly: number; annual: number };
-  period: BillingPeriod;
+  pricing: { monthly: number };
   current: boolean;
   active: boolean;
   busy: boolean;
   onChoose: () => void;
 }) {
-  const savings = annualSavingsPercent(pricing.monthly, pricing.annual);
   return (
     <div
       className={`flex flex-col rounded-2xl border p-5 transition-shadow ${
@@ -466,13 +461,9 @@ function PlanCard({
       </div>
 
       <p className="mt-3 text-2xl font-bold text-ink-900">
-        {planPriceLabel(period === 'monthly' ? pricing.monthly : pricing.annual, period)}
+        {planPriceLabel(pricing.monthly)}
       </p>
-      <p className="mt-0.5 text-xs text-ink-500">
-        {period === 'monthly'
-          ? 'billed monthly'
-          : `billed yearly${savings > 0 ? ` · save ${savings}%` : ''}`}
-      </p>
+      <p className="mt-0.5 text-xs text-ink-500">billed monthly</p>
 
       <ul className="mt-4 flex-1 space-y-1.5 text-xs text-ink-600">
         <li>AI auto-tagging on every photo</li>
@@ -504,6 +495,97 @@ function PlanCard({
   );
 }
 
+interface Invoice {
+  id: string;
+  amount_inr: number;
+  amount_excluding_gst: number | null;
+  gst_amount: number | null;
+  gst_rate: number | null;
+  cgst_amount: number | null;
+  sgst_amount: number | null;
+  igst_amount: number | null;
+  gst_invoice_number: string | null;
+  invoice_pdf_url: string | null;
+  paid_at: string | null;
+  status: string;
+  place_of_supply: string | null;
+}
+
+function InvoiceList({ token }: { token: string }) {
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    void apiCall<Invoice[]>('/retailers/me/invoices', token)
+      .then(setInvoices)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  if (loading || !invoices.length) return null;
+
+  return (
+    <div className="mt-10">
+      <h2 className="font-display text-xl font-semibold text-ink-900">Invoices &amp; GST</h2>
+      <p className="mt-0.5 text-xs text-ink-500">
+        Download GST-compliant invoices for your subscription payments.
+      </p>
+
+      <div className="mt-4 rounded-2xl border border-sand-200 bg-white overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-sand-100 bg-sand-50/50">
+                <th className="px-4 py-3 text-xs font-semibold text-ink-600">Invoice</th>
+                <th className="px-4 py-3 text-xs font-semibold text-ink-600">Date</th>
+                <th className="px-4 py-3 text-xs font-semibold text-ink-600 text-right">Base</th>
+                <th className="px-4 py-3 text-xs font-semibold text-ink-600 text-right">GST</th>
+                <th className="px-4 py-3 text-xs font-semibold text-ink-600 text-right">Total</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody>
+              {invoices.map((inv) => (
+                <tr key={inv.id} className="border-b border-sand-50 last:border-0">
+                  <td className="px-4 py-3 text-xs font-medium text-ink-900">
+                    {inv.gst_invoice_number ?? '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-ink-500">
+                    {inv.paid_at ? formatDate(inv.paid_at) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-ink-700 text-right">
+                    {formatPriceSafe(inv.amount_excluding_gst ?? inv.amount_inr)}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-ink-500 text-right">
+                    {inv.gst_amount ? formatPriceSafe(inv.gst_amount) : '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs font-medium text-ink-900 text-right">
+                    {formatPriceSafe(inv.amount_inr)}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    {inv.invoice_pdf_url ? (
+                      <a
+                        href={inv.invoice_pdf_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-lg border border-sand-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-ink-700 transition-colors hover:border-sand-300"
+                      >
+                        PDF ↓
+                      </a>
+                    ) : (
+                      <span className="text-[11px] text-sand-400">Pending</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Dashboard({
   token,
   onLogout,
@@ -515,7 +597,7 @@ function Dashboard({
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [plans, setPlans] = useState<PlanInfo[]>([]);
   const [addons, setAddons] = useState<Record<string, AddonPack[]>>({});
-  const [period, setPeriod] = useState<BillingPeriod>('monthly');
+
   const [loading, setLoading] = useState(true);
   const [choosingPlan, setChoosingPlan] = useState<string | null>(null);
   const [buyingAddon, setBuyingAddon] = useState<string | null>(null);
@@ -563,7 +645,7 @@ function Dashboard({
     try {
       const data = await apiCall<{ checkout_url: string }>('/billing/subscription', token, {
         method: 'POST',
-        body: JSON.stringify({ plan, billing_period: period }),
+        body: JSON.stringify({ plan }),
       });
       setNotice(
         `Razorpay checkout opened for the ${planLabel(plan)} plan. Your plan activates when the first payment clears.`,
@@ -618,11 +700,6 @@ function Dashboard({
 
   const status = subscription?.plan_status ?? 'TRIAL';
   const statusActive = status === 'ACTIVE';
-  const annualSavings =
-    plans.length > 0
-      ? annualSavingsPercent(plans[0]?.pricing.monthly ?? 0, plans[0]?.pricing.annual ?? 0)
-      : 0;
-
   if (loading && !subscription) {
     return (
       <div className="flex flex-col items-center gap-3 py-24 text-sand-400">
@@ -705,9 +782,7 @@ function Dashboard({
                   : statusActive
                     ? `Renews ${formatDate(subscription?.plan_expires_at ?? subscription?.subscription?.current_period_end)}`
                     : 'No active subscription'}
-                {subscription?.subscription?.billing_period
-                  ? ` · ${subscription.subscription.billing_period === 'annual' ? 'yearly' : 'monthly'} billing`
-                  : ''}
+                · monthly billing
               </p>
             </div>
           </div>
@@ -735,22 +810,7 @@ function Dashboard({
                 : 'The first charge lands when your free trial ends.'}
             </p>
           </div>
-          <div className="inline-flex rounded-xl border border-sand-200 bg-white p-1">
-            {(['monthly', 'annual'] as BillingPeriod[]).map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setPeriod(p)}
-                className={`rounded-lg px-4 py-1.5 text-xs font-semibold transition-colors ${
-                  period === p ? 'bg-ink-600 text-white' : 'text-ink-600 hover:bg-sand-100'
-                }`}
-              >
-                {p === 'monthly'
-                  ? 'Monthly'
-                  : `Annual${annualSavings > 0 ? ` (save ${annualSavings}%)` : ''}`}
-              </button>
-            ))}
-          </div>
+
         </div>
 
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
@@ -759,7 +819,6 @@ function Dashboard({
               key={plan.plan}
               plan={plan.plan}
               pricing={plan.pricing}
-              period={period}
               current={subscription?.plan === plan.plan && statusActive}
               active={!statusActive}
               busy={choosingPlan === plan.plan}
@@ -768,6 +827,9 @@ function Dashboard({
           ))}
         </div>
       </div>
+
+      {/* Invoices */}
+      <InvoiceList token={token} />
 
       {/* Add-ons */}
       <div className="mt-10">
