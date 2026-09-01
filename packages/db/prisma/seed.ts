@@ -214,7 +214,6 @@ async function createRetailer(data: {
       onboarding_step: 6,
       max_products: data.plan === 'PRO' ? 1_000_000 : data.plan === 'GROWTH' ? 2000 : 500,
       max_customers: data.plan === 'PRO' ? 1_000_000 : data.plan === 'GROWTH' ? 1000 : 200,
-      try_on_credits: data.plan === 'PRO' ? 500 : data.plan === 'GROWTH' ? 100 : 0,
       plan_expires_at: new Date(Date.now() + 30 * 86_400_000),
     },
   })

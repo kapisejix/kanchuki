@@ -839,7 +839,6 @@ describe('PATCH /retailers/me/onboarding — demo_plan', () => {
           plan_status: 'TRIAL',
           max_products: 999999,
           max_customers: 999999,
-          try_on_credits: 500,
           onboarding_step: 4,
         }),
       }),

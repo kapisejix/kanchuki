@@ -72,7 +72,6 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
           plan_status: 'TRIAL' as const,
           max_products: 999999,
           max_customers: 999999,
-          try_on_credits: 500,
         }
       : body.data.plan
         ? { plan: body.data.plan }
