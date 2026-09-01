@@ -52,6 +52,14 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Save product photos and videos to your gallery.",
+          "savePhotosPermission": "Save product photos and videos to your gallery.",
+          "isAccessMediaLocationEnabled": false
+        }
+      ],
+      [
         "@sentry/react-native/expo",
         {
           "organization": "kanchuki",

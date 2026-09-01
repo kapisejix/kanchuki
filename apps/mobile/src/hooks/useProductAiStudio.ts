@@ -340,11 +340,27 @@ export function useProductAiStudio({
         throw new Error(`Download failed with status ${downloadResult.status}`)
       }
 
-      // OS share sheet (Save to Files, gallery apps, WhatsApp…). expo-sharing
-      // ships in Expo Go and every dev/EAS build — expo-media-library's
-      // ExpoMediaLibraryNext native module does not, and threw
-      // "Cannot find native module 'ExpoMediaLibraryNext'" on import here
-      // (git 31ac7d1, 835cb58).
+      // Preferred path (dev / EAS builds): save straight to the device gallery.
+      // expo-media-library's native module is NOT in Expo Go and throws
+      // "Cannot find native module 'ExpoMediaLibraryNext'" — lazy-require it so
+      // that failure is caught and we fall through to the share sheet.
+      try {
+        const MediaLibrary = require('expo-media-library') as typeof import('expo-media-library')
+        const perm = await MediaLibrary.requestPermissionsAsync()
+        if (perm.granted) {
+          await MediaLibrary.saveToLibraryAsync(downloadResult.uri)
+          Alert.alert(
+            'Saved',
+            isVideo ? 'Video saved to your gallery.' : 'Photo saved to your gallery.',
+          )
+          return
+        }
+      } catch {
+        // Expo Go (no native module) — fall back to the OS share sheet below.
+      }
+
+      // Fallback: OS share sheet (Save to Files, gallery apps, WhatsApp…).
+      // expo-sharing ships in Expo Go and every dev/EAS build.
       if (!(await Sharing.isAvailableAsync())) {
         Alert.alert('Not available', 'Sharing is not available on this device.')
         return

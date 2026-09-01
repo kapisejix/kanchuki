@@ -6,7 +6,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Share2, Check, Download, Trash2 } from 'lucide-react-native'
 import QRCode from 'react-native-qrcode-svg'
-import { Paths, writeAsStringAsync } from 'expo-file-system'
+import { Paths } from 'expo-file-system'
+// writeAsStringAsync throws (deprecated) from the SDK 54 barrel — the legacy
+// subpath is the sanctioned migration target (same as useProductAiStudio.ts).
+import { writeAsStringAsync } from 'expo-file-system/legacy'
 import { retailerApi, collectionApi } from '../src/lib/api'
 import { showError } from '../src/lib/errors'
 import { useTheme } from '../src/lib/theme'
