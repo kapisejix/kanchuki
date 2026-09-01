@@ -10,8 +10,6 @@ import {
   Package,
   Users,
   Share2,
-  Shirt,
-  DollarSign,
   Calendar,
   Phone,
   MapPin,
@@ -66,16 +64,11 @@ type RetailerDetail = {
   updated_at: string
   max_products: number
   max_customers: number
-  try_on_credits: number
   max_staff_seats: number
   product_count: number
   customer_count: number
   collection_count: number
   staff_count: number
-  try_on: {
-    this_month: { count: number; cost_usd: number }
-    total: { count: number; cost_usd: number }
-  }
   is_suspended: boolean
   suspended_at: string | null
   suspended_reason: string | null
@@ -425,9 +418,6 @@ export default function RetailerDetailPage() {
             <MiniStat icon={Users} label="Customers" value={retailer.customer_count} max={retailer.max_customers} />
             <MiniStat icon={Share2} label="Collections" value={retailer.collection_count} />
             <MiniStat icon={UserCheck} label="Staff" value={retailer.staff_count} max={retailer.max_staff_seats} />
-            <MiniStat icon={Shirt} label="Try-Ons (mth)" value={retailer.try_on.this_month.count} />
-            <MiniStat icon={DollarSign} label="GPU Cost" value={`$${retailer.try_on.total.cost_usd.toFixed(2)}`} />
-            <MiniStat icon={Shield} label="Credits" value={retailer.try_on_credits} />
             <MiniStat icon={Clock} label="Trial Ends" value={trialEnd ? trialEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'} />
           </div>
 
@@ -838,7 +828,6 @@ export default function RetailerDetailPage() {
               <LimitRow label="Max Products" current={retailer.product_count} max={retailer.max_products} />
               <LimitRow label="Max Customers" current={retailer.customer_count} max={retailer.max_customers} />
               <LimitRow label="Staff Seats" current={retailer.staff_count} max={retailer.max_staff_seats} />
-              <LimitRow label="Try-On Credits" current={retailer.try_on_credits} max={1000} />
             </div>
           </div>
 
@@ -902,7 +891,7 @@ export default function RetailerDetailPage() {
                   onChange={(e) => setOverrideForm({ ...overrideForm, resource_type: e.target.value })}
                   className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/40"
                 >
-                  {['PRODUCT_UPLOAD', 'AI_TAGGING_CALL', 'TRY_ON', 'IMAGE_CROP', 'BG_REMOVAL', 'API_REQUEST'].map((rt) => (
+                  {['PRODUCT_UPLOAD', 'AI_TAGGING_CALL', 'IMAGE_CROP', 'BG_REMOVAL', 'API_REQUEST'].map((rt) => (
                     <option key={rt} value={rt}>{rt}</option>
                   ))}
                 </select>

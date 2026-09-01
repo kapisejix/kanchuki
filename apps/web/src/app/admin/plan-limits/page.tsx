@@ -11,7 +11,6 @@ type Plan = 'STARTER' | 'GROWTH' | 'PRO'
 type ResourceType =
   | 'PRODUCT_UPLOAD'
   | 'AI_TAGGING_CALL'
-  | 'TRY_ON'
   | 'IMAGE_CROP'
   | 'BG_REMOVAL'
   | 'API_REQUEST'
@@ -37,7 +36,6 @@ const PLANS: Plan[] = ['STARTER', 'GROWTH', 'PRO']
 const RESOURCE_TYPES: ResourceType[] = [
   'PRODUCT_UPLOAD',
   'AI_TAGGING_CALL',
-  'TRY_ON',
   'IMAGE_CROP',
   'BG_REMOVAL',
   'API_REQUEST',

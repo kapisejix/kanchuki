@@ -8,9 +8,7 @@ import {
   TrendingUp,
   Users,
   Activity,
-  DollarSign,
   Sparkles,
-  BadgeCheck,
   type LucideIcon,
 } from 'lucide-react'
 import { adminGetOptions, adminMutateOptions } from '@/lib/admin-fetch'
@@ -32,8 +30,6 @@ type Usage = {
   trial_retailers: number
   active_subscriptions: number
   mrr_inr: number
-  try_on_this_month: number
-  try_on_cost_usd: number
 }
 
 type PlanLimit = { plan: 'STARTER' | 'GROWTH' | 'PRO'; resource_type: string; limit_per_period: number }
@@ -42,10 +38,10 @@ type PlanPricing = { plan: 'STARTER' | 'GROWTH' | 'PRO'; monthly_paise: number; 
 // Same fallback convention as billing.ts: a missing plan-pricing/plan-limit
 // row means the DB hasn't been seeded for that plan yet, so show the
 // documented default instead of blank.
-const PRICING_FALLBACK: Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: string; annual: string; products: string; tryons: string }> = {
-  STARTER: { monthly: '₹999/mo', annual: '₹9,999/yr', products: '500', tryons: '0' },
-  GROWTH: { monthly: '₹2,499/mo', annual: '₹24,999/yr', products: '2,000', tryons: '100' },
-  PRO: { monthly: '₹4,999/mo', annual: '₹49,999/yr', products: '∞', tryons: '500' },
+const PRICING_FALLBACK: Record<'STARTER' | 'GROWTH' | 'PRO', { monthly: string; annual: string; products: string }> = {
+  STARTER: { monthly: '₹999/mo', annual: '₹9,999/yr', products: '500' },
+  GROWTH: { monthly: '₹2,499/mo', annual: '₹24,999/yr', products: '2,000' },
+  PRO: { monthly: '₹4,999/mo', annual: '₹49,999/yr', products: '∞' },
 }
 const PLAN_LABEL: Record<'STARTER' | 'GROWTH' | 'PRO', string> = {
   STARTER: 'Starter',
@@ -92,7 +88,6 @@ export default function BillingPage() {
   const pricingRows = (['STARTER', 'GROWTH', 'PRO'] as const).map((plan) => {
     const pricing = planPricing.find((p) => p.plan === plan)
     const products = planLimits.find((l) => l.plan === plan && l.resource_type === 'PRODUCT_UPLOAD')
-    const tryons = planLimits.find((l) => l.plan === plan && l.resource_type === 'TRY_ON')
     const fallback = PRICING_FALLBACK[plan]
     return {
       plan: PLAN_LABEL[plan],
@@ -100,7 +95,6 @@ export default function BillingPage() {
       annual: pricing ? `${paise(pricing.annual_paise)}/yr` : fallback.annual,
       // -1 means unlimited (same convention as plan-limits.tsx) — no row also means unlimited.
       products: products ? (products.limit_per_period === -1 ? '∞' : products.limit_per_period.toLocaleString('en-IN')) : fallback.products,
-      tryons: tryons ? (tryons.limit_per_period === -1 ? '∞' : tryons.limit_per_period.toLocaleString('en-IN')) : fallback.tryons,
     }
   })
 
@@ -182,35 +176,6 @@ export default function BillingPage() {
         />
       </motion.div>
 
-      {/* Cost analysis */}
-      <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-          <DollarSign size={16} className="text-gray-400" />
-          Cost Analysis
-        </h2>
-        <div className="space-y-4">
-          <CostRow
-            icon={DollarSign}
-            label="GPU cost (this month)"
-            value={`$${usage?.try_on_cost_usd.toFixed(2) ?? '0.00'}`}
-          />
-          <CostRow
-            icon={Activity}
-            label="Try-ons processed (month)"
-            value={usage?.try_on_this_month.toLocaleString('en-IN') ?? '0'}
-          />
-          <CostRow
-            icon={IndianRupee}
-            label="Avg cost per try-on"
-            value={usage && usage.try_on_this_month > 0
-              ? `₹${((usage.try_on_cost_usd * 83) / usage.try_on_this_month).toFixed(2)}`
-              : '—'
-            }
-            isLast
-          />
-        </div>
-      </motion.div>
-
       {/* Razorpay setup */}
       <motion.div variants={itemVariants} className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-6 hover:shadow-lg transition-shadow">
         <h2 className="text-sm font-semibold text-gray-900 mb-1">Razorpay Plans</h2>
@@ -256,9 +221,6 @@ export default function BillingPage() {
           </motion.div>
         )}
 
-        <p className="text-xs text-gray-400 mt-3 italic">
-          ⏱ Razorpay webhook integration is deferred to production deployment.
-        </p>
       </motion.div>
 
       {/* Pricing reference */}
@@ -272,7 +234,6 @@ export default function BillingPage() {
                 <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Monthly</th>
                 <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Annual</th>
                 <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Products</th>
-                <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Try-Ons</th>
               </tr>
             </thead>
             <tbody>
@@ -288,7 +249,6 @@ export default function BillingPage() {
                   <td className="px-3 py-3 text-right text-gray-600">{row.monthly}</td>
                   <td className="px-3 py-3 text-right text-gray-600">{row.annual}</td>
                   <td className="px-3 py-3 text-right text-gray-600">{row.products}</td>
-                  <td className="px-3 py-3 text-right text-gray-600">{row.tryons}</td>
                 </motion.tr>
               ))}
             </tbody>
@@ -335,17 +295,5 @@ function RevenueCard({
       <div className="text-2xl font-bold text-gray-900">{value}</div>
       <div className="text-xs text-gray-400 mt-1">{subtext}</div>
     </motion.div>
-  )
-}
-
-function CostRow({ icon: Icon, label, value, isLast }: { icon: LucideIcon; label: string; value: string; isLast?: boolean }) {
-  return (
-    <div className={`flex items-center justify-between py-2 ${!isLast ? 'border-b border-gray-50' : ''}`}>
-      <div className="flex items-center gap-2">
-        <Icon size={16} className="text-gray-400" />
-        <span className="text-sm text-gray-600">{label}</span>
-      </div>
-      <span className="text-sm font-semibold text-gray-900">{value}</span>
-    </div>
   )
 }
