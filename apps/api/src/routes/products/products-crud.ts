@@ -1,5 +1,4 @@
 // Auto-split from products.ts (scripts/check-route-size.sh) — route bodies verbatim.
-import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai';
 import { type Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -260,63 +259,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     };
   });
 
-  // ─── GET /products/:id/interested-customers ──────────────────────
-  server.get('/:id/interested-customers', async (request) => {
-    // F-020: a delegated catalog-upload session must not reach customer PII
-    // for a retailer whose real login was never shared (see auth.ts).
-    if (request.catalogDelegate) throw forbidden('This session can only manage the catalog');
-
-    const { id } = request.params as { id: string };
-    const retailerId = request.retailerId;
-
-    const query = z
-      .object({ limit: z.coerce.number().int().min(1).max(50).default(12) })
-      .safeParse(request.query);
-    if (!query.success) throw validationError('Invalid query');
-    const { limit } = query.data;
-
-    const product = await prisma.product.findFirst({
-      where: { id, retailer_id: retailerId, deleted_at: null },
-      select: { id: true },
-    });
-    if (!product) throw notFound('Product');
-
-    type MatchRow = {
-      customer_id: string;
-      name: string;
-      phone: string;
-      match_score: number;
-    };
-
-    const rows = await prisma.$queryRaw<MatchRow[]>`
-      SELECT
-        c.id AS customer_id,
-        c.name,
-        c.phone,
-        (1 - (dna.preference_vector <=> pe.embedding)) AS match_score
-      FROM customer_fashion_dna dna
-      JOIN customers c ON c.id = dna.customer_id
-      JOIN product_embeddings pe ON pe.product_id = ${id}
-      WHERE dna.retailer_id = ${retailerId}
-        AND c.deleted_at IS NULL
-        AND dna.confidence_score >= ${MIN_CONFIDENCE_FOR_MATCHING}
-      ORDER BY match_score DESC
-      LIMIT ${limit * 2}
-    `;
-
-    const customers = rows
-      .filter((r) => Number(r.match_score) > MATCH_SIMILARITY_THRESHOLD)
-      .slice(0, limit)
-      .map((r) => ({
-        id: r.customer_id,
-        name: r.name,
-        phone: r.phone,
-        match_score: Number(r.match_score),
-      }));
-
-    return { data: { customers } };
-  });
-
   // ─── PUT /products/:id ──────────────────────────────────────────
   server.put('/:id', async (request) => {
     const { id } = request.params as { id: string };
@@ -379,11 +321,6 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
         ip_address: request.ip,
       },
     });
-
-    // Fire-and-forget: restock / price-drop notifications
-    const productName = updated.name || 'A product';
-
-    // Restock / price-drop notifications removed — notification system dropped
 
     return { data: updated };
   });
