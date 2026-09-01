@@ -6,4 +6,3 @@ export { productsProCleanupRoutes } from './products-pro-cleanup.js';
 export { productsVariantsRoutes } from './products-variants.js';
 export { productsAiRoutes } from './products-ai.js';
 export { productsStudioRoutes } from './products-studio.js';
-export { productsFestivalBackgroundRoutes } from './products-festival-background.js';

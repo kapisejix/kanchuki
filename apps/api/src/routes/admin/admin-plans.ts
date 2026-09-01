@@ -120,7 +120,6 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
         resource_type: z.enum([
           'PRODUCT_UPLOAD',
           'AI_TAGGING_CALL',
-          'TRY_ON',
           'IMAGE_CROP',
           'BG_REMOVAL',
           'API_REQUEST',
@@ -515,12 +514,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   server.get('/usage', async () => {
     const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
-    const [tryOnUsage, activeSubscriptions, trialCount, totalRetailers] = await Promise.all([
-      prisma.tryOnUsageLog.aggregate({
-        where: { created_at: { gte: monthStart } },
-        _sum: { cost_usd: true },
-        _count: true,
-      }),
+    const [activeSubscriptions, trialCount, totalRetailers] = await Promise.all([
       prisma.subscription.findMany({
         where: { status: 'ACTIVE' },
         select: { amount_inr: true, billing_period: true },
@@ -529,7 +523,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
       prisma.retailer.count({ where: { deleted_at: null } }),
     ]);
 
-    const mrr = activeSubscriptions.reduce((sum, sub) => {
+    const mrr = activeSubscriptions.reduce((sum: number, sub) => {
       const monthlyAmount = sub.billing_period === 'annual' ? sub.amount_inr / 12 : sub.amount_inr;
       return sum + monthlyAmount;
     }, 0);
@@ -540,8 +534,6 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
         trial_retailers: trialCount,
         active_subscriptions: activeSubscriptions.length,
         mrr_inr: Math.round(mrr),
-        try_on_this_month: tryOnUsage._count,
-        try_on_cost_usd: tryOnUsage._sum.cost_usd ?? 0,
       },
     };
   });

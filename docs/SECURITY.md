@@ -9,7 +9,7 @@
 
 ## Security Priorities
 
-1. **Customer photo privacy** — VTO photos must never be stored permanently without explicit consent
+1. **Customer photo privacy** — product photos are retailer-owned; customer-uploaded photos are not collected (Virtual Try-On removed 2026-08-31)
 2. **Retailer data isolation** — no cross-tenant data leakage
 3. **Authentication** — phone OTP with rate limiting, no password guessing
 4. **AI cost abuse** — prevent malicious actors from triggering expensive AI calls
@@ -98,203 +98,30 @@ CREATE POLICY "retailers_own_data" ON products
 
 ---
 
-## 3. Customer Photo Privacy (VTO)
+## 3. Customer Photo Privacy (VTO) — REMOVED
 
-**This is the highest-risk area for trust.**
-
-### Privacy Rules
-
-1. **No permanent storage without consent** — Customer try-on input photos are deleted immediately after job completes.
-2. **Explicit consent modal** — Customer must tap "I agree" before photo upload. Cannot be skipped.
-3. **No sharing** — Try-on input photos never shared with retailer or any third party.
-4. **Result lifetime** — Result images expire after 24 hours. Not permanently accessible.
-5. **No biometric data** — We do not extract, store, or process facial recognition or biometric data.
-
-### VTO Photo Lifecycle
-
-```
-Customer uploads photo
-  → Stored in R2 at try_on_jobs/{job_id}/input.jpg (PRIVATE bucket)
-  → TryOnJob record created: customer_photo_r2_key set
-  → AI processes (V-Tone API call)
-  → Result stored at try_on_jobs/{job_id}/result.jpg (PRIVATE bucket, 24h expiry)
-  → Input photo DELETED: customer_photo_r2_key nulled, customer_photo_deleted_at set
-  → TryOnJob.result_url: signed URL valid 24h only
-  → After 24h: cron job deletes result, result_r2_key nulled
-```
-
-### Consent Modal Text (must not change without legal review)
-
-```
-Before we proceed, please know:
-• Your photo is used only to preview this outfit on you.
-• Your photo is NOT stored after the preview is ready.
-• Your photo is NOT shared with the shop or anyone else.
-• The preview image will be available for 24 hours only.
-
-By tapping 'Continue', you agree to these terms.
-```
+Virtual Try-On was removed in `chore/remove-unwanted-features` (2026-08-31,
+migration 082). No customer photo is uploaded for garment compositing anywhere
+in the product any more; `try_on_jobs`, `customer_measurements` and their R2
+prefixes (`try_on_jobs/`, `tryon-results/`, `tryon-preprocessed/`) no longer
+exist. §§3b and 3c below (training-data consent + revocation) are removed with
+it. See `docs/database/no-feature-want.md`.
 
 ---
 
-## 3b. Training-Data Consent (F-102d — separate opt-in, off by default)
+## 3b. Training-Data Consent — REMOVED
 
-Everything in §3 above still applies unconditionally — every try-on's input
-photo is deleted after processing regardless of what follows here. This
-section covers a **second, independent, unchecked-by-default** checkbox that
-lets a customer additionally allow Kanchuki to keep a copy of that one
-try-on's photos to improve the try-on model. It must never be implied by, or
-bundled into, the required processing consent in §3.
-
-### Rules
-
-1. **Opt-in, not opt-out.** Checkbox defaults to unchecked on every screen
-   (web `TryOnModal`, mobile `in-store` try-on). No dark patterns — same
-   visual weight as an unchecked checkbox, not a pre-ticked box.
-2. **Retailer never sees this data.** `TrainingPhotoConsent` has no
-   `retailer_id` column and no RLS policy grants the `authenticated`
-   (retailer) role any access — only the backend's service-role key can read
-   or write it (migration `008_training_photo_consent`). This is a
-   deliberate architectural choice, not a "second database": Kanchuki runs
-   one Postgres instance for the whole platform, and tenant isolation is via
-   Row Level Security policies, not separate physical databases per tenant —
-   this table simply has zero retailer-facing policies, same mechanism that
-   already isolates one retailer's data from another's.
-3. **Separate storage from the normal try-on lifecycle.** Consented copies
-   live under R2 prefix `training-data/`, distinct from `tryon-results/` and
-   `tryon-preprocessed/`, and are **not** covered by the 24h-expiry cleanup
-   cron that deletes normal try-on results. They persist until a
-   deletion/retention policy is defined (not yet built — see Open Items).
-4. **Versioned consent.** Every `TrainingPhotoConsent` row records the exact
-   `consent_version` string shown at capture time
-   (`apps/api/src/jobs/process-tryon.ts::TRAINING_CONSENT_VERSION`), so a
-   later change to the consent copy never retroactively changes what an
-   earlier customer is understood to have agreed to.
-5. **Failure is non-fatal.** If the training-copy write fails, the customer's
-   try-on result is unaffected — this consent path runs after the result is
-   already returned to the customer.
-
-### Open items (flagged, not yet built)
-
-- Retention/deletion policy for `training-data/` — now implemented (180-day
-  cleanup cron at `apps/api/src/jobs/cleanup-training-data.ts`). See §3c for
-  the companion revocation flow. Earlier sessions' "not built" notes are
-  superseded.
-- India's DPDP Act 2023 treats this as processing personal data requiring
-  clear, specific, informed consent — the copy above was written to be
-  specific about scope, but has **not** had a legal review pass. Treat as
-  a placeholder needing sign-off before this ships to real customers, same
-  status as the original consent text below.
+Removed with Virtual Try-On (`chore/remove-unwanted-features`, 2026-08-31).
+`training_photo_consents`, the `training-data/` R2 prefix, the 180-day cleanup
+cron and the consent-version tracking no longer exist.
 
 ---
 
-## 3c. Training-Data Consent Revocation (F-102d — token-based, no login)
+## 3c. Training-Data Consent Revocation — REMOVED (was: F-102d — token-based, no login)
 
-Customers who opted in to training-data collection (§3b) receive a
-`revocation_token` — a random, unguessable cuid2 string (~64 chars, generated
-by Prisma `@default(cuid())`) that serves as a bearer credential to prove
-ownership of a specific `TrainingPhotoConsent` record. No customer account,
-password, or retailer involvement is needed.
-
-### Revocation Flow
-
-```
-1. Customer opts in at try-on time (unchecked checkbox → they check it)
-2. Try-on completes → process-tryon.ts saves TrainingPhotoConsent
-   → Prisma auto-generates revocation_token via @default(cuid())
-3. TryOnJob poll response includes revocation_token in response body
-4. Result screen shows: "You opted in. Revoke consent and delete my photos"
-5. Link opens /consent/revoke?token=<token> (web) or system browser (mobile)
-6. Customer sees confirmation page with warning: "This cannot be undone"
-7. On confirm → POST /v1/consent/revoke { token }
-8. API:
-   a. Looks up TrainingPhotoConsent by revocation_token (unique index)
-   b. Deletes 3 R2 objects (customer.jpg, garment.jpg, result.jpg) via
-      Promise.allSettled — best-effort, individual failures logged but
-      do not block the DB row deletion
-   c. Deletes TrainingPhotoConsent DB row
-9. Response: "Consent revoked, data deleted."
-```
-
-### Token Properties
-
-| Property | Value |
-|----------|-------|
-| Generation | `@default(cuid())` in Prisma (delegates to `createId` from `@paralleldrive/cuid2`) |
-| Length | ~24-28 characters, base36 encoded |
-| Entropy | ~128 bits (cuid2 spec) |
-| Storage | `training_photo_consents.revocation_token` — UNIQUE indexed |
-| Lifetime | Permanent — deleted when the row is purged by the 180-day retention cron (§10) |
-| Exposure | Returned to customer via try-on result screen, stored in-memory only on the client |
-
-### Authentication Model
-
-`POST /v1/consent/revoke` is **deliberately unprotected by the authPlugin** —
-customers do not have user accounts or JWTs. Instead, the `revocation_token`
-itself is the sole authentication credential. This is a bearer-token model:
-
-- **Token = proof of ownership.** Possession of a valid token is sufficient
-  to delete that token's associated training data. No additional factors.
-- **No brute-force enumeration.** The token space (cuid2, ~128 bits of
-  entropy) is too large for online guessing within the rate limit
-  (5 requests/min per IP).
-- **No timing side-channels.** The `findUnique` query + `validationError`
-  response for invalid tokens uses the same code path regardless of whether
-  the token exists, preventing response-time oracle attacks.
-- **No valid/invalid token leakage.** The error message for an unknown token
-  is intentionally vague: "Invalid or expired revocation token" — does not
-  reveal whether the token format was valid but not found.
-
-### Rate Limiting
-
-| Scope | Limit | Mechanism |
-|-------|-------|-----------|
-| Per-IP (POST /v1/consent/revoke) | 5 requests per minute | Fastify route-level `config.rateLimit` (`@fastify/rate-limit`) |
-| Per-IP (global) | 200 requests per minute | Fastify plugin-level rate limit (fallback) |
-
-300 attempts per hour × ~128-bit token space makes brute force infeasible.
-
-### What Gets Deleted
-
-When a customer revokes, the following is permanently removed:
-
-| Resource | Location | Deletion Method |
-|----------|----------|----------------|
-| Customer photo | R2 `training-data/{jobId}/customer.jpg` | `deleteObject()` via S3 API |
-| Garment photo | R2 `training-data/{jobId}/garment.jpg` | `deleteObject()` via S3 API |
-| Try-on result | R2 `training-data/{jobId}/result.jpg` (if non-null) | `deleteObject()` via S3 API |
-| Consent record | `training_photo_consents` row | `prisma.delete()` |
-
-**NOT affected by revocation:**
-- The customer's original try-on result (`tryon-results/{jobId}/result.jpg`)
-  — this is covered by the normal 24h-expiry policy (§3), not the training
-  store, and is untouched by revocation.
-- Any `TryOnJob` record — revocation only touches `TrainingPhotoConsent`.
-
-### Threat Model
-
-| Threat | Likelihood | Impact | Mitigation |
-|--------|-----------|--------|------------|
-| Attacker guesses a valid revocation_token | **Very low** — 128-bit token space, rate-limited to 5/min/IP | Attacker deletes a customer's training data (no data exposure, only deletion) | cuid2 entropy + rate limiting + vague error messages |
-| Attacker intercepts a revocation link in transit | **Low** — HTTPS required for all customer-facing pages | Attacker can delete that link's training data | TLS 1.3 on all endpoints; link is single-use in practice (deletion idempotent) |
-| Attacker steals revocation_token from client-side storage | **Low** — token stored in-memory only (React state), never in localStorage/cookies | Attacker can delete that session's training data | In-memory only; no persistent client-side storage of the token |
-| Insider (employee) deletes training data via DB access | **Medium** — service-role key has full access | Any training data can be deleted by an insider | Audit logging in `audit_logs` is planned but not yet implemented for consent operations |
-| Mass token guessing (distributed, many IPs) | **Low** — requires many distinct IPs each hitting the 5/min limit | Could delete a handful of training records per hour | No programmatic way to enumerate valid tokens — each guess is a separate DB lookup with no batch endpoint |
-| Revoked customer claims data was not deleted | **Low** — deletion is synchronous and confirmed | Reputational risk | `prisma.delete()` is strongly consistent; R2 `deleteObject` is read-after-write consistent. Both confirm success before the API responds. |
-
-### Open Items
-
-- **No audit logging.** Successful and failed revocation attempts are not
-  recorded in `audit_logs`. Add before launch for compliance (DPDP Act §25).
-- **No secondary verification.** A bearer token is the sole auth factor.
-  Consider an email/SMS confirmation step for high-value accounts, but this
-  requires storing a customer contact method — which the existing
-  `TrainingPhotoConsent` deliberately does not (it has no customer PII).
-- **No expiration on the revocation link itself.** If a customer copies the
-  URL and never uses it, the token remains valid until the 180-day retention
-  cleanup job (`apps/api/src/jobs/cleanup-training-data.ts`) purges the row.
-  This is acceptable — the worst case is that an old, leaked link could
-  delete stale data.
+Removed with Virtual Try-On (`chore/remove-unwanted-features`, 2026-08-31). The
+`/consent/revoke` endpoint, `revocation_token`, and the whole training-data
+deletion flow no longer exist.
 
 ---
 
@@ -309,7 +136,6 @@ const limits = {
   '/products/upload-url': { window: '1m', max: 20 }, // 20 uploads/min
   '/ai/tag': { window: '1h', max: 200 },              // 200 AI tags/hour
   '/collections': { window: '1m', max: 30 },
-  '/try-on': { window: '1h', max: req.plan.try_on_credits }, // plan limit
 };
 
 // Global IP rate limit
@@ -380,7 +206,6 @@ const CreateProductSchema = z.object({
 
 - Product photo: max 10MB (server rejects), app compresses to < 500KB before upload
 - PDF catalog (Phase 2): max 50MB
-- VTO customer photo: max 5MB
 
 ### Storage Key Structure (Non-Guessable)
 
@@ -453,7 +278,6 @@ RAZORPAY_KEY_SECRET=...      # NEVER commit actual value
 R2_ACCOUNT_ID=...
 R2_ACCESS_KEY_ID=...
 R2_SECRET_ACCESS_KEY=...     # NEVER commit actual value
-VTONE_API_URL=...           # Fashion V-Tone self-hosted endpoint
 META_APP_SECRET=...           # Phase 2
 META_VERIFY_TOKEN=...         # Phase 2
 ENCRYPTION_MASTER_KEY=...     # F-012 secrets encryption
@@ -508,23 +332,20 @@ app.register(fastifyHelmet, {
 | Retailer phone | PII | Authentication | Until account deletion |
 | Retailer shop name, city, GSTIN | Business data | Service delivery | Until account deletion |
 | Customer name, phone | PII (retailer-entered) | CRM | Until customer deleted by retailer |
-| Customer fashion preferences | PII | Fashion DNA AI | Until deleted |
-| Customer try-on photo | Sensitive PII | VTO processing | **Deleted immediately after processing** |
+| Customer preferences (colour/style/budget/size) | PII (retailer-entered) | CRM | Until customer deleted by retailer |
 | Collection view data | Anonymous session | Analytics | 90 days |
 | Payment data | Financial | Billing compliance | 7 years |
 
 ### Data Subject Rights (Customer)
 
 Customers can:
-- Request deletion of their interaction data (via retailer)
-- Request deletion of try-on results (via UI — before 24h expiry)
+- Request deletion of their CRM record (via retailer)
 - Opt-out of WhatsApp messages (Phase 2)
 
 ### Data Processing Agreements
 
 - Anthropic (Claude API): DPA in place, data not used for training
 - OpenAI (Embeddings): DPA in place, data not used for training
-- Fashion V-Tone v1.5 (VTO): self-hosted, no third-party data sharing
 
 ---
 
@@ -537,7 +358,6 @@ Before each major release:
 - [ ] Test IDOR: can retailer A access retailer B's resources?
 - [ ] Test rate limiting: trigger OTP limit, AI tagging limit
 - [ ] Test file upload: upload non-image (PDF, EXE) — must reject
-- [ ] Test VTO photo cleanup: verify input photo deleted from R2 after job
 - [ ] Test collection link: unauthenticated user can view but not admin
 - [ ] Test JWT expiry: expired token → 401
 - [ ] Verify no secrets in git history (trufflehog scan)
@@ -549,86 +369,21 @@ Before each major release:
 
 ---
 
-## 11. L2 Ecommerce Checkout — Retailer Payment Credentials (F-302 built, F-307 planned)
+## 11. L2 Ecommerce Checkout — Retailer Payment Credentials — REMOVED
 
-**Status:** Architecture decided 2026-07-24; F-302 Stage A (direct-to-retailer) shipped (`apps/api/src/routes/checkout.ts` + `checkout/` submodules). F-307/Stage B (Razorpay Route, merchant-of-record) remains not built — blocked on legal/Razorpay compliance confirmation per the F-302 entry in `CLAUDE.md`.
+Removed in `chore/remove-unwanted-features` (2026-08-31, migration 082). The
+`orders` / `order_items` / `retailer_payment_accounts` tables, the enums
+`PaymentMode` / `RouteOnboardingStatus` / `OrderStatus`, the `/checkout/*` and
+`/public/webhooks/razorpay` route trees, and all customer cart/checkout UI are
+gone; retailer Razorpay credentials are no longer stored or accepted. Kanchuki's
+own Razorpay account still handles **subscription billing** (see the Billing
+section) — that path is unchanged, as is the `IntegrationSetting` /
+`encryptSecret()` machinery it shares with F-012.
 
-### 11.1 Why direct-to-retailer first (Stage A)
-
-Kanchuki's own Razorpay account (used for subscription billing today) must **never** touch a retailer's sale money. If it did — even transiently — that's acting as a payment aggregator under RBI rules, which requires a PA license (slow, expensive, not something to back into by accident). Stage A avoids this entirely: each retailer's checkout money flows through *their own* Razorpay account, using *their own* KYC. Kanchuki only stores the credentials needed to call the Razorpay API on the retailer's behalf and to verify webhooks — it never custodies funds.
-
-Stage B (Razorpay Route, F-307) intentionally reintroduces Kanchuki as merchant-of-record for lower retailer friction — that's a deliberate compliance trade-off to make consciously later, not a default. Before enabling Stage B for real money: confirm current RBI marketplace-payment guidance with Razorpay support and legal counsel. Do not treat Route's marketing description as a substitute for that sign-off.
-
-### 11.2 Credential storage — reuses F-012, does not reinvent it
-
-`RetailerPaymentAccount.razorpay_key_secret_encrypted` and `.razorpay_webhook_secret_encrypted` use the exact same `encryptSecret()`/`decryptSecret()` functions from `packages/db/src/secrets.ts` (AES-256-GCM, keyed by the existing `ENCRYPTION_MASTER_KEY` env var) that F-012's admin-managed `IntegrationSetting` table already uses. The difference is scope, not mechanism: `IntegrationSetting` is one row per platform-wide key name (admin-only writes); `RetailerPaymentAccount` is one row per retailer (retailer-authenticated writes, scoped to their own `retailer_id` like every other retailer table).
-
-- `razorpay_key_id` is not secret (Razorpay's own docs treat it as safe to expose client-side, same as a Stripe publishable key) — stored plaintext, returned to the client to initialize Razorpay Checkout.js.
-- `razorpay_key_secret` and the webhook secret are always encrypted at rest, never returned to any client, never logged.
-- Same masking convention as F-012's admin UI (`maskSecret()` — show only the last 4 characters) applies to any retailer-facing "connected account" display.
-- RLS: `RetailerPaymentAccount` follows the standard retailer-isolation policy (§2) — a retailer can only read/write their own row. No cross-retailer read path, including for Super Admin support tooling (support should see *that* an account is connected, never the decrypted secret).
-
-### 11.3 Webhook signature verification — verify before trusting anything in the payload
-
-Razorpay's webhook POSTs to `/v1/public/webhooks/razorpay` are **not** scoped to a specific retailer in the URL — a naive design would trust a `retailer_id` path/query param to pick which webhook secret to verify against, which lets an attacker point the verification at a *different* retailer's (weaker or attacker-known) secret. Instead:
-
-```
-1. Parse payload.payment.entity.order_id (Razorpay's own field, present on every payment webhook)
-2. Look up the local Order by razorpay_order_id — this is the ONLY trusted way to find which retailer this webhook belongs to
-3. Load that Order's retailer's RetailerPaymentAccount.razorpay_webhook_secret_encrypted, decrypt it
-4. Verify the request signature (HMAC-SHA256 over the raw body) against THAT secret, using crypto.timingSafeEqual — same pattern as the existing Meta webhook validator in §6
-5. Only after signature verification passes: read event type, update Order.status, mark Product SOLD
-```
-
-If the `order_id` doesn't resolve to a local `Order`, or the signature check fails, respond 400 and do nothing else — never branch on payload contents before verification succeeds.
-
-### 11.4 Checkout PII (address, phone)
-
-- Shipping address is a per-order snapshot (`Order.shipping_address` JSON), not a reusable customer-profile entity — no customer account exists anywhere else in this app, so there is nothing to attach a reusable address to. Same "retailer-owned, not shared cross-tenant" principle as existing `Customer` PII (§9) applies to `Order.customer_name`/`customer_phone`.
-- Retention: same 7-year GST/IT compliance window as `SubscriptionPayment` (see `docs/DATABASE.md` retention table) — orders are financial records, not marketing data, so they don't get the shorter customer-interaction retention windows.
-- If a retailer disconnects their payment account, delete (not soft-delete) the encrypted key/secret columns immediately — a disconnected credential has no legitimate reason to persist, unlike business records which are soft-deleted by convention (§ Design Principles, `docs/DATABASE.md`).
-
-### 11.5 Resolved items (previously flagged as open, now implemented)
-
-- **Rate limiting on webhook/create-order** — ✅ **Implemented.**
-  - `POST /public/checkout/create-order`: per-IP rate limit (5/min).
-  - `POST /public/checkout/verify-payment`: per-IP rate limit (10/min).
-  - `POST /public/webhooks/razorpay`: per-IP rate limit (30/min).
-  - `GET /public/orders/:id`: per-IP rate limit (30/min).
-  - All checkout endpoints are gated.
-
-- **Audit logging for payment-account connect/disconnect** — ✅ **Implemented.**
-  - `CONNECT_PAYMENT_ACCOUNT` and `DISCONNECT_PAYMENT_ACCOUNT` logged with before-state, actor, IP.
-  - Order status transitions logged via `request.log.info` (structured logging).
-
-### 11.5b Open items (remain unresolved)
-
-- Legal review of the Stage B (Route) compliance posture before enabling it for any retailer
-
-### 11.6 Payment integrity — never trust the client for money
-
-- **Amount tampering.** Server recomputes total from `OrderItem` × snapshotted `Product.price_min`. Client-submitted total is never trusted.
-- **Fake "success" callback.** Client-side handler must never flip `Order.status` to `PAID`. Only server-side HMAC verification or webhook can transition the status.
-- **Webhook replay.** Idempotent status transitions (only `PENDING_PAYMENT → PAID`). Webhooks with stale timestamps rejected.
-- **Webhook source spoofing.** Signature verification (§11.3) + allowlist of Razorpay source IPs at Cloudflare edge.
-
-### 11.7 Inventory race condition (double-sell)
-
-Atomic `updateMany` with `WHERE status = 'AVAILABLE'` inside a transaction. Read-then-write (TOCTOU) prevented by conditional update + rowcount check.
-
-### 11.8 Retailer account takeover
-
-- Step-up OTP re-authentication on connect/change/disconnect of payment account.
-- Out-of-band SMS notification to retailer's registered phone on payment account change.
-- Audit log every connect/change/disconnect with before/after state.
-
-### 11.9 PCI-DSS scope
-
-Razorpay Checkout.js (hosted iframe) — raw card numbers never touch Kanchuki servers. SAQ-A tier maintained.
-
-### 11.10 Anonymous order lookup (IDOR)
-
-Phone number required as second factor before rendering order details. Wrong phone → 404 (same error as "not found"). Phone not echoed in response. `timingSafeEqual` prevents response-time oracle attacks. ✅ **Tested (7 automated tests).**
+If retailer-facing checkout is rebuilt later, the RBI payment-aggregator
+constraint still applies: Kanchuki's billing account must never custody a
+retailer's sale money without a PA licence or a Razorpay Route
+merchant-of-record arrangement signed off by legal.
 
 ---
 
@@ -669,9 +424,6 @@ The following are stateless, non-destructive, or time-critical — they run with
 
 | Operation | Why Auto |
 |-----------|----------|
-| VTO input photo deletion (after processing) | Privacy requirement, already consented |
-| 24h result expiry cleanup | Already consented at try-on time |
-| 180-day training-data retention cleanup | Already consented at opt-in time |
 | Cache invalidation / Redis TTL | Performance, no data impact |
 | Rate limit counters | Performance, no data impact |
 | Collection view analytics | Read-only aggregation |
@@ -900,7 +652,7 @@ Admin Dashboard
 - [x] **`AuditLog` writes added to all retailer/staff mutation routes** — schema already exists, most routes don't call it yet (F-014)
 - [x] **Admin activity pages**: `/admin/retailers/:id/activity`, `/admin/retailers/:id/customers/:id/activity`, `/admin/activity` (F-014)
 - [x] **Suspension fields + admin suspend/unsuspend UI** (F-015)
-- [x] **Customer block/unblock + checkout/enquiry rejection for blocked customers** (F-015)
+- [x] **Customer block/unblock + enquiry rejection for blocked customers** (F-015)
 - [x] **Provision `VAULT_DATABASE_URL` Postgres instance, INSERT-only role** (F-016)
 - [x] **`vaultDelete()` helper wired into every soft-delete call site** (F-016)
 - [x] **`/admin/database/deletion-vault` lookup page** (F-016)
@@ -947,7 +699,7 @@ An audit log viewer page (`/admin/audit-log`) must be built with:
 |---|---|---|
 | `kanchuki_app` | `SELECT, INSERT, UPDATE` on all business tables. **No `DELETE`, `TRUNCATE`, `DROP`, `ALTER`, `CREATE`.** | API server (`DATABASE_URL`), local dev, any AI coding agent's working `.env` |
 | `kanchuki_migrator` | Full DDL + `DELETE`/`TRUNCATE`, for schema migrations only | Human only — run interactively via `prisma migrate deploy` or the admin dashboard's migration-trigger button (§12.2). **Never** written to any `.env` file, Railway env var used by the API service, or any location an AI agent's session can read. |
-| `kanchuki_purge` | `SELECT, INSERT, UPDATE` (inherits `kanchuki_app`) + `DELETE` on exactly the 18 purge-cron tables. **No `TRUNCATE`, `DROP`, or DDL.** | `PURGE_DATABASE_URL` — read **only** by the 30-day purge cron (`apps/api/src/jobs/purge-soft-deleted.ts` via `getPurgePrisma()`). Never used as `DATABASE_URL`. The job still sets `app.allow_hard_delete = 'true'` inside each transaction, so the Layer-2 triggers remain the second barrier even for this role. |
+| `kanchuki_purge` | `SELECT, INSERT, UPDATE` (inherits `kanchuki_app`) + `DELETE` on exactly the purge-cron tables. **No `TRUNCATE`, `DROP`, or DDL.** | `PURGE_DATABASE_URL` — read **only** by the 30-day purge cron (`apps/api/src/jobs/purge-soft-deleted.ts` via `getPurgePrisma()`). Never used as `DATABASE_URL`. The job still sets `app.allow_hard_delete = 'true'` inside each transaction, so the Layer-2 triggers remain the second barrier even for this role. |
 | `kanchuki_vault_writer` | `INSERT` only on `deletion_vault` DB (F-016) | App's vault-write path only |
 | `kanchuki_replica_reader` | `SELECT` only, against the replica (§13/§14) | Admin query console |
 
@@ -995,7 +747,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Applied to every business table (products, customers, retailers, collections, orders, ...)
+-- Applied to every business table (products, customers, retailers, collections, ...)
 CREATE TRIGGER guard_products_delete
   BEFORE DELETE OR TRUNCATE ON products
   FOR EACH STATEMENT EXECUTE FUNCTION prevent_hard_delete();

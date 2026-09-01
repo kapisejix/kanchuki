@@ -15,7 +15,7 @@ import { router, useLocalSearchParams } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Check, Plus, Trash2, Ruler, Clock, Heart, Sparkles } from 'lucide-react-native'
-import { customerApi, sizeChartApi, collectionApi, productAttributeApi } from '../../src/lib/api'
+import { customerApi, collectionApi, productAttributeApi } from '../../src/lib/api'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -45,12 +45,6 @@ type Customer = {
   total_purchases: number
   total_spent: number
   interactions: Interaction[]
-  fashion_dna: {
-    color_affinities: Record<string, number>
-    style_affinities: Record<string, number>
-    confidence_score: number
-    interaction_count: number
-  } | null
 }
 type Measurement = {
   id: string
@@ -62,19 +56,6 @@ type Measurement = {
   confidence_score: number | null
   photo_deleted_at: string | null
   created_at: string
-}
-type MatchedProduct = {
-  id: string
-  category: string | null
-  primary_color: string | null
-  price_min: number | null
-  price_max: number | null
-  status: string
-  primary_photo_url: string | null
-  search_tags: string[]
-  /** Roadmap N — suggested size from usual size / purchase history / chart. */
-  suggested_size: string | null
-  size_basis: string | null
 }
 
 export default function CustomerDetailScreen() {
@@ -97,28 +78,6 @@ export default function CustomerDetailScreen() {
   const measurements = (measurementsData as { data: Measurement[] } | undefined)?.data ?? []
   const hasMeasurement = measurements.length > 0
 
-  // Recommended size per category
-  const { data: upperSize } = useQuery({
-    queryKey: ['customers', id, 'recommend', 'UPPER'],
-    queryFn: () => sizeChartApi.recommend(id, 'UPPER').then((r) => r.data).catch(() => null),
-    enabled: hasMeasurement,
-  })
-  const { data: lowerSize } = useQuery({
-    queryKey: ['customers', id, 'recommend', 'LOWER'],
-    queryFn: () => sizeChartApi.recommend(id, 'LOWER').then((r) => r.data).catch(() => null),
-    enabled: hasMeasurement,
-  })
-
-  // AI-matched products (Fashion DNA — Phase 1)
-  const { data: matchesData } = useQuery({
-    queryKey: ['customers', id, 'matches'],
-    queryFn: () => customerApi.getMatches(id, { limit: 6 }),
-    enabled: !!customer,
-    staleTime: 60_000,
-  })
-  const matches = (matchesData as { data: { products: MatchedProduct[]; dna_used: boolean } } | undefined)?.data
-  const matchedProducts = matches?.products ?? []
-  const dnaUsed = matches?.dna_used ?? false
 
   // Dynamic, retailer-editable Style/Fabric taxonomy (DB-backed, same lists
   // the product-add screen uses — no hardcoded option lists).
@@ -282,7 +241,7 @@ export default function CustomerDetailScreen() {
             { text: 'OK', style: 'default' },
           ],
         )
-        void queryClient.invalidateQueries({ queryKey: ['customers', id, 'matches'] })
+        void queryClient.invalidateQueries({ queryKey: ['customers', id, 'preferences'] })
       } else {
         Alert.alert('Not enough data', "We need more customer preferences and product interactions to suggest a collection. Add their color/style/fabric preferences and record their activity.")
       }
@@ -421,94 +380,6 @@ export default function CustomerDetailScreen() {
             <Text className="text-xs text-heliotrope-500 font-bold uppercase tracking-wider mt-0.5">Total Spent</Text>
           </View>
         </View>
-
-        {/* Fashion DNA — AI Match Section */}
-        {matchedProducts.length > 0 && (
-          <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
-            <View className="flex-row items-center justify-between mb-3.5">
-              <View className="flex-row items-center gap-2">
-                <Heart size={16} color="#BB3F95" />
-                <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wide">
-                  AI Match & Fashion DNA
-                </Text>
-                {dnaUsed && (
-                  <View className="bg-fuchsia-500/15 border border-fuchsia-500/30 px-2 py-0.5 rounded-full">
-                    <Text className="text-[10px] text-fuchsia-700 font-bold">DNA</Text>
-                  </View>
-                )}
-              </View>
-              <AnimatedPressable
-                onPress={() => void handleAutoSuggestCollection()}
-                disabled={generatingCollection}
-                className="flex-row items-center gap-1 bg-fuchsia-600 px-3.5 py-1.5 rounded-full shadow-sm"
-              >
-                {generatingCollection ? (
-                  <ActivityIndicator size="small" color="white" />
-                ) : (
-                  <>
-                    <Sparkles size={12} color="white" />
-                    <Text className="text-white text-xs font-bold">Create Collection</Text>
-                  </>
-                )}
-              </AnimatedPressable>
-            </View>
-
-            {/* Top matched products — horizontal scroll */}
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} className="-mx-1 py-1">
-              {matchedProducts.map((product) => (
-                <AnimatedPressable
-                  key={product.id}
-                  onPress={() => router.push(`/product/${product.id}`)}
-                  className="mr-3 w-32"
-                >
-                  <View className="bg-lavender-50 rounded-2xl overflow-hidden border border-lavender-200">
-                    {product.primary_photo_url ? (
-                      <Image
-                        source={{ uri: product.primary_photo_url }}
-                        className="w-full h-32"
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <View className="w-full h-32 bg-lavender-100 items-center justify-center">
-                        <Text className="text-heliotrope-400 text-xs">No photo</Text>
-                      </View>
-                    )}
-                    <View className="p-2 gap-0.5">
-                      <Text className="text-xs font-semibold text-spaceCadet-900 truncate" numberOfLines={1}>
-                        {product.category ?? 'Product'}
-                      </Text>
-                      {product.price_min != null && (
-                        <Text
-                          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                          className="text-xs font-bold text-spaceCadet-900"
-                        >
-                          {formatPrice(product.price_min)}
-                        </Text>
-                      )}
-                      {product.suggested_size && (
-                        <View
-                          className="mt-1 self-start rounded-full px-2 py-0.5 bg-fuchsia-500/15 border border-fuchsia-500/30"
-                        >
-                          <Text className="text-[9px] font-bold text-fuchsia-700">
-                            Size {product.suggested_size}
-                          </Text>
-                        </View>
-                      )}
-                    </View>
-                  </View>
-                </AnimatedPressable>
-              ))}
-            </ScrollView>
-
-            {customer.fashion_dna && (
-              <View className="flex-row items-center gap-2 mt-2 pt-2 border-t border-lavender-200">
-                <Text className="text-[10px] text-heliotrope-500 font-medium">
-                  {customer.fashion_dna.interaction_count} interactions · {(customer.fashion_dna.confidence_score * 100).toFixed(0)}% AI confidence
-                </Text>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* Preferred colors — free text */}
         <View className="bg-white rounded-3xl p-5 border border-lavender-200 shadow-sm">
@@ -718,32 +589,6 @@ export default function CustomerDetailScreen() {
             </View>
           )}
 
-          {(upperSize || lowerSize) && (
-            <View className="flex-row gap-2 mt-3 pt-3 border-t border-lavender-200">
-              {upperSize && (
-                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3 flex-1">
-                  <Text className="text-[10px] text-heliotrope-500 font-bold uppercase tracking-wider">Upper Size</Text>
-                  <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                    className="text-base font-bold text-spaceCadet-900 mt-0.5"
-                  >
-                    {upperSize.size_label}
-                  </Text>
-                </View>
-              )}
-              {lowerSize && (
-                <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3 flex-1">
-                  <Text className="text-[10px] text-heliotrope-500 font-bold uppercase tracking-wider">Lower Size</Text>
-                  <Text
-                    style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-                    className="text-base font-bold text-spaceCadet-900 mt-0.5"
-                  >
-                    {lowerSize.size_label}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
         {/* Recent activity */}

@@ -45,7 +45,7 @@ interface Props {
   // Store URL segment (public_slug). Null = legacy /c/{slug} URLs.
   store?: string | null
   onFavorite: (id: string) => void
-  onTryOn: () => void
+  onTryOn?: () => void
   onClose: () => void
 }
 

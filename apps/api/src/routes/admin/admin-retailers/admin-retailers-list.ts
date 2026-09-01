@@ -244,7 +244,6 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         blocked_reason: true,
         created_at: true,
         retailer: { select: { id: true, shop_name: true, city: true } },
-        _count: { select: { measurements: true } },
       },
       orderBy: { id: 'asc' },
       take: limit + 1,
@@ -254,7 +253,7 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
     const page = hasMore ? customers.slice(0, limit) : customers;
 
     return {
-      data: page.map(({ _count, ...c }) => ({ ...c, measurement_count: _count.measurements })),
+      data: page.map(({ ...c }) => ({ ...c })),
       pagination: {
         cursor: hasMore ? (page[page.length - 1]?.id ?? null) : null,
         has_more: hasMore,

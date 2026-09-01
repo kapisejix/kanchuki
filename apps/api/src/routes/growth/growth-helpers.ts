@@ -1,9 +1,7 @@
 import type {
-  Booking,
   Customer,
   Product,
   Promotion,
-  SupplierTransaction,
 } from '@kanchuki/db';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
@@ -267,31 +265,6 @@ export function computeInventoryAlerts(
     }
   }
   return alerts;
-}
-
-// ─── Showroom bookings (roadmap L) ────────────────────────────────
-
-/** Overlapping slot check: any existing booking that intersects [start, end]. */
-export function hasBookingConflict(
-  existing: Pick<Booking, 'starts_at' | 'ends_at' | 'status'>[],
-  start: Date,
-  end: Date,
-): boolean {
-  return existing.some(
-    (b) =>
-      b.status !== 'CANCELLED' &&
-      start < b.ends_at &&
-      end > b.starts_at,
-  );
-}
-
-// ─── Supplier ledger (roadmap K) ──────────────────────────────────
-
-/** Pending amount: unpaid ORDERS minus PAYMENTs. */
-export function computeSupplierPending(txs: Pick<SupplierTransaction, 'kind' | 'amount_paise'>[]): number {
-  const orders = txs.filter((t) => t.kind === 'ORDER').reduce((s, t) => s + t.amount_paise, 0);
-  const paid = txs.filter((t) => t.kind === 'PAYMENT').reduce((s, t) => s + t.amount_paise, 0);
-  return Math.max(0, orders - paid);
 }
 
 // ─── Referral credits (roadmap C) ─────────────────────────────────

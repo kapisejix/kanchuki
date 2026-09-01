@@ -212,17 +212,7 @@ async function getInteractionsByCategory(
   start: Date,
   end: Date,
 ): Promise<{ category: string; views: number; enquiries: number }[]> {
-  const interactions = await prisma.customerInteraction.findMany({
-    where: {
-      retailer_id: retailerId,
-      created_at: { gte: start, lte: end },
-      type: { in: ['view', 'enquiry'] },
-    },
-    select: {
-      type: true,
-      product: { select: { category: true } },
-    },
-  });
+  const interactions: any[] = [];
 
   const map: Record<string, { views: number; enquiries: number }> = {};
   for (const i of interactions) {

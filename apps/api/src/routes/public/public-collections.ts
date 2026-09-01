@@ -6,7 +6,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { withPublicCache } from '../../lib/public-cache.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
-import { recordInteraction } from '../../lib/passport-activity.js';
+// recordInteraction removed — customerInteractions model dropped
 import {
   buildFacets,
   buildProductFilterWhere,
@@ -118,7 +118,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
                 include: {
                   photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
                   section: { select: { name: true } },
-                  _count: { select: { spin_frames: true } },
+                  _count: { select: { photos: true } },
                 },
               },
             },
@@ -249,14 +249,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    // Record passport interaction (fire-and-forget)
-    recordInteraction({
-      retailerId: collection.retailer_id,
-      productId: product_id,
-      collectionId: collection.id,
-      type: 'enquiry',
-      metadata: { collection_slug: slug },
-    }).catch(() => {});
+    // Interactions recording removed — customerInteractions model dropped
 
     await prisma.collection.update({
       where: { id: collection.id },
@@ -299,14 +292,7 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       data: { favorite_count: { increment: 1 } },
     });
 
-    // Record passport interaction (fire-and-forget)
-    recordInteraction({
-      retailerId: collection.retailer_id,
-      productId: body.data.product_id,
-      collectionId: collection.id,
-      type: 'favorite',
-      metadata: { collection_slug: slug },
-    }).catch(() => {});
+    // Interactions recording removed — customerInteractions model dropped
 
     return reply.status(204).send();
   });

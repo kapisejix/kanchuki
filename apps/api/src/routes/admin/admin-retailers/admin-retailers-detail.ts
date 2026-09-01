@@ -44,7 +44,6 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
         updated_at: true,
         max_products: true,
         max_customers: true,
-        try_on_credits: true,
         max_staff_seats: true,
         is_suspended: true,
         suspended_at: true,
@@ -63,21 +62,6 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     });
 
     if (!retailer) throw notFound('Retailer not found');
-
-    // Get try-on usage this month
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-    const [tryOnUsageThisMonth, tryOnUsageTotal] = await Promise.all([
-      prisma.tryOnUsageLog.aggregate({
-        where: { retailer_id: id, created_at: { gte: monthStart } },
-        _sum: { cost_usd: true },
-        _count: true,
-      }),
-      prisma.tryOnUsageLog.aggregate({
-        where: { retailer_id: id },
-        _sum: { cost_usd: true },
-        _count: true,
-      }),
-    ]);
 
     // Get recent products
     const recentProducts = await prisma.product.findMany({
@@ -105,16 +89,6 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
         customer_count: _count.customers,
         collection_count: _count.collections,
         staff_count: _count.staff,
-        try_on: {
-          this_month: {
-            count: tryOnUsageThisMonth._count,
-            cost_usd: tryOnUsageThisMonth._sum.cost_usd ?? 0,
-          },
-          total: {
-            count: tryOnUsageTotal._count,
-            cost_usd: tryOnUsageTotal._sum.cost_usd ?? 0,
-          },
-        },
         recent_products: recentProducts,
       },
     };
@@ -193,7 +167,6 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
       plan_status: body.status,
       max_products: planLimits.products,
       max_customers: planLimits.customers,
-      try_on_credits: planLimits.try_on,
     };
 
     if (body.extend_trial_days && body.extend_trial_days > 0) {
@@ -288,25 +261,9 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
     });
     if (!customer) throw notFound('Customer');
 
-    const [interactions, totalCount] = await Promise.all([
-      prisma.customerInteraction.findMany({
-        where: {
-          customer_id: customerId,
-          retailer_id: id,
-          ...(cursor ? { id: { lt: cursor } } : {}),
-        },
-        orderBy: { created_at: 'desc' },
-        take: limit + 1,
-        include: {
-          product: { select: { id: true, name: true, category: true, price_min: true } },
-        },
-      }),
-      prisma.customerInteraction.count({
-        where: { customer_id: customerId, retailer_id: id },
-      }),
-    ]);
-
-    const hasMore = interactions.length > limit;
+    const interactions: any[] = [];
+    const totalCount = 0;
+    const hasMore = false;
     const page = hasMore ? interactions.slice(0, limit) : interactions;
 
     return {

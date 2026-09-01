@@ -13,7 +13,6 @@ import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { addSpinFrameJob } from '../../jobs/index.js';
 import { hasFeature } from '../../lib/features.js';
 import { bumpPhotoUrlVersion, preserveOriginalPhoto } from '../../lib/photo-cleanup.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
@@ -401,17 +400,9 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     const body = z.object({ r2_key: z.string().min(1) }).safeParse(request.body);
     if (!body.success) throw validationError('r2_key required');
 
-    await prisma.product.update({
-      where: { id },
-      data: { spin_status: 'processing', spin_error: null },
-    });
-    await addSpinFrameJob({
-      product_id: id,
-      retailer_id: request.retailerId,
-      video_r2_key: body.data.r2_key,
-    });
+    // Spin frame extraction removed — SPIN_360 feature dropped
 
-    return reply.status(202).send({ data: { spin_status: 'processing' } });
+    return reply.status(202).send({ data: { spin_status: 'removed' } });
   });
 
   // ─── PATCH /products/:id/photos/:photoId ──────────────────────────

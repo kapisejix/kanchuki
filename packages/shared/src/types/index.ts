@@ -37,7 +37,6 @@ export interface RetailerProfile {
   plan_expires_at: string | null
   max_products: number
   max_customers: number
-  try_on_credits: number
   onboarding_completed: boolean
   onboarding_step: number
   created_at: string

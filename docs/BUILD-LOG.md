@@ -62,6 +62,7 @@ incident, migration, and decision recorded after 2026-07-26.
 | 49 | [Phase II — WhatsApp Native Catalog Sync](#built-2026-08-18-phase-ii--whatsapp-native-catalog-sync-f-307--roadmap-p) | Built | 2026-08-18 |
 | 50 | [Roadmap M — i18n Data Groundwork](#built-2026-08-18-roadmap-m--i18n-data-groundwork-deferred-post-launch) | Built | 2026-08-18 |
 | 51 | [Roadmap R — Seasonal Analytics](#built-2026-08-18-roadmap-r--seasonal-analytics-wedding-season-vs-daily-wear) | Built | 2026-08-18 |
+| 55 | [Feature Teardown — Remove Unwanted Features](#55-feature-teardown--remove-unwanted-features) | Built | 2026-08-31 |
 
 ---
 
@@ -1534,3 +1535,73 @@ Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No
 
 - Un-draft the finalised scene set.
 - Mobile auto-filter in `apps/mobile/src/components/product-detail/ProductStudioModal.tsx` — `product.category` → `demographicForCategory` → `studioTemplatesFor`, no manual demographic pick for the retailer.
+
+---
+
+## 55. Feature Teardown — Remove Unwanted Features
+
+| File | Detail |
+|------|--------|
+| **Spec** | `docs/database/no-feature-want.md` — authoritative teardown spec |
+| **Branch** | `chore/remove-unwanted-features` |
+| **Date** | 2026-08-31 |
+| **Status** | ✅ Code complete, migration 082 written (not deployed) |
+
+### What was removed
+
+**25 tables dropped** via migration `082_remove_unwanted_features`:
+- `orders`, `order_items`, `checkouts`, `cart_items` — L2 Ecommerce checkout
+- `try_on_jobs`, `spin_frames`, `spin_frame_jobs`, `admin_tryon_jobs`, `try_on_usage_logs` — Virtual Try-On + 360° spin
+- `fashion_dna_profiles`, `customer_measurements`, `customer_interactions`, `interaction_matches` — Fashion DNA CRM + measurement/interaction tracking
+- `store_affinities`, `intention_finding_queries`, `intention_finding_results` — AI store affinity + intention finding
+- `size_recommendations`, `size_charts`, `size_chart_entries` — Size recommendation engine
+- `referrals`, `referral_credits`, `partner_referrals` — Referral programs (customer + partner)
+- `bookings`, `showroom_slots` — Showroom/try-on room booking
+- `lookbooks`, `lookbook_items` — Lookbook generator
+- `ghost_mannequin_jobs` — Ghost-mannequin AI image generation
+
+**17 standalone enums dropped:** `OrderStatus`, `PaymentMode`, `PaymentProvider`, `CheckoutStatus`, `CheckoutPaymentMethod`, `TryOnStatus`, `TryOnJobStatus`, `SpinFrameStatus`, `FashionDNACluster`, `InteractionType`, `IntentionFindingStatus`, `ReferralCreditStatus`, `ReferralSource`, `BookingStatus`, `LookbookFormat`, `LookbookStatus`, `SizeRecommendationStatus`
+
+**Orphaned columns dropped:** `products.spin_frames`, `products.spin_status`, `products.spin_error`, `retailers.referral_enabled`, `retailers.referral_reward_paise`, `customers.fashion_dna_confidence`, `customers.fashion_dna_last_computed`
+
+**Plan-matrix rows removed:** `TRY_ON`, `MEASUREMENT_EXTRACTION`, `FASHION_DNA`, `SPIN_FRAME_EXTRACTION`, `GHOST_MANNEQUIN`, `LOOKBOOK`, `CUSTOMER_REFERRALS`, `PARTNER_REFERRALS`, `SHOWROOM_BOOKINGS`, `SIZE_RECOMMENDATION` from `plan_features` and `quota_resources`
+
+**Dead enum values annotated** (not dropped — used in codebase): `PlanFeatureKey` (TRY_ON, MEASUREMENT_EXTRACTION, FASHION_DNA, SPIN_FRAME_EXTRACTION, GHOST_MANNEQUIN, LOOKBOOK, CUSTOMER_REFERRALS, PARTNER_REFERRALS, SHOWROOM_BOOKINGS, SIZE_RECOMMENDATION) and `QuotaResourceType` (TRY_ON, MEASUREMENT_EXTRACTION, FASHION_DNA, SPIN_FRAME_EXTRACTION, GHOST_MANNEQUIN)
+
+### API changes
+
+- **Deleted files:** `routes/checkout.ts`, `routes/checkout/` (8 files), `routes/tryon.ts`, `routes/retailers/retailers-bookings.ts`, `routes/retailers/retailers-size-chart.ts`, `routes/retailers/retailers-referrals.ts`, `routes/retailers/retailers-fashion-dna.ts`, `routes/public/public-orders.ts`, `routes/admin/admin-lookbooks.ts`, `routes/admin/admin-partner-referrals.ts`, `routes/admin/admin-festival-backgrounds.ts`, `routes/admin/admin-incentives.ts`, `routes/growth/growth-gst.ts` (rewritten), `jobs/checkout-order-expiry.ts`, `jobs/tryon-worker.ts`, `jobs/fashion-dna-worker.ts`, `jobs/spin-frame-worker.ts`, `jobs/ghost-mannequin-worker.ts`, `lib/invoice.ts`, `lib/passport-activity.ts`, `lib/recommend.ts`, `lib/recommendation-triggers.ts`, `lib/checkout-helpers.ts`, `lib/size-recommend.ts`, `packages/ai/src/tryon.ts`
+- **Barrel updates:** `index.ts`, `routes/admin/index.ts`, `routes/products/index.ts`, `routes/retailers/index.ts`, `routes/public/index.ts`, `routes/growth/index.ts`, `jobs/index.ts` — removed all imports/registrations for deleted routes
+- **Surgical rewrites:** `customers.ts` (removed interaction/measurement/matches routes), `public-growth.ts` (removed referral/booking routes), `growth-inventory.ts` (removed Order dependency), `growth-sizes.ts` (removed size-recommend dependency), `passport.ts` (removed customerInteraction queries), `admin-gst.ts` (rewritten for SubscriptionPayment), `products-crud.ts` (removed notification calls), `products-media.ts` (removed spin-frame job), `admin-plans.ts` (removed TRY_ON resource), `admin-retailers-detail.ts` (removed try_on_credits), `admin-photo-cleanup.ts` (removed tryon route)
+
+### Web changes
+
+- **Deleted:** `app/checkout/`, `app/try-on/`, `app/cart/`, `app/for-you/`, `app/c/[slug]/order/`, `app/admin/incentives/`, `app/admin/partners/`, `app/admin/lookbooks/`, `app/admin/festival-backgrounds/`
+- **Surgical edits:** admin sidebar (removed links), shopper layout (removed checkout-related nav), `CollectionView.tsx` (removed try-on modal, booking form, customer referral)
+
+### Mobile changes
+
+- **Deleted:** `app/tryon/`, `app/(tabs)/orders.tsx`, `app/product/size-chart.tsx`, `app/growth/suppliers.tsx`, `app/growth/showroom-booking.tsx`, `app/growth/referrals.tsx`, `app/growth/product-videos.tsx`, `app/growth/ai-translate.tsx`, `app/growth/ai-search.tsx`, `app/growth/campaign-analytics.tsx`
+- **Surgical edits:** tabs layout (removed Orders tab), growth hub (removed 7 deleted tiles), `customer/[id].tsx` (removed size recommendations + Fashion DNA section), `customer/[id].tsx` types (removed MatchedProduct), `src/lib/api/index.ts` (removed tryon/size-charts/orders exports), `src/lib/api/retailer.ts` (added getVisitorTaste), `growth/taste-analytics.tsx` (fixed API call + color), `(tabs)/index.tsx` (removed ordersApi usage)
+
+### Shared packages
+
+- `packages/shared/src/constants/index.ts` — removed `try_on_credits` from PLAN_LIMITS, `ADDON_PRICING.TRY_ON`, `QUEUES.TRY_ON/MEASUREMENT_EXTRACTION/FASHION_DNA/SPIN_FRAME_EXTRACTION`, `PIECE_TAGGABLE_CATEGORIES`; fixed orphaned `'Lehenga'` fragment
+- `packages/shared/src/types/index.ts` — removed `try_on_credits` from RetailerProfile
+
+### Schema.prisma
+
+- 25 models removed, 17 standalone enums removed, 20+ relation fields removed
+- 9 dead `PlanFeatureKey` and `QuotaResourceType` values annotated with `// REMOVED: <name>` comments
+- `prisma generate` succeeds
+
+### Verified
+
+- `pnpm --filter @kanchuki/api typecheck` → clean (0 errors)
+- `pnpm --filter @kanchuki/web typecheck` → clean (0 errors)
+- `pnpm --filter @kanchuki/mobile typecheck` → clean (0 errors)
+
+### Not done
+
+- Migration `082` not applied to production (applied manually by owner)
+- Doc updates to BUILD-LOG, PRO-REQUIREMENTS, PLAN, INDIA-RETAILER-GROWTH, DATABASE, API, SECURITY, DESIGN — partially complete (see this entry + CLAUDE.md)

@@ -133,43 +133,6 @@ export const publicSearchRoutes: FastifyPluginAsync = async (server) => {
       }));
     }
 
-    // If we have a preference vector, blend text relevance with personalization
-    if (accountId && results.length > 0) {
-      const dna = await prisma.customerFashionDNA.findUnique({
-        where: { customer_account_id: accountId },
-        select: { interaction_count: true },
-      });
-
-      if (dna && dna.interaction_count >= 5) {
-        const vecRows = await prisma.$queryRawUnsafe<{ pv: string }[]>(
-          `SELECT preference_vector::text as pv FROM customer_fashion_dna WHERE customer_account_id = $1`,
-          accountId,
-        );
-        const vecStr = vecRows[0]?.pv;
-        if (vecStr) {
-          const prefVec = vecStr.replace(/[\[\]]/g, '').split(',').map(Number).filter((n: number) => !isNaN(n));
-          if (prefVec.length > 0) {
-            // Boost results by preference similarity
-            results = results.map((r) => {
-              if (!r.embedding_raw) return r;
-              const prodVec = r.embedding_raw.replace(/[\[\]]/g, '').split(',').map(Number).filter((n: number) => !isNaN(n));
-              if (prodVec.length !== prefVec.length) return r;
-              let dot = 0, na = 0, nb = 0;
-              for (let i = 0; i < prefVec.length; i++) {
-                dot += prefVec[i]! * prodVec[i]!;
-                na += prefVec[i]! * prefVec[i]!;
-                nb += prodVec[i]! * prodVec[i]!;
-              }
-              const cosine = (Math.sqrt(na) * Math.sqrt(nb)) === 0 ? 0 : dot / (Math.sqrt(na) * Math.sqrt(nb));
-              return { ...r, _personalBoost: cosine * 0.5 }; // 50/50 blend
-            });
-            results.sort((a, b) => (b._personalBoost ?? 0) - (a._personalBoost ?? 0));
-            results = results.map(({ _personalBoost, ...r }) => r);
-          }
-        }
-      }
-    }
-
     return reply.status(200).send({
       items: results.slice(0, limit).map((r) => ({
         id: r.id,

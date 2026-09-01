@@ -327,22 +327,11 @@ Please share availability and details.
 
 ---
 
-### Screen CW-4: Try-On Flow (Phase 1)
+### Screen CW-4: Try-On Flow — REMOVED
 
-**Step 1:** "Upload your photo to try this outfit"
-- Privacy notice: "Your photo is used only to generate the preview. It is not stored."
-- [Upload Photo] button → file picker or camera
-- Sample "good photo" guide
-
-**Step 2:** Processing
-- "AI is working..." animation (fun, not scary)
-- Estimated: 20–30 seconds
-
-**Step 3:** Result
-- Side-by-side: Original photo | Try-on result
-- [Save Image] button
-- [Share with Family] button (native share sheet)
-- [Try Another Outfit] button
+Removed in `chore/remove-unwanted-features` (2026-08-31). Virtual Try-On, the
+cart/checkout screens, showroom booking, lookbooks and the 360° spin viewer are
+no longer part of the product. See `docs/database/no-feature-want.md`.
 
 ---
 
@@ -354,7 +343,6 @@ Retailer can switch to "TV Mode" — optimized for 40"+ screens connected to tab
 - Full-screen product photo (left 60%)
 - Product details panel (right 40%): Name, Price, Colors, Fabric, Location
 - Navigation: Prev / Next product arrows
-- Try-On button (triggers flow on connected tablet)
 - Auto-slideshow mode (5s per product)
 
 **Use case:** Retailer connects tablet to shop TV, rotates through shortlisted products for customer sitting across counter.
@@ -406,7 +394,6 @@ Retailer can switch to "TV Mode" — optimized for 40"+ screens connected to tab
 
 **Push notifications (Phase 0):**
 - New enquiry received: "📩 Priya liked 3 products in your Festive collection!"
-- Low try-on credits (Phase 1): "You have 10 try-ons remaining this month"
 
 **In-app notifications:**
 - Collection view count milestone: "Your Diwali collection got 50 views!"

@@ -67,49 +67,6 @@ describe('GET /v1/public/discover-stores', () => {
     },
   ];
 
-  it('returns personalized affinity-ranked stores when session exists', async () => {
-    mockPassportSessionFindUnique.mockResolvedValue({
-      customer_account_id: 'ca_123',
-      expires_at: new Date(Date.now() + 86400000),
-      revoked_at: null,
-    });
-
-    mockStoreAffinityFindMany.mockResolvedValue([
-      {
-        customer_account_id: 'ca_123',
-        retailer_id: 'ret_1',
-        score: 0.85,
-        retailer: mockStores[0],
-      },
-      {
-        customer_account_id: 'ca_123',
-        retailer_id: 'ret_2',
-        score: 0.6,
-        retailer: mockStores[1],
-      },
-    ]);
-
-    const app = buildApp();
-    await app.ready();
-
-    const res = await app.inject({
-      method: 'GET',
-      url: '/v1/public/discover-stores',
-      headers: {
-        cookie: 'kanchuki_passport=session_abc123',
-      },
-    });
-
-    expect(res.statusCode).toBe(200);
-    const body = res.json();
-    expect(body.stores).toHaveLength(2);
-    expect(body.stores[0].id).toBe('ret_1');
-    expect(body.stores[0].affinity_score).toBe(0.85);
-    expect(body.stores[0].source).toBe('affinity');
-    expect(body.stores[1].id).toBe('ret_2');
-    expect(body.stores[1].affinity_score).toBe(0.6);
-  });
-
   it('returns featured + directory stores when no session', async () => {
     mockPassportSessionFindUnique.mockResolvedValue(null);
     mockRetailerFindMany.mockResolvedValue(mockStores);

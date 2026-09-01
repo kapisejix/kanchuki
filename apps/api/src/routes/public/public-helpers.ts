@@ -79,8 +79,7 @@ export async function toPublicProductSummary(p: {
   location_notes: string | null;
   section: { name: string | null } | null;
   photos: { url: string; r2_key: string; metadata: unknown }[];
-  _count: { spin_frames: number };
-  avg_rating?: number;
+  _count: { photos?: number; spin_frames?: number };  avg_rating?: number;
   rating_count?: number;
 }) {
   const photo = customerVisiblePhotos(p.photos)[0];
@@ -99,9 +98,7 @@ export async function toPublicProductSummary(p: {
     primary_color: p.primary_color,
     location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
     primary_photo_url: photo ? await displayUrl(photo.url, photo.r2_key) : '',
-    has_360: p._count.spin_frames > 0,
-    avg_rating: p.avg_rating ?? 0,
-    rating_count: p.rating_count ?? 0,
+        rating_count: p.rating_count ?? 0,
   };
 }
 

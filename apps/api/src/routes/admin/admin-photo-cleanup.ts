@@ -12,7 +12,6 @@ import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { PRODUCT_DEMOGRAPHICS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
-import { addAdminTryOnJob } from '../../jobs/index.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { downloadCompressAndUpload, generateStudioImage } from '../../lib/studio-shoot.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
@@ -185,47 +184,8 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
     return { data: { result_url: uploaded.url, slug: style?.slug ?? null } };
   });
 
-  // ─── POST /admin/photo-cleanup/tryon ───────────────────────────────
-  // "Generate on model" — enqueues the admin-tryon maintenance job, which
-  // runs the self-hosted Fashion V-Tone pipeline (services/fashion-vtone,
-  // CPU-capable, Apache 2.0) to put the cleaned product photo on a model.
-  // The job writes an ADMIN_TRYON audit entry when it finishes (success or
-  // failure) so the page can poll the results feed for its job_id.
-  server.post('/photo-cleanup/tryon', async (request) => {
-    const body = z
-      .object({
-        job_id: z.string().min(1).max(64),
-        model_url: z.string().url(),
-        product_url: z.string().url(),
-        category: z.enum(['tops', 'bottoms', 'one-pieces']),
-      })
-      .parse(request.body);
-
-    try {
-      await addAdminTryOnJob(body);
-    } catch (err) {
-      request.log.error({ err }, 'Failed to enqueue admin try-on job');
-      throw new AppError(
-        'QUEUE_UNAVAILABLE',
-        'The try-on job queue is unavailable (Redis down?). Try again shortly.',
-        503,
-      );
-    }
-
-    return {
-      data: {
-        queued: true,
-        job_id: body.job_id,
-        message:
-          'On-model generation enqueued — the V-Tone pipeline takes ~30-60s, and the result appears in the feed below when it finishes.',
-      },
-    };
-  });
-
   // ─── GET /admin/photo-cleanup/tryon-results ────────────────────────
-  // Reads the ADMIN_TRYON audit trail (written by the admin-tryon job) into
-  // a typed results feed for the page. Newest first; 50 rows covers a long
-  // test session. Same audit-as-feed pattern as the storage report.
+  // Reads the ADMIN_TRYON audit trail into a typed results feed.
   server.get('/photo-cleanup/tryon-results', async () => {
     const rows = await prisma.auditLog.findMany({
       where: { action: 'ADMIN_TRYON' },

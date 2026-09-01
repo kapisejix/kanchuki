@@ -537,7 +537,7 @@ Both F-001b and F-001c share the same underlying `detector.ts` with the same `de
 ---
 
 #### F-102: AI Virtual Try-On (Self-Hosted)
-**Status:** 🟢 **Built + LIVE on Railway (2026-08-06)** — Fashion V-Tone v1.5 engine (Apache 2.0, maskless, CPU-capable), multi-piece chaining, training consent collection. Replaced CatVTON 2026-07-16. Deployed as the `fashion-vtone` Railway service (autosleep, domain `fashion-vtone-production.up.railway.app`), wired into the admin "Generate on model" tool (commit `9a9e923`).
+**Status:** ❌ **Removed** (2026-08-31, `chore/remove-unwanted-features`) — all VTO code, tables, routes, and infrastructure removed. V-Tone server still exists on Hetzner but is no longer wired into the platform.
 **Description:** Customer uploads their photo, selects product, AI generates try-on preview.
 
 **Tech:** Fashion V-Tone v1.5 (self-hosted Python microservice via `fashn-vton`)  
@@ -572,7 +572,8 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 
 ---
 
-#### F-102c: Size Recommendation (Retailer Size Chart Match)
+#### ~~F-102c: Size Recommendation~~ (REMOVED 2026-08-31)
+**Status:** ❌ **Removed** — size charts, measurements, and recommendation engine all dropped in `chore/remove-unwanted-features`.
 **Status:** 🟡 **Full stack** — schema, API, mobile UI, lookup function all done. Customer-web integration deferred (no anonymous customer identity on share-link flow).
 **Description:** Recommend a size (S–10XL) to the customer by matching their `CustomerMeasurement` record (F-102b) against the retailer's own ready-garment size chart, distinct from and complementary to F-102 visual try-on.
 
@@ -584,7 +585,8 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 
 ---
 
-#### F-102b: Body Measurement Capture (feeds F-102 VTO fit)
+#### ~~F-102b: Body Measurement Capture~~ (REMOVED 2026-08-31)
+**Status:** ❌ **Removed** — customer_measurements table and all measurement capture code dropped in `chore/remove-unwanted-features`.
 **Status:** ✅ **Full stack (mobile)** — MediaPipe Python script (`scripts/measurement_extractor.py`), camera capture flow with front/back photos (React Native, Expo Camera), upload-to-R2 pipeline, extraction job (BullMQ → Python), and manual tape-measure entry form all built and wired end-to-end.
 
 **Description:** Two input paths, both write to same `CustomerMeasurement` record — VTO engine consumes either identically.
@@ -612,7 +614,8 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 
 ---
 
-#### F-102d: Consented Training-Data Collection + Photo Crop-Tagging
+#### ~~F-102d: Consented Training-Data Collection + Photo Crop-Tagging~~ (REMOVED 2026-08-31)
+**Status:** ❌ **Removed** — try-on pipeline code dropped in `chore/remove-unwanted-features`.
 **Description:** Two related additions to the F-102 try-on pipeline, built together 2026-07-13.
 
 **Part 1 — Crop-tagging for single-photo "set" shots.** Many vendor catalog photos show a 2-piece outfit (kameez+dupatta draped on a mannequin, folded bottom piece on a stand) all in **one** frame — the existing F-102 piece-tagging (`ProductPhoto.piece_type`) is per-whole-photo, so a single combined photo can't be split into upper+lower for the two-call chaining path; it falls back to a single `overall` call, which mis-renders (confirmed root cause, see `docs/adrs/ADR-006-defer-3d-parametric-vto.md` session notes 2026-07-12).
@@ -690,7 +693,8 @@ Fashion V-Tone does NOT require background removal or segmentation masks — it 
 
 ---
 
-#### F-302: L2 Ecommerce Checkout — Direct-to-Retailer Payments
+#### ~~F-302: L2 Ecommerce Checkout~~ (REMOVED 2026-08-31)
+**Status:** ❌ **Removed** — orders, checkout, cart, payment infrastructure all dropped in `chore/remove-unwanted-features`.
 **Status:** ✅ **Built** — backend, customer web UI, Razorpay integration, webhook all complete. See `docs/PLAN.md` (deployed ahead of the original Month 15–16 roadmap slot), `packages/db/prisma/schema.prisma` (Order/OrderItem/RetailerPaymentAccount), `apps/api/src/routes/checkout.ts`, `docs/SECURITY.md` §11.
 
 **Priority:** P1 — new revenue lever (commerce tier upsell).

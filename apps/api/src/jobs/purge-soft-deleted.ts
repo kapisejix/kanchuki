@@ -31,16 +31,15 @@ const db = getPurgePrisma();
  * - Results are logged to the audit trail.
  *
  * Tables purged (in dependency order — children before parents):
- *   1. product_variants, product_photos, product_spin_frames, product_embeddings → children of products
- *      (r2_key of every photo/spin-frame/variant is fetched first and its R2 object
+ *   1. product_variants, product_photos, product_embeddings → children of products
+ *      (r2_key of every photo/variant is fetched first and its R2 object
  *      deleted after the DB purge — best-effort, see purgeR2Objects())
  *   2. products                                              → main business table
  *   3. collection_products, collection_views, collection_enquiries → children of collections
  *   4. collections                                           → main business table
- *   5. customer_interactions                                 → children of customers
- *   6. customers                                             → main business table
- *   7. staff                                                 → children of retailers
- *   8. retailers                                             → main business table (last, FK target)
+ *   5. customers                                             → main business table
+ *   6. staff                                                 → children of retailers
+ *   7. retailers                                             → main business table (last, FK target)
  */
 
 const PURGE_AFTER_DAYS = 15;
@@ -161,19 +160,17 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   // ── 1. Purge products + children ──────────────────────────────
   // Grab R2 keys before the rows disappear — cascade/explicit delete removes
   // the DB record but never touches the Cloudflare object.
-  const [photoKeys, spinFrameKeys, variantKeys] = await Promise.all([
+  const [photoKeys, variantKeys] = await Promise.all([
     fetchR2Keys('product_photos', 'product_id', 'products', cutoff),
-    fetchR2Keys('product_spin_frames', 'product_id', 'products', cutoff),
     fetchR2Keys('product_variants', 'product_id', 'products', cutoff),
   ]);
-  const r2Keys = [...photoKeys, ...spinFrameKeys, ...variantKeys];
+  const r2Keys = [...photoKeys, ...variantKeys];
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging product children...');
   await Promise.all([
     purgeChildren('product_variants', 'product_id', 'products', cutoff),
     purgeChildren('product_photos', 'product_id', 'products', cutoff),
-    purgeChildren('product_spin_frames', 'product_id', 'products', cutoff),
     purgeChildren('product_embeddings', 'product_id', 'products', cutoff),
   ]);
 
@@ -198,43 +195,20 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   console.log('[purge-soft-deleted] Purging collections...');
   const totalCollections = await purgeTable('collections', cutoff);
 
-  // ── 3. Purge customers + children ────────────────────────────
-  // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
-  console.log('[purge-soft-deleted] Purging customer children...');
-  await Promise.all([
-    purgeChildren('customer_interactions', 'customer_id', 'customers', cutoff),
-    purgeChildren('customer_measurements', 'customer_id', 'customers', cutoff),
-    purgeChildren('customer_fashion_dna', 'customer_id', 'customers', cutoff),
-  ]);
-
+  // ── 3. Purge customers ──────────────────────────────────────
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging customers...');
   const totalCustomers = await purgeTable('customers', cutoff);
 
   // ── 4. Purge retailers + children ────────────────────────────
   // Grab R2 keys for retailer-child rows before they disappear (category
-  // covers, measurement photos, try-on images, consent-gated training copies,
-  // retailer logo/banner/KYC).
+  // covers + retailer logo/banner/KYC).
   const [retailerChildR2Keys, retailerAssets] = await Promise.all([
     db.$queryRawUnsafe<{ r2_key: string | null }[]>(
-      `SELECT r2_key FROM (
-         SELECT image_r2_key AS r2_key FROM product_categories WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1)
-         UNION ALL
-         SELECT front_photo_r2_key AS r2_key FROM customer_measurements WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1) AND front_photo_r2_key IS NOT NULL
-         UNION ALL
-         SELECT back_photo_r2_key AS r2_key FROM customer_measurements WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1) AND back_photo_r2_key IS NOT NULL
-         UNION ALL
-         SELECT customer_photo_r2_key AS r2_key FROM try_on_jobs WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1)
-         UNION ALL
-         SELECT result_r2_key AS r2_key FROM try_on_jobs WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1) AND result_r2_key IS NOT NULL
-         UNION ALL
-         SELECT customer_photo_r2_key AS r2_key FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1))
-         UNION ALL
-         SELECT garment_photo_r2_key AS r2_key FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1))
-         UNION ALL
-         SELECT result_r2_key AS r2_key FROM training_photo_consents WHERE try_on_job_id IN (SELECT id FROM try_on_jobs WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1)) AND result_r2_key IS NOT NULL
-       ) t`,
-      cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff, cutoff,
+      `SELECT image_r2_key AS r2_key FROM product_categories
+       WHERE retailer_id IN (SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1)
+         AND image_r2_key IS NOT NULL`,
+      cutoff,
     ),
     db.retailer.findMany({
       where: { deleted_at: { not: null, lt: cutoff } },
@@ -259,39 +233,22 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
   ].filter((k): k is string => !!k);
 
   // Children with a retailer_id FK are deleted explicitly (the retailer row's
-  // FK graph). Orders/product_categories/size_charts/usage_counters cascade
-  // on retailer delete, so they're handled by purgeTable below. The RESTRICT
-  // / NO-ACTION tables must go first or `DELETE FROM retailers` throws an FK
-  // violation and the whole sweep rolls back — this was the same missing-rows
-  // bug as hardDeleteRetailer (product_attributes/social_accounts/social_posts
-  // shipped with RESTRICT FKs in migrations 046/052 and silently broke the
-  // admin hard-delete + this cron).
+  // FK graph). product_categories/usage_counters cascade on retailer delete, so
+  // they're handled by purgeTable below. The RESTRICT / NO-ACTION tables must
+  // go first or `DELETE FROM retailers` throws an FK violation and the whole
+  // sweep rolls back — this was the same missing-rows bug as hardDeleteRetailer
+  // (product_attributes/social_accounts/social_posts shipped with RESTRICT FKs
+  // in migrations 046/052 and silently broke the admin hard-delete + this cron).
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging retailer children...');
   // subscription_payments FK-restricts subscriptions, so it must be gone
   // BEFORE subscriptions (children-before-parents; keep it out of the
   // parallel batch below to avoid a race).
   await purgeChildren('subscription_payments', 'retailer_id', 'retailers', cutoff);
-  // Training consents are keyed to try_on_jobs (no retailer_id column, no FK
-  // on try_on_job_id). Purge them BEFORE try_on_jobs below — via a join
-  // through the retailer's jobs — or the join finds nothing after the jobs
-  // are gone.
-  await db.$transaction([
-    db.$executeRawUnsafe(`SET app.allow_hard_delete = 'true';`),
-    db.$executeRawUnsafe(
-      `DELETE FROM training_photo_consents WHERE try_on_job_id IN (
-         SELECT id FROM try_on_jobs WHERE retailer_id IN (
-           SELECT id FROM retailers WHERE deleted_at IS NOT NULL AND deleted_at < $1
-         )
-       );`,
-      cutoff,
-    ),
-  ]);
   await Promise.all([
     purgeChildren('staff', 'retailer_id', 'retailers', cutoff),
     purgeChildren('store_sections', 'retailer_id', 'retailers', cutoff),
     purgeChildren('product_categories', 'retailer_id', 'retailers', cutoff),
-    purgeChildren('try_on_usage_logs', 'retailer_id', 'retailers', cutoff),
     purgeChildren('usage_counters', 'retailer_id', 'retailers', cutoff),
     // RESTRICT/NO-ACTION retailer FKs (children before parents).
     purgeChildren('subscriptions', 'retailer_id', 'retailers', cutoff),
@@ -300,15 +257,13 @@ export async function handlePurgeSoftDeleted(): Promise<PurgeResult> {
     purgeChildren('product_attributes', 'retailer_id', 'retailers', cutoff),
     purgeChildren('social_posts', 'retailer_id', 'retailers', cutoff),
     purgeChildren('social_accounts', 'retailer_id', 'retailers', cutoff),
-    purgeChildren('try_on_jobs', 'retailer_id', 'retailers', cutoff),
   ]);
 
   // biome-ignore lint/suspicious/noConsoleLog: admin cron job logging
   console.log('[purge-soft-deleted] Purging retailers...');
   const totalRetailers = await purgeTable('retailers', cutoff);
 
-  // R2 objects for the retailer's own rows (logo/banner/KYC + category
-  // covers / measurement photos / try-on images / training copies).
+  // R2 objects for the retailer's own rows (logo/banner/KYC + category covers).
   const totalRetailerR2Deleted = await purgeR2Objects(retailerR2Keys);
 
   // ── 5. Audit log ──────────────────────────────────────────────

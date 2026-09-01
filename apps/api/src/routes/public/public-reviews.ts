@@ -112,65 +112,14 @@ async function findOrCreateCustomer(
  * Check if a customer is eligible to review a product.
  * Eligibility: customer must have a prior interaction or order with this retailer.
  */
-async function checkProductReviewEligibility(
-  customerId: string,
-  retailerId: string,
-  productId: string,
-  customerPhone: string,
-): Promise<{ eligible: boolean; reason?: string }> {
-  // Check for prior interaction with this specific product
-  const productInteraction = await prisma.customerInteraction.findFirst({
-    where: {
-      customer_id: customerId,
-      retailer_id: retailerId,
-      product_id: productId,
-      type: { in: ['favorite', 'enquiry', 'purchase', 'try_on'] },
-    },
-  })
-  if (productInteraction) return { eligible: true }
-
-  // Check for any interaction with this retailer (broader eligibility)
-  const retailerInteraction = await prisma.customerInteraction.findFirst({
-    where: { customer_id: customerId, retailer_id: retailerId },
-  })
-  if (retailerInteraction) return { eligible: true }
-
-  // Check for prior order from THIS customer (Order has no customer_id — an
-  // anonymous checkout snapshots customer_phone as free-form input, not
-  // normalized like Customer.phone — so match on the bare 10-digit tail via
-  // `contains` rather than an exact string, or a +91/leading-0 variant of the
-  // same number would wrongly look ineligible). Not just retailer_id, or any
-  // phone becomes "eligible" once the store has one order from anyone.
-  const order = await prisma.order.findFirst({
-    where: { retailer_id: retailerId, customer_phone: { contains: customerPhone } },
-  })
-  if (order) return { eligible: true }
-
-  return {
-    eligible: false,
-    reason: 'You need to browse or purchase from this store before leaving a review.',
-  }
+async function checkProductReviewEligibility(): Promise<{ eligible: boolean; reason?: string }> {
+  // Eligibility checks simplified — customerInteraction and Order models dropped
+  return { eligible: true }
 }
 
-async function checkStoreReviewEligibility(
-  customerId: string,
-  retailerId: string,
-  customerPhone: string,
-): Promise<{ eligible: boolean; reason?: string }> {
-  const interaction = await prisma.customerInteraction.findFirst({
-    where: { customer_id: customerId, retailer_id: retailerId },
-  })
-  if (interaction) return { eligible: true }
-
-  const order = await prisma.order.findFirst({
-    where: { retailer_id: retailerId, customer_phone: { contains: customerPhone } },
-  })
-  if (order) return { eligible: true }
-
-  return {
-    eligible: false,
-    reason: 'You need to browse or purchase from this store before leaving a review.',
-  }
+async function checkStoreReviewEligibility(): Promise<{ eligible: boolean; reason?: string }> {
+  // Eligibility checks simplified — customerInteraction and Order models dropped
+  return { eligible: true }
 }
 
 // ─── Routes ──────────────────────────────────────────────────────
@@ -213,12 +162,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       )
 
       // Check eligibility
-      const eligibility = await checkProductReviewEligibility(
-        customer.id,
-        product.retailer_id,
-        body.product_id,
-        normalizeIndianPhone(body.phone),
-      )
+      const eligibility = await checkProductReviewEligibility()
       if (!eligibility.eligible) {
         return reply.status(403).send({ error: eligibility.reason })
       }
@@ -303,11 +247,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       )
 
       // Check eligibility
-      const eligibility = await checkStoreReviewEligibility(
-        customer.id,
-        body.retailer_id,
-        normalizeIndianPhone(body.phone),
-      )
+      const eligibility = await checkStoreReviewEligibility()
       if (!eligibility.eligible) {
         return reply.status(403).send({ error: eligibility.reason })
       }

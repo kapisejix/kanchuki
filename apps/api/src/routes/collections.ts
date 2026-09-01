@@ -1,6 +1,5 @@
-import { MATCH_SIMILARITY_THRESHOLD, MIN_CONFIDENCE_FOR_MATCHING } from '@kanchuki/ai';
 import { prisma, vaultDelete } from '@kanchuki/db';
-import { Prisma } from '@kanchuki/db';
+import type { Prisma } from '@kanchuki/db';
 import { addDays, generateCollectionSlug, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -258,58 +257,10 @@ export const collectionRoutes: FastifyPluginAsync = async (server) => {
     if (!customer) throw notFound('Customer');
 
     let productIds: string[] = [];
-    let dna_used = false;
+    // Fashion DNA matching removed (chore/remove-unwanted-features) — preference-based only.
+    const dna_used = false;
 
-    // Step 1: Try DNA-guided matching
-    // preference_vector is Unsupported("vector(1536)") — use $queryRaw to read it
-    type DNARow = {
-      preference_vector: string | null;
-      confidence_score: number | null;
-    };
-    const dnaRows = await prisma.$queryRaw<DNARow[]>`
-      SELECT
-        preference_vector::text,
-        confidence_score
-      FROM customer_fashion_dna
-      WHERE customer_id = ${customer_id}
-      LIMIT 1
-    `;
-    const dnaRow = dnaRows[0];
-
-    if (
-      dnaRow?.preference_vector &&
-      (dnaRow.confidence_score ?? 0) >= MIN_CONFIDENCE_FOR_MATCHING
-    ) {
-      dna_used = true;
-
-      type RawMatchRow = { id: string; match_score: number };
-
-      const conditions = [
-        Prisma.sql`p.retailer_id = ${retailerId}`,
-        Prisma.sql`p.deleted_at IS NULL`,
-        Prisma.sql`p.status = 'AVAILABLE'`,
-      ];
-      if (price_max != null) conditions.push(Prisma.sql`p.price_min <= ${price_max}`);
-      if (category) conditions.push(Prisma.sql`p.category = ${category}`);
-
-      const rows = await prisma.$queryRaw<RawMatchRow[]>`
-        SELECT
-          p.id,
-          (1 - (pe.embedding <=> ${dnaRow.preference_vector}::vector)) AS match_score
-        FROM products p
-        JOIN product_embeddings pe ON p.id = pe.product_id
-        WHERE ${Prisma.join(conditions, ' AND ')}
-        ORDER BY match_score DESC
-        LIMIT ${limit * 2}
-      `;
-
-      productIds = rows
-        .filter((r) => Number(r.match_score) > MATCH_SIMILARITY_THRESHOLD)
-        .slice(0, limit)
-        .map((r) => r.id);
-    }
-
-    // Fall back to explicit preferences
+    // Match on explicit customer preferences
     if (productIds.length === 0) {
       const prefColors = customer.pref_colors ?? [];
       const prefFabrics = customer.pref_fabrics ?? [];

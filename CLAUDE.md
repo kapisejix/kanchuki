@@ -12,12 +12,10 @@
 
 Kanchuki digitizes India's 1 million+ offline clothing stores with:
 1. **AI Catalog Builder** — photo → auto-tagged product in seconds
-2. **Fashion DNA CRM** — customer preference engine (color, style, budget, occasion)
+2. **Customer Preference Engine** — color, style, budget, size preferences per customer
 3. **WhatsApp Commerce** — share product collections via link, no app needed
-4. **Virtual Try-On (VTO)** — customer uploads photo, tries outfits remotely
-5. **B2B Supply Network** — Manufacturer → Wholesaler → Retailer catalog chain
 
-**Unique moat:** Only platform combining AI Try-On + Fashion DNA CRM + WhatsApp Commerce + works without a website.
+**Unique moat:** AI-powered catalog builder + customer preference engine + WhatsApp Commerce that works without a website.
 
 ---
 
@@ -26,7 +24,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 | Role | Primary Need | App Surface |
 |------|-------------|-------------|
 | Retailer | Upload products, search for customers, share via WhatsApp | Mobile app (React Native) |
-| Customer | View collection, try-on, favorite, enquire | Mobile web (Next.js PWA) |
+| Customer | View collection, favorite, enquire | Mobile web (Next.js PWA) |
 | Wholesaler | Share catalogs, manage retailer orders | Web dashboard |
 | Manufacturer | Upload master catalogs, track design popularity | Web dashboard |
 | Admin | Platform ops, billing, support | Next.js admin panel |
@@ -47,7 +45,8 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 - Retailer account settings (profile edit/delete, subscription, team, WhatsApp config, F-009) + generalized quota/limits system (F-010) — see `docs/PRO-REQUIREMENTS.md`
 - Ghost-mannequin AI catalog image generation for packed/unopened stock, via Snappyit API (F-001e, planned) — retailer unpacks once per design, AI generates full worn catalog image reused across all restocked units — see `docs/PRO-REQUIREMENTS.md`
 
-**NOT in MVP:** VTO, WhatsApp API automation, Fashion DNA AI matching, Manufacturer/Wholesaler layer, UPI payment tracking
+**Removed (chore/remove-unwanted-features):** Virtual Try-On (VTO), Fashion DNA AI matching, checkout/orders, size recommendation, showroom bookings, referrals, customer interactions tracking, lookbooks, spin-frame 360°, partner referrals, store affinities.  
+**NOT in MVP:** WhatsApp API automation, Manufacturer/Wholesaler layer, UPI payment tracking
 
 ---
 
@@ -59,8 +58,7 @@ Kanchuki digitizes India's 1 million+ offline clothing stores with:
 | Customer Web | Next.js 14 (App Router) | PWA, SEO, SSR |
 | Backend API | Node.js + Fastify | Fast, TypeScript native |
 | AI Tagging | Claude Vision API (claude-3-5-sonnet) | Best for Indian fashion understanding |
-| VTO Engine | **Fashion V-Tone v1.5 (self-hosted)** | Apache 2.0, maskless, CPU-capable |
-| Database | PostgreSQL 16 + pgvector | Vector search for Fashion DNA |
+| Database | PostgreSQL 16 | Standard relational |
 | Cache | Redis | Session, rate limit, job queue |
 | Storage | Cloudflare R2 | Cost-effective image storage |
 | Auth | Supabase Auth | Phone OTP for retailers |
@@ -89,7 +87,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 - **INR pricing only** — no USD, no forex friction
 - **Offline-first design** — retailer app must work with poor connectivity
 - **Photo-first UX** — no manual form filling for product entry
-- **AI try-on cost budget** — ₹5-15/image, must be covered by plan pricing
+- **WhatsApp API pass-through** — Meta's ₹0.38/conversation must be in pricing math
 - **WhatsApp API pass-through** — Meta's ₹0.38/conversation must be in pricing math
 - **Regional language UI** — Hindi minimum by Year 1
 
@@ -145,7 +143,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 |---|---------|--------|------|--------|
 | 1 | Admin Control Center — Plan Feature Matrix (F-013), Activity Tracking (F-014), Suspension (F-015), Deletion Vault (F-016), DB Guardrails (F-017) | ✅ Built | 2026-07-26 | BUILD-LOG §1 |
 | 2 | Phase 0.5 Internal Team Management — SupportTicket routing, manager rollup reports, staff Expo mode | ✅ Built | — | BUILD-LOG §2 |
-| 3 | L2 Ecommerce Checkout (cart → address → pay, per-retailer Razorpay; WhatsApp stays share-only) | ✅ Built | 2026-08-18 | BUILD-LOG §3 |
+| 3 | ~~L2 Ecommerce Checkout~~ | ❌ Removed | 2026-08-31 | `chore/remove-unwanted-features` |
 | 4 | F-018 Sales Referral Attribution + F-019 Paid On-Site Catalog Upload Service | ✅ Built | 2026-07-28 | BUILD-LOG §4 |
 | 5 | Marketing Page Redesign — Loom Design System (Option A; B/C/D documented as alternatives) | ✅ Built | 2026-07-29 | BUILD-LOG §5 |
 | 6 | Admin-Configurable Platform Theme (rebrand without app rebuild) | ✅ Built | 2026-07-29 | BUILD-LOG §6 |
@@ -192,11 +190,12 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 | 47 | Partner Network Manager (Marketing & Sales Enablement) — full stack (retailer CRUD + admin API + admin UI + mobile UI + schema + migration 066) | ✅ Built (schema fixed, mobile screen complete) | 2026-08-20 | BUILD-LOG, `docs/marketing/IMPLEMENTATION-STATUS.md` |
 | 48 | Remaining Work Audit — 31 prioritized coding items + 5 devOps tasks across PRO-REQUIREMENTS, INDIA-RETAILER-GROWTH, photo-feature-audit, PHASE-II-WHATSAPP-CATALOG-BREAKDOWN | 📋 Task list | 2026-08-20 | `docs/20-August-changes.md` |
 | 49 | DB-driven Plan Pricing (admin-editable ₹, replaces hardcoded `PLAN_PRICING`) + FLUX Kontext (F-032 Studio Shoot) per-plan-tier quota via `STUDIO_SHOOT` `QuotaResourceType` (F-010 pattern reused, no per-retailer override) | ✅ Built | 2026-08-21 | BUILD-LOG §51 |
-| 50 | Customer Profile P0-P1 — VTO self-serve enabled, showroom booking form, product review list (social proof), seasonal collections + lookbooks surfacing, promotion/discount alert banner | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
+| 50 | ~~Customer Profile P0-P1~~ (VTO self-serve, showroom booking, lookbooks — **removed**) | ❌ Partially removed | 2026-08-31 | `chore/remove-unwanted-features` |
 | 51 | Customer Profile P2 — fabric glossary (+25 fabrics), recently viewed row, restock notify, saved size capture, 5-question style quiz, AI Stylist v1 (Claude-powered chat), Unstitched Design Gallery (DesignReference schema + migration 069 + admin CRUD + customer gallery) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` §12 |
-| 52 | Customer Profile P3 — regional weave/style filters (12 Indian regions), customer referral rewards (code + WhatsApp share), family/gifting mode (save sizes for family members) | ✅ Built | 2026-08-21 | `docs/customer/customer-profile-req.md` |
+| 52 | ~~Customer Profile P3~~ (referral rewards — **removed**) | ❌ Partially removed | 2026-08-31 | `chore/remove-unwanted-features` |
 | 53 | Add-Product raw-photo default (auto-clean OFF — raw saved as-is) + restored per-photo Background/Shadow controls on product detail (`ProductPhotoControls`, dropped in the `b0c3747` redesign) + AI Studio Shoot per-model prompts (Fashion Models no longer collapse to one identical image) + Admin backdrop library: delete (`DELETE /admin/background-images/:id` + trash button), click-thumbnail full-size lightbox, AI scene-naming on upload (`name` optional → `runVisionAsk`) | ✅ Built + live | 2026-08-29 | BUILD-LOG §2026-08-29 |
 | 54 | AI Studio Shoot — demographic person-swap + scene expansion: product category → `Demographic` (`womens`/`mens`/`teen_girl`/`teen_boy`/`kids_girl`/`kids_boy`), scenes tagged `noModel` (product-only) / `audience` (per-demographic), `generateStudioImage()` swaps the person per demographic, 5 new scenes (Seated Lounge, Male with Car/Bike, Kids Playing, Teen Street), admin bench gets a demographic filter. Steps 1–5 of `docs/tasks/ai-studio-shoot-models-scenes.md`. | 🧪 Built (unmerged) — admin-bench only, owner testing; step 6 = un-draft + mobile auto-filter | 2026-08-30 | BUILD-LOG §2026-08-30 (demographic) |
+| 55 | Feature Teardown — removed 24+ tables (checkout/orders, VTO, Fashion DNA, customer_interactions, store_affinities, bookings, referrals, lookbooks, spin-frame, size-recommend, partner-referrals, intention-finding, ghost-mannequin, studio-shoot job infra) + 17 dead enums + orphaned columns + plan-matrix rows via migration 082; gutted API/web/mobile routes, jobs, tests, shared constants, Prisma schema | ✅ Built | 2026-08-31 | `chore/remove-unwanted-features`, `docs/database/no-feature-want.md` |
  
 ---
 
@@ -205,7 +204,7 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 **Detail:** `docs/INDIA-RETAILER-GROWTH.md`  
 **Scope:** India-only small retailers  
 **Prerequisite:** Phase 0 live + F-031 social publishing shipped  
-**Status:** ✅ Built 2026-08-17 — backend (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057` — the `GROWTH_ENGINE` enum value + plan-feature rows are split out because PostgreSQL 55P04 forbids using a freshly-added enum value in the same transaction — all routes gated behind the `GROWTH_ENGINE` plan feature) + **full mobile UI**: growth hub, campaigns, referrals, promotions, suppliers, showroom bookings, inventory alerts, product videos, AI translate, AI search, campaign analytics, **AI Campaign Assistant** (BUILD-LOG §45–48) + admin festival calendar. **M, N, R, S, E completed** (BUILD-LOG §47–48): campaign/WhatsApp message translation + AI-search screen (voice via keyboard dictation), usual-size capture + per-customer size recommendation (usual → purchase history → F-102c chart) + plus sizes (XS, 4XL–8XL), campaign analytics screen (festival/segment/hour/category/video-vs-photo/A-B), collection A/B (per-variant product sets + stagger + z-test significance), AI campaign assistant (NLP intent → WhatsApp message template + save-to-campaign). **Migration 055–058 not yet applied** (Supabase SQL Editor / `prisma migrate deploy`); per-route growth tests pending. Not built: M native mic + PWA/retailer UI language toggle, R seasonal deep-dive dashboards, S auto-built variant collection links (needs a hidden-collection status) remain future work. **Phase I — GST-Ready Invoicing (I):** PDF generation + HSN mapping designed and ready for implementation. **Phase II — WhatsApp Native Catalog Sync (P):** Meta catalog API integration designed and ready for implementation.
+**Status:** ✅ Built 2026-08-17 — backend (BUILD-LOG §44, migrations `055_growth_engine` + `056`/`057`) + **full mobile UI**: growth hub, campaigns, promotions, suppliers, inventory alerts, product videos, AI translate, AI search, campaign analytics, **AI Campaign Assistant** (BUILD-LOG §45–48) + admin festival calendar. **Referrals, showroom bookings, size recommendation removed** in `chore/remove-unwanted-features` (2026-08-31). **Phase I — GST-Ready Invoicing (I):** PDF generation + HSN mapping designed and ready for implementation. **Phase II — WhatsApp Native Catalog Sync (P):** Meta catalog API integration designed and ready for implementation.
 
 ### Sprint Block A — Quick Wins (4 weeks)
 - ✅ QR Code Lead Capture (in-store + delivery)
@@ -216,14 +215,14 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 
 ### Sprint Block B — Customer Acquisition (6 weeks)
 - ✅ Kanchuki Store Directory (`/stores` — city filter + search + featured pins)
-- ✅ Referral Program Engine
+- ❌ ~~Referral Program Engine~~ (removed in chore/remove-unwanted-features)
 - ✅ Festival Campaign Templates (Diwali, Navratri, regional — admin calendar + campaigns)
 - ✅ Smart Promotion / Discount Engine
 
 ### Sprint Block C — Shop Management (6 weeks)
 - ✅ GST-Ready Invoicing (I — designed, PDF generation + HSN mapping ready)
 - ✅ Supplier Management
-- ✅ Showroom / Try-On Room Booking
+- ❌ ~~Showroom / Try-On Room Booking~~ (removed in chore/remove-unwanted-features)
 
 ### Sprint Block D — Localization & Scale (6 weeks)
 - ✅ Multi-Language AI (M — descriptions + campaign messages; AI search UI; voice via keyboard dictation). **Data groundwork landed** 2026-08-18: migration 063 (`retailers.preferred_locale`), shared `SUPPORTED_LOCALES` constant, API field. Full sub-tasks (native mic, PWA toggle, retailer UI toggle) deferred post-launch — no i18n infra exists yet (BUILD-LOG §50)
@@ -269,10 +268,8 @@ Payment: Razorpay (UPI first). Annual discount 20%.
 
 ## Key Risks
 
-1. **VTO quality for ethnic wear** — saree draping, unstitched suit layering hard for existing APIs
-2. **Retailer upload behavior** — many will try once and drop off
-3. **WhatsApp API dependency** — Meta can change pricing/access
-4. **AI cost per try-on** — margin tight at ₹999/month plan
+1. **Retailer upload behavior** — many will try once and drop off
+2. **WhatsApp API dependency** — Meta can change pricing/access
 
 ---
 

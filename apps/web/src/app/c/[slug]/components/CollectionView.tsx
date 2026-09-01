@@ -39,18 +39,13 @@ const ProductDetailSheet = dynamic(
   () => import('./ProductDetailSheet').then((m) => m.ProductDetailSheet),
   { ssr: false },
 );
-const TryOnModal = dynamic(() => import('./TryOnModal').then((m) => m.TryOnModal), { ssr: false });
-const BookingForm = dynamic(() => import('./BookingForm').then((m) => m.BookingForm), { ssr: false });
+
 const PromotionBanner = dynamic(() => import('./PromotionBanner').then((m) => m.PromotionBanner), { ssr: false });
 const RecentlyViewed = dynamic(() => import('./RecentlyViewedRow').then((m) => m.RecentlyViewed), { ssr: false });
 const StyleQuiz = dynamic(() => import('./StyleQuiz').then((m) => m.StyleQuiz), { ssr: false });
 const AIStylist = dynamic(() => import('./AIStylist').then((m) => m.AIStylist), { ssr: false });
 const RegionalFilters = dynamic(() => import('./RegionalFilters').then((m) => m.RegionalFilters), { ssr: false });
-const CustomerReferral = dynamic(() => import('./CustomerReferral').then((m) => m.CustomerReferral), { ssr: false });
-
 // Feature flags for customer catalog screen
-const TRY_ON_ENABLED = false;
-const REFER_EARN_ENABLED = false;
 const REGIONAL_FILTERS_ENABLED = false;
 
 const PAGE_SIZE = 12;
@@ -98,8 +93,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
   const [filterColor, setFilterColor] = useState<string | null>(null);
   const [filterRegional, setFilterRegional] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
-  const [tryOnProduct, setTryOnProduct] = useState<PublicProduct | null>(null);
-  const [showBooking, setShowBooking] = useState(false);
+
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizDone, setQuizDone] = useState(false);
 
@@ -455,7 +449,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                   onTap={() => setSelectedProduct(product)}
                   collectionSlug={slug}
                   priority={idx < 2}
-                  onTryOn={(p) => setTryOnProduct(p)}
+
                 />
               ))}
             </div>
@@ -497,20 +491,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
               slug={slug}
               store={store ?? null}
               onFavorite={toggleFavorite}
-              onTryOn={() => setTryOnProduct(selectedProduct)}
+
               onClose={() => setSelectedProduct(null)}
           />
-      )}
-
-      {/* ── Try-On Modal ── */}
-      {tryOnProduct && (
-        <TryOnModal
-          productName={tryOnProduct.category ?? 'Product'}
-          productPhotoUrl={tryOnProduct.primary_photo_url}
-          collectionSlug={slug}
-          productId={tryOnProduct.id}
-          onClose={() => setTryOnProduct(null)}
-        />
       )}
 
       {/* ── AI Stylist FAB + Modal ── */}
@@ -523,24 +506,9 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         }}
       />
 
-      {/* ── Booking Form Modal ── */}
-      {showBooking && (
-        <BookingForm
-          storeSlug={store ?? slug}
-          storeName={collection.retailer.shop_name}
-          onClose={() => setShowBooking(false)}
-        />
-      )}
 
-      {/* Referral program */}
-      {REFER_EARN_ENABLED && (
-        <div className="max-w-md mx-auto px-3 mb-4">
-          <CustomerReferral
-            storeSlug={store ?? slug}
-            storeName={collection.retailer.shop_name}
-          />
-        </div>
-      )}
+
+
 
       {/* Bottom padding for sticky nav */}
       <div className="h-20" />

@@ -31,20 +31,8 @@ export const retailersStatsRoutes: FastifyPluginAsync = async (server) => {
       prisma.collectionEnquiry.count({
         where: { retailer_id: retailerId, created_at: { gte: monthStart } },
       }),
-      prisma.customerInteraction.groupBy({
-        by: ['product_id'],
-        where: { retailer_id: retailerId, type: 'view', product_id: { not: null } },
-        _count: { product_id: true },
-        orderBy: { _count: { product_id: 'desc' } },
-        take: 5,
-      }),
-      prisma.customerInteraction.groupBy({
-        by: ['product_id'],
-        where: { retailer_id: retailerId, type: 'enquiry', product_id: { not: null } },
-        _count: { product_id: true },
-        orderBy: { _count: { product_id: 'desc' } },
-        take: 5,
-      }),
+      Promise.resolve([]) as any,
+      Promise.resolve([]) as any,
     ]);
 
     const productIds = [...topViewed, ...topEnquired].map((g) => g.product_id as string);
@@ -71,7 +59,7 @@ export const retailersStatsRoutes: FastifyPluginAsync = async (server) => {
       ]),
     );
 
-    const toRanked = (groups: typeof topViewed) =>
+    const toRanked = (groups: Array<{ product_id: string; _count: { product_id: number } }>) =>
       groups
         .filter((g) => productMap.has(g.product_id as string))
         .map((g) => ({
@@ -162,8 +150,7 @@ export const retailersStatsRoutes: FastifyPluginAsync = async (server) => {
         plan_status: true,
         max_products: true,
         max_customers: true,
-        try_on_credits: true,
-      },
+          },
     });
 
     return {

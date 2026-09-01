@@ -49,10 +49,6 @@ async function main() {
   await prisma.collectionView.deleteMany()
   await prisma.collectionProduct.deleteMany()
   await prisma.collection.deleteMany()
-  await prisma.customerInteraction.deleteMany()
-  await prisma.customerFashionDNA.deleteMany()
-  await prisma.customerMeasurement.deleteMany()
-  await prisma.tryOnJob.deleteMany()
   await prisma.subscriptionPayment.deleteMany()
   await prisma.subscription.deleteMany()
   await prisma.staff.deleteMany()
@@ -104,7 +100,6 @@ async function main() {
     { name: 'Kavita Joshi', phone: '9876543214', pref_colors: ['Red', 'Navy', 'Gold'], pref_styles: ['Saree', 'Gown'], pref_fabrics: ['Silk', 'Organza'], pref_occasions: ['Wedding', 'Sangeet'], budget_min: 800000, budget_max: 3000000, total_purchases: 1, total_spent: 850000 },
   ])
 
-  await createInteractions(r1.id, r1Products, r1Customers)
   await createCollections(r1.id, r1, r1Products, r1Customers, [
     { title: 'Wedding Collection — June 2026', description: 'Perfect outfits for the wedding season.', product_indices: [0, 1, 4, 8, 12], customer_index: 0 },
     { title: 'Office Wear Essentials', description: 'Comfortable outfits for everyday office wear.', product_indices: [2, 9, 10, 11], customer_index: 1 },
@@ -141,7 +136,6 @@ async function main() {
     { name: 'Rohit Sharma', phone: '9821002222', pref_colors: ['Maroon', 'Gold', 'Beige'], pref_styles: ['Sherwani', 'Indo-Western'], pref_fabrics: ['Silk', 'Linen'], pref_occasions: ['Wedding', 'Party Wear'], budget_min: 500000, budget_max: 2000000, total_purchases: 2, total_spent: 1900000 },
   ])
 
-  await createInteractions(r2.id, r2Products, r2Customers)
   await createCollections(r2.id, r2, r2Products, r2Customers, [
     { title: "Groom's Wedding Collection", description: 'Everything a groom needs from sherwanis to indo-western jackets.', product_indices: [0, 1, 6], customer_index: 1 },
     { title: 'Casual Kurta Collection', description: 'Comfortable cotton kurtas for daily wear.', product_indices: [2, 4, 7] },
@@ -178,7 +172,6 @@ async function main() {
     { name: 'Riddhi Shah', phone: '9900013333', pref_colors: ['Peach', 'Mint', 'Pink'], pref_styles: ['Lehenga', 'Gown'], pref_fabrics: ['Georgette', 'Chiffon'], pref_occasions: ['Wedding', 'Sangeet', 'Festive'], budget_min: 500000, budget_max: 2000000, total_purchases: 1, total_spent: 850000 },
   ])
 
-  await createInteractions(r3.id, r3Products, r3Customers)
   await createCollections(r3.id, r3, r3Products, r3Customers, [
     { title: 'Bridal Collection Premium', description: 'Exclusive bridal lehengas for your special day.', product_indices: [0, 2, 6], customer_index: 0 },
     { title: 'Cocktail Party Picks', description: 'Stand out at every cocktail party.', product_indices: [1, 3, 4, 5, 7], customer_index: 1 },
@@ -379,31 +372,6 @@ async function createCustomers(
 
   console.log(`  👥 Created ${createdIds.length} customers`)
   return createdIds
-}
-
-// ── Create Customer Interactions ───────────────────────────────────
-
-async function createInteractions(
-  retailerId: string,
-  productIds: string[],
-  customerIds: string[],
-) {
-  let count = 0
-  for (const customerId of customerIds) {
-    for (let pi = 0; pi < Math.min(productIds.length, 4); pi++) {
-      await prisma.customerInteraction.create({
-        data: {
-          customer_id: customerId,
-          retailer_id: retailerId,
-          product_id: productIds[pi]!,
-          type: randomPick(['view', 'view', 'view', 'favorite', 'enquiry'] as const),
-          created_at: new Date(Date.now() - randomInt(1, 60) * 86_400_000),
-        },
-      })
-      count++
-    }
-  }
-  console.log(`  📊 Created ${count} interactions`)
 }
 
 // ── Create Collections ─────────────────────────────────────────────

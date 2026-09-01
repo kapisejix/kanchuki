@@ -3,7 +3,6 @@
 import type { FastifyPluginAsync } from "fastify";
 import {
   retailersCatalogUploadRoutes,
-  retailersPartnersRoutes,
   retailersProfileRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
@@ -16,7 +15,6 @@ import {
   retailersIntegrationsRoutes,
   retailersRatingsRoutes,
   retailersBugReportRoutes,
-  retailersVisitorTasteRoutes,
 } from "./retailers/index.js";
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
@@ -38,8 +36,6 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersCatalogUploadRoutes);
   // retailers-social — F-031 social media publishing
   await server.register(retailersSocialRoutes);
-  // retailers-partners — F-03? Partner Network Manager (Phase 2)
-  await server.register(retailersPartnersRoutes);
   // retailers-aggregators — Phase 7 Aggregator / Marketplace Sync
   await server.register(retailersAggregatorRoutes);
   // retailers-integrations — Platform API credentials (GMB, FB Ads, Google Ads)
@@ -48,6 +44,4 @@ export const retailerRoutes: FastifyPluginAsync = async (server) => {
   await server.register(retailersRatingsRoutes);
   // retailers-bug-reports — retailer-submitted bug reports from the mobile app
   await server.register(retailersBugReportRoutes);
-  // retailers-visitor-taste — aggregate customer taste analytics (Task 28)
-  await server.register(retailersVisitorTasteRoutes);
 };

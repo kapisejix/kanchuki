@@ -200,19 +200,7 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
     const redirectUri = query.redirect_uri || 'kanchuki://oauth/callback';
 
     const meta = await resolveMetaCredentials();
-    if (!meta) {
-      // Mock / Dev fallback URL if credentials are not yet populated
-      const state = await createOAuthState(request.retailerId);
-      return {
-        data: {
-          auth_url: `https://www.facebook.com/v21.0/dialog/oauth?client_id=demo_app&redirect_uri=${encodeURIComponent(
-            redirectUri,
-          )}&state=${state}&scope=instagram_basic,instagram_content_publish,pages_show_list`,
-          state,
-          provider,
-        },
-      };
-    }
+    if (!meta) throw serviceUnavailable('Social publishing is not configured yet');
     const state = await createOAuthState(request.retailerId);
     return { data: { auth_url: buildOAuthUrl(meta, redirectUri, state, provider as any), state, provider } };
   });

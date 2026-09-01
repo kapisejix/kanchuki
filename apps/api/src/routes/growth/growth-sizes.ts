@@ -2,12 +2,10 @@ import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
-import { recommendSizeForProduct } from '../../lib/size-recommend.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
 
 // ─── Roadmap N — Indian Size & Fit: product-level size recommendation ──
-// `POST /growth/customers/:id/recommended-size` with { product_id } →
-// { suggested_size, basis } where basis ∈ USUAL | HISTORY | CHART | null.
+// Size recommendation engine removed — this route returns a basic fallback.
 export const growthSizeRoutes: FastifyPluginAsync = async (server) => {
   server.post('/customers/:id/recommended-size', async (request) => {
     const retailerId = request.retailerId;
@@ -28,7 +26,12 @@ export const growthSizeRoutes: FastifyPluginAsync = async (server) => {
     if (!customer) throw notFound('Customer');
     if (!product) throw notFound('Product');
 
-    const recommendation = await recommendSizeForProduct(retailerId, customer, product);
-    return { data: recommendation };
+    // Fallback: return usual_size if set, otherwise null
+    return {
+      data: {
+        suggested_size: customer.usual_size ?? null,
+        basis: customer.usual_size ? 'USUAL' : null,
+      },
+    };
   });
 };

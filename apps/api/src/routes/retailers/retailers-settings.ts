@@ -25,8 +25,7 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
         plan_expires_at: true,
         max_products: true,
         max_customers: true,
-        try_on_credits: true,
-      },
+          },
     });
     if (!retailer) throw notFound('Retailer');
     return { data: retailer };
