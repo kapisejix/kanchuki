@@ -1,9 +1,10 @@
 import { useCallback, memo, useState, useEffect } from 'react'
-import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput } from 'react-native'
+import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput, Image } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2 } from 'lucide-react-native'
-import { collectionApi } from '../../src/lib/api'
+import { collectionApi, retailerApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
 import { useTheme } from '../../src/lib/theme'
@@ -258,6 +259,13 @@ const CollectionCard = memo(function CollectionCard({
 
 export default function CollectionsScreen() {
   const queryClient = useQueryClient()
+  const insets = useSafeAreaInsets()
+  const { data: retailerData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+    staleTime: 60_000,
+  })
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data
   const [editTarget, setEditTarget] = useState<Collection | null>(null)
   const [showEditModal, setShowEditModal] = useState(false)
 
@@ -356,6 +364,28 @@ export default function CollectionsScreen() {
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
+      {/* Header — store identity, matches Catalog */}
+      <View
+        className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
+        style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+      >
+        <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
+          {retailerProfile?.logo_url ? (
+            <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+          ) : (
+            <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+              {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
+            </Text>
+          )}
+        </View>
+        <View>
+          <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
+          <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
+            {retailerProfile?.city ?? 'Collections'} • {collections.length} {collections.length === 1 ? 'Collection' : 'Collections'}
+          </Text>
+        </View>
+      </View>
+
       {isLoading && collections.length === 0 ? (
         <CollectionListSkeleton />
       ) : (

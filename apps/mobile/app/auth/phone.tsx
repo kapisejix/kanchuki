@@ -11,10 +11,12 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { AlertCircle } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GradientButton } from '../../src/components/GradientButton';
 import { authApi, ApiError } from '../../src/lib/api';
-import { showError } from '../../src/lib/errors';
+import { API_URL } from '../../src/lib/api/client';
+import { logError } from '../../src/lib/errors';
 import {
   extractMsg91AccessToken,
   extractMsg91ReqId,
@@ -27,6 +29,7 @@ export default function PhoneScreen() {
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Complete validation: exactly 10 digits starting 6–9 (+91/91/0 prefix ok).
   const isValid = isValidIndianPhone(phone);
@@ -35,6 +38,7 @@ export default function PhoneScreen() {
   const handleSend = async () => {
     if (!isValid) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       const digits = normalizeIndianPhone(phone);
 
@@ -63,14 +67,24 @@ export default function PhoneScreen() {
       // 3. Fallback: backend already dispatched the OTP
       router.push({ pathname: '/auth/otp', params: { phone: digits } });
     } catch (err) {
-      // Surface the backend's actionable message (rate limit, send failure)
-      // instead of a generic fallback.
+      // Show the exact failure on screen — the backend's actionable message
+      // (rate limit, DLT/send failure) or the precise network/timeout reason —
+      // never a generic "try again".
       const apiErr = err instanceof ApiError ? err : null;
-      if (apiErr?.message && apiErr.status >= 400 && apiErr.status < 500) {
-        showError(err, apiErr.message, 'Could not send OTP');
+      let msg: string;
+      if (apiErr?.code === 'NETWORK_ERROR' || apiErr?.status === 0) {
+        msg = `Couldn't reach the OTP server (${API_URL.replace(/^https?:\/\//, '')}). Check your internet connection and try again.`;
+      } else if (apiErr?.code === 'TIMEOUT') {
+        msg = 'The OTP server took too long to respond. Please try again in a moment.';
+      } else if (apiErr && apiErr.status >= 500) {
+        msg = `OTP service error (${apiErr.status}): ${apiErr.message}`;
+      } else if (apiErr?.message) {
+        msg = apiErr.message;
       } else {
-        showError(err, 'Failed to send OTP. Check your connection and try again.');
+        msg = err instanceof Error ? err.message : 'Could not send OTP. Please try again.';
       }
+      setErrorMsg(msg);
+      logError(err, 'sendOtp');
     } finally {
       setLoading(false);
     }
@@ -151,6 +165,13 @@ export default function PhoneScreen() {
               </Text>
             )}
           </View>
+
+          {errorMsg && (
+            <View className="w-full flex-row items-start gap-2.5 bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-4">
+              <AlertCircle size={16} color="#DC2626" style={{ marginTop: 1 }} />
+              <Text className="flex-1 text-xs font-medium text-red-600 leading-5">{errorMsg}</Text>
+            </View>
+          )}
 
           {/* Get Instant OTP Button — compact width & center aligned */}
           <View className="items-center w-full mt-1">

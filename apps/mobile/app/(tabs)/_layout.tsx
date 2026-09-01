@@ -167,10 +167,17 @@ export default function TabsLayout() {
         options={{
           title: 'Collections',
           tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="customers"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="category"
         options={{
           href: null,
         }}
