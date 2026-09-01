@@ -47,9 +47,25 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    // When demo_plan is set, grant PRO-level access with TRIAL status — no
-    // payment required. This lets new retailers explore every feature during
-    // onboarding before committing to a paid plan.
+    // Plan / demo-plan fields may only be applied while onboarding is still in
+    // progress. Once onboarding_completed is true, a retailer replaying
+    // { demo_plan: true } or { plan: 'PRO' } here would self-grant PRO-level
+    // quotas with no payment — reject it. Paid upgrades go through the billing
+    // flow, which sets plan on successful payment.
+    if (body.data.demo_plan === true || body.data.plan !== undefined) {
+      const current = await prisma.retailer.findUnique({
+        where: { id: request.retailerId },
+        select: { onboarding_completed: true },
+      });
+      if (!current) throw notFound('Retailer');
+      if (current.onboarding_completed) {
+        throw validationError('Plan cannot be changed from onboarding after it is completed');
+      }
+    }
+
+    // While onboarding: demo_plan grants PRO-level access with TRIAL status (no
+    // payment) so new retailers can explore every feature; a picked paid plan is
+    // recorded as intent (plan_status stays TRIAL, retailer pays later).
     const demoPlanData = body.data.demo_plan
       ? {
           plan: 'PRO' as const,

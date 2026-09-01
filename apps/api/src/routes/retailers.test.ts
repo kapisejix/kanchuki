@@ -864,4 +864,37 @@ describe('PATCH /retailers/me/onboarding — demo_plan', () => {
     expect(callData).not.toHaveProperty('plan_status');
     await app.close();
   });
+
+  it('rejects demo_plan replay once onboarding is completed (quota bypass guard)', async () => {
+    // earlier tests reassign prisma.retailer.findUnique to a fresh fn — restore it
+    const db = await import('@kanchuki/db');
+    db.prisma.retailer.findUnique = mockRetailerFindUnique;
+    mockRetailerFindUnique.mockReset();
+    mockRetailerFindUnique.mockResolvedValue({ onboarding_completed: true });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/retailers/me/onboarding',
+      payload: { step: 6, demo_plan: true },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
+
+  it('rejects a direct plan pick once onboarding is completed', async () => {
+    const db = await import('@kanchuki/db');
+    db.prisma.retailer.findUnique = mockRetailerFindUnique;
+    mockRetailerFindUnique.mockReset();
+    mockRetailerFindUnique.mockResolvedValue({ onboarding_completed: true });
+    const app = await buildApp();
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/retailers/me/onboarding',
+      payload: { step: 6, plan: 'PRO' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(mockRetailerUpdate).not.toHaveBeenCalled();
+    await app.close();
+  });
 });
