@@ -420,23 +420,21 @@ export default function OnboardingScreen() {
                       onPress={() => toggleSpec(spec)}
                       accessibilityLabel={spec}
                       accessibilityState={{ selected: isSelected }}
-                      /* ponytail: all styling inline — no className. react-native-css-interop
-                         merges a static className with a conditional `style` inconsistently
-                         (the selected dark background sometimes lost to the class layer), and
-                         a className whose class *set* changes after mount also trips its
-                         dev-only upgrade-warning crash. Inline style sidesteps both. */
                       style={{
                         paddingHorizontal: 14,
                         paddingVertical: 8,
                         borderRadius: 16,
-                        borderWidth: 1,
-                        backgroundColor: isSelected ? '#231F48' : '#FAF9FE',
-                        borderColor: isSelected ? '#231F48' : '#E0E1F6',
+                        borderWidth: 1.5,
+                        backgroundColor: isSelected ? '#231F48' : 'transparent',
+                        borderColor: isSelected ? '#231F48' : '#928EB2',
                       }}
                     >
                       <Text
-                        className="text-xs font-bold"
-                        style={{ color: isSelected ? '#FFFFFF' : '#231F48' }}
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '700',
+                          color: isSelected ? '#FFFFFF' : '#231F48',
+                        }}
                       >
                         {spec}
                       </Text>
@@ -513,7 +511,7 @@ export default function OnboardingScreen() {
                     className="font-bold text-fuchsia-600 underline"
                     onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
                   >
-                    Terms
+                    Terms of Service
                   </Text>{' '}
                   and{' '}
                   <Text
@@ -997,23 +995,7 @@ export default function OnboardingScreen() {
               loading={saving}
             />
 
-            {/* Legal consent line */}
-            <Text className="text-center text-[11px] text-heliotrope-500 mt-2 px-2 leading-4 font-medium">
-              By continuing, you agree to our{' '}
-              <Text
-                className="font-bold text-fuchsia-600 underline"
-                onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
-              >
-                Terms of Service
-              </Text>{' '}
-              and{' '}
-              <Text
-                className="font-bold text-fuchsia-600 underline"
-                onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
-              >
-                Privacy Policy
-              </Text>
-            </Text>
+
           </View>
         </View>
       )}

@@ -123,7 +123,7 @@ export default function TabsLayout() {
                     justifyContent: 'center',
                     alignItems: 'center',
                     alignSelf: 'center',
-                    top: -34,
+                    top: -42,
                   },
                 ]}
                 accessibilityLabel="Add New Product"

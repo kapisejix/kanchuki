@@ -894,12 +894,18 @@ function DeleteAccountModal({
     setDeleting(true);
     try {
       await retailerApi.delete();
-    } catch {
-      // Best-effort: even if the server-side delete fails, clean up
-      // locally so the user is logged out and can re-register.
+    } catch (err: unknown) {
+      // Surface the error so the retailer knows the server-side delete
+      // failed — without this, they get logged out but their data stays.
+      const msg = err instanceof Error ? err.message : 'Server delete failed';
+      Alert.alert(
+        'Delete Failed',
+        `Could not delete your account from the server: ${msg}\n\nPlease contact support or try again later.`,
+      );
+      setDeleting(false);
+      return; // Don't clean up locally — the account still exists on the server
     }
-    // Always clean up locally — clear token, storage, cache, and navigate
-    // away regardless of whether the API call succeeded.
+    // Server delete succeeded — clean up locally.
     onDeleted();
   };
 
