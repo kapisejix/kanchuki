@@ -133,21 +133,32 @@ function StepIndicator({
               className="flex-row items-center gap-1.5"
             >
               <View
-                className={`w-7 h-7 rounded-full items-center justify-center border ${
+                className={`w-7 h-7 rounded-full items-center justify-center border overflow-hidden ${
                   isActive
-                    ? 'bg-spaceCadet-900 border-spaceCadet-900 shadow-sm'
+                    ? 'border-transparent shadow-sm'
                     : isPast
                       ? 'bg-fuchsia-500 border-fuchsia-500'
                       : 'bg-white border-lavender-200'
                 }`}
               >
-                <Text
-                  className={`text-[11px] font-extrabold ${
-                    isActive ? 'text-white' : isPast ? 'text-white' : 'text-heliotrope-500'
-                  }`}
-                >
-                  {isPast ? '✓' : s}
-                </Text>
+                {isActive ? (
+                  <LinearGradient
+                    colors={['#231F48', '#560A39']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={{ width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Text className="text-[11px] font-extrabold text-white">{s}</Text>
+                  </LinearGradient>
+                ) : (
+                  <Text
+                    className={`text-[11px] font-extrabold ${
+                      isPast ? 'text-white' : 'text-heliotrope-500'
+                    }`}
+                  >
+                    {isPast ? '✓' : s}
+                  </Text>
+                )}
               </View>
               <Text
                 className={`text-xs ${
@@ -188,6 +199,7 @@ export default function OnboardingScreen() {
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
+  const [consentGiven, setConsentGiven] = useState(false);
 
   // Admin-editable plan pricing + limits (feature #49). Same query key/shape
   // as plan-select.tsx so the two screens share one cache entry.
@@ -204,12 +216,12 @@ export default function OnboardingScreen() {
 
   // ── Validation ──
   const canProceed = useCallback((): boolean => {
-    if (step === 1) return shopName.trim().length >= 2;
+    if (step === 1) return shopName.trim().length >= 2 && consentGiven;
     if (step === 2) return shopAddress.trim().length >= 2 || city.trim().length >= 2;
     if (step === 3) return true; // GST is optional
     if (step === 4) return selectedPlan !== null; // must pick a plan
     return true;
-  }, [step, shopName, shopAddress, city, selectedPlan]);
+  }, [step, shopName, shopAddress, city, selectedPlan, consentGiven]);
 
   const goToStep = useCallback((s: Step) => {
     setStep(s);
@@ -467,6 +479,53 @@ export default function OnboardingScreen() {
                 />
               </View>
             </View>
+
+            {/* Consent & Consent Checkbox */}
+            <View className="mt-4 bg-lavender-50 border border-lavender-200 rounded-2xl p-4">
+              <Text className="text-[11px] text-heliotrope-600 leading-relaxed font-medium mb-3">
+                By creating retailer profile, I provide consent to be contacted by Customer,
+                Kanchuki's sales agents and customer support via WhatsApp, SMS, Phone Calls
+                and email.
+              </Text>
+              <Text className="text-[11px] text-heliotrope-600 leading-relaxed font-medium mb-3">
+                I understand that KYC verification is required and acknowledge the updated
+                refund and privacy policies linked below.
+              </Text>
+              <AnimatedPressable
+                onPress={() => setConsentGiven(!consentGiven)}
+                accessibilityLabel="I agree to the Terms, Privacy Policy, and consent to be contacted"
+                accessibilityRole="button"
+                accessibilityState={{ selected: consentGiven }}
+                className="flex-row items-start gap-3"
+              >
+                <View
+                  className={`w-5 h-5 rounded-md border-2 items-center justify-center mt-0.5 ${
+                    consentGiven
+                      ? 'bg-fuchsia-600 border-fuchsia-600'
+                      : 'bg-white border-lavender-300'
+                  }`}
+                >
+                  {consentGiven && <CheckCircle2 size={12} color="white" />}
+                </View>
+                <Text className="flex-1 text-[11px] text-heliotrope-600 leading-relaxed font-medium">
+                  I agree to the{' '}
+                  <Text
+                    className="font-bold text-fuchsia-600 underline"
+                    onPress={() => void Linking.openURL(`${WEB_URL}/terms`)}
+                  >
+                    Terms
+                  </Text>{' '}
+                  and{' '}
+                  <Text
+                    className="font-bold text-fuchsia-600 underline"
+                    onPress={() => void Linking.openURL(`${WEB_URL}/privacy`)}
+                  >
+                    Privacy Policy
+                  </Text>{' '}
+                  and consent to be contacted as described above.
+                </Text>
+              </AnimatedPressable>
+            </View>
           </View>
         );
 
@@ -595,7 +654,20 @@ export default function OnboardingScreen() {
               </Text>
             </View>
 
-            <View className="bg-lavender-100/70 border border-lavender-200 rounded-2xl p-4 mt-4">
+            {/* Skip GST — placed directly under the form field */}
+            <AnimatedPressable
+              onPress={() => void handleNext()}
+              disabled={saving || showConfetti}
+              accessibilityLabel="Skip — continue without a GST number"
+              accessibilityRole="button"
+              className="items-center justify-center py-2.5"
+            >
+              <Text className="text-xs font-bold text-fuchsia-600 uppercase tracking-wider">
+                Skip — I don&apos;t have a GST number
+              </Text>
+            </AnimatedPressable>
+
+            <View className="bg-lavender-100/70 border border-lavender-200 rounded-2xl p-4 mt-2">
               <View className="flex-row items-center gap-2 mb-1">
                 <Sparkles size={14} color="#BB3F95" />
                 <Text className="text-spaceCadet-900 text-xs font-bold uppercase tracking-wider">
@@ -619,12 +691,20 @@ export default function OnboardingScreen() {
               accessibilityLabel="Start Free Demo — full Pro access"
               accessibilityRole="button"
               accessibilityState={{ selected: selectedPlan === 'DEMO' }}
-              className="w-full rounded-2xl p-4 mb-4 border-2"
+              className="w-full rounded-2xl p-4 mb-4 border-2 overflow-hidden"
               style={{
-                backgroundColor: selectedPlan === 'DEMO' ? '#231F48' : '#FAF9FE',
+                backgroundColor: selectedPlan === 'DEMO' ? undefined : '#FAF9FE',
                 borderColor: selectedPlan === 'DEMO' ? '#BB3F95' : '#E0E1F6',
               }}
             >
+              {selectedPlan === 'DEMO' && (
+                <LinearGradient
+                  colors={['#231F48', '#560A39']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                />
+              )}
               <View className="flex-row items-center gap-3">
                 <View
                   className="w-12 h-12 rounded-xl items-center justify-center"
@@ -685,12 +765,20 @@ export default function OnboardingScreen() {
                     accessibilityLabel={`${meta.name} plan — ${priceLabel}`}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
-                    className="w-full rounded-2xl p-4 mb-3 border-2"
+                    className="w-full rounded-2xl p-4 mb-3 border-2 overflow-hidden"
                     style={{
-                      backgroundColor: isSelected ? '#231F48' : '#FAF9FE',
+                      backgroundColor: isSelected ? undefined : '#FAF9FE',
                       borderColor: isSelected ? meta.color : '#E0E1F6',
                     }}
                   >
+                    {isSelected && (
+                      <LinearGradient
+                        colors={['#231F48', '#560A39']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                      />
+                    )}
                     <View className="flex-row items-center gap-3">
                       <View
                         className="w-10 h-10 rounded-xl items-center justify-center"
@@ -908,21 +996,6 @@ export default function OnboardingScreen() {
               disabled={!canProceed() || showConfetti || saving}
               loading={saving}
             />
-
-            {/* GST step skip button */}
-            {step === 3 && (
-              <AnimatedPressable
-                onPress={() => void handleNext()}
-                disabled={saving || showConfetti}
-                accessibilityLabel="Skip — continue without a GST number"
-                accessibilityRole="button"
-                className="items-center justify-center py-2.5 mt-1"
-              >
-                <Text className="text-xs font-bold text-fuchsia-600 uppercase tracking-wider">
-                  Skip — I don&apos;t have a GST number
-                </Text>
-              </AnimatedPressable>
-            )}
 
             {/* Legal consent line */}
             <Text className="text-center text-[11px] text-heliotrope-500 mt-2 px-2 leading-4 font-medium">

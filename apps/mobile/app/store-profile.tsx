@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { COLORS } from '@kanchuki/shared'
+import { LinearGradient } from 'expo-linear-gradient'
 import { View, Text, TextInput, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -300,14 +301,25 @@ export default function StoreProfileScreen() {
                   key={c.id}
                   onPress={() => setStorefront.mutate(c.id)}
                   disabled={setStorefront.isPending}
-                  className={`flex-row items-center justify-between bg-white rounded-2xl p-4 border ${isSelected ? 'border-ink-400' : 'border-sand-100'}`}
+                  className={`flex-row items-center justify-between rounded-2xl p-4 border overflow-hidden ${
+                    isSelected ? 'border-fuchsia-500' : 'bg-white border-sand-100'
+                  }`}
+                  style={isSelected ? { backgroundColor: undefined } : undefined}
                 >
-                  <View>
-                    <Text className="text-sm font-semibold text-sand-900">{c.title}</Text>
-                    <Text className="text-xs text-sand-400 mt-0.5">{c.product_count} products</Text>
+                  {isSelected && (
+                    <LinearGradient
+                      colors={['#231F48', '#560A39']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                    />
+                  )}
+                  <View style={{ zIndex: 1 }}>
+                    <Text className="text-sm font-semibold" style={{ color: isSelected ? '#FFFFFF' : '#1a1a2e' }}>{c.title}</Text>
+                    <Text className="text-xs mt-0.5" style={{ color: isSelected ? '#D4B8E8' : '#999' }}>{c.product_count} products</Text>
                   </View>
                   {isSelected && (
-                    <View className="w-6 h-6 rounded-full bg-ink-500 items-center justify-center">
+                    <View className="w-6 h-6 rounded-full bg-white/20 items-center justify-center" style={{ zIndex: 1 }}>
                       <Check size={14} color="white" />
                     </View>
                   )}

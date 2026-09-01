@@ -180,19 +180,37 @@ export default function PlanSelectScreen() {
         <View className="flex-row bg-white rounded-2xl p-1 mb-4 border border-lavender-200">
           <AnimatedPressable
             onPress={() => setSelectedPeriod('monthly')}
-            className={`flex-1 py-2.5 rounded-xl items-center ${selectedPeriod === 'monthly' ? 'bg-spaceCadet-900' : ''}`}
+            className="flex-1 py-2.5 rounded-xl items-center overflow-hidden"
           >
-            <Text className={`text-xs font-bold ${selectedPeriod === 'monthly' ? 'text-white' : 'text-heliotrope-500'}`}>
-              Monthly
-            </Text>
+            {selectedPeriod === 'monthly' ? (
+              <LinearGradient
+                colors={['#231F48', '#560A39']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ flex: 1, width: '100%', borderRadius: 10, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text className="text-xs font-bold text-white">Monthly</Text>
+              </LinearGradient>
+            ) : (
+              <Text className="text-xs font-bold text-heliotrope-500">Monthly</Text>
+            )}
           </AnimatedPressable>
           <AnimatedPressable
             onPress={() => setSelectedPeriod('annual')}
-            className={`flex-1 py-2.5 rounded-xl items-center ${selectedPeriod === 'annual' ? 'bg-spaceCadet-900' : ''}`}
+            className="flex-1 py-2.5 rounded-xl items-center overflow-hidden"
           >
-            <Text className={`text-xs font-bold ${selectedPeriod === 'annual' ? 'text-white' : 'text-heliotrope-500'}`}>
-              Annual <Text className="text-[10px]">Save 20%</Text>
-            </Text>
+            {selectedPeriod === 'annual' ? (
+              <LinearGradient
+                colors={['#231F48', '#560A39']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={{ flex: 1, width: '100%', borderRadius: 10, paddingVertical: 0, alignItems: 'center', justifyContent: 'center' }}
+              >
+                <Text className="text-xs font-bold text-white">Annual <Text className="text-[10px]">Save 20%</Text></Text>
+              </LinearGradient>
+            ) : (
+              <Text className="text-xs font-bold text-heliotrope-500">Annual <Text className="text-[10px]">Save 20%</Text></Text>
+            )}
           </AnimatedPressable>
         </View>
 
@@ -239,13 +257,21 @@ export default function PlanSelectScreen() {
                   key={planKey}
                   onPress={() => void handleSelectPlan(planKey)}
                   disabled={switching || isCurrent}
-                  className="rounded-3xl p-5 mb-3 border-2"
+                  className="rounded-3xl p-5 mb-3 border-2 overflow-hidden"
                   style={{
-                    backgroundColor: isCurrent ? '#231F48' : '#FAF9FE',
+                    backgroundColor: isCurrent ? undefined : '#FAF9FE',
                     borderColor: isCurrent ? meta.color : '#E0E1F6',
                     opacity: switching ? 0.6 : 1,
                   }}
                 >
+                  {isCurrent && (
+                    <LinearGradient
+                      colors={['#231F48', '#560A39']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
+                    />
+                  )}
                   <View className="flex-row items-center gap-3 mb-3">
                     <View
                       className="w-11 h-11 rounded-xl items-center justify-center"
