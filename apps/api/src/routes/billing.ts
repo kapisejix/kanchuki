@@ -106,22 +106,19 @@ declare module 'fastify' {
 }
 
 export const billingRoutes: FastifyPluginAsync = async (server) => {
-  // Razorpay signs the raw body — keep it. Parser is encapsulated to /v1/billing.
-  // Fastify v5 throws FST_ERR_CTP_ALREADY_PRESENT if we don't remove the
-  // global 'application/json' parser (registered in index.ts) first.
-  server.removeContentTypeParser('application/json');
-  server.addContentTypeParser(
-    'application/json',
-    { parseAs: 'string' },
-    (req: FastifyRequest, body, done) => {
-      req.rawBody = body as string;
-      try {
-        done(null, JSON.parse(body as string));
-      } catch (err) {
-        done(err as Error, undefined);
-      }
-    },
-  );
+  // Razorpay signs the raw body — capture it BEFORE the JSON parser runs.
+  // Fastify v5: removeContentTypeParser inside an encapsulated plugin doesn't
+  // reliably remove inherited parsers. Use preParsing hook instead.
+  server.addHook('preParsing', async (request: FastifyRequest) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request.raw) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    request.rawBody = Buffer.concat(chunks).toString();
+    // Return a new stream so the default JSON parser still works
+    const { Readable } = await import('node:stream');
+    return Readable.from(request.rawBody);
+  });
 
   // ─── GET /billing/plans ─────────────────────────────────────────
   server.get('/plans', async () => ({

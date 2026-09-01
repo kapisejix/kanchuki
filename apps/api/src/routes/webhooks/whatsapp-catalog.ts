@@ -150,21 +150,19 @@ async function recordEvent(
 }
 
 export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) => {
-  // Meta signs the raw body — capture it (same pattern as checkout-webhook).
-  // Fastify v5: remove the global parser before re-adding with raw body capture.
-  server.removeContentTypeParser('application/json');
-  server.addContentTypeParser(
-    'application/json',
-    { parseAs: 'string' },
-    (req: FastifyRequest, body, done) => {
-      (req as FastifyRequest & { rawBody?: string }).rawBody = body as string;
-      try {
-        done(null, JSON.parse(body as string));
-      } catch (err) {
-        done(err as Error, undefined);
-      }
-    },
-  );
+  // Meta signs the raw body — capture it BEFORE the JSON parser runs.
+  // Fastify v5: removeContentTypeParser inside an encapsulated plugin doesn't
+  // reliably remove inherited parsers. Use preParsing hook instead.
+  server.addHook('preParsing', async (request: FastifyRequest) => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request.raw) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    }
+    const raw = Buffer.concat(chunks).toString();
+    (request as FastifyRequest & { rawBody?: string }).rawBody = raw;
+    const { Readable } = await import('node:stream');
+    return Readable.from(raw);
+  });
 
   // ── GET /public/webhooks/whatsapp-catalog — subscription handshake ─
   // Meta verifies the callback URL with this GET before enabling the webhook.
