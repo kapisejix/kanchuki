@@ -107,6 +107,9 @@ declare module 'fastify' {
 
 export const billingRoutes: FastifyPluginAsync = async (server) => {
   // Razorpay signs the raw body — keep it. Parser is encapsulated to /v1/billing.
+  // Fastify v5 throws FST_ERR_CTP_ALREADY_PRESENT if we don't remove the
+  // global 'application/json' parser (registered in index.ts) first.
+  server.removeContentTypeParser('application/json');
   server.addContentTypeParser(
     'application/json',
     { parseAs: 'string' },

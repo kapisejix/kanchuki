@@ -151,6 +151,8 @@ async function recordEvent(
 
 export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) => {
   // Meta signs the raw body — capture it (same pattern as checkout-webhook).
+  // Fastify v5: remove the global parser before re-adding with raw body capture.
+  server.removeContentTypeParser('application/json');
   server.addContentTypeParser(
     'application/json',
     { parseAs: 'string' },
