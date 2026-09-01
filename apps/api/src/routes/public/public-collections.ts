@@ -57,6 +57,8 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
                 banner_url: true,
                 is_suspended: true,
                 public_slug: true,
+                latitude: true,
+                longitude: true,
               },
             },
           },

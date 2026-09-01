@@ -261,6 +261,9 @@ export interface PublicCollection {
     // Store URL segment (public_slug). Null when the retailer has no store
     // QR — the collection then lives at the legacy /c/{slug} URL.
     public_slug: string | null
+    // Map coordinates for Google Maps directions
+    latitude: number | null
+    longitude: number | null
   }
   title: string
   description: string | null

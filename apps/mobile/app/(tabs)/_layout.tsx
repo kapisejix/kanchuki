@@ -116,16 +116,7 @@ export default function TabsLayout() {
               <AnimatedPressable
                 {...rest}
                 onPress={() => router.push('/product/add')}
-                  style={[
-                  style,
-                  {
-                    flex: 1,
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    alignSelf: 'center',
-                    top: -42,
-                  },
-                ]}
+                style={[style, { top: -28, zIndex: 10 }]}
                 accessibilityLabel="Add New Product"
                 accessibilityRole="button"
               >

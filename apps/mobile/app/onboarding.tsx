@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 import {
   Building2,
   CheckCircle2,
@@ -196,6 +197,9 @@ export default function OnboardingScreen() {
   const [district, setDistrict] = useState('');
   const [state, setState] = useState('');
   const [pincode, setPincode] = useState('');
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [locating, setLocating] = useState(false);
   const [gstin, setGstin] = useState('');
   const [referralCode, setReferralCode] = useState('');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
@@ -262,6 +266,7 @@ export default function OnboardingScreen() {
           address_line2: district.trim() || undefined,
           state: state.trim() || undefined,
           pincode: pincode.trim() || undefined,
+          ...(latitude !== null && longitude !== null ? { latitude, longitude } : {}),
         });
         await retailerApi.updateOnboarding(2);
         goToStep(nextStep);
@@ -361,6 +366,41 @@ export default function OnboardingScreen() {
       Alert.alert('Error', 'Could not save details. Please try again.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleGetLocation = async () => {
+    setLocating(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Location Permission',
+          'Please enable location access in your device settings to use this feature.',
+        );
+        setLocating(false);
+        return;
+      }
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      setLatitude(loc.coords.latitude);
+      setLongitude(loc.coords.longitude);
+      // Reverse geocode to fill address fields if empty
+      const [place] = await Location.reverseGeocodeAsync({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+      });
+      if (place) {
+        if (!city.trim() && place.city) setCity(place.city);
+        if (!state.trim() && place.region) setState(place.region);
+        if (!shopAddress.trim()) {
+          const parts = [place.name, place.street, place.district].filter(Boolean);
+          if (parts.length > 0) setShopAddress(parts.join(', '));
+        }
+      }
+    } catch {
+      Alert.alert('Location Error', 'Could not get your current location. Please try again.');
+    } finally {
+      setLocating(false);
     }
   };
 
@@ -617,11 +657,41 @@ export default function OnboardingScreen() {
               </View>
             </View>
 
+            {/* Get Location from Map */}
+            <AnimatedPressable
+              onPress={() => void handleGetLocation()}
+              disabled={locating}
+              accessibilityLabel="Get location from Google Maps"
+              accessibilityRole="button"
+              className="flex-row items-center gap-3 bg-white border border-lavender-200 rounded-2xl p-4 mt-3"
+            >
+              <View className="w-10 h-10 rounded-xl bg-fuchsia-500/10 border border-fuchsia-500/20 items-center justify-center">
+                <MapPin size={20} color="#BB3F95" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-sm font-bold text-spaceCadet-900">
+                  {latitude ? '📍 Location Saved' : 'Get Location from Map'}
+                </Text>
+                <Text className="text-[11px] text-heliotrope-500 mt-0.5 font-medium">
+                  {latitude
+                    ? `${latitude.toFixed(4)}, ${longitude!.toFixed(4)} — tap to update`
+                    : 'Auto-detect your shop position for Google Maps directions'}
+                </Text>
+              </View>
+              {locating ? (
+                <ActivityIndicator size="small" color="#BB3F95" />
+              ) : latitude ? (
+                <Text className="text-fuchsia-600 text-xs font-bold">✓</Text>
+              ) : (
+                <Text className="text-heliotrope-400 text-lg">→</Text>
+              )}
+            </AnimatedPressable>
+
             {/* Store Tip Box */}
-            <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-3 flex-row items-start gap-2.5">
+            <View className="bg-lavender-50 border border-lavender-200 rounded-2xl p-3.5 mt-2 flex-row items-start gap-2.5">
               <Text className="text-sm">📍</Text>
               <Text className="flex-1 text-[11px] text-heliotrope-600 leading-relaxed font-medium">
-                Your shop location will appear on your customer store links and digital invoices.
+                Your shop location will appear on your customer store links so visitors can get directions.
               </Text>
             </View>
           </View>

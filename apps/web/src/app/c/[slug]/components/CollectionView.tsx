@@ -318,9 +318,25 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
                 <p className="text-xs font-bold text-[#231F48] truncate">
                   Hi, Welcome!
                 </p>
-                <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider truncate">
-                  {collection.retailer.shop_name} {collection.retailer.city ? `· ${collection.retailer.city}` : ''}
-                </p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-[10px] text-[#6B4773] font-bold uppercase tracking-wider truncate">
+                    {collection.retailer.shop_name} {collection.retailer.city ? `· ${collection.retailer.city}` : ''}
+                  </p>
+                  {collection.retailer.latitude != null && collection.retailer.longitude != null && (
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${collection.retailer.latitude},${collection.retailer.longitude}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-shrink-0 w-5 h-5 rounded-full bg-[#BB3F95]/10 flex items-center justify-center"
+                      aria-label="Get directions to store"
+                    >
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#BB3F95" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                        <circle cx="12" cy="10" r="3" />
+                      </svg>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
 

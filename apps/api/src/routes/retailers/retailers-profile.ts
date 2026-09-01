@@ -36,6 +36,9 @@ const UpdateRetailerSchema = z.object({
   referral_code: z.string().max(20).nullable().optional(),
   // Roadmap M — preferred locale for the retailer app UI (ISO 639-1 + region, e.g. 'en-IN', 'hi-IN')
   preferred_locale: z.string().max(10).nullable().optional(),
+  // Map coordinates — saved from Google Maps location picker during onboarding
+  latitude: z.number().min(-90).max(90).nullable().optional(),
+  longitude: z.number().min(-180).max(180).nullable().optional(),
 });
 
 export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {

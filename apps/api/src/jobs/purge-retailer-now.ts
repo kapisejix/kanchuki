@@ -1,27 +1,44 @@
 import { deleteObject } from '@kanchuki/ai';
-import { getPurgePrisma } from '@kanchuki/db';
+import { getPurgePrisma, prisma } from '@kanchuki/db';
 
 /**
  * Immediate, targeted hard-delete of one retailer and every row that FKs to
  * it (or transitively to its products/customers/collections) — distinct from
  * handlePurgeSoftDeleted() in purge-soft-deleted.ts, which sweeps ALL
  * retailers' soft-deleted rows older than 15 days. This is used by the admin
- * "delete retailer" action, where the whole point is not to wait: the row
- * (and its phone number / auth_user_id) must be gone now so the retailer can
- * sign up again immediately.
+ * "delete retailer" action and the retailer self-delete route, where the
+ * whole point is not to wait: the row (and its phone number / auth_user_id)
+ * must be gone now so the retailer can sign up again immediately.
  *
  * Same scoped kanchuki_purge role (SECURITY §19) and the same
  * SET app.allow_hard_delete = 'true' guardrail-bypass pattern as the cron.
  * Deletes everything in ONE transaction: if any table is missing a grant or
  * the schema gains a new FK this doesn't know about, Postgres throws and the
  * whole thing rolls back — nothing partially deleted. F-016 vault snapshot
- * happens in the caller (admin-retailers route), before this runs.
+ * happens in the caller (admin-retailers route / retailers-settings),
+ * before this runs.
  */
-const db = getPurgePrisma();
+const purgeDb = getPurgePrisma();
+// When PURGE_DATABASE_URL is unset, getPurgePrisma() falls back to the main
+// prisma client — but kanchuki_app has no DELETE under SECURITY §19 role
+// separation. Detect this at call time and throw a clear error instead of
+// a cryptic "permission denied" deep inside the transaction.
+const db = purgeDb;
 
 const SET_BYPASS = `SET app.allow_hard_delete = 'true';`;
 
+function assertPurgeRole(): void {
+  if (db === (prisma as unknown)) {
+    throw new Error(
+      '[purge-retailer-now] PURGE_DATABASE_URL is not set — cannot hard-delete. ' +
+      'The kanchuki_app role has no DELETE under SECURITY §19. ' +
+      'Set PURGE_DATABASE_URL to the kanchuki_purge-scoped connection string.',
+    );
+  }
+}
+
 export async function hardDeleteRetailer(retailerId: string): Promise<void> {
+  assertPurgeRole();
   // R2 objects aren't touched by SQL DELETE — collect keys before the rows
   // that reference them disappear. Best-effort, fired after the transaction
   // commits (a failed R2 delete shouldn't roll back the DB delete).
