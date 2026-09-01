@@ -1638,3 +1638,80 @@ Confirmed against prod: `curl -X POST .../unsuspend -H 'Content-Type: applicatio
 ### Not done
 
 - Not deployed — branch `fix/mobile-typecheck-taste-analytics`; reaches prod via merge to `main` → Railway auto-deploy.
+
+---
+
+## 56. Post-Teardown Recovery — Plans/Onboarding/Dashboard + Crash Fixes (PR #16)
+
+**Branch:** `recover/mobile-plans-onboarding-dashboard`  
+**Date:** 2026-08-31 → 2026-09-01  
+**PR:** [#16](https://github.com/kapisejix/kanchuki/pull/16)
+
+12 commits recovering unmerged work from `fix/mobile-typecheck-taste-analytics` that sat on a stale branch while `main` advanced through PR #15 (feature teardown). Cherry-picked onto current `main`, conflicts resolved vs teardown, plus 3 new crash/permission fixes.
+
+### Commits
+
+| Commit | Summary |
+|--------|---------|
+| `3cf1e90` | feat(mobile): "Select Plan" step in retailer onboarding after GST |
+| `7749108` | feat: hard-delete retailer accounts + in-app plan selection |
+| `a4bfa39` | fix(mobile): delete-account always logs out, DB-driven plan prices, native FB/IG OAuth, skeleton design match |
+| `86817a0` | fix: retailer hard-delete FK gap, DB-wired plans, native FB connect, super-admin delete |
+| `163708c` | fix(admin): bodyless POST 400 on Fastify v5 empty JSON body |
+| `0fa0539` | fix(mobile): streamline dashboard layout + floating center nav button |
+| `70a83da` | fix(api): gate onboarding plan/demo mutation when onboarding already completed (security) |
+| `64612d4` | feat(mobile): store-name headers on Growth/Collections/Category + OTP error surfacing |
+| `5f56dd1` | fix(mobile): remove orphaned supplier screen left by the feature teardown |
+| `88d2fbb` | **fix(web): restore avg_rating in product-list serializer + guard toFixed sites** |
+| `56612f0` | **fix(mobile): QR export deprecation, stale expo-router screens, direct gallery save** |
+| `308573e` | chore(db): migration 083 — GRANT DELETE on product_photos to kanchuki_app |
+
+### Key fix detail
+
+#### `88d2fbb` — Web crash: avg_rating undefined.toFixed(1)
+
+**Symptom:** every catalog/category/collection page crashed with "Cannot read properties of undefined (reading 'toFixed')". Hard-refresh "fixed" it because Serwist served stale collection-api cache (pre-teardown JSON that still had `avg_rating`).
+
+**Root cause:** commit `76c5acd` (PR #15 teardown) dropped `avg_rating` from `toPublicProductSummary()` in `apps/api/src/routes/public/public-helpers.ts` while keeping `rating_count`. The serializer shipped products with `rating_count` but no `avg_rating` → `undefined.toFixed(1)` on every client.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `apps/api/src/routes/public/public-helpers.ts` | Restored `avg_rating: p.avg_rating ?? 0` + `has_360: false` for type parity |
+| `apps/web/src/app/c/[slug]/components/CollectionView.tsx` | `(product.avg_rating ?? 0).toFixed(1)` |
+| `apps/web/src/app/c/[slug]/components/ReviewList.tsx` | `(avgRating ?? 0).toFixed(1)` |
+| `apps/web/src/app/c/[slug]/components/SharedProductPage.tsx` | `(product.avg_rating ?? 0).toFixed(1)` |
+
+#### `56612f0` — Mobile: QR export, stale screens, gallery save
+
+| File | Change |
+|------|--------|
+| `apps/mobile/app/store-profile.tsx` | `writeAsStringAsync` from `expo-file-system/legacy` (SDK 54 barrel throws "deprecated"). Fixes "Export Failed — Could not export QR code". |
+| `apps/mobile/app/_layout.tsx` | Removed 6 `<Stack.Screen>` entries whose route files were deleted in teardown (`category/index`, `tryon/in-store`, `orders/[id]`, `growth/referrals`, `growth/bookings`, `growth/booking-form`). Fixes `No route named "growth/booking-form"` on `expo start`. |
+| `apps/mobile/src/hooks/useProductAiStudio.ts` | `handleDownloadCurrentMedia` tries `expo-media-library` `saveToLibraryAsync` first (direct gallery save on dev/EAS builds), falls back to share sheet in Expo Go. |
+| `apps/mobile/app.json` | Added `expo-media-library` config plugin with permission strings. |
+
+#### `308573e` — Photo-delete 500: permission denied (issue #3)
+
+**Symptom:** `DELETE /v1/products/:id/photos/:photoId` returns 500 "Failed to delete Photo — APIError: Something went wrong".
+
+**Root cause:** PostgreSQL error `42501: permission denied for table product_photos`. SECURITY.md §19.1 revoked DELETE from `kanchuki_app` role, but the photo-delete handler calls `prisma.productPhoto.delete()` (hard delete). The pooler-connection GRANT attempt silently succeeded (PgBouncer absorbed it) without taking effect.
+
+**Fix:** `GRANT DELETE ON product_photos TO kanchuki_app;` run from Supabase dashboard SQL Editor (requires superuser, can't go through pooler).
+
+**File:** `packages/db/prisma/migrations/083_grant_delete_product_photos/migration.sql` — documents the one-off permission grant.
+
+### Verified
+
+- `apps/api` vitest: 53 files, 684 tests passed ✅
+- `apps/api` tsc: clean ✅
+- `apps/web` vitest: 14 files, 89 tests passed ✅
+- `apps/web` tsc: clean ✅
+- `apps/mobile` tsc: clean ✅
+
+### Not done
+
+- Photo-delete GRANT needs to be applied from Supabase dashboard (can't run through pooler)
+- Demo access has no expiry
+- `plan` writes straight to `retailer.plan` (reviewer wants separate `intended_plan` column)
