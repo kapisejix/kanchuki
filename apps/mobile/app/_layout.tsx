@@ -180,12 +180,6 @@ function AppShell() {
           name="growth/promotion-form"
           options={{ presentation: "modal" }}
         />
-        <Stack.Screen name="growth/suppliers" />
-        <Stack.Screen
-          name="growth/supplier-form"
-          options={{ presentation: "modal" }}
-        />
-        <Stack.Screen name="growth/supplier/[id]" />
         <Stack.Screen name="growth/bookings" />
         <Stack.Screen
           name="growth/booking-form"
