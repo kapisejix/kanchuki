@@ -285,6 +285,10 @@ export default function IntegrationsPage() {
                     <div className="relative">
                       <input
                         type={showValues[row.key_name] ? 'text' : 'password'}
+                        name={`integration-value-${row.key_name}`}
+                        autoComplete="new-password"
+                        data-1p-ignore
+                        data-lpignore="true"
                         value={drafts[row.key_name] ?? ''}
                         onChange={(e) => setDrafts((d) => ({ ...d, [row.key_name]: e.target.value }))}
                         onKeyDown={(e) => {

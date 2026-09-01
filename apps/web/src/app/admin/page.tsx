@@ -9,7 +9,6 @@ import {
   Users,
   Eye,
   MessageCircle,
-  Shirt,
   TrendingUp,
   Activity,
   DollarSign,
@@ -39,8 +38,6 @@ type Usage = {
   trial_retailers: number
   active_subscriptions: number
   mrr_inr: number
-  try_on_this_month: number
-  try_on_cost_usd: number
 }
 
 type CommissionMonth = {
@@ -249,7 +246,7 @@ export default function AdminDashboard() {
           {/* Secondary metrics */}
           <motion.div
             variants={containerVariants}
-            className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+            className="grid grid-cols-2 gap-4"
           >
             <MiniMetricCard
               icon={Eye}
@@ -260,16 +257,6 @@ export default function AdminDashboard() {
               icon={MessageCircle}
               label="Enquiries (this month)"
               value={stats.enquiries_this_month}
-            />
-            <MiniMetricCard
-              icon={Shirt}
-              label="Try-Ons (this month)"
-              value={usage.try_on_this_month}
-            />
-            <MiniMetricCard
-              icon={DollarSign}
-              label="GPU Cost (month)"
-              value={`$${usage.try_on_cost_usd.toFixed(2)}`}
             />
           </motion.div>
 
