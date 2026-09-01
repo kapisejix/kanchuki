@@ -2,10 +2,10 @@ import { View, Text, FlatList } from 'react-native'
 import { router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, ChevronLeft, FolderKanban } from 'lucide-react-native'
+import { Plus, FolderKanban } from 'lucide-react-native'
 import { Image } from 'expo-image'
 import { ProductGridSkeleton } from '../../src/components/Skeleton'
-import { categoryApi, type ProductCategory } from '../../src/lib/api'
+import { categoryApi, retailerApi, type ProductCategory } from '../../src/lib/api'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
 
@@ -17,27 +17,35 @@ export default function CategoryListScreen() {
     queryFn: () => categoryApi.list(),
   })
   const categories = data?.data ?? []
+  const { data: retailerData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+    staleTime: 60_000,
+  })
+  const retailerProfile = (retailerData as { data: Record<string, any> } | undefined)?.data
 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
-      {/* Header */}
+      {/* Header — store identity, matches Catalog */}
       <View
-        className="flex-row items-center justify-between px-5 pb-3 bg-white border-b border-lavender-200"
+        className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
         style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
       >
-        <AnimatedPressable
-          onPress={() => router.back()}
-          className="w-10 h-10 rounded-full bg-lavender-100 items-center justify-center border border-lavender-200"
-          hitSlop={8}
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-        >
-          <ChevronLeft size={20} color="#231F48" />
-        </AnimatedPressable>
-
-        <Text className="text-lg font-bold text-spaceCadet-900 font-marcellus">Categories</Text>
-
-        <View className="w-10" />
+        <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
+          {retailerProfile?.logo_url ? (
+            <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+          ) : (
+            <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+              {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
+            </Text>
+          )}
+        </View>
+        <View>
+          <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
+          <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
+            {retailerProfile?.city ?? 'Categories'} • {categories.length} {categories.length === 1 ? 'Category' : 'Categories'}
+          </Text>
+        </View>
       </View>
 
       {isLoading ? (
@@ -49,7 +57,7 @@ export default function CategoryListScreen() {
           keyExtractor={(item) => item.id}
           numColumns={columns}
           columnWrapperStyle={{ gap: 14 }}
-          contentContainerStyle={{ padding: 16, gap: 14, flexGrow: 1 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 96, gap: 14, flexGrow: 1 }}
           ListHeaderComponent={
             <View className="mb-2">
               <Text
@@ -130,7 +138,7 @@ export default function CategoryListScreen() {
       {/* Floating Action Button */}
       <AnimatedPressable
         onPress={() => router.push('/category/new')}
-        className="absolute bottom-8 right-6 w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
+        className="absolute bottom-24 right-6 w-14 h-14 bg-fuchsia-600 rounded-full items-center justify-center shadow-lg border border-white/20"
         style={{
           shadowColor: '#BB3F95',
           shadowOffset: { width: 0, height: 6 },

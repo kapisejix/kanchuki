@@ -167,7 +167,19 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   // constant. Missing row falls back to that constant (see billing.ts).
   server.get('/plan-pricing', async () => {
     const rows = await prisma.planPricing.findMany({ orderBy: { plan: 'asc' } });
-    return { data: rows };
+    const byPlan = new Map(rows.map((r) => [r.plan, r]));
+    // Always return all three plans — an unset row falls back to the
+    // PLAN_PRICING constant (same fallback billing.ts uses) so admin/mobile
+    // callers never render a gap or a stale hardcoded number.
+    const data = (['STARTER', 'GROWTH', 'PRO'] as const).map(
+      (plan) =>
+        byPlan.get(plan) ?? {
+          plan,
+          monthly_paise: PLAN_PRICING[plan].monthly,
+          annual_paise: PLAN_PRICING[plan].annual,
+        },
+    );
+    return { data };
   });
 
   // ─── PUT /admin/plan-pricing ─────────────────────────────────────

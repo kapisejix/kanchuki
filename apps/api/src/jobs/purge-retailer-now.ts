@@ -89,6 +89,9 @@ export async function hardDeleteRetailer(retailerId: string): Promise<void> {
     'DELETE FROM social_posts WHERE retailer_id = $1;',
     'DELETE FROM social_accounts WHERE retailer_id = $1;',
     'DELETE FROM product_attributes WHERE retailer_id = $1;',
+    // ProductVideo.retailer_id is a bare scalar (no FK) so it never blocked a
+    // delete, but its rows were orphaned on purge — remove them explicitly.
+    'DELETE FROM product_videos WHERE retailer_id = $1;',
     // retailer_limit_overrides has onDelete: Cascade in the schema — Postgres
     // removes it automatically with the row below.
     'DELETE FROM retailers WHERE id = $1;',

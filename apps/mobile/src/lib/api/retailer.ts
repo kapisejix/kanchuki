@@ -8,10 +8,14 @@ export const retailerApi = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  updateOnboarding: (step: number, completed?: boolean) =>
+  updateOnboarding: (
+    step: number,
+    completed?: boolean,
+    extra?: { demo_plan?: boolean; plan?: 'STARTER' | 'GROWTH' | 'PRO' },
+  ) =>
     request<{ data: { onboarding_step: number; onboarding_completed: boolean } }>(
       '/v1/retailers/me/onboarding',
-      { method: 'PATCH', body: JSON.stringify({ step, completed }) },
+      { method: 'PATCH', body: JSON.stringify({ step, completed, ...extra }) },
     ),
   getSections: () => request<{ data: unknown[] }>('/v1/retailers/me/sections', { getCacheTtlMs: 120_000 }),
   createSection: (data: { name: string; type: string; parent_id?: string }) =>
@@ -95,7 +99,7 @@ export const retailerApi = {
 
   disconnectWhatsAppApi: () => request<void>('/v1/retailers/me/whatsapp-api', { method: 'DELETE' }),
 
-  /** F-009: Soft-delete the retailer account */
+  /** Hard-delete the retailer account and all associated data */
   delete: () => request<void>('/v1/retailers/me', { method: 'DELETE' }),
 
   /** F-010: Get usage vs limits for all metered resources */

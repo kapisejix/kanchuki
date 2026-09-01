@@ -116,14 +116,14 @@ export default function TabsLayout() {
               <AnimatedPressable
                 {...rest}
                 onPress={() => router.push('/product/add')}
-                style={[
+                  style={[
                   style,
                   {
                     flex: 1,
                     justifyContent: 'center',
                     alignItems: 'center',
                     alignSelf: 'center',
-                    top: -12,
+                    top: -26,
                   },
                 ]}
                 accessibilityLabel="Add New Product"
@@ -131,9 +131,9 @@ export default function TabsLayout() {
               >
                 <View
                   style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: 26,
+                    width: 56,
+                    height: 56,
+                    borderRadius: 28,
                     backgroundColor: '#BB3F95',
                     justifyContent: 'center',
                     alignItems: 'center',
@@ -167,10 +167,17 @@ export default function TabsLayout() {
         options={{
           title: 'Collections',
           tabBarIcon: ({ color, size }) => <Link2 color={color} size={size} />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
         name="customers"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="category"
         options={{
           href: null,
         }}

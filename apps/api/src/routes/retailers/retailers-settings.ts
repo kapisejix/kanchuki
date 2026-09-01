@@ -4,6 +4,7 @@ import type { QuotaPeriod, QuotaResourceType } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { hardDeleteRetailer } from '../../jobs/purge-retailer-now.js';
 import { buildStoreUrl } from '../../lib/store-urls.js';
 import { notFound, validationError } from '../../plugins/error-handler.js';
 
@@ -37,15 +38,52 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
       .object({
         step: z.number().int().min(0).max(6),
         completed: z.boolean().optional(),
+        demo_plan: z.boolean().optional(),
+        // Paid plan picked on the onboarding "Choose Your Plan" step. Records
+        // intent only — plan_status stays TRIAL; the retailer pays later from
+        // Settings → Plans & Billing. demo_plan takes precedence when both set.
+        plan: z.enum(['STARTER', 'GROWTH', 'PRO']).optional(),
       })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
+
+    // Plan / demo-plan fields may only be applied while onboarding is still in
+    // progress. Once onboarding_completed is true, a retailer replaying
+    // { demo_plan: true } or { plan: 'PRO' } here would self-grant PRO-level
+    // quotas with no payment — reject it. Paid upgrades go through the billing
+    // flow, which sets plan on successful payment.
+    if (body.data.demo_plan === true || body.data.plan !== undefined) {
+      const current = await prisma.retailer.findUnique({
+        where: { id: request.retailerId },
+        select: { onboarding_completed: true },
+      });
+      if (!current) throw notFound('Retailer');
+      if (current.onboarding_completed) {
+        throw validationError('Plan cannot be changed from onboarding after it is completed');
+      }
+    }
+
+    // While onboarding: demo_plan grants PRO-level access with TRIAL status (no
+    // payment) so new retailers can explore every feature; a picked paid plan is
+    // recorded as intent (plan_status stays TRIAL, retailer pays later).
+    const demoPlanData = body.data.demo_plan
+      ? {
+          plan: 'PRO' as const,
+          plan_status: 'TRIAL' as const,
+          max_products: 999999,
+          max_customers: 999999,
+          try_on_credits: 500,
+        }
+      : body.data.plan
+        ? { plan: body.data.plan }
+        : {};
 
     const updated = await prisma.retailer.update({
       where: { id: request.retailerId },
       data: {
         onboarding_step: body.data.step,
         ...(body.data.completed === true ? { onboarding_completed: true } : {}),
+        ...demoPlanData,
       },
       select: { onboarding_step: true, onboarding_completed: true },
     });
@@ -57,7 +95,11 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
         action: 'update',
         resource_type: 'Retailer',
         resource_id: request.retailerId,
-        metadata: { onboarding_step: body.data.step, completed: body.data.completed ?? false },
+        metadata: {
+          onboarding_step: body.data.step,
+          completed: body.data.completed ?? false,
+          ...(body.data.demo_plan ? { demo_plan_activated: true } : {}),
+        },
         ip_address: request.ip,
       },
     });
@@ -281,8 +323,9 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ─── DELETE /retailers/me ───────────────────────────────────────
-  // F-009: Soft-delete the retailer account. Collections become inaccessible.
-  // Products/customers/billing records are retained for audit/GST compliance.
+  // Hard-delete the retailer and ALL related data (products, customers,
+  // collections, staff, orders, marketing data — everything). The phone
+  // number is released so the retailer can sign up fresh.
   server.delete('/me', async (request, reply) => {
     const retailerId = request.retailerId;
 
@@ -291,58 +334,29 @@ export const retailersSettingsRoutes: FastifyPluginAsync = async (server) => {
     });
     if (!existing) throw notFound('Retailer');
 
-    // Fetch collections before archiving for vault snapshots
-    const collectionsBeforeDelete = await prisma.collection.findMany({
-      where: { retailer_id: retailerId, deleted_at: null },
-    });
-
-    // Soft-delete retailer + archive all collections + deactivate staff
-    await Promise.all([
-      prisma.retailer.update({
-        where: { id: retailerId },
-        data: { deleted_at: new Date() },
-      }),
-      prisma.collection.updateMany({
-        where: { retailer_id: retailerId, deleted_at: null },
-        data: { deleted_at: new Date(), status: 'ARCHIVED' },
-      }),
-      prisma.staff.updateMany({
-        where: { retailer_id: retailerId, is_active: true },
-        data: { is_active: false },
-      }),
-    ]);
-
-    // F-016: Vault snapshot of the deleted retailer (fire-and-forget)
+    // Vault snapshot before hard-delete (fire-and-forget, best-effort)
     vaultDelete({
       source_table: 'retailers',
       source_id: retailerId,
       retailer_id: retailerId,
       payload: existing as unknown as Record<string, unknown>,
-      delete_reason: 'user_delete',
+      delete_reason: 'user_self_delete',
       deleted_by: retailerId,
     });
-    // F-016: Vault snapshot of each archived collection (fire-and-forget)
-    Promise.allSettled(
-      collectionsBeforeDelete.map((c) =>
-        vaultDelete({
-          source_table: 'collections',
-          source_id: c.id,
-          retailer_id: retailerId,
-          payload: c as unknown as Record<string, unknown>,
-          delete_reason: 'user_delete',
-          deleted_by: retailerId,
-        }),
-      ),
-    );
+
+    // Hard-delete: removes retailer + every FK-linked row in one transaction.
+    // Uses the scoped purge role (SECURITY §19) with the allow_hard_delete
+    // guardrail bypass.
+    await hardDeleteRetailer(retailerId);
 
     await prisma.auditLog.create({
       data: {
         actor_type: 'retailer',
         actor_id: request.retailerId,
-        action: 'delete',
+        action: 'HARD_DELETE',
         resource_type: 'Retailer',
         resource_id: retailerId,
-        metadata: { soft_delete: true },
+        metadata: { hard_delete: true, phone: existing.phone },
         ip_address: request.ip,
       },
     });

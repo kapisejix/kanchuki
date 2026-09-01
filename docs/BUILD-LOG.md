@@ -63,6 +63,8 @@ incident, migration, and decision recorded after 2026-07-26.
 | 50 | [Roadmap M — i18n Data Groundwork](#built-2026-08-18-roadmap-m--i18n-data-groundwork-deferred-post-launch) | Built | 2026-08-18 |
 | 51 | [Roadmap R — Seasonal Analytics](#built-2026-08-18-roadmap-r--seasonal-analytics-wedding-season-vs-daily-wear) | Built | 2026-08-18 |
 | 55 | [Feature Teardown — Remove Unwanted Features](#55-feature-teardown--remove-unwanted-features) | Built | 2026-08-31 |
+| 56 | [Onboarding Plan Selection Step](#built-2026-08-31-onboarding-plan-selection-step) | Built | 2026-08-31 |
+| 57 | [Admin bodyless-POST 400 fix — unsuspend/feature/unfeature (Fastify v5 empty JSON body)](#fixed-2026-08-31-admin-bodyless-post-400--unsuspendfeatureunfeature-fastify-v5-empty-json-body) | Fixed | 2026-08-31 |
 
 ---
 
@@ -1605,3 +1607,111 @@ Plan: `docs/tasks/ai-studio-shoot-models-scenes.md`. Steps 1–5 of that doc. No
 
 - Migration `082` not applied to production (applied manually by owner)
 - Doc updates to BUILD-LOG, PRO-REQUIREMENTS, PLAN, INDIA-RETAILER-GROWTH, DATABASE, API, SECURITY, DESIGN — partially complete (see this entry + CLAUDE.md)
+
+---
+
+## Fixed: 2026-08-31 — Admin bodyless-POST 400 — unsuspend/feature/unfeature (Fastify v5 empty JSON body)
+
+**Symptom:** admin panel "Unsuspend Account" showed "Failed to unsuspend" (rendered in a green success-styled banner). Same latent break on "Feature"/"Unfeature" store pins and `POST /customers/:id/unblock`.
+
+### Root cause
+
+`adminMutateOptions()` (`apps/web/src/lib/admin-fetch.ts`) always sets `Content-Type: application/json`. The unsuspend/feature/unfeature buttons `fetch` with `method: 'POST'` and **no body**. `fetch` still sends the header, and Fastify v5 rejects `application/json` + empty body with **`FST_ERR_CTP_EMPTY_JSON_BODY` 400 before any route handler or auth preHandler runs** — so no DB write, no audit-log row. `suspend` was unaffected only because it sends `body: JSON.stringify({ reason })`.
+
+Confirmed against prod: `curl -X POST .../unsuspend -H 'Content-Type: application/json'` (no body) → `400 FST_ERR_CTP_EMPTY_JSON_BODY`; with `-d '{}'` → `403` (auth), i.e. the route/handler are fine. Ruled out at the prod DB: column presence/nullability, table + column `GRANT`s for `kanchuki_app`, RLS (`kanchuki_app` has `BYPASSRLS`), triggers/constraints — the raw `UPDATE` runs clean.
+
+### Fix
+
+| File | Change |
+|------|--------|
+| `apps/api/src/plugins/empty-json-body.ts` | **new** — `parseJsonAllowEmpty`: empty/whitespace body → `{}`, malformed JSON → 400. |
+| `apps/api/src/plugins/empty-json-body.test.ts` | **new** — 5 unit tests (empty, whitespace, Buffer, valid, malformed). |
+| `apps/api/src/index.ts` | Registers the parser on the root server (`addContentTypeParser('application/json', { parseAs: 'string' }, parseJsonAllowEmpty)`) right after `Fastify({...})`. Webhook route plugins (`billing.ts`, `checkout-webhook.ts`, `whatsapp-catalog.ts`) keep their own **encapsulated** raw-body parser — unaffected. Fixes all bodyless admin mutations (present + future); Zod still guards routes that need real fields. |
+| `apps/web/src/app/admin/retailers/[id]/page.tsx` | (1) Action-feedback banner was hardcoded green + `BadgeCheck` for every message — errors looked like successes. Added `actionErr` state; banner renders red + `AlertTriangle` on failure. `actionErr` set in every `catch`, cleared at each action start. (2) `/unsuspend`, `/feature`, `/unfeature` handlers now read `j?.error?.message` from the response instead of a blind `throw new Error('Failed to …')`. |
+
+### Verified
+
+- New `parseJsonAllowEmpty` test → 5/5.
+- `apps/api` tsc → clean. `apps/web` tsc → clean.
+- `npx vitest run src/routes/admin.test.ts src/routes/security.test.ts src/routes/admin.login.test.ts` → 106/106 (one first-run flake on the TOTP 30s-window case-insensitive-login test; green on rerun, and green alone).
+
+### Not done
+
+- Not deployed — branch `fix/mobile-typecheck-taste-analytics`; reaches prod via merge to `main` → Railway auto-deploy.
+
+---
+
+## 56. Post-Teardown Recovery — Plans/Onboarding/Dashboard + Crash Fixes (PR #16)
+
+**Branch:** `recover/mobile-plans-onboarding-dashboard`  
+**Date:** 2026-08-31 → 2026-09-01  
+**PR:** [#16](https://github.com/kapisejix/kanchuki/pull/16)
+
+12 commits recovering unmerged work from `fix/mobile-typecheck-taste-analytics` that sat on a stale branch while `main` advanced through PR #15 (feature teardown). Cherry-picked onto current `main`, conflicts resolved vs teardown, plus 3 new crash/permission fixes.
+
+### Commits
+
+| Commit | Summary |
+|--------|---------|
+| `3cf1e90` | feat(mobile): "Select Plan" step in retailer onboarding after GST |
+| `7749108` | feat: hard-delete retailer accounts + in-app plan selection |
+| `a4bfa39` | fix(mobile): delete-account always logs out, DB-driven plan prices, native FB/IG OAuth, skeleton design match |
+| `86817a0` | fix: retailer hard-delete FK gap, DB-wired plans, native FB connect, super-admin delete |
+| `163708c` | fix(admin): bodyless POST 400 on Fastify v5 empty JSON body |
+| `0fa0539` | fix(mobile): streamline dashboard layout + floating center nav button |
+| `70a83da` | fix(api): gate onboarding plan/demo mutation when onboarding already completed (security) |
+| `64612d4` | feat(mobile): store-name headers on Growth/Collections/Category + OTP error surfacing |
+| `5f56dd1` | fix(mobile): remove orphaned supplier screen left by the feature teardown |
+| `88d2fbb` | **fix(web): restore avg_rating in product-list serializer + guard toFixed sites** |
+| `56612f0` | **fix(mobile): QR export deprecation, stale expo-router screens, direct gallery save** |
+| `308573e` | chore(db): migration 083 — GRANT DELETE on product_photos to kanchuki_app |
+
+### Key fix detail
+
+#### `88d2fbb` — Web crash: avg_rating undefined.toFixed(1)
+
+**Symptom:** every catalog/category/collection page crashed with "Cannot read properties of undefined (reading 'toFixed')". Hard-refresh "fixed" it because Serwist served stale collection-api cache (pre-teardown JSON that still had `avg_rating`).
+
+**Root cause:** commit `76c5acd` (PR #15 teardown) dropped `avg_rating` from `toPublicProductSummary()` in `apps/api/src/routes/public/public-helpers.ts` while keeping `rating_count`. The serializer shipped products with `rating_count` but no `avg_rating` → `undefined.toFixed(1)` on every client.
+
+**Files:**
+
+| File | Change |
+|------|--------|
+| `apps/api/src/routes/public/public-helpers.ts` | Restored `avg_rating: p.avg_rating ?? 0` + `has_360: false` for type parity |
+| `apps/web/src/app/c/[slug]/components/CollectionView.tsx` | `(product.avg_rating ?? 0).toFixed(1)` |
+| `apps/web/src/app/c/[slug]/components/ReviewList.tsx` | `(avgRating ?? 0).toFixed(1)` |
+| `apps/web/src/app/c/[slug]/components/SharedProductPage.tsx` | `(product.avg_rating ?? 0).toFixed(1)` |
+
+#### `56612f0` — Mobile: QR export, stale screens, gallery save
+
+| File | Change |
+|------|--------|
+| `apps/mobile/app/store-profile.tsx` | `writeAsStringAsync` from `expo-file-system/legacy` (SDK 54 barrel throws "deprecated"). Fixes "Export Failed — Could not export QR code". |
+| `apps/mobile/app/_layout.tsx` | Removed 6 `<Stack.Screen>` entries whose route files were deleted in teardown (`category/index`, `tryon/in-store`, `orders/[id]`, `growth/referrals`, `growth/bookings`, `growth/booking-form`). Fixes `No route named "growth/booking-form"` on `expo start`. |
+| `apps/mobile/src/hooks/useProductAiStudio.ts` | `handleDownloadCurrentMedia` tries `expo-media-library` `saveToLibraryAsync` first (direct gallery save on dev/EAS builds), falls back to share sheet in Expo Go. |
+| `apps/mobile/app.json` | Added `expo-media-library` config plugin with permission strings. |
+
+#### `308573e` — Photo-delete 500: permission denied (issue #3)
+
+**Symptom:** `DELETE /v1/products/:id/photos/:photoId` returns 500 "Failed to delete Photo — APIError: Something went wrong".
+
+**Root cause:** PostgreSQL error `42501: permission denied for table product_photos`. SECURITY.md §19.1 revoked DELETE from `kanchuki_app` role, but the photo-delete handler calls `prisma.productPhoto.delete()` (hard delete). The pooler-connection GRANT attempt silently succeeded (PgBouncer absorbed it) without taking effect.
+
+**Fix:** `GRANT DELETE ON product_photos TO kanchuki_app;` run from Supabase dashboard SQL Editor (requires superuser, can't go through pooler).
+
+**File:** `packages/db/prisma/migrations/083_grant_delete_product_photos/migration.sql` — documents the one-off permission grant.
+
+### Verified
+
+- `apps/api` vitest: 53 files, 684 tests passed ✅
+- `apps/api` tsc: clean ✅
+- `apps/web` vitest: 14 files, 89 tests passed ✅
+- `apps/web` tsc: clean ✅
+- `apps/mobile` tsc: clean ✅
+
+### Not done
+
+- Photo-delete GRANT needs to be applied from Supabase dashboard (can't run through pooler)
+- Demo access has no expiry
+- `plan` writes straight to `retailer.plan` (reviewer wants separate `intended_plan` column)

@@ -131,7 +131,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
               <div className="flex items-center gap-1 mt-1">
                 <Star size={13} className="text-[#BB3F95] fill-[#BB3F95]" />
                 <span className="text-xs font-bold text-[#231F48]">
-                  {product.avg_rating.toFixed(1)}
+                  {(product.avg_rating ?? 0).toFixed(1)}
                 </span>
                 <span className="text-[10px] text-[#6B4773]">
                   ({product.rating_count})

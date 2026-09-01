@@ -2,6 +2,7 @@
 import { prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { forbidden } from '../../../plugins/error-handler.js';
 import { hardDeleteRetailer } from '../../../jobs/purge-retailer-now.js';
 import { adminAuthPreHandler } from '../../admin-auth.js';
 
@@ -144,6 +145,11 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
   // first, so the full payload survives in the separate insert-only vault
   // DB even though the primary row is gone for good.
   server.delete('/retailers', async (request) => {
+    // Hard-deleting a store (row + phone + all data) is Super Admin only —
+    // standard Admin accounts can suspend/extend/change-plan but not destroy.
+    if (request.adminRole !== 'SUPER_ADMIN') {
+      throw forbidden('Only a Super Admin can delete retailer accounts');
+    }
     const body = z.object({ ids: z.array(z.string()).min(1).max(100) }).parse(request.body);
 
     const retailersBefore = await prisma.retailer.findMany({

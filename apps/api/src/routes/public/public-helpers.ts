@@ -98,7 +98,10 @@ export async function toPublicProductSummary(p: {
     primary_color: p.primary_color,
     location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
     primary_photo_url: photo ? await displayUrl(photo.url, photo.r2_key) : '',
-        rating_count: p.rating_count ?? 0,
+    // Spin-frame feature removed (PR #15); kept in the shape for type parity.
+    has_360: false,
+    avg_rating: p.avg_rating ?? 0,
+    rating_count: p.rating_count ?? 0,
   };
 }
 

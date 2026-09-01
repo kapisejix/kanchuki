@@ -46,7 +46,7 @@ export function ReviewList({ productId, avgRating, ratingCount }: Props) {
       <div className="flex items-center gap-3 mb-3">
         <div className="flex items-center gap-1">
           <Star size={18} className="text-amber-400 fill-amber-400" />
-          <span className="text-lg font-bold text-gray-900">{avgRating.toFixed(1)}</span>
+          <span className="text-lg font-bold text-gray-900">{(avgRating ?? 0).toFixed(1)}</span>
         </div>
         <span className="text-xs text-gray-500">
           {ratingCount} review{ratingCount !== 1 ? 's' : ''}

@@ -17,11 +17,11 @@ import {
   Video,
   Wand2,
 } from 'lucide-react-native'
-import { ActivityIndicator, ScrollView, Text, View } from 'react-native'
+import { ActivityIndicator, Image, ScrollView, Text, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { AnimatedPressable } from '../../src/components/AnimatedPressable'
 import { GradientButton } from '../../src/components/GradientButton'
-import { growthApi, type CampaignType } from '../../src/lib/api'
+import { growthApi, retailerApi, type CampaignType } from '../../src/lib/api'
 import { ApiError } from '../../src/lib/api/client'
 import { useTheme } from '../../src/lib/theme'
 
@@ -53,6 +53,14 @@ function isFeatureUnavailable(err: unknown): boolean {
 export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) {
   const { primaryColor, colors } = useTheme()
   const insets = useSafeAreaInsets()
+
+  const retailerQuery = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+    staleTime: 60_000,
+    enabled: isTab,
+  })
+  const retailerProfile = (retailerQuery.data as { data: Record<string, any> } | undefined)?.data
 
   const campaignsQuery = useQuery({
     queryKey: ['growth', 'campaigns'],
@@ -86,6 +94,28 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
   return (
     <View className="flex-1 bg-[#F8F7FC]">
       {/* Header */}
+      {isTab && (
+        <View
+          className="bg-white px-5 pb-3 border-b border-lavender-200 flex-row items-center gap-3"
+          style={{ paddingTop: Math.max(insets.top, 24) + 12 }}
+        >
+          <View className="w-10 h-10 rounded-2xl overflow-hidden bg-lavender-100 items-center justify-center border border-lavender-200 shadow-sm">
+            {retailerProfile?.logo_url ? (
+              <Image source={{ uri: retailerProfile.logo_url }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+            ) : (
+              <Text className="font-bold text-spaceCadet-900 font-marcellus text-sm">
+                {(retailerProfile?.shop_name ?? 'K').slice(0, 2).toUpperCase()}
+              </Text>
+            )}
+          </View>
+          <View>
+            <Text className="text-sm font-bold text-spaceCadet-900">Hi, {retailerProfile?.shop_name ?? 'Store'}!</Text>
+            <Text className="text-[10px] uppercase tracking-wider text-heliotrope-500 font-bold">
+              {retailerProfile?.city ?? 'Growth'} • Growth Engine
+            </Text>
+          </View>
+        </View>
+      )}
       {!isTab && (
         <View
           className="bg-white border-b border-lavender-200 px-5 pb-4"
@@ -204,14 +234,6 @@ export default function GrowthHubScreen({ isTab = false }: { isTab?: boolean }) 
               Festival copy & blasts
             </Text>
           </AnimatedPressable>
-        </View>
-
-        {/* Primary CTA: Create New Campaign */}
-        <View className="mb-5">
-          <GradientButton
-            label="Create New Campaign"
-            onPress={() => router.push('/growth/campaign-new')}
-          />
         </View>
 
         {/* Live Campaigns Overview */}
