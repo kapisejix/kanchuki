@@ -93,3 +93,9 @@ VibeSec-Skill/
 
 # Strix security-scan run state (SQLite state + logs, not source)
 strix_runs/
+
+# Android/Java signing keystores — NEVER commit (app-signing secret)
+*.jks
+*.keystore
+*.p12
+

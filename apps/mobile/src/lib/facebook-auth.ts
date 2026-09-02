@@ -43,6 +43,7 @@ export async function loginWithFacebook(
   target: 'facebook' | 'instagram' = 'facebook',
 ): Promise<string> {
   let fbsdk: {
+    Settings: { initializeSDK: () => void };
     LoginManager: {
       logInWithPermissions: (p: string[]) => Promise<{ isCancelled: boolean }>;
     };
@@ -55,6 +56,15 @@ export async function loginWithFacebook(
     // at eval time (Expo Go) — only this call path fails.
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     fbsdk = require('react-native-fbsdk-next');
+  } catch {
+    throw new FacebookAuthUnavailable();
+  }
+
+  // isAutoInitEnabled is false in app.json (a bad appID in Application.onCreate
+  // crashes app launch before the splash). Init here instead — idempotent, runs
+  // only when the retailer actually taps Connect Facebook.
+  try {
+    fbsdk.Settings.initializeSDK();
   } catch {
     throw new FacebookAuthUnavailable();
   }
