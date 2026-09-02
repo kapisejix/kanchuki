@@ -58,6 +58,24 @@ const RATING_LABELS: Record<number, string> = {
   5: 'Excellent',
 }
 
+// Canned review lines the customer can drop into the comment box, then edit.
+// {store} / {product} are filled from the retailer + product names.
+export const COMMENT_TEMPLATES = [
+  'Loved my {product} from {store}! Great quality and fit.',
+  'Very happy with {product}. {store} service was excellent.',
+  '{product} is beautiful. Delivery from {store} was quick.',
+  'Good experience shopping at {store}. {product} matches the photos.',
+  '{store} helped me pick the right size. {product} fits perfectly.',
+  'Recommend {store}. My {product} is exactly what I wanted.',
+]
+
+export function fillTemplate(
+  tpl: string,
+  vars: { store: string; product: string },
+): string {
+  return tpl.replace(/\{store\}/g, vars.store).replace(/\{product\}/g, vars.product)
+}
+
 interface ReviewFormProps {
   productName: string
   retailerId: string
@@ -195,6 +213,30 @@ export function ReviewForm({
             {RATING_LABELS[rating]}
           </span>
         )}
+      </div>
+
+      {/* Comment templates — tap to prefill, still editable */}
+      <div>
+        <p className="block text-xs font-medium text-gray-500 mb-1.5">
+          Quick templates
+        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {COMMENT_TEMPLATES.map((tpl) => {
+            const filled = fillTemplate(tpl, { store: retailerName, product: productName })
+            return (
+              <button
+                key={tpl}
+                type="button"
+                onClick={() => setComment(filled)}
+                className="text-left text-[11px] leading-snug text-gray-600 bg-gray-50 hover:bg-cyan-50 hover:text-cyan-800
+                           border border-gray-200 hover:border-cyan-300 rounded-lg px-2.5 py-1.5 transition-colors
+                           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400"
+              >
+                {filled}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
       {/* Comment */}

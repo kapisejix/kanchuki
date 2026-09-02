@@ -8,7 +8,6 @@ import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanc
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
 import { Product360Viewer } from './Product360Viewer'
-import { ReviewForm } from './StarPicker'
 import { ReviewList } from './ReviewList'
 import { FabricGlossary } from './FabricGlossary'
 import { trackRecentlyViewed } from '../lib/recentlyViewed'
@@ -20,6 +19,9 @@ import { CustomerConsentModal } from './CustomerConsentModal'
 
 // VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
 const TRY_ON_ENABLED = false
+
+// Family-sizing card is parked, not deleted — flip to re-enable.
+const SHOW_FAMILY_SIZING = false
 
 // Alias map lookup (shared with mobile) first; anything unmapped is checked
 // against the browser's own color parser before falling back to neutral grey.
@@ -678,6 +680,7 @@ export function ProductDetailSheet({
           </div>
 
           {/* Family Sizing Selector Card */}
+          {SHOW_FAMILY_SIZING && (
           <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1.5">
@@ -687,7 +690,7 @@ export function ProductDetailSheet({
               <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
             </div>
             <p className="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
-            
+
             <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
@@ -695,6 +698,7 @@ export function ProductDetailSheet({
               <span className="text-xs font-extrabold text-emerald-700">✓</span>
             </div>
           </div>
+          )}
 
           {/* Dual Action Buttons */}
           <div className="flex items-center gap-3 pt-1">
@@ -806,18 +810,14 @@ export function ProductDetailSheet({
           </div>
         )}
 
-        {/* Reviews — social proof + submission form */}
+        {/* Reviews — social proof only. The submit form lives on the shared
+            product link the retailer sends after a sale (SharedProductPage,
+            ?review=1), not in the in-catalog sheet. */}
         <div className="px-4 pt-2 space-y-3">
           <ReviewList
             productId={product.id}
             avgRating={product.avg_rating}
             ratingCount={product.rating_count}
-          />
-          <ReviewForm
-            productName={product.name ?? product.category ?? 'this product'}
-            retailerId={retailer.id}
-            productId={product.id}
-            retailerName={retailer.shop_name}
           />
         </div>
 
