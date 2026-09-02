@@ -1818,3 +1818,16 @@ New tests: `billing.test.ts` — 4 webhook cases (single allocation, duplicate-c
 **Deploy note:** PR #18 → web service redeployed (`8beecf8b`, RUNNING) and picked up the crash fix. PR #19 touched only `packages/db/migrations` + `scripts/` (outside web/api watch patterns) — no redeploy. `quality` CI has been red on `main` since before these PRs (pre-existing stale web test-mock types: `latitude`/`longitude` on `PublicCollection`); both PRs merged with `--admin` to match how `main` already operates. `unit-web` passes.
 
 **Operator sequence to finish GST launch:** apply migrations `086` → `087` → `088` (admin dashboard) → run `scripts/set-gst-profile.ps1` → verify the printed profile.
+
+### §59.3 — Razorpay plan ids move to Admin → Integrations (2026-09-02)
+
+`billing.ts` read `RAZORPAY_PLAN_{STARTER,GROWTH,PRO}_MONTHLY` from `process.env` only — the "Create Razorpay Plans" admin button returns the ids as an env snippet but never persists them, so wiring subscriptions meant hand-editing Railway API env vars. Now:
+
+| File | Change |
+|------|--------|
+| `packages/shared/src/constants/index.ts` | 3 new `PAYMENT` rows in `INTEGRATION_KEYS` (`RAZORPAY_PLAN_STARTER_MONTHLY` / `_GROWTH_` / `_PRO_`) so they render on `/admin/integrations`. |
+| `apps/api/src/routes/billing.ts` | `RAZORPAY_PLAN_IDS` const → `razorpayPlanId(plan)` = `getSecret('RAZORPAY_PLAN_' + plan + '_MONTHLY')`. `getSecret` falls back to `process.env[key]`, so existing Railway env vars keep working. |
+
+No new page/route — the existing F-012 integrations vault (`admin-integrations.ts` catalog is driven entirely by `INTEGRATION_KEYS`) handles create/rotate/delete. Set the ids there after creating the plans in the Razorpay dashboard; 30s secret cache, no redeploy. Tests: billing 20/20, admin.login 14/14, security 6/6, API `tsc` clean.
+
+**Amount caveat unchanged:** each Razorpay Plan object's amount must equal `base × 1.18` or the GST invoice CGST/SGST split (computed from `Subscription.amount_inr` = ex-GST base) won't match the real charge.
