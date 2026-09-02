@@ -10,12 +10,13 @@ import { addGenerateGstInvoiceJob } from '../jobs/generate-gst-invoice.js';
 
 type Plan = 'STARTER' | 'GROWTH' | 'PRO';
 
-// Razorpay plan ids — monthly only (annual removed 2026-09-01)
-const RAZORPAY_PLAN_IDS: Record<Plan, string | undefined> = {
-  STARTER: process.env.RAZORPAY_PLAN_STARTER_MONTHLY,
-  GROWTH: process.env.RAZORPAY_PLAN_GROWTH_MONTHLY,
-  PRO: process.env.RAZORPAY_PLAN_PRO_MONTHLY,
-};
+// Razorpay plan ids — monthly only (annual removed 2026-09-01).
+// Resolved via getSecret so they can be set on Admin → Integrations
+// (integration_setting table); getSecret falls back to process.env[key]
+// when no DB row exists.
+function razorpayPlanId(plan: Plan): Promise<string | undefined> {
+  return getSecret(`RAZORPAY_PLAN_${plan}_MONTHLY`);
+}
 
 // ponytail: raw fetch instead of razorpay SDK — we need 2 endpoints, SDK adds a dep
 async function razorpay<T>(path: string, init?: RequestInit): Promise<T> {
@@ -179,7 +180,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
     }
     const { plan } = body.data;
 
-    const planId = RAZORPAY_PLAN_IDS[plan];
+    const planId = await razorpayPlanId(plan);
     if (!planId) {
       throw validationError(`Razorpay plan not configured for ${plan}`);
     }

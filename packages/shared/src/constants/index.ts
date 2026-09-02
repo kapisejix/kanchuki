@@ -436,6 +436,24 @@ export const INTEGRATION_KEYS = [
   { key_name: 'RAZORPAY_KEY_ID', category: 'PAYMENT', label: 'Razorpay Key ID' },
   { key_name: 'RAZORPAY_KEY_SECRET', category: 'PAYMENT', label: 'Razorpay Key Secret' },
   { key_name: 'RAZORPAY_WEBHOOK_SECRET', category: 'PAYMENT', label: 'Razorpay Webhook Secret' },
+  // Subscription plan ids from Razorpay (Subscriptions → Plans → plan_XXX).
+  // Not secret, but resolved via getSecret() so they sit with the other
+  // Razorpay config instead of only as API env vars.
+  {
+    key_name: 'RAZORPAY_PLAN_STARTER_MONTHLY',
+    category: 'PAYMENT',
+    label: 'Razorpay Plan ID — Starter (monthly)',
+  },
+  {
+    key_name: 'RAZORPAY_PLAN_GROWTH_MONTHLY',
+    category: 'PAYMENT',
+    label: 'Razorpay Plan ID — Growth (monthly)',
+  },
+  {
+    key_name: 'RAZORPAY_PLAN_PRO_MONTHLY',
+    category: 'PAYMENT',
+    label: 'Razorpay Plan ID — Pro (monthly)',
+  },
   { key_name: 'R2_ACCESS_KEY_ID', category: 'STORAGE', label: 'Cloudflare R2 Access Key ID' },
   {
     key_name: 'R2_SECRET_ACCESS_KEY',
