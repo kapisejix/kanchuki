@@ -271,6 +271,7 @@ function BugReportDetailPanel({
               onClick={() => setShowScreenshot(true)}
               className="w-full bg-gray-50 border border-gray-200 rounded-xl overflow-hidden hover:border-cyan-300 transition-all cursor-pointer"
             >
+              {/* eslint-disable-next-line @next/next/no-img-element -- admin-internal screenshot preview */}
               <img
                 src={report.screenshot_url}
                 alt="Bug report screenshot"

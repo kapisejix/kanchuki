@@ -7,6 +7,7 @@ import { ProductGallery } from '../ProductGallery';
 vi.mock('next/image', () => ({
   __esModule: true,
   default: ({ src, alt, className }: { src: string; alt?: string | null; className?: string }) => (
+    // eslint-disable-next-line @next/next/no-img-element -- test mock of next/image
     <img src={src} alt={alt ?? ''} className={className} />
   ),
 }));

@@ -9,7 +9,7 @@ import {
 import { ArrowLeft, Heart, LayoutGrid, MapPin, MessageCircle, ShoppingBag } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { KanchukiBrandBar } from '../components/KanchukiBrandBar';
 import { type WishlistItem, loadWishlist } from '../lib/wishlist';
 
@@ -33,8 +33,10 @@ export function WishlistView({ collection, slug, store, backHref }: Props) {
     setSavedMap(loadWishlist(slug));
   }, [slug]);
 
-  const savedProducts =
-    savedMap === null ? [] : collection.products.filter((p) => savedMap.has(p.id));
+  const savedProducts = useMemo(
+    () => (savedMap === null ? [] : collection.products.filter((p) => savedMap.has(p.id))),
+    [savedMap, collection.products],
+  );
 
   const handleEnquireAll = useCallback(() => {
     const message = buildEnquiryMessage({

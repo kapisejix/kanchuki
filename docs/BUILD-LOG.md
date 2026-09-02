@@ -853,6 +853,8 @@ Launch-readiness drove four changes, all pushed to main (full Play paperwork dra
 
 **4. Location permission removed entirely** — `ACCESS_COARSE/FINE_LOCATION`, iOS usage string, `expo-location` plugin + dependency dropped; onboarding "Use current location" autofill removed (city/state/pincode typed manually). No location data collected at all → the Data Safety form declares no Location rows.
 
+> **Superseded by commit `b4270e4` (Google Maps location).** Onboarding step 2 re-added an optional "Get Location" button (`app/onboarding.tsx` `handleGetLocation`): one foreground `getCurrentPositionAsync` + `reverseGeocodeAsync` to pre-fill the address and store `retailers.latitude`/`longitude`, which renders a `maps/dir/?api=1&destination=` link on `/c/[slug]`. `expo-location` is back in `package.json`. **The Data Safety form now declares Location (precise + approximate), optional, foreground-only** — see `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §2/§3/§4. No background location, no tracking.
+
 **Play paperwork drafts** (in `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`): full Data Safety answers (7 declared types — name/email/phone/address/other-info[GSTIN+measurements]/photos/other-UGC; not collected: financial, location, device IDs, crash logs, analytics), IARC content-rating answers (Business category, expected **12+** from unfiltered UGC — do NOT claim "fully moderated"), closed-testing path (20 testers × 14 days), and the **Aug 31, 2026 target-API deadline** (API 35 OK now via SDK 54; after that, API 36 requires an Expo SDK 55 bump).
 
 ## ✅ BUILT 2026-08-12: Real OTP — MSG91 widget on mobile + server-side MSG91 everywhere

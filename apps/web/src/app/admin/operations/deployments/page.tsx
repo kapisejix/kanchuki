@@ -79,6 +79,7 @@ export default function DeploymentsPage() {
     }
   }, [cursor, filter])
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- run on mount + filter change only; loadDeployments also depends on cursor and re-adding it would reload on pagination
   useEffect(() => { loadDeployments(true) }, [filter])
 
   return (

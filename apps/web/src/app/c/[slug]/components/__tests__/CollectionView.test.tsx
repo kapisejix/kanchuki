@@ -37,6 +37,7 @@ vi.mock('next/image', () => ({
     src: string
     alt?: string | null
     className?: string
+    // eslint-disable-next-line @next/next/no-img-element -- test mock of next/image
   }) => <img src={src} alt={alt ?? ''} className={className} />,
 }))
 
@@ -69,6 +70,8 @@ const COLLECTION: PublicCollection = {
     logo_url: null,
     banner_url: null,
     public_slug: 'meera-sarees',
+    latitude: null,
+    longitude: null,
   },
   title: 'Festive Edit',
   description: 'A handpicked edit from the store.',

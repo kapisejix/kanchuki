@@ -183,6 +183,7 @@ export default function MyProfilePage() {
               <div key={item.id} className="flex-shrink-0 w-32">
                 <div className="w-32 h-32 bg-stone-100 rounded-lg overflow-hidden">
                   {item.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- below-the-fold thumbnail row, no LCP benefit from next/image
                     <img
                       src={item.photo_url}
                       alt={item.name ?? 'Product'}

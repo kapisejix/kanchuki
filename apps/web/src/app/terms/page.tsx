@@ -3,7 +3,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Terms of Service | Kanchuki',
-  description: 'The terms that govern your use of the Kanchuki catalog and commerce platform.',
+  description: 'The terms that govern your use of the Kanchuki catalog platform.',
 }
 
 export default function TermsOfServicePage() {
@@ -15,13 +15,13 @@ export default function TermsOfServicePage() {
         </Link>
 
         <h1 className="mt-6 font-display text-3xl font-semibold">Terms of Service</h1>
-        <p className="mt-2 text-sm text-carbon/50">Last updated: August 24, 2026</p>
+        <p className="mt-2 text-sm text-carbon/50">Last updated: September 2, 2026</p>
 
         <div className="mt-8 space-y-6 text-carbon/70">
           <p>
-            These terms govern your use of Kanchuki, the AI-powered catalog and commerce platform
-            for clothing retailers in India. By creating an account or continuing to use the
-            platform, you agree to these terms. If you do not agree, please do not use the service.
+            These terms govern your use of Kanchuki, the AI-powered catalog platform for clothing
+            retailers in India. By creating an account or continuing to use the platform, you agree
+            to these terms. If you do not agree, please do not use the service.
           </p>
 
           <section>
@@ -36,9 +36,10 @@ export default function TermsOfServicePage() {
           <section>
             <h2 className="font-display text-xl font-semibold text-carbon">2. The service</h2>
             <p>
-              Kanchuki provides tools to catalogue products, auto-tag photos using AI, manage
-              customers, share collections via WhatsApp, and accept enquiries and orders from your
-              customers. Features may change over time; we will communicate material changes.
+              Kanchuki provides tools to catalogue products, auto-tag and enhance product photos
+              using AI, manage customers, publish a storefront, share collections via WhatsApp, and
+              receive enquiries from your customers. Features may change over time; we will
+              communicate material changes.
             </p>
           </section>
 
@@ -47,29 +48,29 @@ export default function TermsOfServicePage() {
             <p>
               You retain ownership of the product photos and data you upload. You grant Kanchuki a
               limited licence to store, process, and display that content solely to operate the
-              service (including sending it to AI providers for auto-tagging). You confirm you have
-              the rights to upload the content you publish, including customer photos taken with
-              their consent. If a customer submits a product review, they grant Kanchuki and the
-              relevant retailer a licence to display that review publicly on the product page.
+              service (including sending it to AI providers for auto-tagging and image generation).
+              You confirm you have the rights to upload the content you publish. If a customer
+              submits a product review, they grant Kanchuki and the relevant retailer a licence to
+              display that review publicly on the product page.
             </p>
           </section>
 
           <section>
             <h2 className="font-display text-xl font-semibold text-carbon">4. Payments &amp; billing</h2>
             <p>
-              Subscription plans are billed in INR via Razorpay, monthly or annually. Amounts paid
-              are non-refundable except where required by law. Where you connect your own payment
-              account for customer checkout, sale proceeds are settled directly to you; Kanchuki
-              never holds retailer sale money.
+              Subscription plans are billed monthly in INR via Razorpay. Listed plan prices are
+              exclusive of GST, which is added at the applicable rate. Amounts paid are
+              non-refundable except where required by law. Paid add-on services, where offered, are
+              also billed via Razorpay.
             </p>
           </section>
 
           <section>
             <h2 className="font-display text-xl font-semibold text-carbon">5. GST invoicing</h2>
             <p>
-              You are responsible for the accuracy of the GST details on your account. Kanchuki
-              generates GST invoices on your behalf when you sell; you remain responsible for
-              filing and paying applicable taxes on your sales.
+              Kanchuki issues a GST invoice for your subscription and any paid add-ons. You are
+              responsible for the accuracy of the GST details on your account, and for filing and
+              paying the taxes applicable to your own sales.
             </p>
           </section>
 
@@ -79,10 +80,9 @@ export default function TermsOfServicePage() {
             </h2>
             <p>
               When a customer shares their name and phone number on a retailer&apos;s Kanchuki
-              catalog page — to view a collection, submit a review, book a visit, or request a
-              referral code — they consent to Kanchuki and that retailer contacting them by phone,
-              SMS, or WhatsApp about products, offers, orders, and AI styling features, as described
-              in our{' '}
+              catalog page — to view a collection, submit a review, or send an enquiry — they
+              consent to Kanchuki and that retailer contacting them by phone, SMS, or WhatsApp about
+              products, offers, and AI styling features, as described in our{' '}
               <Link href="/privacy" className="text-cobalt-600 hover:underline">
                 Privacy Policy
               </Link>
