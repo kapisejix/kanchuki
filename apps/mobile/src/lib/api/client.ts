@@ -247,6 +247,16 @@ export async function uploadImageToR2(
   }
 
   if (!result || result.status < 200 || result.status >= 300) {
-    throw new ApiError('UPLOAD_FAILED', 'Image upload failed', result?.status ?? 0)
+    // The PUT goes straight to R2, never through our API, so R2's own error
+    // (e.g. <Code>SignatureDoesNotMatch</Code> = bad/rotated R2 credentials on
+    // the server) is the only diagnostic. Surface status + body — without it
+    // every failure collapses to an unactionable "Image upload failed".
+    const detail = result?.body ? ` — ${String(result.body).slice(0, 300)}` : ''
+    console.error('R2 upload failed', result?.status, result?.body)
+    throw new ApiError(
+      'UPLOAD_FAILED',
+      `Image upload failed (HTTP ${result?.status ?? 0})${detail}`,
+      result?.status ?? 0,
+    )
   }
 }
