@@ -3,35 +3,20 @@
 // records the payment. Generates the PDF, uploads to R2, and updates
 // the SubscriptionPayment row with the URL.
 
+import { randomUUID } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
-import { uploadBuffer, publicUrl } from '@kanchuki/ai';
+import { uploadBuffer } from '@kanchuki/ai';
 import { buildGstInvoicePdf, type InvoicePdfInput } from '../lib/gst-invoice-pdf.js';
-
-import { Queue } from 'bullmq';
-import { Redis } from 'ioredis';
-import { QUEUES } from '@kanchuki/shared';
+import { getMaintenanceQueue } from './queue.js';
 
 export interface GenerateGstInvoiceJobData {
   payment_id: string;
 }
 
-let invoiceRedis: Redis | null = null;
-let invoiceQueue: Queue | null = null;
-
-function getInvoiceQueue(): Queue {
-  if (!invoiceQueue) {
-    invoiceRedis ??= new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: null,
-    });
-    invoiceQueue = new Queue(QUEUES.MAINTENANCE, { connection: invoiceRedis });
-  }
-  return invoiceQueue;
-}
-
-/** Enqueue a GST invoice PDF generation job. */
+/** Enqueue a GST invoice PDF generation job on the shared maintenance queue. */
 export async function addGenerateGstInvoiceJob(data: GenerateGstInvoiceJobData): Promise<void> {
-  await getInvoiceQueue().add('generate-gst-invoice', data, {
+  await getMaintenanceQueue().add('generate-gst-invoice', data, {
     attempts: 3,
     backoff: { type: 'exponential', delay: 5000 },
     removeOnComplete: { count: 500 },
@@ -41,7 +26,11 @@ export async function addGenerateGstInvoiceJob(data: GenerateGstInvoiceJobData):
 
 /**
  * Generate a GST invoice PDF for a SubscriptionPayment and upload to R2.
- * Idempotent: if invoice_pdf_url is already set, this is a no-op.
+ * Idempotent: if invoice_generated_at is already set, this is a no-op.
+ *
+ * Throws (rather than returning) on any missing precondition so BullMQ's
+ * retry policy engages — a payment charged before the platform GST profile
+ * was configured is then picked up on a later retry / the backfill sweep.
  */
 export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData): Promise<void> {
   const payment = await prisma.subscriptionPayment.findUnique({
@@ -52,17 +41,15 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
   });
 
   if (!payment) {
-    console.error(`[gst-invoice] Payment ${data.payment_id} not found`);
-    return;
+    throw new Error(`[gst-invoice] Payment ${data.payment_id} not found`);
   }
 
   // Idempotent — already generated
-  if (payment.invoice_pdf_url) return;
+  if (payment.invoice_generated_at) return;
 
   // Need GST columns to be populated
   if (!payment.gst_invoice_number || !payment.amount_excluding_gst) {
-    console.error(`[gst-invoice] Payment ${data.payment_id} missing GST columns`);
-    return;
+    throw new Error(`[gst-invoice] Payment ${data.payment_id} missing GST columns`);
   }
 
   // Load retailer + platform GST profile
@@ -75,8 +62,9 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
   ]);
 
   if (!gstProfile) {
-    console.error('[gst-invoice] Platform GST profile not configured — skipping PDF generation');
-    return;
+    throw new Error(
+      '[gst-invoice] Platform GST profile not configured (PUT /admin/gst-profile) — will retry',
+    );
   }
 
   const planName = `Kanchuki ${payment.subscription.plan} Plan`;
@@ -117,20 +105,46 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
   // Generate PDF
   const pdfBuffer = await buildGstInvoicePdf(input);
 
-  // Upload to R2
-  const r2Key = R2_PATHS.gstInvoice(payment.retailer_id, payment.gst_invoice_number);
+  // Upload to R2 under a random-UUID key (not the sequential invoice number),
+  // so the object can't be enumerated. Served only via a short-lived
+  // presigned URL from the invoice download routes.
+  const r2Key = R2_PATHS.gstInvoice(payment.retailer_id, randomUUID());
   await uploadBuffer(r2Key, pdfBuffer, 'application/pdf');
 
-  const pdfUrl = publicUrl(r2Key);
-
-  // Update the payment row
+  // Update the payment row. invoice_generated_at is the "ready" flag.
   await prisma.subscriptionPayment.update({
     where: { id: payment.id },
     data: {
-      invoice_pdf_url: pdfUrl,
+      invoice_r2_key: r2Key,
       invoice_generated_at: new Date(),
     },
   });
 
-  console.log(`[gst-invoice] Generated PDF for ${payment.gst_invoice_number}: ${pdfUrl}`);
+  console.log(`[gst-invoice] Generated PDF for ${payment.gst_invoice_number}`);
+}
+
+/**
+ * Reconciliation sweep — re-enqueue invoice generation for any successful
+ * payment that still has no PDF (e.g. charged before the platform GST profile
+ * was filled in, or exhausted its retries). Safe to run repeatedly:
+ * handleGenerateGstInvoice is idempotent on invoice_generated_at.
+ */
+export async function handleBackfillGstInvoices(
+  enqueue: (data: GenerateGstInvoiceJobData) => Promise<void>,
+): Promise<void> {
+  const pending = await prisma.subscriptionPayment.findMany({
+    where: {
+      status: 'success',
+      invoice_generated_at: null,
+      gst_invoice_number: { not: null },
+    },
+    select: { id: true },
+    take: 500,
+  });
+  for (const p of pending) {
+    await enqueue({ payment_id: p.id });
+  }
+  if (pending.length) {
+    console.log(`[gst-invoice] Backfill re-enqueued ${pending.length} missing invoice(s)`);
+  }
 }

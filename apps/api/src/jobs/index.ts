@@ -1,6 +1,13 @@
 import { QUEUES } from '@kanchuki/shared';
-import { Queue, Worker } from 'bullmq';
-import { Redis } from 'ioredis';
+import { Worker } from 'bullmq';
+import {
+  getCatalogSyncQueue,
+  getEmbeddingQueue,
+  getMaintenanceQueue,
+  getRedis,
+  getStudioShootQueue,
+  getTaggingQueue,
+} from './queue.js';
 import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
 import { handleBackupDatabase } from './backup-database.js';
 import { handleCompressR2Images } from './compress-r2-images.js';
@@ -16,53 +23,15 @@ import { handleTagProduct } from './tag-product.js';
 import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
 import type { CatalogSyncJobData } from './catalog-sync.js';
 import { handleEmbeddingBackfill } from './embedding-backfill.js';
-import { handleGenerateGstInvoice, type GenerateGstInvoiceJobData } from './generate-gst-invoice.js';
+import {
+  addGenerateGstInvoiceJob,
+  handleGenerateGstInvoice,
+  handleBackfillGstInvoices,
+  type GenerateGstInvoiceJobData,
+} from './generate-gst-invoice.js';
 
-// ─── Redis Connection ──────────────────────────────────────────────
-
-let connection: Redis | null = null;
-
-export function getRedis(): Redis {
-  if (!connection) {
-    connection = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379', {
-      maxRetriesPerRequest: null, // required by BullMQ
-    });
-  }
-  return connection;
-}
-
-// ─── Queues ───────────────────────────────────────────────────────
-
-let taggingQueue: Queue | null = null;
-let embeddingQueue: Queue | null = null;
-let studioShootQueue: Queue | null = null;
-let catalogSyncQueue: Queue | null = null;
-let maintenanceQueue: Queue | null = null;
-
-function getTaggingQueue(): Queue {
-  taggingQueue ??= new Queue(QUEUES.AI_TAGGING, { connection: getRedis() });
-  return taggingQueue;
-}
-
-function getEmbeddingQueue(): Queue {
-  embeddingQueue ??= new Queue(QUEUES.EMBEDDINGS, { connection: getRedis() });
-  return embeddingQueue;
-}
-
-function getStudioShootQueue(): Queue {
-  studioShootQueue ??= new Queue(QUEUES.STUDIO_SHOOT, { connection: getRedis() });
-  return studioShootQueue;
-}
-
-function getCatalogSyncQueue(): Queue {
-  catalogSyncQueue ??= new Queue(QUEUES.CATALOG_SYNC, { connection: getRedis() });
-  return catalogSyncQueue;
-}
-
-function getMaintenanceQueue(): Queue {
-  maintenanceQueue ??= new Queue(QUEUES.MAINTENANCE, { connection: getRedis() });
-  return maintenanceQueue;
-}
+// Redis + queue accessors live in ./queue.js (shared with every producer).
+export { getRedis };
 
 // ─── Job Producers ────────────────────────────────────────────────
 
@@ -139,6 +108,8 @@ export async function addCatalogSyncJob(data: CatalogSyncJobData): Promise<strin
   return job.id ?? '';
 }
 
+export { addGenerateGstInvoiceJob };
+
 // ─── Workers ─────────────────────────────────────────────────────
 
 export async function startWorkers(): Promise<void> {
@@ -210,6 +181,8 @@ export async function startWorkers(): Promise<void> {
           const data = job.data as GenerateGstInvoiceJobData;
           return handleGenerateGstInvoice(data);
         }
+        case 'backfill-gst-invoices':
+          return handleBackfillGstInvoices(addGenerateGstInvoiceJob);
         default:
           throw new Error(`[jobs] unknown maintenance job: ${job.name}`);
       }
@@ -290,6 +263,19 @@ export async function startWorkers(): Promise<void> {
     {},
     {
       repeat: { pattern: '0 7 * * 0', limit: 1 },
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
+
+  // GST invoice reconciliation — daily at 6:00 AM UTC. Re-enqueues any
+  // successful payment still missing its PDF (charged before the platform
+  // GST profile was set, or retries exhausted).
+  await getMaintenanceQueue().add(
+    'backfill-gst-invoices',
+    {},
+    {
+      repeat: { pattern: '0 6 * * *', limit: 1 },
       removeOnComplete: { count: 10 },
       removeOnFail: { count: 10 },
     },

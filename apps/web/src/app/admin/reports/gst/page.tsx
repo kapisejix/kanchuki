@@ -27,9 +27,9 @@ type Summary = {
   total_taxable: number
   total_gst: number
   total_sales: number
-  estimated_cgst: number
-  estimated_sgst: number
-  estimated_igst: number
+  cgst: number
+  sgst: number
+  igst: number
 }
 
 type MonthlyData = {
@@ -78,7 +78,8 @@ const itemVariants = {
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
-const fmtINR = (n: number) => `₹${n.toLocaleString('en-IN')}`
+// ponytail: guard the shared sink — undefined/NaN from a partial API payload renders ₹0, not a crash
+const fmtINR = (n: number) => `₹${(Number.isFinite(n) ? n : 0).toLocaleString('en-IN')}`
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 
@@ -195,7 +196,7 @@ export default function GstReportPage() {
             {summary && (
               <motion.div variants={containerVariants} initial="hidden" animate="visible" className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
                 <StatCard icon={IndianRupee} label="Total Sales" value={fmtINR(summary.total_sales)} color="bg-emerald-50 text-emerald-600" sub={`${fmtINR(summary.total_taxable)} taxable`} />
-                <StatCard icon={Receipt} label="Total GST" value={fmtINR(summary.total_gst)} color="bg-blue-50 text-blue-600" sub={`CGST ${fmtINR(summary.estimated_cgst)} + SGST ${fmtINR(summary.estimated_sgst)}`} />
+                <StatCard icon={Receipt} label="Total GST" value={fmtINR(summary.total_gst)} color="bg-blue-50 text-blue-600" sub={`CGST ${fmtINR(summary.cgst)} + SGST ${fmtINR(summary.sgst)}`} />
                 <StatCard icon={FileText} label="Orders" value={String(summary.total_orders)} color="bg-purple-50 text-purple-600" sub={`${summary.invoiced_orders} invoiced`} />
                 <StatCard icon={AlertCircle} label="Pending Invoices" value={String(summary.pending_invoices)} color={summary.pending_invoices > 0 ? 'bg-amber-50 text-amber-600' : 'bg-green-50 text-green-600'} />
               </motion.div>

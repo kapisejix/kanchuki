@@ -295,8 +295,12 @@ export const R2_PATHS = {
     `retailers/${retailerId}/products/${productId}/studio/${filename}`,
   lookbookOutput: (retailerId: string, lookbookId: string, filename: string) =>
     `retailers/${retailerId}/lookbooks/${lookbookId}/${filename}`,
-  gstInvoice: (retailerId: string, invoiceNo: string) =>
-    `invoices/subscription/${retailerId}/${invoiceNo}.pdf`,
+  // `token` is a random UUID, not the (sequential, slash-bearing) invoice
+  // number — the object key must not be guessable from the invoice series.
+  // The real key is stored on subscription_payments.invoice_r2_key and served
+  // only via a short-lived presigned URL.
+  gstInvoice: (retailerId: string, token: string) =>
+    `invoices/subscription/${retailerId}/${token}.pdf`,
 } as const;
 
 // ─── F-032 AI Studio Shoots — template presets (2026-08-13) ───────

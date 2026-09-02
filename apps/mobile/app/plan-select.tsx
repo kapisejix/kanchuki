@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import {
@@ -303,8 +304,9 @@ export default function PlanSelectScreen() {
         <View className="flex-row items-start gap-2 bg-lavender-100/70 rounded-2xl p-4 mb-4">
           <AlertCircle size={16} color="#6B4773" className="mt-0.5" />
           <Text className="text-[11px] text-heliotrope-600 leading-relaxed flex-1 font-medium">
-            All plans include a 14-day free trial. Prices include GST. You can switch plans
-            anytime — changes take effect at the start of your next billing cycle.
+            All plans include a 14-day free trial. Prices shown are ex-GST — 18% GST is added at
+            checkout. You can switch plans anytime — changes take effect at the start of your next
+            billing cycle.
           </Text>
         </View>
 

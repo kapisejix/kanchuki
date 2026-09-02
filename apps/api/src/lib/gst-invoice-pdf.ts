@@ -130,14 +130,15 @@ export async function buildGstInvoicePdf(input: InvoicePdfInput): Promise<Buffer
     doc.moveDown(0.5);
 
     // ─── Invoice Meta ─────────────────────────────────────────
-    const metaY = doc.y;
+    // `continued: true` keeps the value on the same line as its label
+    // instead of pdfkit advancing doc.y after each .text() call.
     doc.fontSize(9);
-    doc.font('Helvetica-Bold').text('Invoice No:', left);
-    doc.font('Helvetica').text(input.invoiceNumber, left + 70);
-    doc.font('Helvetica-Bold').text('Date:', left);
-    doc.font('Helvetica').text(input.invoiceDate, left + 70);
-    doc.font('Helvetica-Bold').text('Place of Supply:', left);
-    doc.font('Helvetica').text(input.placeOfSupply ?? 'N/A', left + 70);
+    doc.font('Helvetica-Bold').text('Invoice No: ', left, undefined, { continued: true });
+    doc.font('Helvetica').text(input.invoiceNumber);
+    doc.font('Helvetica-Bold').text('Date: ', left, undefined, { continued: true });
+    doc.font('Helvetica').text(input.invoiceDate);
+    doc.font('Helvetica-Bold').text('Place of Supply: ', left, undefined, { continued: true });
+    doc.font('Helvetica').text(input.placeOfSupply ?? 'N/A');
     doc.moveDown(1);
 
     // ─── Line Items Table ─────────────────────────────────────

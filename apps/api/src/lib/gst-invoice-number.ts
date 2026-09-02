@@ -1,9 +1,18 @@
 // ─── GST Invoice Number Allocator ──────────────────────────────────
-// Gap-free per-financial-year counter using a Prisma interactive txn
-// (SELECT ... FOR UPDATE) so concurrent webhooks can't collide.
+// Gap-free per-financial-year counter. Single atomic
+// `INSERT ... ON CONFLICT DO UPDATE ... RETURNING` — safe under concurrent
+// webhooks (the conflicting row is locked for the UPDATE; no separate
+// SELECT ... FOR UPDATE that would miss a not-yet-existing FY row and let
+// two callers both INSERT).
+// Accepts an optional transaction client so the caller can allocate the
+// number in the SAME transaction that writes the payment row — a
+// rolled-back payment then also rolls back the number (no burned gap).
 // Format: KAN/YY-YY/NNNNNN (e.g. KAN/26-27/000123)
 
-import { prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
+
+/** Minimum surface we need — real client or an interactive-txn client. */
+type Db = Pick<typeof prisma, '$queryRaw'> | Prisma.TransactionClient;
 
 /**
  * Get the Indian financial year string for a given date.
@@ -21,50 +30,32 @@ export function getFinancialYear(date: Date): string {
 
 /**
  * Allocate the next gap-free invoice number for the current financial year.
- * Uses a Prisma interactive transaction with SELECT ... FOR UPDATE to
- * prevent two concurrent webhooks from getting the same number.
  *
  * @param prefix - Invoice prefix, e.g. "KAN"
  * @param now - Current date (injectable for testing)
+ * @param db - Optional Prisma transaction client. Pass the outer `tx` so the
+ *             allocation commits/rolls back together with the payment row.
  * @returns Formatted invoice number, e.g. "KAN/26-27/000123"
  */
 export async function allocateInvoiceNumber(
-  prefix: string = 'KAN',
+  prefix = 'KAN',
   now: Date = new Date(),
+  db: Db = prisma,
 ): Promise<string> {
   const fy = getFinancialYear(now);
 
-  const result = await prisma.$transaction(async (tx) => {
-    // Lock the row for this FY — concurrent transactions wait
-    const row = await tx.$queryRaw<{ financial_year: string; last_number: number }[]>`
-      SELECT financial_year, last_number
-      FROM gst_invoice_sequences
-      WHERE financial_year = ${fy}
-      FOR UPDATE
-    `;
+  // Atomic upsert-and-increment. First insert → last_number = 1; every
+  // subsequent hit takes the ON CONFLICT branch, which locks the existing
+  // row and bumps it. No lost updates, no PK-violation race on the first
+  // invoice of a new FY.
+  const rows = await db.$queryRaw<{ last_number: number }[]>`
+    INSERT INTO gst_invoice_sequences (financial_year, last_number, updated_at)
+    VALUES (${fy}, 1, now())
+    ON CONFLICT (financial_year)
+    DO UPDATE SET last_number = gst_invoice_sequences.last_number + 1, updated_at = now()
+    RETURNING last_number
+  `;
 
-    let nextNumber: number;
-
-    if (row.length === 0) {
-      // First invoice this FY — create the row and start at 1
-      await tx.$executeRaw`
-        INSERT INTO gst_invoice_sequences (financial_year, last_number)
-        VALUES (${fy}, 1)
-      `;
-      nextNumber = 1;
-    } else {
-      // Increment the counter
-      nextNumber = row[0]!.last_number + 1;
-      await tx.$executeRaw`
-        UPDATE gst_invoice_sequences
-        SET last_number = ${nextNumber}, updated_at = now()
-        WHERE financial_year = ${fy}
-      `;
-    }
-
-    return nextNumber;
-  });
-
-  // Format: prefix/FY/zero-padded to 6 digits
-  return `${prefix}/${fy}/${String(result).padStart(6, '0')}`;
+  const nextNumber = rows[0]?.last_number ?? 1;
+  return `${prefix}/${fy}/${String(nextNumber).padStart(6, '0')}`;
 }
