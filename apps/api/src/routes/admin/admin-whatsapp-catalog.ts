@@ -103,9 +103,9 @@ export const adminWhatsAppCatalogRoutes: FastifyPluginAsync = async (server) => 
         sync_enabled: r.sync_enabled,
         sync_categories: r.sync_categories,
         last_synced_at: r.last_synced_at,
-        items_synced: per['SUCCESS'] ?? 0,
-        items_failed: per['FAILED'] ?? 0,
-        items_pending: per['IN_PROGRESS'] ?? 0,
+        items_synced: per.SUCCESS ?? 0,
+        items_failed: per.FAILED ?? 0,
+        items_pending: per.IN_PROGRESS ?? 0,
       };
     });
 

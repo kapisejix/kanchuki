@@ -6,8 +6,8 @@
 // arbitrary customer_id in the body would let a retailer fabricate reviews
 // attributed to any customer. Do not re-add POST /reviews/product|store here.
 
-import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@kanchuki/db';
+import type { FastifyPluginAsync } from 'fastify';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 

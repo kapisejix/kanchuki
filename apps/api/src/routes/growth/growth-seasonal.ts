@@ -37,7 +37,7 @@ function getPeriodRange(
   if (period === 'custom' && customStart && customEnd) {
     return {
       start: new Date(customStart),
-      end: new Date(customEnd + 'T23:59:59.999Z'),
+      end: new Date(`${customEnd}T23:59:59.999Z`),
       label: `${customStart} to ${customEnd}`,
     };
   }
@@ -62,13 +62,6 @@ function getPeriodRange(
 }
 
 // ─── Types ──────────────────────────────────────────────────────────
-
-type SeasonalCategory = {
-  category: string;
-  sends: number;
-  opens: number;
-  enquiries: number;
-};
 
 type SeasonalResponse = {
   period: { label: string; start: string; end: string };
@@ -207,9 +200,9 @@ export const growthSeasonalRoutes: FastifyPluginAsync = async (server) => {
 // ─── Helpers ────────────────────────────────────────────────────────
 
 async function getInteractionsByCategory(
-  retailerId: string,
-  start: Date,
-  end: Date,
+  _retailerId: string,
+  _start: Date,
+  _end: Date,
 ): Promise<{ category: string; views: number; enquiries: number }[]> {
   const interactions: any[] = [];
 

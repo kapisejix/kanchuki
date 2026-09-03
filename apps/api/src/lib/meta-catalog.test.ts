@@ -1,13 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  getOrCreateCatalog,
-  createCatalogItem,
-  updateCatalogItem,
-  deleteCatalogItem,
-  listCatalogItems,
-  uploadCatalogImage,
-  getCatalogItemByRetailerId,
   batchCatalogItems,
+  createCatalogItem,
+  deleteCatalogItem,
+  getCatalogItemByRetailerId,
+  getOrCreateCatalog,
+  listCatalogItems,
+  updateCatalogItem,
+  uploadCatalogImage,
 } from './meta-catalog.js';
 import { MetaApiError } from './meta-graph.js';
 

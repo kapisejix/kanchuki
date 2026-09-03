@@ -46,11 +46,6 @@ interface MetaCredentials {
   appSecret: string;
 }
 
-function requireCredentials(meta: MetaCredentials | null): MetaCredentials {
-  if (!meta) throw new MetaApiError('Meta is not configured on the server', 500);
-  return meta;
-}
-
 /**
  * Resolve platform credentials through getSecret (F-012: admin-managed DB
  * value or env var). Returns null when unconfigured — callers decide whether
@@ -70,7 +65,7 @@ export function buildOAuthUrl(
   meta: MetaCredentials,
   redirectUri: string,
   state: string,
-  provider: 'instagram' | 'facebook' | 'both' = 'both',
+  _provider: 'instagram' | 'facebook' | 'both' = 'both',
 ): string {
   const scopes = [
     'pages_show_list',

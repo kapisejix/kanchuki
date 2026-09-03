@@ -19,7 +19,7 @@ vi.mock('@kanchuki/db', () => ({
 
 vi.mock('@kanchuki/ai', () => ({
   compressImageToTarget: mockCompress,
-  readCappedBuffer: async (res: { ok: boolean; body: unknown }) => Buffer.from('img'),
+  readCappedBuffer: async (_res: { ok: boolean; body: unknown }) => Buffer.from('img'),
   ssrfSafeFetch: mockFetch,
   uploadBuffer: mockUpload,
   publicUrl: mockPublicUrl,
@@ -27,8 +27,8 @@ vi.mock('@kanchuki/ai', () => ({
 
 // Keep the real shared module (templates) — only the env is stubbed.
 import {
-  generateStudioImage,
   downloadCompressAndUpload,
+  generateStudioImage,
   isStudioShootConfigured,
 } from './studio-shoot.js';
 

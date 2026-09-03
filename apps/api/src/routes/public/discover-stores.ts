@@ -35,21 +35,19 @@ export const discoverStoresRoutes: FastifyPluginAsync = async (server) => {
     const { city, limit } = query.data;
 
     // Extract passport session
-    let accountId: string | null = null;
+    let _accountId: string | null = null;
     const cookieHeader = request.headers.cookie || '';
     const cookies = parseCookies(cookieHeader);
-    const sessionId = cookies['kanchuki_passport'];
+    const sessionId = cookies.kanchuki_passport;
     if (sessionId) {
       const session = await prisma.passportSession.findUnique({
         where: { id: sessionId },
         select: { customer_account_id: true, expires_at: true, revoked_at: true },
       });
       if (session && !session.revoked_at && session.expires_at > new Date()) {
-        accountId = session.customer_account_id;
+        _accountId = session.customer_account_id;
       }
     }
-
-    let stores: any[];
 
     // Featured stores + same-city (StoreAffinity model dropped)
     const where: any = { deleted_at: null, is_suspended: false };
@@ -68,7 +66,7 @@ export const discoverStoresRoutes: FastifyPluginAsync = async (server) => {
       orderBy: [{ is_featured: 'desc' }, { shop_name: 'asc' }],
       take: limit,
     });
-    stores = allStores.map((s: any) => ({
+    const stores = allStores.map((s: any) => ({
       ...s,
       affinity_score: s.is_featured ? 1.0 : 0.5,
       source: s.is_featured ? 'featured' : 'directory',

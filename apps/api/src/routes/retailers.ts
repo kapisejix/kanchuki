@@ -2,8 +2,13 @@
 // Split via scripts/check-route-size.sh guard.
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  retailersAggregatorRoutes,
+  retailersBugReportRoutes,
   retailersCatalogUploadRoutes,
+  retailersIntegrationsRoutes,
+  retailersInvoicesRoutes,
   retailersProfileRoutes,
+  retailersRatingsRoutes,
   retailersSectionsRoutes,
   retailersSettingsRoutes,
   retailersSocialRoutes,
@@ -11,11 +16,6 @@ import {
   retailersUploadsRoutes,
   retailersWhatsappCatalogRoutes,
   retailersWhatsappRoutes,
-  retailersAggregatorRoutes,
-  retailersIntegrationsRoutes,
-  retailersRatingsRoutes,
-  retailersBugReportRoutes,
-  retailersInvoicesRoutes,
 } from './retailers/index.js';
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {

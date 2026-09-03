@@ -1,5 +1,23 @@
 import { QUEUES } from '@kanchuki/shared';
 import { Worker } from 'bullmq';
+import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
+import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
+import { handleBackupDatabase } from './backup-database.js';
+import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
+import type { CatalogSyncJobData } from './catalog-sync.js';
+import { handleCompressR2Images } from './compress-r2-images.js';
+import { handleEmbeddingBackfill } from './embedding-backfill.js';
+import { handleGenerateEmbedding } from './generate-embedding.js';
+import {
+  type GenerateGstInvoiceJobData,
+  addGenerateGstInvoiceJob,
+  handleBackfillGstInvoices,
+  handleGenerateGstInvoice,
+} from './generate-gst-invoice.js';
+import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
+import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
+import { handleMeasureR2Storage } from './measure-r2-storage.js';
+import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
 import {
   getCatalogSyncQueue,
   getEmbeddingQueue,
@@ -8,27 +26,9 @@ import {
   getStudioShootQueue,
   getTaggingQueue,
 } from './queue.js';
-import { handleBackfillMissingAiFields } from './backfill-missing-ai-fields.js';
-import { handleBackupDatabase } from './backup-database.js';
-import { handleCompressR2Images } from './compress-r2-images.js';
-import { handleGenerateEmbedding } from './generate-embedding.js';
-import { handleGenerateKenBurnsVideo } from './generate-ken-burns-video.js';
-import type { KenBurnsVideoJobData } from './generate-ken-burns-video.js';
-import { handleMeasureR2Storage } from './measure-r2-storage.js';
-import { handlePurgeSoftDeleted } from './purge-soft-deleted.js';
 import { handleStudioShoot } from './studio-shoot.js';
 import type { StudioShootJobData } from './studio-shoot.js';
-import { STUDIO_SHOOT_CONCURRENCY } from '../lib/studio-shoot.js';
 import { handleTagProduct } from './tag-product.js';
-import { handleCatalogSync, handleDailyCatalogSync } from './catalog-sync.js';
-import type { CatalogSyncJobData } from './catalog-sync.js';
-import { handleEmbeddingBackfill } from './embedding-backfill.js';
-import {
-  addGenerateGstInvoiceJob,
-  handleGenerateGstInvoice,
-  handleBackfillGstInvoices,
-  type GenerateGstInvoiceJobData,
-} from './generate-gst-invoice.js';
 
 // Redis + queue accessors live in ./queue.js (shared with every producer).
 export { getRedis };

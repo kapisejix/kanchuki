@@ -170,7 +170,7 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    let token = decryptSecret(retailer.gmb_access_token);
+    const token = decryptSecret(retailer.gmb_access_token);
 
     const postBody: Record<string, unknown> = {
       languageCode: 'en-IN',

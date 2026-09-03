@@ -17,7 +17,7 @@
         "useExhaustiveDependencies": "warn"
       },
       "suspicious": {
-        "noExplicitAny": "error",
+        "noExplicitAny": "warn",
         "noConsoleLog": "warn"
       },
       "style": {

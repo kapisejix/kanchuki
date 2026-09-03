@@ -1,9 +1,9 @@
+import { getDownloadPresignedUrl } from '@kanchuki/ai';
 // ─── Admin Invoices ────────────────────────────────────────────────
 // GET /admin/invoices                         — list all invoices
 // GET /admin/invoices/:retailer_id            — list invoices for a retailer
 // GET /admin/invoices/:retailer_id/:id/pdf    — presigned download URL
 import { prisma } from '@kanchuki/db';
-import { getDownloadPresignedUrl } from '@kanchuki/ai';
 import type { FastifyPluginAsync } from 'fastify';
 
 export const adminInvoicesRoutes: FastifyPluginAsync = async (server) => {

@@ -4,10 +4,10 @@
 // the SubscriptionPayment row with the URL.
 
 import { randomUUID } from 'node:crypto';
+import { uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
-import { uploadBuffer } from '@kanchuki/ai';
-import { buildGstInvoicePdf, type InvoicePdfInput } from '../lib/gst-invoice-pdf.js';
+import { type InvoicePdfInput, buildGstInvoicePdf } from '../lib/gst-invoice-pdf.js';
 import { getMaintenanceQueue } from './queue.js';
 
 export interface GenerateGstInvoiceJobData {
@@ -132,8 +132,6 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
       invoice_generated_at: new Date(),
     },
   });
-
-  console.log(`[gst-invoice] Generated PDF for ${payment.gst_invoice_number}`);
 }
 
 /**
@@ -158,6 +156,5 @@ export async function handleBackfillGstInvoices(
     await enqueue({ payment_id: p.id });
   }
   if (pending.length) {
-    console.log(`[gst-invoice] Backfill re-enqueued ${pending.length} missing invoice(s)`);
   }
 }

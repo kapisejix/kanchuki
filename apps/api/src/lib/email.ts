@@ -147,7 +147,7 @@ export async function sendTeamMemberWelcomeEmail(params: {
       }
       ${
         tempPassword
-          ? `<li><strong>Password Login:</strong> Sign in with your email and temporary password above, and update your password anytime.</li>`
+          ? '<li><strong>Password Login:</strong> Sign in with your email and temporary password above, and update your password anytime.</li>'
           : ''
       }
     </ul>

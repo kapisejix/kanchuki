@@ -1,8 +1,8 @@
 // F-021: Product & Store Ratings — admin moderation routes
 // Admin can list, flag, hide, and delete reviews across all retailers
 
-import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@kanchuki/db';
+import type { FastifyPluginAsync } from 'fastify';
 import { notFound } from '../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../admin-auth.js';
 

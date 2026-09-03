@@ -20,12 +20,12 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
+import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
 import {
+  type StudioEngine,
   getStudioJobStatus,
   isStudioShootConfigured,
-  type StudioEngine,
 } from '../../lib/studio-shoot.js';
-import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
 import {
   AppError,
   notFound,
@@ -114,7 +114,7 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       const variant = await prisma.productVariant.findFirst({
         where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
       });
-      if (variant && variant.photo_url && variant.r2_key) {
+      if (variant?.photo_url && variant.r2_key) {
         let variantPhoto = await prisma.productPhoto.findFirst({
           where: { product_id: id, r2_key: variant.r2_key },
           select: { id: true, width: true, height: true, size_bytes: true },

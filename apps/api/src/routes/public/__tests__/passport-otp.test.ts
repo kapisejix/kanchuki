@@ -7,11 +7,11 @@
  * POST /v1/public/passport/events — batched client event beacon
  * POST /v1/public/passport/logout — revokes session + clears cookie
  */
-import { randomBytes, createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { prisma } from '@kanchuki/db';
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
-import { prisma } from '@kanchuki/db';
 import { passportRoutes } from '../passport.js';
 
 // ─── Mocks ────────────────────────────────────────────────────────

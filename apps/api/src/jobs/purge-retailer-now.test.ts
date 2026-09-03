@@ -7,7 +7,7 @@
 // DELETE threw an FK violation and the whole transaction rolled back — the
 // admin "delete retailer" action silently did nothing (and R2 objects were
 // never cleaned, since that happens after the DB commit).
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockDeleteObject, mockExecuteRaw, mockQueryRaw, mockRetailerFindUnique } = vi.hoisted(
   () => ({

@@ -47,17 +47,17 @@ export const publicSearchRoutes: FastifyPluginAsync = async (server) => {
     const normalizedQuery = normalizeSearchQuery(rawQuery);
 
     // Extract passport session for personalization
-    let accountId: string | null = null;
+    let _accountId: string | null = null;
     const cookieHeader = request.headers.cookie || '';
     const cookies = parseCookies(cookieHeader);
-    const sessionId = cookies['kanchuki_passport'];
+    const sessionId = cookies.kanchuki_passport;
     if (sessionId) {
       const session = await prisma.passportSession.findUnique({
         where: { id: sessionId },
         select: { customer_account_id: true, expires_at: true, revoked_at: true },
       });
       if (session && !session.revoked_at && session.expires_at > new Date()) {
-        accountId = session.customer_account_id;
+        _accountId = session.customer_account_id;
       }
     }
 

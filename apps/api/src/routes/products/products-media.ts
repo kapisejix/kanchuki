@@ -137,7 +137,7 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
         where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
         include: { product: { include: { background_image: true } } },
       });
-      if (variant && variant.photo_url && variant.r2_key) {
+      if (variant?.photo_url && variant.r2_key) {
         // Find or create product photo for this variant
         let variantPhoto = await prisma.productPhoto.findFirst({
           where: { product_id: id, r2_key: variant.r2_key },

@@ -1,9 +1,9 @@
 import { createHmac } from 'node:crypto';
-import { dbHealthCheck } from '@kanchuki/db';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
+import { dbHealthCheck } from '@kanchuki/db';
 import { createClient } from '@supabase/supabase-js';
 import Fastify from 'fastify';
 
@@ -19,15 +19,15 @@ import { catalogImportRoutes } from './routes/catalog-import.js';
 import { categoryRoutes } from './routes/categories.js';
 import { collectionRoutes } from './routes/collections.js';
 import { customerRoutes } from './routes/customers.js';
+import { growthRoutes } from './routes/growth/index.js';
 import { productAttributeRoutes } from './routes/product-attributes.js';
 import { productRoutes } from './routes/products.js';
 import { publicRoutes } from './routes/public.js';
+import { publicGrowthRoutes } from './routes/public/public-growth.js';
 import { retailerRoutes } from './routes/retailers.js';
 import { searchRoutes } from './routes/search.js';
 import { staffRoutes } from './routes/staff.js';
 import { teamRoutes } from './routes/team.js';
-import { growthRoutes } from './routes/growth/index.js';
-import { publicGrowthRoutes } from './routes/public/public-growth.js';
 import { msg91WebhookRoutes } from './routes/webhooks/msg91.js';
 import { whatsappCatalogWebhookRoutes } from './routes/webhooks/whatsapp-catalog.js';
 

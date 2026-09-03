@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockPrisma } = vi.hoisted(() => ({
   mockPrisma: {
@@ -33,7 +33,7 @@ vi.mock('@kanchuki/ai', () => ({
 const { growthVideoRoutes } = await import('./growth-videos.js');
 
 describe('growthVideoRoutes', () => {
-  let handlers: Record<string, Function>;
+  let handlers: Record<string, (...args: any[]) => any>;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -41,13 +41,13 @@ describe('growthVideoRoutes', () => {
     handlers = {};
 
     const mockServer = {
-      post: (path: string, handler: Function) => {
+      post: (path: string, handler: (...args: any[]) => any) => {
         handlers[`POST ${path}`] = handler;
       },
-      get: (path: string, handler: Function) => {
+      get: (path: string, handler: (...args: any[]) => any) => {
         handlers[`GET ${path}`] = handler;
       },
-      delete: (path: string, handler: Function) => {
+      delete: (path: string, handler: (...args: any[]) => any) => {
         handlers[`DELETE ${path}`] = handler;
       },
     };

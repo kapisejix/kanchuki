@@ -136,9 +136,7 @@ describe('GET /public/webhooks/whatsapp-catalog — handshake', () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'GET',
-      url:
-        '/v1/public/webhooks/whatsapp-catalog?hub.mode=unsubscribe&hub.verify_token=' +
-        VERIFY_TOKEN,
+      url: `/v1/public/webhooks/whatsapp-catalog?hub.mode=unsubscribe&hub.verify_token=${VERIFY_TOKEN}`,
     });
     expect(res.statusCode).toBe(400);
     await app.close();

@@ -92,31 +92,29 @@ function numberToWords(paise: number): string {
   function convertGroup(n: number): string {
     if (n === 0) return '';
     if (n < 20) return ones[n]!;
-    if (n < 100) return tens[Math.floor(n / 10)]! + (n % 10 ? ' ' + ones[n % 10] : '');
-    return (
-      ones[Math.floor(n / 100)]! + ' Hundred' + (n % 100 ? ' and ' + convertGroup(n % 100) : '')
-    );
+    if (n < 100) return tens[Math.floor(n / 10)]! + (n % 10 ? ` ${ones[n % 10]}` : '');
+    return `${ones[Math.floor(n / 100)]!} Hundred${n % 100 ? ` and ${convertGroup(n % 100)}` : ''}`;
   }
 
   let result = '';
   if (rupees >= 10000000) {
-    result += convertGroup(Math.floor(rupees / 10000000)) + ' Crore ';
+    result += `${convertGroup(Math.floor(rupees / 10000000))} Crore `;
   }
   if (rupees >= 100000) {
-    result += convertGroup(Math.floor((rupees % 10000000) / 100000)) + ' Lakh ';
+    result += `${convertGroup(Math.floor((rupees % 10000000) / 100000))} Lakh `;
   }
   if (rupees >= 1000) {
-    result += convertGroup(Math.floor((rupees % 100000) / 1000)) + ' Thousand ';
+    result += `${convertGroup(Math.floor((rupees % 100000) / 1000))} Thousand `;
   }
   if (rupees >= 100) {
-    result += convertGroup(Math.floor((rupees % 1000) / 100)) + ' Hundred ';
+    result += `${convertGroup(Math.floor((rupees % 1000) / 100))} Hundred `;
   }
   if (rupees % 100 > 0) {
     result += convertGroup(rupees % 100);
   }
-  result = result.trim() + ' Rupees';
+  result = `${result.trim()} Rupees`;
   if (paisa > 0) {
-    result += ' and ' + convertGroup(paisa) + ' Paise';
+    result += ` and ${convertGroup(paisa)} Paise`;
   }
   result += ' Only';
   return result;

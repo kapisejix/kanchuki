@@ -18,7 +18,10 @@ export function parseJsonAllowEmpty(
   done: (err: (Error & { statusCode?: number }) | null, value?: unknown) => void,
 ): void {
   const text = typeof body === 'string' ? body : body.toString('utf8');
-  if (text.trim() === '') return done(null, {});
+  if (text.trim() === '') {
+    done(null, {});
+    return;
+  }
   try {
     done(null, JSON.parse(text));
   } catch {

@@ -1,3 +1,12 @@
+import {
+  compressImageToTarget,
+  publicUrl,
+  readCappedBuffer,
+  ssrfSafeFetch,
+  uploadBuffer,
+} from '@kanchuki/ai';
+import { getSecret, prisma } from '@kanchuki/db';
+import { type Demographic, demographicForCategory } from '@kanchuki/shared';
 // F-032 Phase A — AI Studio Shoots via Black Forest Labs FLUX.1 Kontext [pro].
 //
 // What this is: a retailer taps "Studio shoot" on a product photo, picks a
@@ -28,15 +37,6 @@
 // never holds an HTTP request open across inference (same pattern as the
 // V-Tone admin tool / spin-frame extraction).
 import { Redis } from 'ioredis';
-import {
-  compressImageToTarget,
-  publicUrl,
-  readCappedBuffer,
-  ssrfSafeFetch,
-  uploadBuffer,
-} from '@kanchuki/ai';
-import { demographicForCategory, type Demographic } from '@kanchuki/shared';
-import { getSecret, prisma } from '@kanchuki/db';
 import { AppError } from '../plugins/error-handler.js';
 import {
   generateFluxKontext,

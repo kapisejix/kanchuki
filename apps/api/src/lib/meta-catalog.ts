@@ -93,7 +93,7 @@ export async function resolveCatalogCredentials(
 export async function getOrCreateCatalog(
   wabaId: string,
   accessToken: string,
-  catalogName: string = 'Kanchuki Product Catalog',
+  catalogName = 'Kanchuki Product Catalog',
   signal?: AbortSignal,
 ): Promise<string> {
   // First try to list existing catalogs for this WABA
@@ -231,7 +231,7 @@ export async function createCatalogItem(
  * Update a catalog item in the WhatsApp Business catalog.
  */
 export async function updateCatalogItem(
-  catalogId: string,
+  _catalogId: string,
   accessToken: string,
   itemId: string,
   updates: CatalogItemUpdateInput,
@@ -278,7 +278,7 @@ export async function updateCatalogItem(
  * Delete a catalog item from the WhatsApp Business catalog.
  */
 export async function deleteCatalogItem(
-  catalogId: string,
+  _catalogId: string,
   accessToken: string,
   itemId: string,
   signal?: AbortSignal,
@@ -305,7 +305,7 @@ export async function deleteCatalogItem(
 export async function listCatalogItems(
   catalogId: string,
   accessToken: string,
-  limit: number = 100,
+  limit = 100,
   after?: string,
   signal?: AbortSignal,
 ): Promise<{ items: CatalogItem[]; nextCursor?: string }> {

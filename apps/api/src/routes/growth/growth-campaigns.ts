@@ -3,27 +3,27 @@ import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
-import {
-  notFound,
-  validationError,
-  featureUnavailable,
-  forbidden,
-} from '../../plugins/error-handler.js';
 import { buildCollectionUrl } from '../../lib/store-urls.js';
 import {
+  featureUnavailable,
+  forbidden,
+  notFound,
+  validationError,
+} from '../../plugins/error-handler.js';
+import {
+  type AbVariantResult,
+  type AudienceSpec,
   AudienceSpecSchema,
   abTestSignificance,
   buildAudienceWhere,
-  fillTemplate,
   buildWhatsAppDeepLink,
-  type AbVariantResult,
-  type AudienceSpec,
+  fillTemplate,
 } from './growth-helpers.js';
 
 const CAMPAIGN_TYPES = ['FESTIVAL', 'REACTIVATION', 'PROMOTION', 'AB_TEST'] as const;
-const CAMPAIGN_STATUSES = ['DRAFT', 'SCHEDULED', 'SENT'] as const;
+const _CAMPAIGN_STATUSES = ['DRAFT', 'SCHEDULED', 'SENT'] as const;
 
-const COLLECTION_STATUS_HIDDEN = 'HIDDEN' as const;
+const _COLLECTION_STATUS_HIDDEN = 'HIDDEN' as const;
 
 const AbVariantSchema = z
   .object({
@@ -131,7 +131,7 @@ type AbVariant = {
 
 async function syncVariantCollections(
   retailerId: string,
-  campaignId: string,
+  _campaignId: string,
   campaignName: string,
   abVariants: AbVariant[] | null,
   existing?: {
@@ -498,12 +498,10 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     // Variant at index 1 → variant_b_collection → ?variant=b
     const variantCollectionLinks: Record<string, string | null> = { a: null, b: null };
     if (campaign.variant_a_collection_id) {
-      variantCollectionLinks['a'] =
-        `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_a_collection_id}?variant=a`;
+      variantCollectionLinks.a = `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_a_collection_id}?variant=a`;
     }
     if (campaign.variant_b_collection_id) {
-      variantCollectionLinks['b'] =
-        `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_b_collection_id}?variant=b`;
+      variantCollectionLinks.b = `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_b_collection_id}?variant=b`;
     }
 
     const canUseApi =
@@ -559,8 +557,8 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         sendDelayMin: variant?.send_delay_min ?? 0,
         variantCollectionLink:
           (variant?.label === (variants?.[0]?.label ?? '')
-            ? variantCollectionLinks['a']
-            : variantCollectionLinks['b']) ?? null,
+            ? variantCollectionLinks.a
+            : variantCollectionLinks.b) ?? null,
       });
     }
 
@@ -569,7 +567,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     // ordering); the WhatsApp API path sends them all in one pass below.
     const now = new Date();
     const sends = await prisma.$transaction(
-      messages.map((m, i) =>
+      messages.map((m, _i) =>
         prisma.campaignSend.create({
           data: {
             campaign_id: campaign.id,
@@ -606,7 +604,10 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
             `https://graph.facebook.com/v21.0/${whatsapp_api_phone_number_id}/messages`,
             {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${whatsapp_api_access_token}`,
+              },
               body: JSON.stringify({
                 messaging_product: 'whatsapp',
                 to: `91${m.customer.phone.replace(/\D/g, '')}`,
@@ -794,7 +795,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
 
     // Product-category + video-vs-photo performance over the last 30 days
     // (views + enquiries recorded as CustomerInteraction rows).
-    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const _since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const interactions: any[] = [];
     const by_category: Record<string, { views: number; enquiries: number }> = {};
     let videoViews = 0;
@@ -807,8 +808,11 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       if (i.type === 'view') by_category[category]!.views += 1;
       else by_category[category]!.enquiries += 1;
       const hasVideo = (i.product?.videos.length ?? 0) > 0;
-      if (i.type === 'view') hasVideo ? (videoViews += 1) : (photoViews += 1);
-      else hasVideo ? (videoEnquiries += 1) : (photoEnquiries += 1);
+      if (i.type === 'view') {
+        if (hasVideo) videoViews += 1;
+        else photoViews += 1;
+      } else if (hasVideo) videoEnquiries += 1;
+      else photoEnquiries += 1;
     }
 
     // A/B variant results with significance (roadmap S).
@@ -885,7 +889,7 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body ?? {});
     const inactiveDays = body.success ? body.data.inactive_days : 60;
 
-    const cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
+    const _cutoff = new Date(Date.now() - inactiveDays * 24 * 60 * 60 * 1000);
     const active: any[] = [];
     const activeIds = new Set(active.map((a) => a.customer_id));
 
@@ -928,7 +932,7 @@ export async function resolveAudienceCustomerIds(
     .then((rows) => rows.map((r) => r.id));
 
   if (spec.inactive_days != null) {
-    const cutoff = new Date(Date.now() - spec.inactive_days * 24 * 60 * 60 * 1000);
+    const _cutoff = new Date(Date.now() - spec.inactive_days * 24 * 60 * 60 * 1000);
     const active: any[] = [];
     const activeIds = new Set(active.map((a) => a.customer_id));
     customerIds = customerIds.filter((id) => !activeIds.has(id));

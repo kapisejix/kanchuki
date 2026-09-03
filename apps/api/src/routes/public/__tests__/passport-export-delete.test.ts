@@ -1,3 +1,4 @@
+import { prisma } from '@kanchuki/db';
 /**
  * Task 26: Download my data + passport delete.
  *
@@ -7,7 +8,6 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
-import { prisma } from '@kanchuki/db';
 import { passportRoutes } from '../passport.js';
 
 // ─── Mocks ────────────────────────────────────────────────────────

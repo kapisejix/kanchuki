@@ -1,4 +1,4 @@
-import { prisma, type Prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';

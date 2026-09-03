@@ -20,19 +20,19 @@
 // non-knitted outerwear, 5407/5208/5007 woven fabrics, 6214 shawls, 6211 track
 // suits, ...). Swap for the Phase I table when that ships.
 
-import { Prisma, getSecret, prisma } from '@kanchuki/db';
-// Circular with jobs/index.ts (index imports handleCatalogSync, this module
-// imports addCatalogSyncJob) — safe: both are only CALLED at runtime, never
-// during module evaluation. Same pattern as tag-product.ts ↔ index.ts.
-import { addCatalogSyncJob } from './index.js';
+import { type Prisma, getSecret, prisma } from '@kanchuki/db';
 import {
+  type CatalogItemCreateInput,
   createCatalogItem,
   deleteCatalogItem,
   getOrCreateCatalog,
   resolveCatalogCredentials,
   updateCatalogItem,
-  type CatalogItemCreateInput,
 } from '../lib/meta-catalog.js';
+// Circular with jobs/index.ts (index imports handleCatalogSync, this module
+// imports addCatalogSyncJob) — safe: both are only CALLED at runtime, never
+// during module evaluation. Same pattern as tag-product.ts ↔ index.ts.
+import { addCatalogSyncJob } from './index.js';
 
 /**
  * Per-retailer sync budget (ms). A hung Meta call must never occupy a BullMQ
@@ -65,8 +65,6 @@ export function mapProductStatus(status: string): CatalogAvailability {
       // Reserved is still sellable in WhatsApp (buyer can order); treat as
       // available so the item stays visible, not ghosted as sold out.
       return 'available for order';
-    case 'SOLD':
-    case 'NOT_SURE':
     default:
       return 'out of stock';
   }

@@ -290,7 +290,7 @@ export default function CampaignDetailScreen() {
                   )}
                 </>
               ) : (
-                <Text className="text-xs text-heliotrope-500 font-medium">Couldn't load the audience count.</Text>
+                <Text className="text-xs text-heliotrope-500 font-medium">Couldn&apos;t load the audience count.</Text>
               )}
             </View>
           )}

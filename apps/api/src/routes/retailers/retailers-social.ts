@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 // F-031 Social Media Publishing (Phase 1: Facebook Page).
 // Phase 2: Added Instagram Business Account support.
 // Retailer flows:
@@ -26,7 +27,6 @@
 import { decryptSecret, encryptSecret, prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { Redis } from 'ioredis';
-import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import {
   MetaApiError,
@@ -112,35 +112,8 @@ async function publishInstagramPhoto(
   return { postId: publishBody.id };
 }
 
-async function publishInstagramLink(
-  instagramAccountId: string,
-  accessToken: string,
-  link: string,
-  caption: string,
-): Promise<{ postId: string }> {
-  // For Instagram, link posts are actually media containers with link in caption
-  // Instagram doesn't support link posts the same way Facebook does
-  // We'll create a photo post with the link in the caption (requires an image)
-  // For now, we'll use a placeholder approach - in reality, this would need
-  // either a generated image or to fall back to sharing the link in bio
-
-  // Since Instagram doesn't support native link posts like Facebook,
-  // and we don't have an auto-generated image for the link,
-  // we'll implement a simplified version that puts the link in caption
-  // and uses a default product image or requires the retailer to provide one
-
-  // For Phase 2 minimum implementation, we'll treat link posts as requiring
-  // an image - in a full implementation, this would use the collection's hero image
-
-  // Since we don't have image context here, we'll return an error indicating
-  // that link posts on Instagram require image content
-  throw new MetaApiError(
-    'Instagram link posts require image content - please use SINGLE_PRODUCT post type instead',
-    400,
-    'INSTAGRAM_LINK_REQUIRES_IMAGE',
-  );
-}
 import { buildCollectionUrl } from '../../lib/store-urls.js';
+import { isRealOwner } from '../../plugins/auth.js';
 import {
   AppError,
   forbidden,
@@ -148,7 +121,6 @@ import {
   serviceUnavailable,
   validationError,
 } from '../../plugins/error-handler.js';
-import { isRealOwner } from '../../plugins/auth.js';
 
 // Short-fail Redis for the OAuth state token — same pattern as public-cache
 // and msg91-otp (BullMQ's client would retry forever on a down connection).
@@ -292,53 +264,52 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
           account_name: name,
         },
       };
-    } else {
-      // Facebook
-      const pages = await listPages(accessToken);
-      const primaryPage = pages[0];
-      if (!primaryPage) {
-        throw new AppError(
-          'NO_PAGES_FOUND',
-          'No Facebook Pages found on this account. Please link a Facebook Page to continue.',
-          404,
-        );
-      }
-      const pageToken = primaryPage.access_token || accessToken;
-      const encryptedToken = await encryptSecret(pageToken);
+    }
+    // Facebook
+    const pages = await listPages(accessToken);
+    const primaryPage = pages[0];
+    if (!primaryPage) {
+      throw new AppError(
+        'NO_PAGES_FOUND',
+        'No Facebook Pages found on this account. Please link a Facebook Page to continue.',
+        404,
+      );
+    }
+    const pageToken = primaryPage.access_token || accessToken;
+    const encryptedToken = await encryptSecret(pageToken);
 
-      await prisma.socialAccount.upsert({
-        where: {
-          retailer_id_platform_platform_account_id: {
-            retailer_id: request.retailerId,
-            platform: 'FACEBOOK',
-            platform_account_id: primaryPage.id,
-          },
-        },
-        create: {
+    await prisma.socialAccount.upsert({
+      where: {
+        retailer_id_platform_platform_account_id: {
           retailer_id: request.retailerId,
           platform: 'FACEBOOK',
           platform_account_id: primaryPage.id,
-          platform_account_name: primaryPage.name,
-          access_token_encrypted: encryptedToken,
-          token_expires_at: expiresAt,
         },
-        update: {
-          platform_account_name: primaryPage.name,
-          access_token_encrypted: encryptedToken,
-          token_expires_at: expiresAt,
-        },
-      });
+      },
+      create: {
+        retailer_id: request.retailerId,
+        platform: 'FACEBOOK',
+        platform_account_id: primaryPage.id,
+        platform_account_name: primaryPage.name,
+        access_token_encrypted: encryptedToken,
+        token_expires_at: expiresAt,
+      },
+      update: {
+        platform_account_name: primaryPage.name,
+        access_token_encrypted: encryptedToken,
+        token_expires_at: expiresAt,
+      },
+    });
 
-      return {
-        data: {
-          connected: true,
-          provider: 'facebook',
-          handle: primaryPage.name,
-          account_id: primaryPage.id,
-          account_name: primaryPage.name,
-        },
-      };
-    }
+    return {
+      data: {
+        connected: true,
+        provider: 'facebook',
+        handle: primaryPage.name,
+        account_id: primaryPage.id,
+        account_name: primaryPage.name,
+      },
+    };
   });
 
   // ─── POST /retailers/me/social/connect-native — native FB SDK token ──
@@ -518,7 +489,7 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
           instagramAccounts = [{ id: igBody.id, name: igBody.name }];
         }
       }
-    } catch (err) {
+    } catch (_err) {
       // Instagram account lookup failed - this is ok, we still have Facebook Pages
       // The user might not have an Instagram Business Account linked, or needs different permissions
     }

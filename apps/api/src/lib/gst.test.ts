@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeSubscriptionGst, GST_RATE, SAC_CODE } from './gst.js';
+import { GST_RATE, SAC_CODE, computeSubscriptionGst } from './gst.js';
 
 describe('computeSubscriptionGst', () => {
   // Worked example from spec: base ₹4,999 = 499900 paise, intra-state

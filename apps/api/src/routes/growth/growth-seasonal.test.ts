@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Use vi.hoisted so the variable exists when vi.mock runs
 const { mockPrisma } = vi.hoisted(() => ({
@@ -33,7 +33,7 @@ async function runRoute(query: Record<string, string> = {}): Promise<any> {
   let handlerPromise: Promise<any> | undefined;
 
   const server = {
-    get: (_path: string, handler: Function) => {
+    get: (_path: string, handler: (...args: unknown[]) => Promise<unknown>) => {
       handlerPromise = handler(buildRequest(query), { send: vi.fn() });
     },
   };

@@ -10,8 +10,8 @@
 // On successful verification: upsert CustomerAccount, mint a passport
 // session (Task 3 — HttpOnly cookie), return { ok, account_id, is_new }.
 
-import { randomBytes, createHash } from 'node:crypto';
-import { prisma, type Prisma } from '@kanchuki/db';
+import { createHash, randomBytes } from 'node:crypto';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { isValidIndianPhone, normalizeIndianPhone } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
@@ -130,7 +130,7 @@ function setPassportCookie(
     'HttpOnly',
     'SameSite=Lax',
     `Max-Age=${SESSION_TTL_SEC}`,
-    `Path=/`,
+    'Path=/',
   ];
   if (COOKIE_SECURE) parts.push('Secure');
   // Only set Domain in production — dev environments may not be on kanchuki.com
@@ -435,7 +435,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const query = request.query as { limit?: string };
-    const limit = Math.min(parseInt(query.limit || '20', 10) || 20, 50);
+    const limit = Math.min(Number.parseInt(query.limit || '20', 10) || 20, 50);
 
     const items = await prisma.customerRecentlyViewed.findMany({
       where: { customer_account_id: session.customer_account_id },
