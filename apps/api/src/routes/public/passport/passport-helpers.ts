@@ -10,7 +10,8 @@ import { getCurrentNoticeVersion } from '../../../lib/notice-versions.js';
 // ─── Constants ────────────────────────────────────────────────────
 
 export const COOKIE_NAME = 'kanchuki_passport';
-export const SESSION_TTL_DAYS = 180;
+// Not exported — SESSION_TTL_SEC (its only consumer) derives from it.
+const SESSION_TTL_DAYS = 180;
 export const SESSION_TTL_SEC = SESSION_TTL_DAYS * 24 * 60 * 60;
 export const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || 'kanchuki.com';
 export const COOKIE_SECURE = process.env.NODE_ENV === 'production';
