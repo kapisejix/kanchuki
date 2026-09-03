@@ -1879,3 +1879,27 @@ Customer preference capture (colour/style/budget) is unchanged — still shipped
 New paste-ready doc: short description (76 chars), full description (<4000, VTO-free), Business category, 8-screenshot shot-list with routes, feature-graphic spec. `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §1 refreshed to point at it. Screenshots, the 1024×500 feature graphic, and the Console entry itself stay owner tasks — cannot be produced from the repo.
 
 Audit doc updated in commit `70d7ed2` (new §0b + §3 table rows + §5 checkboxes + §0/§9/§9b refs).
+
+---
+
+## Fixed: 2026-09-03 — 03-Sep-2026 review batch (11 items, commit `1843805`)
+
+All eleven items of `docs/tasks/changes-03-09-2026.md` (moved from the repo root in this same commit). Full root-cause write-ups and the retailer-phone `8872101879` case live in that task doc; this is the index-level record.
+
+| # | Fix | Files | Status |
+|---|-----|-------|--------|
+| 1 | Store QR/slug auto-generated at end of onboarding — `saveFinalStep()` calls `getQrSlug()` (get-or-create from `shop_name`); the Store QR screen's manual Generate stays as fallback | `apps/mobile/app/onboarding.tsx` | ✅ |
+| 2 | Customer OTP: 30s-cooldown **Resend** button + MSG91 **widget** delivery (bypasses the DLT-blocked API SMS sender; API SMS kept as fallback; verify/resend follow the issuing channel) | `apps/web/src/app/[store]/components/ContactGate.tsx` (reuses `apps/web/src/lib/msg91-widget.ts`) | ✅ |
+| 3 | Required consent checkbox on the customer OTP phone step; Verify gated on it (backend already records `PASSPORT_CREATED` ConsentEvent) | `ContactGate.tsx` | ✅ |
+| 4 | Storefront no hard hop — `/{store}` fetches the all-products listing and renders the catalog **behind** the gate; `ContactGate` reveals `children` in place on every pass path (OTP/legacy/just-browse/localStorage + returning-shopper `PassportSheet`) instead of `router.replace` to `/categories`; `prefetch` added to catalog / wishlist / back links | `apps/web/src/app/[store]/page.tsx`, `ContactGate.tsx`, `apps/web/src/app/c/[slug]/components/CollectionView.tsx`, `SharedProductPage.tsx` | ✅ |
+| 5 | "Set as Main image" restored on product detail — `ProductPhotoControls` row when `!currentPhoto.is_primary`, wired to the existing `handleSetPrimary` / `productApi.setPhotoPrimary` (`PATCH /products/:id/photos/:photoId`) | `apps/mobile/src/components/product-detail/ProductPhotoControls.tsx`, `apps/mobile/app/product/[id].tsx` | ✅ |
+| 6 | Collection stats Views/Visitors/Favorites/Enquiries render 4-across (dropped `flex-wrap` + `min-w-[45%]`) | `apps/mobile/app/collection/[id].tsx` | ✅ |
+| 7 | AI Studio bottom-sheet safe-area bottom padding so **GENERATE STUDIO SHOT** clears the Android nav bar | `apps/mobile/src/components/product-detail/ProductStudioModal.tsx` | ✅ |
+| 8 | 7/30/90-day duration chips use className toggles (inline `style` was dropped on css-interop → white-on-white) | `apps/mobile/app/collection/new.tsx` | ✅ |
+| 9 | Facebook OAuth redirect fixed — `kanchuki://oauth/callback` is rejected by Meta's login dialog ("Sorry, something went wrong"); all OAuth URLs now use an **https** redirect the platform owns (API defaults to `WEB_URL/social/connect`; the web flow passes `/social/connect/callback`), and the web page deep-links `?code=&state=` back into the app with a retry fallback. **Owner follow-ups (no code):** register the redirect URI in the Meta app, App Mode Live, App Review for publish permissions, EAS-build verification of the native SDK path | `apps/api/src/routes/retailers/retailers-social/retailers-social-connect.ts`, `apps/mobile/src/lib/api/social.ts`, `apps/mobile/app/growth/integrations/facebook.tsx`, `instagram.tsx`, `apps/mobile/app/settings/social.tsx`, `apps/web/src/app/social/connect/page.tsx` | ✅ code / ⏳ dashboard + EAS |
+| 10 | Shared-product page **Enquire Now + View Full Catalog** side by side (`grid grid-cols-2 gap-3`) | `apps/web/src/app/c/[slug]/components/SharedProductPage.tsx` | ✅ |
+| 11 | One CTA design across surfaces — new shared `ProductCtas` component (gradient Enquire + outline View Full Catalog) used by both `SharedProductPage` and the in-catalog `ProductDetailSheet` (its wishlist toggle stays available via the price-row heart) | `apps/web/src/app/c/[slug]/components/ProductCtas.tsx` (new), `SharedProductPage.tsx`, `ProductDetailSheet.tsx` | ✅ |
+
+**Also in the commit:** `changes-03-09-2026.md` → `docs/tasks/changes-03-09-2026.md` (marked done with a status table); pre-existing mobile dependency pins rode along (`apps/mobile/app.json` plugins + `package.json`/`pnpm-lock.yaml` — `@sentry/react-native`, `expo`, `expo-video`, `expo-sharing`, `expo-media-library`, `expo-constants`/`file-system`).
+
+**Verification:** API 706/706, web 91/91, mobile 43/43 vitest; `tsc --noEmit` clean on all three apps; secret guard passed. Pushed to `main` → Railway auto-deploy.

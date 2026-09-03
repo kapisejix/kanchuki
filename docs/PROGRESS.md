@@ -2,6 +2,30 @@
 
 One file, update at end of each work session: what's done, what's next, what's blocked. Check `git log -1` and this file first thing each session.
 
+## 2026-09-03 — 03-Sep review batch: all 11 fixes shipped (commit `1843805`)
+
+User supplied `changes-03-09-2026.md` — an 11-item review + the `8872101879` phone case. Worked in 3 batches, committing once at the end. Full detail: `docs/tasks/changes-03-09-2026.md` (moved here from the repo root, marked done) + BUILD-LOG §2026-09-03.
+
+**Done (11/11):**
+- #1 Store QR/slug auto-generated at onboarding end (`getQrSlug` get-or-create)
+- #2 Customer OTP: 30s Resend + MSG91 widget delivery (bypasses DLT-blocked SMS sender; API SMS fallback)
+- #3 Required consent checkbox on the OTP phone step
+- #4 `/{store}` renders the catalog behind the gate — no `/categories` hard hop; `prefetch` on nav links
+- #5 "Set as Main image" restored on product detail (wired to existing `setPhotoPrimary`)
+- #6 Collection stats 4-across
+- #7 AI Studio sheet bottom safe-area padding
+- #8 Duration-chip className highlight fix
+- #9 Facebook OAuth https redirect (`kanchuki://` rejected by Meta) — dashboard redirect-URI/App-Mode/App-Review + EAS build remain owner-side
+- #10 Shared-product CTAs side by side
+- #11 Shared `ProductCtas` component in both sheet + page
+- Phone `8872101879`: kept live (account was revived earlier; nothing to do)
+
+**Also:** pre-existing mobile dependency pins (`app.json` plugins + `package.json`/`pnpm-lock.yaml`) rode along in the same commit.
+
+**Verified:** API 706/706, web 91/91, mobile 43/43 vitest; `tsc --noEmit` clean on all three; secret guard passed. Pushed to `main` → Railway auto-deploy.
+
+**Next:** owner-side #9 steps (Meta dashboard + EAS build); optional purge-cron wiring check for the soft-deleted-phone flow.
+
 ## 2026-08-21 — Customer Profile P0-P3 (16 features)
 
 **User ask:** review `docs/customer/customer-profile-req.md` §12 and build P0 through P2 (13 items), then P3 (3 items). Each committed individually.
