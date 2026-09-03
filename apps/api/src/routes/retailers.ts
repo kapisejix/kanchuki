@@ -1,6 +1,6 @@
 // Retailers routes aggregator — domain modules in ./retailers/.
 // Split via scripts/check-route-size.sh guard.
-import type { FastifyPluginAsync } from "fastify";
+import type { FastifyPluginAsync } from 'fastify';
 import {
   retailersCatalogUploadRoutes,
   retailersProfileRoutes,
@@ -16,7 +16,7 @@ import {
   retailersRatingsRoutes,
   retailersBugReportRoutes,
   retailersInvoicesRoutes,
-} from "./retailers/index.js";
+} from './retailers/index.js';
 
 export const retailerRoutes: FastifyPluginAsync = async (server) => {
   // retailers-profile — auto-split module

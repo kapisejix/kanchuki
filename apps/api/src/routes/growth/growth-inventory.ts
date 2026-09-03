@@ -23,12 +23,20 @@ export const growthInventoryRoutes: FastifyPluginAsync = async (server) => {
       }),
     ]);
 
-    const interactions = new Map<string, { views_30d: number; enquiries_30d: number; last_interaction_at: Date | null }>();
+    const interactions = new Map<
+      string,
+      { views_30d: number; enquiries_30d: number; last_interaction_at: Date | null }
+    >();
     for (const e of enquiries) {
       if (!e.product_id) continue;
-      const row = interactions.get(e.product_id) ?? { views_30d: 0, enquiries_30d: 0, last_interaction_at: null };
+      const row = interactions.get(e.product_id) ?? {
+        views_30d: 0,
+        enquiries_30d: 0,
+        last_interaction_at: null,
+      };
       row.enquiries_30d++;
-      if (!row.last_interaction_at || e.created_at > row.last_interaction_at) row.last_interaction_at = e.created_at;
+      if (!row.last_interaction_at || e.created_at > row.last_interaction_at)
+        row.last_interaction_at = e.created_at;
       interactions.set(e.product_id, row);
     }
 

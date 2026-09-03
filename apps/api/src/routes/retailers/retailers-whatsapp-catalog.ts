@@ -50,7 +50,9 @@ export const retailersWhatsappCatalogRoutes: FastifyPluginAsync = async (server)
     const [synced, failed, pending] = await Promise.all([
       prisma.catalogItem.count({ where: { retailer_id: request.retailerId, status: 'SUCCESS' } }),
       prisma.catalogItem.count({ where: { retailer_id: request.retailerId, status: 'FAILED' } }),
-      prisma.catalogItem.count({ where: { retailer_id: request.retailerId, status: 'IN_PROGRESS' } }),
+      prisma.catalogItem.count({
+        where: { retailer_id: request.retailerId, status: 'IN_PROGRESS' },
+      }),
     ]);
 
     return {
@@ -148,7 +150,9 @@ export const retailersWhatsappCatalogRoutes: FastifyPluginAsync = async (server)
     });
     if (!retailer) throw notFound('Retailer');
     if (!retailer.whatsapp_api_access_token) {
-      throw validationError('Connect your WhatsApp Business API account first (Settings → WhatsApp)');
+      throw validationError(
+        'Connect your WhatsApp Business API account first (Settings → WhatsApp)',
+      );
     }
 
     const jobId = await addCatalogSyncJob({
@@ -177,7 +181,14 @@ export const retailersWhatsappCatalogRoutes: FastifyPluginAsync = async (server)
         product_id: request.params.productId,
         triggered_by: 'retailer',
       });
-      return { data: { job_id: jobId, operation: 'single_product', product_id: request.params.productId, status: 'queued' } };
+      return {
+        data: {
+          job_id: jobId,
+          operation: 'single_product',
+          product_id: request.params.productId,
+          status: 'queued',
+        },
+      };
     },
   );
 

@@ -2,16 +2,23 @@ import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../plugins/error-handler.js';
 
-const { mockFindMany, mockFindUnique, mockFindFirst, mockCreate, mockUpdate, mockDelete, mockAudit } =
-  vi.hoisted(() => ({
-    mockFindMany: vi.fn(),
-    mockFindUnique: vi.fn(),
-    mockFindFirst: vi.fn(),
-    mockCreate: vi.fn(),
-    mockUpdate: vi.fn(),
-    mockDelete: vi.fn(),
-    mockAudit: vi.fn(),
-  }));
+const {
+  mockFindMany,
+  mockFindUnique,
+  mockFindFirst,
+  mockCreate,
+  mockUpdate,
+  mockDelete,
+  mockAudit,
+} = vi.hoisted(() => ({
+  mockFindMany: vi.fn(),
+  mockFindUnique: vi.fn(),
+  mockFindFirst: vi.fn(),
+  mockCreate: vi.fn(),
+  mockUpdate: vi.fn(),
+  mockDelete: vi.fn(),
+  mockAudit: vi.fn(),
+}));
 
 vi.mock('@kanchuki/db', () => ({
   prisma: {
@@ -80,19 +87,30 @@ describe('admin studio-styles', () => {
     });
     expect(res.statusCode).toBe(201);
     expect(mockCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ slug: 'new_scene', status: 'DRAFT' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ slug: 'new_scene', status: 'DRAFT' }),
+      }),
     );
   });
 
   it('PATCH rejects changing slug', async () => {
     mockFindUnique.mockResolvedValueOnce({ id: 's1', slug: 'pastel_gradient' });
     const app = await buildApp();
-    const res = await app.inject({ method: 'PATCH', url: '/studio-styles/s1', payload: { slug: 'renamed' } });
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/studio-styles/s1',
+      payload: { slug: 'renamed' },
+    });
     expect(res.statusCode).toBe(422);
   });
 
   it('PATCH updates status + plans', async () => {
-    mockFindUnique.mockResolvedValueOnce({ id: 's1', slug: 'pastel_gradient', status: 'DRAFT', plans: [] });
+    mockFindUnique.mockResolvedValueOnce({
+      id: 's1',
+      slug: 'pastel_gradient',
+      status: 'DRAFT',
+      plans: [],
+    });
     mockUpdate.mockResolvedValueOnce({ id: 's1', status: 'PUBLISHED', plans: ['STARTER', 'PRO'] });
     const app = await buildApp();
     const res = await app.inject({
@@ -102,7 +120,9 @@ describe('admin studio-styles', () => {
     });
     expect(res.statusCode).toBe(200);
     expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'PUBLISHED', plans: ['STARTER', 'PRO'] }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'PUBLISHED', plans: ['STARTER', 'PRO'] }),
+      }),
     );
   });
 
@@ -120,7 +140,11 @@ describe('admin studio-styles', () => {
   });
 
   it('DELETE removes the row + best-effort thumb cleanup', async () => {
-    mockFindUnique.mockResolvedValueOnce({ id: 's1', slug: 'x', thumbnail_r2_key: 'admin/studio-styles/a.jpg' });
+    mockFindUnique.mockResolvedValueOnce({
+      id: 's1',
+      slug: 'x',
+      thumbnail_r2_key: 'admin/studio-styles/a.jpg',
+    });
     mockDelete.mockResolvedValueOnce({ id: 's1' });
     const app = await buildApp();
     const res = await app.inject({ method: 'DELETE', url: '/studio-styles/s1' });

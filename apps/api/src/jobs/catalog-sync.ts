@@ -54,11 +54,7 @@ export interface CatalogSyncJobData {
 }
 
 /** Meta catalog availability values (matches meta-catalog.ts). */
-export type CatalogAvailability =
-  | 'in stock'
-  | 'out of stock'
-  | 'available for order'
-  | 'preorder';
+export type CatalogAvailability = 'in stock' | 'out of stock' | 'available for order' | 'preorder';
 
 /** Kanchuki ProductStatus → Meta availability (C6). */
 export function mapProductStatus(status: string): CatalogAvailability {
@@ -126,24 +122,22 @@ export function resolveHsnForCatalog(product: {
 }
 
 /** Build the Meta catalog item payload from a product (C4). */
-export function buildCatalogItemPayload(
-  product: {
-    id: string;
-    name?: string | null;
-    sku?: string | null;
-    description?: string | null;
-    price_min?: number | null;
-    price_max?: number | null;
-    status: string;
-    category?: string | null;
-    subtype?: string | null;
-    fabric_estimate?: string | null;
-    styles?: string[];
-    fabrics?: string[];
-    categoryName?: string | null;
-    photoUrl?: string | null;
-  },
-): CatalogItemCreateInput {
+export function buildCatalogItemPayload(product: {
+  id: string;
+  name?: string | null;
+  sku?: string | null;
+  description?: string | null;
+  price_min?: number | null;
+  price_max?: number | null;
+  status: string;
+  category?: string | null;
+  subtype?: string | null;
+  fabric_estimate?: string | null;
+  styles?: string[];
+  fabrics?: string[];
+  categoryName?: string | null;
+  photoUrl?: string | null;
+}): CatalogItemCreateInput {
   const name = (product.name ?? product.sku ?? 'Product').trim().slice(0, 100);
   const hsn = resolveHsnForCatalog(product);
 
@@ -165,7 +159,7 @@ export function buildCatalogItemPayload(
     availability: mapProductStatus(product.status),
     condition: 'new',
     ...(product.photoUrl ? { image_url: product.photoUrl } : {}),
-    ...(product.categoryName ?? product.category
+    ...((product.categoryName ?? product.category)
       ? { retailer_category: (product.categoryName ?? product.category)!.slice(0, 100) }
       : {}),
   };
@@ -249,7 +243,8 @@ export async function syncAllProducts(
     await writeSyncLog(retailerId, {
       operation: 'full_sync',
       status: 'FAILED',
-      error_message: 'Meta is not configured on the server (META_WHATSAPP_BUSINESS_ACCOUNT_ID missing)',
+      error_message:
+        'Meta is not configured on the server (META_WHATSAPP_BUSINESS_ACCOUNT_ID missing)',
     });
     return;
   }
@@ -315,14 +310,20 @@ export async function syncAllProducts(
       });
 
       if (existing) {
-        await updateCatalogItem(catalogId, creds.accessToken, existing.whatsapp_catalog_item_id, {
-          name: payload.name,
-          description: payload.description,
-          price: payload.price,
-          availability: payload.availability,
-          image_url: payload.image_url,
-          retailer_category: payload.retailer_category,
-        }, signal);
+        await updateCatalogItem(
+          catalogId,
+          creds.accessToken,
+          existing.whatsapp_catalog_item_id,
+          {
+            name: payload.name,
+            description: payload.description,
+            price: payload.price,
+            availability: payload.availability,
+            image_url: payload.image_url,
+            retailer_category: payload.retailer_category,
+          },
+          signal,
+        );
         await prisma.catalogItem.update({
           where: { product_id: product.id },
           data: {
@@ -364,7 +365,8 @@ export async function syncAllProducts(
           data: { whatsapp_catalog_item_id: metaItemId },
         });
         created.push(product.id);
-      }    } catch (err) {
+      }
+    } catch (err) {
       // On timeout the AbortError is expected, not a real product failure —
       // the run-level FAILED log carries the timeout message instead.
       if (!signal?.aborted) {
@@ -417,14 +419,13 @@ export async function syncAllProducts(
     }
   }
 
-  const status =
-    signal?.aborted
-      ? 'FAILED' // timeout — the per-item AbortErrors were swallowed; record it plainly
-      : failed.length === 0
-        ? 'SUCCESS'
-        : created.length + updated.length + deleted.length === 0
-          ? 'FAILED'
-          : 'PARTIAL';
+  const status = signal?.aborted
+    ? 'FAILED' // timeout — the per-item AbortErrors were swallowed; record it plainly
+    : failed.length === 0
+      ? 'SUCCESS'
+      : created.length + updated.length + deleted.length === 0
+        ? 'FAILED'
+        : 'PARTIAL';
 
   await writeSyncLog(retailerId, {
     operation: 'full_sync',
@@ -591,14 +592,20 @@ export async function syncSingleProduct(
   try {
     let metaItemId: string;
     if (existing) {
-      await updateCatalogItem(catalogId, creds.accessToken, existing.whatsapp_catalog_item_id, {
-        name: payload.name,
-        description: payload.description,
-        price: payload.price,
-        availability: payload.availability,
-        image_url: payload.image_url,
-        retailer_category: payload.retailer_category,
-      }, signal);
+      await updateCatalogItem(
+        catalogId,
+        creds.accessToken,
+        existing.whatsapp_catalog_item_id,
+        {
+          name: payload.name,
+          description: payload.description,
+          price: payload.price,
+          availability: payload.availability,
+          image_url: payload.image_url,
+          retailer_category: payload.retailer_category,
+        },
+        signal,
+      );
       metaItemId = existing.whatsapp_catalog_item_id;
       await prisma.catalogItem.update({
         where: { product_id: productId },
@@ -614,7 +621,13 @@ export async function syncSingleProduct(
         },
       });
     } else {
-      const created = await createCatalogItem(catalogId, creds.accessToken, payload, product.id, signal);
+      const created = await createCatalogItem(
+        catalogId,
+        creds.accessToken,
+        payload,
+        product.id,
+        signal,
+      );
       metaItemId = created.id;
       await prisma.catalogItem.create({
         data: {
@@ -678,7 +691,10 @@ export async function syncSingleProduct(
  * Enqueue an incremental single-product sync when the retailer has catalog
  * sync enabled AND a WhatsApp Business API token (otherwise no-op).
  */
-export async function maybeEnqueueProductSync(retailerId: string, productId: string): Promise<void> {
+export async function maybeEnqueueProductSync(
+  retailerId: string,
+  productId: string,
+): Promise<void> {
   try {
     const retailer = await prisma.retailer.findUnique({
       where: { id: retailerId },
@@ -729,7 +745,12 @@ export async function handleCatalogSync(
   timer.unref?.();
   try {
     if (data.operation === 'single_product' && data.product_id) {
-      await syncSingleProduct(data.retailer_id, data.product_id, data.triggered_by, controller.signal);
+      await syncSingleProduct(
+        data.retailer_id,
+        data.product_id,
+        data.triggered_by,
+        controller.signal,
+      );
     } else {
       await syncAllProducts(data.retailer_id, data.triggered_by, controller.signal);
     }

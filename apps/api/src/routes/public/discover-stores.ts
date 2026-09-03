@@ -27,7 +27,9 @@ export const discoverStoresRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.query);
 
     if (!query.success) {
-      return reply.status(400).send({ error: { code: 'INVALID_QUERY', message: 'Invalid query params' } });
+      return reply
+        .status(400)
+        .send({ error: { code: 'INVALID_QUERY', message: 'Invalid query params' } });
     }
 
     const { city, limit } = query.data;

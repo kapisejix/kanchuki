@@ -237,4 +237,3 @@ export async function sendTeamPasswordResetEmail(params: {
     text,
   });
 }
-

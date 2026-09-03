@@ -157,7 +157,8 @@ describe('POST /v1/public/passport/otp/verify', () => {
     // ConsentEvent written — Prisma create receives { data: { ... } }
     expect(mockConsentEventCreate).toHaveBeenCalled();
     const consentArg = mockConsentEventCreate.mock.calls[0]?.[0] as
-      { data?: { kind?: string; notice_version?: string } } | undefined;
+      | { data?: { kind?: string; notice_version?: string } }
+      | undefined;
     expect(consentArg?.data?.kind).toBe('PASSPORT_CREATED');
     expect(consentArg?.data?.notice_version).toBe('1.0');
     // Set-Cookie header present
@@ -346,7 +347,13 @@ describe('GET /v1/public/passport/me', () => {
       id: sessionId,
       expires_at: pastDate,
       revoked_at: null,
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionDelete.mockResolvedValue({});
 
@@ -368,7 +375,13 @@ describe('GET /v1/public/passport/me', () => {
       id: sessionId,
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: new Date(),
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
 
     const app = buildApp();
@@ -400,7 +413,13 @@ describe('GET /v1/public/passport/recently-viewed', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -445,7 +464,13 @@ describe('POST /v1/public/passport/recently-viewed', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -485,7 +510,13 @@ describe('GET /v1/public/passport/wishlist', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -526,7 +557,13 @@ describe('POST /v1/public/passport/wishlist', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -565,7 +602,13 @@ describe('DELETE /v1/public/passport/wishlist/:productId', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -609,7 +652,13 @@ describe('POST /v1/public/passport/events', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -638,7 +687,13 @@ describe('POST /v1/public/passport/events', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 
@@ -662,7 +717,13 @@ describe('POST /v1/public/passport/events', () => {
       expires_at: new Date(Date.now() + 86400 * 1000),
       revoked_at: null,
       customer_account_id: 'acct_123',
-      customer_account: { id: 'acct_123', name: null, phone: '9876543210', usual_size: null, city: null },
+      customer_account: {
+        id: 'acct_123',
+        name: null,
+        phone: '9876543210',
+        usual_size: null,
+        city: null,
+      },
     });
     mockPassportSessionUpdate.mockResolvedValue({});
 

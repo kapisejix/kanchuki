@@ -18,12 +18,16 @@ export async function generateGoogleImagen(
   options?: {
     model?: 'imagen-3.0-generate-002' | 'imagen-3.0-fast-generate-001';
     aspectRatio?: '1:1' | '3:4' | '4:3' | '9:16' | '16:9';
-    onProgress?: (progress: { progress: number; etaMs: number }) => void,
+    onProgress?: (progress: { progress: number; etaMs: number }) => void;
   },
 ): Promise<{ sampleUrl?: string; base64Data?: string; mimeType: string }> {
   const apiKey = await resolveGeminiKey();
   if (!apiKey) {
-    throw new AppError('STUDIO_SHOOT_FAILED', 'Google Gemini API key is not configured in Admin → Integrations.', 503);
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      'Google Gemini API key is not configured in Admin → Integrations.',
+      503,
+    );
   }
 
   const model = options?.model ?? 'imagen-3.0-generate-002';
@@ -51,7 +55,11 @@ export async function generateGoogleImagen(
 
   if (!res.ok) {
     const errorText = await res.text().catch(() => '');
-    throw new AppError('STUDIO_SHOOT_FAILED', `Google Imagen generation failed (${res.status}): ${errorText}`, 503);
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      `Google Imagen generation failed (${res.status}): ${errorText}`,
+      503,
+    );
   }
 
   const data = (await res.json()) as {
@@ -72,4 +80,3 @@ export async function generateGoogleImagen(
     mimeType: prediction.mimeType ?? 'image/jpeg',
   };
 }
-

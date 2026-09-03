@@ -12,9 +12,7 @@ export const growthSizeRoutes: FastifyPluginAsync = async (server) => {
     if (!(await hasFeature(retailerId, 'GROWTH_ENGINE'))) throw featureUnavailable('Growth tools');
     const { id } = request.params as { id: string };
 
-    const body = z
-      .object({ product_id: z.string().min(1) })
-      .safeParse(request.body);
+    const body = z.object({ product_id: z.string().min(1) }).safeParse(request.body);
     if (!body.success) throw validationError('product_id is required');
 
     const [customer, product] = await Promise.all([

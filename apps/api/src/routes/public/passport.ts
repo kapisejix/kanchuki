@@ -272,7 +272,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.get('/me', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
     const acct = session.customer_account;
@@ -292,7 +294,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.get('/stores', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
     const visits = await prisma.customerStoreVisit.findMany({
@@ -322,13 +326,20 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.post('/stores/:retailerId/mute', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
     const { retailerId } = request.params as { retailerId: string };
 
     const visit = await prisma.customerStoreVisit.findUnique({
-      where: { customer_account_id_retailer_id: { customer_account_id: session.customer_account_id, retailer_id: retailerId } },
+      where: {
+        customer_account_id_retailer_id: {
+          customer_account_id: session.customer_account_id,
+          retailer_id: retailerId,
+        },
+      },
     });
     if (!visit) {
       return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Store not found' } });
@@ -359,13 +370,20 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.post('/stores/:retailerId/remove', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
     const { retailerId } = request.params as { retailerId: string };
 
     const visit = await prisma.customerStoreVisit.findUnique({
-      where: { customer_account_id_retailer_id: { customer_account_id: session.customer_account_id, retailer_id: retailerId } },
+      where: {
+        customer_account_id_retailer_id: {
+          customer_account_id: session.customer_account_id,
+          retailer_id: retailerId,
+        },
+      },
     });
     if (!visit) {
       return reply.status(404).send({ error: { code: 'NOT_FOUND', message: 'Store not found' } });
@@ -411,10 +429,12 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.get('/recently-viewed', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
-    const query = (request.query as { limit?: string });
+    const query = request.query as { limit?: string };
     const limit = Math.min(parseInt(query.limit || '20', 10) || 20, 50);
 
     const items = await prisma.customerRecentlyViewed.findMany({
@@ -460,7 +480,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       return reply.status(204).send(); // silently drop
     }
 
-    const body = z.object({ product_id: z.string(), retailer_id: z.string() }).safeParse(request.body);
+    const body = z
+      .object({ product_id: z.string(), retailer_id: z.string() })
+      .safeParse(request.body);
     if (!body.success) return reply.status(204).send();
 
     await prisma.customerRecentlyViewed.upsert({
@@ -520,7 +542,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.get('/wishlist', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
     const items = await prisma.customerWishlistItem.findMany({
@@ -566,10 +590,14 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.post('/wishlist', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
-    const body = z.object({ product_id: z.string(), retailer_id: z.string() }).safeParse(request.body);
+    const body = z
+      .object({ product_id: z.string(), retailer_id: z.string() })
+      .safeParse(request.body);
     if (!body.success) throw validationError('Invalid body');
 
     await prisma.customerWishlistItem.upsert({
@@ -595,7 +623,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.delete('/wishlist/:productId', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'NO_SESSION', message: 'Not authenticated' } });
     }
 
     const { productId } = request.params as { productId: string };
@@ -630,13 +660,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
     }
 
     // Clear the cookie
-    const parts = [
-      `${COOKIE_NAME}=`,
-      'HttpOnly',
-      'SameSite=Lax',
-      'Max-Age=0',
-      'Path=/',
-    ];
+    const parts = [`${COOKIE_NAME}=`, 'HttpOnly', 'SameSite=Lax', 'Max-Age=0', 'Path=/'];
     if (COOKIE_SECURE) parts.push('Secure');
     if (process.env.NODE_ENV === 'production') {
       parts.push(`Domain=${COOKIE_DOMAIN}`);
@@ -651,7 +675,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.get('/preferences', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
     }
 
     const account = session.customer_account;
@@ -681,12 +707,16 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.put('/preferences', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
     }
 
     const body = PreferencesSchema.safeParse(request.body);
     if (!body.success) {
-      return reply.status(400).send({ error: { code: 'INVALID_BODY', message: 'Invalid preferences' } });
+      return reply
+        .status(400)
+        .send({ error: { code: 'INVALID_BODY', message: 'Invalid preferences' } });
     }
 
     const accountId = session.customer_account_id;
@@ -733,7 +763,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.get('/export', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
     }
 
     const accountId = session.customer_account_id;
@@ -785,7 +817,12 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
       },
     });
 
-    const interactions: { retailer_id: string; product_id: string | null; type: string; created_at: Date }[] = [];
+    const interactions: {
+      retailer_id: string;
+      product_id: string | null;
+      type: string;
+      created_at: Date;
+    }[] = [];
 
     const wishlist = await prisma.customerWishlistItem.findMany({
       where: { customer_account_id: accountId },
@@ -831,7 +868,9 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
   server.post('/delete', async (request, reply) => {
     const session = await getPassportSession(request.headers.cookie || '');
     if (!session) {
-      return reply.status(401).send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
+      return reply
+        .status(401)
+        .send({ error: { code: 'UNAUTHORIZED', message: 'Passport session required' } });
     }
 
     const accountId = session.customer_account_id;
@@ -873,13 +912,7 @@ export const passportRoutes: FastifyPluginAsync = async (server) => {
     });
 
     // Clear the cookie
-    const parts = [
-      `${COOKIE_NAME}=`,
-      'HttpOnly',
-      'SameSite=Lax',
-      'Max-Age=0',
-      'Path=/',
-    ];
+    const parts = [`${COOKIE_NAME}=`, 'HttpOnly', 'SameSite=Lax', 'Max-Age=0', 'Path=/'];
     if (COOKIE_SECURE) parts.push('Secure');
     if (process.env.NODE_ENV === 'production') {
       parts.push(`Domain=${COOKIE_DOMAIN}`);

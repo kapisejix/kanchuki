@@ -8,8 +8,8 @@ import { errorHandler } from '../plugins/error-handler.js';
 
 // ─── Mocks ───────────────────────────────────────────────────────
 
-const mockDbHealthCheck = vi.hoisted(() => vi.fn())
-const mockPing = vi.hoisted(() => vi.fn())
+const mockDbHealthCheck = vi.hoisted(() => vi.fn());
+const mockPing = vi.hoisted(() => vi.fn());
 
 vi.mock('@kanchuki/db', () => ({
   dbHealthCheck: (...args: unknown[]) => mockDbHealthCheck(...args),
@@ -17,14 +17,14 @@ vi.mock('@kanchuki/db', () => ({
   withRetry: (fn: () => Promise<unknown>) => fn(),
   getPurgePrisma: () => ({}),
   getReplicaPrisma: () => ({}),
-}))
+}));
 
 vi.mock('../jobs/index.js', () => ({
   getRedis: () => ({
     ping: (...args: unknown[]) => mockPing(...args),
   }),
   startWorkers: vi.fn(),
-}))
+}));
 
 // Import after mocks are set up
 import { dbHealthCheck } from '@kanchuki/db';
@@ -45,13 +45,21 @@ async function buildHealthApp() {
           await getRedis().ping();
           return { ok: true as const, latencyMs: Date.now() - start };
         } catch (err) {
-          return { ok: false as const, latencyMs: Date.now() - start, error: err instanceof Error ? err.message : String(err) };
+          return {
+            ok: false as const,
+            latencyMs: Date.now() - start,
+            error: err instanceof Error ? err.message : String(err),
+          };
         }
       })(),
     ]);
 
-    const dbResult = db.status === 'fulfilled' ? db.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
-    const redisResult = redis.status === 'fulfilled' ? redis.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
+    const dbResult =
+      db.status === 'fulfilled' ? db.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
+    const redisResult =
+      redis.status === 'fulfilled'
+        ? redis.value
+        : { ok: false, latencyMs: 0, error: 'promise rejected' };
 
     const healthy = dbResult.ok && redisResult.ok;
     reply.code(healthy ? 200 : 503);

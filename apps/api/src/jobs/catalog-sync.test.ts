@@ -206,7 +206,14 @@ describe('syncAllProducts', () => {
       name: 'Shop',
     });
     const existing = { ...baseProduct, id: 'p1', status: 'AVAILABLE' };
-    const fresh = { ...baseProduct, id: 'p2', sku: 'SKU-2', name: 'Kurti', status: 'SOLD', price_min: 80000 };
+    const fresh = {
+      ...baseProduct,
+      id: 'p2',
+      sku: 'SKU-2',
+      name: 'Kurti',
+      status: 'SOLD',
+      price_min: 80000,
+    };
     mockProductFindMany.mockResolvedValue([existing, fresh]);
     mockCatalogItemFindMany.mockResolvedValue([
       { product_id: 'p1', whatsapp_catalog_item_id: 'meta_p1', whatsapp_catalog_id: 'cat_1' },
@@ -243,7 +250,9 @@ describe('syncAllProducts', () => {
       undefined,
     );
     expect(mockCatalogItemCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ product_id: 'p2', status: 'SUCCESS' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ product_id: 'p2', status: 'SUCCESS' }),
+      }),
     );
 
     // SUCCESS log with per-op counts
@@ -269,7 +278,10 @@ describe('syncAllProducts', () => {
     expect(mockGetOrCreateCatalog).not.toHaveBeenCalled();
     expect(mockCatalogSyncLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: 'FAILED', error_message: expect.stringContaining('not configured') }),
+        data: expect.objectContaining({
+          status: 'FAILED',
+          error_message: expect.stringContaining('not configured'),
+        }),
       }),
     );
   });
@@ -398,7 +410,10 @@ describe('syncSingleProduct', () => {
     );
     expect(mockCatalogSyncLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: 'SUCCESS', payload_json: expect.objectContaining({ action: 'removed_not_eligible' }) }),
+        data: expect.objectContaining({
+          status: 'SUCCESS',
+          payload_json: expect.objectContaining({ action: 'removed_not_eligible' }),
+        }),
       }),
     );
   });
@@ -537,7 +552,10 @@ describe('handleCatalogSync (per-retailer timeout)', () => {
 
     // 20ms budget — the abort fires while the update is still pending.
     await expect(
-      handleCatalogSync({ retailer_id: RETAILER_ID, operation: 'full_sync', triggered_by: 'schedule' }, 20),
+      handleCatalogSync(
+        { retailer_id: RETAILER_ID, operation: 'full_sync', triggered_by: 'schedule' },
+        20,
+      ),
     ).resolves.toBeUndefined();
 
     expect(mockCatalogSyncLogCreate).toHaveBeenCalledWith(
@@ -574,7 +592,12 @@ describe('handleCatalogSync (per-retailer timeout)', () => {
 
     await expect(
       handleCatalogSync(
-        { retailer_id: RETAILER_ID, operation: 'single_product', product_id: 'p1', triggered_by: 'retailer' },
+        {
+          retailer_id: RETAILER_ID,
+          operation: 'single_product',
+          product_id: 'p1',
+          triggered_by: 'retailer',
+        },
         20,
       ),
     ).resolves.toBeUndefined();
@@ -607,7 +630,12 @@ describe('handleCatalogSync (per-retailer timeout)', () => {
 
     await expect(
       handleCatalogSync(
-        { retailer_id: RETAILER_ID, operation: 'single_product', product_id: 'p1', triggered_by: 'retailer' },
+        {
+          retailer_id: RETAILER_ID,
+          operation: 'single_product',
+          product_id: 'p1',
+          triggered_by: 'retailer',
+        },
         20,
       ),
     ).rejects.toThrow('rate limited');

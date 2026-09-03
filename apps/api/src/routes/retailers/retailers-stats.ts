@@ -150,7 +150,7 @@ export const retailersStatsRoutes: FastifyPluginAsync = async (server) => {
         plan_status: true,
         max_products: true,
         max_customers: true,
-          },
+      },
     });
 
     return {

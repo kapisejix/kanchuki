@@ -165,8 +165,8 @@ await server.register(catalogImportRoutes, { prefix: '/v1' });
 await server.register(staffRoutes, { prefix: '/v1/staff' });
 await server.register(teamRoutes, { prefix: '/v1/team' });
 await server.register(msg91WebhookRoutes, { prefix: '/v1' });
-  // Phase II: WhatsApp catalog webhook (Meta → Kanchuki, HMAC-verified)
-  await server.register(whatsappCatalogWebhookRoutes, { prefix: '/v1' });
+// Phase II: WhatsApp catalog webhook (Meta → Kanchuki, HMAC-verified)
+await server.register(whatsappCatalogWebhookRoutes, { prefix: '/v1' });
 
 // ─── Health Check ─────────────────────────────────────────────────
 // Deep health: verifies DB + Redis connectivity. Returns 503 if any
@@ -181,13 +181,21 @@ server.get('/health', async (_request, reply) => {
         await getRedis().ping();
         return { ok: true as const, latencyMs: Date.now() - start };
       } catch (err) {
-        return { ok: false as const, latencyMs: Date.now() - start, error: err instanceof Error ? err.message : String(err) };
+        return {
+          ok: false as const,
+          latencyMs: Date.now() - start,
+          error: err instanceof Error ? err.message : String(err),
+        };
       }
     })(),
   ]);
 
-  const dbResult = db.status === 'fulfilled' ? db.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
-  const redisResult = redis.status === 'fulfilled' ? redis.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
+  const dbResult =
+    db.status === 'fulfilled' ? db.value : { ok: false, latencyMs: 0, error: 'promise rejected' };
+  const redisResult =
+    redis.status === 'fulfilled'
+      ? redis.value
+      : { ok: false, latencyMs: 0, error: 'promise rejected' };
 
   const healthy = dbResult.ok && redisResult.ok;
   reply.code(healthy ? 200 : 503);

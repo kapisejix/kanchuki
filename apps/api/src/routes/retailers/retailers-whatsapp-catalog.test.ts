@@ -235,7 +235,10 @@ describe('GET /me/whatsapp-catalog/logs (D5)', () => {
     expect(res.json().data).toHaveLength(1);
     expect(res.json().data[0].status).toBe('SUCCESS');
     expect(mockCatalogSyncLogFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { retailer_id: RETAILER_ID }, orderBy: { created_at: 'desc' } }),
+      expect.objectContaining({
+        where: { retailer_id: RETAILER_ID },
+        orderBy: { created_at: 'desc' },
+      }),
     );
     await app.close();
   });
@@ -253,7 +256,15 @@ describe('GET /me/whatsapp-catalog/items (D6)', () => {
         whatsapp_catalog_item_id: 'meta_1',
         hsn_code_snapshot: '5407',
         last_synced_at: new Date('2026-08-18T10:00:00Z'),
-        product: { id: 'p1', name: 'Red Silk Saree', sku: 'SKU-1', price_min: 150000, status: 'AVAILABLE', category: 'Saree', deleted_at: null },
+        product: {
+          id: 'p1',
+          name: 'Red Silk Saree',
+          sku: 'SKU-1',
+          price_min: 150000,
+          status: 'AVAILABLE',
+          category: 'Saree',
+          deleted_at: null,
+        },
       },
     ]);
     const app = await buildApp();

@@ -375,36 +375,41 @@ export const catalogImportRoutes: FastifyPluginAsync = async (server) => {
     const { items, default_section_id } = parsed.data;
 
     // F-001d: resolve rack/shelf location + plan limits (retry on transient DB errors)
-    const { validSectionIds, retailer } = await withRetry(async () => {
-      const requestedSectionIds = [
-        ...new Set(
-          [default_section_id, ...items.map((i) => i.section_id)].filter((id): id is string => !!id),
-        ),
-      ];
-      const validSectionIds = new Set(
-        requestedSectionIds.length
-          ? (
-              await prisma.storeSection.findMany({
-                where: { retailer_id: retailerId, id: { in: requestedSectionIds } },
-                select: { id: true },
-              })
-            ).map((s) => s.id)
-          : [],
-      );
+    const { validSectionIds, retailer } = await withRetry(
+      async () => {
+        const requestedSectionIds = [
+          ...new Set(
+            [default_section_id, ...items.map((i) => i.section_id)].filter(
+              (id): id is string => !!id,
+            ),
+          ),
+        ];
+        const validSectionIds = new Set(
+          requestedSectionIds.length
+            ? (
+                await prisma.storeSection.findMany({
+                  where: { retailer_id: retailerId, id: { in: requestedSectionIds } },
+                  select: { id: true },
+                })
+              ).map((s) => s.id)
+            : [],
+        );
 
-      const retailer = await prisma.retailer.findUnique({
-        where: { id: retailerId },
-        select: {
-          plan: true,
-          plan_status: true,
-          _count: { select: { products: true } },
-        },
-      });
+        const retailer = await prisma.retailer.findUnique({
+          where: { id: retailerId },
+          select: {
+            plan: true,
+            plan_status: true,
+            _count: { select: { products: true } },
+          },
+        });
 
-      if (!retailer) throw notFound('Retailer');
+        if (!retailer) throw notFound('Retailer');
 
-      return { validSectionIds, retailer };
-    }, { label: 'catalog-import-validate' });
+        return { validSectionIds, retailer };
+      },
+      { label: 'catalog-import-validate' },
+    );
 
     const resolveSectionId = (itemSectionId: string | null | undefined): string | undefined => {
       const candidate = itemSectionId ?? default_section_id;

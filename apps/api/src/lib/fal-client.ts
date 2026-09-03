@@ -22,7 +22,11 @@ export async function runFalTask(
 ): Promise<{ sampleUrl: string }> {
   const apiKey = await resolveFalKey();
   if (!apiKey) {
-    throw new AppError('STUDIO_SHOOT_FAILED', 'Fal.ai API key is not configured in Admin → Integrations.', 503);
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      'Fal.ai API key is not configured in Admin → Integrations.',
+      503,
+    );
   }
 
   // 1. Submit task to Fal queue
@@ -40,20 +44,36 @@ export async function runFalTask(
   if (!submitRes.ok) {
     const errorText = await submitRes.text().catch(() => '');
     if (submitRes.status === 402 || submitRes.status === 403) {
-      throw new AppError('STUDIO_SHOOT_FAILED', 'Fal.ai account has insufficient balance or invalid key.', 402);
+      throw new AppError(
+        'STUDIO_SHOOT_FAILED',
+        'Fal.ai account has insufficient balance or invalid key.',
+        402,
+      );
     }
-    throw new AppError('STUDIO_SHOOT_FAILED', `Fal.ai task submission failed (${submitRes.status}): ${errorText}`, 503);
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      `Fal.ai task submission failed (${submitRes.status}): ${errorText}`,
+      503,
+    );
   }
 
-  const submitData = (await submitRes.json()) as { request_id?: string; status_url?: string; response_url?: string; images?: { url: string }[]; image?: { url: string } };
+  const submitData = (await submitRes.json()) as {
+    request_id?: string;
+    status_url?: string;
+    response_url?: string;
+    images?: { url: string }[];
+    image?: { url: string };
+  };
 
   // If Fal returns the image synchronously
   if (submitData.images?.[0]?.url) return { sampleUrl: submitData.images[0].url };
   if (submitData.image?.url) return { sampleUrl: submitData.image.url };
 
   const requestId = submitData.request_id;
-  const statusUrl = submitData.status_url || `${FAL_BASE}/${modelEndpoint}/requests/${requestId}/status`;
-  const responseUrl = submitData.response_url || `${FAL_BASE}/${modelEndpoint}/requests/${requestId}`;
+  const statusUrl =
+    submitData.status_url || `${FAL_BASE}/${modelEndpoint}/requests/${requestId}/status`;
+  const responseUrl =
+    submitData.response_url || `${FAL_BASE}/${modelEndpoint}/requests/${requestId}`;
 
   // 2. Poll until completed
   const startTime = Date.now();
@@ -84,7 +104,10 @@ export async function runFalTask(
             headers: { Authorization: `Key ${apiKey}` },
             signal: AbortSignal.timeout(10_000),
           });
-          const finalData = (await finalRes.json()) as { images?: { url: string }[]; image?: { url: string } };
+          const finalData = (await finalRes.json()) as {
+            images?: { url: string }[];
+            image?: { url: string };
+          };
           const resultUrl = finalData.images?.[0]?.url || finalData.image?.url;
           if (!resultUrl) throw new Error('No output image in Fal completed response');
 
@@ -92,7 +115,11 @@ export async function runFalTask(
           return { sampleUrl: resultUrl };
         }
         if (statusJson.status === 'FAILED' || statusJson.status === 'ERROR') {
-          throw new AppError('STUDIO_SHOOT_FAILED', statusJson.error ?? 'Fal generation failed.', 500);
+          throw new AppError(
+            'STUDIO_SHOOT_FAILED',
+            statusJson.error ?? 'Fal generation failed.',
+            500,
+          );
         }
       }
     } catch (err) {
@@ -155,10 +182,15 @@ export async function generateFluxKontext(
  */
 export async function generateFluxProImage(
   prompt: string,
-  options?: { inputImageUrl?: string; onProgress?: (p: { progress: number; etaMs: number }) => void },
+  options?: {
+    inputImageUrl?: string;
+    onProgress?: (p: { progress: number; etaMs: number }) => void;
+  },
 ): Promise<{ sampleUrl: string }> {
   if (options?.inputImageUrl) {
-    return generateFluxImageToImage(prompt, options.inputImageUrl, { onProgress: options.onProgress });
+    return generateFluxImageToImage(prompt, options.inputImageUrl, {
+      onProgress: options.onProgress,
+    });
   }
 
   const input: Record<string, unknown> = {
@@ -179,10 +211,16 @@ export async function generateFluxProImage(
  */
 export async function generateFluxSchnellImage(
   prompt: string,
-  options?: { inputImageUrl?: string; onProgress?: (p: { progress: number; etaMs: number }) => void },
+  options?: {
+    inputImageUrl?: string;
+    onProgress?: (p: { progress: number; etaMs: number }) => void;
+  },
 ): Promise<{ sampleUrl: string }> {
   if (options?.inputImageUrl) {
-    return generateFluxImageToImage(prompt, options.inputImageUrl, { strength: 0.7, onProgress: options?.onProgress });
+    return generateFluxImageToImage(prompt, options.inputImageUrl, {
+      strength: 0.7,
+      onProgress: options?.onProgress,
+    });
   }
 
   const input: Record<string, unknown> = {
@@ -238,7 +276,7 @@ export async function generateFashnTryon(
     garment_image: garmentImageUrl,
     category,
     mode: options?.mode ?? 'quality',
-    long_top: options?.isLongTop ?? (category === 'tops'),
+    long_top: options?.isLongTop ?? category === 'tops',
     garment_photo_type: options?.garmentPhotoType ?? 'auto',
     nsfw_filter: true,
     cover_feet: false,
@@ -248,5 +286,3 @@ export async function generateFashnTryon(
 
   return runFalTask('fal-ai/fashn/tryon-v1.5', input, options?.onProgress);
 }
-
-

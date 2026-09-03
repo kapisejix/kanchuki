@@ -43,7 +43,9 @@ import {
 
 // Instagram Graph API helper functions (minimal implementation for Phase 2)
 async function getInstagramAccountId(accessToken: string): Promise<string> {
-  const res = await fetch(`https://graph.facebook.com/v21.0/me/accounts?access_token=${accessToken}`);
+  const res = await fetch(
+    `https://graph.facebook.com/v21.0/me/accounts?access_token=${accessToken}`,
+  );
   if (!res.ok) {
     throw new MetaApiError('Failed to list accounts', 400, 'ACCOUNTS_LIST_FAILED');
   }
@@ -62,20 +64,21 @@ async function publishInstagramPhoto(
   caption: string,
 ): Promise<{ postId: string }> {
   // Step 1: Create media container
-  const containerRes = await fetch(
-    `https://graph.facebook.com/v21.0/${instagramAccountId}/media`,
-    {
-      method: 'POST',
-      body: new URLSearchParams({
-        image_url: imageUrl,
-        caption: caption,
-        access_token: accessToken,
-      }),
-    }
-  );
+  const containerRes = await fetch(`https://graph.facebook.com/v21.0/${instagramAccountId}/media`, {
+    method: 'POST',
+    body: new URLSearchParams({
+      image_url: imageUrl,
+      caption: caption,
+      access_token: accessToken,
+    }),
+  });
 
   if (!containerRes.ok) {
-    throw new MetaApiError('Instagram rejected the photo container', 400, 'INSTAGRAM_CONTAINER_FAILED');
+    throw new MetaApiError(
+      'Instagram rejected the photo container',
+      400,
+      'INSTAGRAM_CONTAINER_FAILED',
+    );
   }
 
   const containerBody = (await containerRes.json()) as { id?: string };
@@ -94,7 +97,7 @@ async function publishInstagramPhoto(
         creation_id: creationId,
         access_token: accessToken,
       }),
-    }
+    },
   );
 
   if (!publishRes.ok) {
@@ -120,21 +123,21 @@ async function publishInstagramLink(
   // We'll create a photo post with the link in the caption (requires an image)
   // For now, we'll use a placeholder approach - in reality, this would need
   // either a generated image or to fall back to sharing the link in bio
-  
+
   // Since Instagram doesn't support native link posts like Facebook,
   // and we don't have an auto-generated image for the link,
   // we'll implement a simplified version that puts the link in caption
   // and uses a default product image or requires the retailer to provide one
-  
+
   // For Phase 2 minimum implementation, we'll treat link posts as requiring
   // an image - in a full implementation, this would use the collection's hero image
-  
+
   // Since we don't have image context here, we'll return an error indicating
   // that link posts on Instagram require image content
   throw new MetaApiError(
     'Instagram link posts require image content - please use SINGLE_PRODUCT post type instead',
     400,
-    'INSTAGRAM_LINK_REQUIRES_IMAGE'
+    'INSTAGRAM_LINK_REQUIRES_IMAGE',
   );
 }
 import { buildCollectionUrl } from '../../lib/store-urls.js';
@@ -203,7 +206,9 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
     const meta = await resolveMetaCredentials();
     if (!meta) throw serviceUnavailable('Social publishing is not configured yet');
     const state = await createOAuthState(request.retailerId);
-    return { data: { auth_url: buildOAuthUrl(meta, redirectUri, state, provider as any), state, provider } };
+    return {
+      data: { auth_url: buildOAuthUrl(meta, redirectUri, state, provider as any), state, provider },
+    };
   });
 
   // ─── POST /retailers/me/social/auto-connect — 1-Click OAuth Connect ───
@@ -240,7 +245,11 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const redirectUri = body.data.redirect_uri || 'kanchuki://oauth/callback';
-    const { accessToken, expiresAt } = await exchangeCodeForToken(meta, body.data.code, redirectUri);
+    const { accessToken, expiresAt } = await exchangeCodeForToken(
+      meta,
+      body.data.code,
+      redirectUri,
+    );
 
     if (body.data.provider === 'instagram') {
       const igAccounts = await listInstagramAccounts(accessToken);
@@ -288,7 +297,11 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
       const pages = await listPages(accessToken);
       const primaryPage = pages[0];
       if (!primaryPage) {
-        throw new AppError('NO_PAGES_FOUND', 'No Facebook Pages found on this account. Please link a Facebook Page to continue.', 404);
+        throw new AppError(
+          'NO_PAGES_FOUND',
+          'No Facebook Pages found on this account. Please link a Facebook Page to continue.',
+          404,
+        );
       }
       const pageToken = primaryPage.access_token || accessToken;
       const encryptedToken = await encryptSecret(pageToken);
@@ -399,7 +412,13 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
         },
       });
       return {
-        data: { connected: true, provider: 'instagram', handle, account_id: primaryIg.id, account_name: name },
+        data: {
+          connected: true,
+          provider: 'instagram',
+          handle,
+          account_id: primaryIg.id,
+          account_name: name,
+        },
       };
     }
 
@@ -478,19 +497,21 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
 
     const redirectUri = `${process.env.WEB_URL ?? ''}/social/connect/callback`;
     const { accessToken } = await exchangeCodeForToken(meta, body.data.code, redirectUri);
-    
+
     // Get both Facebook Pages and Instagram Accounts
     const pages = await listPages(accessToken);
     let instagramAccounts: Array<{ id: string; name: string }> = [];
-    
+
     // Try to get Instagram Business Accounts (requires additional permissions)
     try {
       const igAccountId = await getInstagramAccountId(accessToken);
       // Get the Instagram account info
-      const igRes = await fetch(`https://graph.facebook.com/v21.0/${igAccountId}?${new URLSearchParams({
-        access_token: accessToken,
-        fields: 'id,name',
-      })}`);
+      const igRes = await fetch(
+        `https://graph.facebook.com/v21.0/${igAccountId}?${new URLSearchParams({
+          access_token: accessToken,
+          fields: 'id,name',
+        })}`,
+      );
       if (igRes.ok) {
         const igBody = (await igRes.json()) as { id?: string; name?: string };
         if (igBody.id && igBody.name) {
@@ -530,7 +551,7 @@ export const retailersSocialRoutes: FastifyPluginAsync = async (server) => {
       .safeParse(request.body);
     if (!body.success) throw validationError('platform_account_id and state are required');
 
-const redis = getStateRedis();
+    const redis = getStateRedis();
     const raw = await redis.getdel(`social:tokens:${body.data.state}`);
     if (!raw) {
       throw validationError('OAuth session expired — please connect again');
@@ -552,7 +573,7 @@ const redis = getStateRedis();
       `https://graph.facebook.com/v21.0/${body.data.platform_account_id}?${new URLSearchParams({
         access_token: accessToken,
         fields: 'id,name,access_token',
-      })}`
+      })}`,
     );
 
     if (fbRes.ok) {
@@ -569,7 +590,7 @@ const redis = getStateRedis();
         `https://graph.facebook.com/v21.0/${body.data.platform_account_id}?${new URLSearchParams({
           access_token: accessToken,
           fields: 'id,name',
-        })}`
+        })}`,
       );
 
       if (igRes.ok) {
@@ -583,7 +604,11 @@ const redis = getStateRedis();
     }
 
     if (!pageInfo) {
-      throw new MetaApiError('Could not fetch the selected Facebook Page or Instagram Account', 400, 'ACCOUNT_FETCH_FAILED');
+      throw new MetaApiError(
+        'Could not fetch the selected Facebook Page or Instagram Account',
+        400,
+        'ACCOUNT_FETCH_FAILED',
+      );
     }
 
     const account = await prisma.socialAccount.upsert({
@@ -707,152 +732,160 @@ const redis = getStateRedis();
     let productIds: string[] = [];
     let collectionId: string | null = null;
 
-try {
-       if (body.data.post_type === 'SINGLE_PRODUCT') {
-         if (!body.data.product_id) throw validationError('product_id is required for SINGLE_PRODUCT');
-         const product = await prisma.product.findFirst({
-           where: { id: body.data.product_id, retailer_id: request.retailerId, deleted_at: null },
-           select: {
-             id: true,
-             name: true,
-             price_min: true,
-             photos: { where: { is_primary: true }, take: 1 },
-             videos: { where: { is_main: true }, take: 1 },
-           },
-         });
-         if (!product) throw notFound('Product');
-         const photo = product.photos[0];
-         const video = product.videos[0];
-         if (!photo && !video) throw validationError('This product has no photo to post');
+    try {
+      if (body.data.post_type === 'SINGLE_PRODUCT') {
+        if (!body.data.product_id)
+          throw validationError('product_id is required for SINGLE_PRODUCT');
+        const product = await prisma.product.findFirst({
+          where: { id: body.data.product_id, retailer_id: request.retailerId, deleted_at: null },
+          select: {
+            id: true,
+            name: true,
+            price_min: true,
+            photos: { where: { is_primary: true }, take: 1 },
+            videos: { where: { is_main: true }, take: 1 },
+          },
+        });
+        if (!product) throw notFound('Product');
+        const photo = product.photos[0];
+        const video = product.videos[0];
+        if (!photo && !video) throw validationError('This product has no photo to post');
 
-         productIds = [product.id];
-         if (!caption) {
-           // price_min is stored in paise (₹1500 = 150000).
-           const price = product.price_min ? ` — ₹${product.price_min / 100}` : '';
-           caption = `${product.name ?? 'New arrival'}${price}\n\nShop the collection on WhatsApp: ${'https://kanchuki.app'}`;
-         }
-         // F-033 Slice 2: a video (uploaded or Ken-Burns-generated) posts as
-         // video — more engaging than a photo post — falling back to photo.
-         if (account.platform === 'FACEBOOK') {
-           const { postId } = video
-             ? await publishVideoPost(account.platform_account_id, token, video.public_url, caption)
-             : await publishPhotoPost(account.platform_account_id, token, photo!.url, caption);
-           externalPostId = postId;
-           externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
-         } else { // INSTAGRAM
-           // For Instagram, we need an image URL
-           if (!photo) throw validationError('Instagram posts require a photo');
-           const { postId } = await publishInstagramPhoto(
-             account.platform_account_id,
-             token,
-             photo!.url,
-             caption
-           );
-           externalPostId = postId;
-           externalPostUrl = `https://www.instagram.com/p/${postId}/`;
-         }
-       } else {
-         // COLLECTION_LINK
-         if (!body.data.collection_id) throw validationError('collection_id is required');
-         const collection = await prisma.collection.findFirst({
-           where: { id: body.data.collection_id, retailer_id: request.retailerId, deleted_at: null },
-           select: { id: true, title: true, slug: true },
-         });
-         if (!collection) throw notFound('Collection');
-         collectionId = collection.id;
+        productIds = [product.id];
+        if (!caption) {
+          // price_min is stored in paise (₹1500 = 150000).
+          const price = product.price_min ? ` — ₹${product.price_min / 100}` : '';
+          caption = `${product.name ?? 'New arrival'}${price}\n\nShop the collection on WhatsApp: ${'https://kanchuki.app'}`;
+        }
+        // F-033 Slice 2: a video (uploaded or Ken-Burns-generated) posts as
+        // video — more engaging than a photo post — falling back to photo.
+        if (account.platform === 'FACEBOOK') {
+          const { postId } = video
+            ? await publishVideoPost(account.platform_account_id, token, video.public_url, caption)
+            : await publishPhotoPost(account.platform_account_id, token, photo!.url, caption);
+          externalPostId = postId;
+          externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
+        } else {
+          // INSTAGRAM
+          // For Instagram, we need an image URL
+          if (!photo) throw validationError('Instagram posts require a photo');
+          const { postId } = await publishInstagramPhoto(
+            account.platform_account_id,
+            token,
+            photo!.url,
+            caption,
+          );
+          externalPostId = postId;
+          externalPostUrl = `https://www.instagram.com/p/${postId}/`;
+        }
+      } else {
+        // COLLECTION_LINK
+        if (!body.data.collection_id) throw validationError('collection_id is required');
+        const collection = await prisma.collection.findFirst({
+          where: { id: body.data.collection_id, retailer_id: request.retailerId, deleted_at: null },
+          select: { id: true, title: true, slug: true },
+        });
+        if (!collection) throw notFound('Collection');
+        collectionId = collection.id;
 
-         // The collection's public link (canonical scheme — store URL or the
-         // legacy /c/{slug} fallback when the store has no public slug).
-         const retailer = await prisma.retailer.findUnique({
-           where: { id: request.retailerId },
-           select: { public_slug: true },
-         });
-         const link = buildCollectionUrl(retailer?.public_slug ?? null, collection.slug);
+        // The collection's public link (canonical scheme — store URL or the
+        // legacy /c/{slug} fallback when the store has no public slug).
+        const retailer = await prisma.retailer.findUnique({
+          where: { id: request.retailerId },
+          select: { public_slug: true },
+        });
+        const link = buildCollectionUrl(retailer?.public_slug ?? null, collection.slug);
 
-         if (!caption) caption = `Shop ${collection.title} — new collection on WhatsApp. ${link}`;
-         if (account.platform === 'FACEBOOK') {
-           const { postId } = await publishLinkPost(account.platform_account_id, token, link, caption);
-           externalPostId = postId;
-           externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
-         } else { // INSTAGRAM
-           // Instagram doesn't support native link posts like Facebook
-           // For Phase 2, we'll require image content for Instagram posts
-           throw new MetaApiError(
-             'Instagram link posts require image content - please use SINGLE_PRODUCT post type instead',
-             400,
-             'INSTAGRAM_LINK_REQUIRES_IMAGE'
-           );
-         }
-       }
+        if (!caption) caption = `Shop ${collection.title} — new collection on WhatsApp. ${link}`;
+        if (account.platform === 'FACEBOOK') {
+          const { postId } = await publishLinkPost(
+            account.platform_account_id,
+            token,
+            link,
+            caption,
+          );
+          externalPostId = postId;
+          externalPostUrl = `https://www.facebook.com/${account.platform_account_id}/posts/${postId}`;
+        } else {
+          // INSTAGRAM
+          // Instagram doesn't support native link posts like Facebook
+          // For Phase 2, we'll require image content for Instagram posts
+          throw new MetaApiError(
+            'Instagram link posts require image content - please use SINGLE_PRODUCT post type instead',
+            400,
+            'INSTAGRAM_LINK_REQUIRES_IMAGE',
+          );
+        }
+      }
 
-       const post = await prisma.socialPost.create({
-         data: {
-           retailer_id: request.retailerId,
-           social_account_id: account.id,
-           platform: account.platform,
-           post_type: body.data.post_type,
-           product_ids: productIds,
-           collection_id: collectionId,
-           caption,
-           external_post_id: externalPostId,
-           external_post_url: externalPostUrl,
-           status: 'POSTED',
-         },
-       });
+      const post = await prisma.socialPost.create({
+        data: {
+          retailer_id: request.retailerId,
+          social_account_id: account.id,
+          platform: account.platform,
+          post_type: body.data.post_type,
+          product_ids: productIds,
+          collection_id: collectionId,
+          caption,
+          external_post_id: externalPostId,
+          external_post_url: externalPostUrl,
+          status: 'POSTED',
+        },
+      });
 
-       await prisma.auditLog.create({
-         data: {
-           actor_type: 'retailer',
-           actor_id: request.retailerId,
-           action: 'publish',
-           resource_type: 'SocialPost',
-           resource_id: post.id,
-           metadata: {
-             platform: account.platform,
-             post_type: body.data.post_type,
-             product_ids: productIds,
-             collection_id: collectionId,
-             external_post_id: externalPostId,
-           },
-           ip_address: request.ip,
-         },
-       });
+      await prisma.auditLog.create({
+        data: {
+          actor_type: 'retailer',
+          actor_id: request.retailerId,
+          action: 'publish',
+          resource_type: 'SocialPost',
+          resource_id: post.id,
+          metadata: {
+            platform: account.platform,
+            post_type: body.data.post_type,
+            product_ids: productIds,
+            collection_id: collectionId,
+            external_post_id: externalPostId,
+          },
+          ip_address: request.ip,
+        },
+      });
 
-       return {
-         data: {
-           id: post.id,
-           post_type: post.post_type,
-           external_post_url: externalPostUrl,
-           status: 'POSTED',
-         },
-       };
-     } catch (err) {
-       // Client-side validation errors (missing product/photo/collection, wrong
-       // payload) are the caller's fault — propagate as-is, no FAILED row.
-       if (err instanceof AppError) throw err;
+      return {
+        data: {
+          id: post.id,
+          post_type: post.post_type,
+          external_post_url: externalPostUrl,
+          status: 'POSTED',
+        },
+      };
+    } catch (err) {
+      // Client-side validation errors (missing product/photo/collection, wrong
+      // payload) are the caller's fault — propagate as-is, no FAILED row.
+      if (err instanceof AppError) throw err;
 
-       // Publish failures record a FAILED history row with a safe message.
-       const safeMessage =
-         err instanceof MetaApiError
-           ? err.message
-           : err instanceof Error
-             ? err.message
-             : 'Post failed';
-       await prisma.socialPost.create({
-         data: {
-           retailer_id: request.retailerId,
-           social_account_id: account.id,
-           platform: account.platform,
-           post_type: body.data.post_type,
-           product_ids: productIds,
-           collection_id: collectionId,
-           caption: caption || '—',
-           status: 'FAILED',
-           error_message: safeMessage,
-         },
-       });
-       throw new MetaApiError(safeMessage, 400, 'PUBLISH_FAILED');
-     }
+      // Publish failures record a FAILED history row with a safe message.
+      const safeMessage =
+        err instanceof MetaApiError
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Post failed';
+      await prisma.socialPost.create({
+        data: {
+          retailer_id: request.retailerId,
+          social_account_id: account.id,
+          platform: account.platform,
+          post_type: body.data.post_type,
+          product_ids: productIds,
+          collection_id: collectionId,
+          caption: caption || '—',
+          status: 'FAILED',
+          error_message: safeMessage,
+        },
+      });
+      throw new MetaApiError(safeMessage, 400, 'PUBLISH_FAILED');
+    }
   });
 
   // ─── GET /retailers/me/social/accounts/:id/posts — history ───────

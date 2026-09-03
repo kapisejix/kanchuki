@@ -79,7 +79,8 @@ export async function toPublicProductSummary(p: {
   location_notes: string | null;
   section: { name: string | null } | null;
   photos: { url: string; r2_key: string; metadata: unknown }[];
-  _count: { photos?: number; spin_frames?: number };  avg_rating?: number;
+  _count: { photos?: number; spin_frames?: number };
+  avg_rating?: number;
   rating_count?: number;
 }) {
   const photo = customerVisiblePhotos(p.photos)[0];

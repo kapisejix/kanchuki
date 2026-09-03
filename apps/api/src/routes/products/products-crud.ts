@@ -3,10 +3,7 @@ import { type Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
-import {
-  maybeEnqueueFullSync,
-  maybeEnqueueProductSync,
-} from '../../jobs/catalog-sync.js';
+import { maybeEnqueueFullSync, maybeEnqueueProductSync } from '../../jobs/catalog-sync.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import {
@@ -233,7 +230,9 @@ export const productsCrudRoutes: FastifyPluginAsync = async (server) => {
     const videosWithUrls = await Promise.all(
       (product.videos ?? []).map(async (video) => ({
         ...video,
-        public_url: (await photoUrlToDisplay({ url: video.public_url, r2_key: video.r2_key })) ?? video.public_url,
+        public_url:
+          (await photoUrlToDisplay({ url: video.public_url, r2_key: video.r2_key })) ??
+          video.public_url,
       })),
     );
 

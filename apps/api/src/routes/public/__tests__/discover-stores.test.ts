@@ -126,9 +126,7 @@ describe('GET /v1/public/discover-stores', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(mockRetailerFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ take: 5 }),
-    );
+    expect(mockRetailerFindMany).toHaveBeenCalledWith(expect.objectContaining({ take: 5 }));
   });
 
   it('rejects limit > 50', async () => {

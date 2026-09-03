@@ -89,7 +89,8 @@ vi.mock('@kanchuki/db', () => ({
   encryptSecret: mockEncryptSecret,
   decryptSecret: mockDecryptSecret,
   Prisma: {},
-}));vi.mock('@kanchuki/ai', () => ({
+}));
+vi.mock('@kanchuki/ai', () => ({
   getUploadPresignedUrl: mockGetUploadPresignedUrl,
   publicUrl: mockPublicUrl,
 }));
@@ -642,7 +643,6 @@ describe('POST /retailers/me/banner-upload-url', () => {
   };
 
   it('publishes a single product photo to a connected Page (owner)', async () => {
-
     mockSocialAccountFindFirst.mockResolvedValue(FACEBOOK_ACCOUNT);
     mockPublishPhotoPost.mockResolvedValue({ postId: 'fb_post_1' });
     mockSocialPostCreate.mockResolvedValue({

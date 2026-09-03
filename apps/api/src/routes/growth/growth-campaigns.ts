@@ -3,7 +3,12 @@ import { generateCollectionSlug } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
-import { notFound, validationError, featureUnavailable, forbidden } from '../../plugins/error-handler.js';
+import {
+  notFound,
+  validationError,
+  featureUnavailable,
+  forbidden,
+} from '../../plugins/error-handler.js';
 import { buildCollectionUrl } from '../../lib/store-urls.js';
 import {
   AudienceSpecSchema,
@@ -33,7 +38,10 @@ const AbVariantSchema = z
   .array()
   .min(2)
   .max(2)
-  .refine((variants) => variants.reduce((s, v) => s + v.send_pct, 0) === 100, 'A/B split must total 100%');
+  .refine(
+    (variants) => variants.reduce((s, v) => s + v.send_pct, 0) === 100,
+    'A/B split must total 100%',
+  );
 
 const CampaignBaseSchema = z.object({
   type: z.enum(CAMPAIGN_TYPES),
@@ -47,9 +55,13 @@ const CampaignBaseSchema = z.object({
   ab_variants: AbVariantSchema.optional(),
 });
 
-const CreateCampaignSchema = CampaignBaseSchema
-  .refine((c) => (c.type === 'AB_TEST' ? c.ab_variants != null : true), 'AB_TEST campaigns need two variants')
-  .refine((c) => (c.type === 'FESTIVAL' ? c.festival_id != null : true), 'FESTIVAL campaigns need a festival');
+const CreateCampaignSchema = CampaignBaseSchema.refine(
+  (c) => (c.type === 'AB_TEST' ? c.ab_variants != null : true),
+  'AB_TEST campaigns need two variants',
+).refine(
+  (c) => (c.type === 'FESTIVAL' ? c.festival_id != null : true),
+  'FESTIVAL campaigns need a festival',
+);
 
 // ─── Helpers ──────────────────────────────────────────────────────
 
@@ -60,9 +72,16 @@ async function requireGrowth(retailerId: string): Promise<void> {
 }
 
 function campaignWithStats(campaign: {
-  id: string; type: string; status: string; name: string;
-  festival_name: string | null; sent_count: number; opened_count: number;
-  schedule_at: Date | null; sent_at: Date | null; message_template: string;
+  id: string;
+  type: string;
+  status: string;
+  name: string;
+  festival_name: string | null;
+  sent_count: number;
+  opened_count: number;
+  schedule_at: Date | null;
+  sent_at: Date | null;
+  message_template: string;
   product_ids: string[];
   variant_a_collection_id?: string | null;
   variant_b_collection_id?: string | null;
@@ -102,27 +121,37 @@ async function storefrontLink(retailerId: string, publicSlug: string | null): Pr
 // so each variant gets its own storefront link without appearing in the
 // public ACTIVE listing.
 
- type AbVariant = {
-  label: string
-  message_template: string
-  send_pct: number
-  product_ids?: string[]
-  send_delay_min?: number
-}
+type AbVariant = {
+  label: string;
+  message_template: string;
+  send_pct: number;
+  product_ids?: string[];
+  send_delay_min?: number;
+};
 
 async function syncVariantCollections(
   retailerId: string,
   campaignId: string,
   campaignName: string,
   abVariants: AbVariant[] | null,
-  existing?: { variant_a_collection_id: string | null; variant_b_collection_id: string | null } | null,
+  existing?: {
+    variant_a_collection_id: string | null;
+    variant_b_collection_id: string | null;
+  } | null,
 ): Promise<{ variant_a_collection_id: string | null; variant_b_collection_id: string | null }> {
   // No A/B variants or variants without product sets → clear any existing variant collections.
-  if (!abVariants || abVariants.length !== 2 || !abVariants[0]!.product_ids?.length || !abVariants[1]!.product_ids?.length) {
+  if (
+    !abVariants ||
+    abVariants.length !== 2 ||
+    !abVariants[0]!.product_ids?.length ||
+    !abVariants[1]!.product_ids?.length
+  ) {
     // Archive any existing variant collections.
     for (const cid of [existing?.variant_a_collection_id, existing?.variant_b_collection_id]) {
       if (cid) {
-        await prisma.collection.update({ where: { id: cid }, data: { status: 'ARCHIVED' } }).catch(() => {});
+        await prisma.collection
+          .update({ where: { id: cid }, data: { status: 'ARCHIVED' } })
+          .catch(() => {});
       }
     }
     return { variant_a_collection_id: null, variant_b_collection_id: null };
@@ -149,7 +178,11 @@ async function syncVariantCollections(
         // Sync products: remove old, add new.
         await prisma.collectionProduct.deleteMany({ where: { collection_id: existingId } });
         await prisma.collectionProduct.createMany({
-          data: productIds.map((pid, i) => ({ collection_id: existingId, product_id: pid, sort_order: i })),
+          data: productIds.map((pid, i) => ({
+            collection_id: existingId,
+            product_id: pid,
+            sort_order: i,
+          })),
         });
         return existingId;
       }
@@ -182,7 +215,8 @@ async function syncVariantCollections(
 // ─── Routes ──────────────────────────────────────────────────────
 
 export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
-  const retailerGuard = async (request: { retailerId: string }) => requireGrowth(request.retailerId);
+  const retailerGuard = async (request: { retailerId: string }) =>
+    requireGrowth(request.retailerId);
 
   // ─── GET /growth/festivals ──────────────────────────────────────
   // Admin-seeded festival calendar (roadmap D). ?upcoming=true filters to
@@ -220,7 +254,16 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     const body = CreateCampaignSchema.safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
-    const { type, name, message_template, audience, product_ids, festival_id, schedule_at, ab_variants } = body.data;
+    const {
+      type,
+      name,
+      message_template,
+      audience,
+      product_ids,
+      festival_id,
+      schedule_at,
+      ab_variants,
+    } = body.data;
 
     let festival_name: string | null = null;
     if (festival_id) {
@@ -246,7 +289,9 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
 
     // Roadmap S — auto-generate HIDDEN variant collections for A/B campaigns.
     const variantIds = await syncVariantCollections(
-      retailerId, campaign.id, name,
+      retailerId,
+      campaign.id,
+      name,
       (ab_variants as unknown as AbVariant[] | null) ?? null,
     );
     if (variantIds.variant_a_collection_id || variantIds.variant_b_collection_id) {
@@ -286,7 +331,9 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       }),
     ]);
 
-    let variant_breakdown: { label: string; sent: number; opened: number; open_rate: number; winner: boolean | null }[] | null = null;
+    let variant_breakdown:
+      | { label: string; sent: number; opened: number; open_rate: number; winner: boolean | null }[]
+      | null = null;
     if (variantSent.length > 0) {
       const openedBy = new Map(variantOpened.map((r) => [r.variant_label, r._count._all]));
       variant_breakdown = variantSent
@@ -353,9 +400,13 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     });
 
     // Roadmap S — sync variant collections when A/B product sets change.
-    const abVariants = (data.ab_variants as unknown as AbVariant[] | null) ?? (existing.ab_variants as unknown as AbVariant[] | null);
+    const abVariants =
+      (data.ab_variants as unknown as AbVariant[] | null) ??
+      (existing.ab_variants as unknown as AbVariant[] | null);
     const variantIds = await syncVariantCollections(
-      retailerId, id, data.name ?? existing.name,
+      retailerId,
+      id,
+      data.name ?? existing.name,
       abVariants,
       existing,
     );
@@ -447,10 +498,12 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     // Variant at index 1 → variant_b_collection → ?variant=b
     const variantCollectionLinks: Record<string, string | null> = { a: null, b: null };
     if (campaign.variant_a_collection_id) {
-      variantCollectionLinks['a'] = `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_a_collection_id}?variant=a`;
+      variantCollectionLinks['a'] =
+        `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_a_collection_id}?variant=a`;
     }
     if (campaign.variant_b_collection_id) {
-      variantCollectionLinks['b'] = `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_b_collection_id}?variant=b`;
+      variantCollectionLinks['b'] =
+        `${process.env.WEB_URL ?? 'https://kanchuki.app'}/collections/${campaign.variant_b_collection_id}?variant=b`;
     }
 
     const canUseApi =
@@ -462,12 +515,24 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     // A/B split: assign each customer to a variant by cumulative percentage.
     // Variants carry an optional product set (collection A/B) and a stagger
     // (send_delay_min) so variant B can go out later than variant A.
-    const variants = (campaign.ab_variants as unknown as
-      | { label: string; message_template: string; send_pct: number; product_ids?: string[]; send_delay_min?: number }[]
-      | null) ?? null;
-    const variantFor = (index: number):
-      | { label: string; message_template: string; product_ids?: string[]; send_delay_min?: number }
-      | null => {
+    const variants =
+      (campaign.ab_variants as unknown as
+        | {
+            label: string;
+            message_template: string;
+            send_pct: number;
+            product_ids?: string[];
+            send_delay_min?: number;
+          }[]
+        | null) ?? null;
+    const variantFor = (
+      index: number,
+    ): {
+      label: string;
+      message_template: string;
+      product_ids?: string[];
+      send_delay_min?: number;
+    } | null => {
       if (!variants || variants.length !== 2) return null;
       const pct = (index % 100) + 1;
       return pct <= variants[0]!.send_pct ? variants[0]! : variants[1]!;
@@ -493,7 +558,9 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         variantProducts: variant?.product_ids ?? [],
         sendDelayMin: variant?.send_delay_min ?? 0,
         variantCollectionLink:
-          (variant?.label === (variants?.[0]?.label ?? '') ? variantCollectionLinks['a'] : variantCollectionLinks['b']) ?? null,
+          (variant?.label === (variants?.[0]?.label ?? '')
+            ? variantCollectionLinks['a']
+            : variantCollectionLinks['b']) ?? null,
       });
     }
 
@@ -527,7 +594,12 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     let apiFailed = 0;
 
     if (canUseApi) {
-      const { whatsapp_api_phone_number_id, whatsapp_api_access_token, whatsapp_api_template_name, whatsapp_api_template_lang } = retailer!;
+      const {
+        whatsapp_api_phone_number_id,
+        whatsapp_api_access_token,
+        whatsapp_api_template_name,
+        whatsapp_api_template_lang,
+      } = retailer!;
       const results = await Promise.allSettled(
         messages.map(async (m, i) => {
           const res = await fetch(
@@ -588,7 +660,11 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         api_failed: apiFailed,
         manual_links: canUseApi ? undefined : manualLinks,
         variants: variants
-          ? variants.map((v) => ({ label: v.label, send_pct: v.send_pct, product_ids: v.product_ids ?? [] }))
+          ? variants.map((v) => ({
+              label: v.label,
+              send_pct: v.send_pct,
+              product_ids: v.product_ids ?? [],
+            }))
           : undefined,
         variant_collection_links: variantCollectionLinks,
       },
@@ -602,7 +678,14 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
     await retailerGuard(request);
     const campaigns = await prisma.campaign.findMany({
       where: { retailer_id: retailerId },
-      select: { id: true, type: true, festival_name: true, sent_count: true, opened_count: true, status: true },
+      select: {
+        id: true,
+        type: true,
+        festival_name: true,
+        sent_count: true,
+        opened_count: true,
+        status: true,
+      },
     });
     const by_type: Record<string, { sent: number; opened: number; campaigns: number }> = {};
     const by_festival: Record<string, { sent: number; opened: number; campaigns: number }> = {};
@@ -666,7 +749,9 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       where: { retailer_id: retailerId, status: { in: ['SENT', 'OPENED'] } },
       select: { customer_id: true, opened_at: true },
     });
-    const customerIds = [...new Set(sentRows.map((r) => r.customer_id).filter(Boolean))] as string[];
+    const customerIds = [
+      ...new Set(sentRows.map((r) => r.customer_id).filter(Boolean)),
+    ] as string[];
     const customersForSegments = customerIds.length
       ? await prisma.customer.findMany({
           where: { id: { in: customerIds } },
@@ -699,7 +784,11 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
       }
     }
     const by_hour = hourCounts
-      .map((opens, hour) => ({ hour, opens, pct: openedTotal > 0 ? Number((opens / openedTotal).toFixed(4)) : 0 }))
+      .map((opens, hour) => ({
+        hour,
+        opens,
+        pct: openedTotal > 0 ? Number((opens / openedTotal).toFixed(4)) : 0,
+      }))
       .filter((h) => h.opens > 0)
       .sort((a, b) => a.hour - b.hour);
 
@@ -816,14 +905,21 @@ export const growthCampaignRoutes: FastifyPluginAsync = async (server) => {
         total_inactive: inactive.length,
         groups: [
           { label: 'VIP reactivation', customer_ids: vip.map((c) => c.id), count: vip.length },
-          { label: 'Regular reactivation', customer_ids: regular.map((c) => c.id), count: regular.length },
+          {
+            label: 'Regular reactivation',
+            customer_ids: regular.map((c) => c.id),
+            count: regular.length,
+          },
         ],
       },
     };
   });
 };
 
-export async function resolveAudienceCustomerIds(retailerId: string, spec: AudienceSpec): Promise<string[]> {
+export async function resolveAudienceCustomerIds(
+  retailerId: string,
+  spec: AudienceSpec,
+): Promise<string[]> {
   const where = buildAudienceWhere(spec, retailerId) as NonNullable<
     Parameters<typeof prisma.customer.findMany>[0]
   >['where'];

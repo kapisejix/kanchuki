@@ -37,33 +37,37 @@ export const retailersInvoicesRoutes: FastifyPluginAsync = async (server) => {
   });
 
   // ── Get presigned PDF URL for a specific invoice ────────────────
-  server.get('/me/invoices/:id/pdf', {
-    schema: {
-      description: 'Get presigned download URL for an invoice PDF',
-      tags: ['retailers', 'invoices'],
-      params: {
-        type: 'object',
-        properties: { id: { type: 'string' } },
-        required: ['id'],
+  server.get(
+    '/me/invoices/:id/pdf',
+    {
+      schema: {
+        description: 'Get presigned download URL for an invoice PDF',
+        tags: ['retailers', 'invoices'],
+        params: {
+          type: 'object',
+          properties: { id: { type: 'string' } },
+          required: ['id'],
+        },
       },
     },
-  }, async (request, reply) => {
-    // @ts-expectifice — auth decorator
-    const retailerId = (request as any).retailerId as string;
-    const { id } = request.params as { id: string };
+    async (request, reply) => {
+      // @ts-expectifice — auth decorator
+      const retailerId = (request as any).retailerId as string;
+      const { id } = request.params as { id: string };
 
-    const payment = await prisma.subscriptionPayment.findFirst({
-      where: { id, retailer_id: retailerId },
-      select: { invoice_r2_key: true },
-    });
+      const payment = await prisma.subscriptionPayment.findFirst({
+        where: { id, retailer_id: retailerId },
+        select: { invoice_r2_key: true },
+      });
 
-    if (!payment?.invoice_r2_key) {
-      return reply.code(404).send({ error: 'Invoice not found or PDF not yet generated' });
-    }
+      if (!payment?.invoice_r2_key) {
+        return reply.code(404).send({ error: 'Invoice not found or PDF not yet generated' });
+      }
 
-    // Short-lived presigned URL — the object is private and the key is a
-    // random UUID, so the link is the only way in and it expires in 5 min.
-    const url = await getDownloadPresignedUrl(payment.invoice_r2_key, 300);
-    return reply.send({ data: { url } });
-  });
+      // Short-lived presigned URL — the object is private and the key is a
+      // random UUID, so the link is the only way in and it expires in 5 min.
+      const url = await getDownloadPresignedUrl(payment.invoice_r2_key, 300);
+      return reply.send({ data: { url } });
+    },
+  );
 };

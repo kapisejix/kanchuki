@@ -31,8 +31,8 @@ function assertPurgeRole(): void {
   if (db === (prisma as unknown)) {
     throw new Error(
       '[purge-retailer-now] PURGE_DATABASE_URL is not set — cannot hard-delete. ' +
-      'The kanchuki_app role has no DELETE under SECURITY §19. ' +
-      'Set PURGE_DATABASE_URL to the kanchuki_purge-scoped connection string.',
+        'The kanchuki_app role has no DELETE under SECURITY §19. ' +
+        'Set PURGE_DATABASE_URL to the kanchuki_purge-scoped connection string.',
     );
   }
 }

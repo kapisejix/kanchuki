@@ -59,10 +59,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
 
       if (!res.ok) {
         const body = await res.text();
-        request.log.error(
-          { planKey, status: res.status, body },
-          'Razorpay plan creation failed',
-        );
+        request.log.error({ planKey, status: res.status, body }, 'Razorpay plan creation failed');
         continue;
       }
 

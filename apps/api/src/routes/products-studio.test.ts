@@ -228,7 +228,14 @@ describe('GET /studio-styles', () => {
   it('returns only PUBLISHED styles the plan allows, without prompt', async () => {
     mockRetailerFindUniqueOrThrow.mockResolvedValueOnce({ plan: 'STARTER' });
     mockStyleFindMany.mockResolvedValueOnce([
-      { slug: 'pastel_gradient', label: 'Pastel Gradient Lounge', description: 'd', tab: 'MODEL', audience: [], thumbnail_url: null },
+      {
+        slug: 'pastel_gradient',
+        label: 'Pastel Gradient Lounge',
+        description: 'd',
+        tab: 'MODEL',
+        audience: [],
+        thumbnail_url: null,
+      },
     ]);
     const app = await buildApp();
     const res = await app.inject({ method: 'GET', url: '/v1/products/studio-styles' });

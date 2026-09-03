@@ -47,9 +47,7 @@ const CATALOG_EVENT_FIELDS = new Set([
 ]);
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
 }
 
 function firstString(...values: unknown[]): string | undefined {
@@ -75,7 +73,10 @@ function availabilityToStatus(availability: string | undefined): string | null {
 }
 
 /** Verify the X-Hub-Signature-256 header against the raw body + app secret. */
-async function verifyHubSignature(rawBody: string, signature: string | undefined): Promise<boolean> {
+async function verifyHubSignature(
+  rawBody: string,
+  signature: string | undefined,
+): Promise<boolean> {
   if (!signature || !signature.startsWith('sha256=')) return false;
   const appSecret = (await getSecret('META_APP_SECRET'))?.trim();
   if (!appSecret) return false;
@@ -261,7 +262,10 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
                 product_id: productId,
                 triggered_by: 'webhook',
               }).catch((err: unknown) => {
-                request.log.warn({ err, field, productId }, 'Failed to enqueue webhook-triggered sync');
+                request.log.warn(
+                  { err, field, productId },
+                  'Failed to enqueue webhook-triggered sync',
+                );
               });
             }
             await recordEvent(retailerId ?? 'unknown', {
@@ -269,7 +273,8 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
               product_id: productId ?? null,
               meta_item_id: metaItemId ?? null,
               matched: false,
-              action: field.endsWith('_added') && productId && productRow ? 'sync_enqueued' : undefined,
+              action:
+                field.endsWith('_added') && productId && productRow ? 'sync_enqueued' : undefined,
             });
             continue;
           }
@@ -321,7 +326,10 @@ export const whatsappCatalogWebhookRoutes: FastifyPluginAsync = async (server) =
           }
 
           // E4: sync price/availability back into the local snapshot.
-          const snapshotUpdate: Record<string, unknown> = { status: 'SUCCESS', error_message: null };
+          const snapshotUpdate: Record<string, unknown> = {
+            status: 'SUCCESS',
+            error_message: null,
+          };
           if (typeof price === 'number') {
             snapshotUpdate.product_price_paise = price;
             await prisma.product.update({

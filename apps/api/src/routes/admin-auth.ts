@@ -47,7 +47,9 @@ export async function verifyAdminSession(token: string): Promise<boolean> {
     return true;
   } catch {
     const teamClaims = await verifyTeamToken(token);
-    return teamClaims !== null && (teamClaims.role === 'SUPER_ADMIN' || teamClaims.role === 'ADMIN');
+    return (
+      teamClaims !== null && (teamClaims.role === 'SUPER_ADMIN' || teamClaims.role === 'ADMIN')
+    );
   }
 }
 

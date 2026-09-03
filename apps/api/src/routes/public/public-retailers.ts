@@ -736,7 +736,12 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
 
       // Upsert the CustomerStoreVisit
       const existingVisit = await prisma.customerStoreVisit.findUnique({
-        where: { customer_account_id_retailer_id: { customer_account_id: customerId, retailer_id: retailer.id } },
+        where: {
+          customer_account_id_retailer_id: {
+            customer_account_id: customerId,
+            retailer_id: retailer.id,
+          },
+        },
       });
 
       if (existingVisit) {
@@ -809,10 +814,12 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         // Fire-and-forget: welcome + catalog link via WhatsApp
         // (Cloud-API retailers only; others see the lead in CRM)
         import('../../jobs/passport-welcome.js')
-          .then(({ dispatchWelcome }) => dispatchWelcome({
-            account_id: customerId,
-            retailer_id: retailer.id,
-          }))
+          .then(({ dispatchWelcome }) =>
+            dispatchWelcome({
+              account_id: customerId,
+              retailer_id: retailer.id,
+            }),
+          )
           .catch(() => {}); // non-critical — swallow
 
         return reply.status(201).send({ data: customer });
@@ -835,7 +842,8 @@ export const publicRetailersRoutes: FastifyPluginAsync = async (server) => {
         consent: z.literal(true, { message: 'Consent is required' }),
       })
       .safeParse(request.body);
-    if (!legacyBody.success) throw validationError(legacyBody.error.issues[0]?.message ?? 'Invalid');
+    if (!legacyBody.success)
+      throw validationError(legacyBody.error.issues[0]?.message ?? 'Invalid');
 
     const normalizedPhone = normalizeIndianPhone(legacyBody.data.phone);
     const phone_hash = createHash('sha256').update(normalizedPhone).digest('hex');

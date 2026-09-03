@@ -316,7 +316,11 @@ describe('POST /admin/commission/expenses', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().data).toMatchObject({ id: 'exp_new', amount_inr: 5_000 });
     expect(mockExpenseCreate).toHaveBeenCalledWith({
-      data: expect.objectContaining({ period: '2026-08', category: 'Travel', notes: 'Client visit — Delhi' }),
+      data: expect.objectContaining({
+        period: '2026-08',
+        category: 'Travel',
+        notes: 'Client visit — Delhi',
+      }),
     });
     expect(mockAuditLogCreate).toHaveBeenCalledWith({
       data: expect.objectContaining({

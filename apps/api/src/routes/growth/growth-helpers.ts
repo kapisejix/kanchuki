@@ -1,8 +1,4 @@
-import type {
-  Customer,
-  Product,
-  Promotion,
-} from '@kanchuki/db';
+import type { Customer, Product, Promotion } from '@kanchuki/db';
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 
@@ -11,7 +7,15 @@ import { z } from 'zod';
 // (buildAudienceWhere) or a pure predicate (matchesAudience) — the latter
 // keeps the "who is in this audience" logic unit-testable without a DB.
 
-const LEAD_SOURCES = ['MANUAL', 'QR_SCAN', 'STORE_SCAN', 'REFERRAL', 'CAMPAIGN', 'WHATSAPP_LINK', 'DIRECT_WEB'] as const;
+const LEAD_SOURCES = [
+  'MANUAL',
+  'QR_SCAN',
+  'STORE_SCAN',
+  'REFERRAL',
+  'CAMPAIGN',
+  'WHATSAPP_LINK',
+  'DIRECT_WEB',
+] as const;
 
 export const AudienceSpecSchema = z.object({
   /** Send to every consented customer (ignores other filters). */
@@ -56,14 +60,24 @@ export function matchesAudience(customer: CustomerLike, spec: AudienceSpec): boo
   if (spec.all) return customer.consent_given;
   if (spec.customer_ids?.length && !spec.customer_ids.includes(customer.id)) return false;
 
-  if (spec.colors?.length && !spec.colors.some((c) => customer.pref_colors.includes(c))) return false;
-  if (spec.styles?.length && !spec.styles.some((s) => customer.pref_styles.includes(s))) return false;
-  if (spec.fabrics?.length && !spec.fabrics.some((f) => customer.pref_fabrics.includes(f))) return false;
+  if (spec.colors?.length && !spec.colors.some((c) => customer.pref_colors.includes(c)))
+    return false;
+  if (spec.styles?.length && !spec.styles.some((s) => customer.pref_styles.includes(s)))
+    return false;
+  if (spec.fabrics?.length && !spec.fabrics.some((f) => customer.pref_fabrics.includes(f)))
+    return false;
 
-  if (spec.min_total_spent_paise != null && (customer.total_spent ?? 0) < spec.min_total_spent_paise) {
+  if (
+    spec.min_total_spent_paise != null &&
+    (customer.total_spent ?? 0) < spec.min_total_spent_paise
+  ) {
     return false;
   }
-  if (spec.max_budget_paise != null && customer.budget_max != null && customer.budget_max > spec.max_budget_paise) {
+  if (
+    spec.max_budget_paise != null &&
+    customer.budget_max != null &&
+    customer.budget_max > spec.max_budget_paise
+  ) {
     return false;
   }
   if (spec.sources?.length && !spec.sources.includes(customer.source)) return false;
@@ -73,14 +87,18 @@ export function matchesAudience(customer: CustomerLike, spec: AudienceSpec): boo
 }
 
 /** Prisma where-clause for the audience spec (used by campaign send). */
-export function buildAudienceWhere(spec: AudienceSpec, retailerId: string): Record<string, unknown> {
+export function buildAudienceWhere(
+  spec: AudienceSpec,
+  retailerId: string,
+): Record<string, unknown> {
   const where: Record<string, unknown> = { retailer_id: retailerId, deleted_at: null };
   if (spec.all) where['consent_given'] = true;
   if (spec.customer_ids?.length) where['id'] = { in: spec.customer_ids };
   if (spec.colors?.length) where['pref_colors'] = { hasSome: spec.colors };
   if (spec.styles?.length) where['pref_styles'] = { hasSome: spec.styles };
   if (spec.fabrics?.length) where['pref_fabrics'] = { hasSome: spec.fabrics };
-  if (spec.min_total_spent_paise != null) where['total_spent'] = { gte: spec.min_total_spent_paise };
+  if (spec.min_total_spent_paise != null)
+    where['total_spent'] = { gte: spec.min_total_spent_paise };
   if (spec.max_budget_paise != null) where['budget_max'] = { lte: spec.max_budget_paise };
   if (spec.sources?.length) where['source'] = { in: spec.sources };
   return where;
@@ -119,7 +137,14 @@ export function generateReferralCode(prefix = 'KAN'): string {
 
 export type PromotionLike = Pick<
   Promotion,
-  'discount_type' | 'discount_value' | 'min_order_paise' | 'product_ids' | 'starts_at' | 'ends_at' | 'is_active' | 'times_used'
+  | 'discount_type'
+  | 'discount_value'
+  | 'min_order_paise'
+  | 'product_ids'
+  | 'starts_at'
+  | 'ends_at'
+  | 'is_active'
+  | 'times_used'
 >;
 
 /** Is this promo usable right now for the given order (subtotal + product ids)? */
@@ -133,7 +158,8 @@ export function isPromotionEligible(
   if (promo.starts_at && promo.starts_at > now) return false;
   if (promo.ends_at && promo.ends_at < now) return false;
   if (promo.min_order_paise != null && subtotalPaise < promo.min_order_paise) return false;
-  if (promo.product_ids.length > 0 && !promo.product_ids.some((id) => productIds.includes(id))) return false;
+  if (promo.product_ids.length > 0 && !promo.product_ids.some((id) => productIds.includes(id)))
+    return false;
   return true;
 }
 
@@ -151,26 +177,26 @@ export function applyPromotionDiscount(promo: PromotionLike, subtotalPaise: numb
 // zero interaction at all since upload.
 
 export interface InventoryAlert {
-  kind: 'DEAD_STOCK' | 'HIGH_VELOCITY' | 'TOP_PERFORMER' | 'UNLISTED'
-  product_id: string
-  product_name: string | null
-  sku: string | null
-  days_since_interaction: number | null
-  views_30d: number
-  enquiries_30d: number
-  sales_30d: number
-  message: string
+  kind: 'DEAD_STOCK' | 'HIGH_VELOCITY' | 'TOP_PERFORMER' | 'UNLISTED';
+  product_id: string;
+  product_name: string | null;
+  sku: string | null;
+  days_since_interaction: number | null;
+  views_30d: number;
+  enquiries_30d: number;
+  sales_30d: number;
+  message: string;
 }
 
 type ProductLike = Pick<Product, 'id' | 'name' | 'sku' | 'created_at'>;
 interface InteractionCounts {
-  views_30d: number
-  enquiries_30d: number
-  last_interaction_at: Date | null
+  views_30d: number;
+  enquiries_30d: number;
+  last_interaction_at: Date | null;
 }
 interface SaleCount {
-  sales_30d: number
-  last_sale_at: Date | null
+  sales_30d: number;
+  last_sale_at: Date | null;
 }
 
 /**
@@ -201,7 +227,12 @@ export function computeInventoryAlerts(
 
     // Dead stock: no interaction for 90+ days (or never interacted and older
     // than 90 days).
-    if ((daysSinceInteraction != null && daysSinceInteraction >= 90) || (daysSinceInteraction == null && ix != null && now.getTime() - product.created_at.getTime() > ninetyDays)) {
+    if (
+      (daysSinceInteraction != null && daysSinceInteraction >= 90) ||
+      (daysSinceInteraction == null &&
+        ix != null &&
+        now.getTime() - product.created_at.getTime() > ninetyDays)
+    ) {
       alerts.push({
         kind: 'DEAD_STOCK',
         product_id: product.id,
@@ -298,7 +329,10 @@ function normalCdf(z: number): number {
   // Abramowitz & Stegun 7.1.26 — accurate to ~7.5e-8, plenty for p-values.
   const t = 1 / (1 + 0.2316419 * Math.abs(z));
   const d = 0.3989422804014327 * Math.exp((-z * z) / 2);
-  let p = d * t * (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
+  let p =
+    d *
+    t *
+    (0.31938153 + t * (-0.356563782 + t * (1.781477937 + t * (-1.821255978 + t * 1.330274429))));
   p = 1 - p;
   return z > 0 ? p : 1 - p;
 }
@@ -317,8 +351,11 @@ export function abTestSignificance(a: AbVariantResult, b: AbVariantResult): AbSi
 
   const reliable = a.sent >= AB_MIN_SAMPLE_PER_VARIANT && b.sent >= AB_MIN_SAMPLE_PER_VARIANT;
   const winner =
-    reliable && a.open_rate !== b.open_rate ? (a.open_rate > b.open_rate ? a.label : b.label) : null;
+    reliable && a.open_rate !== b.open_rate
+      ? a.open_rate > b.open_rate
+        ? a.label
+        : b.label
+      : null;
 
   return { p_value: Number(pValue.toFixed(4)), winner, reliable };
 }
-

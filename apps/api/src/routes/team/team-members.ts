@@ -107,8 +107,7 @@ export const teamMembersRoutes: FastifyPluginAsync = async (server) => {
       body.data.referral_code ??
       (body.data.role === 'MARKETING_AGENT' ? generateReferralCode() : undefined);
 
-    const rawPassword =
-      body.data.password || `Kanchuki-${randomBytes(6).toString('hex')}!`;
+    const rawPassword = body.data.password || `Kanchuki-${randomBytes(6).toString('hex')}!`;
 
     const member = await prisma.teamMember.create({
       data: {

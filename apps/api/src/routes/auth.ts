@@ -152,7 +152,10 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
       const { error } = await supabase.auth.admin.updateUserById(existing.id, { password });
       if (error) {
         // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
-        console.error(`[auth] ensureSupabaseSession: updateUserById failed for ${e164}:`, error.message);
+        console.error(
+          `[auth] ensureSupabaseSession: updateUserById failed for ${e164}:`,
+          error.message,
+        );
         throw sessionIssuanceError();
       }
     } else {
@@ -164,7 +167,10 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
       if (error) {
         if (attempt === 0 && /already/i.test(error.message ?? '')) continue;
         // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
-        console.error(`[auth] ensureSupabaseSession: createUser failed for ${e164}:`, error.message);
+        console.error(
+          `[auth] ensureSupabaseSession: createUser failed for ${e164}:`,
+          error.message,
+        );
         throw sessionIssuanceError();
       }
     }
@@ -174,7 +180,10 @@ async function ensureSupabaseSession(phone: string): Promise<{ user: User; sessi
   const { data, error } = await supabase.auth.signInWithPassword({ phone: e164, password });
   if (error || !data.session || !data.user) {
     // biome-ignore lint/suspicious/noConsoleLog: operator-facing diagnostics
-    console.error(`[auth] ensureSupabaseSession: signInWithPassword failed for ${e164}:`, error?.message);
+    console.error(
+      `[auth] ensureSupabaseSession: signInWithPassword failed for ${e164}:`,
+      error?.message,
+    );
     throw sessionIssuanceError();
   }
   return { user: data.user, session: data.session };
@@ -274,7 +283,9 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
     } else if (otp) {
       const result = await verifyStoredOtp(phone, otp, purpose);
       // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
-      console.log(`[auth] /otp/verify phone=${phone} storedOtpResult=${result} msg91Configured=${isMsg91OtpConfigured()}`);
+      console.log(
+        `[auth] /otp/verify phone=${phone} storedOtpResult=${result} msg91Configured=${isMsg91OtpConfigured()}`,
+      );
       if (result === 'verified') {
         msg91Verified = true;
       } else if (result === 'invalid' || result === 'locked') {
@@ -299,7 +310,9 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
       // ensureSupabaseSession: find-or-create the auth user with a rotated
       // random password, then phone+password sign-in to obtain a session).
       // biome-ignore lint/suspicious/noConsoleLog: operator-facing OTP diagnostics
-      console.log(`[auth] /otp/verify phone=${phone} msg91Verified=true → minting Supabase session`);
+      console.log(
+        `[auth] /otp/verify phone=${phone} msg91Verified=true → minting Supabase session`,
+      );
       const created = await ensureSupabaseSession(phone);
       user = created.user;
       session = created.session;

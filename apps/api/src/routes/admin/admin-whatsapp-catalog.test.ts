@@ -285,7 +285,15 @@ describe('GET /admin/whatsapp-catalog/retailers/:id/items', () => {
         whatsapp_catalog_item_id: 'meta_1',
         hsn_code_snapshot: '5407',
         last_synced_at: new Date('2026-08-18T10:00:00Z'),
-        product: { id: 'p1', name: 'Red Silk Saree', sku: 'SKU-1', price_min: 150000, status: 'AVAILABLE', category: 'Saree', deleted_at: null },
+        product: {
+          id: 'p1',
+          name: 'Red Silk Saree',
+          sku: 'SKU-1',
+          price_min: 150000,
+          status: 'AVAILABLE',
+          category: 'Saree',
+          deleted_at: null,
+        },
       },
     ]);
 
@@ -325,7 +333,9 @@ describe('POST /admin/whatsapp-catalog/retailers/:id/sync', () => {
       triggered_by: 'admin',
     });
     expect(mockAuditLogCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ action: 'sync', resource_id: 'r1' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ action: 'sync', resource_id: 'r1' }),
+      }),
     );
     await app.close();
   });

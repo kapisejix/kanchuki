@@ -11,11 +11,7 @@ import {
   type CampaignIntent,
   type SuggestedProduct,
 } from '@kanchuki/ai';
-import {
-  buildAudienceWhere,
-  fillTemplate,
-  type AudienceSpec,
-} from './growth-helpers.js';
+import { buildAudienceWhere, fillTemplate, type AudienceSpec } from './growth-helpers.js';
 import { resolveAudienceCustomerIds } from './growth-campaigns.js';
 
 // ─── Request / Response schemas ──────────────────────────────────────
@@ -69,7 +65,9 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
     try {
       intent = await parseCampaignIntent(prompt);
     } catch (err) {
-      throw validationError(`Failed to understand request: ${err instanceof Error ? err.message : 'unknown error'}`);
+      throw validationError(
+        `Failed to understand request: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
     }
 
     // Step 2: Query matching products
@@ -92,14 +90,14 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
     }
     if (criteria.styles?.length) {
       productWhere['OR'] = [
-        ...(productWhere['OR'] as Record<string, unknown>[] ?? []),
+        ...((productWhere['OR'] as Record<string, unknown>[]) ?? []),
         { styles: { hasSome: criteria.styles } },
         { search_tags: { hasSome: criteria.styles } },
       ];
     }
     if (criteria.fabrics?.length) {
       productWhere['OR'] = [
-        ...(productWhere['OR'] as Record<string, unknown>[] ?? []),
+        ...((productWhere['OR'] as Record<string, unknown>[]) ?? []),
         { fabrics: { hasSome: criteria.fabrics } },
         { fabric_estimate: { in: criteria.fabrics, mode: 'insensitive' } },
       ];

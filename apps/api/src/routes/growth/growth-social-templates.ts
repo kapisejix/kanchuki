@@ -10,7 +10,11 @@ import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { hasFeature } from '../../lib/features.js';
-import { isStudioShootConfigured, getStudioJobStatus, resolveStudioStyleJob } from '../../lib/studio-shoot.js';
+import {
+  isStudioShootConfigured,
+  getStudioJobStatus,
+  resolveStudioStyleJob,
+} from '../../lib/studio-shoot.js';
 import { addStudioShootJob } from '../../jobs/index.js';
 import { createId } from '@paralleldrive/cuid2';
 import {
@@ -186,7 +190,8 @@ export const growthSocialTemplateRoutes: FastifyPluginAsync = async (server) => 
     });
     if (!photo) throw validationError('Product has no photos. Upload a photo first.');
 
-    if (!template.background_style) throw validationError('No background style set on this template');
+    if (!template.background_style)
+      throw validationError('No background style set on this template');
     const styleJob = await resolveStudioStyleJob(template.background_style);
 
     const jobId = createId();

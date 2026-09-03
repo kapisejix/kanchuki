@@ -212,7 +212,9 @@ export async function handleStudioShoot(data: StudioShootJobData): Promise<void>
     });
     prisma.studioStyle
       .update({ where: { id: style_id }, data: { usage_count: { increment: 1 } } })
-      .catch((err) => console.error(`[studio-shoot] usage_count bump failed for ${style_id}:`, err));
+      .catch((err) =>
+        console.error(`[studio-shoot] usage_count bump failed for ${style_id}:`, err),
+      );
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error(`[studio-shoot] job ${job_id} failed:`, err);

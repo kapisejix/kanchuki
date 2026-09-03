@@ -78,10 +78,14 @@ export async function addCompressR2ImagesJob(data?: CompressR2ImagesJobData): Pr
 }
 
 export async function addMeasureR2StorageJob(): Promise<void> {
-  await getMaintenanceQueue().add('measure-r2-storage', {}, {
-    removeOnComplete: { count: 10 },
-    removeOnFail: { count: 10 },
-  });
+  await getMaintenanceQueue().add(
+    'measure-r2-storage',
+    {},
+    {
+      removeOnComplete: { count: 10 },
+      removeOnFail: { count: 10 },
+    },
+  );
 }
 
 export async function addKenBurnsVideoJob(data: KenBurnsVideoJobData): Promise<void> {

@@ -176,7 +176,8 @@ export async function listInstagramAccounts(accessToken: string): Promise<MetaIn
     const res = await fetch(
       `${GRAPH_BASE}/me/accounts?${new URLSearchParams({
         access_token: accessToken,
-        fields: 'id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}',
+        fields:
+          'id,name,access_token,instagram_business_account{id,username,name,profile_picture_url}',
       })}`,
     );
     const body = (await res.json()) as {
@@ -217,7 +218,9 @@ export async function listInstagramAccounts(accessToken: string): Promise<MetaIn
 
 /** List the Pages the user administers (from /me/accounts with a user token). */
 export async function listPages(accessToken: string): Promise<MetaPage[]> {
-  const res = await fetch(`${GRAPH_BASE}/me/accounts?${new URLSearchParams({ access_token: accessToken })}`);
+  const res = await fetch(
+    `${GRAPH_BASE}/me/accounts?${new URLSearchParams({ access_token: accessToken })}`,
+  );
   const body = (await res.json()) as { data?: MetaPage[] };
   if (!res.ok || !Array.isArray(body.data)) {
     throw new MetaApiError('Failed to list Facebook Pages', 400, 'PAGES_LIST_FAILED');

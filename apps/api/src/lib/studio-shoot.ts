@@ -28,11 +28,22 @@
 // never holds an HTTP request open across inference (same pattern as the
 // V-Tone admin tool / spin-frame extraction).
 import { Redis } from 'ioredis';
-import { compressImageToTarget, publicUrl, readCappedBuffer, ssrfSafeFetch, uploadBuffer } from '@kanchuki/ai';
+import {
+  compressImageToTarget,
+  publicUrl,
+  readCappedBuffer,
+  ssrfSafeFetch,
+  uploadBuffer,
+} from '@kanchuki/ai';
 import { demographicForCategory, type Demographic } from '@kanchuki/shared';
 import { getSecret, prisma } from '@kanchuki/db';
 import { AppError } from '../plugins/error-handler.js';
-import { generateFluxKontext, generateFluxProImage, generateFluxSchnellImage, resolveFalKey } from './fal-client.js';
+import {
+  generateFluxKontext,
+  generateFluxProImage,
+  generateFluxSchnellImage,
+  resolveFalKey,
+} from './fal-client.js';
 import { generateGoogleImagen, isImagenConfigured, resolveGeminiKey } from './imagen-client.js';
 
 const BFL_BASE = 'https://api.bfl.ai/v1';
@@ -99,7 +110,10 @@ export interface StudioGenerationResult {
 
 /** How long to poll for a single generation before giving up. */
 const POLL_TIMEOUT_MS = 180_000;
-const POLL_INTERVALS_MS = [1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 3_000, 3_000, 5_000, 5_000, 10_000, 10_000, 15_000, 15_000];
+const POLL_INTERVALS_MS = [
+  1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 1_000, 3_000, 3_000, 5_000, 5_000,
+  10_000, 10_000, 15_000, 15_000,
+];
 
 /**
  * The person to render for each product demographic. Fed into every
@@ -170,7 +184,9 @@ export async function generateStudioImage(
   const product = opts.product;
   const colorSpec = [
     product?.primary_color ? `exact primary color is ${product.primary_color}` : '',
-    product?.secondary_colors?.length ? `secondary colors are ${product.secondary_colors.join(', ')}` : '',
+    product?.secondary_colors?.length
+      ? `secondary colors are ${product.secondary_colors.join(', ')}`
+      : '',
     product?.fabric ? `fabric: ${product.fabric}` : '',
     product?.pattern ? `pattern: ${product.pattern}` : '',
     product?.embellishments?.length ? `embellishments: ${product.embellishments.join(', ')}` : '',
@@ -227,7 +243,8 @@ export async function generateStudioImage(
   if ((engine === 'imagen_3' || engine === 'imagen_3_fast') && geminiKey) {
     try {
       const res = await generateGoogleImagen(promptText, {
-        model: engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
+        model:
+          engine === 'imagen_3_fast' ? 'imagen-3.0-fast-generate-001' : 'imagen-3.0-generate-002',
         onProgress,
       });
       return { status: 'ready', base64Data: res.base64Data };
@@ -294,73 +311,89 @@ export async function generateStudioImage(
     }
   } catch (err) {
     if (err instanceof AppError) throw err;
-    throw new AppError('STUDIO_SHOOT_FAILED', 'AI Studio Shoots could not be started. Please try again.', 503);
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      'AI Studio Shoots could not be started. Please try again.',
+      503,
+    );
   }
 
-const pollingUrl = submit.polling_url;
-   if (!pollingUrl) {
-     throw new AppError('STUDIO_SHOOT_FAILED', 'AI Studio Shoots returned no task. Please retry.', 503);
-   }
+  const pollingUrl = submit.polling_url;
+  if (!pollingUrl) {
+    throw new AppError(
+      'STUDIO_SHOOT_FAILED',
+      'AI Studio Shoots returned no task. Please retry.',
+      503,
+    );
+  }
 
-   const startTime = Date.now();
-   const deadline = Date.now() + POLL_TIMEOUT_MS;
-   let pollIntervalIndex = 0;
-   while (Date.now() < deadline) {
-     let poll: { status?: string; result?: { sample?: string }; error?: string };
-     try {
-       const res = await fetch(pollingUrl, {
-         headers: { accept: 'application/json', 'x-key': bflAuthKey },
-         signal: AbortSignal.timeout(10_000),
-       });
-       poll = (await res.json()) as { status?: string; result?: { sample?: string }; error?: string };
-     } catch {
-       // Transient network hiccup — keep polling until the deadline.
-       await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
-       pollIntervalIndex++;
-       
-       // Update progress during wait
-       if (onProgress) {
-         const elapsed = Date.now() - startTime;
-         const progress = Math.min(95, Math.floor((elapsed / POLL_TIMEOUT_MS) * 100));
-         const etaMs = Math.max(0, POLL_TIMEOUT_MS - elapsed);
-         onProgress({ progress, etaMs });
-       }
-       
-       continue;
-     }
+  const startTime = Date.now();
+  const deadline = Date.now() + POLL_TIMEOUT_MS;
+  let pollIntervalIndex = 0;
+  while (Date.now() < deadline) {
+    let poll: { status?: string; result?: { sample?: string }; error?: string };
+    try {
+      const res = await fetch(pollingUrl, {
+        headers: { accept: 'application/json', 'x-key': bflAuthKey },
+        signal: AbortSignal.timeout(10_000),
+      });
+      poll = (await res.json()) as {
+        status?: string;
+        result?: { sample?: string };
+        error?: string;
+      };
+    } catch {
+      // Transient network hiccup — keep polling until the deadline.
+      await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
+      pollIntervalIndex++;
 
-     if (poll.status === 'Ready' && poll.result?.sample) {
-       if (onProgress) {
-         onProgress({ progress: 100, etaMs: 0 });
-       }
-       return { status: 'ready', sampleUrl: poll.result.sample };
-     }
-     if (poll.status === 'Error' || poll.status === 'Failed' || poll.status === 'Content Moderated') {
-       if (onProgress) {
-         onProgress({ progress: 0, etaMs: 0 });
-       }
-       return {
-         status: 'failed',
-         error: poll.error ?? 'The studio shoot could not be generated. Please try again.',
-       };
-     }
-     
-     // Update progress during polling
-     if (onProgress) {
-       const elapsed = Date.now() - startTime;
-       const progress = Math.min(90, Math.floor((elapsed / POLL_TIMEOUT_MS) * 100)); // Cap at 90% until complete
-       const etaMs = Math.max(0, POLL_TIMEOUT_MS - elapsed);
-       onProgress({ progress, etaMs });
-     }
-     
-     await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
-     pollIntervalIndex++;
-   }
+      // Update progress during wait
+      if (onProgress) {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(95, Math.floor((elapsed / POLL_TIMEOUT_MS) * 100));
+        const etaMs = Math.max(0, POLL_TIMEOUT_MS - elapsed);
+        onProgress({ progress, etaMs });
+      }
 
-   if (onProgress) {
-     onProgress({ progress: 0, etaMs: 0 });
-   }
-   return { status: 'failed', error: 'The studio shoot timed out. Please try again.' };
+      continue;
+    }
+
+    if (poll.status === 'Ready' && poll.result?.sample) {
+      if (onProgress) {
+        onProgress({ progress: 100, etaMs: 0 });
+      }
+      return { status: 'ready', sampleUrl: poll.result.sample };
+    }
+    if (
+      poll.status === 'Error' ||
+      poll.status === 'Failed' ||
+      poll.status === 'Content Moderated'
+    ) {
+      if (onProgress) {
+        onProgress({ progress: 0, etaMs: 0 });
+      }
+      return {
+        status: 'failed',
+        error: poll.error ?? 'The studio shoot could not be generated. Please try again.',
+      };
+    }
+
+    // Update progress during polling
+    if (onProgress) {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(90, Math.floor((elapsed / POLL_TIMEOUT_MS) * 100)); // Cap at 90% until complete
+      const etaMs = Math.max(0, POLL_TIMEOUT_MS - elapsed);
+      onProgress({ progress, etaMs });
+    }
+
+    await sleep(POLL_INTERVALS_MS[Math.min(pollIntervalIndex, POLL_INTERVALS_MS.length - 1)]!);
+    pollIntervalIndex++;
+  }
+
+  if (onProgress) {
+    onProgress({ progress: 0, etaMs: 0 });
+  }
+  return { status: 'failed', error: 'The studio shoot timed out. Please try again.' };
 }
 
 function sleep(ms: number): Promise<void> {
@@ -407,15 +440,15 @@ export async function downloadCompressAndUpload(
 // would retry forever on a down connection and hang the hot path).
 
 export interface StudioJobStatus {
-   status: 'processing' | 'ready' | 'failed';
-   photo_id?: string;
-   url?: string;
-   error?: string;
-   /** Progress percentage (0-100) */
-   progress?: number;
-   /** Estimated time until completion in milliseconds */
-   etaMs?: number;
- }
+  status: 'processing' | 'ready' | 'failed';
+  photo_id?: string;
+  url?: string;
+  error?: string;
+  /** Progress percentage (0-100) */
+  progress?: number;
+  /** Estimated time until completion in milliseconds */
+  etaMs?: number;
+}
 
 const STATUS_KEY = (jobId: string) => `studio:job:${jobId}`;
 const STATUS_TTL_SEC = 60 * 30; // 30 min — far longer than a generation

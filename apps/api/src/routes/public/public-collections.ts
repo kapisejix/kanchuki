@@ -37,123 +37,129 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
       );
 
       // Redis-cached with single-flight stampede protection (see lib/public-cache.ts).
-      return withPublicCache(request.url, () => withRetry(async () => {
-        // HIDDEN collections (Roadmap S — A/B variant links) are accessible
-        // via direct slug link but excluded from storefront listings.
-        const collection = await prisma.collection.findFirst({
-          where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null },
-          select: {
-            id: true,
-            title: true,
-            description: true,
-            expires_at: true,
-            retailer: {
+      return withPublicCache(request.url, () =>
+        withRetry(
+          async () => {
+            // HIDDEN collections (Roadmap S — A/B variant links) are accessible
+            // via direct slug link but excluded from storefront listings.
+            const collection = await prisma.collection.findFirst({
+              where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null },
               select: {
                 id: true,
-                shop_name: true,
-                city: true,
-                phone: true,
-                logo_url: true,
-                banner_url: true,
-                is_suspended: true,
-                public_slug: true,
-                latitude: true,
-                longitude: true,
-              },
-            },
-          },
-        });
-
-        if (!collection) throw notFound('Collection');
-
-        // F-015: If the retailer is suspended, show "temporarily unavailable"
-        // instead of 404 to avoid leaking suspension as a customer-visible error.
-        if (collection.retailer.is_suspended) {
-          return {
-            data: {
-              suspended: true,
-              retailer: {
-                shop_name: collection.retailer.shop_name,
-                public_slug: collection.retailer.public_slug,
-              },
-              title: collection.title,
-              description:
-                'This store is temporarily unavailable via this link. Please contact the store directly for assistance.',
-              expires_at: null,
-              products: [],
-              total: 0,
-              page: 1,
-              page_size: 0,
-              filters: { categories: [], colors: [] },
-            },
-          };
-        }
-
-        // Check expiry
-        if (collection.expires_at && collection.expires_at < new Date()) {
-          // Mark expired in background (don't await)
-          void prisma.collection
-            .update({
-              where: { id: collection.id },
-              data: { status: 'EXPIRED' },
-            })
-            .catch(() => undefined);
-
-          throw notFound('Collection');
-        }
-
-        const productWhere = buildProductFilterWhere(query);
-        // No `page` param (e.g. the wishlist page, which needs every product to
-        // match saved ids regardless of which page they'd fall on) => no skip/take.
-        const take = query.pageSize ?? (query.page ? 12 : undefined);
-        const skip = query.page && take ? (query.page - 1) * take : undefined;
-
-        // Show ALL non-deleted products — SOLD/RESERVED get visual badges on the frontend.
-        const [rows, total, facetRows] = await Promise.all([
-          prisma.collectionProduct.findMany({
-            where: { collection_id: collection.id, product: productWhere },
-            orderBy: { sort_order: 'asc' },
-            skip,
-            take,
-            include: {
-              product: {
-                include: {
-                  photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
-                  section: { select: { name: true } },
-                  _count: { select: { photos: true } },
+                title: true,
+                description: true,
+                expires_at: true,
+                retailer: {
+                  select: {
+                    id: true,
+                    shop_name: true,
+                    city: true,
+                    phone: true,
+                    logo_url: true,
+                    banner_url: true,
+                    is_suspended: true,
+                    public_slug: true,
+                    latitude: true,
+                    longitude: true,
+                  },
                 },
               },
-            },
-          }),
-          prisma.collectionProduct.count({
-            where: { collection_id: collection.id, product: productWhere },
-          }),
-          prisma.product.findMany({
-            where: {
-              deleted_at: null,
-              collection_items: { some: { collection_id: collection.id } },
-            },
-            select: { category: true, primary_color: true },
-          }),
-        ]);
+            });
 
-        const publicProducts = await Promise.all(
-          rows.map((cp) => toPublicProductSummary(cp.product)),
-        );
+            if (!collection) throw notFound('Collection');
 
-        return {
-          data: {
-            retailer: collection.retailer,
-            title: collection.title,
-            description: collection.description,
-            expires_at: collection.expires_at?.toISOString() ?? null,
-            products: publicProducts,
-            total,
-            page: query.page ?? 1,
-            page_size: take ?? total,          filters: buildFacets(facetRows),
-        },
-        };
-      }, { label: 'collection-listing' }));
+            // F-015: If the retailer is suspended, show "temporarily unavailable"
+            // instead of 404 to avoid leaking suspension as a customer-visible error.
+            if (collection.retailer.is_suspended) {
+              return {
+                data: {
+                  suspended: true,
+                  retailer: {
+                    shop_name: collection.retailer.shop_name,
+                    public_slug: collection.retailer.public_slug,
+                  },
+                  title: collection.title,
+                  description:
+                    'This store is temporarily unavailable via this link. Please contact the store directly for assistance.',
+                  expires_at: null,
+                  products: [],
+                  total: 0,
+                  page: 1,
+                  page_size: 0,
+                  filters: { categories: [], colors: [] },
+                },
+              };
+            }
+
+            // Check expiry
+            if (collection.expires_at && collection.expires_at < new Date()) {
+              // Mark expired in background (don't await)
+              void prisma.collection
+                .update({
+                  where: { id: collection.id },
+                  data: { status: 'EXPIRED' },
+                })
+                .catch(() => undefined);
+
+              throw notFound('Collection');
+            }
+
+            const productWhere = buildProductFilterWhere(query);
+            // No `page` param (e.g. the wishlist page, which needs every product to
+            // match saved ids regardless of which page they'd fall on) => no skip/take.
+            const take = query.pageSize ?? (query.page ? 12 : undefined);
+            const skip = query.page && take ? (query.page - 1) * take : undefined;
+
+            // Show ALL non-deleted products — SOLD/RESERVED get visual badges on the frontend.
+            const [rows, total, facetRows] = await Promise.all([
+              prisma.collectionProduct.findMany({
+                where: { collection_id: collection.id, product: productWhere },
+                orderBy: { sort_order: 'asc' },
+                skip,
+                take,
+                include: {
+                  product: {
+                    include: {
+                      photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
+                      section: { select: { name: true } },
+                      _count: { select: { photos: true } },
+                    },
+                  },
+                },
+              }),
+              prisma.collectionProduct.count({
+                where: { collection_id: collection.id, product: productWhere },
+              }),
+              prisma.product.findMany({
+                where: {
+                  deleted_at: null,
+                  collection_items: { some: { collection_id: collection.id } },
+                },
+                select: { category: true, primary_color: true },
+              }),
+            ]);
+
+            const publicProducts = await Promise.all(
+              rows.map((cp) => toPublicProductSummary(cp.product)),
+            );
+
+            return {
+              data: {
+                retailer: collection.retailer,
+                title: collection.title,
+                description: collection.description,
+                expires_at: collection.expires_at?.toISOString() ?? null,
+                products: publicProducts,
+                total,
+                page: query.page ?? 1,
+                page_size: take ?? total,
+                filters: buildFacets(facetRows),
+              },
+            };
+          },
+          { label: 'collection-listing' },
+        ),
+      );
     },
   );
 
@@ -227,7 +233,12 @@ export const publicCollectionsRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const collection = await prisma.collection.findFirst({
-      where: { slug, status: { in: ['ACTIVE', 'HIDDEN'] }, deleted_at: null, retailer: { is_suspended: false } },
+      where: {
+        slug,
+        status: { in: ['ACTIVE', 'HIDDEN'] },
+        deleted_at: null,
+        retailer: { is_suspended: false },
+      },
       select: {
         id: true,
         retailer_id: true,

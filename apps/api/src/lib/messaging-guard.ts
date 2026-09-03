@@ -13,10 +13,7 @@ const FREQUENCY_WINDOW_DAYS = 7;
  * Check whether a message can be sent to a shopper from a specific store.
  * Returns false if: no consent, store is muted, or frequency cap exceeded.
  */
-export async function canMessage(
-  accountId: string,
-  retailerId: string,
-): Promise<boolean> {
+export async function canMessage(accountId: string, retailerId: string): Promise<boolean> {
   // 1. Check consent + mute status
   const visit = await prisma.customerStoreVisit.findUnique({
     where: {
@@ -55,10 +52,7 @@ export async function canMessage(
  * Record that a message was sent (for frequency cap tracking).
  * Call this AFTER a successful send.
  */
-export async function recordMessageSent(
-  accountId: string,
-  retailerId: string,
-): Promise<void> {
+export async function recordMessageSent(accountId: string, retailerId: string): Promise<void> {
   await prisma.consentEvent.create({
     data: {
       customer_account_id: accountId,

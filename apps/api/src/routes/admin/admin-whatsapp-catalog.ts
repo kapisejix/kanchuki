@@ -241,7 +241,10 @@ export const adminWhatsAppCatalogRoutes: FastifyPluginAsync = async (server) => 
         },
       });
 
-      request.log.info({ retailerId: request.params.retailerId, jobId }, 'Admin triggered WhatsApp catalog sync');
+      request.log.info(
+        { retailerId: request.params.retailerId, jobId },
+        'Admin triggered WhatsApp catalog sync',
+      );
       return { data: { job_id: jobId, status: 'queued' } };
     },
   );

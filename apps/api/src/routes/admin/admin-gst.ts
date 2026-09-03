@@ -98,11 +98,29 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const monthlyData = await prisma.subscriptionPayment.groupBy({
       by: ['created_at'],
       where,
-      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true, cgst_amount: true, sgst_amount: true, igst_amount: true },
+      _sum: {
+        amount_excluding_gst: true,
+        gst_amount: true,
+        amount_inr: true,
+        cgst_amount: true,
+        sgst_amount: true,
+        igst_amount: true,
+      },
       _count: true,
     });
 
-    const months: Record<number, { taxable: number; gst: number; cgst: number; sgst: number; igst: number; sales: number; orders: number }> = {};
+    const months: Record<
+      number,
+      {
+        taxable: number;
+        gst: number;
+        cgst: number;
+        sgst: number;
+        igst: number;
+        sales: number;
+        orders: number;
+      }
+    > = {};
     for (let m = 0; m < 12; m++) {
       months[m] = { taxable: 0, gst: 0, cgst: 0, sgst: 0, igst: 0, sales: 0, orders: 0 };
     }
@@ -167,7 +185,14 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const byRetailer = await prisma.subscriptionPayment.groupBy({
       by: ['retailer_id'],
       where,
-      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true, cgst_amount: true, sgst_amount: true, igst_amount: true },
+      _sum: {
+        amount_excluding_gst: true,
+        gst_amount: true,
+        amount_inr: true,
+        cgst_amount: true,
+        sgst_amount: true,
+        igst_amount: true,
+      },
       _count: true,
       orderBy: { _sum: { gst_amount: 'desc' } },
       take: limit,
@@ -240,7 +265,11 @@ export const adminGstRoutes: FastifyPluginAsync = async (server) => {
     const [payments, total] = await Promise.all([
       prisma.subscriptionPayment.findMany({
         where,
-        include: { subscription: { include: { retailer: { select: { id: true, shop_name: true, gstin: true } } } } },
+        include: {
+          subscription: {
+            include: { retailer: { select: { id: true, shop_name: true, gstin: true } } },
+          },
+        },
         orderBy: { created_at: 'desc' },
         skip,
         take: limit,
