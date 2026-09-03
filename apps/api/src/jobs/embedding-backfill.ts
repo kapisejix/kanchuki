@@ -41,7 +41,5 @@ export async function handleEmbeddingBackfill(): Promise<{ enqueued: number }> {
     cursor = batch[batch.length - 1]?.id;
   }
 
-  console.log(`[embedding-backfill] Enqueued ${totalEnqueued} embedding jobs`);
-
   return { enqueued: totalEnqueued };
 }

@@ -1,3 +1,4 @@
+import { prisma } from '@kanchuki/db';
 /**
  * Task 23: StoreAffinity discovery endpoint.
  *
@@ -8,7 +9,6 @@
 import Fastify from 'fastify';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { errorHandler } from '../../../plugins/error-handler.js';
-import { prisma } from '@kanchuki/db';
 import { discoverStoresRoutes } from '../discover-stores.js';
 
 // ─── Mocks ────────────────────────────────────────────────────────

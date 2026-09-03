@@ -33,9 +33,9 @@ function clearSession(): void {
   window.sessionStorage.removeItem(REFRESH_KEY);
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const doFetch = async (token: string | null) =>
-    fetch(`${API_URL}${path}`, {
+    fetch(url, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -151,7 +151,7 @@ export default function SocialConnectPage() {
     setError(null);
     try {
       const res = await apiFetch<{ data: { auth_url: string; state: string } }>(
-        '/v1/retailers/me/social/connect',
+        `${API_URL}/v1/retailers/me/social/connect`,
       );
       // Keep the state in sessionStorage so the callback page can verify it
       // matches what the API expects (defense in depth — the API re-checks).

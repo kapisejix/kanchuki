@@ -25,21 +25,6 @@ const COMPLEMENTARY_COLORS: Record<string, string[]> = {
   purple: ['gold', 'pink', 'yellow'],
 };
 
-function isComplementaryColor(a: string, b: string): boolean {
-  const al = a.toLowerCase();
-  const bl = b.toLowerCase();
-  return COMPLEMENTARY_COLORS[al]?.includes(bl) ?? COMPLEMENTARY_COLORS[bl]?.includes(al) ?? false;
-}
-
-function matchToColor(
-  product: { primary_color: string | null; secondary_colors: string[] },
-  targetColor: string,
-): boolean {
-  const tc = targetColor.toLowerCase();
-  if (product.primary_color?.toLowerCase().includes(tc)) return true;
-  return product.secondary_colors.some((c) => c.toLowerCase().includes(tc));
-}
-
 interface ProductCandidate {
   id: string;
   name: string | null;
@@ -167,7 +152,7 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
         if (queryLower.includes(st)) subtypeHints.push(st);
       }
 
-      const colorHints = Object.keys(COMPLEMENTARY_COLORS).filter((c) => queryLower.includes(c));
+      const _colorHints = Object.keys(COMPLEMENTARY_COLORS).filter((c) => queryLower.includes(c));
       const fabricHints = [
         'cotton',
         'silk',
@@ -236,7 +221,7 @@ export const publicStylistRoutes: FastifyPluginAsync = async (server) => {
       }));
 
       // Call Claude for recommendations
-      const anthropicKey = process.env['ANTHROPIC_API_KEY'];
+      const anthropicKey = process.env.ANTHROPIC_API_KEY;
       if (!anthropicKey) {
         // Fallback: return top products by relevance without LLM.
         // Already filtered by category/subtype/color/fabric above.
@@ -323,7 +308,7 @@ RULES:
             stylist_note: `Stylist picked ${recommendations.length} items from ${catalogForLLM.length} products in ${retailer.shop_name}'s catalog.`,
           },
         });
-      } catch (err) {
+      } catch (_err) {
         // Fallback on Claude failure.
         // Already filtered by category/subtype/color/fabric above.
         return reply.status(200).send({

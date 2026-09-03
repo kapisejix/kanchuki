@@ -2,19 +2,19 @@
 // domain modules in ./public/. Split via scripts/check-route-size.sh guard.
 import type { FastifyPluginAsync } from 'fastify';
 import {
+  discoverStoresRoutes,
+  passportRoutes,
   publicCatalogPaymentRoutes,
   publicCollectionsRoutes,
+  publicDesignRoutes,
   publicMiscRoutes,
   publicNearMeRoutes,
   publicProductsRoutes,
   publicRetailersRoutes,
   publicReviewsRoutes,
-  publicStylistRoutes,
-  publicDesignRoutes,
-  publicStoresRoutes,
-  passportRoutes,
   publicSearchRoutes,
-  discoverStoresRoutes,
+  publicStoresRoutes,
+  publicStylistRoutes,
 } from './public/index.js';
 
 export const publicRoutes: FastifyPluginAsync = async (server) => {

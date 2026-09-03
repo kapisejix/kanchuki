@@ -253,7 +253,7 @@ export const adminRetailersDetailRoutes: FastifyPluginAsync = async (server) => 
         limit: z.coerce.number().int().min(1).max(100).default(30),
       })
       .safeParse(request.query);
-    const { cursor, limit } = query.success ? query.data : { cursor: undefined, limit: 30 };
+    const { limit } = query.success ? query.data : { limit: 30 };
 
     const customer = await prisma.customer.findFirst({
       where: { id: customerId, retailer_id: id, deleted_at: null },

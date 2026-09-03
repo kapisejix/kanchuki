@@ -1,18 +1,18 @@
+import {
+  type CampaignIntent,
+  type SuggestedProduct,
+  generateCampaignMessage,
+  parseCampaignIntent,
+} from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
+import { recordAiUsage } from '../../lib/ai-usage.js';
 import { hasFeature } from '../../lib/features.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import { featureUnavailable, notFound, validationError } from '../../plugins/error-handler.js';
-import { recordAiUsage } from '../../lib/ai-usage.js';
-import {
-  parseCampaignIntent,
-  generateCampaignMessage,
-  type CampaignIntent,
-  type SuggestedProduct,
-} from '@kanchuki/ai';
-import { buildAudienceWhere, fillTemplate, type AudienceSpec } from './growth-helpers.js';
 import { resolveAudienceCustomerIds } from './growth-campaigns.js';
+import { type AudienceSpec, buildAudienceWhere, fillTemplate } from './growth-helpers.js';
 
 // ─── Request / Response schemas ──────────────────────────────────────
 
@@ -79,31 +79,31 @@ export const growthAiCampaignRoutes: FastifyPluginAsync = async (server) => {
 
     const criteria = intent.product_criteria;
     if (criteria.category) {
-      productWhere['category'] = { equals: criteria.category, mode: 'insensitive' } as never;
+      productWhere.category = { equals: criteria.category, mode: 'insensitive' } as never;
     }
     if (criteria.colors?.length) {
-      productWhere['OR'] = [
+      productWhere.OR = [
         { primary_color: { in: criteria.colors, mode: 'insensitive' } },
         { secondary_colors: { hasSome: criteria.colors } },
         { search_tags: { hasSome: criteria.colors } },
       ];
     }
     if (criteria.styles?.length) {
-      productWhere['OR'] = [
-        ...((productWhere['OR'] as Record<string, unknown>[]) ?? []),
+      productWhere.OR = [
+        ...((productWhere.OR as Record<string, unknown>[]) ?? []),
         { styles: { hasSome: criteria.styles } },
         { search_tags: { hasSome: criteria.styles } },
       ];
     }
     if (criteria.fabrics?.length) {
-      productWhere['OR'] = [
-        ...((productWhere['OR'] as Record<string, unknown>[]) ?? []),
+      productWhere.OR = [
+        ...((productWhere.OR as Record<string, unknown>[]) ?? []),
         { fabrics: { hasSome: criteria.fabrics } },
         { fabric_estimate: { in: criteria.fabrics, mode: 'insensitive' } },
       ];
     }
     if (criteria.max_price_paise || criteria.min_price_paise) {
-      productWhere['price_min'] = {
+      productWhere.price_min = {
         ...(criteria.max_price_paise ? { lte: criteria.max_price_paise } : {}),
         ...(criteria.min_price_paise ? { gte: criteria.min_price_paise } : {}),
       };

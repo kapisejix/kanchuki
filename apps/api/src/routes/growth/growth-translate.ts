@@ -1,4 +1,4 @@
-import { runVisionAsk, type VisionAskRequest } from '@kanchuki/ai';
+import { type VisionAskRequest, runVisionAsk } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';

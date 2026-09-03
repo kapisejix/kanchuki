@@ -2,8 +2,8 @@
 import { prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { forbidden } from '../../../plugins/error-handler.js';
 import { hardDeleteRetailer } from '../../../jobs/purge-retailer-now.js';
+import { forbidden } from '../../../plugins/error-handler.js';
 import { adminAuthPreHandler } from '../../admin-auth.js';
 
 export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {

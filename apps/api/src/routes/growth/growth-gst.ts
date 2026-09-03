@@ -140,8 +140,8 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const result = Object.entries(months).map(([m, data]) => ({
-      month: parseInt(m) + 1,
-      month_name: new Date(year, parseInt(m)).toLocaleString('en-IN', { month: 'short' }),
+      month: Number.parseInt(m) + 1,
+      month_name: new Date(year, Number.parseInt(m)).toLocaleString('en-IN', { month: 'short' }),
       taxable: data.taxable,
       gst: data.gst,
       cgst: data.cgst,

@@ -7,7 +7,7 @@
 // DELETE threw an FK violation and the whole transaction rolled back — the
 // admin "delete retailer" action silently did nothing (and R2 objects were
 // never cleaned, since that happens after the DB commit).
-import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { mockDeleteObject, mockExecuteRaw, mockQueryRaw, mockRetailerFindUnique } = vi.hoisted(
   () => ({
@@ -23,6 +23,10 @@ vi.mock('@kanchuki/ai', () => ({
 }));
 
 vi.mock('@kanchuki/db', () => ({
+  // purge-retailer-now.ts imports `prisma` too, only for the
+  // `db === prisma` reference guard in assertPurgeRole(). getPurgePrisma()
+  // below returns a distinct object, so any sentinel makes that check pass.
+  prisma: { __sentinel: 'primary' },
   getPurgePrisma: () => ({
     $executeRawUnsafe: mockExecuteRaw,
     $queryRawUnsafe: mockQueryRaw,

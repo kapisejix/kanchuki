@@ -147,7 +147,6 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
         } catch {
           // Redis down in local test
         }
-        console.log(`[team] Development OTP for ${member.phone}: ${code}`);
       }
 
       return {
@@ -277,7 +276,7 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
       where: { email: body.data.email.toLowerCase() },
     });
 
-    if (member && member.is_active) {
+    if (member?.is_active) {
       const resetCode = randomInt(100_000, 1_000_000).toString();
       try {
         const redis = getSessionRedis();

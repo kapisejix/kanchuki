@@ -1,5 +1,5 @@
-import type { Customer, Product, Promotion } from '@kanchuki/db';
 import { randomBytes } from 'node:crypto';
+import type { Customer, Product, Promotion } from '@kanchuki/db';
 import { z } from 'zod';
 
 // ─── Audience spec (stored on Campaign.audience_json) ─────────────
@@ -92,15 +92,14 @@ export function buildAudienceWhere(
   retailerId: string,
 ): Record<string, unknown> {
   const where: Record<string, unknown> = { retailer_id: retailerId, deleted_at: null };
-  if (spec.all) where['consent_given'] = true;
-  if (spec.customer_ids?.length) where['id'] = { in: spec.customer_ids };
-  if (spec.colors?.length) where['pref_colors'] = { hasSome: spec.colors };
-  if (spec.styles?.length) where['pref_styles'] = { hasSome: spec.styles };
-  if (spec.fabrics?.length) where['pref_fabrics'] = { hasSome: spec.fabrics };
-  if (spec.min_total_spent_paise != null)
-    where['total_spent'] = { gte: spec.min_total_spent_paise };
-  if (spec.max_budget_paise != null) where['budget_max'] = { lte: spec.max_budget_paise };
-  if (spec.sources?.length) where['source'] = { in: spec.sources };
+  if (spec.all) where.consent_given = true;
+  if (spec.customer_ids?.length) where.id = { in: spec.customer_ids };
+  if (spec.colors?.length) where.pref_colors = { hasSome: spec.colors };
+  if (spec.styles?.length) where.pref_styles = { hasSome: spec.styles };
+  if (spec.fabrics?.length) where.pref_fabrics = { hasSome: spec.fabrics };
+  if (spec.min_total_spent_paise != null) where.total_spent = { gte: spec.min_total_spent_paise };
+  if (spec.max_budget_paise != null) where.budget_max = { lte: spec.max_budget_paise };
+  if (spec.sources?.length) where.source = { in: spec.sources };
   return where;
 }
 

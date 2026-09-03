@@ -3,11 +3,11 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import ffmpegPath from 'ffmpeg-static';
 import { downloadBuffer, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import { createId } from '@paralleldrive/cuid2';
+import ffmpegPath from 'ffmpeg-static';
 
 const execFileAsync = promisify(execFile);
 

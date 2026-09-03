@@ -60,11 +60,11 @@ export const publicNearMeRoutes: FastifyPluginAsync = async (server) => {
 
     if (!query.success) throw validationError('latitude and longitude are required');
 
-    const lat = parseFloat(query.data.latitude);
-    const lng = parseFloat(query.data.longitude);
-    const radiusKm = query.data.radius ? parseFloat(query.data.radius) : 10;
+    const lat = Number.parseFloat(query.data.latitude);
+    const lng = Number.parseFloat(query.data.longitude);
+    const radiusKm = query.data.radius ? Number.parseFloat(query.data.radius) : 10;
 
-    if (isNaN(lat) || isNaN(lng) || isNaN(radiusKm)) {
+    if (Number.isNaN(lat) || Number.isNaN(lng) || Number.isNaN(radiusKm)) {
       throw validationError('latitude, longitude, and radius must be valid numbers');
     }
 

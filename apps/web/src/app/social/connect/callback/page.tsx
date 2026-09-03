@@ -32,9 +32,9 @@ function loadSession(): boolean {
   return false;
 }
 
-async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function apiFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const doFetch = async (token: string | null) =>
-    fetch(`${API_URL}${path}`, {
+    fetch(url, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -103,7 +103,7 @@ function CallbackInner() {
     void (async () => {
       try {
         const res = await apiFetch<{ data: { pages: PageOption[]; state: string } }>(
-          '/v1/retailers/me/social/callback',
+          `${API_URL}/v1/retailers/me/social/callback`,
           { method: 'POST', body: JSON.stringify({ code, state }) },
         );
         setPages(res.data.pages);
@@ -118,7 +118,7 @@ function CallbackInner() {
     setError(null);
     try {
       const res = await apiFetch<{ data: { id: string; account_name: string } }>(
-        '/v1/retailers/me/social/accounts',
+        `${API_URL}/v1/retailers/me/social/accounts`,
         { method: 'POST', body: JSON.stringify({ platform_account_id: pageId, state }) },
       );
       setDone(`Connected to ${res.data.account_name}`);

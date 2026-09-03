@@ -2,11 +2,11 @@
 // Customers identify by phone (same pattern as QR contact gate / enquiry).
 // No retailer auth required — phone + product_id is the identity.
 
+import { createHash } from 'node:crypto';
 import { prisma } from '@kanchuki/db';
-import type { FastifyPluginAsync } from 'fastify';
-import { createHash } from 'crypto';
-import { z } from 'zod';
 import { normalizeIndianPhone } from '@kanchuki/shared';
+import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
 import { notFound } from '../../plugins/error-handler.js';
 
 // ─── Schemas ─────────────────────────────────────────────────────
@@ -169,23 +169,20 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
         },
       });
 
-      let review;
-      if (existing) {
-        review = await prisma.productReview.update({
-          where: { id: existing.id },
-          data: { rating: body.rating, comment: body.comment },
-        });
-      } else {
-        review = await prisma.productReview.create({
-          data: {
-            product_id: body.product_id,
-            customer_id: customer.id,
-            retailer_id: product.retailer_id,
-            rating: body.rating,
-            comment: body.comment,
-          },
-        });
-      }
+      const review = existing
+        ? await prisma.productReview.update({
+            where: { id: existing.id },
+            data: { rating: body.rating, comment: body.comment },
+          })
+        : await prisma.productReview.create({
+            data: {
+              product_id: body.product_id,
+              customer_id: customer.id,
+              retailer_id: product.retailer_id,
+              rating: body.rating,
+              comment: body.comment,
+            },
+          });
 
       // Recompute denormalized rating
       await recomputeProductRating(body.product_id);
@@ -250,22 +247,19 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
         },
       });
 
-      let review;
-      if (existing) {
-        review = await prisma.storeReview.update({
-          where: { id: existing.id },
-          data: { rating: body.rating, comment: body.comment },
-        });
-      } else {
-        review = await prisma.storeReview.create({
-          data: {
-            retailer_id: body.retailer_id,
-            customer_id: customer.id,
-            rating: body.rating,
-            comment: body.comment,
-          },
-        });
-      }
+      const review = existing
+        ? await prisma.storeReview.update({
+            where: { id: existing.id },
+            data: { rating: body.rating, comment: body.comment },
+          })
+        : await prisma.storeReview.create({
+            data: {
+              retailer_id: body.retailer_id,
+              customer_id: customer.id,
+              rating: body.rating,
+              comment: body.comment,
+            },
+          });
 
       // Recompute denormalized rating
       await recomputeStoreRating(body.retailer_id);

@@ -27,6 +27,12 @@ MAX_LINES=800
 
 ROUTES_DIR="apps/api/src/routes"
 
+# ─── Grandfathered files ───────────────────────────────────────────────────
+# The five files that once exceeded MAX_LINES (billing.ts, growth-campaigns.ts,
+# passport.ts, public-retailers.ts, retailers-social.ts) were split into domain
+# modules on 2026-09-03 — the allowlist is now empty. If a route file creeps
+# past the limit again, split it into domain modules — never re-add a ceiling.
+
 echo -e "${YELLOW}📏 Route-size guard: checking ${ROUTES_DIR}/**/*.ts stays under ${MAX_LINES} lines...${NC}"
 
 # shellcheck disable=SC2044  # find output is safe here (paths contain no spaces on CI)

@@ -99,8 +99,7 @@ export function buildCommissionCsv(params: {
     periods.length === 1
       ? fmtPeriod(periods[0]!)
       : `${fmtPeriod(periods[periods.length - 1]!)} - ${fmtPeriod(periods[0]!)} (${periods.length} months)`;
-  const generated =
-    new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ') + ' IST';
+  const generated = `${new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ')} IST`;
 
   const lines: string[] = [];
   lines.push('Kanchuki Commission Expenditure Export');
@@ -125,7 +124,7 @@ export function buildCommissionCsv(params: {
   }
   lines.push('');
   lines.push(`Total Spent (INR),${fmtRs(spent)}`);
-  return lines.join('\r\n') + '\r\n';
+  return `${lines.join('\r\n')}\r\n`;
 }
 
 export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {

@@ -514,7 +514,7 @@ export const adminPlansRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /admin/usage ──────────────────────────────────────────
   // Platform-wide usage stats including try-on and revenue.
   server.get('/usage', async () => {
-    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    const _monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
     const [activeSubscriptions, trialCount, totalRetailers] = await Promise.all([
       prisma.subscription.findMany({

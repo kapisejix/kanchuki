@@ -34,10 +34,10 @@ import { createId } from '@paralleldrive/cuid2';
 import { recordBflStudioUsage } from '../lib/ai-usage.js';
 import { incrementUsage } from '../lib/quota.js';
 import {
+  type StudioEngine,
   downloadCompressAndUpload,
   generateStudioImage,
   setStudioJobStatus,
-  type StudioEngine,
 } from '../lib/studio-shoot.js';
 
 /** Same fallback as routes/products/products-helpers.ts photoUrlToDisplay —

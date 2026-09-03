@@ -4,7 +4,7 @@
 // plan-filtered endpoint (products-studio.ts GET /studio-styles).
 import { createHash } from 'node:crypto';
 import { deleteObject, getUploadPresignedUrl, publicUrl } from '@kanchuki/ai';
-import { Prisma, prisma } from '@kanchuki/db';
+import { type Prisma, prisma } from '@kanchuki/db';
 import { R2_PATHS } from '@kanchuki/shared';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';

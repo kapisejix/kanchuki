@@ -524,7 +524,7 @@ export default function OnboardingScreen() {
             <View className="mt-4 bg-lavender-50 border border-lavender-200 rounded-2xl p-4">
               <Text className="text-[11px] text-heliotrope-600 leading-relaxed font-medium mb-3">
                 By creating retailer profile, I provide consent to be contacted by Customer,
-                Kanchuki's sales agents and customer support via WhatsApp, SMS, Phone Calls
+                Kanchuki&apos;s sales agents and customer support via WhatsApp, SMS, Phone Calls
                 and email.
               </Text>
               <Text className="text-[11px] text-heliotrope-600 leading-relaxed font-medium mb-3">

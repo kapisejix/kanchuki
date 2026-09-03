@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { abTestSignificance, AB_MIN_SAMPLE_PER_VARIANT } from './growth-helpers.js';
+import { AB_MIN_SAMPLE_PER_VARIANT, abTestSignificance } from './growth-helpers.js';
 
 describe('abTestSignificance (roadmap S)', () => {
   it('reports unreliable + no winner when samples are too small', () => {

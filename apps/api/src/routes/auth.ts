@@ -362,7 +362,7 @@ export const authRoutes: FastifyPluginAsync = async (server) => {
         },
       });
 
-      if (staffMember && staffMember.retailer) {
+      if (staffMember?.retailer) {
         // Link the Supabase auth user to this staff member if not already linked
         if (!staffMember.auth_user_id) {
           await prisma.staff.update({

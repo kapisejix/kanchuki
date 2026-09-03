@@ -2,8 +2,8 @@
 import { type Prisma, prisma, vaultDelete } from '@kanchuki/db';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
-import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
 import { maybeEnqueueFullSync, maybeEnqueueProductSync } from '../../jobs/catalog-sync.js';
+import { addEmbeddingJob, addTaggingJob } from '../../jobs/index.js';
 import { NEW_ARRIVAL_DAYS, isNewArrival } from '../../lib/product-flags.js';
 import { checkQuota, incrementUsage } from '../../lib/quota.js';
 import {

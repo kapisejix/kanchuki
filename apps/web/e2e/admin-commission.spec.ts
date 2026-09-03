@@ -11,6 +11,18 @@ import { test, expect, type Page } from '@playwright/test'
 
 const ADMIN_KEY = 'e2e-admin-test-key'
 
+// ── Time control ────────────────────────────────────────────────────
+// The commission page defaults its month picker / expenditure header /
+// add-form period to the CURRENT calendar month (new Date()), while this
+// suite's fixtures are pinned to August 2026. Freeze the page clock to
+// mid-August 2026 so the default month is always 2026-08 regardless of when
+// CI runs — without this the suite only passes in August (it drifted the
+// day the calendar rolled into September). Mid-month UTC stays within
+// August in every timezone the browser may run in.
+test.beforeEach(async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-08-15T06:00:00.000Z') })
+})
+
 // ── Fixtures (mirror the API's wire shapes: paise, ISO dates, YYYY-MM) ──
 
 const FAKE_EXPENSES = [

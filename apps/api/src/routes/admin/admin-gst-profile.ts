@@ -1,5 +1,5 @@
-import type { FastifyPluginAsync } from 'fastify';
 import { prisma } from '@kanchuki/db';
+import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { adminAuthPreHandler } from '../admin-auth.js';
 
