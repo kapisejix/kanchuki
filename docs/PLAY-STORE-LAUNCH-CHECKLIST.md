@@ -30,9 +30,9 @@ the target-API timeline into one actionable checklist.
 
 | # | Item | Status |
 |---|---|---|
-| 1.1 | App name, short & full descriptions, primary category (**Business**) | Yours |
-| 1.2 | Icon + feature graphic (Loom brand assets exist in `scripts/generate-brand-assets.mjs`) | Mostly done |
-| 1.3 | Phone screenshots (min 2; 8 recommended — product catalog, scan-to-sell, customer list, settings) | Yours |
+| 1.1 | App name, short & full descriptions, primary category (**Business**) | Copy drafted — paste-ready in `PLAY-STORE-LISTING.md`; enter into Console |
+| 1.2 | Icon (in `apps/mobile/app.json`) done; feature graphic 1024×500 still needs a design pass — `generate-brand-assets.mjs` only builds web icons, not the feature graphic | Icon done, graphic Yours |
+| 1.3 | Phone screenshots (min 2; 8 recommended) — shot list in `PLAY-STORE-LISTING.md`; capture from next EAS build on a seeded demo store | Yours |
 | 1.4 | Contact details + `support@kanchuki.app` | Yours |
 | 1.5 | Content rating questionnaire (see §4) | Yours |
 
