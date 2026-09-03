@@ -18,7 +18,7 @@ export const NOTICE_VERSIONS = {
       'You can download all your data or delete your account from My Profile.',
       'We never sell your data to third parties.',
     ],
-    full_notice_url: 'https://kanchuki.com/privacy/passport',
+    full_notice_url: 'https://kanchuki.app/privacy',
   },
 } as const;
 
