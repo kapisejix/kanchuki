@@ -6,7 +6,7 @@ import {
   type Demographic,
 } from '@kanchuki/shared';
 import { motion } from 'framer-motion';
-import { ArrowRight, ImageOff, Loader2, Shirt, Upload, Wand2 } from 'lucide-react';
+import { ArrowRight, ImageOff, Loader2, Shirt, Upload, Video, Wand2 } from 'lucide-react';
 import Image from 'next/image';
 import { useEffect, useRef, useState } from 'react';
 
@@ -53,6 +53,110 @@ const DEMOGRAPHIC_LABELS: Record<string, string> = {
   kids_girl: 'Kids girl',
   kids_boy: 'Kids boy',
 };
+
+// F-034 AI Promo Video bench — Fal image→video models (per-clip ₹ bands from
+// PRO-REQUIREMENTS §30; the exact band sits in fal-video.ts's VIDEO_MODELS).
+const VIDEO_MODELS = [
+  { value: 'seedance', label: 'Seedance (ByteDance) — ₹13–34' },
+  { value: 'wan', label: 'WAN 2.x (Alibaba) — ₹15–34' },
+  { value: 'kling_std', label: 'Kling 1.6 std — ₹21–30' },
+  { value: 'kling_pro', label: 'Kling Pro / 2.x — ₹42–85' },
+  { value: 'luma', label: 'Luma Ray 2 — ₹40–170' },
+] as const;
+
+type PromoModel = (typeof VIDEO_MODELS)[number]['value'];
+type PromoAspect = '9:16' | '16:9' | '1:1' | '4:5';
+type PromoSeconds = 5 | 6 | 8;
+
+const PROMO_ASPECTS: { value: PromoAspect; label: string }[] = [
+  { value: '9:16', label: '9:16 — Reels / Shorts' },
+  { value: '16:9', label: '16:9 — YouTube landscape' },
+  { value: '1:1', label: '1:1 — feed square' },
+  { value: '4:5', label: '4:5 — feed portrait' },
+];
+
+const PROMO_SECONDS: { value: PromoSeconds; label: string }[] = [
+  { value: 5, label: '5s' },
+  { value: 6, label: '6s' },
+  { value: 8, label: '8s' },
+];
+
+// First-draft presets copied from docs/tasks/AI Motion Styles.html — the HOLD
+// sentence keeps colour/print/cut true to the input photo. Pick one in the card
+// to fill the prompt + model + aspect + duration; the full catalog lives in the
+// HTML file (owner exports the surviving set for Phase 2 studio_styles VIDEO rows).
+const PROMO_HOLD =
+  "The garment's colour, print, embroidery, cut and proportions stay identical to the input photo throughout — no warping, no recolouring, no extra limbs or fingers.";
+
+const PROMO_PRESETS: {
+  code: string;
+  label: string;
+  prompt: string;
+  model: PromoModel;
+  aspect: PromoAspect;
+  seconds: PromoSeconds;
+}[] = [
+  {
+    code: 'MOTION_PUSH_IN_SLOW',
+    label: 'Slow Push-In (camera)',
+    model: 'kling_std',
+    aspect: '9:16',
+    seconds: 5,
+    prompt:
+      'Slow cinematic dolly push-in toward the subject, the camera easing forward at a steady pace, background gently going soft. Subtle natural cloth movement only. ' +
+      PROMO_HOLD,
+  },
+  {
+    code: 'MOTION_PULL_BACK_REVEAL',
+    label: 'Pull-Back Reveal (camera)',
+    model: 'kling_std',
+    aspect: '9:16',
+    seconds: 6,
+    prompt:
+      "Camera starts close on the fabric detail and smoothly pulls back to reveal the full garment, one continuous move, no cut. Gentle ambient cloth motion. " +
+      PROMO_HOLD,
+  },
+  {
+    code: 'MOTION_SAREE_PALLU_SWAY',
+    label: 'Pallu Sway (garment)',
+    model: 'kling_pro',
+    aspect: '9:16',
+    seconds: 6,
+    prompt:
+      'A gentle breeze lifts the loose draped end of the garment so it floats and sways, then settles softly back into place. Realistic lightweight-fabric physics, slow and graceful, the rest of the garment nearly still. ' +
+      PROMO_HOLD,
+  },
+  {
+    code: 'MOTION_TWIRL_FLARE',
+    label: 'Twirl Flare (garment)',
+    model: 'luma',
+    aspect: '9:16',
+    seconds: 8,
+    prompt:
+      'The model turns a single full spin, the skirt flaring outward into a wide circle from the momentum, then falling back into place as the turn completes. Fluid, joyful, well-lit, realistic heavy-skirt physics. ' +
+      PROMO_HOLD,
+  },
+  {
+    code: 'MOTION_TURN_TO_CAMERA',
+    label: 'Turn to Camera (action)',
+    model: 'kling_std',
+    aspect: '9:16',
+    seconds: 5,
+    prompt:
+      'The model begins facing three-quarters away, then turns smoothly and naturally to face the camera, settling into a still front-facing pose. One clean motion, garment drape following the turn realistically. ' +
+      PROMO_HOLD,
+  },
+  {
+    code: 'MOTION_BREEZE_AND_HAIR',
+    label: 'Breeze + Hair (ambient)',
+    model: 'seedance',
+    aspect: '9:16',
+    seconds: 5,
+    prompt:
+      "A barely-there breeze gently moves the model's hair and the loosest edges of the garment while the pose is held. Minimal, cinemagraph-like motion, everything else still. " +
+      PROMO_HOLD,
+  },
+];
 
 // ponytail: presign-then-PUT straight to R2, same pattern as the existing
 // background-images admin page — no multipart parsing on the API.
@@ -168,6 +272,63 @@ export default function PhotoCleanupTestPage() {
       setError(err instanceof Error ? err.message : 'Studio shoot failed');
     } finally {
       setStudioBusy(false);
+    }
+  };
+
+  // AI Promo Video (F-034) — Fal image→video bench, sibling of studio shoot.
+  const [promoModel, setPromoModel] = useState<PromoModel>('kling_std');
+  const [promoAspect, setPromoAspect] = useState<PromoAspect>('9:16');
+  const [promoSeconds, setPromoSeconds] = useState<PromoSeconds>(5);
+  const [promoPreset, setPromoPreset] = useState<string>(PROMO_PRESETS[0].code);
+  const [promoPrompt, setPromoPrompt] = useState<string>(PROMO_PRESETS[0].prompt);
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoResults, setPromoResults] = useState<
+    {
+      id: string;
+      productUrl: string;
+      resultUrl: string;
+      model: PromoModel;
+      aspect: PromoAspect;
+      seconds: PromoSeconds;
+      ranAt: string;
+    }[]
+  >([]);
+
+  const runPromoVideo = async () => {
+    if (!productFile || promoBusy) return;
+    setPromoBusy(true);
+    setError('');
+    try {
+      const productUrl = await uploadToR2(productFile);
+      const res = await fetch(`${API_URL}/v1/admin/photo-cleanup/image-to-video`, {
+        ...(await adminMutateOptions()),
+        method: 'POST',
+        body: JSON.stringify({
+          product_url: productUrl,
+          model: promoModel,
+          motion_prompt: promoPrompt.trim(),
+          aspect: promoAspect,
+          seconds: promoSeconds,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error?.message ?? 'Promo video generation failed');
+      setPromoResults((prev) => [
+        {
+          id: crypto.randomUUID(),
+          productUrl,
+          resultUrl: json.data.result_url,
+          model: promoModel,
+          aspect: promoAspect,
+          seconds: promoSeconds,
+          ranAt: new Date().toLocaleTimeString(),
+        },
+        ...prev,
+      ]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Promo video generation failed');
+    } finally {
+      setPromoBusy(false);
     }
   };
 
@@ -586,6 +747,166 @@ export default function PhotoCleanupTestPage() {
         )}
       </div>
 
+      {/* AI Promo Video — Fal image→video for Reels / Shorts / Feed (F-034) */}
+      <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 space-y-3">
+        <div className="flex items-center gap-3">
+          <Video size={18} className="text-violet-500" />
+          <div>
+            <p className="text-sm font-medium text-gray-800">AI Promo Video</p>
+            <p className="text-xs text-gray-400">
+              Uses the “Product photo” above. Pick a model + motion style (seeded from{' '}
+              <code className="text-[10px]">AI Motion Styles.html</code>), then Generate — same{' '}
+              <code className="text-[10px]">generateImageToVideo()</code> the retailer app will run.
+              Paid per clip (₹13–170), ~60–180s.
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <div className="flex flex-col gap-1">
+            <label htmlFor="promo-model" className="text-xs text-gray-500">
+              Model
+            </label>
+            <select
+              id="promo-model"
+              value={promoModel}
+              onChange={(e) => setPromoModel(e.target.value as PromoModel)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {VIDEO_MODELS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="promo-aspect" className="text-xs text-gray-500">
+              Aspect
+            </label>
+            <select
+              id="promo-aspect"
+              value={promoAspect}
+              onChange={(e) => setPromoAspect(e.target.value as PromoAspect)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {PROMO_ASPECTS.map((a) => (
+                <option key={a.value} value={a.value}>
+                  {a.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="promo-seconds" className="text-xs text-gray-500">
+              Duration
+            </label>
+            <select
+              id="promo-seconds"
+              value={promoSeconds}
+              onChange={(e) => setPromoSeconds(Number(e.target.value) as PromoSeconds)}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {PROMO_SECONDS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label htmlFor="promo-preset" className="text-xs text-gray-500">
+              Motion style preset
+            </label>
+            <select
+              id="promo-preset"
+              value={promoPreset}
+              onChange={(e) => {
+                const p = PROMO_PRESETS.find((x) => x.code === e.target.value);
+                if (!p) return;
+                setPromoPreset(p.code);
+                setPromoPrompt(p.prompt);
+                setPromoModel(p.model);
+                setPromoAspect(p.aspect);
+                setPromoSeconds(p.seconds);
+              }}
+              className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2"
+            >
+              {PROMO_PRESETS.map((p) => (
+                <option key={p.code} value={p.code}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label htmlFor="promo-prompt" className="text-xs text-gray-500">
+            Motion prompt (free text — copy any preset from{' '}
+            <code className="text-[10px]">docs/tasks/AI Motion Styles.html</code> or edit below)
+          </label>
+          <textarea
+            id="promo-prompt"
+            value={promoPrompt}
+            onChange={(e) => {
+              setPromoPrompt(e.target.value);
+              setPromoPreset(''); // edited → no longer exactly a preset
+            }}
+            rows={3}
+            placeholder="Slow cinematic dolly push-in toward the subject…"
+            className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 font-mono"
+          />
+          <p className="text-[10px] text-gray-400">
+            The garment-integrity HOLD sentence is baked into each preset — keep it when you edit.
+          </p>
+        </div>
+        <button
+          onClick={runPromoVideo}
+          disabled={!productFile || promoBusy}
+          className="flex items-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium rounded-xl disabled:opacity-40 transition-colors"
+        >
+          {promoBusy ? <Loader2 size={16} className="animate-spin" /> : <Video size={16} />}
+          Generate promo video
+        </button>
+        {promoResults.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+            {promoResults.map((r) => (
+              <div
+                key={r.id}
+                className="bg-white rounded-2xl border border-gray-200/80 overflow-hidden"
+              >
+                <div className="flex items-center gap-1 p-2 bg-gray-50">
+                  <button
+                    type="button"
+                    className="w-20 aspect-square relative rounded-lg overflow-hidden bg-gray-100 cursor-zoom-in hover:opacity-90 transition-opacity shrink-0"
+                    title="Click to enlarge input"
+                    onClick={() => setLightbox({ url: r.productUrl, label: 'Input' })}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element -- R2 result URLs render reliably as a plain img; next/image was showing broken tiles here */}
+                    <img src={r.productUrl} alt="input" className="absolute inset-0 w-full h-full object-cover" />
+                  </button>
+                  <ArrowRight size={14} className="text-gray-400 shrink-0" />
+                  <div className="flex-1 h-40 rounded-lg overflow-hidden bg-black">
+                    <video
+                      src={r.resultUrl}
+                      controls
+                      loop
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                </div>
+                <div className="px-3 py-2 flex items-center justify-between gap-2 text-xs text-gray-500">
+                  <span className="truncate">
+                    {r.model} · {r.aspect} · {r.seconds}s
+                  </span>
+                  <span>{r.ranAt}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-gray-200/80 p-4 flex flex-wrap items-center gap-6">
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input type="checkbox" checked={shine} onChange={(e) => setShine(e.target.checked)} />
@@ -792,12 +1113,23 @@ export default function PhotoCleanupTestPage() {
                 ✕
               </button>
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element -- admin test tool; lightbox src may be a local object-URL that next/image can't optimize */}
-            <img
-              src={lightbox.url}
-              alt={lightbox.label}
-              className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-            />
+            {lightbox.url.toLowerCase().endsWith('.mp4') ? (
+              <video
+                src={lightbox.url}
+                controls
+                autoPlay
+                loop
+                playsInline
+                className="max-w-full max-h-[85vh] rounded-lg shadow-2xl bg-black"
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element -- admin test tool; lightbox src may be a local object-URL that next/image can't optimize */
+              <img
+                src={lightbox.url}
+                alt={lightbox.label}
+                className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+              />
+            )}
           </div>
         </div>
       )}
