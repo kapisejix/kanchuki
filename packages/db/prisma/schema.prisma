@@ -1239,6 +1239,28 @@ model QuotaAddonPurchase {
   @@map("quota_addon_purchases")
 }
 
+// ─── ADDON PACKS (F-034 task 6.1) ───────────────────────────────
+// Admin-managed overage packs, DB-backed — the admin adds / approves / assigns
+// packs per plan from the dashboard. resource_type is TEXT (not the enum) so a
+// pack for a brand-new resource can be configured before its enum value ships.
+// Empty `plans` = buyable by every plan.
+model ResourcePack {
+  id            String   @id @default(cuid())
+  resource_type String
+  label         String // display label, e.g. "20 promo videos"
+  unit_label    String // per-unit label, e.g. "videos"
+  pack_size     Int // units credited on purchase
+  price_paise   Int // admin-set retail price (paise)
+  plans         String[] // which plans may buy; empty = all plans
+  is_active     Boolean  @default(true)
+  sort_order    Int      @default(0)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([resource_type])
+  @@map("resource_packs")
+}
+
 // ─── SIZE CHARTS (F-102c — size recommendation, no GPU cost) ────
 
 // ─── AUDIT LOG ───────────────────────────────────────────────────

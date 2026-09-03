@@ -21,6 +21,7 @@ const SUPER_ADMIN_RESTRICTED_PREFIXES = [
   '/admin/commission',
   '/admin/plan-limits',
   '/admin/plan-features',
+  '/admin/resource-packs',
   '/admin/addon-purchases',
   '/admin/settings',
   '/admin/operations',

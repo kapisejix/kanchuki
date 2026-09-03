@@ -22,6 +22,7 @@ export { adminGstProfileRoutes } from './admin-gst-profile.js';
 export { adminAggregatorRoutes } from './admin-aggregators.js';
 export { adminSocialRoutes } from './admin-social.js';
 export { adminRatingsRoutes } from './admin-ratings.js';
+export { adminResourcePacksRoutes } from './admin-resource-packs.js';
 export { adminDesignReferenceRoutes } from './admin-design-references.js';
 export { adminBugReportRoutes } from './admin-bug-reports.js';
 export { adminSurveyRoutes } from './admin-survey.js';

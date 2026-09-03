@@ -30,6 +30,7 @@ import {
   adminPhotoCleanupRoutes,
   adminPlansRoutes,
   adminRatingsRoutes,
+  adminResourcePacksRoutes,
   adminRetailersRoutes,
   adminSocialRoutes,
   adminSocialTemplateRoutes,
@@ -186,6 +187,8 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   await server.register(adminMediaRoutes);
   // admin-studio-styles — DB-backed AI Studio Shoot style catalog
   await server.register(adminStudioStylesRoutes);
+  // admin-resource-packs — admin-managed addon packs (F-034 task 6.1)
+  await server.register(adminResourcePacksRoutes);
   // admin-data — auto-split module
   await server.register(adminDataRoutes);
   // admin-integrations — auto-split module
