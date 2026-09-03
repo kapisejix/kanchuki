@@ -21,10 +21,7 @@ function realProviderId(id: string): string | null {
 // type so retailers can see their studio-shoot consumption at a glance.
 //
 // Best-effort: a DB write failure must not fail the completed generation.
-export function recordBflStudioUsage(
-  retailerId: string,
-  template: string,
-): void {
+export function recordBflStudioUsage(retailerId: string, template: string): void {
   prisma.aiUsageLog
     .create({
       data: {

@@ -29,75 +29,80 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
       );
 
       // Redis-cached with single-flight stampede protection (lib/public-cache.ts).
-      return withPublicCache(request.url, () => withRetry(async () => {
-        const p = await prisma.product.findFirst({
-          where: {
-            id: productId,
-            deleted_at: null,
-            retailer: { deleted_at: null, is_suspended: false },
-          },
-          include: {
-            photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] },
-            variants: true,
-            videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'asc' }] },
-            section: { select: { name: true } },
-          },
-        });
-        if (!p) throw notFound('Product');
+      return withPublicCache(request.url, () =>
+        withRetry(
+          async () => {
+            const p = await prisma.product.findFirst({
+              where: {
+                id: productId,
+                deleted_at: null,
+                retailer: { deleted_at: null, is_suspended: false },
+              },
+              include: {
+                photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }] },
+                variants: true,
+                videos: { orderBy: [{ is_main: 'desc' }, { created_at: 'asc' }] },
+                section: { select: { name: true } },
+              },
+            });
+            if (!p) throw notFound('Product');
 
-        const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE');
-        // Raw retailer uploads hidden from the customer catalog (see
-        // customerVisiblePhotos) — only AI Studio + background-cleaned shots show.
-        const visiblePhotos = customerVisiblePhotos(p.photos);
-        const primaryPhoto = visiblePhotos[0];
+            const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE');
+            // Raw retailer uploads hidden from the customer catalog (see
+            // customerVisiblePhotos) — only AI Studio + background-cleaned shots show.
+            const visiblePhotos = customerVisiblePhotos(p.photos);
+            const primaryPhoto = visiblePhotos[0];
 
-        return {
-          data: {
-            id: p.id,
-            name: p.name,
-            price_min: p.price_min,
-            price_max: p.price_max,
-            // F-024 (Option A): virtual query-time flags, same as the grid summary
-            is_new_arrival: isNewArrival(p.created_at),
-            on_sale: isOnSale({ mrp: p.mrp, price_min: p.price_min }),
-            status: p.status,
-            category: p.category,
-            primary_color: p.primary_color,
-            secondary_colors: p.secondary_colors,
-            fabric_estimate: p.fabric_estimate,
-            description: p.description,
-            search_tags: p.search_tags,
-            sizes: p.sizes,
-            // Roadmap N: Indian fit flags (blouse-piece / unstitched markers).
-            is_unstitched: p.is_unstitched,
-            includes_blouse: p.includes_blouse,
-            location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
-            primary_photo_url: primaryPhoto
-              ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)
-              : '',
-            has_360: false,
-            avg_rating: p.avg_rating,
-            rating_count: p.rating_count,
-            photos: await Promise.all(
-              visiblePhotos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
-            ),
-            variants: await Promise.all(
-              availableVariants.map(async (v) => ({
-                color: v.color,
-                photo_url: await displayUrl(v.photo_url ?? '', v.r2_key),
-                status: v.status as string,
-              })),
-            ),
-            // Roadmap Q: short product clips alongside photos.
-            videos: p.videos.map((v) => ({
-              id: v.id,
-              url: v.public_url,
-              duration_sec: v.duration_sec,
-              is_main: v.is_main,
-            })),
+            return {
+              data: {
+                id: p.id,
+                name: p.name,
+                price_min: p.price_min,
+                price_max: p.price_max,
+                // F-024 (Option A): virtual query-time flags, same as the grid summary
+                is_new_arrival: isNewArrival(p.created_at),
+                on_sale: isOnSale({ mrp: p.mrp, price_min: p.price_min }),
+                status: p.status,
+                category: p.category,
+                primary_color: p.primary_color,
+                secondary_colors: p.secondary_colors,
+                fabric_estimate: p.fabric_estimate,
+                description: p.description,
+                search_tags: p.search_tags,
+                sizes: p.sizes,
+                // Roadmap N: Indian fit flags (blouse-piece / unstitched markers).
+                is_unstitched: p.is_unstitched,
+                includes_blouse: p.includes_blouse,
+                location: [p.section?.name, p.location_notes].filter(Boolean).join(' — ') || null,
+                primary_photo_url: primaryPhoto
+                  ? await displayUrl(primaryPhoto.url, primaryPhoto.r2_key)
+                  : '',
+                has_360: false,
+                avg_rating: p.avg_rating,
+                rating_count: p.rating_count,
+                photos: await Promise.all(
+                  visiblePhotos.map(async (ph) => await displayUrl(ph.url, ph.r2_key)),
+                ),
+                variants: await Promise.all(
+                  availableVariants.map(async (v) => ({
+                    color: v.color,
+                    photo_url: await displayUrl(v.photo_url ?? '', v.r2_key),
+                    status: v.status as string,
+                  })),
+                ),
+                // Roadmap Q: short product clips alongside photos.
+                videos: p.videos.map((v) => ({
+                  id: v.id,
+                  url: v.public_url,
+                  duration_sec: v.duration_sec,
+                  is_main: v.is_main,
+                })),
+              },
+            };
           },
-        };
-      }, { label: 'product-detail' }));
+          { label: 'product-detail' },
+        ),
+      );
     },
   );
 
@@ -120,34 +125,39 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
       );
 
       // Redis-cached with single-flight stampede protection (lib/public-cache.ts).
-      return withPublicCache(request.url, () => withRetry(async () => {
-        const product = await prisma.product.findFirst({
-          where: { id: productId, deleted_at: null, retailer: { is_suspended: false } },
-          select: { category: true, retailer_id: true },
-        });
-        if (!product || !product.category) return { data: [] };
+      return withPublicCache(request.url, () =>
+        withRetry(
+          async () => {
+            const product = await prisma.product.findFirst({
+              where: { id: productId, deleted_at: null, retailer: { is_suspended: false } },
+              select: { category: true, retailer_id: true },
+            });
+            if (!product || !product.category) return { data: [] };
 
-        const related = await prisma.product.findMany({
-          where: {
-            retailer_id: product.retailer_id,
-            category: product.category,
-            id: { not: productId },
-            deleted_at: null,
-            status: 'AVAILABLE',
+            const related = await prisma.product.findMany({
+              where: {
+                retailer_id: product.retailer_id,
+                category: product.category,
+                id: { not: productId },
+                deleted_at: null,
+                status: 'AVAILABLE',
+              },
+              orderBy: { created_at: 'desc' },
+              take: 6,
+              include: {
+                photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
+                section: { select: { name: true } },
+                _count: { select: { photos: true } },
+              },
+            });
+
+            const publicProducts = await Promise.all(related.map((r) => toPublicProductSummary(r)));
+
+            return { data: publicProducts };
           },
-          orderBy: { created_at: 'desc' },
-          take: 6,
-          include: {
-            photos: { orderBy: [{ is_primary: 'desc' }, { sort_order: 'asc' }], take: 1 },
-            section: { select: { name: true } },
-            _count: { select: { photos: true } },
-          },
-        });
-
-        const publicProducts = await Promise.all(related.map((r) => toPublicProductSummary(r)));
-
-        return { data: publicProducts };
-      }, { label: 'related-products' }));
+          { label: 'related-products' },
+        ),
+      );
     },
   );
 };

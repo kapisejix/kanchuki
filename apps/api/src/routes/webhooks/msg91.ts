@@ -57,9 +57,7 @@ function secretMatches(request: FastifyRequest): boolean {
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {
-  return typeof value === 'object' && value !== null
-    ? (value as Record<string, unknown>)
-    : null;
+  return typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
 }
 
 function firstString(...values: unknown[]): string | undefined {
@@ -109,8 +107,7 @@ export const msg91WebhookRoutes: FastifyPluginAsync = async (server) => {
     // (SMS/WhatsApp/Email) and event type. Never fail on an unknown shape.
     const requestId = firstString(body.requestId, body.request_id, body.campaignId);
     const eventName =
-      firstString(body.eventName, body.event, body.upperCaseEventName, body.type) ??
-      'event';
+      firstString(body.eventName, body.event, body.upperCaseEventName, body.type) ?? 'event';
     const status = firstString(body.status, body.deliveryStatus);
     const failureReason = firstString(body.failureReason, body.reason);
     const phone = maskPhone(body.telNum ?? body.mobile ?? body.identifier);

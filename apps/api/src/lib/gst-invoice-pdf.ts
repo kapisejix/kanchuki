@@ -54,15 +54,48 @@ function numberToWords(paise: number): string {
 
   if (rupees === 0 && paisa === 0) return 'Zero';
 
-  const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine',
-    'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+  const ones = [
+    '',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+    'Sixteen',
+    'Seventeen',
+    'Eighteen',
+    'Nineteen',
+  ];
+  const tens = [
+    '',
+    '',
+    'Twenty',
+    'Thirty',
+    'Forty',
+    'Fifty',
+    'Sixty',
+    'Seventy',
+    'Eighty',
+    'Ninety',
+  ];
 
   function convertGroup(n: number): string {
     if (n === 0) return '';
     if (n < 20) return ones[n]!;
     if (n < 100) return tens[Math.floor(n / 10)]! + (n % 10 ? ' ' + ones[n % 10] : '');
-    return ones[Math.floor(n / 100)]! + ' Hundred' + (n % 100 ? ' and ' + convertGroup(n % 100) : '');
+    return (
+      ones[Math.floor(n / 100)]! + ' Hundred' + (n % 100 ? ' and ' + convertGroup(n % 100) : '')
+    );
   }
 
   let result = '';
@@ -111,7 +144,9 @@ export async function buildGstInvoicePdf(input: InvoicePdfInput): Promise<Buffer
 
     // ─── Seller Block ─────────────────────────────────────────
     doc.fontSize(9).font('Helvetica-Bold').text('From:', left);
-    doc.font('Helvetica').fontSize(9)
+    doc
+      .font('Helvetica')
+      .fontSize(9)
       .text(input.seller.name, left)
       .text(`GSTIN: ${input.seller.gstin}`, left)
       .text(input.seller.address, left)
@@ -120,7 +155,9 @@ export async function buildGstInvoicePdf(input: InvoicePdfInput): Promise<Buffer
 
     // ─── Buyer Block ──────────────────────────────────────────
     doc.font('Helvetica-Bold').text('To:', left);
-    doc.font('Helvetica').fontSize(9)
+    doc
+      .font('Helvetica')
+      .fontSize(9)
       .text(input.buyer.name, left)
       .text(`GSTIN: ${input.buyer.gstin ?? 'Unregistered'}`, left);
     if (input.buyer.address) doc.text(input.buyer.address, left);
@@ -149,55 +186,82 @@ export async function buildGstInvoicePdf(input: InvoicePdfInput): Promise<Buffer
     const col4 = right - 80;
 
     // Header
-    doc.fontSize(8).font('Helvetica-Bold')
+    doc
+      .fontSize(8)
+      .font('Helvetica-Bold')
       .text('S.No', col1, tableTop, { width: 25 })
       .text('Description', col2, tableTop, { width: 200 })
       .text('SAC', col3, tableTop, { width: 60 })
       .text('Amount', col4, tableTop, { width: 80, align: 'right' });
 
-    doc.moveTo(left, tableTop + 12).lineTo(right, tableTop + 12).stroke();
+    doc
+      .moveTo(left, tableTop + 12)
+      .lineTo(right, tableTop + 12)
+      .stroke();
     doc.moveDown(0.3);
 
     // Row
     const rowY = tableTop + 18;
-    doc.font('Helvetica').fontSize(9)
+    doc
+      .font('Helvetica')
+      .fontSize(9)
       .text('1', col1, rowY, { width: 25 })
       .text(`${input.planName} — ${input.description}`, col2, rowY, { width: 200 })
       .text(input.sacCode, col3, rowY, { width: 60 })
       .text(paiseToRupees(input.basePaise), col4, rowY, { width: 80, align: 'right' });
 
-    doc.moveTo(left, rowY + 14).lineTo(right, rowY + 14).stroke();
+    doc
+      .moveTo(left, rowY + 14)
+      .lineTo(right, rowY + 14)
+      .stroke();
     doc.moveDown(1);
 
     // ─── Tax Rows ─────────────────────────────────────────────
     const isInterState = input.igstPaise > 0;
     const taxLabel = isInterState ? 'IGST' : 'CGST + SGST';
 
-    doc.fontSize(9).font('Helvetica')
+    doc
+      .fontSize(9)
+      .font('Helvetica')
       .text(`Tax (${taxLabel} @ ${(input.gstRate * 100).toFixed(0)}%):`, left);
 
     if (isInterState) {
-      doc.text(`  IGST @ ${(input.gstRate * 100).toFixed(0)}%: ${paiseToRupees(input.igstPaise)}`, left);
+      doc.text(
+        `  IGST @ ${(input.gstRate * 100).toFixed(0)}%: ${paiseToRupees(input.igstPaise)}`,
+        left,
+      );
     } else {
-      doc.text(`  CGST @ ${(input.gstRate * 50).toFixed(0)}%: ${paiseToRupees(input.cgstPaise)}`, left);
-      doc.text(`  SGST @ ${(input.gstRate * 50).toFixed(0)}%: ${paiseToRupees(input.sgstPaise)}`, left);
+      doc.text(
+        `  CGST @ ${(input.gstRate * 50).toFixed(0)}%: ${paiseToRupees(input.cgstPaise)}`,
+        left,
+      );
+      doc.text(
+        `  SGST @ ${(input.gstRate * 50).toFixed(0)}%: ${paiseToRupees(input.sgstPaise)}`,
+        left,
+      );
     }
     doc.moveDown(0.5);
 
     // ─── Total ────────────────────────────────────────────────
     doc.moveTo(left, doc.y).lineTo(right, doc.y).stroke();
     doc.moveDown(0.3);
-    doc.font('Helvetica-Bold').fontSize(10)
+    doc
+      .font('Helvetica-Bold')
+      .fontSize(10)
       .text(`Total: ${paiseToRupees(input.grossPaise)}`, left, doc.y, { align: 'right' });
     doc.moveDown(0.3);
 
     // Amount in words
-    doc.fontSize(8).font('Helvetica')
+    doc
+      .fontSize(8)
+      .font('Helvetica')
       .text(`Amount in words: ${numberToWords(input.grossPaise)}`, left);
     doc.moveDown(1);
 
     // ─── Footer ───────────────────────────────────────────────
-    doc.fontSize(8).font('Helvetica')
+    doc
+      .fontSize(8)
+      .font('Helvetica')
       .text('Reverse charge: No', left)
       .text(`Place of supply: ${input.placeOfSupply ?? 'N/A'}`, left)
       .moveDown(1)

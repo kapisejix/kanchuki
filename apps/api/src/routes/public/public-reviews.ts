@@ -2,12 +2,12 @@
 // Customers identify by phone (same pattern as QR contact gate / enquiry).
 // No retailer auth required — phone + product_id is the identity.
 
-import { prisma } from '@kanchuki/db'
-import type { FastifyPluginAsync } from 'fastify'
-import { createHash } from 'crypto'
-import { z } from 'zod'
-import { normalizeIndianPhone } from '@kanchuki/shared'
-import { notFound } from '../../plugins/error-handler.js'
+import { prisma } from '@kanchuki/db';
+import type { FastifyPluginAsync } from 'fastify';
+import { createHash } from 'crypto';
+import { z } from 'zod';
+import { normalizeIndianPhone } from '@kanchuki/shared';
+import { notFound } from '../../plugins/error-handler.js';
 
 // ─── Schemas ─────────────────────────────────────────────────────
 
@@ -17,7 +17,7 @@ const SubmitProductReviewSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional(),
-})
+});
 
 const SubmitStoreReviewSchema = z.object({
   retailer_id: z.string().min(1),
@@ -25,7 +25,7 @@ const SubmitStoreReviewSchema = z.object({
   name: z.string().min(1).max(200).optional(),
   rating: z.number().int().min(1).max(5),
   comment: z.string().max(1000).optional(),
-})
+});
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -34,14 +34,14 @@ async function recomputeProductRating(productId: string) {
     where: { product_id: productId, is_hidden: false },
     _avg: { rating: true },
     _count: { rating: true },
-  })
+  });
   await prisma.product.update({
     where: { id: productId },
     data: {
       avg_rating: agg._avg.rating ?? 0,
       rating_count: agg._count.rating,
     },
-  })
+  });
 }
 
 async function recomputeStoreRating(retailerId: string) {
@@ -49,18 +49,18 @@ async function recomputeStoreRating(retailerId: string) {
     where: { retailer_id: retailerId, is_hidden: false },
     _avg: { rating: true },
     _count: { rating: true },
-  })
+  });
   await prisma.retailer.update({
     where: { id: retailerId },
     data: {
       avg_rating: agg._avg.rating ?? 0,
       rating_count: agg._count.rating,
     },
-  })
+  });
 }
 
 function buildGoogleReviewUrl(placeId: string): string {
-  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`
+  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
 function getReviewRouting(rating: number, googlePlaceId?: string | null) {
@@ -69,28 +69,24 @@ function getReviewRouting(rating: number, googlePlaceId?: string | null) {
       action: 'google_review' as const,
       message: 'Loved it? Leave us a Google review!',
       url: buildGoogleReviewUrl(googlePlaceId),
-    }
+    };
   }
   if (rating <= 3) {
     return {
       action: 'private_feedback' as const,
       message: 'Tell us what went wrong — your feedback helps us improve.',
-    }
+    };
   }
-  return { action: 'none' as const }
+  return { action: 'none' as const };
 }
 
 /**
  * Find or create a customer by phone for a given retailer.
  * Same upsert pattern as the QR contact gate (public-retailers.ts).
  */
-async function findOrCreateCustomer(
-  retailerId: string,
-  phone: string,
-  name?: string,
-) {
-  const normalized = normalizeIndianPhone(phone)
-  const phone_hash = createHash('sha256').update(normalized).digest('hex')
+async function findOrCreateCustomer(retailerId: string, phone: string, name?: string) {
+  const normalized = normalizeIndianPhone(phone);
+  const phone_hash = createHash('sha256').update(normalized).digest('hex');
 
   return prisma.customer.upsert({
     where: {
@@ -105,7 +101,7 @@ async function findOrCreateCustomer(
     },
     update: name ? { name } : {},
     select: { id: true },
-  })
+  });
 }
 
 /**
@@ -114,12 +110,12 @@ async function findOrCreateCustomer(
  */
 async function checkProductReviewEligibility(): Promise<{ eligible: boolean; reason?: string }> {
   // Eligibility checks simplified — customerInteraction and Order models dropped
-  return { eligible: true }
+  return { eligible: true };
 }
 
 async function checkStoreReviewEligibility(): Promise<{ eligible: boolean; reason?: string }> {
   // Eligibility checks simplified — customerInteraction and Order models dropped
-  return { eligible: true }
+  return { eligible: true };
 }
 
 // ─── Routes ──────────────────────────────────────────────────────
@@ -145,26 +141,22 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const body = SubmitProductReviewSchema.parse(request.body)
+      const body = SubmitProductReviewSchema.parse(request.body);
 
       // Look up the product to get retailer_id
       const product = await prisma.product.findUnique({
         where: { id: body.product_id },
         select: { retailer_id: true, id: true },
-      })
-      if (!product) throw notFound('Product')
+      });
+      if (!product) throw notFound('Product');
 
       // Find or create the customer
-      const customer = await findOrCreateCustomer(
-        product.retailer_id,
-        body.phone,
-        body.name,
-      )
+      const customer = await findOrCreateCustomer(product.retailer_id, body.phone, body.name);
 
       // Check eligibility
-      const eligibility = await checkProductReviewEligibility()
+      const eligibility = await checkProductReviewEligibility();
       if (!eligibility.eligible) {
-        return reply.status(403).send({ error: eligibility.reason })
+        return reply.status(403).send({ error: eligibility.reason });
       }
 
       // Upsert review (one per customer per product)
@@ -175,14 +167,14 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
             customer_id: customer.id,
           },
         },
-      })
+      });
 
-      let review
+      let review;
       if (existing) {
         review = await prisma.productReview.update({
           where: { id: existing.id },
           data: { rating: body.rating, comment: body.comment },
-        })
+        });
       } else {
         review = await prisma.productReview.create({
           data: {
@@ -192,23 +184,23 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
             rating: body.rating,
             comment: body.comment,
           },
-        })
+        });
       }
 
       // Recompute denormalized rating
-      await recomputeProductRating(body.product_id)
+      await recomputeProductRating(body.product_id);
 
       // Get retailer's google_place_id for routing
       const retailer = await prisma.retailer.findUnique({
         where: { id: product.retailer_id },
         select: { google_place_id: true },
-      })
+      });
 
-      const routing = getReviewRouting(body.rating, retailer?.google_place_id)
+      const routing = getReviewRouting(body.rating, retailer?.google_place_id);
 
-      return reply.status(201).send({ data: review, routing })
+      return reply.status(201).send({ data: review, routing });
     },
-  )
+  );
 
   // ─── POST /public/reviews/store ────────────────────────────────
   // Customer submits a store review. Identified by phone + retailer_id.
@@ -230,26 +222,22 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const body = SubmitStoreReviewSchema.parse(request.body)
+      const body = SubmitStoreReviewSchema.parse(request.body);
 
       // Verify retailer exists
       const retailer = await prisma.retailer.findUnique({
         where: { id: body.retailer_id, deleted_at: null },
         select: { id: true, google_place_id: true },
-      })
-      if (!retailer) throw notFound('Retailer')
+      });
+      if (!retailer) throw notFound('Retailer');
 
       // Find or create the customer
-      const customer = await findOrCreateCustomer(
-        body.retailer_id,
-        body.phone,
-        body.name,
-      )
+      const customer = await findOrCreateCustomer(body.retailer_id, body.phone, body.name);
 
       // Check eligibility
-      const eligibility = await checkStoreReviewEligibility()
+      const eligibility = await checkStoreReviewEligibility();
       if (!eligibility.eligible) {
-        return reply.status(403).send({ error: eligibility.reason })
+        return reply.status(403).send({ error: eligibility.reason });
       }
 
       // Upsert review (one per customer per retailer)
@@ -260,14 +248,14 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
             customer_id: customer.id,
           },
         },
-      })
+      });
 
-      let review
+      let review;
       if (existing) {
         review = await prisma.storeReview.update({
           where: { id: existing.id },
           data: { rating: body.rating, comment: body.comment },
-        })
+        });
       } else {
         review = await prisma.storeReview.create({
           data: {
@@ -276,17 +264,17 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
             rating: body.rating,
             comment: body.comment,
           },
-        })
+        });
       }
 
       // Recompute denormalized rating
-      await recomputeStoreRating(body.retailer_id)
+      await recomputeStoreRating(body.retailer_id);
 
-      const routing = getReviewRouting(body.rating, retailer.google_place_id)
+      const routing = getReviewRouting(body.rating, retailer.google_place_id);
 
-      return reply.status(201).send({ data: review, routing })
+      return reply.status(201).send({ data: review, routing });
     },
-  )
+  );
 
   // ─── GET /public/reviews/product/:productId ────────────────────
   // Public: list visible reviews for a product (for display on product detail).
@@ -305,9 +293,12 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const { productId } = request.params as { productId: string }
+      const { productId } = request.params as { productId: string };
 
-      reply.header('Cache-Control', 'public, max-age=120, s-maxage=120, stale-while-revalidate=600')
+      reply.header(
+        'Cache-Control',
+        'public, max-age=120, s-maxage=120, stale-while-revalidate=600',
+      );
 
       const reviews = await prisma.productReview.findMany({
         where: { product_id: productId, is_hidden: false },
@@ -320,7 +311,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
         },
         orderBy: { created_at: 'desc' },
         take: 20,
-      })
+      });
 
       return {
         data: reviews.map((r) => ({
@@ -330,7 +321,7 @@ export const publicReviewsRoutes: FastifyPluginAsync = async (server) => {
           created_at: r.created_at,
           customer_name: r.customer.name,
         })),
-      }
+      };
     },
-  )
-}
+  );
+};

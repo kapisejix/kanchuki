@@ -29,11 +29,17 @@ export const publicDesignRoutes: FastifyPluginAsync = async (server) => {
     async (request, reply) => {
       const { category } = request.query as { category?: string };
 
-      reply.header('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=3600');
+      reply.header(
+        'Cache-Control',
+        'public, max-age=300, s-maxage=300, stale-while-revalidate=3600',
+      );
 
       return withPublicCache(request.url, async () => {
         const where: Record<string, unknown> = { is_active: true };
-        if (category && DESIGN_CATEGORIES.includes(category as typeof DESIGN_CATEGORIES[number])) {
+        if (
+          category &&
+          DESIGN_CATEGORIES.includes(category as (typeof DESIGN_CATEGORIES)[number])
+        ) {
           where.category = category;
         }
 
@@ -54,8 +60,8 @@ export const publicDesignRoutes: FastifyPluginAsync = async (server) => {
         // Group by category for the gallery UI
         const grouped: Record<string, typeof designs> = {};
         for (const d of designs) {
-          if (!grouped[d.category]) grouped[d.category] = []
-          grouped[d.category]!.push(d)
+          if (!grouped[d.category]) grouped[d.category] = [];
+          grouped[d.category]!.push(d);
         }
 
         return {
@@ -63,7 +69,10 @@ export const publicDesignRoutes: FastifyPluginAsync = async (server) => {
           grouped,
           categories: DESIGN_CATEGORIES.map((c) => ({
             key: c,
-            label: c.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (l) => l.toUpperCase()),
+            label: c
+              .replace(/_/g, ' ')
+              .toLowerCase()
+              .replace(/\b\w/g, (l) => l.toUpperCase()),
             count: grouped[c]?.length ?? 0,
           })),
         };

@@ -48,9 +48,7 @@ export function computeSubscriptionGst({
   // Inter-state: IGST (full GST amount)
   // Unknown state codes → treat as inter-state (safer default)
   const isIntraState =
-    buyerStateCode != null &&
-    sellerStateCode != null &&
-    buyerStateCode === sellerStateCode;
+    buyerStateCode != null && sellerStateCode != null && buyerStateCode === sellerStateCode;
 
   if (isIntraState) {
     const cgst = Math.floor(gstTotal / 2);
@@ -58,5 +56,14 @@ export function computeSubscriptionGst({
     return { basePaise, gstTotal, gross, cgst, sgst, igst: 0, rate: GST_RATE, sac: SAC_CODE };
   }
 
-  return { basePaise, gstTotal, gross, cgst: 0, sgst: 0, igst: gstTotal, rate: GST_RATE, sac: SAC_CODE };
+  return {
+    basePaise,
+    gstTotal,
+    gross,
+    cgst: 0,
+    sgst: 0,
+    igst: gstTotal,
+    rate: GST_RATE,
+    sac: SAC_CODE,
+  };
 }

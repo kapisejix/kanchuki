@@ -43,7 +43,8 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
     const { content_type } = body.data;
 
-    const ext = content_type === 'video/webm' ? 'webm' : content_type === 'video/quicktime' ? 'mov' : 'mp4';
+    const ext =
+      content_type === 'video/webm' ? 'webm' : content_type === 'video/quicktime' ? 'mov' : 'mp4';
     const filename = `${createId()}.${ext}`;
     const r2Key = R2_PATHS.productVideo(retailerId, id, filename);
 
@@ -140,7 +141,9 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
   server.get('/products/:id/videos', async (request) => {
     const retailerId = request.retailerId;
     const { id } = request.params as { id: string };
-    const product = await prisma.product.findFirst({ where: { id, retailer_id: retailerId, deleted_at: null } });
+    const product = await prisma.product.findFirst({
+      where: { id, retailer_id: retailerId, deleted_at: null },
+    });
     if (!product) throw notFound('Product');
     const videos = await prisma.productVideo.findMany({
       where: { product_id: id },
@@ -149,7 +152,8 @@ export const growthVideoRoutes: FastifyPluginAsync = async (server) => {
     const videosWithUrls = await Promise.all(
       videos.map(async (v) => ({
         ...v,
-        public_url: (await photoUrlToDisplay({ url: v.public_url, r2_key: v.r2_key })) ?? v.public_url,
+        public_url:
+          (await photoUrlToDisplay({ url: v.public_url, r2_key: v.r2_key })) ?? v.public_url,
       })),
     );
     return { data: videosWithUrls };

@@ -87,15 +87,23 @@ describe('POST /v1/growth/ai-campaign', () => {
       });
 
     mockProductFindMany.mockResolvedValue([
-      { id: 'p1', name: 'Red Banarasi Silk', category: 'Saree', primary_color: 'Red', price_min: 250000 },
-      { id: 'p2', name: 'Maroon Silk Saree', category: 'Saree', primary_color: 'Maroon', price_min: 300000 },
+      {
+        id: 'p1',
+        name: 'Red Banarasi Silk',
+        category: 'Saree',
+        primary_color: 'Red',
+        price_min: 250000,
+      },
+      {
+        id: 'p2',
+        name: 'Maroon Silk Saree',
+        category: 'Saree',
+        primary_color: 'Maroon',
+        price_min: 300000,
+      },
     ]);
 
-    mockCustomerFindMany.mockResolvedValue([
-      { id: 'c1' },
-      { id: 'c2' },
-      { id: 'c3' },
-    ]);
+    mockCustomerFindMany.mockResolvedValue([{ id: 'c1' }, { id: 'c2' }, { id: 'c3' }]);
 
     const app = await buildApp();
     const res = await app.inject({

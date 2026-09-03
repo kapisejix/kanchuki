@@ -23,20 +23,20 @@ import { MetaApiError } from './meta-graph.js';
 const GRAPH_BASE = 'https://graph.facebook.com/v21.0';
 
 export interface CatalogItem {
-  id: string;                          // Meta's catalog item ID
-  retailer_id: string;                 // Retailer's product ID (external_id)
+  id: string; // Meta's catalog item ID
+  retailer_id: string; // Retailer's product ID (external_id)
   name: string;
   description?: string;
-  price: number;                       // in smallest currency unit (paise)
-  currency: string;                    // 'INR'
+  price: number; // in smallest currency unit (paise)
+  currency: string; // 'INR'
   availability: 'in stock' | 'out of stock' | 'available for order' | 'preorder';
   condition: 'new' | 'refurbished' | 'used';
   image_url?: string;
-  image_hash?: string;                 // After upload to Meta
-  category_id?: string;                // Meta's product category taxonomy ID
+  image_hash?: string; // After upload to Meta
+  category_id?: string; // Meta's product category taxonomy ID
   brand?: string;
-  retailer_category?: string;          // Retailer's custom category
-  url?: string;                        // Product URL (can be Kanchuki collection link)
+  retailer_category?: string; // Retailer's custom category
+  url?: string; // Product URL (can be Kanchuki collection link)
 }
 
 export interface Catalog {
@@ -79,7 +79,7 @@ export interface CatalogItemUpdateInput {
  * Returns WABA ID + access token for the retailer.
  */
 export async function resolveCatalogCredentials(
-  retailerAccessToken: string
+  retailerAccessToken: string,
 ): Promise<{ wabaId: string; accessToken: string } | null> {
   const wabaId = (await getSecret('META_WHATSAPP_BUSINESS_ACCOUNT_ID'))?.trim();
   if (!wabaId || !retailerAccessToken) return null;
@@ -112,27 +112,20 @@ export async function getOrCreateCatalog(
   }
 
   // Create a new catalog
-  const createRes = await fetch(
-    `${GRAPH_BASE}/${wabaId}/catalogs`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        access_token: accessToken,
-        name: catalogName,
-        vertical: 'ECOMMERCE',
-      }),
-      signal,
-    },
-  );
+  const createRes = await fetch(`${GRAPH_BASE}/${wabaId}/catalogs`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      access_token: accessToken,
+      name: catalogName,
+      vertical: 'ECOMMERCE',
+    }),
+    signal,
+  });
   const createBody = (await createRes.json()) as { id?: string; error?: Record<string, unknown> };
 
   if (!createRes.ok || !createBody.id) {
-    throw new MetaApiError(
-      'Failed to create WhatsApp catalog',
-      400,
-      'CATALOG_CREATE_FAILED',
-    );
+    throw new MetaApiError('Failed to create WhatsApp catalog', 400, 'CATALOG_CREATE_FAILED');
   }
 
   return createBody.id;
@@ -166,14 +159,12 @@ export async function uploadCatalogImage(
       signal,
     },
   );
-  const uploadBody = (await uploadRes.json()) as CatalogImageUploadResponse & { error?: Record<string, unknown> };
+  const uploadBody = (await uploadRes.json()) as CatalogImageUploadResponse & {
+    error?: Record<string, unknown>;
+  };
 
   if (!uploadRes.ok || !uploadBody.image_hash) {
-    throw new MetaApiError(
-      'Failed to upload image to Meta',
-      400,
-      'IMAGE_UPLOAD_FAILED',
-    );
+    throw new MetaApiError('Failed to upload image to Meta', 400, 'IMAGE_UPLOAD_FAILED');
   }
 
   return uploadBody.image_hash;
@@ -217,15 +208,12 @@ export async function createCatalogItem(
     }
   }
 
-  const res = await fetch(
-    `${GRAPH_BASE}/${catalogId}/items`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal,
-    },
-  );
+  const res = await fetch(`${GRAPH_BASE}/${catalogId}/items`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal,
+  });
   const body = (await res.json()) as { id?: string; error?: Record<string, unknown> };
 
   if (!res.ok || !body.id) {
@@ -269,15 +257,12 @@ export async function updateCatalogItem(
     }
   }
 
-  const res = await fetch(
-    `${GRAPH_BASE}/${itemId}`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-      signal,
-    },
-  );
+  const res = await fetch(`${GRAPH_BASE}/${itemId}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal,
+  });
   const body = (await res.json()) as { success?: boolean; error?: Record<string, unknown> };
 
   if (!res.ok || body.success !== true) {
@@ -327,12 +312,16 @@ export async function listCatalogItems(
   const params = new URLSearchParams({
     access_token: accessToken,
     limit: String(limit),
-    fields: 'id,retailer_id,name,description,price,currency,availability,condition,image_url,category_id,brand,retailer_category,url',
+    fields:
+      'id,retailer_id,name,description,price,currency,availability,condition,image_url,category_id,brand,retailer_category,url',
   });
   if (after) params.set('after', after);
 
   const res = await fetch(`${GRAPH_BASE}/${catalogId}/items?${params}`, { signal });
-  const body = (await res.json()) as { data?: CatalogItem[]; paging?: { cursors?: { after: string } } };
+  const body = (await res.json()) as {
+    data?: CatalogItem[];
+    paging?: { cursors?: { after: string } };
+  };
 
   if (!res.ok || !Array.isArray(body.data)) {
     throw new MetaApiError('Failed to list catalog items', 400, 'CATALOG_LIST_FAILED');
@@ -362,12 +351,16 @@ export async function batchCatalogItems(
   // Meta's batch API format
   const batch = operations.map((op, index) => ({
     method: op.method,
-    relative_url: op.method === 'POST' ? `${catalogId}/items` : `${catalogId}/items/${op.retailer_id}`,
-    body: op.method === 'POST' ? JSON.stringify({
-      ...op.item,
-      retailer_id: op.retailer_id,
-      access_token: accessToken,
-    }) : undefined,
+    relative_url:
+      op.method === 'POST' ? `${catalogId}/items` : `${catalogId}/items/${op.retailer_id}`,
+    body:
+      op.method === 'POST'
+        ? JSON.stringify({
+            ...op.item,
+            retailer_id: op.retailer_id,
+            access_token: accessToken,
+          })
+        : undefined,
     name: `req${index}`,
   }));
 
@@ -391,7 +384,10 @@ export async function batchCatalogItems(
       retailer_id: op.retailer_id,
       id: (result.body as { id?: string })?.id,
       success: result.code === 200,
-      error: result.code !== 200 ? (result.body as { error?: { message?: string } })?.error?.message : undefined,
+      error:
+        result.code !== 200
+          ? (result.body as { error?: { message?: string } })?.error?.message
+          : undefined,
     };
   });
 }
@@ -408,7 +404,8 @@ export async function getCatalogItemByRetailerId(
   // Filter by retailer_id (external_id)
   const params = new URLSearchParams({
     access_token: accessToken,
-    fields: 'id,retailer_id,name,description,price,currency,availability,condition,image_url,category_id,brand,retailer_category,url',
+    fields:
+      'id,retailer_id,name,description,price,currency,availability,condition,image_url,category_id,brand,retailer_category,url',
     filter: JSON.stringify({ retailer_id: { eq: retailerId } }),
   });
 

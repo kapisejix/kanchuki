@@ -125,7 +125,12 @@ describe('GET /admin/festivals', () => {
 
 describe('POST /admin/festivals', () => {
   it('creates a festival with a numeric auto id and writes an audit entry', async () => {
-    mockFestivalCreate.mockResolvedValue({ ...diwali, id: 11, name: 'Pongal', region: 'TAMIL_NADU' });
+    mockFestivalCreate.mockResolvedValue({
+      ...diwali,
+      id: 11,
+      name: 'Pongal',
+      region: 'TAMIL_NADU',
+    });
 
     const app = await buildApp();
     const res = await app.inject({
@@ -195,7 +200,10 @@ describe('POST /admin/festivals', () => {
 describe('PUT /admin/festivals/:id', () => {
   it('updates festival fields and writes an audit entry with before/after', async () => {
     mockFestivalFindFirst.mockResolvedValue(diwali);
-    mockFestivalUpdate.mockResolvedValue({ ...diwali, ends_at: new Date('2026-11-15T23:59:59.000Z') });
+    mockFestivalUpdate.mockResolvedValue({
+      ...diwali,
+      ends_at: new Date('2026-11-15T23:59:59.000Z'),
+    });
 
     const app = await buildApp();
     const res = await app.inject({

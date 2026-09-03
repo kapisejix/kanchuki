@@ -6,8 +6,8 @@
 // arbitrary customer_id in the body would let a retailer fabricate reviews
 // attributed to any customer. Do not re-add POST /reviews/product|store here.
 
-import type { FastifyPluginAsync } from 'fastify'
-import { prisma } from '@kanchuki/db'
+import type { FastifyPluginAsync } from 'fastify';
+import { prisma } from '@kanchuki/db';
 
 // ─── Helpers ─────────────────────────────────────────────────────
 
@@ -16,7 +16,7 @@ import { prisma } from '@kanchuki/db'
  * Format: https://search.google.com/local/writereview?placeid={place_id}
  */
 function buildGoogleReviewUrl(placeId: string): string {
-  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`
+  return `https://search.google.com/local/writereview?placeid=${encodeURIComponent(placeId)}`;
 }
 
 // ─── Routes ──────────────────────────────────────────────────────
@@ -38,15 +38,15 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const retailerId = (request as any).retailerId as string
-      const { product_id, page = 1, limit = 20 } = request.query as any
-      const skip = (page - 1) * limit
+      const retailerId = (request as any).retailerId as string;
+      const { product_id, page = 1, limit = 20 } = request.query as any;
+      const skip = (page - 1) * limit;
 
       const where: any = {
         retailer_id: retailerId,
         is_hidden: false,
-      }
-      if (product_id) where.product_id = product_id
+      };
+      if (product_id) where.product_id = product_id;
 
       const [reviews, total] = await Promise.all([
         prisma.productReview.findMany({
@@ -60,14 +60,14 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
           take: limit,
         }),
         prisma.productReview.count({ where }),
-      ])
+      ]);
 
       return reply.send({
         data: reviews,
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      })
+      });
     },
-  )
+  );
 
   // ─── RETAILER: List store reviews ───
   server.get(
@@ -84,9 +84,9 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const retailerId = (request as any).retailerId as string
-      const { page = 1, limit = 20 } = request.query as any
-      const skip = (page - 1) * limit
+      const retailerId = (request as any).retailerId as string;
+      const { page = 1, limit = 20 } = request.query as any;
+      const skip = (page - 1) * limit;
 
       const [reviews, total] = await Promise.all([
         prisma.storeReview.findMany({
@@ -104,32 +104,32 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
         prisma.storeReview.count({
           where: { retailer_id: retailerId, is_hidden: false },
         }),
-      ])
+      ]);
 
       return reply.send({
         data: reviews,
         pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-      })
+      });
     },
-  )
+  );
 
   // ─── RETAILER: Get rating summary (product + store) ───
   server.get('/reviews/summary', async (request, reply) => {
-    const retailerId = (request as any).retailerId as string
+    const retailerId = (request as any).retailerId as string;
 
     // Store rating summary
     const storeAgg = await prisma.storeReview.aggregate({
       where: { retailer_id: retailerId, is_hidden: false },
       _avg: { rating: true },
       _count: { rating: true },
-    })
+    });
 
     // Rating distribution (1-5 stars) for store
     const storeDistribution = await prisma.storeReview.groupBy({
       by: ['rating'],
       where: { retailer_id: retailerId, is_hidden: false },
       _count: { rating: true },
-    })
+    });
 
     // Top reviewed products
     const topProducts = await prisma.product.findMany({
@@ -146,7 +146,7 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
       orderBy: { rating_count: 'desc' },
       take: 5,
-    })
+    });
 
     // Recent reviews (last 5 product + store combined)
     const [recentProductReviews, recentStoreReviews] = await Promise.all([
@@ -167,17 +167,17 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
         orderBy: { created_at: 'desc' },
         take: 5,
       }),
-    ])
+    ]);
 
     // Google review link
     const retailer = await prisma.retailer.findUnique({
       where: { id: retailerId },
       select: { google_place_id: true },
-    })
+    });
 
     const googleReviewUrl = retailer?.google_place_id
       ? buildGoogleReviewUrl(retailer.google_place_id)
-      : null
+      : null;
 
     return reply.send({
       data: {
@@ -205,8 +205,8 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
           .slice(0, 10),
         google_review_url: googleReviewUrl,
       },
-    })
-  })
+    });
+  });
 
   // ─── RETAILER: Update Google Place ID ───
   server.patch<{ Body: { google_place_id: string | null } }>(
@@ -222,15 +222,15 @@ export const retailersRatingsRoutes: FastifyPluginAsync = async (server) => {
       },
     },
     async (request, reply) => {
-      const retailerId = (request as any).retailerId as string
-      const { google_place_id } = request.body as any
+      const retailerId = (request as any).retailerId as string;
+      const { google_place_id } = request.body as any;
 
       await prisma.retailer.update({
         where: { id: retailerId },
         data: { google_place_id: google_place_id || null },
-      })
+      });
 
-      return reply.send({ success: true })
+      return reply.send({ success: true });
     },
-  )
-}
+  );
+};

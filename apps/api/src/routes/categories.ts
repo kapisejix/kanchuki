@@ -141,8 +141,7 @@ export const categoryRoutes: FastifyPluginAsync = async (server) => {
 
     return {
       data: categories.map((c) => {
-        const fallbackImg =
-          c.products[0]?.photos[0]?.url ?? (nameFallbackMap.get(c.name) || null);
+        const fallbackImg = c.products[0]?.photos[0]?.url ?? (nameFallbackMap.get(c.name) || null);
         return {
           id: c.id,
           retailer_id: c.retailer_id,

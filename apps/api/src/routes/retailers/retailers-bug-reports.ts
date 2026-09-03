@@ -1,19 +1,13 @@
 // Retailer-facing bug report submission — POST /retailers/me/bug-reports.
 // Auto-captures device context, accepts optional screenshot upload.
-import { prisma } from "@kanchuki/db";
-import type { FastifyPluginAsync } from "fastify";
-import { z } from "zod";
-import { validationError } from "../../plugins/error-handler.js";
+import { prisma } from '@kanchuki/db';
+import type { FastifyPluginAsync } from 'fastify';
+import { z } from 'zod';
+import { validationError } from '../../plugins/error-handler.js';
 
 const BugReportCreateSchema = z.object({
-  description: z
-    .string()
-    .min(10, "Please describe the issue in a bit more detail")
-    .max(5000),
-  severity: z
-    .enum(["LOW", "MEDIUM", "HIGH", "CRITICAL"])
-    .optional()
-    .default("MEDIUM"),
+  description: z.string().min(10, 'Please describe the issue in a bit more detail').max(5000),
+  severity: z.enum(['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']).optional().default('MEDIUM'),
   // Auto-captured by the mobile app
   app_version: z.string().max(200).optional(),
   os_version: z.string().max(200).optional(),
@@ -32,12 +26,10 @@ const BugReportCreateSchema = z.object({
 export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
   // ── POST /retailers/me/bug-reports ────────────────────────────────
   // Submit a bug report from the mobile app. Authenticated retailer only.
-  server.post("/me/bug-reports", async (request, reply) => {
+  server.post('/me/bug-reports', async (request, reply) => {
     const body = BugReportCreateSchema.safeParse(request.body);
     if (!body.success) {
-      throw validationError(
-        body.error.issues[0]?.message ?? "Invalid bug report",
-      );
+      throw validationError(body.error.issues[0]?.message ?? 'Invalid bug report');
     }
 
     const report = await prisma.bugReport.create({
@@ -70,7 +62,7 @@ export const retailersBugReportRoutes: FastifyPluginAsync = async (server) => {
         severity: body.data.severity,
         screen: body.data.screen_name,
       },
-      "Bug report submitted",
+      'Bug report submitted',
     );
 
     reply.code(201);

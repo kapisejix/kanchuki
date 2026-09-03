@@ -123,17 +123,30 @@ export const growthPromotionRoutes: FastifyPluginAsync = async (server) => {
     const retailerId = request.retailerId;
     await guard(retailerId);
     const body = z
-      .object({ code: z.string().min(2), subtotal_paise: z.number().int().min(0), product_ids: z.array(z.string()).default([]) })
+      .object({
+        code: z.string().min(2),
+        subtotal_paise: z.number().int().min(0),
+        product_ids: z.array(z.string()).default([]),
+      })
       .safeParse(request.body);
     if (!body.success) throw validationError(body.error.issues[0]?.message ?? 'Invalid');
 
     const promo = await prisma.promotion.findUnique({
-      where: { retailer_id_code: { retailer_id: retailerId, code: body.data.code.trim().toUpperCase() } },
+      where: {
+        retailer_id_code: { retailer_id: retailerId, code: body.data.code.trim().toUpperCase() },
+      },
     });
     if (!promo || !isPromotionEligible(promo, body.data.subtotal_paise, body.data.product_ids)) {
       throw notFound('Valid promotion');
     }
     const discount_paise = applyPromotionDiscount(promo, body.data.subtotal_paise);
-    return { data: { id: promo.id, code: promo.code, discount_paise, total_after_paise: body.data.subtotal_paise - discount_paise } };
+    return {
+      data: {
+        id: promo.id,
+        code: promo.code,
+        discount_paise,
+        total_after_paise: body.data.subtotal_paise - discount_paise,
+      },
+    };
   });
 };

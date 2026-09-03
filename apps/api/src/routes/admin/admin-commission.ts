@@ -99,7 +99,8 @@ export function buildCommissionCsv(params: {
     periods.length === 1
       ? fmtPeriod(periods[0]!)
       : `${fmtPeriod(periods[periods.length - 1]!)} - ${fmtPeriod(periods[0]!)} (${periods.length} months)`;
-  const generated = new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ') + ' IST';
+  const generated =
+    new Date(Date.now() + IST_OFFSET_MS).toISOString().slice(0, 16).replace('T', ' ') + ' IST';
 
   const lines: string[] = [];
   lines.push('Kanchuki Commission Expenditure Export');
@@ -113,7 +114,13 @@ export function buildCommissionCsv(params: {
   lines.push('Month,Date,Category,Amount (INR),Notes');
   for (const e of expenses) {
     lines.push(
-      [e.period, istDateStr(e.expense_date), csvField(e.category), fmtRs(e.amount_inr), csvField(e.notes ?? '')].join(','),
+      [
+        e.period,
+        istDateStr(e.expense_date),
+        csvField(e.category),
+        fmtRs(e.amount_inr),
+        csvField(e.notes ?? ''),
+      ].join(','),
     );
   }
   lines.push('');
@@ -161,9 +168,7 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
       const k = periodKey(p.paid_at);
       paymentByPeriod.set(k, (paymentByPeriod.get(k) ?? 0) + p.amount_inr);
     }
-    const spentByPeriod = new Map(
-      expenseGroups.map((g) => [g.period, g._sum.amount_inr ?? 0]),
-    );
+    const spentByPeriod = new Map(expenseGroups.map((g) => [g.period, g._sum.amount_inr ?? 0]));
     const countByPeriod = new Map(expenseGroups.map((g) => [g.period, g._count]));
 
     const rows = periods.map((period) => {
@@ -324,7 +329,11 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         period: z.string().regex(PERIOD_RE, 'Period must be YYYY-MM').optional(),
-        amount_inr: z.number().int().positive('Amount must be greater than 0 (in paise)').optional(),
+        amount_inr: z
+          .number()
+          .int()
+          .positive('Amount must be greater than 0 (in paise)')
+          .optional(),
         category: z.string().trim().min(1, 'Where is required').max(120).optional(),
         expense_date: z.coerce.date().optional(),
         notes: z.string().trim().max(1000).nullable().optional(),
@@ -384,37 +393,34 @@ export const adminCommissionRoutes: FastifyPluginAsync = async (server) => {
   // sets deleted_at (an UPDATE the role can do) and every read filters
   // deleted rows out — same pattern as products. A missing/already-deleted
   // row 404s; real failures surface as 500 (no error swallowing).
-  server.delete<{ Params: { id: string } }>(
-    '/commission/expenses/:id',
-    async (request, reply) => {
-      const prev = await prisma.adminCommissionExpense.findFirst({
-        where: { id: request.params.id, deleted_at: null },
-      });
-      if (!prev) throw notFound('Commission expense');
+  server.delete<{ Params: { id: string } }>('/commission/expenses/:id', async (request, reply) => {
+    const prev = await prisma.adminCommissionExpense.findFirst({
+      where: { id: request.params.id, deleted_at: null },
+    });
+    if (!prev) throw notFound('Commission expense');
 
-      await prisma.adminCommissionExpense.update({
-        where: { id: request.params.id },
-        data: { deleted_at: new Date() },
-      });
+    await prisma.adminCommissionExpense.update({
+      where: { id: request.params.id },
+      data: { deleted_at: new Date() },
+    });
 
-      await prisma.auditLog.create({
-        data: {
-          actor_type: 'admin',
-          action: 'DELETE',
-          resource_type: 'AdminCommissionExpense',
-          resource_id: prev.id,
-          metadata: {
-            period: prev.period,
-            amount_inr: prev.amount_inr,
-            category: prev.category,
-            expense_date: prev.expense_date.toISOString(),
-          },
-          ip_address: request.ip,
+    await prisma.auditLog.create({
+      data: {
+        actor_type: 'admin',
+        action: 'DELETE',
+        resource_type: 'AdminCommissionExpense',
+        resource_id: prev.id,
+        metadata: {
+          period: prev.period,
+          amount_inr: prev.amount_inr,
+          category: prev.category,
+          expense_date: prev.expense_date.toISOString(),
         },
-      });
+        ip_address: request.ip,
+      },
+    });
 
-      request.log.info({ id: prev.id }, 'Commission expense deleted');
-      return reply.status(204).send();
-    },
-  );
+    request.log.info({ id: prev.id }, 'Commission expense deleted');
+    return reply.status(204).send();
+  });
 };

@@ -37,7 +37,7 @@ export const adminDesignReferenceRoutes: FastifyPluginAsync = async (server) => 
     const { category } = request.query as { category?: string };
 
     const where: Record<string, unknown> = {};
-    if (category && DESIGN_CATEGORIES.includes(category as typeof DESIGN_CATEGORIES[number])) {
+    if (category && DESIGN_CATEGORIES.includes(category as (typeof DESIGN_CATEGORIES)[number])) {
       where.category = category;
     }
 

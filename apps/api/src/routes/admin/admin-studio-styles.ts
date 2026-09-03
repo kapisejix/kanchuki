@@ -127,7 +127,16 @@ export const adminStudioStylesRoutes: FastifyPluginAsync = async (server) => {
     }
 
     const data: Record<string, unknown> = {};
-    for (const k of ['label', 'description', 'prompt', 'tab', 'status', 'plans', 'audience', 'sort_order'] as const) {
+    for (const k of [
+      'label',
+      'description',
+      'prompt',
+      'tab',
+      'status',
+      'plans',
+      'audience',
+      'sort_order',
+    ] as const) {
       if (body[k] !== undefined) data[k] = body[k];
     }
     if (body.engine !== undefined) data.engine = body.engine; // null clears

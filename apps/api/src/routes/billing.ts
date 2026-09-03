@@ -60,15 +60,37 @@ function periodEnd(start: Date): Date {
 // State name → 2-digit code mapping for GST intra/inter-state detection.
 // Only the states we actually encounter from retailer.address fields.
 const STATE_CODE_MAP: Record<string, string> = {
-  'Andhra Pradesh': '37', 'Arunachal Pradesh': '12', Assam: '18',
-  Bihar: '10', Chhattisgarh: '22', Goa: '30', Gujarat: '24',
-  Haryana: '06', 'Himachal Pradesh': '02', Jharkhand: '20',
-  Karnataka: '29', Kerala: '32', 'Madhya Pradesh': '23',
-  Maharashtra: '27', Manipur: '14', Meghalaya: '17', Mizoram: '15',
-  Nagaland: '13', Odisha: '21', Punjab: '03', Rajasthan: '08',
-  Sikkim: '11', 'Tamil Nadu': '33', Telangana: '36', Tripura: '16',
-  'Uttar Pradesh': '09', Uttarakhand: '05', 'West Bengal': '19',
-  Delhi: '07', 'Jammu & Kashmir': '01', Ladakh: '38',
+  'Andhra Pradesh': '37',
+  'Arunachal Pradesh': '12',
+  Assam: '18',
+  Bihar: '10',
+  Chhattisgarh: '22',
+  Goa: '30',
+  Gujarat: '24',
+  Haryana: '06',
+  'Himachal Pradesh': '02',
+  Jharkhand: '20',
+  Karnataka: '29',
+  Kerala: '32',
+  'Madhya Pradesh': '23',
+  Maharashtra: '27',
+  Manipur: '14',
+  Meghalaya: '17',
+  Mizoram: '15',
+  Nagaland: '13',
+  Odisha: '21',
+  Punjab: '03',
+  Rajasthan: '08',
+  Sikkim: '11',
+  'Tamil Nadu': '33',
+  Telangana: '36',
+  Tripura: '16',
+  'Uttar Pradesh': '09',
+  Uttarakhand: '05',
+  'West Bengal': '19',
+  Delhi: '07',
+  'Jammu & Kashmir': '01',
+  Ladakh: '38',
 };
 
 /** Resolve a state name to its 2-digit GST code, or null if unknown. */
@@ -714,9 +736,7 @@ export const billingRoutes: FastifyPluginAsync = async (server) => {
       case 'subscription.activated':
       case 'subscription.charged': {
         const start = rzpSub.current_start ? new Date(rzpSub.current_start * 1000) : new Date();
-        const end = rzpSub.current_end
-          ? new Date(rzpSub.current_end * 1000)
-          : periodEnd(start);
+        const end = rzpSub.current_end ? new Date(rzpSub.current_end * 1000) : periodEnd(start);
 
         // A payment row + GST invoice is created ONLY for subscription.charged
         // that carries a payment entity. subscription.activated (sent

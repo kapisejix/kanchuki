@@ -64,35 +64,34 @@ function getPeriodRange(
 // ─── Types ──────────────────────────────────────────────────────────
 
 type SeasonalCategory = {
-  category: string
-  sends: number
-  opens: number
-  enquiries: number
-}
+  category: string;
+  sends: number;
+  opens: number;
+  enquiries: number;
+};
 
 type SeasonalResponse = {
-  period: { label: string; start: string; end: string }
-  comparePeriod?: { label: string; start: string; end: string }
+  period: { label: string; start: string; end: string };
+  comparePeriod?: { label: string; start: string; end: string };
   categories: {
-    category: string
-    current: { sends: number; opens: number; enquiries: number }
-    compare: { sends: number; opens: number; enquiries: number }
-    deltaPct: { sends: number; opens: number; enquiries: number }
-  }[]
+    category: string;
+    current: { sends: number; opens: number; enquiries: number };
+    compare: { sends: number; opens: number; enquiries: number };
+    deltaPct: { sends: number; opens: number; enquiries: number };
+  }[];
   summary: {
-    topCurrentCategory: string | null
-    topCompareCategory: string | null
-    biggestSwing: { category: string; metric: string; deltaPct: number } | null
-  }
-}
+    topCurrentCategory: string | null;
+    topCompareCategory: string | null;
+    biggestSwing: { category: string; metric: string; deltaPct: number } | null;
+  };
+};
 
 // ─── Route ──────────────────────────────────────────────────────────
 
 export const growthSeasonalRoutes: FastifyPluginAsync = async (server) => {
   server.get('/analytics/seasonal', async (request) => {
     const retailerId = request.retailerId;
-    if (!(await hasFeature(retailerId, 'GROWTH_ENGINE')))
-      throw featureUnavailable('Growth tools');
+    if (!(await hasFeature(retailerId, 'GROWTH_ENGINE'))) throw featureUnavailable('Growth tools');
 
     const qs = z
       .object({
@@ -138,10 +137,7 @@ export const growthSeasonalRoutes: FastifyPluginAsync = async (server) => {
     const compareMap = mergeCategoryData(compareCampaignSends, compareInteractions);
 
     // Build the category comparison array
-    const allCategories = new Set([
-      ...Object.keys(currentMap),
-      ...Object.keys(compareMap),
-    ]);
+    const allCategories = new Set([...Object.keys(currentMap), ...Object.keys(compareMap)]);
 
     const categories: SeasonalResponse['categories'] = [...allCategories]
       .map((cat) => {
@@ -158,13 +154,16 @@ export const growthSeasonalRoutes: FastifyPluginAsync = async (server) => {
           },
         };
       })
-      .sort((a, b) => (b.current.opens + b.current.enquiries) - (a.current.opens + a.current.enquiries));
+      .sort(
+        (a, b) => b.current.opens + b.current.enquiries - (a.current.opens + a.current.enquiries),
+      );
 
     // Summary
     const topCurrent = categories[0]?.category ?? null;
-    const topCompare = [...categories].sort(
-      (a, b) => (b.compare.opens + b.compare.enquiries) - (a.compare.opens + a.compare.enquiries),
-    )[0]?.category ?? null;
+    const topCompare =
+      [...categories].sort(
+        (a, b) => b.compare.opens + b.compare.enquiries - (a.compare.opens + a.compare.enquiries),
+      )[0]?.category ?? null;
 
     let biggestSwing: SeasonalResponse['summary']['biggestSwing'] = null;
     let maxDelta = 0;
@@ -267,7 +266,9 @@ async function getCampaignSendsByCategory(
     const sends = sendsMap.get(c.id) ?? 0;
     if (sends === 0 || c.product_ids.length === 0) continue;
     // Split sends evenly across the campaign's products' categories
-    const categories = [...new Set(c.product_ids.map((pid) => productCategory.get(pid) ?? 'Uncategorised'))];
+    const categories = [
+      ...new Set(c.product_ids.map((pid) => productCategory.get(pid) ?? 'Uncategorised')),
+    ];
     const perCategory = sends / categories.length;
     for (const cat of categories) {
       categorySends[cat] = (categorySends[cat] ?? 0) + perCategory;

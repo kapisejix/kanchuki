@@ -44,8 +44,12 @@ describe('handleEmbeddingBackfill', () => {
 
   it('should paginate through large backlogs', async () => {
     mockFindMany
-      .mockResolvedValueOnce(Array.from({ length: 50 }, (_, i) => ({ id: `prod-${i}`, retailer_id: 'ret-1' })))
-      .mockResolvedValueOnce(Array.from({ length: 30 }, (_, i) => ({ id: `prod-${50 + i}`, retailer_id: 'ret-1' })))
+      .mockResolvedValueOnce(
+        Array.from({ length: 50 }, (_, i) => ({ id: `prod-${i}`, retailer_id: 'ret-1' })),
+      )
+      .mockResolvedValueOnce(
+        Array.from({ length: 30 }, (_, i) => ({ id: `prod-${50 + i}`, retailer_id: 'ret-1' })),
+      )
       .mockResolvedValueOnce([]);
 
     const result = await handleEmbeddingBackfill();

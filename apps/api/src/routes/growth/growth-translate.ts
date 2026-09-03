@@ -24,7 +24,7 @@ export type SupportedLanguage = keyof typeof SUPPORTED_LANGUAGES;
 
 const LANGUAGE_PROMPT: Record<SupportedLanguage, string> = {
   hindi: 'in Hindi using Devanagari script',
-  hinglish: 'in Hinglish (Roman script, natural WhatsApp-style Hindi)', 
+  hinglish: 'in Hinglish (Roman script, natural WhatsApp-style Hindi)',
   tamil: 'in Tamil (Tamil script)',
   telugu: 'in Telugu (Telugu script)',
   marathi: 'in Marathi (Devanagari script)',
@@ -49,7 +49,11 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
     if (!product) throw notFound('Product');
 
     const body = z
-      .object({ language: z.enum(Object.keys(LANGUAGE_PROMPT) as [SupportedLanguage, ...SupportedLanguage[]]) })
+      .object({
+        language: z.enum(
+          Object.keys(LANGUAGE_PROMPT) as [SupportedLanguage, ...SupportedLanguage[]],
+        ),
+      })
       .safeParse(request.body);
     if (!body.success) throw validationError('Unsupported language');
 
@@ -57,7 +61,8 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
     const metadata = (product.metadata as Record<string, unknown> | null) ?? {};
     const translations = (metadata.translations as Record<string, string> | null) ?? {};
     const cached = translations[language];
-    if (cached) return reply.send({ data: { product_id: id, language, description: cached, cached: true } });
+    if (cached)
+      return reply.send({ data: { product_id: id, language, description: cached, cached: true } });
 
     // Metered like tagging: AI_TAGGING_CALL quota + per-call usage log.
     await checkQuota(retailerId, 'AI_TAGGING_CALL');
@@ -87,7 +92,9 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
       maxTokens: 300,
     };
     const description = await runVisionAsk(req).catch((err: unknown) => {
-      throw validationError(`AI description failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+      throw validationError(
+        `AI description failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
     });
 
     const clean = description.trim().replace(/\s+/g, ' ');
@@ -113,7 +120,9 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         message: z.string().min(1).max(2000),
-        language: z.enum(Object.keys(LANGUAGE_PROMPT) as [SupportedLanguage, ...SupportedLanguage[]]),
+        language: z.enum(
+          Object.keys(LANGUAGE_PROMPT) as [SupportedLanguage, ...SupportedLanguage[]],
+        ),
         // Optional product context so the copywriter can stay on-topic.
         context: z.string().max(300).optional(),
       })
@@ -137,7 +146,9 @@ export const growthTranslateRoutes: FastifyPluginAsync = async (server) => {
       maxTokens: 500,
     };
     const translated = await runVisionAsk(req).catch((err: unknown) => {
-      throw validationError(`AI translation failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+      throw validationError(
+        `AI translation failed: ${err instanceof Error ? err.message : 'unknown error'}`,
+      );
     });
 
     const clean = translated.trim().replace(/\s+/g, ' ');

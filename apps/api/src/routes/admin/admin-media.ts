@@ -2,7 +2,14 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { deleteObject, fetchImageBuffer, getUploadPresignedUrl, isDarkImage, publicUrl, runVisionAsk } from '@kanchuki/ai';
+import {
+  deleteObject,
+  fetchImageBuffer,
+  getUploadPresignedUrl,
+  isDarkImage,
+  publicUrl,
+  runVisionAsk,
+} from '@kanchuki/ai';
 import {
   encryptSecret,
   getReplicaPrisma,

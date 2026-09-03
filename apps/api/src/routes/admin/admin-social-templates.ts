@@ -15,12 +15,18 @@ import { adminAuthPreHandler } from '../admin-auth.js';
 const TemplateUpdateSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
   description: z.string().trim().max(500).optional(),
-  template_type: z.enum([
-    'INSTAGRAM_POST', 'INSTAGRAM_REEL', 'INSTAGRAM_STORY',
-    'WHATSAPP_STATUS', 'WHATSAPP_CATALOG',
-    'FACEBOOK_POST', 'FACEBOOK_STORY',
-    'PDF_FLYER',
-  ]).optional(),
+  template_type: z
+    .enum([
+      'INSTAGRAM_POST',
+      'INSTAGRAM_REEL',
+      'INSTAGRAM_STORY',
+      'WHATSAPP_STATUS',
+      'WHATSAPP_CATALOG',
+      'FACEBOOK_POST',
+      'FACEBOOK_STORY',
+      'PDF_FLYER',
+    ])
+    .optional(),
   occasion: z.string().trim().max(80).optional(),
   platform: z.string().trim().max(40).optional(),
   overlay_festival: z.string().trim().max(80).optional(),

@@ -98,11 +98,29 @@ export const growthGstRoutes: FastifyPluginAsync = async (server) => {
     const monthlyData = await prisma.subscriptionPayment.groupBy({
       by: ['created_at'],
       where,
-      _sum: { amount_excluding_gst: true, gst_amount: true, amount_inr: true, cgst_amount: true, sgst_amount: true, igst_amount: true },
+      _sum: {
+        amount_excluding_gst: true,
+        gst_amount: true,
+        amount_inr: true,
+        cgst_amount: true,
+        sgst_amount: true,
+        igst_amount: true,
+      },
       _count: true,
     });
 
-    const months: Record<number, { taxable: number; gst: number; cgst: number; sgst: number; igst: number; sales: number; orders: number }> = {};
+    const months: Record<
+      number,
+      {
+        taxable: number;
+        gst: number;
+        cgst: number;
+        sgst: number;
+        igst: number;
+        sales: number;
+        orders: number;
+      }
+    > = {};
     for (let m = 0; m < 12; m++) {
       months[m] = { taxable: 0, gst: 0, cgst: 0, sgst: 0, igst: 0, sales: 0, orders: 0 };
     }

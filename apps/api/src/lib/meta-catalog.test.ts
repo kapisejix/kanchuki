@@ -102,7 +102,9 @@ describe('meta-catalog', () => {
         status: 404,
       });
 
-      await expect(uploadCatalogImage('https://example.com/missing.jpg', mockAccessToken)).rejects.toThrow(MetaApiError);
+      await expect(
+        uploadCatalogImage('https://example.com/missing.jpg', mockAccessToken),
+      ).rejects.toThrow(MetaApiError);
     });
   });
 
@@ -122,13 +124,18 @@ describe('meta-catalog', () => {
           json: () => Promise.resolve({ id: 'item_123' }),
         });
 
-      const result = await createCatalogItem(mockCatalogId, mockAccessToken, {
-        name: 'Test Product',
-        price: 100000,
-        currency: 'INR',
-        availability: 'in stock',
-        image_url: 'https://example.com/image.jpg',
-      }, mockRetailerId);
+      const result = await createCatalogItem(
+        mockCatalogId,
+        mockAccessToken,
+        {
+          name: 'Test Product',
+          price: 100000,
+          currency: 'INR',
+          availability: 'in stock',
+          image_url: 'https://example.com/image.jpg',
+        },
+        mockRetailerId,
+      );
 
       expect(result.id).toBe('item_123');
       expect(mockFetch).toHaveBeenCalledTimes(3);
@@ -149,13 +156,18 @@ describe('meta-catalog', () => {
           json: () => Promise.resolve({ id: 'item_123' }),
         });
 
-      const result = await createCatalogItem(mockCatalogId, mockAccessToken, {
-        name: 'Test Product',
-        price: 100000,
-        currency: 'INR',
-        availability: 'in stock',
-        image_url: 'https://example.com/image.jpg',
-      }, mockRetailerId);
+      const result = await createCatalogItem(
+        mockCatalogId,
+        mockAccessToken,
+        {
+          name: 'Test Product',
+          price: 100000,
+          currency: 'INR',
+          availability: 'in stock',
+          image_url: 'https://example.com/image.jpg',
+        },
+        mockRetailerId,
+      );
 
       expect(result.id).toBe('item_123');
     });
@@ -187,9 +199,11 @@ describe('meta-catalog', () => {
         json: () => Promise.resolve({ error: { message: 'Failed' } }),
       });
 
-      await expect(updateCatalogItem(mockCatalogId, mockAccessToken, 'item_123', {
-        name: 'Updated',
-      })).rejects.toThrow(MetaApiError);
+      await expect(
+        updateCatalogItem(mockCatalogId, mockAccessToken, 'item_123', {
+          name: 'Updated',
+        }),
+      ).rejects.toThrow(MetaApiError);
     });
   });
 
@@ -213,13 +227,30 @@ describe('meta-catalog', () => {
     it('returns items and next cursor', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          data: [
-            { id: 'item_1', retailer_id: 'prod_1', name: 'Product 1', price: 100000, currency: 'INR', availability: 'in stock', condition: 'new' },
-            { id: 'item_2', retailer_id: 'prod_2', name: 'Product 2', price: 200000, currency: 'INR', availability: 'out of stock', condition: 'new' },
-          ],
-          paging: { cursors: { after: 'cursor_123' } },
-        }),
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                id: 'item_1',
+                retailer_id: 'prod_1',
+                name: 'Product 1',
+                price: 100000,
+                currency: 'INR',
+                availability: 'in stock',
+                condition: 'new',
+              },
+              {
+                id: 'item_2',
+                retailer_id: 'prod_2',
+                name: 'Product 2',
+                price: 200000,
+                currency: 'INR',
+                availability: 'out of stock',
+                condition: 'new',
+              },
+            ],
+            paging: { cursors: { after: 'cursor_123' } },
+          }),
       });
 
       const result = await listCatalogItems(mockCatalogId, mockAccessToken);
@@ -233,12 +264,27 @@ describe('meta-catalog', () => {
     it('returns item when found', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve({
-          data: [{ id: 'item_1', retailer_id: mockRetailerId, name: 'Product 1', price: 100000, currency: 'INR', availability: 'in stock', condition: 'new' }],
-        }),
+        json: () =>
+          Promise.resolve({
+            data: [
+              {
+                id: 'item_1',
+                retailer_id: mockRetailerId,
+                name: 'Product 1',
+                price: 100000,
+                currency: 'INR',
+                availability: 'in stock',
+                condition: 'new',
+              },
+            ],
+          }),
       });
 
-      const result = await getCatalogItemByRetailerId(mockCatalogId, mockAccessToken, mockRetailerId);
+      const result = await getCatalogItemByRetailerId(
+        mockCatalogId,
+        mockAccessToken,
+        mockRetailerId,
+      );
 
       expect(result).not.toBeNull();
       expect(result?.retailer_id).toBe(mockRetailerId);
@@ -250,7 +296,11 @@ describe('meta-catalog', () => {
         json: () => Promise.resolve({ data: [] }),
       });
 
-      const result = await getCatalogItemByRetailerId(mockCatalogId, mockAccessToken, 'nonexistent');
+      const result = await getCatalogItemByRetailerId(
+        mockCatalogId,
+        mockAccessToken,
+        'nonexistent',
+      );
 
       expect(result).toBeNull();
     });
@@ -260,17 +310,26 @@ describe('meta-catalog', () => {
     it('processes batch operations', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve([
-          { code: 200, body: { id: 'item_1' } },
-          { code: 200, body: { success: true } },
-          { code: 400, body: { error: { message: 'Failed' } } },
-        ]),
+        json: () =>
+          Promise.resolve([
+            { code: 200, body: { id: 'item_1' } },
+            { code: 200, body: { success: true } },
+            { code: 400, body: { error: { message: 'Failed' } } },
+          ]),
       });
 
       const result = await batchCatalogItems(mockCatalogId, mockAccessToken, [
-        { method: 'POST', retailer_id: 'prod_1', item: { name: 'Product 1', price: 100000, currency: 'INR', availability: 'in stock' } },
+        {
+          method: 'POST',
+          retailer_id: 'prod_1',
+          item: { name: 'Product 1', price: 100000, currency: 'INR', availability: 'in stock' },
+        },
         { method: 'DELETE', retailer_id: 'prod_2' },
-        { method: 'POST', retailer_id: 'prod_3', item: { name: 'Product 3', price: 300000, currency: 'INR', availability: 'in stock' } },
+        {
+          method: 'POST',
+          retailer_id: 'prod_3',
+          item: { name: 'Product 3', price: 300000, currency: 'INR', availability: 'in stock' },
+        },
       ]);
 
       expect(result).toHaveLength(3);

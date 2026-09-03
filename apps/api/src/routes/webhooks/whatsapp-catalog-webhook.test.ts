@@ -74,7 +74,10 @@ function sign(rawBody: string, secret: string = APP_SECRET): string {
   return `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
 }
 
-async function postEvent(app: ReturnType<typeof buildApp> extends Promise<infer T> ? T : never, body: unknown) {
+async function postEvent(
+  app: ReturnType<typeof buildApp> extends Promise<infer T> ? T : never,
+  body: unknown,
+) {
   const raw = typeof body === 'string' ? body : JSON.stringify(body);
   return app.inject({
     method: 'POST',
@@ -133,7 +136,9 @@ describe('GET /public/webhooks/whatsapp-catalog — handshake', () => {
     const app = await buildApp();
     const res = await app.inject({
       method: 'GET',
-      url: '/v1/public/webhooks/whatsapp-catalog?hub.mode=unsubscribe&hub.verify_token=' + VERIFY_TOKEN,
+      url:
+        '/v1/public/webhooks/whatsapp-catalog?hub.mode=unsubscribe&hub.verify_token=' +
+        VERIFY_TOKEN,
     });
     expect(res.statusCode).toBe(400);
     await app.close();
@@ -239,7 +244,10 @@ describe('POST /public/webhooks/whatsapp-catalog — event handling', () => {
     expect(mockCatalogItemUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { product_id: 'p1' },
-        data: expect.objectContaining({ product_price_paise: 199000, product_status_snapshot: 'AVAILABLE' }),
+        data: expect.objectContaining({
+          product_price_paise: 199000,
+          product_status_snapshot: 'AVAILABLE',
+        }),
       }),
     );
     await app.close();

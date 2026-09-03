@@ -18,7 +18,9 @@ const UpdateRetailerSchema = z.object({
   banner_r2_key: z.string().max(500).nullable().optional(),
   gstin: z
     .union([
-      z.string().regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format'),
+      z
+        .string()
+        .regex(/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/, 'Invalid GSTIN format'),
       z.literal(''),
     ])
     .nullable()
@@ -132,17 +134,29 @@ export const retailersProfileRoutes: FastifyPluginAsync = async (server) => {
       ...(profileFields.owner_name !== undefined ? { owner_name: profileFields.owner_name } : {}),
       ...(profileFields.city !== undefined ? { city: profileFields.city } : {}),
       ...(profileFields.state !== undefined ? { state: profileFields.state } : {}),
-      ...(profileFields.address_line1 !== undefined ? { address_line1: profileFields.address_line1 } : {}),
-      ...(profileFields.address_line2 !== undefined ? { address_line2: profileFields.address_line2 } : {}),
+      ...(profileFields.address_line1 !== undefined
+        ? { address_line1: profileFields.address_line1 }
+        : {}),
+      ...(profileFields.address_line2 !== undefined
+        ? { address_line2: profileFields.address_line2 }
+        : {}),
       ...(profileFields.pincode !== undefined ? { pincode: profileFields.pincode } : {}),
       ...(profileFields.logo_url !== undefined ? { logo_url: profileFields.logo_url } : {}),
-      ...(profileFields.logo_r2_key !== undefined ? { logo_r2_key: profileFields.logo_r2_key } : {}),
+      ...(profileFields.logo_r2_key !== undefined
+        ? { logo_r2_key: profileFields.logo_r2_key }
+        : {}),
       ...(profileFields.banner_url !== undefined ? { banner_url: profileFields.banner_url } : {}),
-      ...(profileFields.banner_r2_key !== undefined ? { banner_r2_key: profileFields.banner_r2_key } : {}),
+      ...(profileFields.banner_r2_key !== undefined
+        ? { banner_r2_key: profileFields.banner_r2_key }
+        : {}),
       ...(profileFields.gstin !== undefined ? { gstin: profileFields.gstin || null } : {}),
-      ...(profileFields.whatsapp_number !== undefined ? { whatsapp_number: profileFields.whatsapp_number || null } : {}),
+      ...(profileFields.whatsapp_number !== undefined
+        ? { whatsapp_number: profileFields.whatsapp_number || null }
+        : {}),
       ...(profileFields.categories !== undefined ? { categories: profileFields.categories } : {}),
-      ...(profileFields.preferred_locale !== undefined ? { preferred_locale: profileFields.preferred_locale } : {}),
+      ...(profileFields.preferred_locale !== undefined
+        ? { preferred_locale: profileFields.preferred_locale }
+        : {}),
       ...(onboardedById ? { onboarded_by_id: onboardedById } : {}),
       ...(regeneratedSlug ? { public_slug: regeneratedSlug } : {}),
     };

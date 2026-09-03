@@ -23,10 +23,7 @@ const CustomerSchema = z.object({
   pref_fabrics: z.array(z.string().max(100)).max(10).optional().default([]),
   budget_min: z.number().int().min(0).max(100_000_000).optional(),
   budget_max: z.number().int().min(0).max(100_000_000).optional(),
-  usual_size: z
-    .enum(SIZE_OPTIONS)
-    .optional()
-    .nullable(),
+  usual_size: z.enum(SIZE_OPTIONS).optional().nullable(),
   notes: z.string().max(2000).optional(),
 });
 

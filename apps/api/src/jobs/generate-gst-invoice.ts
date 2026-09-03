@@ -56,7 +56,14 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
   const [retailer, gstProfile] = await Promise.all([
     prisma.retailer.findUnique({
       where: { id: payment.retailer_id },
-      select: { shop_name: true, gstin: true, address_line1: true, address_line2: true, city: true, state: true },
+      select: {
+        shop_name: true,
+        gstin: true,
+        address_line1: true,
+        address_line2: true,
+        city: true,
+        state: true,
+      },
     }),
     prisma.platformGstProfile.findUnique({ where: { id: 'singleton' } }),
   ]);
@@ -73,7 +80,9 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
     seller: {
       name: gstProfile.company_name,
       gstin: gstProfile.gstin,
-      address: gstProfile.address_line1 + (gstProfile.address_line2 ? `, ${gstProfile.address_line2}` : ''),
+      address:
+        gstProfile.address_line1 +
+        (gstProfile.address_line2 ? `, ${gstProfile.address_line2}` : ''),
       city: gstProfile.city,
       state: gstProfile.state,
       stateCode: gstProfile.state_code,
@@ -87,7 +96,11 @@ export async function handleGenerateGstInvoice(data: GenerateGstInvoiceJobData):
     },
     invoiceNumber: payment.gst_invoice_number,
     invoiceDate: payment.paid_at
-      ? payment.paid_at.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+      ? payment.paid_at.toLocaleDateString('en-IN', {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+        })
       : new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
     planName,
     sacCode: payment.sac_code ?? '998314',

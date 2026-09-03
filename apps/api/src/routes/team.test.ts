@@ -1006,4 +1006,3 @@ describe('POST /team/forgot-password & POST /team/reset-password', () => {
     await app.close();
   });
 });
-

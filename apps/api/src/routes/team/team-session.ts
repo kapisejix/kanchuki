@@ -5,11 +5,7 @@ import type { FastifyPluginAsync } from 'fastify';
 import { Redis } from 'ioredis';
 import { z } from 'zod';
 import { sendEmail, sendTeamPasswordResetEmail } from '../../lib/email.js';
-import {
-  isMsg91OtpConfigured,
-  sendOtpViaMsg91,
-  verifyStoredOtp,
-} from '../../lib/msg91-otp.js';
+import { isMsg91OtpConfigured, sendOtpViaMsg91, verifyStoredOtp } from '../../lib/msg91-otp.js';
 import { forbidden, notFound, validationError } from '../../plugins/error-handler.js';
 import { hashPassword, signTeamToken, verifyPassword } from '../../plugins/team-auth.js';
 import { teamAuthPreHandler } from './team-helpers.js';
@@ -99,11 +95,16 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     const raw = body.data.identifier.trim();
     const isPhone = isValidIndianPhone(raw) || /^\d{10}$/.test(raw.replace(/\D/g, ''));
-    const normalizedPhone = isPhone ? normalizeIndianPhone(raw.replace(/\D/g, '').slice(-10)) : null;
+    const normalizedPhone = isPhone
+      ? normalizeIndianPhone(raw.replace(/\D/g, '').slice(-10))
+      : null;
     const normalizedEmail = !isPhone && raw.includes('@') ? raw.toLowerCase() : null;
 
     if (!normalizedPhone && !normalizedEmail) {
-      throw validationError('Please enter a valid 10-digit mobile number or email address', 'identifier');
+      throw validationError(
+        'Please enter a valid 10-digit mobile number or email address',
+        'identifier',
+      );
     }
 
     const member = await prisma.teamMember.findFirst({
@@ -117,7 +118,10 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     });
 
     if (!member) {
-      throw validationError('No active team member found with this mobile number or email', 'identifier');
+      throw validationError(
+        'No active team member found with this mobile number or email',
+        'identifier',
+      );
     }
 
     // If member has a phone number matching or configured, send SMS/WhatsApp OTP
@@ -197,7 +201,9 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     const raw = body.data.identifier.trim();
     const otp = body.data.otp.trim();
     const isPhone = isValidIndianPhone(raw) || /^\d{10}$/.test(raw.replace(/\D/g, ''));
-    const normalizedPhone = isPhone ? normalizeIndianPhone(raw.replace(/\D/g, '').slice(-10)) : null;
+    const normalizedPhone = isPhone
+      ? normalizeIndianPhone(raw.replace(/\D/g, '').slice(-10))
+      : null;
     const normalizedEmail = !isPhone && raw.includes('@') ? raw.toLowerCase() : null;
 
     const member = await prisma.teamMember.findFirst({
@@ -289,7 +295,8 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
 
     return {
       data: {
-        message: 'If an active account exists with this email, a password reset code has been sent.',
+        message:
+          'If an active account exists with this email, a password reset code has been sent.',
       },
     };
   });
@@ -321,7 +328,10 @@ export const teamSessionRoutes: FastifyPluginAsync = async (server) => {
     }
 
     if (!codeValid) {
-      throw validationError('Invalid or expired reset code. Please request a new code.', 'reset_code');
+      throw validationError(
+        'Invalid or expired reset code. Please request a new code.',
+        'reset_code',
+      );
     }
 
     await prisma.teamMember.update({

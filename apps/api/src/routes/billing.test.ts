@@ -65,9 +65,7 @@ const {
     $queryRaw: m.mockQueryRaw,
     // Array form runs the ops; callback form gets the same mock as `tx`.
     $transaction: vi.fn((ops: unknown) =>
-      Array.isArray(ops)
-        ? Promise.all(ops)
-        : (ops as (tx: unknown) => unknown)(p),
+      Array.isArray(ops) ? Promise.all(ops) : (ops as (tx: unknown) => unknown)(p),
     ),
   });
   return m;

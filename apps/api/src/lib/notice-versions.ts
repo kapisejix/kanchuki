@@ -10,7 +10,8 @@ export const NOTICE_VERSIONS = {
     version: '1.0',
     effective_date: '2026-08-31',
     title: 'Kanchuki Shopper Passport — Privacy Notice',
-    summary: 'We collect your phone number, style preferences, and browsing behavior to personalize your shopping experience across partner stores.',
+    summary:
+      'We collect your phone number, style preferences, and browsing behavior to personalize your shopping experience across partner stores.',
     key_points: [
       'Your phone number is used only for OTP login and WhatsApp messages from stores you consent to.',
       'Style preferences and browsing data help us recommend products you might like.',

@@ -22,7 +22,9 @@ export const adminGstProfileRoutes: FastifyPluginAsync = async (server) => {
     const body = z
       .object({
         company_name: z.string().min(1),
-        gstin: z.string().regex(GSTIN_REGEX, 'Invalid GSTIN format (15 chars, e.g. 27AABCU9603R1ZM)'),
+        gstin: z
+          .string()
+          .regex(GSTIN_REGEX, 'Invalid GSTIN format (15 chars, e.g. 27AABCU9603R1ZM)'),
         address_line1: z.string().min(1),
         address_line2: z.string().optional(),
         city: z.string().min(1),
@@ -51,7 +53,11 @@ export const adminGstProfileRoutes: FastifyPluginAsync = async (server) => {
           before: prev
             ? { company_name: prev.company_name, gstin: prev.gstin, state_code: prev.state_code }
             : null,
-          after: { company_name: body.company_name, gstin: body.gstin, state_code: body.state_code },
+          after: {
+            company_name: body.company_name,
+            gstin: body.gstin,
+            state_code: body.state_code,
+          },
         },
         ip_address: request.ip,
       },

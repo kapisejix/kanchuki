@@ -58,20 +58,19 @@ export const adminRetailersListRoutes: FastifyPluginAsync = async (server) => {
         featured: z.coerce.boolean().optional(),
       })
       .safeParse(request.query);
-    const { cursor, limit, search, city, state, plan, status, suspended, featured } =
-      query.success
-        ? query.data
-        : {
-            cursor: undefined,
-            limit: 50,
-            search: undefined,
-            city: undefined,
-            state: undefined,
-            plan: undefined,
-            status: undefined,
-            suspended: undefined,
-            featured: undefined,
-          };
+    const { cursor, limit, search, city, state, plan, status, suspended, featured } = query.success
+      ? query.data
+      : {
+          cursor: undefined,
+          limit: 50,
+          search: undefined,
+          city: undefined,
+          state: undefined,
+          plan: undefined,
+          status: undefined,
+          suspended: undefined,
+          featured: undefined,
+        };
 
     const retailers = await prisma.retailer.findMany({
       where: {

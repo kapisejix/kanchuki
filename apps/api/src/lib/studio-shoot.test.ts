@@ -26,7 +26,11 @@ vi.mock('@kanchuki/ai', () => ({
 }));
 
 // Keep the real shared module (templates) — only the env is stubbed.
-import { generateStudioImage, downloadCompressAndUpload, isStudioShootConfigured } from './studio-shoot.js';
+import {
+  generateStudioImage,
+  downloadCompressAndUpload,
+  isStudioShootConfigured,
+} from './studio-shoot.js';
 
 const originalFetch = globalThis.fetch;
 
@@ -75,7 +79,9 @@ describe('generateStudioImage', () => {
         jsonResponse({ id: 'task_1', polling_url: 'https://api.bfl.ai/v1/get_result?id=task_1' }),
       )
       .mockResolvedValueOnce(jsonResponse({ status: 'Processing' }))
-      .mockResolvedValueOnce(jsonResponse({ status: 'Ready', result: { sample: 'https://delivery.bfl.ai/img.jpg' } }));
+      .mockResolvedValueOnce(
+        jsonResponse({ status: 'Ready', result: { sample: 'https://delivery.bfl.ai/img.jpg' } }),
+      );
 
     const result = await generateStudioImage('https://r2.example/photo.jpg', {
       prompt: 'On a chic city rooftop at golden hour with string lights.',
@@ -88,7 +94,10 @@ describe('generateStudioImage', () => {
     const headers = submitCall[1].headers as Record<string, string>;
     expect(headers['x-key']).toBe('test-key');
     expect(headers['Content-Type']).toBe('application/json');
-    const body = JSON.parse(submitCall[1].body as string) as { prompt: string; input_image: string };
+    const body = JSON.parse(submitCall[1].body as string) as {
+      prompt: string;
+      input_image: string;
+    };
     expect(body.input_image).toBe('https://r2.example/photo.jpg');
     // The scene guard is prepended for every generation.
     expect(body.prompt).toContain('pixel-identical to the input');
@@ -115,18 +124,14 @@ describe('generateStudioImage', () => {
   });
 
   it('maps 402 (out of credits) to a safe AppError', async () => {
-    mockFetch.mockResolvedValueOnce(
-      jsonResponse({ error: 'no credits' }, false, 402),
-    );
+    mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'no credits' }, false, 402));
     await expect(
       generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' }),
     ).rejects.toThrow(/out of credits/i);
   });
 
   it('maps 429 (active-task cap) to a retryable message', async () => {
-    mockFetch.mockResolvedValueOnce(
-      jsonResponse({ error: 'rate limit' }, false, 429),
-    );
+    mockFetch.mockResolvedValueOnce(jsonResponse({ error: 'rate limit' }, false, 429));
     await expect(
       generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' }),
     ).rejects.toThrow(/try again in a minute/i);
@@ -138,7 +143,10 @@ describe('generateStudioImage', () => {
         jsonResponse({ id: 'task_1', polling_url: 'https://api.bfl.ai/v1/get_result?id=task_1' }),
       )
       .mockResolvedValueOnce(jsonResponse({ status: 'Error', error: 'moderation' }));
-    const result = await generateStudioImage('https://r2.example/p.jpg', { prompt: 'x', tab: 'MODEL' });
+    const result = await generateStudioImage('https://r2.example/p.jpg', {
+      prompt: 'x',
+      tab: 'MODEL',
+    });
     expect(result.status).toBe('failed');
     expect(result.error).toContain('moderation');
   });

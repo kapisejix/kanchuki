@@ -20,9 +20,18 @@ import { createId } from '@paralleldrive/cuid2';
 import type { FastifyPluginAsync } from 'fastify';
 import { z } from 'zod';
 import { addStudioShootJob } from '../../jobs/index.js';
-import { getStudioJobStatus, isStudioShootConfigured, type StudioEngine } from '../../lib/studio-shoot.js';
+import {
+  getStudioJobStatus,
+  isStudioShootConfigured,
+  type StudioEngine,
+} from '../../lib/studio-shoot.js';
 import { checkQuota, getQuotaStatus } from '../../lib/quota.js';
-import { AppError, notFound, serviceUnavailable, validationError } from '../../plugins/error-handler.js';
+import {
+  AppError,
+  notFound,
+  serviceUnavailable,
+  validationError,
+} from '../../plugins/error-handler.js';
 
 const StudioShootBodySchema = z.object({
   template: z.string().min(1),
@@ -40,7 +49,14 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     const rows = await prisma.studioStyle.findMany({
       where: { status: 'PUBLISHED', plans: { has: retailer.plan } },
       orderBy: [{ sort_order: 'asc' }, { created_at: 'asc' }],
-      select: { slug: true, label: true, description: true, tab: true, audience: true, thumbnail_url: true },
+      select: {
+        slug: true,
+        label: true,
+        description: true,
+        tab: true,
+        audience: true,
+        thumbnail_url: true,
+      },
     });
     return { data: rows };
   });
@@ -54,7 +70,9 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     // All plans get AI Studio Shoots — the STUDIO_SHOOT quota (admin-set
     // per-plan image cap at /admin/plan-limits) is the only limiter.
     if (!(await isStudioShootConfigured())) {
-      throw serviceUnavailable('AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.');
+      throw serviceUnavailable(
+        'AI Studio Shoots are not configured yet. Please configure an API key in Admin → Integrations.',
+      );
     }
 
     await checkQuota(request.retailerId, 'STUDIO_SHOOT');
@@ -76,7 +94,11 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
       select: { plan: true },
     });
     if (!style.plans.includes(retailer.plan)) {
-      throw new AppError('FEATURE_UNAVAILABLE', 'This studio style is not included in your plan.', 403);
+      throw new AppError(
+        'FEATURE_UNAVAILABLE',
+        'This studio style is not included in your plan.',
+        403,
+      );
     }
 
     // Photo must belong to this retailer's product.
@@ -115,22 +137,22 @@ export const productsStudioRoutes: FastifyPluginAsync = async (server) => {
     if (!photo) throw notFound('Product photo');
 
     // BFL/Fal accepts ≤20MP (megapixels) and ≤20MB.
-    const MAX_MP = 20_000_000 // 20 megapixels
-    const MAX_BYTES = 20 * 1024 * 1024 // 20 MB
+    const MAX_MP = 20_000_000; // 20 megapixels
+    const MAX_BYTES = 20 * 1024 * 1024; // 20 MB
     if (photo.width && photo.height) {
-      const megapixels = photo.width * photo.height
+      const megapixels = photo.width * photo.height;
       if (megapixels > MAX_MP) {
         throw validationError(
           `Image is too large (${(megapixels / 1_000_000).toFixed(1)}MP). Maximum is 20MP. Please use a smaller image.`,
           'photo',
-        )
+        );
       }
     }
     if (photo.size_bytes && photo.size_bytes > MAX_BYTES) {
       throw validationError(
         `Image file is too large (${(photo.size_bytes / 1024 / 1024).toFixed(1)}MB). Maximum is 20MB. Please compress the image first.`,
         'photo',
-      )
+      );
     }
 
     const jobId = createId();

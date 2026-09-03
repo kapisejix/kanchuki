@@ -142,7 +142,9 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { data: { connected: false, error: (err as any).error?.message ?? 'API request failed' } };
+      return {
+        data: { connected: false, error: (err as any).error?.message ?? 'API request failed' },
+      };
     }
 
     return { data: { connected: true } };
@@ -268,7 +270,9 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { data: { connected: false, error: (err as any).error?.message ?? 'API request failed' } };
+      return {
+        data: { connected: false, error: (err as any).error?.message ?? 'API request failed' },
+      };
     }
 
     const account = await res.json();
@@ -310,22 +314,19 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     const actId = retailer.fb_ads_ad_account_id;
 
     // Step 1: Create campaign
-    const campaignRes = await fetch(
-      `https://graph.facebook.com/v21.0/${actId}/campaigns`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: body.data.name,
-          objective: 'REACH',
-          status: 'PAUSED',
-          special_ad_categories: [],
-        }),
+    const campaignRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/campaigns`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        name: body.data.name,
+        objective: 'REACH',
+        status: 'PAUSED',
+        special_ad_categories: [],
+      }),
+    });
     if (!campaignRes.ok) {
       const err = await campaignRes.json().catch(() => ({}));
       throw validationError((err as any).error?.message ?? 'Failed to create campaign');
@@ -333,36 +334,33 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     const campaign = await campaignRes.json();
 
     // Step 2: Create ad set (local awareness with radius targeting)
-    const adSetRes = await fetch(
-      `https://graph.facebook.com/v21.0/${actId}/adsets`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: `${body.data.name} - Ad Set`,
-          campaign_id: (campaign as any).id,
-          daily_budget: String(body.data.daily_budget),
-          billing_event: 'IMPRESSIONS',
-          optimization_goal: 'REACH',
-          targeting: {
-            geo_locations: {
-              custom_locations: [
-                {
-                  latitude: 28.6139, // Default Delhi — would use retailer's lat/lng
-                  longitude: 77.209,
-                  radius: body.data.target_radius_km,
-                  distance_unit: 'kilometer',
-                },
-              ],
-            },
-          },
-          status: 'PAUSED',
-        }),
+    const adSetRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/adsets`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        name: `${body.data.name} - Ad Set`,
+        campaign_id: (campaign as any).id,
+        daily_budget: String(body.data.daily_budget),
+        billing_event: 'IMPRESSIONS',
+        optimization_goal: 'REACH',
+        targeting: {
+          geo_locations: {
+            custom_locations: [
+              {
+                latitude: 28.6139, // Default Delhi — would use retailer's lat/lng
+                longitude: 77.209,
+                radius: body.data.target_radius_km,
+                distance_unit: 'kilometer',
+              },
+            ],
+          },
+        },
+        status: 'PAUSED',
+      }),
+    });
     if (!adSetRes.ok) {
       const err = await adSetRes.json().catch(() => ({}));
       throw validationError((err as any).error?.message ?? 'Failed to create ad set');
@@ -370,27 +368,24 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     const adSet = await adSetRes.json();
 
     // Step 3: Create ad creative
-    const creativeRes = await fetch(
-      `https://graph.facebook.com/v21.0/${actId}/adcreatives`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: `${body.data.name} - Creative`,
-          object_story_spec: {
-            page_id: retailer.fb_ads_page_id,
-            link_data: {
-              message: body.data.ad_text,
-              link: body.data.link_url ?? 'https://kanchuki.app',
-              image_url: body.data.image_url,
-            },
-          },
-        }),
+    const creativeRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/adcreatives`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        name: `${body.data.name} - Creative`,
+        object_story_spec: {
+          page_id: retailer.fb_ads_page_id,
+          link_data: {
+            message: body.data.ad_text,
+            link: body.data.link_url ?? 'https://kanchuki.app',
+            image_url: body.data.image_url,
+          },
+        },
+      }),
+    });
     if (!creativeRes.ok) {
       const err = await creativeRes.json().catch(() => ({}));
       throw validationError((err as any).error?.message ?? 'Failed to create ad creative');
@@ -398,22 +393,19 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
     const creative = await creativeRes.json();
 
     // Step 4: Create ad
-    const adRes = await fetch(
-      `https://graph.facebook.com/v21.0/${actId}/ads`,
-      {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: body.data.name,
-          adset_id: (adSet as any).id,
-          creative: { creative_id: (creative as any).id },
-          status: 'PAUSED',
-        }),
+    const adRes = await fetch(`https://graph.facebook.com/v21.0/${actId}/ads`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
       },
-    );
+      body: JSON.stringify({
+        name: body.data.name,
+        adset_id: (adSet as any).id,
+        creative: { creative_id: (creative as any).id },
+        status: 'PAUSED',
+      }),
+    });
     if (!adRes.ok) {
       const err = await adRes.json().catch(() => ({}));
       throw validationError((err as any).error?.message ?? 'Failed to create ad');
@@ -482,14 +474,20 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
   server.post('/me/integrations/google-ads/test', async (request) => {
     const retailer = await prisma.retailer.findUnique({
       where: { id: request.retailerId },
-      select: { google_ads_refresh_token: true, google_ads_customer_id: true, google_ads_developer_token: true },
+      select: {
+        google_ads_refresh_token: true,
+        google_ads_customer_id: true,
+        google_ads_developer_token: true,
+      },
     });
     if (!retailer?.google_ads_refresh_token || !retailer.google_ads_customer_id) {
       throw validationError('Google Ads is not configured');
     }
 
     const refreshToken = decryptSecret(retailer.google_ads_refresh_token);
-    const devToken = retailer.google_ads_developer_token ? decryptSecret(retailer.google_ads_developer_token) : '';
+    const devToken = retailer.google_ads_developer_token
+      ? decryptSecret(retailer.google_ads_developer_token)
+      : '';
 
     // Get access token from refresh token
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -522,7 +520,9 @@ export const retailersIntegrationsRoutes: FastifyPluginAsync = async (server) =>
 
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      return { data: { connected: false, error: (err as any).error?.message ?? 'API request failed' } };
+      return {
+        data: { connected: false, error: (err as any).error?.message ?? 'API request failed' },
+      };
     }
 
     return { data: { connected: true } };
