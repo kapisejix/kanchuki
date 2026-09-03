@@ -388,19 +388,23 @@ configs, test mock, and 2 web files switched to an equivalent absolute-URL form.
 
 | Task | Status |
 |------|--------|
-| All 4 checks green → `gh pr merge 23` | ⬜ |
-| Confirm `main` CI green + watch Railway auto-deploy once | ⬜ |
+| All 4 checks green → `gh pr merge 23` | ✅ merged as squash `aca31b3`, branch deleted |
+| Confirm `main` CI green + watch Railway auto-deploy once | ✅ `main` CI green (run 33735332208). Prod API healthy post-merge (`/health` 200, db 289ms / redis 56ms). ⚠️ **Pre-existing deploy blocker found:** `Deploy to Railway` workflow's `deploy-api` job fails at its `prisma migrate deploy` step — `P1001: Can't reach aws-1-ap-south-1.pooler.supabase.com:5432`. **Not a PR #23 regression**: 7 consecutive failures since Sep 1 (last success `4cc048c`), identical P1001 on every run incl. pre-merge commits. Pooler confirmed **open from a normal network** (TCP probe from local succeeds) → block is GH-runner egress, almost certainly Supabase Network Restrictions dropping GH ephemeral IPs (silent drop → Prisma 5s connect timeout → P1001). Consequence: this pipeline is the only `migrate deploy` runner, so **086–088 remain unapplied** (= T7 row below). Railway native auto-deploy (sanctioned path) unaffected; do not edit `deploy.yml` without owner approval (CI/CD config is NEVER-allowed per CLAUDE.md). |
 
 ### T6 — Secrets / infra (owner-only; see §8.1)
 
-- [ ] B-003 + B-004: `npx tsx scripts/generate-admin-hash.ts '<pw>' --totp` → set `ADMIN_PASSWORD_HASH` + `ADMIN_TOTP_SECRET` in Railway (API service)
+- [x] **B-003** — `ADMIN_PASSWORD_HASH` re-generated in scrypt format (`generate-admin-hash.ts`) and set on Railway (API service) by owner 2026-09-03
+- [ ] **B-004 — owner decision: DEFERRED.** `LoginScreen.tsx` (verified in code) has no `totp_code` input — the server demands one the moment `ADMIN_TOTP_SECRET` is set, so enabling it without a UI field locks out admin login. Owner tested, then rolled `ADMIN_TOTP_SECRET` back out of Railway. Re-enable later = add the TOTP field to the login screen first, then re-set the secret. No 2FA for admin until then (server treats TOTP as optional when the var is unset).
 - [ ] B-002 (low pri): real Supabase read replica → point `DATABASE_URL_REPLICA` at it
 
 ### T7 — Prod DB migrations (owner-only; see §8.2)
 
-- [ ] Run the 058 ground-truth check (`SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='usual_size';` or open the retailer customer list) → apply `058_customer_usual_size/migration.sql` if absent
-- [ ] Verify 069 / 082 / 083 applied in prod
-- [ ] Apply 086 → 087 → 088 (088 creates `platform_gst_profile`) + run `scripts/set-gst-profile.ps1`
+- [x] **058** — ground-truth check returned a row → `customers.usual_size` exists; no action needed (no select-all 500 risk)
+- [x] **069** — `design_references` table probe returned 1 → applied
+- [x] **082** — probe returned 0 rows (`retailers.try_on_credits` gone) → applied
+- [x] **083** — `has_table_privilege('kanchuki_app','product_photos','DELETE')` → `t` → grant live
+- [x] **086 → 087 → 088** applied via Supabase SQL Editor (SQL is `IF NOT EXISTS`-guarded; `platform_gst_profile` + `gst_invoice_sequences` tables confirmed)
+- [ ] **`scripts/set-gst-profile.ps1` — run blocked** on auto-pull of `ADMIN_API_KEY` (railway CLI not authed in shell). Owner: paste `ADMIN_API_KEY` from Railway (service `supportive-love`) into the script's `$AdminKey`, re-run, confirm VERIFY block (Sejix Technologies / 04ATYPK4915F1ZG), then delete the file (it holds the live key once pasted)
 
 ### T8 — MSG91 / mobile / store (owner-only; see §8.4, §8.5, §7)
 
