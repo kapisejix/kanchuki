@@ -49,12 +49,12 @@ const PLANS: {
   },
   {
     name: 'Growth', planKey: 'GROWTH',
-    features: ['2,000 products', 'Unlimited customers', 'Unlimited collection links', '100 try-on credits/month', 'Fashion DNA preferences', 'Priority support'],
+    features: ['2,000 products', 'Unlimited customers', 'Unlimited collection links', 'Customer preferences', 'Priority support'],
     highlight: true, cta: 'Start Free Trial',
   },
   {
     name: 'Pro', planKey: 'PRO',
-    features: ['Unlimited products', 'Unlimited customers', 'Unlimited collection links', 'WhatsApp automation', '500 try-on credits/month', 'Multi-staff access', 'Campaign system', 'Dedicated support'],
+    features: ['Unlimited products', 'Unlimited customers', 'Unlimited collection links', 'WhatsApp automation', 'Multi-staff access', 'Campaign system', 'Dedicated support'],
     highlight: false, cta: 'Start Free Trial',
   },
 ]
@@ -82,12 +82,11 @@ interface Service {
 const SERVICES: Service[] = [
   { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI writes the catalog entry — name, category, colour, fabric, SKU.', accent: 'cobalt', href: '/for-retailers' },
   { icon: Share2, title: 'WhatsApp Collections', desc: 'Pick products, get a link, share on WhatsApp. Customers browse and enquire.', accent: 'volt', href: '/for-customers' },
-  { icon: Heart, title: 'Fashion DNA CRM', desc: 'Know each customer\'s colour, style and budget. Suggest what they\'ll love.', accent: 'iris', href: '/for-retailers' },
+  { icon: Heart, title: 'Customer Preferences', desc: 'Know each customer\'s colour, style and budget. Send them the right things.', accent: 'iris', href: '/for-retailers' },
   { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds.', accent: 'terracotta', href: '/for-retailers' },
   { icon: Package, title: 'Bulk Onboarding', desc: '3,000 SKUs from a supplier PDF? Import, detect, done. No typing.', accent: 'moss', href: '/for-retailers' },
   { icon: QrCode, title: 'Store Page & QR', desc: 'A free storefront at your own link, plus a QR code for the counter.', accent: 'mint', href: '/for-customers' },
   { icon: WifiOff, title: 'Offline-First', desc: 'Built for patchy networks — updates queue up and sync when back online.', accent: 'sandal', href: '/how-it-works' },
-  { icon: BarChart3, title: 'Virtual Try-On', desc: 'Customers see outfits on their own photo. Coming soon to all plans.', accent: 'fern', href: '/pricing' },
 ]
 
 function ServicesMarquee() {
@@ -98,7 +97,7 @@ function ServicesMarquee() {
           <SectionHeader
             tag="Our Services"
             title="Everything a shop needs, on one phone."
-            subtitle="Five capabilities, one platform — no stitching together WhatsApp, Excel, and a camera app."
+            subtitle="One platform — no stitching together WhatsApp, Excel, and a camera app."
           />
         </AnimatedSection>
       </div>
@@ -170,9 +169,8 @@ function StatsBar() {
 const FEATURES: { icon: LucideIcon; title: string; desc: string; accent: ColorAccent; span: string; comingSoon?: boolean }[] = [
   { icon: Camera, title: 'AI Catalog Builder', desc: 'Snap a photo. AI tags category, color, and fabric automatically. Your entire shop digitized in hours, not weeks.', accent: 'cobalt', span: 'sm:col-span-4 lg:col-span-7' },
   { icon: Share2, title: 'WhatsApp Collections', desc: 'Select products, generate a link, share on WhatsApp. Customers browse, heart favorites, and enquire — no app download needed.', accent: 'volt', span: 'sm:col-span-2 lg:col-span-5' },
-  { icon: Heart, title: 'Fashion DNA CRM', desc: 'Know what each customer loves. Capture color, style, and budget preferences. AI suggests the perfect products for every customer.', accent: 'iris', span: 'sm:col-span-2 lg:col-span-4' },
+  { icon: Heart, title: 'Customer Preferences', desc: 'Know what each customer loves. Capture colour, style, and budget preferences so every WhatsApp you send shows the right things.', accent: 'iris', span: 'sm:col-span-2 lg:col-span-4' },
   { icon: Search, title: 'In-Store AI Search', desc: '"Pink cotton suit under ₹2000" — find any product in seconds. Natural language search understands Hindi-transliterated terms too.', accent: 'terracotta', span: 'sm:col-span-2 lg:col-span-4' },
-  { icon: BarChart3, title: 'Virtual Try-On', desc: 'Customers upload a photo and see how outfits look on them. No mirror needed. Coming soon to all plans.', accent: 'fern', comingSoon: true, span: 'sm:col-span-2 lg:col-span-4' },
 ]
 
 function FeaturesSection() {
@@ -183,7 +181,7 @@ function FeaturesSection() {
     <Section id="features" className="bg-cream">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="How We Help" title="Everything you need to run your clothing store" subtitle="Five capabilities — one platform. No stitching together WhatsApp, Excel, and a camera app." />
+          <SectionHeader tag="How We Help" title="Everything you need to run your clothing store" subtitle="One platform. No stitching together WhatsApp, Excel, and a camera app." />
         </AnimatedSection>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={stagger} className="grid sm:grid-cols-4 lg:grid-cols-12 gap-5 sm:gap-6">
           {FEATURES.map((feature) => (
@@ -246,18 +244,17 @@ function ComparisonMatrix() {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true })
   const rows = [
-    { name: 'TryOnCloud / AI Vastra', cols: [true, false, false, false] },
-    { name: 'Interakt / Meon CRM', cols: [false, false, true, false] },
-    { name: 'DigifyERP', cols: [false, false, false, false] },
-    { name: 'WhatsApp + Google Sheets', cols: [false, false, false, true] },
+    { name: 'Interakt / Meon CRM', cols: [true, false, false] },
+    { name: 'DigifyERP', cols: [false, false, false] },
+    { name: 'WhatsApp + Google Sheets', cols: [false, false, true] },
   ]
-  const headers = ['AI Try-On', 'Fashion DNA CRM', 'WhatsApp Commerce', 'No Website Needed']
+  const headers = ['Customer Preferences', 'WhatsApp Commerce', 'No Website Needed']
 
   return (
     <Section className="bg-cream">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8" ref={ref}>
         <AnimatedSection>
-          <SectionHeader tag="The Kanchuki Moat" title="The only platform that has it all" subtitle="Competitors have one piece. Kanchuki has all five." />
+          <SectionHeader tag="The Kanchuki Moat" title="The only platform that has it all" subtitle="Competitors have one piece. Kanchuki has them all." />
         </AnimatedSection>
         <motion.div initial="hidden" animate={isInView ? 'visible' : 'hidden'} variants={fadeUp} className="overflow-x-auto rounded-2xl border border-carbon/10 bg-white">
           <table className="w-full text-sm">
@@ -276,7 +273,7 @@ function ComparisonMatrix() {
               ))}
               <tr className="bg-volt/30">
                 <td className="px-5 py-4 font-semibold text-carbon">Kanchuki</td>
-                {[true, true, true, true].map((_, i) => <td key={i} className="px-4 py-4 text-center text-lg font-semibold text-cobalt-700">✓</td>)}
+                {[true, true, true].map((_, i) => <td key={i} className="px-4 py-4 text-center text-lg font-semibold text-cobalt-700">✓</td>)}
               </tr>
             </tbody>
           </table>
