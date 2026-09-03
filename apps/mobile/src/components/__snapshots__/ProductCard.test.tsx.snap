@@ -3,44 +3,17 @@
 exports[`ProductCard > renders placeholder when imageUrl is null > no-image-placeholder 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 2,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -49,32 +22,62 @@ exports[`ProductCard > renders placeholder when imageUrl is null > no-image-plac
       }
     >
       <View
-        className="w-full h-full items-center justify-center bg-sand-50"
+        className="w-full h-full items-center justify-center bg-lavender-50"
         ref={null}
       >
         <Text
-          className="text-sand-300 text-3xl"
+          className="text-heliotrope-400 text-3xl"
           ref={null}
         >
           📦
         </Text>
       </View>
+      <View
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>
@@ -83,44 +86,17 @@ exports[`ProductCard > renders placeholder when imageUrl is null > no-image-plac
 exports[`ProductCard > renders selected state with checkmark overlay > selected-checkmark 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 2,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -153,7 +129,32 @@ exports[`ProductCard > renders selected state with checkmark overlay > selected-
         </Text>
       </View>
       <View
-        className="absolute top-2 right-2 w-6 h-6 bg-ink-600 rounded-full items-center justify-center"
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
+      <View
+        className="absolute top-2.5 right-2.5 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm"
         ref={null}
       >
         <Text
@@ -165,20 +166,25 @@ exports[`ProductCard > renders selected state with checkmark overlay > selected-
       </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>
@@ -187,44 +193,17 @@ exports[`ProductCard > renders selected state with checkmark overlay > selected-
 exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 2,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -257,25 +236,55 @@ exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] =
         </Text>
       </View>
       <View
-        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-turmeric-400 border border-white"
+        className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-fuchsia-500 border border-white"
         ref={null}
       />
+      <View
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>
@@ -284,44 +293,17 @@ exports[`ProductCard > renders with AI tagging indicator dot > with-ai-dot 1`] =
 exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 2,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -354,32 +336,62 @@ exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `
         </Text>
       </View>
       <View
-        className="absolute top-2 left-2 bg-rust-500/90 px-2 py-0.5 rounded-full"
+        className="absolute top-2.5 left-2.5 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm"
         ref={null}
       >
         <Text
-          className="text-white text-xs font-semibold"
+          className="text-white text-[10px] font-bold uppercase tracking-wider"
           ref={null}
         >
           SOLD
         </Text>
       </View>
+      <View
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>
@@ -388,44 +400,17 @@ exports[`ProductCard > renders with a status badge > with-status-badge 1`] = `
 exports[`ProductCard > renders with all props combined > all-props-combined 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 3,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -458,22 +443,47 @@ exports[`ProductCard > renders with all props combined > all-props-combined 1`] 
         </Text>
       </View>
       <View
-        className="absolute top-2 left-2 bg-rust-500/90 px-2 py-0.5 rounded-full"
+        className="absolute top-2.5 left-2.5 bg-tyrian-800/90 px-2.5 py-0.5 rounded-full shadow-sm"
         ref={null}
       >
         <Text
-          className="text-white text-xs font-semibold"
+          className="text-white text-[10px] font-bold uppercase tracking-wider"
           ref={null}
         >
           RESERVED
         </Text>
       </View>
       <View
-        className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-turmeric-400 border border-white"
+        className="absolute top-2.5 right-2.5 w-2.5 h-2.5 rounded-full bg-fuchsia-500 border border-white"
         ref={null}
       />
       <View
-        className="absolute top-2 right-2 w-6 h-6 bg-ink-600 rounded-full items-center justify-center"
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
+      <View
+        className="absolute top-2.5 right-2.5 w-6 h-6 bg-fuchsia-600 rounded-full items-center justify-center shadow-sm"
         ref={null}
       >
         <Text
@@ -485,20 +495,25 @@ exports[`ProductCard > renders with all props combined > all-props-combined 1`] 
       </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>
@@ -507,44 +522,17 @@ exports[`ProductCard > renders with all props combined > all-props-combined 1`] 
 exports[`ProductCard > renders with an image URL > with-image-url 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 2,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -576,22 +564,52 @@ exports[`ProductCard > renders with an image URL > with-image-url 1`] = `
           https://cdn.example.com/product.jpg
         </Text>
       </View>
+      <View
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>
@@ -600,44 +618,17 @@ exports[`ProductCard > renders with an image URL > with-image-url 1`] = `
 exports[`ProductCard > renders with custom height and placeholder icon > custom-height-placeholder 1`] = `
 <Pressable
   accessibilityRole="button"
-  className="bg-white border border-sand-200 flex-1"
+  className="bg-white border border-lavender-200 rounded-[28px] flex-1"
   onPress={[Function]}
-  onPressIn={[Function]}
-  onPressOut={[Function]}
   ref={null}
-  style={
-    [
-      {
-        "transform": [
-          {
-            "scale": 1,
-          },
-        ],
-      },
-      [
-        {
-          "elevation": 2,
-        },
-        {
-          "shadowColor": "#060A15",
-          "shadowOffset": {
-            "height": 3,
-            "width": 0,
-          },
-          "shadowOpacity": 0.1,
-          "shadowRadius": 8,
-        },
-        undefined,
-      ],
-    ]
-  }
+  style={[Function]}
 >
   <View
-    className="rounded-2xl overflow-hidden"
+    className="rounded-[28px] overflow-hidden p-1.5 bg-white"
     ref={null}
   >
     <View
-      className="w-full bg-sand-100"
+      className="w-full bg-lavender-100 rounded-[24px] overflow-hidden relative"
       ref={null}
       style={
         {
@@ -646,32 +637,62 @@ exports[`ProductCard > renders with custom height and placeholder icon > custom-
       }
     >
       <View
-        className="w-full h-full items-center justify-center bg-sand-50"
+        className="w-full h-full items-center justify-center bg-lavender-50"
         ref={null}
       >
         <Text
-          className="text-sand-300 text-3xl"
+          className="text-heliotrope-400 text-3xl"
           ref={null}
         >
           👕
         </Text>
       </View>
+      <View
+        className="w-8 h-8 rounded-full bg-white/95 items-center justify-center absolute bottom-3 right-3 shadow-md border border-lavender-200"
+        ref={null}
+        style={
+          {
+            "elevation": 3,
+          }
+        }
+      >
+        <View
+          fill="transparent"
+          testID="lucide-Heart"
+        >
+          <Text
+            style={
+              {
+                "color": "#231F48",
+                "fontSize": 16,
+              }
+            }
+          >
+            Heart
+          </Text>
+        </View>
+      </View>
     </View>
     <View
+      className="px-2 pt-2.5 pb-1.5"
       ref={null}
     >
-      <Text
+      <View
         ref={null}
-        testID="footer-text"
       >
-        Category · Color
-      </Text>
-      <Text
-        ref={null}
-        testID="footer-price"
-      >
-        ₹1,999
-      </Text>
+        <Text
+          ref={null}
+          testID="footer-text"
+        >
+          Category · Color
+        </Text>
+        <Text
+          ref={null}
+          testID="footer-price"
+        >
+          ₹1,999
+        </Text>
+      </View>
     </View>
   </View>
 </Pressable>

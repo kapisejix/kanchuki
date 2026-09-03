@@ -23,6 +23,10 @@ vi.mock('@kanchuki/ai', () => ({
 }));
 
 vi.mock('@kanchuki/db', () => ({
+  // purge-retailer-now.ts imports `prisma` too, only for the
+  // `db === prisma` reference guard in assertPurgeRole(). getPurgePrisma()
+  // below returns a distinct object, so any sentinel makes that check pass.
+  prisma: { __sentinel: 'primary' },
   getPurgePrisma: () => ({
     $executeRawUnsafe: mockExecuteRaw,
     $queryRawUnsafe: mockQueryRaw,
