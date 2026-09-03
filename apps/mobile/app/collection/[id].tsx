@@ -379,10 +379,16 @@ function ShareModal({
 
 export default function CollectionDetailScreen() {
   const insets = useSafeAreaInsets()
-  const { id } = useLocalSearchParams<{ id: string }>()
+  const { id, share } = useLocalSearchParams<{ id: string; share?: string }>()
   const queryClient = useQueryClient()
   const [showEditModal, setShowEditModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+
+  // Arriving from "Create collection" (?share=1) → open the customer share
+  // sheet straight away so the retailer can send it to saved customers.
+  useEffect(() => {
+    if (share === '1') setShowShareModal(true)
+  }, [share])
 
   const { data, isLoading } = useQuery({
     queryKey: ['collections', id],
@@ -477,16 +483,15 @@ export default function CollectionDetailScreen() {
           <Stat icon={<MessageCircle size={16} color="#BB3F95" />} label="Enquiries" value={collection.enquiry_count} />
         </View>
 
-        {/* Share */}
-        {collection.status === 'ACTIVE' && (
-          <View className="px-4 pt-4">
-            <GradientButton
-              label="Share on WhatsApp"
-              onPress={() => setShowShareModal(true)}
-              accentBadge={<Link2 size={16} color="white" />}
-            />
-          </View>
-        )}
+        {/* Share — always available; a fresh collection is ACTIVE and this is
+            the primary next step after creating one. */}
+        <View className="px-4 pt-4">
+          <GradientButton
+            label="Share on WhatsApp"
+            onPress={() => setShowShareModal(true)}
+            accentBadge={<Link2 size={16} color="white" />}
+          />
+        </View>
 
         {/* Enquiries */}
         {collection.enquiries.length > 0 && (

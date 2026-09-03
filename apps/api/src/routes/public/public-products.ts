@@ -48,9 +48,13 @@ export const publicProductsRoutes: FastifyPluginAsync = async (server) => {
             if (!p) throw notFound('Product');
 
             const availableVariants = p.variants.filter((v) => v.status === 'AVAILABLE');
-            // Raw retailer uploads hidden from the customer catalog (see
-            // customerVisiblePhotos) — only AI Studio + background-cleaned shots show.
-            const visiblePhotos = customerVisiblePhotos(p.photos);
+            // Raw retailer uploads are normally hidden from the customer catalog
+            // (customerVisiblePhotos — only AI Studio / background-cleaned shots).
+            // But if the retailer only cleaned one shot, that filter collapses the
+            // detail gallery to a single photo and the thumbnail slider disappears.
+            // Fall back to every photo when <2 survive the filter.
+            const cleanedPhotos = customerVisiblePhotos(p.photos);
+            const visiblePhotos = cleanedPhotos.length > 1 ? cleanedPhotos : p.photos;
             const primaryPhoto = visiblePhotos[0];
 
             return {

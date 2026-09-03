@@ -53,7 +53,8 @@ export default function NewCollectionScreen() {
       }),
     onSuccess: async (res) => {
       await queryClient.invalidateQueries({ queryKey: ['collections'] })
-      router.replace(`/collection/${res.data.id as string}`)
+      // ?share=1 → detail screen opens the customer WhatsApp share sheet on mount
+      router.replace(`/collection/${res.data.id as string}?share=1`)
     },
     onError: (err: Error) => showError(err, 'Please try again.', 'Could not create collection'),
   })
