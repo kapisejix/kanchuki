@@ -1228,3 +1228,15 @@ Launch-readiness session. Play paperwork answers (Data Safety + content rating +
 - **Privacy policy** — added KYC/Aadhaar photos, body-measurement photos, AI-provider processing, and GST-retention disclosures so it matches the Data Safety form exactly.
 - **Location removed entirely** — `ACCESS_COARSE/FINE_LOCATION`, iOS `NSLocationWhenInUseUsageDescription`, `expo-location` plugin + dependency, and the onboarding "Use current location" autofill all removed; city/state/pincode typed manually. Zero location collection → Data Safety declares no Location rows.
 - **Launch checklist doc** — `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`: exact Data Safety table (7 declared types), IARC content-rating answers (expected **12+** — unfiltered UGC; do not claim fully moderated), closed-testing steps (20 testers × 14 days), permission list (3 remaining), and the **Aug 31, 2026 target-API deadline** (API 35 OK via SDK 54; after that API 36 needs SDK 55).
+
+---
+
+## 2026-09-03 — F-034 AI Image→Video: Phase 1 admin bench + admin addon packs (commits `17fe997`, `f57479c`, `47748a4`)
+
+Started F-034 from `docs/tasks/image-to-video.md` task by task (user said "review + start task by task"). Full record: `docs/BUILD-LOG.md` §2026-09-03; master spec `docs/PRO-REQUIREMENTS.md` §30; phase-2 checklist `docs/tasks/image-to-video-phase2.md`.
+
+- **Tasks 1–4 (Phase 1 admin bench) built:** `apps/api/src/lib/fal-video.ts` (+ 3/3 ffmpeg self-check), sync `POST /admin/photo-cleanup/image-to-video`, `docs/tasks/AI Motion Styles.html` (16 presets), "AI Promo Video" card on `/admin/photo-cleanup-test`. Code-reviewed against fal-client/studio-shoot/ken-burns references — correct as built; only open risk is per-model Fal param exactness, which the bench is designed to surface.
+- **Task 6.1 admin addon-pack surface built:** migration `089_resource_packs` (APPLIED by owner), `admin-resource-packs.ts` CRUD + audit log, `/admin/resource-packs` screen (DB-driven — no hardcoded packs; the old ₹599/₹1,299/₹1,999 demo values were rejected by the owner: packs are added/approved/assigned per plan by the admin).
+- **Owner decision: ADMIN-TEST-ONLY.** Retailer phase (studio_styles `kind`, AI_VIDEO quota seeds, queue/job, mobile modal, FB/IG publish — plan tasks 5–9) is 🔴 hard-deferred until the bench is tested properly. **No F-034 mobile code exists.**
+- **EAS/Play gate:** `apps/mobile` untouched by F-034; mobile `tsc --noEmit` verified clean before this entry (user requirement: no errors/warnings when EAS-building for Google Play testing).
+- **Verified:** api + web `tsc` clean; fal-video 3/3; admin route suite 68/68; pushed to `main` → Railway auto-deploy. Next: owner bench test on `/admin/photo-cleanup-test` (FAL_API_KEY live) + `/admin/resource-packs` smoke test.

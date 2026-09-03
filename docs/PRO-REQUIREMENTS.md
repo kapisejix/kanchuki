@@ -2290,7 +2290,17 @@ exists and just needs a working schema under it.
 
 ---
 
-## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🔴 PLANNED
+## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🧪 PHASE 1 BUILT (admin bench); Phase 2 (retailer) 🔴 DEFERRED
+
+**Status 2026-09-03:** Phase 1 (admin test bench) is built — tasks 1–4 of
+`docs/tasks/image-to-video.md` (commits `17fe997`, `f57479c`) plus the task-6.1
+admin addon-pack surface (migration `089_resource_packs`, applied; `47748a4`).
+**The owner decided 2026-09-03 to keep this feature ADMIN-TEST-ONLY for now** — the
+retailer mobile screen, queue/job, FB/IG publish and quota wiring (tasks 5–9) are
+🔴 hard-deferred until the bench is tested properly and the owner says go. Nothing
+retailer-facing ships from this spec yet; see `docs/tasks/image-to-video-phase2.md`
+for the deferred checklist (migrations renumbered 090/091 after 089 was taken by
+`resource_packs`).
 
 **Written 2026-09-02 on user request.** Supersedes **F-032 Phase B**
 (§24.4 / §24.7 "Product video") — same idea, but concrete decisions locked:
@@ -2468,9 +2478,11 @@ model — don't eat the loss silently.
 **Phase 2 (in-app YouTube upload): +2–3 days** — YouTube Data API OAuth,
 resumable upload, channel-connect UI, encrypted token storage.
 
-### 30.11 Why not built yet
+### 30.11 Build status
 
-Spec written 2026-09-02 on user request. **Do NOT start until the user says
-go** (same hold as F-032 Phase B, which this supersedes). Prerequisite: the
-F-010 credit-pack path and F-032 studio-shoot job infra are both live, so the
-groundwork exists — this is integration, not new architecture.
+Phase 1 started on user go (2026-09-03, tasks 1–4 + task-6.1 admin addon-pack
+surface — see §30 header note). **Phase 2 (retailer integration) is hard-deferred
+2026-09-03 on owner decision: this feature is admin-test-only until the bench is
+signed off.** The F-010 credit-pack path and F-032 studio-shoot job infra are both
+live, so the retailer work is integration, not new architecture — it just waits
+for the go signal.

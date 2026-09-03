@@ -1,6 +1,11 @@
 # F-034 — AI Image→Video for Social Promo (Reels / Shorts / Feed)
 
-**Status:** 🔴 NOT STARTED — spec only.
+**Status:** 🧪 **PHASE 1 BUILT (admin test bench) — tasks 1–4 done 2026-09-03** (commits
+`17fe997`, `f57479c`). **Task 6.1 admin addon-pack surface** (migration `089_resource_packs`,
+CRUD API, `/admin/resource-packs` screen) built 2026-09-03 (commit `47748a4`).
+**Phase 2 (retailer mobile + queue + FB/IG publish) 🔴 HARD-DEFERRED on owner decision
+2026-09-03 — ADMIN-TEST-ONLY.** Tasks 5/7/8/9 must NOT start until the owner has
+bench-tested the models × styles and says go.
 **Created:** 2026-09-03
 **Supersedes:** F-032 Phase B (§24.4 / §24.7 "Product video").
 **Master spec:** `docs/PRO-REQUIREMENTS.md` §30 (decisions, economics, model table). This
@@ -275,25 +280,36 @@ Prisma schema edits: `ProductVideoSource` enum (+`AI_GEN`), `QuotaResourceType`
 
 ---
 
-## Build order
+## Build order — TRACKING (updated 2026-09-03)
 
-1. `fal-video.ts` — `generateImageToVideo()` (Fal video call + ffmpeg crop/trim) + a
-   `test_fal_video.ts` self-check that asserts the result is a playable mp4 of the
-   requested aspect/duration (mock Fal, real ffmpeg on a fixture frame).
-2. `POST /admin/photo-cleanup/image-to-video` (sync, admin-only).
-3. `docs/tasks/AI Motion Styles.html` — clone `AI Models and Scenes.html`, swap the
-   dataset for motion-style presets. Owner seeds it with first-draft prompts.
-4. Admin page "AI Promo Video" card. **→ owner tests via the HTML catalog + bench,
-   picks the shipping set.**
-5. `studio_styles.kind` migration + admin manager VIDEO support + per-tier model
-   map — seeded from the tested `AI Motion Styles.html` presets.
-6. `QuotaResourceType.AI_VIDEO` + `plan_limits` rows + pack SKUs.
-7. `products-video-ai.ts` routes + `jobs/generate-promo-video.ts` + queue wiring + tests.
-8. Mobile: hook flow + `ProductPromoVideoModal` + entry points on product detail
-   & growth videos screen.
-9. `publishInstagramReel()` + IG branch in `retailers-social-posts.ts`.
-10. Docs: `CLAUDE.md` index row Built + date, `docs/BUILD-LOG.md` entry,
-   `PRO-REQUIREMENTS.md` §30 status → Built, `docs/PLAN.md`.
+- ✅ **1. `fal-video.ts`** — `generateImageToVideo()` + `VIDEO_MODELS` (5 models,
+  ₹/clip bands) + `cropTrimToAspect()`; self-check `fal-video.test.ts` (3/3, real
+  ffmpeg). Commit `17fe997`.
+- ✅ **2. `POST /admin/photo-cleanup/image-to-video`** (sync, admin-only) — zod body →
+  Fal → ffmpeg crop/trim → R2 `promo-<uuid>.mp4` → `result_url`. Commit `17fe997`.
+- ✅ **3. `docs/tasks/AI Motion Styles.html`** — 16 motion presets / 4 categories,
+  Export Selected → `selected_ai_motion_styles.json`. Commit `17fe997`.
+- ✅ **4. Admin "AI Promo Video" card** on `/admin/photo-cleanup-test`. Commit
+  `f57479c`. **→ OWNER BENCH TEST PENDING (gate for everything below).**
+- ✅ **6.1 (admin part). Admin addon-pack surface** — migration `089_resource_packs`
+  + `admin-resource-packs.ts` CRUD + `/admin/resource-packs` screen (DB-driven, no
+  hardcoded values; 089 APPLIED by owner 2026-09-03). Commit `47748a4`.
+- 🔴 **5. `studio_styles.kind` (migration 090)** + admin manager VIDEO support +
+  per-tier model map (091) — DEFERRED until bench sign-off.
+- 🔴 **6. (rest)** `AI_VIDEO` quota seeds (091) + retailer-side billing switch from
+  `ADDON_PRICING` const to `resource_packs` — DEFERRED.
+- 🔴 **7. `products-video-ai.ts` routes + `jobs/generate-promo-video.ts` + queue** —
+  DEFERRED (retailer surface).
+- 🔴 **8. Mobile: hook + `ProductPromoVideoModal` + entry points** — DEFERRED
+  (retailer surface; no mobile code for F-034 exists yet).
+- 🔴 **9. `publishInstagramReel()` + IG branch** — DEFERRED.
+- 📋 **10. Docs** — CLAUDE.md row + BUILD-LOG + PRO-REQUIREMENTS §30 + PLAN.md +
+  PROGRESS updated 2026-09-03. Phase 2 execution checklist:
+  `docs/tasks/image-to-video-phase2.md`.
+
+> **Phase 2 (items 5–9) is 🔴 HARD-DEFERRED — ADMIN-TEST-ONLY (owner decision
+> 2026-09-03).** Do NOT implement the retailer mobile screen until the owner has
+> tested the bench properly and says go.
 
 ---
 

@@ -1,7 +1,12 @@
 # F-034 Phase 2 — Retailer Integration (Tasks 5–10) Execution Checklist
 
-**Status:** 🔴 NOT STARTED — spec + build plan only (tasks 1–4 done: `fal-video.ts` lib,
-admin bench route, motion-styles HTML catalog, admin "AI Promo Video" card).
+**Status:** 🔴 **HARD-DEFERRED — ADMIN-TEST-ONLY (owner decision 2026-09-03).** Phase 1
+is fully built (tasks 1–4, commits `17fe997` + `f57479c`) and the task-6.1 admin
+addon-pack surface is built too (migration `089_resource_packs` APPLIED, commit
+`47748a4`). Everything in THIS file that touches the retailer surface (tasks 5, 7, 8,
+9 and the retailer-side billing switch) must NOT start until the owner bench-tests
+`/admin/photo-cleanup-test` and says go. Task 6.1's remaining (retailer-side) wiring
+is listed under its own "Remaining" block below.
 **Created:** 2026-09-03
 **Spec:** `docs/tasks/image-to-video.md` (Phase 2 = §2a–2f, build order tasks 5–10).
 **Master spec:** `docs/PRO-REQUIREMENTS.md` §30.

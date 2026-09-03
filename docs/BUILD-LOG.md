@@ -1903,3 +1903,22 @@ All eleven items of `docs/tasks/changes-03-09-2026.md` (moved from the repo root
 **Also in the commit:** `changes-03-09-2026.md` → `docs/tasks/changes-03-09-2026.md` (marked done with a status table); pre-existing mobile dependency pins rode along (`apps/mobile/app.json` plugins + `package.json`/`pnpm-lock.yaml` — `@sentry/react-native`, `expo`, `expo-video`, `expo-sharing`, `expo-media-library`, `expo-constants`/`file-system`).
 
 **Verification:** API 706/706, web 91/91, mobile 43/43 vitest; `tsc --noEmit` clean on all three apps; secret guard passed. Pushed to `main` → Railway auto-deploy.
+
+---
+
+## Built: 2026-09-03 — F-034 AI Image→Video, Phase 1 admin bench + admin addon packs (commits `17fe997`, `f57479c`, `47748a4`)
+
+F-034 (PRO-REQUIREMENTS §30) started on user go, task by task from `docs/tasks/image-to-video.md`. **Owner decision same day: this feature is ADMIN-TEST-ONLY — the retailer mobile phase is hard-deferred until the bench is tested and signed off.** No mobile code exists for F-034 yet.
+
+| Piece | Deliverable | Files | Status |
+|-------|------------|-------|--------|
+| Task 1 — lib | `generateImageToVideo()` (Fal submit/poll 240s, reads `video.url`) + `VIDEO_MODELS` (5 models, Fal endpoints + ₹/clip bands) + `cropTrimToAspect()` (ffmpeg centre-crop to 9:16/16:9/1:1/4:5 + trim, yuv420p + faststart web-playable) + `AI_VIDEO_FAILED` error | `apps/api/src/lib/fal-video.ts` (new), `fal-video.test.ts` (3/3 — real ffmpeg asserts 1080×1920 + 1080×1080 + trim) | ✅ |
+| Task 2 — bench route | `POST /admin/photo-cleanup/image-to-video` — sync, admin-only, zod body (product_url, model 5-enum, motion_prompt ≤2000, aspect 4-enum, seconds 5\|6\|8) → R2 `promo-<uuid>.mp4` → `result_url` | `apps/api/src/routes/admin/admin-photo-cleanup.ts` | ✅ |
+| Task 3 — motion catalog | 16 motion presets / 4 categories (camera-move, garment-motion, model-action, ambient), each with garment-integrity HOLD guard + recommended model/aspect/seconds; Export Selected → `selected_ai_motion_styles.json` (Phase 2 studio_styles shape) | `docs/tasks/AI Motion Styles.html` (new) | ✅ |
+| Task 4 — bench card | "AI Promo Video" card on `/admin/photo-cleanup-test`: model/aspect/duration selects, 6 first-draft presets (auto-fill), free-text prompt, synchronous generate + spinner, result rows with `<video controls loop>`, mp4-aware lightbox | `apps/web/src/app/admin/photo-cleanup-test/page.tsx` | ✅ |
+| Task 6.1 — admin addon packs | DB-driven replacement for hardcoded packs: migration `089_resource_packs` (`resource_type` TEXT so AI_VIDEO packs pre-date its enum value; `plans` TEXT[], admin sets price), CRUD API (GET/POST/PATCH/DELETE + audit log), super-admin screen `/admin/resource-packs` (₹ input, per-plan checkboxes, activate/delete) | `packages/db/prisma/migrations/089_resource_packs/` (new, **applied by owner**), `schema.prisma` (ResourcePack), `admin-resource-packs.ts` (new), `apps/api/src/routes/admin.ts` + `admin/index.ts`, `apps/web/src/app/admin/resource-packs/page.tsx` (new), `Sidebar.tsx`, `layout.tsx` | ✅ |
+| Task 10 — docs | Status rows updated across CLAUDE.md index, PRO-REQUIREMENTS §30, PLAN.md, PROGRESS.md, `image-to-video.md` + new `image-to-video-phase2.md` (task-by-task checklist, migrations renumbered **090** schema / **091** seeds after 089 was taken by `resource_packs`) | docs | ✅ |
+
+**Deferred (retailer phase — do NOT start until owner bench sign-off):** tasks 5 (studio_styles `kind` 090 + admin VIDEO CRUD + per-tier model map 091), 6 rest (AI_VIDEO quota seeds + retailer billing switch to `resource_packs`), 7 (products-video-ai routes + generate-promo-video job + queue), 8 (mobile modal/entry points), 9 (publishInstagramReel + IG branch).
+
+**Verification:** `tsc --noEmit` clean (api + web), fal-video self-check 3/3, admin route suite 68/68; Prisma client regenerated. Commits pushed to `main` → Railway auto-deploy. `FAL_API_KEY` live in Railway env (code resolves via `getSecret` → env fallback); the Integrations admin page still lists it "not configured" — expected, that catalog only reflects DB-vault rows.
