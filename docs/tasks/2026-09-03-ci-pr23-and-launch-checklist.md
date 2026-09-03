@@ -257,7 +257,7 @@ with approval — never from a local machine.** Confirm each is applied in prod:
 | 083 | `GRANT DELETE on product_photos` (photo-delete permission fix) | shipped in PR #16 (merged) — verify grant is live |
 | 082 | Feature teardown (24+ tables, 17 enums) | `chore/remove-unwanted-features` — verify applied |
 | 069 | `DesignReference` (unstitched design gallery) | verify |
-| 058 | `customers.usual_size` | **NOT moot — still needed.** The teardown removed only the size-chart engine; the live route `POST /v1/growth/customers/:id/recommended-size` (`routes/growth/growth-sizes.ts`) still reads `customer.usual_size` (Prisma select-all → 500 if the column is missing). Verify applied in prod; if absent, apply before launch. Doc statuses conflict (CLAUDE.md/PROGRESS: "not applied" vs INDIA-RETAILER-GROWTH.md/N-SIZE-FIT-GAPS.md: "applied") — prod is ground truth. |
+| 058 | `customers.usual_size` | **MUST be applied pre-launch (audit 2026-09-03).** Not growth-only: the teardown removed only the size-chart engine, but `customers.usual_size` is still on the `Customer` model, so **every select-all `prisma.customer` query 500s if the column is missing**. Confirmed select-all sites (no `select` clause): `routes/customers.ts` — **the entire core customer CRUD**, all 8 calls (POST dedupe `findFirst` L41, GET list L84, GET `/:id` L116, PUT `findFirst` L128, DELETE `findFirst` L167) → retailer "Customer list + preference capture" (Phase-0 MVP) dies; `routes/growth/growth-sizes.ts` L19 (`POST /v1/growth/customers/:id/recommended-size`, growth-gated); `routes/collections.ts` L48 + L254; `admin-retailers-management.ts` L266 (admin customer edit). Immune (explicit `select`/count/updateMany): growth-campaigns ×5, public lead-capture upsert (select id/name), public-reviews upsert, passport `updateMany`, stats/profile counts, admin list/detail. **Evidence of applied state:** PROGRESS.md 2026-08-18 prod audit = 055–057 applied, **058 NOT applied ("column missing")** — same day 060–062 went in, proving application is manual/batched and can skip (no later offline verification exists; PROGRESS ends 08-21 with 069 still pending). INDIA-RETAILER-GROWTH.md/N-SIZE-FIT-GAPS.md "applied" claims are unverified status headers (N-SIZE-FIT-GAPS internally contradicts itself at line 79 "❌ not applied"). **Owner check (30s):** open the retailer app customer list (renders = column exists, because that endpoint has been select-all since the growth client shipped 08-17) or run `SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='usual_size';` — do NOT trust `_prisma_migrations` (055–058 batch was applied via SQL Editor out-of-band). If absent: apply `058_customer_usual_size/migration.sql` (plain nullable `ALTER TABLE customers ADD COLUMN usual_size TEXT` — no backfill, safe any time) before launch. |
 
 Action: owner runs `list_migrations` (or admin dashboard migration view) against
 prod and diffs against `packages/db/prisma/migrations/`.
@@ -337,3 +337,74 @@ apps/mobile/src/components/__snapshots__/ProductCard.test.tsx.snap   # regenerat
 
 No production runtime code changed by this session's commits — CI script, test
 configs, test mock, and 2 web files switched to an equivalent absolute-URL form.
+
+---
+
+## 11. Task tracker — current branch work + pre-launch owner items
+
+> Added 2026-09-03 (after §3.1's follow-up "split the 5 files" was started on
+> this branch). Statuses are live — ticked off as each lands. **T1–T5 are
+> agent-doable; T6+ are owner-only** (prod/account access).
+
+### T1 — Finish the 5-file route-module split (§3.1 follow-up, on this branch)
+
+| Task | Status |
+|------|--------|
+| Split `billing.ts` → `billing/` (4 modules + helpers) | ✅ done, verified (tsc clean, 38/38 tests, allowlist entry dropped) — **uncommitted** |
+| Split `growth/growth-campaigns.ts` → `growth-campaigns/` (4 modules + helpers) | ✅ done, verified (tsc clean, 16/16 growth tests, allowlist entry dropped) — **uncommitted** |
+| Split `public/passport.ts` → `passport/` (7 modules + helpers) | ✅ done, verified (tsc clean, 45/45 passport tests, allowlist entry dropped) — **uncommitted** |
+| Split `public/public-retailers.ts` → `public-retailers/` (4 modules) | ✅ done, verified (tsc clean, 52/52 public tests, allowlist entry dropped) — **uncommitted** |
+| Split `retailers/retailers-social.ts` → `retailers-social/` | ✅ done (barrel + connect/accounts/posts + helpers, 4 modules), verified (api tsc clean, vitest 55 files/706 tests, biome lint exit 0 — only baseline warn rules) — **uncommitted** |
+| Drop the last allowlist entry (`retailers-social.ts`, 889) from `check-route-size.sh` | ✅ done — allowlist removed entirely; guard comment now says it's empty |
+| Delete scratch slicer `scripts/_tmp-split-route-modules.cjs` | ✅ done — no `scripts/_tmp*` files remain |
+
+### T2 — Verify the split (guard + typecheck + tests), commit + push
+
+| Task | Status |
+|------|--------|
+| `bash scripts/check-route-size.sh` → no grandfather lines left | ✅ exit 0 — no file over 800 lines, allowlist empty |
+| `apps/api` tsc + vitest full run + biome on new modules | ✅ tsc clean; vitest 55 files / 706 tests pass; biome lint exit 0 on the 5 split dirs + barrels (39 warnings, all baseline `warn` rules) |
+| Commit (split modules, spec fixes, doc) + push to `chore/api-lint-rules` | ⬜ awaiting go-ahead — everything above is **uncommitted** |
+
+### T3 — Land the e2e-web spec fixes (hidden layer after `build` went green)
+
+| Task | Status |
+|------|--------|
+| `admin-commission.spec.ts` — frozen clock (spec asserted "August 2026", page defaults to current month) | ✅ fixed — **uncommitted** |
+| `admin-navigation.spec.ts` — sidebar redesigned to hover-groups; spec still expected flat links + stale "Plans" group epilogue | ✅ fixed (hover-gutter nudge, keyboard-activation, 15s heading waits) — **uncommitted** |
+| `admin-navigation.spec.ts` — second hidden failure: `/v1/admin/plan-pricing` (fetched alongside plan-limits) hit the mock catch-all → `{ data: {} }` → page threw `pricingData is not iterable` → "Admin page crashed" | ✅ fixed — added `respond([])` mock for `/admin/plan-pricing` (page now renders; was a consistent 1.3m failure before) — **uncommitted** |
+| Run `apps/web` admin e2e suite green locally (was flaky under cold `next dev` compiles) | ✅ stable — double-run of both admin specs: 6/6 passed, run 1 (1.4m) + run 2 (1.0m); nav spec itself 24.4s / 26.8s / 19.5s across runs |
+
+### T4 — Watch CI to full green on the pushed head
+
+| Task | Status |
+|------|--------|
+| `quality` job | ✅ green (run 33719613755) |
+| `build` job (first green this cycle) | ✅ green (run 33719613755) |
+| `unit-web` job | ✅ green (run 33719613755) |
+| `e2e-web` job → re-run after T3's spec fixes | ⬜ |
+
+### T5 — Merge PR #23 (owner go-ahead)
+
+| Task | Status |
+|------|--------|
+| All 4 checks green → `gh pr merge 23` | ⬜ |
+| Confirm `main` CI green + watch Railway auto-deploy once | ⬜ |
+
+### T6 — Secrets / infra (owner-only; see §8.1)
+
+- [ ] B-003 + B-004: `npx tsx scripts/generate-admin-hash.ts '<pw>' --totp` → set `ADMIN_PASSWORD_HASH` + `ADMIN_TOTP_SECRET` in Railway (API service)
+- [ ] B-002 (low pri): real Supabase read replica → point `DATABASE_URL_REPLICA` at it
+
+### T7 — Prod DB migrations (owner-only; see §8.2)
+
+- [ ] Run the 058 ground-truth check (`SELECT 1 FROM information_schema.columns WHERE table_name='customers' AND column_name='usual_size';` or open the retailer customer list) → apply `058_customer_usual_size/migration.sql` if absent
+- [ ] Verify 069 / 082 / 083 applied in prod
+- [ ] Apply 086 → 087 → 088 (088 creates `platform_gst_profile`) + run `scripts/set-gst-profile.ps1`
+
+### T8 — MSG91 / mobile / store (owner-only; see §8.4, §8.5, §7)
+
+- [ ] Confirm MSG91 DLT sender-ID registration (API-path OTP SMS)
+- [ ] `eas build --profile preview` → APK → real-device checklist (§7) — incl. MSG91 widget OTP + social-connect round-trip
+- [ ] `eas build --profile production` → `.aab` → Play Console Internal testing → smoke test
+- [ ] Play Store: 8 screenshots + 1024×500 feature graphic + Data Safety form + submit

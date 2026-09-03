@@ -47,6 +47,11 @@ async function mockAdminApi(page: Page): Promise<void> {
     }
     if (url.includes('/admin/alerts')) return respond([])
     if (url.includes('/admin/plan-limits')) return respond([])
+    // Plan Limits & Pricing fetches two endpoints; without this the pricing
+    // call hits the catch-all `respond({})` → data is `{}`, and the page's
+    // `for (const row of pricingData)` throws (TypeError: not iterable) →
+    // "Admin page crashed" renders instead of the page heading.
+    if (url.includes('/admin/plan-pricing')) return respond([])
     if (url.includes('/team/reporting/agents')) return respond([])
     if (url.includes('/team/reporting/coverage-gaps')) return respond({ total_gaps: 0, gaps: [] })
     if (url.includes('/team/reporting/retailer-activation')) {
@@ -78,16 +83,25 @@ type TestWindow = Window & {
   __sidebarRef?: Element | null
 }
 
-// Pages visited through the real sidebar: sidebar link label → expected
-// h1 in the swapped content area → expected URL.
+// Pages visited through the real sidebar. Since the sidebar redesign, every
+// nav item is a group button (Overview, Retailers & Network, …) whose child
+// links live in a hover flyout portal — so each entry names the group that
+// must be hovered plus the leaf link label, the expected h1 in the swapped
+// content area, and the expected URL.
 const NAV_PAGES = [
-  { link: 'Retailers', heading: 'Retailers', url: /\/admin\/retailers$/ },
-  { link: 'Customers', heading: 'Customers', url: /\/admin\/customers$/ },
-  { link: 'Billing', heading: 'Billing', url: /\/admin\/billing$/ },
-  { link: 'Reports', heading: 'Manager Reports', url: /\/admin\/reports$/ },
+  { group: 'Retailers & Network', link: 'Retailers', heading: 'Retailers', url: /\/admin\/retailers$/ },
+  { group: 'Retailers & Network', link: 'Customers', heading: 'Customers', url: /\/admin\/customers$/ },
+  { group: 'Reports & Finance', link: 'Billing & Invoices', heading: 'Billing', url: /\/admin\/billing$/ },
+  { group: 'Reports & Finance', link: 'Overview', heading: 'Manager Reports', url: /\/admin\/reports$/ },
 ]
 
 test('admin pages swap the content area in place — no full page reload', async ({ page }) => {
+  // next dev compiles each admin route on first visit — a cold compile can
+  // take 20-40s on a busy Windows dev box and far outlast the 15s expect
+  // timeout (the URL swaps instantly; the h1 waits on the compile). Cap this
+  // test well above the sum of cold compiles rather than asserting against a
+  // racing server.
+  test.setTimeout(240_000)
   await mockAdminApi(page)
 
   // Pre-seed the admin session before any page script runs so the layout's
@@ -104,7 +118,9 @@ test('admin pages swap the content area in place — no full page reload', async
   })
 
   await page.goto('/admin')
-  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible({
+    timeout: 60_000,
+  })
   expect(loadCount).toBe(1)
 
   // Pin two reload sentinels into the JS context:
@@ -118,12 +134,34 @@ test('admin pages swap the content area in place — no full page reload', async
   })
 
   let previousHeading = 'Dashboard'
-  for (const { link, heading, url } of NAV_PAGES) {
-    await page.getByRole('link', { name: link, exact: true }).click()
+  for (const { group, link, heading, url } of NAV_PAGES) {
+    // Grouped nav item — hover opens the flyout (portal) next to the row.
+    // Same mechanics as the Plans ▸ Plan Limits epilogue below: the portal
+    // unmounts when the pointer leaves the group row (it renders 8px to the
+    // right with no keep-open bridge), so a raw mouse click can't reliably
+    // reach it. Activate the link with the keyboard instead — focus() never
+    // moves the pointer (the row stays hovered, portal stays open) and the
+    // resulting Enter is a trusted click on the Next Link, so the App Router
+    // route change is real. Synthetic el.click() proved flaky here: Next
+    // intermittently drops it and the URL never moves.
+    // Park the pointer between iterations: the click closed the portal but
+    // left the mouse on the same group row, so a repeat hover() would fire
+    // no new mouseenter and the flyout would never reopen.
+    await page.mouse.move(0, 0)
+    await page.getByRole('button', { name: group, exact: true }).hover()
+    const navLink = page.getByRole('link', { name: link, exact: true })
+    await expect(navLink).toBeVisible()
+    await navLink.focus()
+    await page.keyboard.press('Enter')
 
-    // Content area swapped: new page's h1 visible, previous page's h1 gone
+    // Content area swapped: new page's h1 visible, previous page's h1 gone.
+    // Long timeout for the h1: the URL swaps on client-side nav immediately,
+    // but a first-visit next dev compile can delay the render by tens of
+    // seconds (see test.setTimeout above).
     await expect(page).toHaveURL(url)
-    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: heading, exact: true })).toBeVisible({
+      timeout: 60_000,
+    })
     await expect(page.getByRole('heading', { name: previousHeading, exact: true })).toBeHidden()
 
     // No full reload, and the shell stayed mounted:
@@ -138,20 +176,21 @@ test('admin pages swap the content area in place — no full page reload', async
     previousHeading = heading
   }
 
-  // Grouped nav item — Plans ▸ Plan Limits opens a hover flyout (portal).
-  await page.getByRole('button', { name: 'Plans', exact: true }).hover()
+  // Final hop into a superAdmin-only page — Plan Limits sits in the
+  // Reports & Finance flyout (the old top-level Plans group was folded into
+  // it in the sidebar redesign), same hover + keyboard activation mechanics
+  // as the loop above.
+  await page.mouse.move(0, 0)
+  await page.getByRole('button', { name: 'Reports & Finance', exact: true }).hover()
   const planLimits = page.getByRole('link', { name: 'Plan Limits', exact: true })
   await expect(planLimits).toBeVisible()
-
-  // The flyout unmounts the instant the pointer leaves the group row (it
-  // renders 8px to the right of the sidebar in a portal with no keep-open
-  // bridge across the gap), so a raw mouse click can't reliably reach it.
-  // Dispatch the anchor's click instead — Next Link's onClick still runs and
-  // performs a genuine client-side route change through the App Router.
-  await planLimits.evaluate((el) => (el as HTMLElement).click())
+  await planLimits.focus()
+  await page.keyboard.press('Enter')
 
   await expect(page).toHaveURL(/\/admin\/plan-limits$/)
-  await expect(page.getByRole('heading', { name: 'Plan Limits', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Plan Limits & Pricing', exact: true })).toBeVisible({
+    timeout: 60_000,
+  })
   // Same swap invariant as the loop: previous page's content is gone
   await expect(page.getByRole('heading', { name: 'Manager Reports', exact: true })).toBeHidden()
   expect(await page.evaluate(() => (window as TestWindow).__adminNavSentinel)).toBe('persisted')
