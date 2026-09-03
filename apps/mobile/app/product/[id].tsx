@@ -375,6 +375,8 @@ export default function ProductDetailScreen() {
           shadowOn={currentPhoto ? studio.shadowFor(currentPhoto.id) : false}
           shadowSaving={studio.shadowSaving}
           handleSetShadow={studio.handleSetShadow}
+          handleSetPrimary={studio.handleSetPrimary}
+          settingPrimaryId={studio.settingPrimaryId}
           primaryColor={primaryColor}
         />
 

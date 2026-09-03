@@ -108,15 +108,18 @@ export default function NewCollectionScreen() {
                 <AnimatedPressable
                   key={d}
                   onPress={() => setExpiresDays(d)}
-                  className="flex-1 py-2.5 rounded-2xl border items-center justify-center"
-                  style={{
-                    backgroundColor: active ? '#231F48' : '#FFFFFF',
-                    borderColor: active ? '#231F48' : '#E0E1F6',
-                  }}
+                  // #8: className toggles, not inline style — inline style on
+                  // css-interop components drops the background (white on white).
+                  className={`flex-1 py-2.5 rounded-2xl border items-center justify-center ${
+                    active
+                      ? 'bg-spaceCadet-900 border-spaceCadet-900'
+                      : 'bg-white border-lavender-200'
+                  }`}
                 >
                   <Text
-                    className="text-xs font-bold text-center"
-                    style={{ color: active ? '#FFFFFF' : '#231F48' }}
+                    className={`text-xs font-bold text-center ${
+                      active ? 'text-white' : 'text-spaceCadet-900'
+                    }`}
                   >
                     {d} days
                   </Text>

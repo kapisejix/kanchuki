@@ -11,7 +11,7 @@ interface BackgroundImage {
 }
 
 interface ProductPhotoControlsProps {
-  currentPhoto: { id: string; is_video?: boolean } | undefined
+  currentPhoto: { id: string; is_video?: boolean; is_primary?: boolean } | undefined
   currentPhotoIsOriginal: boolean
   currentPhotoIsVariant: boolean
   backgroundImages: BackgroundImage[]
@@ -21,6 +21,9 @@ interface ProductPhotoControlsProps {
   shadowOn: boolean
   shadowSaving: boolean
   handleSetShadow: (value: boolean) => void
+  // #5: promote the currently-viewed photo to the product's main image.
+  handleSetPrimary: (photoId: string) => void
+  settingPrimaryId: string | null
   primaryColor: string
 }
 
@@ -42,6 +45,8 @@ export function ProductPhotoControls({
   shadowOn,
   shadowSaving,
   handleSetShadow,
+  handleSetPrimary,
+  settingPrimaryId,
   primaryColor,
 }: ProductPhotoControlsProps) {
   if (!currentPhoto || currentPhotoIsOriginal || currentPhotoIsVariant || currentPhoto.is_video) {
@@ -49,9 +54,34 @@ export function ProductPhotoControls({
   }
 
   const selectedBg = photoBackgrounds[currentPhoto.id] ?? null
+  const isPrimary = currentPhoto.is_primary ?? false
+  const savingPrimary = settingPrimaryId === currentPhoto.id
 
   return (
     <View className="mx-4 my-2 bg-white rounded-3xl border border-lavender-200 shadow-sm overflow-hidden" style={{ elevation: 3 }}>
+      {/* #5: Set as Main — promote this photo to the catalog's main image */}
+      {!isPrimary && (
+        <AnimatedPressable
+          onPress={() => handleSetPrimary(currentPhoto.id)}
+          disabled={backgroundSaving || shadowSaving || savingPrimary || settingPrimaryId !== null}
+          accessibilityLabel="Set as Main image"
+          accessibilityRole="button"
+          className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-100"
+        >
+          <View className="flex-1 pr-3">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">Set as Main</Text>
+            <Text className="text-[11px] text-heliotrope-500 mt-0.5">
+              Make this the photo shown on your catalog and storefront
+            </Text>
+          </View>
+          {savingPrimary ? (
+            <ActivityIndicator size="small" color={primaryColor} />
+          ) : (
+            <Text className="text-fuchsia-600 text-xs font-bold uppercase tracking-wider">Set →</Text>
+          )}
+        </AnimatedPressable>
+      )}
+
       {/* Shadow toggle */}
       <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-100">
         <View className="flex-1 pr-3">

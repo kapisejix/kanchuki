@@ -18,13 +18,23 @@ import {
   getInstagramAccountId,
   getStateRedis,
 } from './retailers-social-helpers.js';
+
+// Facebook Login only accepts https:// redirect URIs — a custom app scheme
+// (kanchuki://…) makes Meta show its generic "Sorry, something went wrong"
+// page. Every OAuth dialog therefore redirects to an https URL the platform
+// owns (WEB_URL); the web callback page / social/connect page then hands the
+// code back to the mobile app via a kanchuki:// deep link (which is fine — the
+// deep link is client-side, never sent to Meta). #9
+const defaultOAuthRedirect = () =>
+  `${process.env.WEB_URL ?? 'https://kanchuki.app'}/social/connect`;
+
 export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) => {
   // ─── GET /retailers/me/social/connect — start OAuth (1-Click & Web) ──
   // Returns the Meta / Google login URL + state.
   server.get('/me/social/connect', async (request) => {
     const query = request.query as { provider?: string; redirect_uri?: string };
     const provider = query.provider || 'instagram';
-    const redirectUri = query.redirect_uri || 'kanchuki://oauth/callback';
+    const redirectUri = query.redirect_uri || defaultOAuthRedirect();
 
     const meta = await resolveMetaCredentials();
     if (!meta) throw serviceUnavailable('Social publishing is not configured yet');
@@ -66,7 +76,7 @@ export const retailersSocialConnectRoutes: FastifyPluginAsync = async (server) =
       };
     }
 
-    const redirectUri = body.data.redirect_uri || 'kanchuki://oauth/callback';
+    const redirectUri = body.data.redirect_uri || defaultOAuthRedirect();
     const { accessToken, expiresAt } = await exchangeCodeForToken(
       meta,
       body.data.code,

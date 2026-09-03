@@ -79,7 +79,9 @@
           "autoLogAppEventsEnabled": false,
           "isAutoInitEnabled": false
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-video"
     ],
     "experiments": {
       "typedRoutes": true

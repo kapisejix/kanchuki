@@ -27,11 +27,14 @@ export interface SocialPostInfo {
 }
 
 export const socialApi = {
+  // No redirect_uri param → the API defaults to an https URL it owns
+  // (WEB_URL/social/connect) — Facebook Login rejects custom schemes like
+  // kanchuki:// with a generic error (#9).
   getConnectUrl: (provider: 'instagram' | 'facebook' | 'youtube' | 'x' = 'instagram', redirectUri?: string) =>
     request<{ data: { auth_url: string; state: string; provider: string } }>(
-      `/v1/retailers/me/social/connect?provider=${provider}&redirect_uri=${encodeURIComponent(
-        redirectUri || 'kanchuki://oauth/callback',
-      )}`,
+      `/v1/retailers/me/social/connect?provider=${provider}${
+        redirectUri ? `&redirect_uri=${encodeURIComponent(redirectUri)}` : ''
+      }`,
     ),
 
   /**

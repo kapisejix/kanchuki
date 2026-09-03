@@ -8,6 +8,7 @@ import {
 } from 'react-native'
 import { Image } from 'expo-image'
 import { useQuery } from '@tanstack/react-query'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { X, Sparkles, Wand2, CheckCircle2, AlertTriangle } from 'lucide-react-native'
 import { STUDIO_CREDITS_PER_IMAGE, demographicForCategory } from '@kanchuki/shared'
 import { productApi } from '../../lib/api'
@@ -57,6 +58,9 @@ export function ProductStudioModal({
   productCategory,
   productName,
 }: ProductStudioModalProps) {
+  // #7: bottom safe-area inset so the GENERATE button never sits under the
+  // Android system nav bar (gesture bar / 3-button nav).
+  const insets = useSafeAreaInsets()
   const [tab, setTab] = useState<'product' | 'models'>('product')
 
   // Fetch DB-backed styles — plan-filtered by the API
@@ -330,7 +334,10 @@ export function ProductStudioModal({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View className="flex-1 bg-black/60 justify-end">
-        <View className="bg-white rounded-t-3xl p-5 max-h-[85%]">
+        <View
+          className="bg-white rounded-t-3xl p-5 max-h-[85%]"
+          style={{ paddingBottom: insets.bottom + 16 }}
+        >
           {/* Header */}
           <View className="flex-row items-center justify-between pb-3 border-b border-sand-100">
             <View className="flex-row items-center gap-2">

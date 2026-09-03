@@ -81,9 +81,22 @@ export default function SocialConnectPage() {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // If a session already exists (returning from a failed Meta attempt), show
-  // the connect button directly.
+  // #9: the mobile deep-link flow lands here after Meta's https redirect
+  // (?code=&state=) — hand the code back to the Kanchuki app via its deep
+  // link. Meta itself only ever sees https redirects, never the custom scheme.
+  const [deepLinkTarget, setDeepLinkTarget] = useState<string | null>(null);
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get('code');
+    const state = params.get('state');
+    if (code && state) {
+      const target = `kanchuki://oauth/callback?code=${encodeURIComponent(code)}&state=${encodeURIComponent(state)}`;
+      setDeepLinkTarget(target);
+      window.location.href = target;
+      return;
+    }
+    // If a session already exists (returning from a failed Meta attempt), show
+    // the connect button directly.
     const stored = window.sessionStorage.getItem(TOKEN_KEY);
     if (stored) {
       accessToken = stored;
@@ -150,8 +163,12 @@ export default function SocialConnectPage() {
     setSending(true);
     setError(null);
     try {
+      // #9: explicit https callback so Meta accepts the OAuth dialog (custom
+      // schemes like kanchuki:// get a generic error). The callback page
+      // exchanges the code server-side at /social/connect/callback.
+      const redirectUri = `${window.location.origin}/social/connect/callback`;
       const res = await apiFetch<{ data: { auth_url: string; state: string } }>(
-        `${API_URL}/v1/retailers/me/social/connect`,
+        `${API_URL}/v1/retailers/me/social/connect?redirect_uri=${encodeURIComponent(redirectUri)}`,
       );
       // Keep the state in sessionStorage so the callback page can verify it
       // matches what the API expects (defense in depth — the API re-checks).
@@ -169,6 +186,28 @@ export default function SocialConnectPage() {
     setOtp('');
     setStep('phone');
   };
+
+  // #9: mobile flow — Meta redirected here with the code; we handed it back to
+  // the app via deep link. Fallback in case the app didn't open.
+  if (deepLinkTarget) {
+    return (
+      <main className="min-h-screen bg-cream flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-xl p-5 shadow-sm border border-carbon/10 text-center">
+            <p className="text-sm text-carbon/70 mb-4">
+              Completing your connection — returning to the Kanchuki app…
+            </p>
+            <a
+              href={deepLinkTarget}
+              className="inline-block w-full bg-[#1877F2] text-white rounded-lg py-3 text-sm font-semibold text-center"
+            >
+              Didn&apos;t open the app? Tap to retry
+            </a>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-cream flex items-center justify-center px-4 py-12">

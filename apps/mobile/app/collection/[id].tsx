@@ -469,8 +469,8 @@ export default function CollectionDetailScreen() {
       </View>
 
       <ScrollView className="flex-1 bg-[#F8F7FC]">
-        {/* Stats */}
-        <View className="flex-row flex-wrap px-4 pt-4 gap-3">
+        {/* Stats — all 4 in a single row (#6) */}
+        <View className="flex-row px-4 pt-4 gap-2">
           <Stat icon={<Eye size={16} color="#BB3F95" />} label="Views" value={collection.view_count} />
           <Stat icon={<Users size={16} color="#560A39" />} label="Visitors" value={collection.unique_viewer_count} />
           <Stat icon={<Heart size={16} color="#DC2626" />} label="Favorites" value={collection.favorite_count} />
@@ -566,7 +566,7 @@ export default function CollectionDetailScreen() {
 function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <View
-      className="bg-white rounded-3xl p-4 border border-lavender-200 flex-1 min-w-[45%] shadow-sm"
+      className="bg-white rounded-3xl p-3 border border-lavender-200 flex-1 shadow-sm"
       style={{
         shadowColor: '#231F48',
         shadowOffset: { width: 0, height: 4 },
@@ -575,18 +575,16 @@ function Stat({ icon, label, value }: { icon: React.ReactNode; label: string; va
         elevation: 2,
       }}
     >
-      <View className="flex-row items-center gap-2">
-        <View className="w-7 h-7 rounded-xl bg-lavender-100 items-center justify-center">
-          {icon}
-        </View>
-        <Text
-          style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
-          className="text-xl font-bold text-spaceCadet-900"
-        >
-          {value.toLocaleString('en-IN')}
-        </Text>
+      <View className="w-7 h-7 rounded-xl bg-lavender-100 items-center justify-center mb-1">
+        {icon}
       </View>
-      <Text className="text-xs text-heliotrope-500 font-medium mt-1">{label}</Text>
+      <Text
+        style={{ fontFamily: 'Marcellus_400Regular', letterSpacing: 0.32, fontWeight: '800' }}
+        className="text-base font-bold text-spaceCadet-900"
+      >
+        {value.toLocaleString('en-IN')}
+      </Text>
+      <Text className="text-[10px] text-heliotrope-500 font-medium mt-0.5">{label}</Text>
     </View>
   )
 }

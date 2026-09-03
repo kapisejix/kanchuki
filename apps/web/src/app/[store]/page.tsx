@@ -1,6 +1,8 @@
 import { API_URL as apiUrl } from '@/lib/apiUrl';
+import type { PublicCollection } from '@kanchuki/shared';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { CollectionView } from '../c/[slug]/components/CollectionView';
 import { ContactGate } from './components/ContactGate';
 import { buildStoreDescription, localBusinessLd, storeOgImage } from './lib/store-seo';
 
@@ -27,6 +29,31 @@ async function fetchProfile(store: string): Promise<RetailerProfile | null> {
     });
     if (!res.ok) return null;
     const json = (await res.json()) as { data: RetailerProfile };
+    return json.data;
+  } catch {
+    return null;
+  }
+}
+
+// #4: the store root also fetches the all-products listing so the catalog can
+// render in place once the contact gate passes — no hard hop to /categories.
+async function fetchAllProducts(
+  store: string,
+  params?: { page?: number; pageSize?: number },
+): Promise<PublicCollection | null> {
+  const qs = params
+    ? `?${new URLSearchParams(
+        Object.entries(params)
+          .filter(([, v]) => v !== undefined)
+          .map(([k, v]) => [k, String(v)]),
+      )}`
+    : '';
+  try {
+    const res = await fetch(`${apiUrl}/v1/public/retailers/${store}/products${qs}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { data: PublicCollection };
     return json.data;
   } catch {
     return null;
@@ -69,6 +96,11 @@ export default async function StoreProfilePage({ params }: Props) {
   const profile = await fetchProfile(store);
   if (!profile) notFound();
 
+  // #4: catalog rendered behind the gate — ContactGate reveals these children
+  // instead of router.replace'ing to /categories (removes one full-page load
+  // per visit). Mirrors the /all route's data + CollectionView props exactly.
+  const data = await fetchAllProducts(store, { page: 1, pageSize: 12 });
+
   return (
     <>
       {/* LocalBusiness structured data — city/state/address feed Google's local
@@ -78,7 +110,16 @@ export default async function StoreProfilePage({ params }: Props) {
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD from our own retailer data, no user input
         dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessLd(profile, store)) }}
       />
-      <ContactGate slug={store} profile={profile} />
+      <ContactGate slug={store} profile={profile}>
+        {data ? (
+          <CollectionView
+            collection={data}
+            slug={`all-${store}`}
+            store={store}
+            productsApiPath={`/api/${store}/products`}
+          />
+        ) : null}
+      </ContactGate>
     </>
   );
 }

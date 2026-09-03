@@ -80,11 +80,12 @@ export default function SocialSettingsScreen() {
 
         if (code) {
           setConnecting(true);
+          // No redirect_uri → API defaults to its https URL (matches the OAuth
+          // dialog's redirect). Facebook rejects custom schemes (#9).
           const res = await socialApi.autoConnect({
             code,
             state,
             provider: 'facebook',
-            redirect_uri: 'kanchuki://oauth/callback',
           });
 
           if (res?.data?.connected) {
@@ -105,8 +106,9 @@ export default function SocialSettingsScreen() {
 
   // Fallback for builds without the native SDK (Expo Go): the old web OAuth-URL
   // flow. Kept only so development on Expo Go still has *a* path.
+  // https redirect (API default) so Meta accepts the dialog (#9).
   const openConnectViaWeb = async () => {
-    const res = await socialApi.getConnectUrl('facebook', 'kanchuki://oauth/callback');
+    const res = await socialApi.getConnectUrl('facebook');
     const authUrl = res.data?.auth_url;
     if (authUrl) {
       const canOpen = await Linking.canOpenURL(authUrl).catch(() => true);

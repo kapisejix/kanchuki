@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
-import { X, ArrowLeft, Heart, MessageCircle, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star } from 'lucide-react'
+import { X, ArrowLeft, Heart, ChevronLeft, ChevronRight, Camera, Palette, MapPin, RotateCw, ShoppingCart, Share2, Sparkles, Info, Star } from 'lucide-react'
 import type { PublicProduct, PublicProductDetail, PublicCollection } from '@kanchuki/shared'
 import { formatPriceRange, buildWhatsAppEnquiryLink, buildEnquiryMessage, resolveFashionColor } from '@kanchuki/shared'
 import { productToCartItem, saveCart, loadCart } from '../lib/cart'
@@ -16,6 +16,7 @@ import { SavedSize } from './SavedSize'
 import { DesignGallery } from './DesignGallery'
 import { FamilyProfiles } from './FamilyProfiles'
 import { CustomerConsentModal } from './CustomerConsentModal'
+import { ProductCtas } from './ProductCtas'
 
 // VTO hidden for launch — backend live but buttons removed per pre-launch checklist.
 const TRY_ON_ENABLED = false
@@ -700,35 +701,12 @@ export function ProductDetailSheet({
           </div>
           )}
 
-          {/* Dual Action Buttons */}
-          <div className="flex items-center gap-3 pt-1">
-            <button
-              onClick={() => !isSold && onFavorite(product.id)}
-              disabled={isSold}
-              className={`flex-1 py-3.5 rounded-2xl bg-white border font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-[0.98] ${
-                isSold
-                  ? 'border-gray-200 text-gray-400 cursor-not-allowed'
-                  : isFavorited
-                    ? 'border-[#BB3F95] text-[#BB3F95] bg-[#BB3F95]/5'
-                    : 'border-[#E0E1F6] text-[#231F48] hover:border-[#BB3F95]'
-              }`}
-            >
-              <Heart size={16} className={isFavorited && !isSold ? 'fill-current text-[#BB3F95]' : 'text-amber-500 fill-amber-500'} />
-              <span>{isFavorited ? 'Selected' : 'Select'}</span>
-            </button>
-            <button
-              onClick={() => setShowConsentModal(true)}
-              disabled={isSold}
-              className={`flex-1 py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98] ${
-                isSold
-                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-              }`}
-            >
-              <MessageCircle size={16} />
-              <span>Enquire Now</span>
-            </button>
-          </div>
+          {/* Dual CTAs — same shared design as the shared product page (#11) */}
+          <ProductCtas
+            onEnquire={() => setShowConsentModal(true)}
+            onViewCatalog={closeSheet}
+            isSold={isSold}
+          />
 
           {/* Color variants — clickable to show in carousel */}
           {variants.length > 0 && (

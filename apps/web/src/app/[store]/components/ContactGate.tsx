@@ -5,8 +5,16 @@ import { Loader2, Eye, ShieldCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { getPassport, type PassportSession } from '@/lib/passport-client';
+import {
+  isMsg91WidgetConfigured,
+  loadMsg91Widget,
+  retryOtpViaWidget,
+  sendOtpViaWidget,
+  verifyOtpViaWidget,
+  widgetErrorMessage,
+} from '@/lib/msg91-widget';
 import { PassportSheet } from './PassportSheet';
 
 // Detect in-app WebView (Paytm, GPay, Instagram, Google Lens) — these have
@@ -38,6 +46,9 @@ interface Props {
   slug: string;
   profile: GateProfile;
   onSuccess?: () => void;
+  // #4: catalog content to reveal once the gate passes — renders in place
+  // instead of a router.replace to a separate route segment.
+  children?: ReactNode;
 }
 
 type Gender = 'MALE' | 'FEMALE';
@@ -46,12 +57,14 @@ const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
 const leadNameKey = (slug: string) => `kanchuki_lead_name_${slug}`;
 const leadPhoneKey = (slug: string) => `kanchuki_lead_phone_${slug}`;
 
-export function ContactGate({ slug, profile, onSuccess }: Props) {
+export function ContactGate({ slug, profile, onSuccess, children }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [passportSession, setPassportSession] = useState<PassportSession | null>(null);
   const [showPassportSheet, setShowPassportSheet] = useState(false);
   const [justBrowsing, setJustBrowsing] = useState(false);
+  // #4: gate passed — reveal the catalog children in place (no hard hop).
+  const [revealed, setRevealed] = useState(false);
 
   // Legacy form state
   const [name, setName] = useState('');
@@ -71,11 +84,59 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
   const [otpSending, setOtpSending] = useState(false);
   const [otpVerifying, setOtpVerifying] = useState(false);
   const [otpError, setOtpError] = useState<string | null>(null);
+  // #3: explicit consent on the passport OTP phone step (mirrors the legacy
+  // form's consent gate — required before an OTP can be sent).
+  const [otpConsent, setOtpConsent] = useState(false);
 
+  // #2b: MSG91 widget session (real OTP path — the widget's own provisioned
+  // route bypasses the unregistered DLT sender that drops API-path SMS).
+  // reqId pairs verify/retry with the original send; channel records which
+  // path issued the OTP so verify/resend follow it (the widget can finish
+  // loading after the API already sent a code).
+  const [widgetReady, setWidgetReady] = useState(false);
+  const [otpReqId, setOtpReqId] = useState('');
+  const [otpChannel, setOtpChannel] = useState<'widget' | 'api' | null>(null);
+
+  // #2a: 30s resend cooldown (mirrors the retailer auth/otp.tsx pattern).
+  const [resendTimer, setResendTimer] = useState(0);
+  const [resending, setResending] = useState(false);
+
+  useEffect(() => {
+    if (resendTimer <= 0) return;
+    const timer = setInterval(() => setResendTimer((t) => t - 1), 1000);
+    return () => clearInterval(timer);
+  }, [resendTimer]);
+
+  // Lazily load the widget — the login card works without it (API OTP is the
+  // fallback), so a blocked third-party CDN never breaks the gate.
+  useEffect(() => {
+    let cancelled = false;
+    if (isMsg91WidgetConfigured()) {
+      void loadMsg91Widget().then((ready) => {
+        if (!cancelled) setWidgetReady(ready);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // #4: when catalog children are passed, passing the gate reveals them in
+  // place — no router.replace to a separate segment, so first-time and
+  // returning shoppers skip the full-page load. Without children (e.g. the
+  // shared product page, which passes onSuccess instead) behavior is unchanged.
+  const hasChildren = children != null && children !== false;
   const proceed = useCallback(() => {
-    if (onSuccess) onSuccess();
-    else router.replace(`/${slug}/categories`);
-  }, [onSuccess, router, slug]);
+    if (onSuccess) {
+      onSuccess();
+      return;
+    }
+    if (hasChildren) {
+      setRevealed(true);
+      return;
+    }
+    router.replace(`/${slug}/categories`);
+  }, [onSuccess, hasChildren, router, slug]);
 
   // Check passport session + legacy localStorage
   useEffect(() => {
@@ -129,21 +190,43 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
     }
   };
 
-  // OTP send
+  /** API-path OTP send (SMS fallback — used when the widget is unavailable). */
+  const sendOtpViaApi = async () => {
+    const res = await fetch('/api/passport/otp/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone: otpPhone.trim() }),
+    });
+    if (!res.ok) {
+      const json = (await res.json()) as { error?: { message?: string } };
+      throw new Error(json.error?.message ?? 'Failed to send OTP');
+    }
+  };
+
+  // OTP send — widget first (bypasses the DLT-blocked SMS sender), API fallback.
   const handleSendOtp = async () => {
     if (otpPhone.trim().length < 10) return;
     setOtpSending(true);
     setOtpError(null);
     try {
-      const res = await fetch('/api/passport/otp/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: otpPhone.trim() }),
-      });
-      if (!res.ok) {
-        const json = (await res.json()) as { error?: { message?: string } };
-        throw new Error(json.error?.message ?? 'Failed to send OTP');
+      if (widgetReady) {
+        // Widget sends the SMS itself (identifier needs the country code, no '+').
+        const result = await sendOtpViaWidget(`91${otpPhone.trim()}`);
+        if (result.ok) {
+          setOtpChannel('widget');
+          setOtpReqId(result.reqId ?? '');
+        } else {
+          // Widget send failed — fall back to the API path.
+          await sendOtpViaApi();
+          setOtpChannel('api');
+          setOtpReqId('');
+        }
+      } else {
+        await sendOtpViaApi();
+        setOtpChannel('api');
+        setOtpReqId('');
       }
+      setResendTimer(30);
       setOtpStep('otp');
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : 'Failed to send OTP');
@@ -152,16 +235,30 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
     }
   };
 
-  // OTP verify
+  // OTP verify — widget token first (channel follows the SEND channel), else code.
   const handleVerifyOtp = async () => {
     if (otpCode.trim().length !== 6) return;
     setOtpVerifying(true);
     setOtpError(null);
     try {
+      let widgetToken: string | undefined;
+      if (otpChannel === 'widget') {
+        // Widget verifies the code client-side and returns a JWT; the API
+        // re-confirms it with MSG91 server-side (widget_token = Channel 1).
+        const result = await verifyOtpViaWidget(otpCode.trim(), otpReqId || undefined);
+        if (!result.ok || !result.token) {
+          throw new Error(widgetErrorMessage(result.error, 'Verification failed. Try again.'));
+        }
+        widgetToken = result.token;
+      }
       const res = await fetch('/api/passport/otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: otpPhone.trim(), otp: otpCode.trim() }),
+        body: JSON.stringify(
+          widgetToken
+            ? { phone: otpPhone.trim(), widget_token: widgetToken }
+            : { phone: otpPhone.trim(), otp: otpCode.trim() },
+        ),
       });
       if (!res.ok) {
         const json = (await res.json()) as { error?: { message?: string } };
@@ -177,12 +274,37 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
           setOtpStep('phone');
           setOtpPhone('');
           setOtpCode('');
+          setOtpChannel(null);
+          setOtpReqId('');
+          setResendTimer(0);
         }
       }
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : 'Invalid OTP');
     } finally {
       setOtpVerifying(false);
+    }
+  };
+
+  // #2a: Resend OTP — same channel as the original send, 30s cooldown.
+  const handleResendOtp = async () => {
+    if (resendTimer > 0 || resending) return;
+    setResending(true);
+    setOtpError(null);
+    try {
+      if (otpChannel === 'widget' && otpReqId) {
+        const result = await retryOtpViaWidget(otpReqId);
+        if (!result.ok) {
+          await sendOtpViaApi();
+        }
+      } else {
+        await sendOtpViaApi();
+      }
+      setResendTimer(30);
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : 'Failed to resend OTP');
+    } finally {
+      setResending(false);
     }
   };
 
@@ -207,21 +329,26 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
     );
   }
 
-  // Returning shopper — PassportSheet overlay
-  if (showPassportSheet && passportSession && !justBrowsing) {
-    return (
-      <PassportSheet
-        slug={slug}
-        profile={profile}
-        account={passportSession.account}
-        onSuccess={onSuccess}
-      />
-    );
+  // #4: gate passed (any path) — reveal the catalog children in place instead
+  // of navigating to a separate segment.
+  if (revealed || justBrowsing) {
+    return <>{children}</>;
   }
 
-  // Just browsing — let them through (gate is disarmed)
-  if (justBrowsing) {
-    return null;
+  // Returning shopper — PassportSheet overlay above the already-rendered
+  // catalog; "Enter catalog" reveals it with no hard load.
+  if (showPassportSheet && passportSession && !justBrowsing) {
+    return (
+      <>
+        {children}
+        <PassportSheet
+          slug={slug}
+          profile={profile}
+          account={passportSession.account}
+          onSuccess={proceed}
+        />
+      </>
+    );
   }
 
   return (
@@ -303,10 +430,31 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
             placeholder="10-digit mobile number"
           />
 
+          <label className="flex items-start gap-2 mb-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={otpConsent}
+              onChange={(e) => setOtpConsent(e.target.checked)}
+              required
+              className="mt-0.5"
+            />
+            <span className="text-[11px] text-[#6B4773] leading-relaxed">
+              I agree to receive personalized collection updates from {profile.shop_name} on WhatsApp, and accept Kanchuki&apos;s{' '}
+              <Link href="/privacy" target="_blank" className="text-[#BB3F95] font-bold underline">
+                Privacy Policy
+              </Link>{' '}
+              and{' '}
+              <Link href="/terms" target="_blank" className="text-[#BB3F95] font-bold underline">
+                Terms of Service
+              </Link>
+              .
+            </span>
+          </label>
+
           <button
             type="button"
             onClick={() => void handleSendOtp()}
-            disabled={otpPhone.trim().length < 10 || otpSending}
+            disabled={otpPhone.trim().length < 10 || !otpConsent || otpSending}
             className="w-full bg-gradient-to-r from-[#231F48] to-[#560A39] disabled:opacity-50 text-white font-bold text-xs uppercase tracking-wider py-3.5 rounded-3xl flex items-center justify-center gap-2 shadow-lg transition-all active:scale-[0.98] mb-3"
           >
             {otpSending ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={14} />}
@@ -370,9 +518,31 @@ export function ContactGate({ slug, profile, onSuccess }: Props) {
             {otpVerifying ? 'Verifying...' : 'Verify & Enter'}
           </button>
 
+          {/* #2a: Resend with 30s cooldown */}
+          {resendTimer > 0 ? (
+            <p className="w-full text-center text-[10px] text-[#6B4773] font-medium py-2.5">
+              Resend OTP in {resendTimer}s
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleResendOtp()}
+              disabled={resending}
+              className="w-full bg-transparent text-[#BB3F95] font-bold text-xs uppercase tracking-wider py-2.5 rounded-3xl flex items-center justify-center gap-2 hover:bg-[#F8F7FC] transition-all"
+            >
+              {resending ? 'Sending...' : 'Resend OTP'}
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={() => { setOtpStep('phone'); setOtpError(null); }}
+            onClick={() => {
+              setOtpStep('phone');
+              setOtpError(null);
+              setOtpChannel(null);
+              setOtpReqId('');
+              setResendTimer(0);
+            }}
             className="w-full bg-transparent text-[#6B4773] font-bold text-xs uppercase tracking-wider py-3 rounded-3xl border border-[#E0E1F6] hover:bg-[#F8F7FC] transition-all"
           >
             ← Change number

@@ -323,6 +323,15 @@ export default function OnboardingScreen() {
       pincode: pincode.trim() || undefined,
       gstin: gstin.trim() || undefined,
     });
+    // #1: Ensure the storefront slug + QR exist right after onboarding —
+    // POST /me/qr-slug is get-or-create and derives the slug from shop_name.
+    // Best-effort: a failure must never block completing onboarding (the
+    // Store QR screen can still create it on demand).
+    try {
+      await retailerApi.getQrSlug();
+    } catch {
+      // ignore — slug can be generated later from the Store QR screen
+    }
     const onboardingRes = await retailerApi.updateOnboarding(TOTAL_STEPS as number, true);
     queryClient.setQueryData(['retailer', 'me'], (old) => {
       const oldData = (old as { data?: Record<string, unknown> } | undefined)?.data;

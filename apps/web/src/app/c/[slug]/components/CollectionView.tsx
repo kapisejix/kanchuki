@@ -534,6 +534,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
         <div className="max-w-md mx-auto grid grid-cols-3 py-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <Link
             href={catalogPath}
+            prefetch
             className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#231F48] hover:text-[#BB3F95] transition-colors"
           >
             <LayoutGrid size={20} />
@@ -541,6 +542,7 @@ export function CollectionView({ collection, slug, store, productsApiPath }: Pro
           </Link>
           <Link
             href={`${basePath}/wishlist`}
+            prefetch
             className="flex flex-col items-center justify-center gap-0.5 py-1 text-[#6B4773] hover:text-[#BB3F95] transition-colors relative"
           >
             <div className="relative">

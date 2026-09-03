@@ -2,7 +2,7 @@
 
 import type { PublicCollection, PublicProductDetail } from '@kanchuki/shared';
 import { formatPriceRange } from '@kanchuki/shared';
-import { ArrowLeft, Info, MessageCircle, ShoppingBag, Sparkles, Star } from 'lucide-react';
+import { ArrowLeft, Info, ShoppingBag, Sparkles, Star } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -14,6 +14,7 @@ import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { ProductGallery } from './ProductGallery';
 import { ReviewForm } from './StarPicker';
 import { CustomerConsentModal } from './CustomerConsentModal';
+import { ProductCtas } from './ProductCtas';
 
 interface Props {
   collection: PublicCollection;
@@ -87,6 +88,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
           <Link
             href={catalogTarget}
+            prefetch
             className="w-9 h-9 rounded-2xl bg-white border border-[#E0E1F6] flex items-center justify-center text-[#231F48] shadow-sm hover:border-[#BB3F95] transition"
             aria-label="Back to catalog"
           >
@@ -105,6 +107,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           </div>
           <Link
             href={catalogTarget}
+            prefetch
             className="w-9 h-9 rounded-2xl bg-white border border-[#E0E1F6] flex items-center justify-center text-[#231F48] shadow-sm hover:border-[#BB3F95] transition"
             aria-label="Catalog"
           >
@@ -237,26 +240,12 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           </div>
         )}
 
-        {/* ── Dual CTA Action Buttons ── */}
-        {!isSold && (
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={() => setShowConsentModal(true)}
-              className="w-full py-4 px-5 rounded-3xl bg-gradient-to-r from-[#231F48] to-[#560A39] text-white flex items-center justify-center gap-2.5 shadow-lg shadow-[#231F48]/25 hover:shadow-xl transition-all active:scale-[0.98]"
-            >
-              <MessageCircle size={18} className="fill-current text-emerald-400" />
-              <span className="text-sm font-extrabold text-white">Enquire Now</span>
-            </button>
-
-            <Link
-              href={catalogTarget}
-              className="flex items-center justify-center gap-2 w-full font-bold py-3.5 rounded-3xl bg-white border border-[#E0E1F6] text-[#231F48] shadow-sm hover:border-[#BB3F95] transition text-xs uppercase tracking-wider"
-            >
-              <ShoppingBag size={16} />
-              View Full Catalog
-            </Link>
-          </div>
-        )}
+        {/* ── Dual CTA Action Buttons — shared component, side by side (#10/#11) ── */}
+        <ProductCtas
+          onEnquire={() => setShowConsentModal(true)}
+          catalogHref={catalogTarget}
+          isSold={isSold}
+        />
 
         {/* ── Rate this product — only when opened via the retailer's ?review=1 link ── */}
         {reviewMode && (
