@@ -4,9 +4,8 @@
 import type { FastifyPluginAsync } from 'fastify';
 
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-import { verifySync } from 'otplib';
 import { z } from 'zod';
-import { forbidden, notFound, validationError } from '../plugins/error-handler.js';
+import { forbidden, notFound } from '../plugins/error-handler.js';
 import { verifyPassword } from '../plugins/team-auth.js';
 import { adminSessionEmail, adminSessionInfo, signAdminSession } from './admin-auth.js';
 import { adminAuthPreHandler } from './admin-auth.js';
@@ -54,8 +53,7 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
   server.addHook('preHandler', adminAuthPreHandler);
 
   // ─── POST /admin/login ───────────────────────────────────────────
-  // Authenticate with email + password (scrypt) + optional TOTP.
-  // SECURITY §8: email + password + TOTP (when TOTP_SECRET is configured).
+  // Authenticate with email + password (scrypt).
   // S-003: strict per-route rate limit (5 attempts / 15 min per IP)
   server.post(
     '/login',
@@ -65,17 +63,11 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         .object({
           email: z.string().email('Invalid email'),
           password: z.string().min(1, 'Password is required').max(128),
-          totp_code: z
-            .string()
-            .length(6)
-            .regex(/^\d{6}$/, 'TOTP code must be 6 digits')
-            .optional(),
         })
         .parse(request.body);
 
       const expectedEmail = process.env.ADMIN_EMAIL;
       const expectedHash = process.env.ADMIN_PASSWORD_HASH;
-      const totpSecret = process.env.ADMIN_TOTP_SECRET;
 
       if (!expectedEmail || !expectedHash) {
         request.log.error('ADMIN_EMAIL or ADMIN_PASSWORD_HASH not configured');
@@ -113,22 +105,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
         throw forbidden('Invalid credentials');
       }
 
-      // TOTP verification (SECURITY §8)
-      // If ADMIN_TOTP_SECRET is set, require valid totp_code on every login.
-      if (totpSecret) {
-        if (!body.totp_code) {
-          throw validationError('TOTP code is required. Check your authenticator app.');
-        }
-
-        const totpResult = verifySync({
-          token: body.totp_code,
-          secret: totpSecret,
-        });
-        if (!totpResult.valid) {
-          throw forbidden('Invalid TOTP code');
-        }
-      }
-
       request.log.info('Admin login successful');
 
       // Generate CSRF token and set as SameSite cookie (defense-in-depth)
@@ -151,7 +127,6 @@ export const adminRoutes: FastifyPluginAsync = async (server) => {
           token: await signAdminSession(expectedEmail),
           csrf_token: csrfToken,
           email: body.email,
-          totp_enabled: !!totpSecret,
         },
       };
     },

@@ -18,10 +18,10 @@
  *   - Point DATABASE_URL at kanchuki_app, DATABASE_URL_REPLICA at a real
  *     replica, VAULT_DATABASE_URL at the vault instance (INSERT-only role)
  */
-import { randomBytes } from 'node:crypto'
+import { randomBytes } from 'node:crypto';
 
 function secret(): string {
-  return randomBytes(24).toString('hex') // 48 chars, 192 bits
+  return randomBytes(24).toString('hex'); // 48 chars, 192 bits
 }
 
 function main(): void {
@@ -56,26 +56,25 @@ function main(): void {
       value: secret(),
       note: 'API — replaces the weak dictionary value (S-009). Also set per-retailer in Admin → Integrations.',
     },
-  ]
+  ];
 
-  console.log('Kanchuki — production secrets (fresh random, 192-bit hex each)\n')
-  console.log('Add the following to the API service Railway environment:\n')
+  console.log('Kanchuki — production secrets (fresh random, 192-bit hex each)\n');
+  console.log('Add the following to the API service Railway environment:\n');
   for (const v of vars) {
-    console.log(`${v.key}="${v.value}"  # ${v.note}`)
+    console.log(`${v.key}="${v.value}"  # ${v.note}`);
   }
 
-  console.log('\n──────────────────────────────────────────────────')
-  console.log('STILL MANUAL (see docs/LAUNCH-READINESS-AUDIT.md §5):')
-  console.log('  1. ADMIN_PASSWORD_HASH: npx tsx scripts/generate-admin-hash.ts <password>')
-  console.log('  2. ADMIN_TOTP_SECRET:   npx tsx scripts/generate-admin-hash.ts --totp-only')
-  console.log('  3. Rotate dev-exposed keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY,')
-  console.log('     SUPABASE_SERVICE_KEY, R2_SECRET_ACCESS_KEY, REDIS_URL password.')
-  console.log('  4. DATABASE_URL → kanchuki_app role (test on staging first).')
-  console.log('  5. DATABASE_URL_REPLICA → real read replica (B-002).')
-  console.log('  6. VAULT_DATABASE_URL → vault instance, INSERT-only role (B-005).')
-  console.log('  7. WEB_URL → real domain (collection links currently use LAN IP).')
-  console.log('──────────────────────────────────────────────────')
-  console.log('\nWARNING: output above contains live secrets — do not paste into git/chat logs.')
+  console.log('\n──────────────────────────────────────────────────');
+  console.log('STILL MANUAL (see docs/LAUNCH-READINESS-AUDIT.md §5):');
+  console.log('  1. ADMIN_PASSWORD_HASH: npx tsx scripts/generate-admin-hash.ts <password>');
+  console.log('  2. Rotate dev-exposed keys: ANTHROPIC_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY,');
+  console.log('     SUPABASE_SERVICE_KEY, R2_SECRET_ACCESS_KEY, REDIS_URL password.');
+  console.log('  3. DATABASE_URL → kanchuki_app role (test on staging first).');
+  console.log('  4. DATABASE_URL_REPLICA → real read replica (B-002).');
+  console.log('  5. VAULT_DATABASE_URL → vault instance, INSERT-only role (B-005).');
+  console.log('  6. WEB_URL → real domain (collection links currently use LAN IP).');
+  console.log('──────────────────────────────────────────────────');
+  console.log('\nWARNING: output above contains live secrets — do not paste into git/chat logs.');
 }
 
-main()
+main();
