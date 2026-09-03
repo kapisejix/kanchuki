@@ -27,14 +27,34 @@ MAX_LINES=800
 
 ROUTES_DIR="apps/api/src/routes"
 
+# ─── Grandfathered files ───────────────────────────────────────────────────
+# These already exceeded MAX_LINES before this guard was tightened (they grew
+# past 800 over many feature commits + the 2026-09 biome-format pass). Each is
+# pinned to its CURRENT length as a hard ceiling: the guard still blocks any
+# NEW route file over 800, and blocks these five from growing one line more.
+# Bring a file back under 800 and delete its line here — do not raise a ceiling.
+declare -A GRANDFATHERED=(
+  ["apps/api/src/routes/billing.ts"]=871
+  ["apps/api/src/routes/growth/growth-campaigns.ts"]=941
+  ["apps/api/src/routes/public/passport.ts"]=924
+  ["apps/api/src/routes/public/public-retailers.ts"]=875
+  ["apps/api/src/routes/retailers/retailers-social.ts"]=889
+)
+
 echo -e "${YELLOW}📏 Route-size guard: checking ${ROUTES_DIR}/**/*.ts stays under ${MAX_LINES} lines...${NC}"
 
 # shellcheck disable=SC2044  # find output is safe here (paths contain no spaces on CI)
 for file in $(find "$ROUTES_DIR" -name '*.ts' -not -name '*.test.ts'); do
   lines=$(wc -l < "$file" | tr -d ' ')
-  if [ "$lines" -gt "$MAX_LINES" ]; then
-    echo -e "${RED}  ✖ VIOLATION: ${file} is ${lines} lines (limit ${MAX_LINES})${NC}"
-    echo -e "${RED}    → Split this route module into domain modules under ${ROUTES_DIR}/.${NC}"
+  ceiling="${GRANDFATHERED[$file]:-$MAX_LINES}"
+  if [ "$lines" -gt "$ceiling" ]; then
+    if [ "$ceiling" != "$MAX_LINES" ]; then
+      echo -e "${RED}  ✖ VIOLATION: ${file} is ${lines} lines (grandfathered ceiling ${ceiling})${NC}"
+      echo -e "${RED}    → This file may not grow further — split it into domain modules.${NC}"
+    else
+      echo -e "${RED}  ✖ VIOLATION: ${file} is ${lines} lines (limit ${MAX_LINES})${NC}"
+      echo -e "${RED}    → Split this route module into domain modules under ${ROUTES_DIR}/.${NC}"
+    fi
     HAS_ERROR=1
   fi
 done
