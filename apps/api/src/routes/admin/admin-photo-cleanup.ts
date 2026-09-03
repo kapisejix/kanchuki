@@ -12,6 +12,7 @@ import { compressImageToTarget, publicUrl, uploadBuffer } from '@kanchuki/ai';
 import { prisma } from '@kanchuki/db';
 import { PRODUCT_DEMOGRAPHICS, R2_PATHS } from '@kanchuki/shared';
 import { z } from 'zod';
+import { generateImageToVideo } from '../../lib/fal-video.js';
 import { runPhotoCleanup, serializePhotoCleanup } from '../../lib/photo-cleanup-runner.js';
 import { downloadCompressAndUpload, generateStudioImage } from '../../lib/studio-shoot.js';
 import { AppError, validationError } from '../../plugins/error-handler.js';
@@ -182,6 +183,36 @@ export const adminPhotoCleanupRoutes: FastifyPluginAsync = async (server) => {
       Boolean(result.base64Data),
     );
     return { data: { result_url: uploaded.url, slug: style?.slug ?? null } };
+  });
+
+  // ─── POST /admin/photo-cleanup/image-to-video ─────────────────────
+  // F-034 AI Promo Video test bench — the video sibling of /studio-shoot.
+  // Synchronous, admin-only, no BullMQ / quota / ProductVideo row (this is a
+  // test page; the retailer path in products-video-ai.ts is the async one).
+  // Photo URL in → Fal image→video → ffmpeg crop/trim → mp4 in R2 → url out.
+  server.post('/photo-cleanup/image-to-video', async (request) => {
+    const body = z
+      .object({
+        product_url: z.string().url(),
+        model: z.enum(['seedance', 'wan', 'kling_std', 'kling_pro', 'luma']),
+        // Free text on the bench; a curated studio_styles prompt on the
+        // retailer side (Phase 2).
+        motion_prompt: z.string().min(1).max(2000),
+        aspect: z.enum(['9:16', '16:9', '1:1', '4:5']),
+        seconds: z.union([z.literal(5), z.literal(6), z.literal(8)]).default(5),
+      })
+      .parse(request.body);
+
+    const mp4 = await generateImageToVideo(body.product_url, {
+      model: body.model,
+      motionPrompt: body.motion_prompt,
+      aspect: body.aspect,
+      seconds: body.seconds,
+    });
+
+    const key = R2_PATHS.photoCleanupTest(`promo-${randomUUID()}.mp4`);
+    await uploadBuffer(key, mp4, 'video/mp4');
+    return { data: { result_url: publicUrl(key) } };
   });
 
   // ─── GET /admin/photo-cleanup/tryon-results ────────────────────────
