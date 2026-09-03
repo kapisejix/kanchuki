@@ -265,7 +265,10 @@ test('collection page renders and interactions are client-side (no full reload)'
   })
 
   await page.goto(`/${STORE_SLUG}/festive-edit`)
-  await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
+  // The Discovery redesign renders the collection title as a summary line
+  // ("{title} · {total} curated items"), not a heading element — assert on the
+  // SSR'd text, which is exactly what an offline reload serves from cache.
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
   await expect(page.getByText('Meera Sarees · Jaipur')).toBeVisible()
   await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
   expect(loadCount).toBe(1)
@@ -288,28 +291,28 @@ test('collection page renders and interactions are client-side (no full reload)'
   // button label), so substring matching resolves .first() to the photo div
   // (which opens the sheet) instead of the heart button.
   await page.getByRole('button', { name: 'Add to favorites', exact: true }).first().click()
-  await expect(page.getByText('Selected (1)')).toBeVisible()
+  // The Discovery redesign removed the sticky "Selected (N)" favorites bar —
+  // the heart flipping to "Remove from favorites" is the on-page feedback now.
   await expect(page.getByRole('button', { name: 'Remove from favorites', exact: true }).first()).toBeVisible()
   expect(loadCount).toBe(1)
 
   // Open the product detail sheet (lazy-loaded, client-side)
   await page.getByRole('img', { name: 'Festive Design 1', exact: true }).click()
-  // The 3-button CTA row labels the enquiry CTA just "Enquire" (since the
-  // 08-04 redesign that replaced the old stacked Add-to-Cart + Enquire buttons)
-  await expect(page.getByRole('button', { name: 'Enquire', exact: true })).toBeVisible()
-  // Mocked detail data: sizes, fabric chip, color variant. The size chips are
-  // scoped to the "Available Sizes" section (the <p>'s parent div) so strict
-  // mode can't collide with any other single-letter text on the page.
-  const sizesSection = page.getByText('Available Sizes').locator('..')
-  await expect(sizesSection.getByText('S', { exact: true })).toBeVisible()
-  await expect(sizesSection.getByText('XL', { exact: true })).toBeVisible()
+  // Sheet probe: the sheet's enquiry CTA is "Enquire Now" — the fixed bottom
+  // nav has a bare "Enquire" button that is always visible, so only the
+  // "Enquire Now" exact match proves the sheet is open (and its teardown on
+  // close below). Mocked detail data: fabric row + color variants. The
+  // Discovery redesign removed size chips from the sheet — "Available Sizes"
+  // now lives on the full product page (SharedProductPage), which this suite
+  // doesn't route to.
+  await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeVisible()
   await expect(page.getByText('Raw Silk')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Teal', exact: true })).toBeVisible()
   expect(loadCount).toBe(1)
 
   // Close the sheet — back to the grid, still no reload
   await page.getByRole('button', { name: 'Close', exact: true }).click()
-  await expect(page.getByRole('button', { name: 'Enquire', exact: true })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Enquire Now', exact: true })).toBeHidden()
   await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
   expect(loadCount).toBe(1)
   expect(await sentinelIsAlive(page)).toBe(true)
@@ -320,13 +323,13 @@ test('collection pages work offline via the service worker', async ({ context, p
 
   // 1. Online visit — SW installs and claims the page
   await page.goto(`/${STORE_SLUG}/festive-edit`)
-  await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
   await waitForServiceWorkerControl(page)
 
   // 2. SW-controlled reload — NetworkFirst caches this document; the images
   //    (CacheFirst, *.r2.dev) are fetched through the SW and cached too.
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
   await page.waitForFunction(() => {
     const img = document.querySelector('img[alt="Festive Design 1"]') as HTMLImageElement | null
     return img !== null && img.complete && img.naturalWidth > 0
@@ -341,7 +344,7 @@ test('collection pages work offline via the service worker', async ({ context, p
 
   // 4. Reload the cached page — NetworkFirst serves the cached document
   await page.reload()
-  await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
   await expect(page.getByRole('img', { name: 'Festive Design 1', exact: true })).toBeVisible()
 
   // 5. Photos come from the product-images cache (CacheFirst), not the network
@@ -370,7 +373,7 @@ test('legacy /c/{slug} and /store/{slug} links redirect to canonical URLs', asyn
   // Collection link shared before the canonical scheme: /c/{slug} → /{store}/{slug}.
   await page.goto('/c/festive-edit')
   await expect(page).toHaveURL(`/${STORE_SLUG}/festive-edit`)
-  await expect(page.getByRole('heading', { name: 'Festive Edit', exact: true })).toBeVisible()
+  await expect(page.getByText('Festive Edit · 24 curated items', { exact: true })).toBeVisible()
 
   // Store QR link shared before the canonical scheme: /store/{slug} → /{slug}.
   await page.goto(`/store/${STORE_SLUG}`)

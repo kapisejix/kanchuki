@@ -382,7 +382,7 @@ configs, test mock, and 2 web files switched to an equivalent absolute-URL form.
 | `quality` job | ✅ green (run 33719613755) |
 | `build` job (first green this cycle) | ✅ green (run 33719613755) |
 | `unit-web` job | ✅ green (run 33719613755) |
-| `e2e-web` job → re-run after T3's spec fixes | ⬜ |
+| `e2e-web` job → re-run after T3's spec fixes | 🔄 run 33730252219 failed its first ever execution — `quality`/`build`/`unit-web` ✅ but the customer suite (never run before) has stale locators: (1) "Festive Edit" was asserted as a heading but the Discovery redesign renders it as a `<p>` summary line; (2) "Selected (N)" sticky bar text removed by the redesign (heart flip is the feedback); (3) size chips left the bottom sheet (now on SharedProductPage) — sheet probes switched to "Enquire Now". Fixed + verified locally: `pnpm test:e2e:all` = admin 6/6 + customer 3/3 (**commit pending push**) |
 
 ### T5 — Merge PR #23 (owner go-ahead)
 
