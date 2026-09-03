@@ -6,17 +6,19 @@ import {
   Dimensions,
   Modal,
   ActivityIndicator,
+  Linking,
 } from 'react-native'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Image } from 'expo-image'
 import { VideoView } from 'expo-video'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { ChevronLeft, Clapperboard, Heart } from 'lucide-react-native'
+import { ChevronLeft, Clapperboard, Heart, Star } from 'lucide-react-native'
 import Gallery, { type GalleryRef } from 'react-native-awesome-gallery'
 import type { ProductDetail } from '@kanchuki/shared'
 
-import { productApi, categoryApi, productAttributeApi } from '../../src/lib/api'
+import { productApi, categoryApi, productAttributeApi, retailerApi } from '../../src/lib/api'
+import { WEB_URL } from '../../src/lib/web-url'
 import { DetailScreenSkeleton } from '../../src/components/Skeleton'
 import { useTheme } from '../../src/lib/theme'
 import { useSafeVideoPlayer } from '../../src/lib/safe-video-player'
@@ -93,6 +95,25 @@ export default function ProductDetailScreen() {
     },
   })
   const product = data?.data
+
+  // Retailer profile — for the "Ask for Review" WhatsApp link (needs the store slug).
+  const { data: meData } = useQuery({
+    queryKey: ['retailer', 'me'],
+    queryFn: () => retailerApi.getMe(),
+  })
+  const me = (meData as { data?: Record<string, any> } | undefined)?.data
+  const publicSlug: string | null = me?.public_slug ?? null
+
+  const askForReview = () => {
+    if (!publicSlug || !product) return
+    const reviewUrl = `${WEB_URL}/${publicSlug}/all-${publicSlug}/product/${product.id}?review=1`
+    const shopName = me?.shop_name ?? 'our store'
+    const itemName = product.name ?? product.category ?? 'your purchase'
+    const msg = `Hi! Thanks for shopping with ${shopName}. Please rate your "${itemName}" here: ${reviewUrl}`
+    void Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`).catch(() =>
+      Linking.openURL(`https://wa.me/?text=${encodeURIComponent(msg)}`),
+    )
+  }
 
   // Fetch categories and taxonomy attributes
   const { data: categoriesData } = useQuery({
@@ -419,6 +440,25 @@ export default function ProductDetailScreen() {
             onSelect={(selectedId) => router.push(`/product/${selectedId}`)}
           />
         </View>
+
+        {/* Ask for Review — retailer sends the customer a WhatsApp link that
+            opens the product's rating form (SharedProductPage ?review=1). */}
+        {publicSlug && (
+          <View className="px-4 pb-2">
+            <AnimatedPressable
+              onPress={askForReview}
+              accessibilityRole="button"
+              accessibilityLabel="Ask customer for a review on WhatsApp"
+              className="flex-row items-center justify-center gap-2 py-3.5 rounded-2xl border"
+              style={{ borderColor: primaryColor, backgroundColor: `${primaryColor}12` }}
+            >
+              <Star size={16} color={primaryColor} />
+              <Text className="text-sm font-bold" style={{ color: primaryColor }}>
+                Ask for Review
+              </Text>
+            </AnimatedPressable>
+          </View>
+        )}
 
         {/* Availability & Delete Actions */}
         <ProductActionsBar

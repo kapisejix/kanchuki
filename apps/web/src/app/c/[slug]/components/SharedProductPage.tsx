@@ -6,6 +6,9 @@ import { ArrowLeft, Info, MessageCircle, ShoppingBag, Sparkles, Star } from 'luc
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+
+// Family-sizing card is parked, not deleted — flip to re-enable.
+const SHOW_FAMILY_SIZING = false;
 import { ContactGate } from '@/app/[store]/components/ContactGate';
 import { KanchukiBrandBar } from './KanchukiBrandBar';
 import { ProductGallery } from './ProductGallery';
@@ -24,6 +27,12 @@ const leadKey = (slug: string) => `kanchuki_lead_${slug}`;
 
 export function SharedProductPage({ collection, product, collectionPath }: Props) {
   const router = useRouter();
+  // Review form is opt-in via the link the retailer sends (?review=1). Read from
+  // the URL after mount so the page needs no Suspense boundary for useSearchParams.
+  const [reviewMode, setReviewMode] = useState(false);
+  useEffect(() => {
+    setReviewMode(new URLSearchParams(window.location.search).get('review') === '1');
+  }, []);
   const shop = collection.retailer.shop_name;
   const city = collection.retailer.city;
   const isSold = product.status === 'SOLD';
@@ -191,6 +200,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
         </div>
 
         {/* ── Family Sizing Selector Card ── */}
+        {SHOW_FAMILY_SIZING && (
         <div className="p-4 bg-white border border-[#E0E1F6] rounded-[24px] shadow-sm space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
@@ -200,7 +210,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
             <span className="text-xs font-bold text-[#BB3F95] cursor-pointer">+ Add</span>
           </div>
           <p className="text-[10px] text-[#6B4773]">Save family sizes to find the right fit when gifting</p>
-          
+
           <div className="flex items-center justify-between p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-emerald-800">Your size: XL</span>
@@ -208,6 +218,7 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
             <span className="text-xs font-extrabold text-emerald-700">✓</span>
           </div>
         </div>
+        )}
 
         {/* ── Available Sizes ── */}
         {product.sizes.length > 0 && (
@@ -247,15 +258,17 @@ export function SharedProductPage({ collection, product, collectionPath }: Props
           </div>
         )}
 
-        {/* ── Rate this product Review Form ── */}
-        <div className="pt-2">
-          <ReviewForm
-            productName={product.name ?? product.category ?? 'this product'}
-            retailerId={collection.retailer.id}
-            productId={product.id}
-            retailerName={shop}
-          />
-        </div>
+        {/* ── Rate this product — only when opened via the retailer's ?review=1 link ── */}
+        {reviewMode && (
+          <div className="pt-2">
+            <ReviewForm
+              productName={product.name ?? product.category ?? 'this product'}
+              retailerId={collection.retailer.id}
+              productId={product.id}
+              retailerName={shop}
+            />
+          </div>
+        )}
 
         <p className="text-center text-[10px] text-[#6B4773] mt-4">
           Shared from {shop}

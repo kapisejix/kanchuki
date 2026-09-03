@@ -853,6 +853,8 @@ Launch-readiness drove four changes, all pushed to main (full Play paperwork dra
 
 **4. Location permission removed entirely** — `ACCESS_COARSE/FINE_LOCATION`, iOS usage string, `expo-location` plugin + dependency dropped; onboarding "Use current location" autofill removed (city/state/pincode typed manually). No location data collected at all → the Data Safety form declares no Location rows.
 
+> **Superseded by commit `b4270e4` (Google Maps location).** Onboarding step 2 re-added an optional "Get Location" button (`app/onboarding.tsx` `handleGetLocation`): one foreground `getCurrentPositionAsync` + `reverseGeocodeAsync` to pre-fill the address and store `retailers.latitude`/`longitude`, which renders a `maps/dir/?api=1&destination=` link on `/c/[slug]`. `expo-location` is back in `package.json`. **The Data Safety form now declares Location (precise + approximate), optional, foreground-only** — see `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §2/§3/§4. No background location, no tracking.
+
 **Play paperwork drafts** (in `docs/PLAY-STORE-LAUNCH-CHECKLIST.md`): full Data Safety answers (7 declared types — name/email/phone/address/other-info[GSTIN+measurements]/photos/other-UGC; not collected: financial, location, device IDs, crash logs, analytics), IARC content-rating answers (Business category, expected **12+** from unfiltered UGC — do NOT claim "fully moderated"), closed-testing path (20 testers × 14 days), and the **Aug 31, 2026 target-API deadline** (API 35 OK now via SDK 54; after that, API 36 requires an Expo SDK 55 bump).
 
 ## ✅ BUILT 2026-08-12: Real OTP — MSG91 widget on mobile + server-side MSG91 everywhere
@@ -1831,3 +1833,49 @@ New tests: `billing.test.ts` — 4 webhook cases (single allocation, duplicate-c
 No new page/route — the existing F-012 integrations vault (`admin-integrations.ts` catalog is driven entirely by `INTEGRATION_KEYS`) handles create/rotate/delete. Set the ids there after creating the plans in the Razorpay dashboard; 30s secret cache, no redeploy. Tests: billing 20/20, admin.login 14/14, security 6/6, API `tsc` clean.
 
 **Amount caveat unchanged:** each Razorpay Plan object's amount must equal `base × 1.18` or the GST invoice CGST/SGST split (computed from `Subscription.amount_inr` = ex-GST base) won't match the real charge.
+
+---
+
+## Fixed: 2026-09-03 — Launch-readiness cleanup (4 audit points)
+
+Four items from `docs/LAUNCH-READINESS-AUDIT.md` closed this session. Full record in that doc's new §0b.
+
+### 1. P0 secrets in Railway — verified live
+
+Read the live API service (`supportive-love`) env via the Railway MCP. Result:
+
+| Secret | State |
+|--------|-------|
+| `COOKIE_SECRET` | set (64-hex) |
+| `VAULT_DATABASE_URL` | set — `vault_app` insert-only role, separate host. Closes **B-005**. |
+| `DATABASE_URL` | uses `kanchuki_app.*` role (not the Supabase superuser); purge cron on a separate `kanchuki_purge.*` role. Closes **B-007**. |
+| `TEAM_JWT_SECRET` | set. Closes **B-008**. |
+| `RAZORPAY_WEBHOOK_SECRET` | real generated base64 value (not the old `kanchuki-webhook-secret` dictionary string); keys are `rzp_live_*`. Closes **S-009**. |
+| `REVALIDATION_SECRET` | set on API. **Gap:** missing on the **web** service (`magnificent-liberation`) → `apps/web/src/app/api/revalidate/route.ts` reads `process.env.REVALIDATION_SECRET` at runtime and was returning 401 on every call from the API (on-demand ISR revalidation dead, 60s fallback only). Owner added it to the web service the same day. Closes **B-009**. |
+
+Still open (not part of this batch): B-002 read replica points at primary, B-003 `ADMIN_PASSWORD_HASH` format, B-004 admin TOTP.
+
+No code change — verification + one owner-side env addition.
+
+### 2. DPDP passport notice URL — `apps/api/src/lib/notice-versions.ts` (commit `182c5bf`)
+
+`NOTICE_VERSIONS['1.0'].full_notice_url` was `https://kanchuki.com/privacy/passport` — wrong domain (canonical is `kanchuki.app`) and that path doesn't exist. Changed to `https://kanchuki.app/privacy`, the live page that covers shopper-profile data collection. Served to clients via `getNoticeDetails()` in `routes/public/passport.ts`.
+
+### 3. Marketing prose — VTO / Fashion-DNA-matching claims removed (commit `1675f28`)
+
+VTO, "Fashion DNA AI matching" and showroom booking were removed in `chore/remove-unwanted-features` (§55) but the marketing pages still advertised them.
+
+| File | Change |
+|------|--------|
+| `apps/web/src/app/pricing/page.tsx` | dropped "Try-ons" row; "Fashion DNA (customer preferences)" → "Customer preferences (colour / style / budget)" |
+| `apps/web/src/app/for-retailers/page.tsx` | "Fashion DNA — know your customers" → "Know your customers"; removed VTO + "AI Fashion DNA matching" from the roadmap table; dropped "try-on credits" / "more try-ons" from plan blurbs |
+| `apps/web/src/app/how-it-works/page.tsx` | "Fashion DNA notes…" → "Customer notes capture…" |
+| `apps/web/src/app/sections/MarketingSections.tsx` | removed Virtual Try-On from the services + features grids; dropped try-on-credit plan features; "Fashion DNA CRM" → "Customer Preferences" (×2); comparison matrix drops the "AI Try-On" column + "TryOnCloud / AI Vastra" row; "all five" → "them all" |
+
+Customer preference capture (colour/style/budget) is unchanged — still shipped, core MVP. Web `tsc` clean.
+
+### 4. Play Store store-listing copy — `docs/PLAY-STORE-LISTING.md` (commit `a2308ce`)
+
+New paste-ready doc: short description (76 chars), full description (<4000, VTO-free), Business category, 8-screenshot shot-list with routes, feature-graphic spec. `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` §1 refreshed to point at it. Screenshots, the 1024×500 feature graphic, and the Console entry itself stay owner tasks — cannot be produced from the repo.
+
+Audit doc updated in commit `70d7ed2` (new §0b + §3 table rows + §5 checkboxes + §0/§9/§9b refs).

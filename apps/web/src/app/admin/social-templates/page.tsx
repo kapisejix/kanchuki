@@ -136,6 +136,7 @@ export default function SocialTemplatesPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load reads filterType/filterOccasion from closure; deps list covers every input
   useEffect(() => { load() }, [filterType, filterOccasion])
 
   const handleToggle = async (t: SocialTemplate) => {
@@ -235,6 +236,7 @@ export default function SocialTemplatesPage() {
                   {/* Image preview */}
                   <div className="relative h-40 bg-gray-100">
                     {t.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- admin-internal template preview grid
                       <img src={t.image_url} alt={t.name} className="w-full h-full object-cover" loading="lazy" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-300">
@@ -392,6 +394,7 @@ export default function SocialTemplatesPage() {
                   {detailBg.image_url && (
                     <div>
                       <span className="text-gray-500">Preview</span>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- admin-internal template detail preview */}
                       <img src={detailBg.image_url} alt="" className="mt-1 w-full rounded-lg" />
                     </div>
                   )}

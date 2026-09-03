@@ -18,10 +18,11 @@ the target-API timeline into one actionable checklist.
 | Support email | `support@kanchuki.app` |
 | Play developer account | **Yours** — register + $25 + identity verification (govt ID / D-U-N-S) |
 
-> ⏱️ **Most time-sensitive item:** target API level (see §5). New apps submitted
-> **after Aug 31, 2026** must target **API 36**, which requires an Expo SDK 55
-> bump. Today the app targets API 35 (Expo SDK 54) — submitting before the
-> deadline avoids that upgrade.
+> ✅ **Target API level — resolved (see §5).** New apps submitted after
+> Aug 31, 2026 must target **API 36**. Expo SDK 54 already defaults to
+> `targetSdkVersion` 36 (`expo-modules-core` Gradle plugin; no override in
+> `android/gradle.properties`), so the app is compliant with no SDK 55 bump
+> and no Play Console extension request.
 
 ---
 
@@ -29,9 +30,9 @@ the target-API timeline into one actionable checklist.
 
 | # | Item | Status |
 |---|---|---|
-| 1.1 | App name, short & full descriptions, primary category (**Business**) | Yours |
-| 1.2 | Icon + feature graphic (Loom brand assets exist in `scripts/generate-brand-assets.mjs`) | Mostly done |
-| 1.3 | Phone screenshots (min 2; 8 recommended — product catalog, scan-to-sell, customer list, settings) | Yours |
+| 1.1 | App name, short & full descriptions, primary category (**Business**) | Copy drafted — paste-ready in `PLAY-STORE-LISTING.md`; enter into Console |
+| 1.2 | Icon (in `apps/mobile/app.json`) done; feature graphic 1024×500 still needs a design pass — `generate-brand-assets.mjs` only builds web icons, not the feature graphic | Icon done, graphic Yours |
+| 1.3 | Phone screenshots (min 2; 8 recommended) — shot list in `PLAY-STORE-LISTING.md`; capture from next EAS build on a seeded demo store | Yours |
 | 1.4 | Contact details + `support@kanchuki.app` | Yours |
 | 1.5 | Content rating questionnaire (see §4) | Yours |
 
@@ -42,7 +43,8 @@ user data?* → **Yes**
 
 Privacy policy URL: `https://kanchuki.app/privacy` (updated Aug 10, 2026 —
 discloses KYC/Aadhaar photos, body-measurement photos, AI-provider processing,
-GST retention; matches this form).
+GST retention; matches this form). **Must also disclose store-location capture
+(see below) — added back in commit `b4270e4`.**
 
 ### Declared data types
 
@@ -51,8 +53,8 @@ User can request deletion **Yes** (Settings → Delete Account + web page).
 
 | Data type | Required/Optional | Purpose |
 |---|---|---|
-| **Location — precise** | ❌ **NOT DECLARED** — permission removed Aug 10, 2026 | — |
-| **Location — approximate** | ❌ **NOT DECLARED** — permission removed Aug 10, 2026 | — |
+| **Location — precise** | ✓ **DECLARED** · Optional | App functionality — retailer taps "Get Location" in onboarding to pin the shop; the shop's lat/long shows a Google Maps directions link on the customer storefront. One-shot foreground capture, not tracked. |
+| **Location — approximate** | ✓ **DECLARED** · Optional | Same as precise — Android grants coarse alongside fine. |
 | Personal info — Name | Required | App functionality, Account management |
 | Personal info — Email address | Optional | App functionality |
 | Personal info — Phone number | Required | App functionality, Account management |
@@ -60,6 +62,13 @@ User can request deletion **Yes** (Settings → Delete Account + web page).
 | Personal info — Other info (GSTIN, body measurements) | Optional | App functionality, Fraud prevention/security/compliance |
 | Photos & videos — Photos (product, KYC/Aadhaar, measurement) | Required | App functionality, Personalization |
 | App activity — Other user-generated content (customer preferences, budget, notes) | Optional | App functionality, Personalization |
+
+**Location note:** `expo-location` is used only in onboarding (`app/onboarding.tsx`,
+`handleGetLocation`) — `requestForegroundPermissionsAsync` + one
+`getCurrentPositionAsync` + `reverseGeocodeAsync` to auto-fill the address. Value
+stored as `retailers.latitude`/`longitude`, surfaced on `/c/[slug]` as a
+`maps/dir/?api=1&destination=` link. No background location, no tracking, no
+`ACCESS_BACKGROUND_LOCATION`.
 
 **Not declared (verified — no SDK or code collects):** financial info (Razorpay
 hosted pages only), crash logs / diagnostics (no crash SDK), device IDs (no
@@ -78,15 +87,17 @@ shared**. Keep contracts on standard API ToS that exclude training.
 | All user data encrypted in transit? | **Yes** (HTTPS/TLS) |
 | Mechanism for users to request deletion? | **Yes** — in-app Settings → Delete Account + `kanchuki.app/account-deletion` |
 
-## 3. Permissions (after the Aug 10 removal)
+## 3. Permissions
 
-Only these three remain — no location, no microphone:
+No microphone. Location is foreground-only (store pin in onboarding):
 
-`CAMERA` · `READ_MEDIA_IMAGES` · `READ_EXTERNAL_STORAGE`
+`CAMERA` · `READ_MEDIA_IMAGES` · `READ_EXTERNAL_STORAGE` ·
+`ACCESS_FINE_LOCATION` · `ACCESS_COARSE_LOCATION` (auto-added by `expo-location`)
 
-The AAB uploaded for testing must come from the **next EAS build** (picks up the
-permission trim + billing-screen copy). Play's automated scan compares the
-binary against the declared form answers.
+The AAB uploaded for testing must come from the **next EAS build**. Play's
+automated scan compares the binary against the declared form answers — the
+location permissions must match the "Location — precise/approximate" rows
+declared in §2.
 
 ## 4. Content rating questionnaire (IARC)
 
@@ -108,24 +119,26 @@ storefront URLs). This is honest and normal for a B2B app. Do **not** claim
 | Unrestricted web access | No (curated links only: kanchuki.app, WhatsApp, policy, support) |
 | User-generated content | **Yes** (product catalogs) |
 | → Content filtered/moderated before sharing | **No** → drives 12+ |
-| Share user's location with other users | No |
-| Digital purchases — physical goods/services | **Yes** (paid catalog-upload service via Razorpay) |
+| Share user's location with other users | No (the retailer's *own shop* address is published on their storefront by their choice — not personal location sharing between users) |
+| Digital purchases — physical goods/services | **Yes** (paid catalog-upload service via Razorpay; the removed customer checkout/orders flow never fed this answer) |
 | Digital purchases — in-app digital content | **No** (subscriptions/add-ons moved to web billing) |
 | Ads | No |
 | Facial/voice recognition | No |
 | Personal data: name/email/phone/address/photos/videos/ID numbers | Yes |
-| Personal data: location/audio/health/financial/contacts/messages/browsing | No |
+| Personal data collected: location | **Yes** — precise, foreground-only, optional (store pin; see §2) |
+| Personal data: audio/health/financial/contacts/messages/browsing | No |
 | Personal data shared with third parties | No (AI processors only) |
 
-## 5. Target API level (time-sensitive)
+## 5. Target API level — ✅ resolved
 
 | Date | Requirement | Kanchuki status |
 |---|---|---|
-| Now → **Aug 31, 2026** | New apps target API 35 | ✅ SDK 54 → API 35, fine |
-| **After Aug 31, 2026** | New apps target **API 36** | ❌ Requires **Expo SDK 55** upgrade |
+| After **Aug 31, 2026** | New apps target **API 36** | ✅ Expo SDK 54 defaults `targetSdkVersion` 36 |
 
-**Decision:** submit the first production release before Aug 31, **or** plan the
-SDK 55 bump (~1 day of dep updates + retest) as the critical path.
+No action. `expo-modules-core`'s Gradle plugin
+(`useDefaultAndroidSdkVersions` → `compileSdk`/`targetSdk` 36, `minSdk` 24) and
+no override in `apps/mobile/android/gradle.properties` mean production builds
+already target API 36. No SDK 55 bump, no Play Console extension request.
 
 ## 6. Closed testing → production access
 

@@ -15,7 +15,7 @@ const FEATURES = [
   { icon: Wand2, title: 'Photos that look like a big brand’s', desc: 'Background removal, auto-contrast backdrops (dark clothes get a light background and vice versa), ghost-mannequin fill for hollow necklines, rotate and retouch — no photographer needed.', accent: 'terracotta' as const },
   { icon: MessageCircle, title: 'Sell on WhatsApp', desc: 'Select the pieces you want to show, get a collection link, share it on WhatsApp. Customers browse, favourite and tap Enquire to message you directly. No app for them, no website for you.', accent: 'iris' as const },
   { icon: Store, title: 'Your own store page', desc: 'Every shop gets a free storefront at its own link (e.g. kanchuki.app/store/your-shop) with your shop name, logo and categories, plus a store QR code you can print for the counter.', accent: 'moss' as const },
-  { icon: Heart, title: 'Fashion DNA — know your customers', desc: 'Save each customer’s colour, style, budget and occasions. Search your own racks in plain language: "pink cotton suit under ₹2000".', accent: 'mint' as const },
+  { icon: Heart, title: 'Know your customers', desc: 'Save each customer’s colour, style, budget and occasions. Search your own racks in plain language: "pink cotton suit under ₹2000".', accent: 'mint' as const },
   { icon: Package, title: 'Bulk onboarding', desc: 'Got 500–3,000 SKUs from a supplier? Import the supplier PDF/catalog, or shoot your racks shelf-by-shelf and let AI detect each item. A catalog-upload visit service is also available.', accent: 'cobalt' as const },
   { icon: ScanLine, title: 'Scan-to-sell', desc: 'Print the SKU + QR tag for each design. When a piece sells, scan the tag — it’s marked SOLD, even if your internet is down. Syncs when you’re back online.', accent: 'fern' as const },
   { icon: WifiOff, title: 'Offline-first', desc: 'Built for shops where the network is patchy. Browse your catalog, change a product’s status — it queues up and syncs when the connection returns.', accent: 'sandal' as const },
@@ -23,8 +23,6 @@ const FEATURES = [
 ]
 
 const COMING_SOON = [
-  { feature: 'Virtual Try-On (customer tries outfits on their own photo)', status: 'Engine live, customer rollout coming soon' },
-  { feature: 'AI Fashion DNA matching across customers', status: 'Phase 1' },
   { feature: 'Hindi UI', status: 'Year 1' },
   { feature: 'Play Store / iOS app listings', status: 'Coming soon — Android APK available now' },
 ]
@@ -63,8 +61,8 @@ export default function ForRetailersPage() {
           </AnimatedSection>
           <ul className="space-y-3 text-carbon/70 text-sm sm:text-base leading-relaxed">
             <li><strong className="text-carbon">Starter ₹999/mo</strong> — one shop, 500 products, unlimited customers, AI tagging included.</li>
-            <li><strong className="text-carbon">Growth ₹2,499/mo</strong> — 2,000 products, unlimited customers, unlimited links, try-on credits.</li>
-            <li><strong className="text-carbon">Pro ₹4,999/mo</strong> — unlimited products, WhatsApp automation, multi-staff, more try-ons.</li>
+            <li><strong className="text-carbon">Growth ₹2,499/mo</strong> — 2,000 products, unlimited customers, unlimited links.</li>
+            <li><strong className="text-carbon">Pro ₹4,999/mo</strong> — unlimited products, WhatsApp automation, multi-staff, campaign system.</li>
           </ul>
           <p className="mt-6 text-sm text-carbon/50">14-day free trial, no credit card. UPI, cards, netbanking. GST invoices. Annual plans save 20%. Full details on <a href="/pricing" className="text-cobalt-600 font-medium hover:underline">the pricing page</a>.</p>
         </div>

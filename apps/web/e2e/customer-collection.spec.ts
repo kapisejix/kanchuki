@@ -77,6 +77,8 @@ function collectionFor(slug: string, page: number): PublicCollection {
       // Canonical URL scheme: /{public_slug}/{collection-slug}. The legacy
       // /c/{slug} and /store/{slug} pages 302 to these canonical paths.
       public_slug: STORE_SLUG,
+      latitude: null,
+      longitude: null,
     },
     title: slug === 'office-edit' ? 'Office Edit' : 'Festive Edit',
     description: 'A handpicked edit from the store.',

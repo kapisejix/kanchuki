@@ -151,6 +151,7 @@ export default function GstReportPage() {
     }
   }
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- load reads year/month/page from closure; deps list covers every input
   useEffect(() => { load() }, [year, month, page])
 
   const maxGst = Math.max(...monthly.map((m) => m.gst), 1)

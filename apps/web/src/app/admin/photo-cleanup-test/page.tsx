@@ -792,6 +792,7 @@ export default function PhotoCleanupTestPage() {
                 ✕
               </button>
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- admin test tool; lightbox src may be a local object-URL that next/image can't optimize */}
             <img
               src={lightbox.url}
               alt={lightbox.label}

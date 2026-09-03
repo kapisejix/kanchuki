@@ -69,7 +69,7 @@ No action needed here — this is one of the better-built pieces of the stack.
 - ✅ `@fastify/helmet` with CSP registered (`index.ts:75`).
 - ✅ `scripts/check-secrets-guard.sh --all` run fresh — clean, no committed credentials.
 - ✅ `security.test.ts` (24 tests) + `admin.login.test.ts` (14 tests) both green when run directly (`npx vitest run`) — the CI breakage above means this hasn't been confirmed by CI itself in 3 pushes, but the code is fine.
-- ⚠️ Could not verify live Railway env vars this session (MCP Railway token expired — `railway login` needed, and this repo's own operational policy is "no direct production access" regardless). The Aug 1 P0 checklist below (§5) — rotate leaked dev secrets, set `TEAM_JWT_SECRET`/`VAULT_DATABASE_URL`/`REVALIDATION_SECRET`, real Razorpay webhook secret, `kanchuki_app` role — was marked "values generated, ready to paste" on 2026-08-01 (§9b). **Unverified whether that was actually done** — confirm directly in Railway, I can't check for you this session.
+- ✅ **Live Railway env verified 2026-09-03** (see §0b). `COOKIE_SECRET`, `VAULT_DATABASE_URL`, real `RAZORPAY_WEBHOOK_SECRET` and `REVALIDATION_SECRET` all set on the API service; `DATABASE_URL` uses the restricted `kanchuki_app.*` role (not the Supabase superuser); purge cron uses a separate `kanchuki_purge.*` role. `REVALIDATION_SECRET` was missing on the **web** service — added by the owner the same day. All §5 P0 secret items now resolved.
 
 ### SEO — §8 below is stale, most of it already got built
 
@@ -85,7 +85,21 @@ Treat §8 below as historical (what the gap looked like on Aug 1) — the sitema
 
 - No load test has ever been run (`k6`/Artillery) — confirmed again, still nothing in the repo.
 - Admin-managed marketing content page — not built (see above).
-- Everything in §5's P0 secrets list — status unverifiable this session, needs a direct Railway check.
+- Everything in §5's P0 secrets list — ✅ **resolved 2026-09-03**, see §0b.
+
+---
+
+## 0b. 2026-09-03 follow-up — four audit points closed
+
+1. **P0 secrets in Railway — VERIFIED.** Checked the live API service (`supportive-love`) env directly:
+   - `COOKIE_SECRET` — set (64-hex).
+   - `VAULT_DATABASE_URL` — set (`vault_app` insert-only role, separate host). B-005 resolved.
+   - `DATABASE_URL` — uses `kanchuki_app.thpqcylmcxokajxoerjx` role, **not** the Supabase superuser; purge cron uses a separate `kanchuki_purge.*` role. B-007 resolved.
+   - `RAZORPAY_WEBHOOK_SECRET` — real generated base64 value (not the old `kanchuki-webhook-secret` dictionary string); keys are `rzp_live_*`. S-009 resolved.
+   - `REVALIDATION_SECRET` — set on the API service. **Gap found:** missing on the web service (`magnificent-liberation`), so `/api/revalidate` was 401ing every call; owner added it the same day. B-009 resolved.
+2. **DPDP passport notice URL — FIXED.** `apps/api/src/lib/notice-versions.ts` `full_notice_url` pointed at `kanchuki.com/privacy/passport` (wrong domain, non-existent path) → now `https://kanchuki.app/privacy`. Commit `182c5bf`.
+3. **Marketing prose — SCRUBBED of removed features.** VTO / "Fashion DNA matching" / showroom claims removed from `pricing`, `for-retailers`, `how-it-works`, `sections/MarketingSections.tsx` (services grid, features grid, plan feature lists, comparison matrix). Customer preference capture (colour/style/budget) kept — still shipped. Commit `1675f28`.
+4. **Play Store store-listing copy — DRAFTED.** `docs/PLAY-STORE-LISTING.md`: paste-ready short + full description (VTO-free), Business category, 8-screenshot shot-list with routes, feature-graphic spec. Screenshots + the 1024×500 feature graphic + the Console entry itself remain owner tasks. Commit `a2308ce`.
 
 ---
 
@@ -95,7 +109,7 @@ Docs decay faster than code. These are live contradictions found across the doc 
 
 | Topic | Claim A | Claim B | What's actually true |
 |---|---|---|---|
-| Deletion Vault / DB replica / guardrails | `PLAN.md`, `26-night-report.md`: "Executed" | `omp-review.md` §13 action list: still open (B-002 replica points at primary, B-005 vault URL unset, B-007 DB still on superuser creds) | **omp-review is right** — migration 037 (DB triggers) is applied, but the replica/vault URL/role-separation items are still open. See §6.
+| Deletion Vault / DB replica / guardrails | `PLAN.md`, `26-night-report.md`: "Executed" | `omp-review.md` §13 action list: still open (B-002 replica points at primary, B-005 vault URL unset, B-007 DB still on superuser creds) | migration 037 (DB triggers) applied; **B-005 vault URL + B-007 role separation resolved 2026-09-03 (§0b)**; B-002 read replica still points at primary. See §6.
 | GST invoice numbering | `omp-review.md` flagged `Math.random()` for invoice numbers | Same doc's B-011 marks it fixed | Fixed — trust B-011, the earlier flag is stale.
 | F-006B offline PWA | `omp-review.md` §6/§8/§11 (early pass): "not built" | Same doc §15 (later addendum) + `PROGRESS.md` + `PRO-REQUIREMENTS.md`: built 2026-07-27 | **Built.** Read `omp-review.md` §15, not §6.
 | Subscription billing (Razorpay) | `PRO-REQUIREMENTS.md` §6: "code complete, deferred, free trial only" | `PRO-REQUIREMENTS.md` F-302: "✅ Built" | Both true, different flows — **F-302 customer checkout is live**; **plan subscription billing is intentionally off** for launch (free trial only).
@@ -144,11 +158,11 @@ Deduplicated from `PROGRESS.md` + `omp-review.md`. Everything not listed here as
 | B-002 | `DATABASE_URL_REPLICA` currently points at the primary DB, not a real replica | 🔴 Open |
 | B-003 | `ADMIN_PASSWORD_HASH` still in legacy HMAC format | 🔴 Open |
 | B-004 | Admin TOTP (2FA) not enabled (`ADMIN_TOTP_SECRET` unset) | 🔴 Open |
-| B-005 | `VAULT_DATABASE_URL` not configured — Deletion Vault has nowhere to write | 🔴 Open |
-| B-007 | `DATABASE_URL` still uses the Supabase superuser role, not the restricted `kanchuki_app` role | 🔴 Open |
-| B-008 | `TEAM_JWT_SECRET` missing — **staff login is broken** until this is set | 🔴 Open |
-| B-009 | `REVALIDATION_SECRET` missing — ISR cache isn't purging on content changes | 🔴 Open |
-| S-009 | Razorpay webhook secret is a weak dictionary string (`kanchuki-webhook-secret`) | 🔴 Open |
+| B-005 | `VAULT_DATABASE_URL` not configured — Deletion Vault has nowhere to write | ✅ Resolved 2026-09-03 — set (`vault_app` insert-only role), verified live (§0b) |
+| B-007 | `DATABASE_URL` still uses the Supabase superuser role, not the restricted `kanchuki_app` role | ✅ Resolved 2026-09-03 — `DATABASE_URL` uses `kanchuki_app.*`, verified live (§0b) |
+| B-008 | `TEAM_JWT_SECRET` missing — **staff login is broken** until this is set | ✅ Resolved 2026-09-03 — `TEAM_JWT_SECRET` set on API service (§0b) |
+| B-009 | `REVALIDATION_SECRET` missing — ISR cache isn't purging on content changes | ✅ Resolved 2026-09-03 — set on API + web services, verified live (§0b) |
+| S-009 | Razorpay webhook secret is a weak dictionary string (`kanchuki-webhook-secret`) | ✅ Resolved 2026-09-03 — real generated base64 secret set, verified live (§0b) |
 | — | `034_product_sizes` migration apply-status to live DB unverified | 🟡 Verify before launch |
 | — | Local `.env` files (web/mobile) point at an ephemeral devtunnel URL — will break the moment that tunnel closes | 🔴 Open, fix at deploy |
 | — | `admin.ts` (2,545 lines) and `checkout.ts` (1,087 lines) are large and un-split | 🟢 Tech debt, not a launch blocker |
@@ -156,7 +170,7 @@ Deduplicated from `PROGRESS.md` + `omp-review.md`. Everything not listed here as
 | ~~—~~ | ~~Rate limiter is in-memory, breaks under >1 API instance~~ | ✅ **Correction (2026-08-01):** checked `apps/api/src/index.ts` — `@fastify/rate-limit` is already registered with `redis: getRedis()`. Already multi-instance-safe. SECURITY.md's in-memory claim was stale. |
 | — | **New finding (2026-08-01, fixed same day):** `COOKIE_SECRET` had no production guard — if unset, admin CSRF cookie signing key was regenerated from `Date.now()` on every process restart, silently invalidating every admin session/CSRF cookie on each deploy | ✅ Fixed in `apps/api/src/index.ts` — now throws at startup in production if `COOKIE_SECRET` is unset, so misconfiguration is loud instead of silent |
 
-All credential items above (B-003/004/005/007/008/009, S-009) are the same root task: **rotate/set the missing env vars in your real hosting environment.** That's one deploy-day checklist item (§6), not six separate engineering tasks.
+All credential items above (B-003/004/005/007/008/009, S-009) are the same root task: **rotate/set the missing env vars in your real hosting environment.** That's one deploy-day checklist item (§6), not six separate engineering tasks. — **B-005 / B-007 / B-008 / B-009 / S-009 done + verified live 2026-09-03 (§0b); B-003 (`ADMIN_PASSWORD_HASH` format) and B-004 (admin TOTP) still open.**
 
 ---
 
@@ -177,11 +191,11 @@ All credential items above (B-003/004/005/007/008/009, S-009) are the same root 
 **P0 — must fix before real user data hits production:**
 - [ ] Rotate every credential currently in your local `.env` (Anthropic, OpenAI, Supabase, R2, Redis) — they were exposed locally during dev and should not become production secrets as-is.
 - [ ] Set `TEAM_JWT_SECRET` (staff login is currently broken without it).
-- [ ] Set `COOKIE_SECRET` (code now throws at startup in production if this is missing — see §3, fixed 2026-08-01 — so this is no longer silent, but it still has to be set before a prod deploy will boot).
-- [ ] Set `VAULT_DATABASE_URL` (Deletion Vault silently no-ops without it — you lose your safety net for accidental deletes).
-- [ ] Switch `DATABASE_URL` from the Supabase superuser role to the restricted `kanchuki_app` role (this is the whole point of the F-017 DB guardrail work — right now the app *can* bypass its own guardrails). **Test on staging first** — flipping this in prod without a staging pass first is exactly the kind of change that could "break the server" if any code path still assumes superuser privileges.
-- [ ] Replace the Razorpay webhook secret (`kanchuki-webhook-secret`) with a real generated secret.
-- [ ] Set `REVALIDATION_SECRET` so ISR cache purges when admin/retailer content changes.
+- [x] Set `COOKIE_SECRET` — done, verified live 2026-09-03 (§0b).
+- [x] Set `VAULT_DATABASE_URL` — done, verified live 2026-09-03 (`vault_app` insert-only role) (§0b).
+- [x] Switch `DATABASE_URL` from the Supabase superuser role to the restricted `kanchuki_app` role — done, verified live 2026-09-03; `DATABASE_URL` uses `kanchuki_app.*`, purge cron on a separate `kanchuki_purge.*` role (§0b).
+- [x] Replace the Razorpay webhook secret (`kanchuki-webhook-secret`) with a real generated secret — done, verified live 2026-09-03 (§0b).
+- [x] Set `REVALIDATION_SECRET` so ISR cache purges when admin/retailer content changes — done on API + web services, verified live 2026-09-03 (§0b).
 - [ ] Point `DATABASE_URL_REPLICA` at an actual read replica, or remove replica-only code paths (admin query console, reports) from relying on isolation you don't have yet. *Not required to unblock a 12-retailer pilot — replica-only paths are admin tooling, not the retailer/customer flow.*
 
 **P1 — should do soon after launch:**
@@ -262,7 +276,7 @@ Pull this straight from `DEPLOY.md`'s own (currently all-unchecked) production c
 **Infra / DNS**
 - [ ] Custom domain + SSL on both Railway services.
 - [ ] R2 bucket set to public-read for product images.
-- [ ] Razorpay webhook URL pointed at production, secret rotated (§5).
+- [x] Razorpay webhook URL pointed at production, secret rotated (§5) — real `RAZORPAY_WEBHOOK_SECRET` set + verified live 2026-09-03 (§0b). (Confirm the webhook *URL* in the Razorpay dashboard points at prod.)
 - [ ] Automated DB backups enabled (cron exists per `jobs/backup-database.ts`, confirm it's scheduled in prod).
 - [ ] Sentry/Axiom logging enabled (both are already integrated, just confirm DSNs are set in prod env).
 
@@ -281,10 +295,8 @@ Pull this straight from `DEPLOY.md`'s own (currently all-unchecked) production c
 
 Do these in order. Nothing below requires touching CI/CD config or running a migration blind — where an action needs Railway/Supabase dashboard access, that's called out (per this project's own operational policy, I don't touch production env vars, deployments, or migrations directly).
 
-1. **Set the P0 secrets in Railway (§5).** Values already generated this session (given to you in chat, not committed to this file — never commit secrets to git):
-   - `COOKIE_SECRET`, `TEAM_JWT_SECRET`, `REVALIDATION_SECRET`, `RAZORPAY_WEBHOOK_SECRET` — ready to paste in as-is.
-   - `ADMIN_PASSWORD_HASH` + `ADMIN_TOTP_SECRET` — run `npx tsx scripts/generate-admin-hash.ts '<your-chosen-password>' --totp` yourself (needs your password as input, so it has to be you, not me) — it prints both the hash and a QR-scannable TOTP URI for your authenticator app.
-   - This step alone fixes: broken staff login (B-008), silently-rotating admin sessions (new finding, already patched in code), the weak webhook secret (S-009), stale ISR cache (B-009), and gets 2FA onto the admin panel (B-004).
+1. ~~**Set the P0 secrets in Railway (§5).**~~ ✅ **Done + verified live 2026-09-03 (§0b).** `COOKIE_SECRET`, `TEAM_JWT_SECRET`, `REVALIDATION_SECRET` (API + web), `RAZORPAY_WEBHOOK_SECRET`, `VAULT_DATABASE_URL` all set; `DATABASE_URL` on the `kanchuki_app.*` role. Fixed B-005, B-007, B-008, B-009, S-009.
+   - **Still to do:** `ADMIN_PASSWORD_HASH` + `ADMIN_TOTP_SECRET` — run `npx tsx scripts/generate-admin-hash.ts '<your-chosen-password>' --totp` yourself (needs your password as input) — prints the hash + a QR-scannable TOTP URI. Closes B-003 + B-004.
 
 2. **Switch `DATABASE_URL` to the `kanchuki_app` role — on staging/a test deploy first, not directly on the pilot deploy.** SQL is already written in `docs/SECURITY.md` §19.1. This is the one change with real "could break the server" risk if some code path assumes superuser privileges it doesn't actually need — validate it doesn't 500 on a basic retailer/product/order flow before pointing the pilot's `DATABASE_URL` at it.
 
@@ -317,4 +329,4 @@ Tell me which of these you want done now vs. deferred:
 6. **(Added 2026-08-11) Rate-limit bypass fix** — one-line, drop `x-retailer-id` header trust from the global rate limiter. Not optional, do this regardless of what else you skip — it currently defeats admin-login brute-force protection.
 7. **(Added 2026-08-11) Fix CI** — `apps/api` has 8 real lint errors blocking `main`'s `quality` job, which also means the DB-guardrail/secrets CI checks haven't run in 3 pushes. Small, mechanical fix (`biome check --fix` handles most of it) + one allowlist line in `check-delete-guard.sh` for `reset-demo-data.sql`.
 
-For the Google Play Store question specifically: `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` (updated Aug 10) is the actionable doc — store listing, Data Safety form, content rating, and the closed-testing path are all filled in and current. The only genuinely time-sensitive item is the **Aug 31, 2026 target-API-level deadline** (§5 of that doc) — 20 days out as of this audit. Submit before then to stay on Expo SDK 54/API 35; miss it and the SDK 55 bump becomes the critical path. Nothing else in that doc changed this session.
+For the Google Play Store question specifically: `docs/PLAY-STORE-LAUNCH-CHECKLIST.md` (updated Aug 10) is the actionable doc — store listing, Data Safety form, content rating, and the closed-testing path are all filled in and current. The **Aug 31, 2026 target-API-level deadline** (§5 of that doc) is already satisfied — Expo SDK 54 defaults `targetSdkVersion` to 36, so no SDK 55 bump or Play Console extension is needed. Nothing else in that doc changed this session.

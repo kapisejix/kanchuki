@@ -81,7 +81,7 @@ export default function AccountDeletionPage() {
                 and are not used for any commercial purpose.
               </li>
               <li>
-                Customer data you collected (e.g. customer profiles and measurements) is deleted as
+                Customer data you collected (e.g. customer profiles and preferences) is deleted as
                 part of your account deletion.
               </li>
             </ul>

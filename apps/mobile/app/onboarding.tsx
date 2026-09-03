@@ -446,7 +446,8 @@ export default function OnboardingScreen() {
               </View>
             </View>
 
-            {/* Field 3: Primary Clothing Category */}
+            {/* Field 3: Primary Clothing Category — hidden from onboarding for now */}
+            {false && (
             <View className="mt-3">
               <Text className="text-[11px] uppercase tracking-wider text-heliotrope-600 font-bold mb-2">
                 Primary Specialization
@@ -483,6 +484,7 @@ export default function OnboardingScreen() {
                 })}
               </View>
             </View>
+            )}
 
             {/* Field 4: Storefront Subdomain URL */}
             <View className="mt-3">

@@ -2287,3 +2287,190 @@ Schema fix + 3 migrations: under an hour (small, mechanical). Mobile screen
 + API client wiring: half a day, reusing the growth-screen pattern
 end-to-end. No new admin page. No new backend service — the route already
 exists and just needs a working schema under it.
+
+---
+
+## 30. F-034 AI Image→Video for Social Promo (Reels / Shorts / Feed) — 🔴 PLANNED
+
+**Written 2026-09-02 on user request.** Supersedes **F-032 Phase B**
+(§24.4 / §24.7 "Product video") — same idea, but concrete decisions locked:
+**credit-pack billing** (not per-clip Razorpay charges), **social-first**
+framing (YouTube channel + Instagram + Facebook), and the **Fal.ai
+image-to-video model set** below. This is a distinct feature from **F-033**
+(§28), which is a deterministic ffmpeg pan/zoom slideshow with no AI and no
+per-clip cost — F-034 is model-generated motion (garment drapes, fabric
+sways, model turns, camera dolly) and has a real per-clip API cost.
+
+### 30.1 Problem
+
+Retailers need short video content for Instagram Reels, YouTube Shorts, and
+Facebook feed to promote products — the format that actually gets reach on
+those platforms. Most retailers have product *photos* (from F-001) but never
+film video. F-033 Ken Burns covers the "no budget, good enough" case with a
+photo slideshow; F-034 covers the retailer who wants a **real moving clip**
+of the garment — fabric motion, a model turning, a slow push-in — that looks
+like a brand ad, not a slideshow. This is a paid feature: the API cost per
+clip is ₹13–90 depending on model, so it must be metered and charged.
+
+### 30.2 Decisions (user-confirmed 2026-09-02)
+
+- **Billing = credit pack, not per-video micro-payments.** A retailer paying
+  ₹20–30 per clip via Razorpay 50 times a month = per-transaction fee bleed
+  (~2%/txn) + checkout friction. Instead: monthly plan quota + **overage
+  credit packs** ("20 videos / ₹599", "50 videos / ₹1,299") — one Razorpay
+  payment, reuses the F-010 `quota_addon_purchases` + `/billing/addon-checkout`
+  pack machinery that AI tagging and F-032 studio shoots already use.
+- **Effective price ~₹30–50/video**, set per pack off the worst-case model
+  cost + margin. ₹20–30 effective only if the tier is locked to a cheap
+  model (Seedance/WAN standard) and run as a growth loss-leader.
+- **Model quality by plan tier** — Starter overage uses a budget model,
+  Pro tier can use Kling Pro / Luma. Admin sets the model per tier (reuse the
+  F-023 AI Provider Registry pattern — a `video` provider kind).
+- **Social scope Phase 1 = Facebook + Instagram** (reuse F-031 / F-033
+  Slice 2 video-post path). **YouTube upload is Phase 2** — it's a whole new
+  OAuth provider (channel connect, resumable upload, token storage), not in
+  F-031. Phase 1 gives the retailer the finished 9:16 / 16:9 file to upload
+  to YouTube themselves.
+- **Motion styles are admin-curated, not free text** — same as F-032 studio
+  styles. Reuse the `studio_styles` table with a `kind` column
+  (`IMAGE` | `VIDEO`), or a parallel `video_styles` table if the columns
+  diverge too much. Each style = a motion prompt + default aspect + allowed
+  plan tiers + sample-output thumbnail.
+
+### 30.3 Models (Fal.ai, same `FAL_API_KEY` as F-032, different endpoints)
+
+`apps/api/src/lib/fal-client.ts::runFalTask()` is already a generic
+submit + queue-poll + result helper — video needs a small variant because
+the result field is `video.url`, not `images[]`.
+
+| Model | Fal endpoint (approx) | ~Cost / 5s clip | Tier |
+|---|---|---|---|
+| **Seedance** (ByteDance) | `fal-ai/bytedance/seedance/v1/lite/image-to-video` | ₹13–34 | Starter overage / budget |
+| **WAN 2.x** (Alibaba) | `fal-ai/wan/v2.2/image-to-video` | ₹15–34 | Starter / Growth |
+| **Kling 1.6 std** | `fal-ai/kling-video/v1.6/standard/image-to-video` | ₹21–30 | Growth default |
+| **Kling Pro / 2.x** | `fal-ai/kling-video/v2/master/image-to-video` | ₹42–85 | Pro |
+| **Luma Ray 2** | `fal-ai/luma-dream-machine/ray-2/image-to-video` | ₹40–170 | Pro / premium |
+
+Cost figures are indicative (late-2026, ~5s clips) — confirm live pricing at
+integration time and store the per-call cost in the provider registry so the
+credit-pack math stays accurate when Fal changes prices.
+
+### 30.4 Scope
+
+**Phase 1 — generate + save + FB/IG post:**
+- "Make promo video" button on product detail (`apps/mobile/app/product/[id].tsx`)
+  and/or the growth videos screen (`apps/mobile/app/growth/videos.tsx`) —
+  shown when the product has ≥1 photo and is under the 3-video cap.
+- Picker: motion style (curated) + aspect (**9:16** Reels/Shorts, **16:9**
+  YouTube landscape, **1:1** / **4:5** feed). Style list plan-filtered.
+- Async: `POST /v1/products/:id/videos/ai-generate` → 202 + `job_id`;
+  BullMQ job calls `generateImageToVideo(mainPhotoUrl, { model, motionPrompt,
+  aspect, seconds })` → poll → SSRF-safe download → ffmpeg trim/crop to the
+  chosen aspect (ffmpeg already in the image, pattern from
+  `jobs/extract-spin-frames.ts` / F-033) → `uploadBuffer(key, buf,
+  'video/mp4')` → write a `ProductVideo` row with `source = 'AI_GEN'`
+  (extends the F-033 `source` enum: `UPLOAD` | `KEN_BURNS` | `AI_GEN`).
+- `GET .../videos/ai-generate/status?job_id=` + `GET .../videos/ai-generate/quota`
+  — copy `apps/api/src/routes/products/products-studio.ts` verbatim.
+- Quota: new `QuotaResourceType.AI_VIDEO` + `plan_limits` rows + admin
+  plan-limits row + credit pack SKUs. Migration.
+- Result UI: preview, save to gallery (`expo-media-library`, already used),
+  "Post to Facebook / Instagram" → reuse F-033 Slice 2 `publishVideoPost()`
+  (extend to the IG `media` → `media_publish` video flow).
+
+**Phase 2 — in-app YouTube:**
+- YouTube Data API v3 OAuth (channel connect, encrypted token via F-012),
+  resumable upload, title/description/tags from the product + campaign copy,
+  privacy = `public` or `unlisted`. Separate build, own estimate.
+
+### 30.5 Reuses existing infra (verified)
+
+- `fal-client.ts::runFalTask()` — generic Fal submit/poll (video result-field
+  variant is the only new bit)
+- `studio-shoot.ts` job + Redis job-status + poll-endpoint + `downloadCompressAndUpload` pattern (F-032)
+- F-010 quota + `quota_addon_purchases` + `/billing/addon-checkout` credit packs
+- F-023 AI Provider Registry — add a `video` provider kind, per-tier model + per-call cost
+- F-033 `ProductVideo.source` enum + `R2_PATHS.productVideo()` + `publishVideoPost()`
+- ffmpeg `execFile` pattern (`jobs/extract-spin-frames.ts`)
+- F-032 `studio_styles` admin CRUD + plan-tier assignment + thumbnail upload
+- Mobile studio-shoot screen (`ProductStudioModal`) — copy for the video picker
+
+### 30.6 Credit-pack economics
+
+| Pack | Price | Effective ₹/video | Covers model up to |
+|---|---|---|---|
+| Included in plan | — | — | Starter 3/mo, Growth 12/mo, Pro 40/mo (admin-tunable) |
+| Small pack | ₹599 | ~₹30 / 20 videos | Seedance / WAN / Kling std |
+| Large pack | ₹1,299 | ~₹26 / 50 videos | Seedance / WAN / Kling std |
+| Pro pack | ₹1,999 | ~₹40 / 50 videos | Kling Pro / Luma |
+
+Margin rule: pack price ≥ (worst-case model cost for that tier × count) ×
+1.4, after Razorpay's ~2% txn fee and R2 egress. If a tier's model cost rises
+above the pack's break-even, bump the pack price or downgrade the tier's
+model — don't eat the loss silently.
+
+### 30.7 Explicitly NOT doing
+
+- ❌ Per-clip Razorpay checkout — credit packs only (see §30.2).
+- ❌ Free-text motion prompts for retailers — curated styles only.
+- ❌ Self-hosted video GPU — API-only until volume proves a GPU box cheaper
+  (same call as F-032 Phase B's deferred Wan self-host).
+- ❌ In-app YouTube upload in Phase 1 — retailer uploads the file manually.
+- ❌ Clips longer than ~8s — cost scales with length and these models warp
+  fabric/faces more the longer they run.
+- ❌ Treating the output as a catalog-accurate asset — it's a promo mood clip.
+  Keep the original photo + a still as the product's primary media.
+
+### 30.8 Risks
+
+1. **Fabric/face warping on motion** — worse than the F-032 studio-shoot
+   "changed the product" risk. Print smears, embroidery shimmers, model face
+   morphs. Mitigate: 5s clips, subtle camera moves, curated styles, per-model
+   QA before enabling a style for a tier.
+2. **Cost drift** — Fal repricing breaks the pack margin. Store per-call cost
+   in the provider registry; alert if a tier goes underwater.
+3. **Platform policy** — IG/FB/YouTube AI-content labelling rules evolve;
+   surface an "AI-generated" disclosure toggle on the post composer.
+4. **Moderation** — rely on Fal's `nsfw_filter` / safety checker; log the
+   input photo + style for any flagged generation.
+
+### 30.9 Acceptance criteria (Phase 1)
+
+- Retailer taps "Make promo video" on a product with a photo → picks a motion
+  style + aspect → within the job worker's turnaround, a ≤8s MP4 in the chosen
+  aspect appears in the product's video list, `source = 'AI_GEN'`.
+- Generation is gated by `AI_VIDEO` quota; hitting the limit shows the
+  credit-pack buy sheet (reuse the F-032 credits banner), and a completed
+  pack purchase clears the gate.
+- The clip preserves the garment's colour and pattern well enough to publish
+  (per-style QA sign-off, not an automated check).
+- Original photo + a poster still remain the product's primary media.
+- "Post to Facebook / Instagram" publishes the video via the F-031 path;
+  products with no AI video are unaffected.
+- Per-generation cost recorded per retailer (reuse `AiUsageLog`) with the
+  model used, so the credit-pack margin is auditable.
+
+### 30.10 Complexity estimate
+
+**Phase 1 (Facebook + Instagram): ~1.5–2 weeks.**
+
+| Piece | Est. |
+|---|---|
+| `fal-client.ts` `generateImageToVideo()` + video result-field variant | 0.5 d |
+| Video R2 path — SSRF fetch, larger buffer cap, ffmpeg trim/aspect-crop | 1–1.5 d |
+| BullMQ job + 3 routes (generate / status / quota) — copy `products-studio.ts` | 1.5 d |
+| `AI_VIDEO` quota + `plan_limits` rows + credit-pack SKUs + migration | 0.5–1 d |
+| Admin motion-style CRUD (`studio_styles` + `kind`, or `video_styles`) | 0.5–1 d |
+| Mobile picker screen + api-client methods + preview/save | 1.5 d |
+| FB/IG video-post wiring (extend F-033 Slice 2 + IG video flow) | 0.5–1 d |
+| Aspect/format polish, error states, per-model QA, tests, review | 1–2 d |
+
+**Phase 2 (in-app YouTube upload): +2–3 days** — YouTube Data API OAuth,
+resumable upload, channel-connect UI, encrypted token storage.
+
+### 30.11 Why not built yet
+
+Spec written 2026-09-02 on user request. **Do NOT start until the user says
+go** (same hold as F-032 Phase B, which this supersedes). Prerequisite: the
+F-010 credit-pack path and F-032 studio-shoot job infra are both live, so the
+groundwork exists — this is integration, not new architecture.

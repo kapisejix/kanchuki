@@ -19,7 +19,7 @@ const WALKTHROUGH = [
   { icon: Package, title: '1. Add products', desc: 'One photo → AI-tagged product, or bulk: shoot racks shelf-by-shelf or import a supplier PDF for 500–3,000 SKUs. Every product gets sizes (S–XXXL), a category, colour, fabric, and a rack/shelf location.', accent: 'cobalt' as const },
   { icon: ListChecks, title: '2. Manage your catalog', desc: 'See everything in one list — search by name, colour, or price range. Edit anything AI wrote; your edits always win. Mark pieces SOLD or reserved with one tap, or scan the rack tag (works offline).', accent: 'volt' as const },
   { icon: Share2, title: '3. Share with customers', desc: 'WhatsApp collections — one link per occasion or collection. Store QR — print it, stick it on the counter, customers scan and browse. Every shop also gets its own store page at a personal link.', accent: 'iris' as const },
-  { icon: TrendingUp, title: '4. Grow with customer insights', desc: 'Favourites and enquiries tell you what people actually want. Fashion DNA notes each customer\'s colour, style, budget and occasions — so your next WhatsApp to them shows the right things.', accent: 'terracotta' as const },
+  { icon: TrendingUp, title: '4. Grow with customer insights', desc: 'Favourites and enquiries tell you what people actually want. Customer notes capture each customer\'s colour, style, budget and occasions — so your next WhatsApp to them shows the right things.', accent: 'terracotta' as const },
 ]
 
 export default function HowItWorksPage() {

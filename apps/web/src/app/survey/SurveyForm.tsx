@@ -361,6 +361,7 @@ export function SurveyForm({
               Ask retailer to scan this with their phone camera:
             </p>
             <div className="inline-block p-3 bg-white border border-gray-300 rounded-xl shadow-xs">
+              {/* eslint-disable-next-line @next/next/no-img-element -- QR generated on the fly by external api.qrserver.com, fixed 180x180 */}
               <img
                 src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
                   onboardingLink,
