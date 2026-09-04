@@ -103,6 +103,103 @@ Treat §8 below as historical (what the gap looked like on Aug 1) — the sitema
 
 ---
 
+## 0c. 2026-09-04 — pre-production 5-point pass
+
+Verified live before this pass: GST migrations `086`/`087`/`088` applied in prod
+(`platform_gst_profile` + `gst_invoice_sequences` tables, all 9 GST columns on
+`subscription_payments`, `set-gst-profile.ps1` run → 1 profile row); MSG91 DLT
+sender-ID registered; MSG91 mobile EAS build tested on a real phone; web MSG91
+widget deployed with `NEXT_PUBLIC_MSG91_*`; `admin.login.test.ts` 9/9,
+`security.test.ts` 54/54.
+
+### 1. Error monitoring wired — ✅ DONE (code)
+
+- **API** (`@sentry/node ^10.73.0`): `apps/api/src/instrument.ts` (init, imported
+  first in `index.ts`), `Sentry.captureException(error)` in the generic-500
+  branch of `plugins/error-handler.ts`. `beforeSend` strips
+  `authorization`/`cookie`/`x-admin-key`/`x-team-token`. tsc clean; API
+  705/705 tests pass.
+- **Web** (`@sentry/nextjs ^10.73.0`): `sentry.{server,client,edge}.config.ts` +
+  `instrumentation.ts` + `withSentryConfig` wrap in `next.config.mjs` +
+  `experimental.instrumentationHook: true` (Next 14.2). tsc clean; prod build
+  succeeds.
+- **No-op until DSN set.** `Sentry.init({ dsn: undefined })` disables the SDK, so
+  `captureException` is a harmless no-op. `.env.example` documents the keys.
+- **Owner tasks:** create Sentry projects `kanchuki-api` + `kanchuki-web` (same
+  org as mobile — `o4511960130387968`, EU region). Set `SENTRY_DSN` on both
+  Railway services; set `NEXT_PUBLIC_SENTRY_DSN` on the **web** service too
+  (browser bundle can only read `NEXT_PUBLIC_*`). Optionally set
+  `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` on the web build for
+  source-map upload.
+
+### 2. B-003 + B-004 (admin hash format + admin TOTP) — ⏳ OWNER (one command)
+
+Cannot be done by the agent — needs the chosen admin password as input, and
+writes a prod secret. Run locally:
+
+```
+npx tsx scripts/generate-admin-hash.ts '<your-admin-password>' --totp
+```
+
+Prints the new-format `ADMIN_PASSWORD_HASH` and a scannable `ADMIN_TOTP_SECRET`
+URI. Set both in the API Railway env (`supportive-love`), scan the TOTP URI into
+an authenticator, redeploy, then run `npx vitest run src/routes/admin.login.test.ts`.
+Closes B-003 + B-004.
+
+### 3. Supabase backups + restore drill — ⏳ OWNER (dashboard)
+
+- Supabase dashboard → Project → Database → Backups: confirm daily automated
+  backups are **on** and PITR retention is set (Pro plan gives 7-day PITR).
+- Do one restore drill: create a throwaway branch/project from the latest
+  backup, confirm row counts on `retailers` / `products` / `subscription_payments`
+  match prod, then delete it. Record the date here when done.
+
+### 4. `_prisma_migrations` bookkeeping drift — ⏳ OWNER (admin dashboard or approved SQL)
+
+Migrations `083`–`089` are applied to prod (schema objects verified — checked
+2026-09-04, none of the 7 appear in `public._prisma_migrations`) — the
+admin-dashboard migration runner applies DDL without inserting a bookkeeping row.
+Harmless while deploys stay admin-dashboard-only (per the operational policy),
+but any `prisma migrate deploy` would try to replay all 7. Reconcile by inserting
+resolved rows (run from the admin dashboard SQL path, with approval — not ad hoc
+against prod):
+
+```sql
+-- one row per applied migration; checksum '' is fine for a resolve marker
+insert into public._prisma_migrations
+  (id, checksum, finished_at, migration_name, logs, rolled_back_at, started_at, applied_steps_count)
+select gen_random_uuid()::text, '', now(), m, null, null, now(), 1
+from (values
+  ('083_grant_delete_product_photos'),
+  ('084_grant_delete_purge_role'),
+  ('085_drop_annual_paise'),
+  ('086_gst_columns_and_invoice_sequence'),
+  ('087_gst_invoice_r2_key'),
+  ('088_platform_gst_profile'),
+  ('089_resource_packs')
+) as t(m)
+where not exists (select 1 from public._prisma_migrations where migration_name = t.m);
+```
+
+Alternative: `prisma migrate resolve --applied <name>` per migration against the
+prod URL (also owner-run).
+
+### 5. Stray `.kilo/worktrees` — ⚠️ NOT removed (uncommitted WIP present)
+
+`git worktree list` shows two:
+- `.kilo/worktrees/aquatic-animal` [aquatic-animal] — **dirty**: ~13 modified +
+  untracked files, a growth AI-campaign feature in progress.
+- `.kilo/worktrees/small-mood` [implement-photo-feature] — **dirty**: add-product
+  photo-feature WIP + a `.backup` file.
+
+Neither is ahead of `main` by any commit, but both hold real uncommitted work, so
+they were left in place. They only cause noise when a test command is run from the
+repo root (duplicate `*.test.ts` discovery) — scope test runs to `apps/api` /
+`apps/web` to avoid it. Owner: land or discard that work, then
+`git worktree remove <path>`.
+
+---
+
 ## 0. Where the docs disagree with each other (read this first)
 
 Docs decay faster than code. These are live contradictions found across the doc set — don't trust the "done" claim on either side without checking code:
@@ -156,8 +253,8 @@ Deduplicated from `PROGRESS.md` + `omp-review.md`. Everything not listed here as
 | — | Collection share link uses LAN IP, not a real hyperlink | 🔴 Open — config only, fix by setting `WEB_URL` to your real domain at deploy time |
 | — | QR code export is PNG-only, no JPG/PDF | 🟡 Open, cosmetic, P2 |
 | B-002 | `DATABASE_URL_REPLICA` currently points at the primary DB, not a real replica | 🔴 Open |
-| B-003 | `ADMIN_PASSWORD_HASH` still in legacy HMAC format | 🔴 Open |
-| B-004 | Admin TOTP (2FA) not enabled (`ADMIN_TOTP_SECRET` unset) | 🔴 Open |
+| B-003 | `ADMIN_PASSWORD_HASH` still in legacy HMAC format | 🔴 Open — owner: one command in §0c.2 |
+| B-004 | Admin TOTP (2FA) not enabled (`ADMIN_TOTP_SECRET` unset) | 🔴 Open — owner: same command as B-003 (§0c.2) |
 | B-005 | `VAULT_DATABASE_URL` not configured — Deletion Vault has nowhere to write | ✅ Resolved 2026-09-03 — set (`vault_app` insert-only role), verified live (§0b) |
 | B-007 | `DATABASE_URL` still uses the Supabase superuser role, not the restricted `kanchuki_app` role | ✅ Resolved 2026-09-03 — `DATABASE_URL` uses `kanchuki_app.*`, verified live (§0b) |
 | B-008 | `TEAM_JWT_SECRET` missing — **staff login is broken** until this is set | ✅ Resolved 2026-09-03 — `TEAM_JWT_SECRET` set on API service (§0b) |

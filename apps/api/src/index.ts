@@ -1,3 +1,5 @@
+// Sentry — must load before anything else so it can instrument http/pg/fastify.
+import './instrument.js';
 import { createHmac } from 'node:crypto';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
