@@ -415,7 +415,11 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
     let realPhotoId = photoId;
     if (photoId.startsWith('variant-')) {
       const variant = await prisma.productVariant.findFirst({
-        where: { id: photoId.replace('variant-', ''), product_id: id, retailer_id: request.retailerId },
+        where: {
+          id: photoId.replace('variant-', ''),
+          product_id: id,
+          retailer_id: request.retailerId,
+        },
       });
       if (!variant?.photo_url || !variant.r2_key) throw notFound('Product photo');
       const existing = await prisma.productPhoto.findFirst({
