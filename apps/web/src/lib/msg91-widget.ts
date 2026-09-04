@@ -83,8 +83,27 @@ export function loadMsg91Widget(): Promise<boolean> {
             widgetId: WIDGET_ID,
             tokenAuth: TOKEN_AUTH,
             exposeMethods: true, // bind window.sendOtp/verifyOtp/retryOtp, no built-in UI
+            // The current otp-provider.js throws "success callback function
+            // missing !" at init unless success is a function — and never
+            // mounts its element (so window.sendOtp never binds) without it.
+            // We drive the flow through the per-call callbacks on
+            // window.sendOtp/verifyOtp, so these globals are deliberate no-ops.
+            success: () => {},
+            failure: () => {},
           });
-          resolve(typeof window.sendOtp === 'function');
+          // initSendOTP mounts the <msg91-otp-provider> element on a timer, so
+          // window.sendOtp isn't bound synchronously — poll briefly for it.
+          const startedAt = Date.now();
+          const poll = (): void => {
+            if (typeof window.sendOtp === 'function') {
+              resolve(true);
+            } else if (Date.now() - startedAt > 5000) {
+              resolve(false);
+            } else {
+              setTimeout(poll, 100);
+            }
+          };
+          poll();
         } else {
           i += 1;
           attempt();
