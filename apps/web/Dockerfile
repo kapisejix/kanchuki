@@ -56,9 +56,11 @@ ENV NEXT_PUBLIC_R2_PUBLIC_URL=$NEXT_PUBLIC_R2_PUBLIC_URL
 ENV NEXT_PUBLIC_MSG91_WIDGET_ID=$NEXT_PUBLIC_MSG91_WIDGET_ID
 ENV NEXT_PUBLIC_MSG91_TOKEN_AUTH=$NEXT_PUBLIC_MSG91_TOKEN_AUTH
 ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
-ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
+# SENTRY_AUTH_TOKEN is deliberately NOT promoted to ENV — a Docker build arg
+# is already visible to RUN steps as an env var, so `next build` can use it,
+# and keeping it ARG-only means the secret is not baked into the final image.
 
 RUN pnpm exec turbo build --filter=@kanchuki/web
 
