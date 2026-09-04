@@ -21,6 +21,7 @@ const {
   mockGetDownloadPresignedUrl,
   mockCleanupProductPhoto,
   mockPhotoDelete,
+  mockPhotoCreate,
   mockVariantFindFirst,
   mockVariantUpdate,
   mockDeleteObject,
@@ -42,6 +43,7 @@ const {
     mockPhotoUpdate: vi.fn(),
     mockPhotoUpdateMany: vi.fn(),
     mockPhotoFindUnique: vi.fn(),
+    mockPhotoCreate: vi.fn(),
     mockBackgroundImageFindFirst: vi.fn(),
     mockTransaction: vi.fn((ops: Promise<unknown>[]) => Promise.all(ops)),
     mockHasFeature: vi.fn(),
@@ -74,6 +76,7 @@ vi.mock('@kanchuki/db', () => ({
       updateMany: mockPhotoUpdateMany,
       findUnique: mockPhotoFindUnique,
       delete: mockPhotoDelete,
+      create: mockPhotoCreate,
     },
     productVariant: {
       findFirst: mockVariantFindFirst,
@@ -532,6 +535,40 @@ describe('PATCH /products/:id/photos/:photoId — is_primary promotion (F-029)',
 
     expect(res.statusCode).toBe(404);
     expect(mockPhotoUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('materializes a variant preview slide into a real photo, then promotes it', async () => {
+    // Once — clearAllMocks keeps mock impls between tests, so a plain
+    // mockResolvedValue here would leak a found variant into later suites.
+    mockVariantFindFirst.mockResolvedValueOnce({
+      id: 'variant_1',
+      product_id: 'prod_1',
+      retailer_id: RETAILER_ID,
+      photo_url: 'https://cdn.example.com/v.jpg',
+      r2_key: 'products/prod_1/v.jpg',
+    });
+    const newPhoto = { ...photo, id: 'photo_new', r2_key: 'products/prod_1/v.jpg' };
+    // 1st findFirst: no existing photo for the variant's r2_key → create.
+    // 2nd findFirst: ownership check on the freshly-created id.
+    mockPhotoFindFirst.mockResolvedValueOnce(null).mockResolvedValueOnce(newPhoto);
+    mockPhotoCreate.mockResolvedValue(newPhoto);
+    mockPhotoUpdateMany.mockResolvedValue({ count: 1 });
+    mockPhotoUpdate.mockResolvedValue({ ...newPhoto, is_primary: true });
+    mockPhotoFindUnique.mockResolvedValue({ ...newPhoto, is_primary: true });
+
+    const app = await buildApp(null);
+    const res = await app.inject({
+      method: 'PATCH',
+      url: '/v1/products/prod_1/photos/variant-variant_1',
+      payload: { is_primary: true },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(mockPhotoCreate).toHaveBeenCalled();
+    expect(mockPhotoUpdate).toHaveBeenCalledWith({
+      where: { id: 'photo_new' },
+      data: { is_primary: true },
+    });
   });
 });
 

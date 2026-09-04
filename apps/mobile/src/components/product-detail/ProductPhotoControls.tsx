@@ -49,18 +49,35 @@ export function ProductPhotoControls({
   settingPrimaryId,
   primaryColor,
 }: ProductPhotoControlsProps) {
-  if (!currentPhoto || currentPhotoIsOriginal || currentPhotoIsVariant || currentPhoto.is_video) {
+  // Video slides can't be the catalog image — nothing to show.
+  if (!currentPhoto || currentPhoto.is_video) {
     return null
   }
 
   const selectedBg = photoBackgrounds[currentPhoto.id] ?? null
   const isPrimary = currentPhoto.is_primary ?? false
   const savingPrimary = settingPrimaryId === currentPhoto.id
+  // Variant preview / synthetic "original" slides have no real ProductPhoto
+  // row — "Set as Main" materializes one server-side, but the backdrop +
+  // shadow controls still need a real photo, so those stay hidden here.
+  const photoOnly = currentPhotoIsVariant || currentPhotoIsOriginal
 
   return (
     <View className="mx-4 my-2 bg-white rounded-3xl border border-lavender-200 shadow-sm overflow-hidden" style={{ elevation: 3 }}>
-      {/* #5: Set as Main — promote this photo to the catalog's main image */}
-      {!isPrimary && (
+      {/* #5: Set as Main — promote this photo to the catalog's main image.
+          Shown on every non-video slide so the retailer can promote any
+          thumbnail; the already-main slide shows a disabled marker. */}
+      {isPrimary ? (
+        <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-100">
+          <View className="flex-1 pr-3">
+            <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">Main Photo</Text>
+            <Text className="text-[11px] text-heliotrope-500 mt-0.5">
+              This is the photo shown on your catalog and storefront
+            </Text>
+          </View>
+          <Text className="text-heliotrope-400 text-xs font-bold uppercase tracking-wider">✓ Main</Text>
+        </View>
+      ) : (
         <AnimatedPressable
           onPress={() => handleSetPrimary(currentPhoto.id)}
           disabled={backgroundSaving || shadowSaving || savingPrimary || settingPrimaryId !== null}
@@ -82,6 +99,8 @@ export function ProductPhotoControls({
         </AnimatedPressable>
       )}
 
+      {photoOnly ? null : (
+      <>
       {/* Shadow toggle */}
       <View className="flex-row items-center justify-between px-4 py-3.5 border-b border-lavender-100">
         <View className="flex-1 pr-3">
@@ -142,6 +161,8 @@ export function ProductPhotoControls({
           </View>
         )}
       </View>
+      </>
+      )}
     </View>
   )
 }

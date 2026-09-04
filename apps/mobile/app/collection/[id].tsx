@@ -205,6 +205,17 @@ function ShareModal({
     })
   }
 
+  // Select all / clear the customers currently listed (respects the search filter).
+  const allListedSelected = customers.length > 0 && customers.every((c) => selected.has(c.id))
+  const toggleSelectAll = () => {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (allListedSelected) customers.forEach((c) => next.delete(c.id))
+      else customers.forEach((c) => next.add(c.id))
+      return next
+    })
+  }
+
   const openChat = (customer: CustomerLite) => {
     if (!collection) return
     const message = `Hi ${customer.name}! Check out our collection "${collection.title}": ${collection.url}`
@@ -314,6 +325,23 @@ function ShareModal({
                   className="flex-1 text-sm font-bold text-spaceCadet-900"
                 />
               </View>
+              {!isLoading && customers.length > 0 && (
+                <AnimatedPressable
+                  onPress={toggleSelectAll}
+                  className="flex-row items-center gap-3 py-2.5"
+                >
+                  <View
+                    className={`w-5 h-5 rounded-md border items-center justify-center ${
+                      allListedSelected ? 'bg-fuchsia-600 border-fuchsia-600' : 'border-lavender-300'
+                    }`}
+                  >
+                    {allListedSelected && <Check size={12} color="white" />}
+                  </View>
+                  <Text className="text-xs font-bold text-spaceCadet-900 uppercase tracking-wider">
+                    {allListedSelected ? 'Clear all' : `Select all (${customers.length})`}
+                  </Text>
+                </AnimatedPressable>
+              )}
               {isLoading ? (
                 <ActivityIndicator color="#BB3F95" className="py-8" />
               ) : (

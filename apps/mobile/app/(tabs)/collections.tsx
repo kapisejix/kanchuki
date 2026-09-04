@@ -3,7 +3,7 @@ import { View, Text, FlatList, Share, ActivityIndicator, Alert, Modal, TextInput
 import { router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2 } from 'lucide-react-native'
+import { Plus, Eye, MessageCircle, Link2, Clock, Edit, Trash2, Send } from 'lucide-react-native'
 import { collectionApi, retailerApi } from '../../src/lib/api'
 import { CollectionListSkeleton } from '../../src/components/Skeleton'
 import { showError } from '../../src/lib/errors'
@@ -151,12 +151,14 @@ const CollectionCard = memo(function CollectionCard({
   item,
   onPress,
   onShare,
+  onWhatsApp,
   onEdit,
   onDelete,
 }: {
   item: Collection
   onPress: () => void
   onShare: () => void
+  onWhatsApp: () => void
   onEdit: () => void
   onDelete: () => void
 }) {
@@ -218,9 +220,21 @@ const CollectionCard = memo(function CollectionCard({
         </View>
       </View>
 
+      {/* Share on WhatsApp — opens the customer picker (Select all + one-by-one)
+          on the collection detail screen via ?share=1. */}
+      {item.status === 'ACTIVE' && (
+        <AnimatedPressable
+          onPress={onWhatsApp}
+          className="flex-row items-center justify-center gap-2 bg-fuchsia-600 py-2.5 rounded-2xl border border-fuchsia-600 mb-2"
+        >
+          <Send size={14} color="white" />
+          <Text className="text-white text-xs font-bold uppercase tracking-wider">Share on WhatsApp</Text>
+        </AnimatedPressable>
+      )}
+
       {/* Action buttons row */}
       <View className="flex-row gap-2">
-        {/* Share on WhatsApp */}
+        {/* Share Link — generic OS share sheet */}
         {item.status === 'ACTIVE' && (
           <AnimatedPressable
             onPress={onShare}
@@ -327,6 +341,9 @@ export default function CollectionsScreen() {
           router.push({ pathname: '/collection/[id]', params: { id: item.id } })
         }
         onShare={() => void handleShare(item)}
+        onWhatsApp={() =>
+          router.push({ pathname: '/collection/[id]', params: { id: item.id, share: '1' } })
+        }
         onEdit={() => handleEdit(item)}
         onDelete={() => handleDelete(item)}
       />

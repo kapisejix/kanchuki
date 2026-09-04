@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { COLORS } from '@kanchuki/shared'
 import { LinearGradient } from 'expo-linear-gradient'
 import { View, Text, TextInput, ScrollView, ActivityIndicator, Share, Alert, Linking } from 'react-native'
+import * as Sharing from 'expo-sharing'
 import { router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -94,15 +95,37 @@ export default function StoreProfileScreen() {
         }
       })
 
-      // Save to temp file and share
+      // Write the PNG to a real file so it can be saved / shared as an image.
       const fileUri = `${Paths.cache.uri}store-qr-${Date.now()}.png`
       await writeAsStringAsync(fileUri, dataUrl, {
         encoding: 'base64',
       })
 
-      await Share.share({
-        url: fileUri,
-        message: `Here's my store QR code — scan to view my catalog!`,
+      // Preferred (dev / EAS builds): save straight to the photo gallery.
+      // expo-media-library's native module isn't in Expo Go — lazy-require so
+      // that failure falls through to the share sheet. Same pattern as
+      // useProductAiStudio.ts.
+      try {
+        const MediaLibrary = require('expo-media-library') as typeof import('expo-media-library')
+        const perm = await MediaLibrary.requestPermissionsAsync()
+        if (perm.granted) {
+          await MediaLibrary.saveToLibraryAsync(fileUri)
+          Alert.alert('Saved', 'QR code saved to your photo gallery.')
+          return
+        }
+      } catch {
+        // Expo Go (no native module) — fall through to the share sheet.
+      }
+
+      // Fallback: share the actual PNG file (Save to Files, gallery apps,
+      // WhatsApp…). Share.share drops `url` on Android, so use expo-sharing.
+      if (!(await Sharing.isAvailableAsync())) {
+        Alert.alert('Not available', 'Sharing is not available on this device.')
+        return
+      }
+      await Sharing.shareAsync(fileUri, {
+        mimeType: 'image/png',
+        dialogTitle: 'Save or share QR code',
       })
     } catch (err) {
       showError(err, 'Could not export QR code', 'Export failed')

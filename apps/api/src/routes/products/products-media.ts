@@ -409,8 +409,35 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
   server.patch('/:id/photos/:photoId', async (request) => {
     const { id, photoId } = request.params as { id: string; photoId: string };
 
+    // "Set as main" can target a variant preview slide (synthetic `variant-<id>`
+    // from the mobile carousel) — materialize it into a real ProductPhoto row
+    // first, same as the cleanup route above, so it can carry is_primary.
+    let realPhotoId = photoId;
+    if (photoId.startsWith('variant-')) {
+      const variant = await prisma.productVariant.findFirst({
+        where: { id: photoId.replace('variant-', ''), product_id: id, retailer_id: request.retailerId },
+      });
+      if (!variant?.photo_url || !variant.r2_key) throw notFound('Product photo');
+      const existing = await prisma.productPhoto.findFirst({
+        where: { product_id: id, r2_key: variant.r2_key },
+      });
+      realPhotoId =
+        existing?.id ??
+        (
+          await prisma.productPhoto.create({
+            data: {
+              product_id: id,
+              retailer_id: request.retailerId,
+              url: variant.photo_url,
+              r2_key: variant.r2_key,
+              is_primary: false,
+            },
+          })
+        ).id;
+    }
+
     const photo = await prisma.productPhoto.findFirst({
-      where: { id: photoId, product_id: id, retailer_id: request.retailerId },
+      where: { id: realPhotoId, product_id: id, retailer_id: request.retailerId },
     });
     if (!photo) throw notFound('Product photo');
 
@@ -436,16 +463,16 @@ export const productsMediaRoutes: FastifyPluginAsync = async (server) => {
           data: { is_primary: false },
         }),
         prisma.productPhoto.update({
-          where: { id: photoId },
+          where: { id: realPhotoId },
           data: { is_primary: true },
         }),
       ]);
-      const updated = await prisma.productPhoto.findUnique({ where: { id: photoId } });
+      const updated = await prisma.productPhoto.findUnique({ where: { id: realPhotoId } });
       return { data: updated };
     }
 
     const updated = await prisma.productPhoto.update({
-      where: { id: photoId },
+      where: { id: realPhotoId },
       data: { piece_type: body.data.piece_type ?? null },
     });
     return { data: updated };
