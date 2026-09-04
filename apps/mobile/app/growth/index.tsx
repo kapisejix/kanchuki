@@ -35,7 +35,7 @@ const TYPE_LABEL: Record<CampaignType, string> = {
 // Growth modules — only features that remain after the teardown
 const GROWTH_MODULES = [
   { icon: Wand2, label: 'AI Campaign Assistant', hint: 'Type a command, get a campaign', href: '/growth/ai-campaign' as const },
-  { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/growth/customers' as const },
+  { icon: Users, label: 'Customer List', hint: 'Manage your customers', href: '/customers' as const },
   { icon: Percent, label: 'Promotions', hint: 'Discount codes & offers', href: '/growth/promotions' as const },
   { icon: PackageSearch, label: 'Inventory Alerts', hint: 'Dead stock & reorders', href: '/growth/inventory' as const },
   { icon: Video, label: 'Product Videos', hint: '5–10s clips on your catalog', href: '/growth/videos' as const },
